@@ -671,6 +671,13 @@ Definition check_core_stmts_def:
   (check_core_stmts env ctx (RevertStmt a :: ss) =
     if provisional_revert_payload a then check_core_stmts env ctx ss
     else NONE) ∧
+  (* Error arguments are elementary, as the ABI encoding of revert data
+     requires. *)
+  (check_core_stmts env ctx (RevertErrorStmt selector params args :: ss) =
+    if LENGTH selector = 4 ∧
+       EVERY (λty. is_elementary_type ty ∧ valid_type_shape ty) params ∧
+       wf_core_atoms env ctx (MAP SingleType params) args
+    then check_core_stmts env ctx ss else NONE) ∧
   (check_core_stmts env ctx (EmitStmt topic args :: ss) =
     case emit_indexed_count env ctx args of
       SOME n =>

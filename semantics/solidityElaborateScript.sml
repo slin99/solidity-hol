@@ -12,7 +12,8 @@
  * do-while, for, break, continue, return and unchecked blocks. Built-in
  * require/assert/revert admit boolean conditions and literal string messages.
  * Reads of msg.sender, msg.value, tx.origin, tx.gasprice, block members and
- * address(this), and emits of events with elementary parameters. An internal
+ * address(this), emits of events and reverts with custom errors, both with
+ * elementary parameters. An internal
  * call runs the most derived override of the function it names (call_table);
  * the functions no other overrides are elaborated, and the external and
  * public ones among them, receive and fallback form the dispatch table.
@@ -24,7 +25,7 @@
  * Schedules, read from the compiler's IR for this profile (the ir output in
  * testdata/frontend/expected/pure_core.json) and checked against the compiled
  * bytecode by the differential tests:
- *  - binary operands, call and emit arguments and tuple components are
+ *  - binary operands, call, emit and error arguments and tuple components are
  *    evaluated left to right, each read of a local or a state variable being a copy taken
  *    when it is evaluated;
  *  - && and || evaluate their right operand only when needed;
@@ -941,6 +942,17 @@ Definition elab_stmts_def:
                 SOME ((ss ++ [EmitStmt (event_topic e) (emit_arguments ps as)],
                        ctx), n1)
             | NONE => NONE) ∧
+  (* Arguments are coerced to the error's parameter types, which must be
+     elementary for the revert data's ABI encoding. *)
+  (elab_stmt ctx n (SrcRevertError _ err args) =
+    case all_some (MAP variable_type err.error_parameters) of
+      NONE => NONE
+    | SOME params =>
+        if ¬EVERY is_elementary_type params then NONE else
+        case elab_args ctx n params args of
+          SOME ((ss, as), n1) =>
+            SOME ((ss ++ [RevertErrorStmt err.error_selector params as], ctx), n1)
+        | NONE => NONE) ∧
   (* An optional for initialization or loop expression. *)
   (elab_for_init ctx n NONE = SOME (([], ctx), n)) ∧
   (elab_for_init ctx n (SOME st) = elab_stmt ctx n st)

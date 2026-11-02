@@ -458,6 +458,40 @@ Proof
   EVAL_TAC
 QED
 
+(* Custom errors: a 4-byte selector and elementary arguments of their
+ * parameter types. *)
+Theorem revert_error_admitted:
+  wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [u256; BoolT]
+       [BoundAtom (AstId 80); ConstantAtom (BoolValue T)];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_short_selector_rejected:
+  ¬wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w] [] []; ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_mistyped_argument_rejected:
+  ¬wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [BoolT] [BoundAtom (AstId 80)];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_non_elementary_rejected:
+  ¬wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [StringT] [BoundAtom (AstId 80)];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
 (* Dispatch: distinct 4-byte selectors of procedures with ABI parameters and
  * returns; receive and fallback take and return nothing.
  *)
