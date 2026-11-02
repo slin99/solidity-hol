@@ -618,13 +618,21 @@ fun struct_declaration types v = within v (fn v =>
          layout)]
   end)
 
+(* The declarations the nodes of v refer to. *)
+fun references (JSON.OBJECT fields) =
+      List.concat
+        (map (fn ("referencedDeclaration", JSON.INT i) => [i]
+               | (_, w) => references w) fields)
+  | references (JSON.ARRAY vs) = List.concat (map references vs)
+  | references _ = []
+
 (* A deployable contract, flattened along its linearization (most derived
  * first), whose contracts declared lists by id: the implemented functions of
  * its bases, most derived first, their events and structs, their state
  * variables base first, the order of the storage layout, with their
  * initializers, and the base constructor arguments each base gives, most
- * derived base first. The layout also describes file-level struct types
- * referenced by its state variables.
+ * derived base first. The file-level structs it refers to come first, and
+ * the layout also describes those referenced by its state variables.
  *)
 fun contract external_structs contracts declared v = within v (fn v =>
   let
@@ -647,6 +655,16 @@ fun contract external_structs contracts declared v = within v (fn v =>
     fun members_of ty cs =
       List.concat
         (map (fn c => List.filter (fn m => node_type m = ty) (nodes c)) cs)
+    (* The file-level structs the bases refer to, also through other structs. *)
+    fun used picked =
+      let
+        val ids = List.concat (map references (bases @ picked))
+        val picked' =
+          List.filter (fn s => List.exists (fn i => i = int_field s "id") ids)
+            external_structs
+      in
+        if length picked' = length picked then picked else used picked'
+      end
     val () =
       List.app (fn c => within c (fn c =>
         (require c (string_field c "contractKind" = "contract" orelse
@@ -723,7 +741,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
           (JSONUtil.arrayMap storage_entry (field layout "storage"), storage_entry_ty)),
        ("contract_structs", listSyntax.mk_list
           (map (struct_declaration (field layout "types"))
-             (external_structs @ members_of "StructDefinition" (rev bases)),
+             (used [] @ members_of "StructDefinition" (rev bases)),
            struct_ty)),
        ("contract_events", listSyntax.mk_list
           (map event (members_of "EventDefinition" bases), event_ty)),
@@ -736,7 +754,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
   end)
 
 (* File-level structs, of any source unit of the compilation, accompany each
- * contract that can refer to them, and revert statements carry the errors
+ * contract that refers to them, and revert statements carry the errors
  * they name; pragmas and import directives carry no semantics for the pinned
  * profile, since declarations are referred to by id.
  * Interfaces, abstract contracts and the bases of other contracts of the unit
