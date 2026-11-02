@@ -25,9 +25,9 @@ End
 Definition yul_test_machine_def:
   yul_test_machine =
     <| accounts := empty_accounts; logs := []; self_address := 0w;
-       caller_address := 0w; call_value := 0w; call_data := [];
+       caller_address := 0w; call_value := 0w; call_data := []; return_data := [];
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
-       memory_size := 0; scopes := [];
+       memory_size := 0; gas_limit := 0; scopes := [];
        transaction_parameters := yul_test_tx_params |>
 End
 
@@ -44,9 +44,9 @@ val () = cv_auto_trans run_def;
 Definition yul_frame_machine_def:
   yul_frame_machine =
     <| accounts := empty_accounts; logs := []; self_address := 0x1234w;
-       caller_address := 0x5678w; call_value := 0w; call_data := [];
+       caller_address := 0x5678w; call_value := 0w; call_data := []; return_data := [];
        immutables := (FEMPTY : string |-> bytes32) |+ ("3", 42w);
-       memory := FEMPTY; memory_size := 0; scopes := [];
+       memory := FEMPTY; memory_size := 0; gas_limit := 0; scopes := [];
        transaction_parameters := yul_test_tx_params |>
 End
 
@@ -817,6 +817,295 @@ QED
 
 Theorem stop_halts_with_no_data:
   (run 20 stop_code).completion = YulReturn []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* The frame the call family runs on. The caller runs for 0x1234 and has a gas
+ * budget of its own, big enough for a callee that writes a slot; three callees
+ * have code -- 0x77 returns one word, 0x78
+ * writes a slot, 0x7a reverts with one word -- 0x79 has no account at all, and
+ * 0x7b holds a balance no value can be added to without overflowing a word,
+ * which is what puts a call outside the model.
+ * The return data buffer is not empty, so a test can tell what returndatasize
+ * and returndatacopy read from what a call leaves behind.
+ *)
+Definition yul_call_machine_def:
+  yul_call_machine =
+    <| accounts :=
+         update_account 0x7bw (empty_account_state with balance := 2 ** 256)
+         (update_account 0x7aw
+           (empty_account_state with
+              code := [0x60w; 0xaaw; 0x60w; 0x00w; 0x52w;
+                       0x60w; 0x20w; 0x60w; 0x00w; 0xfdw])
+           (update_account 0x78w
+              (empty_account_state with
+                 code := [0x60w; 0x01w; 0x60w; 0x00w; 0x55w])
+              (update_account 0x77w
+                 (empty_account_state with
+                    code := [0x60w; 0x07w; 0x60w; 0x00w; 0x52w;
+                             0x60w; 0x20w; 0x60w; 0x00w; 0xf3w])
+                 empty_accounts)));
+       logs := []; self_address := 0x1234w; caller_address := 0x5678w;
+       call_value := 0w; call_data := []; return_data := [0xaaw; 0xbbw; 0xccw];
+       immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
+       memory_size := 0; gas_limit := 100000; scopes := [];
+       transaction_parameters := yul_test_tx_params |>
+End
+
+Definition run_call_frame_def:
+  run_call_frame fuel code = run_yul fuel code yul_call_machine
+End
+
+val () = cv_auto_trans run_call_frame_def;
+
+(* let ok := call(gas(), 0x77, 0, 0, 0, 0, 0)
+ * mstore(0, ok) mstore(32, returndatasize()) returndatacopy(64, 0, 32)
+ * return(0, 96)
+ * The callee returns one word, so the flag is 1, the return data is 32 bytes,
+ * and the bytes land in the caller's memory: what CALL's own answer is.
+ *)
+Definition call_builtin_code_def:
+  call_builtin_code =
+    [YulLet ["ok"] (SOME (YulBuiltin YCall
+       [YulBuiltin YGas []; YulLit (LitNumber 0x77w); YulLit (LitNumber 0w);
+        YulLit (LitNumber 0w); YulLit (LitNumber 0w);
+        YulLit (LitNumber 0w); YulLit (LitNumber 0w)]));
+     YulExprStmt (YulBuiltin YMStore [YulLit (LitNumber 0w); YulName "ok"]);
+     YulExprStmt (YulBuiltin YMStore
+       [YulLit (LitNumber 32w); YulBuiltin YReturnDataSize []]);
+     YulExprStmt (YulBuiltin YReturnDataCopy
+       [YulLit (LitNumber 64w); YulLit (LitNumber 0w); YulLit (LitNumber 32w)]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 0w); YulLit (LitNumber 96w)])]
+End
+
+val () = cv_auto_trans call_builtin_code_def;
+
+(* let ok := call(gas(), 0x78, 0, 0, 0, 0, 0)
+ * mstore(0, ok) return(0, 32)
+ * The callee writes a slot and returns, which only a static frame refuses: the
+ * flag is 1 and the caller's world is the callee's, with the write in it.
+ *)
+Definition writing_call_builtin_code_def:
+  writing_call_builtin_code =
+    [YulLet ["ok"] (SOME (YulBuiltin YCall
+       [YulBuiltin YGas []; YulLit (LitNumber 0x78w); YulLit (LitNumber 0w);
+        YulLit (LitNumber 0w); YulLit (LitNumber 0w);
+        YulLit (LitNumber 0w); YulLit (LitNumber 0w)]));
+     YulExprStmt (YulBuiltin YMStore [YulLit (LitNumber 0w); YulName "ok"]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 0w); YulLit (LitNumber 32w)])]
+End
+
+val () = cv_auto_trans writing_call_builtin_code_def;
+
+(* let ok := call(gas(), 0x7a, 0, 0, 0, 0, 0)
+ * mstore(0, ok) returndatacopy(32, 0, 32) return(0, 64)
+ * The callee reverts with one word, so the flag is 0 and the revert data is
+ * the return data: the caller reads it, and nothing the callee did survives.
+ *)
+Definition revert_call_builtin_code_def:
+  revert_call_builtin_code =
+    [YulLet ["ok"] (SOME (YulBuiltin YCall
+       [YulBuiltin YGas []; YulLit (LitNumber 0x7aw); YulLit (LitNumber 0w);
+        YulLit (LitNumber 0w); YulLit (LitNumber 0w);
+        YulLit (LitNumber 0w); YulLit (LitNumber 0w)]));
+     YulExprStmt (YulBuiltin YMStore [YulLit (LitNumber 0w); YulName "ok"]);
+     YulExprStmt (YulBuiltin YReturnDataCopy
+       [YulLit (LitNumber 32w); YulLit (LitNumber 0w); YulLit (LitNumber 32w)]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 0w); YulLit (LitNumber 64w)])]
+End
+
+val () = cv_auto_trans revert_call_builtin_code_def;
+
+(* let a := staticcall(gas(), 0x77, 0, 0, 0, 0)
+ * let b := staticcall(gas(), 0x78, 0, 0, 0, 0)
+ * mstore(0, a) mstore(32, b) return(0, 64)
+ * The first callee only returns, so it succeeds; the second writes storage,
+ * which a static frame may not do, so it fails. Neither touches the caller's
+ * accounts.
+ *)
+Definition staticcall_builtin_code_def:
+  staticcall_builtin_code =
+    [YulLet ["a"] (SOME (YulBuiltin YStaticCall
+       [YulBuiltin YGas []; YulLit (LitNumber 0x77w); YulLit (LitNumber 0w);
+        YulLit (LitNumber 0w); YulLit (LitNumber 0w); YulLit (LitNumber 0w)]));
+     YulLet ["b"] (SOME (YulBuiltin YStaticCall
+       [YulBuiltin YGas []; YulLit (LitNumber 0x78w); YulLit (LitNumber 0w);
+        YulLit (LitNumber 0w); YulLit (LitNumber 0w); YulLit (LitNumber 0w)]));
+     YulExprStmt (YulBuiltin YMStore [YulLit (LitNumber 0w); YulName "a"]);
+     YulExprStmt (YulBuiltin YMStore [YulLit (LitNumber 32w); YulName "b"]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 0w); YulLit (LitNumber 64w)])]
+End
+
+val () = cv_auto_trans staticcall_builtin_code_def;
+
+(* mstore(0, extcodesize(0x77)) mstore(32, extcodesize(0x79)) return(0, 64)
+ * The first account holds ten bytes of code, the second holds none.
+ *)
+Definition extcodesize_code_def:
+  extcodesize_code =
+    [YulExprStmt (YulBuiltin YMStore
+       [YulLit (LitNumber 0w);
+        YulBuiltin YExtCodeSize [YulLit (LitNumber 0x77w)]]);
+     YulExprStmt (YulBuiltin YMStore
+       [YulLit (LitNumber 32w);
+        YulBuiltin YExtCodeSize [YulLit (LitNumber 0x79w)]]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 0w); YulLit (LitNumber 64w)])]
+End
+
+val () = cv_auto_trans extcodesize_code_def;
+
+(* mstore(0, returndatasize()) return(0, 32): the buffer the frame's caller
+ * left, three bytes, not what any call here returned. *)
+Definition returndatasize_code_def:
+  returndatasize_code =
+    [YulExprStmt (YulBuiltin YMStore
+       [YulLit (LitNumber 0w); YulBuiltin YReturnDataSize []]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 0w); YulLit (LitNumber 32w)])]
+End
+
+val () = cv_auto_trans returndatasize_code_def;
+
+(* returndatacopy(0, 1, 2) return(0, 32): the last two bytes of the buffer,
+ * left-aligned in the word, with nothing after them. *)
+Definition returndatacopy_code_def:
+  returndatacopy_code =
+    [YulExprStmt (YulBuiltin YReturnDataCopy
+       [YulLit (LitNumber 0w); YulLit (LitNumber 1w); YulLit (LitNumber 2w)]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 0w); YulLit (LitNumber 32w)])]
+End
+
+val () = cv_auto_trans returndatacopy_code_def;
+
+(* returndatacopy(0, 1, 3): three bytes from offset 1 of a three-byte buffer
+ * reads one byte past the end, which the EVM makes an exceptional halt. *)
+Definition returndatacopy_past_end_code_def:
+  returndatacopy_past_end_code =
+    [YulExprStmt (YulBuiltin YReturnDataCopy
+       [YulLit (LitNumber 0w); YulLit (LitNumber 1w); YulLit (LitNumber 3w)])]
+End
+
+val () = cv_auto_trans returndatacopy_past_end_code_def;
+
+(* mstore(0, gas()) return(0, 32) *)
+Definition gas_code_def:
+  gas_code =
+    [YulExprStmt (YulBuiltin YMStore
+       [YulLit (LitNumber 0w); YulBuiltin YGas []]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 0w); YulLit (LitNumber 32w)])]
+End
+
+val () = cv_auto_trans gas_code_def;
+
+(* call(gas(), 0x7b, 0, 0, 0, 0, 0): the callee's balance is a whole word, so
+ * moving the call's value into it is not a number the model has. *)
+Definition overflowing_call_builtin_code_def:
+  overflowing_call_builtin_code =
+    [YulExprStmt (YulBuiltin YCall
+       [YulBuiltin YGas []; YulLit (LitNumber 0x7bw); YulLit (LitNumber 0w);
+        YulLit (LitNumber 0w); YulLit (LitNumber 0w);
+        YulLit (LitNumber 0w); YulLit (LitNumber 0w)])]
+End
+
+val () = cv_auto_trans overflowing_call_builtin_code_def;
+
+Theorem call_runs_the_callee_and_hands_back_its_data:
+  (run_call_frame 20 call_builtin_code).completion =
+  YulReturn (word_to_bytes_be (1w : bytes32) ++
+             word_to_bytes_be (32w : bytes32) ++
+             word_to_bytes_be (7w : bytes32))
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* A failed call is a 0 and the callee's revert data, with the caller's world
+ * as it was: nothing the callee wrote to its own account survives.
+ *)
+Theorem a_reverting_callee_returns_zero_and_its_revert_data:
+  (run_call_frame 20 revert_call_builtin_code).completion =
+  YulReturn (word_to_bytes_be (0w : bytes32) ++
+             word_to_bytes_be (0xaaw : bytes32)) ∧
+  (run_call_frame 20 revert_call_builtin_code).machine.accounts =
+    yul_call_machine.accounts
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* The static call that only returns succeeds and the one that writes storage
+ * fails, and the second's storage is untouched.
+ *)
+Theorem a_static_call_cannot_write_storage:
+  (run_call_frame 20 staticcall_builtin_code).completion =
+  YulReturn (word_to_bytes_be (1w : bytes32) ++
+             word_to_bytes_be (0w : bytes32)) ∧
+  (run_call_frame 20 staticcall_builtin_code).machine.accounts =
+    yul_call_machine.accounts
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* A callee that writes a slot runs and its write survives, which is what the
+ * two tests above this one cannot show: the revert rolls it back, and the
+ * static call refuses it before it runs.
+ *)
+Theorem a_non_static_call_keeps_the_callees_writes:
+  (run_call_frame 20 writing_call_builtin_code).completion =
+  YulReturn (word_to_bytes_be (1w : bytes32)) ∧
+  (lookup_account 0x78w
+     (run_call_frame 20 writing_call_builtin_code).machine.accounts).storage =
+    update_storage 0w 1w empty_storage ∧
+  (lookup_account 0x1234w
+     (run_call_frame 20 writing_call_builtin_code).machine.accounts).storage =
+    empty_storage
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem extcodesize_is_the_accounts_code_length:
+  (run_call_frame 20 extcodesize_code).completion =
+  YulReturn (word_to_bytes_be (10w : bytes32) ++
+             word_to_bytes_be (0w : bytes32))
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem returndatasize_and_copy_read_the_frame_buffer:
+  (run_call_frame 20 returndatasize_code).completion =
+  YulReturn (word_to_bytes_be (3w : bytes32)) ∧
+  (run_call_frame 20 returndatacopy_code).completion =
+  YulReturn (word_to_bytes_be (word_lsl (0xbbccw : bytes32) 240))
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem returndatacopy_past_the_end_is_invalid:
+  (run_call_frame 20 returndatacopy_past_end_code).completion =
+  YulInvalid "return data out of bounds"
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem gas_reports_the_frames_budget:
+  (run_call_frame 20 gas_code).completion =
+  YulReturn (word_to_bytes_be (100000w : bytes32))
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* A call the model cannot make is a diagnostic, not a call that failed: the
+ * callee would need a balance the model will not let it hold.
+ *)
+Theorem a_call_outside_the_model_is_invalid:
+  (run_call_frame 20 overflowing_call_builtin_code).completion =
+  YulInvalid "call outside the model"
 Proof
   CONV_TAC cv_eval
 QED

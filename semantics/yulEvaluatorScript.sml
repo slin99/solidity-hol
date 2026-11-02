@@ -32,14 +32,31 @@
  *
  * Memory, storage, calls and logs: the builtins that read or write them are in
  * eval_yul_builtin below, on the machine in yulState. Memory is byte-addressed
- * and every access raises its active size. Nothing here reads gas. Message
- * calls (call, staticcall), extcodesize, the return data builtins and gas are
- * in the dialect but not evaluated yet: a call to one ends in YulInvalid.
+ * and every access raises its active size.
+ *
+ * A message call is Verifereum's, not a second call mechanics: call and
+ * staticcall both hand the call to run_external_call, the same one-frame
+ * construction the source evaluator's high-level calls use, which runs
+ * Verifereum's run_call. The callee is always bytecode -- a Yul frame never
+ * nests inside another Yul frame -- so a call back into the frame's own
+ * address runs that account's deployed code. The callee's return data lands in
+ * the frame's return_data buffer, whatever the caller asked for as an output
+ * region, and the output region gets the first min(outsize, returndatasize)
+ * bytes of it, the same bytes Verifereum's own sub-frame return writes. A call
+ * that leaves the model ends in YulInvalid rather than in a guess.
+ *
+ * Gas is not charged, so gas() reports the whole budget the frame was given
+ * and never falls, and a call hands its own gas argument on to the callee,
+ * capped at that budget: solc writes gas() there unless the source names a
+ * limit. delegatecall is not
+ * implemented and the dialect does not name it, so importing Yul that uses it
+ * fails closed. docs/yul-call-design.md says why, and what the model does not
+ * do.
  *)
 Theory yulEvaluator
 Ancestors
-  yulAST yulState yulDialect vfmState vfmConstants vfmExecution vfmCompute
-  keccak cv_string_fmap
+  yulAST yulState yulDialect externalCall vfmState vfmConstants vfmExecution
+  vfmCompute keccak cv_string_fmap
 Libs
   cv_transLib wordsLib
 
@@ -273,6 +290,75 @@ Datatype:
   | EvalAbrupt yul_completion yul_machine
 End
 
+(* A message call, as the EVM's CALL and STATICCALL make it.
+ *
+ * The input region is read out of the caller's memory and touched, then the
+ * call goes to run_external_call, which is Verifereum's run_call on the fresh
+ * one-frame state a message call needs (semantics/externalCallScript.sml).
+ * The caller is this frame, the callee the builtin's address argument
+ * truncated to 160 bits, the value moved before the callee runs, and the
+ * callee's own budget the builtin's gas argument capped at this frame's: gas
+ * is not charged here, so the frame's budget is the most it can hand on.
+ * The callee's code is the account's -- a delegated
+ * account runs its delegate's, as the EVM's CALL does. The Yul frame carries
+ * no transient storage, so the callee starts with none.
+ *
+ * What comes back is CALL's own answer: 1 if the callee stopped or returned
+ * and 0 if it reverted or halted exceptionally, with the frame's accounts and
+ * logs taken from the callee only in the first case. The return data is the
+ * callee's output either way -- the revert data for a revert, nothing for an
+ * exceptional halt -- and is kept whole in return_data, while the output
+ * region gets only the first min(outsize, returndatasize) bytes of it, left
+ * as they were beyond that.
+ *
+ * run_external_call answers NONE where the call leaves the model: a recipient
+ * balance overflow, a run outside the domain (one that ends in no frame, in
+ * more than one, or in a vfm_abort), or a callee that ends with accounts
+ * pending deletion. That is an invalid outcome, not a failed call, since the
+ * model cannot say whether it would have succeeded.
+ *)
+(* The words are pinned rather than left to inference: every one of the sizes
+ * reaches the machine only through w2n, which says nothing about its width, so
+ * a call with a literal argument and no other use of that argument would leave
+ * the width free -- and a free type variable in one clause of the builtin
+ * dispatch is a definition the kernel will not accept.
+ *)
+Definition yul_call_def:
+  yul_call (m : yul_machine) (static : bool) (gas : bytes32)
+           (callee : bytes32) (value : bytes32) (input : bytes32)
+           (input_size : bytes32) (output : bytes32) (output_size : bytes32) =
+    let (m1, args) = yul_memory_region m (w2n input) (w2n input_size) in
+      case run_external_call m1.self_address (w2w callee) args (w2n value)
+             static (MIN (w2n gas) m1.gas_limit) m1.accounts
+             empty_transient_storage
+             m1.transaction_parameters of
+        NONE => EvalAbrupt (YulInvalid "call outside the model") m1
+      | SOME outcome =>
+          let m2 = m1 with <| accounts := outcome.call_accounts;
+                               logs := m1.logs ++ outcome.call_logs;
+                               return_data := outcome.call_return |> in
+            EvalValues [b2w outcome.call_success]
+              (yul_memory_write
+                 (yul_memory_touch m2 (w2n output) (w2n output_size))
+                 (w2n output) (TAKE (w2n output_size) outcome.call_return))
+End
+
+(* returndatacopy: the bytes it reads come from return_data, not from memory,
+ * so it is not yul_memory_region.  Reading past the end of the buffer is the
+ * EVM's OutOfBoundsRead, an exceptional halt rather than a short copy.
+ *)
+Definition yul_return_data_copy_def:
+  yul_return_data_copy (m : yul_machine) (dest : bytes32) (source : bytes32)
+                       (size : bytes32) =
+    if w2n source + w2n size > LENGTH m.return_data then
+      EvalAbrupt (YulInvalid "return data out of bounds") m
+    else
+      EvalValues []
+        (yul_memory_write
+           (yul_memory_touch m (w2n dest) (w2n size))
+           (w2n dest) (TAKE (w2n size) (DROP (w2n source) m.return_data)))
+End
+
 (* One builtin, on values that have already been evaluated, left to right.
  * Anything the pinned dialect does not define -- a wrong number of arguments,
  * or one of the object-level builtins, whose code and object the evaluator
@@ -374,6 +460,18 @@ Definition eval_yul_builtin_def:
               [<| logger := m'.self_address; topics := [t1; t2; t3; t4];
                   data := bs |>])
     | (YPop, [_]) => EvalValues [] m
+    | (YGas, []) => EvalValues [n2w m.gas_limit] m
+    | (YExtCodeSize, [a]) =>
+        EvalValues [n2w (LENGTH (lookup_account (w2w a) m.accounts).code)] m
+    | (YReturnDataSize, []) =>
+        EvalValues [n2w (LENGTH m.return_data)] m
+    | (YReturnDataCopy, [dst; src; sz]) => yul_return_data_copy m dst src sz
+    (* call(gas, address, value, args, argsSize, ret, retSize) *)
+    | (YCall, [gl; ad; v; inp; insz; outp; outsz]) =>
+        yul_call m F gl ad v inp insz outp outsz
+    (* staticcall(gas, address, args, argsSize, ret, retSize) *)
+    | (YStaticCall, [gl; ad; inp; insz; outp; outsz]) =>
+        yul_call m T gl ad 0w inp insz outp outsz
     | (YStop, []) => EvalAbrupt (YulReturn []) m
     | (YReturn, [p; s]) =>
         let (m', bs) = yul_memory_region m (w2n p) (w2n s) in
@@ -385,12 +483,6 @@ Definition eval_yul_builtin_def:
     | (YCodeCopy, _) => EvalAbrupt (YulInvalid "object-level builtin") m
     | (YDataSize, _) => EvalAbrupt (YulInvalid "object-level builtin") m
     | (YDataOffset, _) => EvalAbrupt (YulInvalid "object-level builtin") m
-    | (YCall, _) => EvalAbrupt (YulInvalid "builtin not evaluated") m
-    | (YStaticCall, _) => EvalAbrupt (YulInvalid "builtin not evaluated") m
-    | (YExtCodeSize, _) => EvalAbrupt (YulInvalid "builtin not evaluated") m
-    | (YReturnDataSize, _) => EvalAbrupt (YulInvalid "builtin not evaluated") m
-    | (YReturnDataCopy, _) => EvalAbrupt (YulInvalid "builtin not evaluated") m
-    | (YGas, _) => EvalAbrupt (YulInvalid "builtin not evaluated") m
     | _ => EvalAbrupt (YulInvalid "bad builtin call") m
 End
 
@@ -691,6 +783,8 @@ Proof
   once_rewrite_tac [yul_name_of_bytes_pre_def] >> fs [w2n_byte_lt]
 QED
 
+val () = cv_auto_trans yul_call_def;
+val () = cv_auto_trans yul_return_data_copy_def;
 val () = cv_auto_trans eval_yul_builtin_def;
 val () = cv_auto_trans eval_yul_builtin_call_def;
 val () = cv_auto_trans yul_env_def;

@@ -35,30 +35,44 @@ Libs
   cv_transLib wordsLib intLib
 
 (* The frame the corpus's cases run in: the contract account at
- * contract_address holding the case's initial storage, the case's sender
- * funded for the value it sends, the peer contract the case's suite declares
- * (whose code is bytecode the Yul side never runs: the corpus's external-call
- * cases reach it through builtins the dialect does not have, so their stages
- * are not admitted), the case's calldata and call value, and the
+ * contract_address holding the case's initial storage, its deployed bytecode
+ * and the case's value, the case's sender funded for it, the peer contract the
+ * case's suite declares (reached through a call builtin, whose callee is
+ * always an account's bytecode, run by Verifereum, never the imported Yul),
+ * the case's calldata
+ * and call value, and the
  * transaction and block the bytecode run is given -- its own frame's
  * transaction parameters, so that origin, gasprice, chainid and the block
  * builtins read on both sides what the corpus's transaction says, rather than
  * a second copy of it that could drift from the corpus's. There are no
- * immutables to load: no corpus suite is compiled with any.
+ * immutables to load: no corpus suite is compiled with any. The frame's gas
+ * limit is that transaction's own -- the number the bytecode run starts with --
+ * so a callee of the Yul frame gets the same order of budget as the bytecode
+ * run's, and the return data buffer starts empty as a fresh frame's does.
  *)
 Definition yul_differential_machine_def:
-  yul_differential_machine c data =
+  yul_differential_machine code c data =
     <| accounts :=
-         case_accounts [] c.case_storage c.case_sender c.case_peer_code
-           c.case_peer_storage;
+         (* the same world the source run starts from: the case's value has
+          * already moved to the contract, so a call the frame makes with part
+          * of it can pay.
+          * The contract's own deployed code is there for the call that comes
+          * back to its address -- Caller.bumpSelf's ISelf(address(this)) -- so
+          * that such a call runs the bytecode the real transaction would.
+          *)
+         transfer_value c.case_sender contract_address c.case_value
+           (case_accounts code c.case_storage c.case_sender c.case_peer_code
+              c.case_peer_storage);
        logs := [];
        self_address := contract_address;
        caller_address := c.case_sender;
        call_value := n2w c.case_value;
        call_data := data;
+       return_data := [];
        immutables := (FEMPTY : string |-> bytes32);
        memory := (FEMPTY : num |-> word8);
        memory_size := 0;
+       gas_limit := (differential_tx c.case_sender c.case_value data).gasLimit;
        scopes := ([] : (string |-> bytes32) list);
        transaction_parameters :=
          initial_tx_params differential_chain_id [] differential_block
@@ -86,18 +100,18 @@ End
  * sides.
  *)
 Definition yul_case_execution_def:
-  yul_case_execution code u c fuel =
+  yul_case_execution evm_code ycode u c fuel =
     case input_call u c.case_input of
       INL d => (Diagnostic d, NONE, [])
     | INR (data, _) =>
-        let m = yul_differential_machine c data in
-        let r = run_yul fuel code m in
+        let m = yul_differential_machine evm_code c data in
+        let r = run_yul fuel ycode m in
         yul_frame_observation (finish_yul_frame m r.machine r.completion)
 End
 
 Definition yul_observation_def:
-  yul_observation code u c fuel slots =
-    project_observation slots (yul_case_execution code u c fuel)
+  yul_observation evm_code ycode u c fuel slots =
+    project_observation slots (yul_case_execution evm_code ycode u c fuel)
 End
 
 (* The verdict on one case at one stage, as differential_verdict decides it
@@ -107,7 +121,7 @@ Definition yul_case_verdict_def:
   yul_case_verdict code u prog c yfuel ycode =
     let slots = observed_slots prog c.case_storage c.case_final in
     let evm_run = evm_execution code u c in
-    let yul_run = yul_case_execution ycode u c yfuel in
+    let yul_run = yul_case_execution code ycode u c yfuel in
     let evm = project_observation slots evm_run in
     let yul = project_observation slots yul_run in
     case compare_observations
@@ -161,7 +175,7 @@ Theorem yul_agrees_outcomes:
   yul_agrees code u prog c yfuel ycode ∧
   slots = observed_slots prog c.case_storage c.case_final ⇒
   ¬is_diagnostic (expected_outcome u c.case_input c.case_expect) ∧
-  yul_observation ycode u c yfuel slots =
+  yul_observation code ycode u c yfuel slots =
     (expected_outcome u c.case_input c.case_expect,
      expected_storage c.case_storage c.case_final slots)
 Proof
@@ -175,7 +189,7 @@ QED
  *)
 Theorem yul_agrees_storage:
   yul_agrees code u prog c yfuel ycode ⇒
-  FST (SND (yul_case_execution ycode u c yfuel)) =
+  FST (SND (yul_case_execution code ycode u c yfuel)) =
     SOME (seed_storage (c.case_final ++ c.case_storage))
 Proof
   rw[yul_agrees_def, yul_case_verdict_def] >>
@@ -185,7 +199,7 @@ QED
 (* And the log it wrote is the one the case expects. *)
 Theorem yul_agrees_logs:
   yul_agrees code u prog c yfuel ycode ⇒
-  SND (SND (yul_case_execution ycode u c yfuel)) = expected_logs c.case_logs
+  SND (SND (yul_case_execution code ycode u c yfuel)) = expected_logs c.case_logs
 Proof
   rw[yul_agrees_def, yul_case_verdict_def] >>
   BasicProvers.every_case_tac >> gvs[is_agreement_def]
