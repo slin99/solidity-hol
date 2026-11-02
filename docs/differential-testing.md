@@ -79,12 +79,14 @@ Yul run standing where the core run stands: the same calldata, the same
 outcome, the complete committed storage, and the log the case declares. The
 frame is the bytecode run's world — the same sender, value, calldata,
 transaction parameters and peer contract — with the imported Yul in place of
-the contract's own code.
+the contract's own code, and the contract's deployed code left at its own
+address, so that a case calling back into its own address runs the bytecode a
+real transaction would (`Caller.bumpSelf`). A message call a Yul frame makes is
+Verifereum's, through the same `run_external_call` the source evaluator's
+high-level calls use; `docs/yul-call-design.md` says how.
 
-What the run cannot reach is the evaluator, not the importer: the dialect names
-the call family, so a stage that uses it is admitted, but the Yul semantics
-answers those builtins with `YulInvalid "builtin not evaluated"`, so a case
-that calls the peer is a diagnostic on every stage of the Yul run.
+`delegatecall` is not implemented and the dialect does not name it, so a stage
+that uses one is rejected at import rather than run wrongly.
 
 The ASTs are tens of megabytes across the corpus, so the tool generates them
 with the pinned compiler instead of committing them, and the run is far longer

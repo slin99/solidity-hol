@@ -579,569 +579,7 @@
       "subject": "tests/yulDifferentialCorpusScript.sml"
     }
   ],
-  "failures": [
-    {
-      "bytecode": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000014"
-      },
-      "case": "pay_transfers_then_reads_balance",
-      "expected": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000014"
-      },
-      "kind": "case",
-      "stage": "ir",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_pay_transfers_then_reads_balance_ir",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000014"
-      },
-      "case": "pay_transfers_then_reads_balance",
-      "expected": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000014"
-      },
-      "kind": "case",
-      "stage": "ir-optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_pay_transfers_then_reads_balance_ir_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000014"
-      },
-      "case": "pay_transfers_then_reads_balance",
-      "expected": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000014"
-      },
-      "kind": "case",
-      "stage": "optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_pay_transfers_then_reads_balance_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014696e73756666696369656e742062616c616e6365000000000000000000000000"
-      },
-      "case": "pay_bubbles_callee_revert",
-      "expected": {
-        "reverted": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014696e73756666696369656e742062616c616e6365000000000000000000000000"
-      },
-      "kind": "case",
-      "stage": "ir",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_pay_bubbles_callee_revert_ir",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014696e73756666696369656e742062616c616e6365000000000000000000000000"
-      },
-      "case": "pay_bubbles_callee_revert",
-      "expected": {
-        "reverted": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014696e73756666696369656e742062616c616e6365000000000000000000000000"
-      },
-      "kind": "case",
-      "stage": "ir-optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_pay_bubbles_callee_revert_ir_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014696e73756666696369656e742062616c616e6365000000000000000000000000"
-      },
-      "case": "pay_bubbles_callee_revert",
-      "expected": {
-        "reverted": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014696e73756666696369656e742062616c616e6365000000000000000000000000"
-      },
-      "kind": "case",
-      "stage": "optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_pay_bubbles_callee_revert_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x"
-      },
-      "case": "pay_without_code_fails_decoding",
-      "expected": {
-        "reverted": "0x"
-      },
-      "kind": "case",
-      "stage": "ir",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_pay_without_code_fails_decoding_ir",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x"
-      },
-      "case": "pay_without_code_fails_decoding",
-      "expected": {
-        "reverted": "0x"
-      },
-      "kind": "case",
-      "stage": "ir-optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_pay_without_code_fails_decoding_ir_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x"
-      },
-      "case": "pay_without_code_fails_decoding",
-      "expected": {
-        "reverted": "0x"
-      },
-      "kind": "case",
-      "stage": "optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_pay_without_code_fails_decoding_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x"
-      },
-      "case": "mint_via_calls_token",
-      "expected": {
-        "returned": "0x"
-      },
-      "kind": "case",
-      "stage": "ir",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_mint_via_calls_token_ir",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x"
-      },
-      "case": "mint_via_calls_token",
-      "expected": {
-        "returned": "0x"
-      },
-      "kind": "case",
-      "stage": "ir-optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_mint_via_calls_token_ir_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x"
-      },
-      "case": "mint_via_calls_token",
-      "expected": {
-        "returned": "0x"
-      },
-      "kind": "case",
-      "stage": "optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_mint_via_calls_token_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c6d696e7420746f207a65726f0000000000000000000000000000000000000000"
-      },
-      "case": "mint_via_bubbles_callee_revert",
-      "expected": {
-        "reverted": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c6d696e7420746f207a65726f0000000000000000000000000000000000000000"
-      },
-      "kind": "case",
-      "stage": "ir",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_mint_via_bubbles_callee_revert_ir",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c6d696e7420746f207a65726f0000000000000000000000000000000000000000"
-      },
-      "case": "mint_via_bubbles_callee_revert",
-      "expected": {
-        "reverted": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c6d696e7420746f207a65726f0000000000000000000000000000000000000000"
-      },
-      "kind": "case",
-      "stage": "ir-optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_mint_via_bubbles_callee_revert_ir_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c6d696e7420746f207a65726f0000000000000000000000000000000000000000"
-      },
-      "case": "mint_via_bubbles_callee_revert",
-      "expected": {
-        "reverted": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c6d696e7420746f207a65726f0000000000000000000000000000000000000000"
-      },
-      "kind": "case",
-      "stage": "optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_mint_via_bubbles_callee_revert_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x"
-      },
-      "case": "mint_via_without_code_reverts",
-      "expected": {
-        "reverted": "0x"
-      },
-      "kind": "case",
-      "stage": "ir",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_mint_via_without_code_reverts_ir",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x"
-      },
-      "case": "mint_via_without_code_reverts",
-      "expected": {
-        "reverted": "0x"
-      },
-      "kind": "case",
-      "stage": "ir-optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_mint_via_without_code_reverts_ir_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x"
-      },
-      "case": "mint_via_without_code_reverts",
-      "expected": {
-        "reverted": "0x"
-      },
-      "kind": "case",
-      "stage": "optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_mint_via_without_code_reverts_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000009"
-      },
-      "case": "balance_via_static_call",
-      "expected": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000009"
-      },
-      "kind": "case",
-      "stage": "ir",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_balance_via_static_call_ir",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000009"
-      },
-      "case": "balance_via_static_call",
-      "expected": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000009"
-      },
-      "kind": "case",
-      "stage": "ir-optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_balance_via_static_call_ir_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000009"
-      },
-      "case": "balance_via_static_call",
-      "expected": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000009"
-      },
-      "kind": "case",
-      "stage": "optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_balance_via_static_call_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x000000000000000000000000000000000000000000000000000000000000000e"
-      },
-      "case": "bump_self_sees_callee_write",
-      "expected": {
-        "returned": "0x000000000000000000000000000000000000000000000000000000000000000e"
-      },
-      "kind": "case",
-      "stage": "ir",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_bump_self_sees_callee_write_ir",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x000000000000000000000000000000000000000000000000000000000000000e"
-      },
-      "case": "bump_self_sees_callee_write",
-      "expected": {
-        "returned": "0x000000000000000000000000000000000000000000000000000000000000000e"
-      },
-      "kind": "case",
-      "stage": "ir-optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_bump_self_sees_callee_write_ir_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x000000000000000000000000000000000000000000000000000000000000000e"
-      },
-      "case": "bump_self_sees_callee_write",
-      "expected": {
-        "returned": "0x000000000000000000000000000000000000000000000000000000000000000e"
-      },
-      "kind": "case",
-      "stage": "optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_bump_self_sees_callee_write_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x"
-      },
-      "case": "bump_static_halts_on_write",
-      "expected": {
-        "reverted": "0x"
-      },
-      "kind": "case",
-      "stage": "ir",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_bump_static_halts_on_write_ir",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x"
-      },
-      "case": "bump_static_halts_on_write",
-      "expected": {
-        "reverted": "0x"
-      },
-      "kind": "case",
-      "stage": "ir-optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_bump_static_halts_on_write_ir_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x"
-      },
-      "case": "bump_static_halts_on_write",
-      "expected": {
-        "reverted": "0x"
-      },
-      "kind": "case",
-      "stage": "optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_bump_static_halts_on_write_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000003"
-      },
-      "case": "forward_passes_value",
-      "expected": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000003"
-      },
-      "kind": "case",
-      "stage": "ir",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_forward_passes_value_ir",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000003"
-      },
-      "case": "forward_passes_value",
-      "expected": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000003"
-      },
-      "kind": "case",
-      "stage": "ir-optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_forward_passes_value_ir_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000003"
-      },
-      "case": "forward_passes_value",
-      "expected": {
-        "returned": "0x0000000000000000000000000000000000000000000000000000000000000003"
-      },
-      "kind": "case",
-      "stage": "optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_forward_passes_value_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x"
-      },
-      "case": "forward_without_balance_reverts",
-      "expected": {
-        "reverted": "0x"
-      },
-      "kind": "case",
-      "stage": "ir",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_forward_without_balance_reverts_ir",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x"
-      },
-      "case": "forward_without_balance_reverts",
-      "expected": {
-        "reverted": "0x"
-      },
-      "kind": "case",
-      "stage": "ir-optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_forward_without_balance_reverts_ir_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    },
-    {
-      "bytecode": {
-        "reverted": "0x"
-      },
-      "case": "forward_without_balance_reverts",
-      "expected": {
-        "reverted": "0x"
-      },
-      "kind": "case",
-      "stage": "optimized",
-      "status": "inconclusive",
-      "suite": "external",
-      "theorem": "yul_external_forward_without_balance_reverts_optimized",
-      "yul": {
-        "diagnostic": "InvalidCompletion"
-      }
-    }
-  ],
+  "failures": [],
   "format": "solidity-hol-yul-differential-report-v1",
   "hol": {
     "command": [
@@ -1153,7 +591,7 @@
       "yulDifferentialCorpusTheory"
     ],
     "ran": true,
-    "status": 1
+    "status": 0
   },
   "kernel_checked": [
     {
@@ -11177,6 +10615,336 @@
       "theorem": "yul_receive_selector_reverts_optimized"
     },
     {
+      "case": "pay_transfers_then_reads_balance",
+      "outcome": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000014"
+      },
+      "stage": "ir",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_pay_transfers_then_reads_balance_ir"
+    },
+    {
+      "case": "pay_transfers_then_reads_balance",
+      "outcome": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000014"
+      },
+      "stage": "ir-optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_pay_transfers_then_reads_balance_ir_optimized"
+    },
+    {
+      "case": "pay_transfers_then_reads_balance",
+      "outcome": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000014"
+      },
+      "stage": "optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_pay_transfers_then_reads_balance_optimized"
+    },
+    {
+      "case": "pay_bubbles_callee_revert",
+      "outcome": {
+        "reverted": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014696e73756666696369656e742062616c616e6365000000000000000000000000"
+      },
+      "stage": "ir",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_pay_bubbles_callee_revert_ir"
+    },
+    {
+      "case": "pay_bubbles_callee_revert",
+      "outcome": {
+        "reverted": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014696e73756666696369656e742062616c616e6365000000000000000000000000"
+      },
+      "stage": "ir-optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_pay_bubbles_callee_revert_ir_optimized"
+    },
+    {
+      "case": "pay_bubbles_callee_revert",
+      "outcome": {
+        "reverted": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014696e73756666696369656e742062616c616e6365000000000000000000000000"
+      },
+      "stage": "optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_pay_bubbles_callee_revert_optimized"
+    },
+    {
+      "case": "pay_without_code_fails_decoding",
+      "outcome": {
+        "reverted": "0x"
+      },
+      "stage": "ir",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_pay_without_code_fails_decoding_ir"
+    },
+    {
+      "case": "pay_without_code_fails_decoding",
+      "outcome": {
+        "reverted": "0x"
+      },
+      "stage": "ir-optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_pay_without_code_fails_decoding_ir_optimized"
+    },
+    {
+      "case": "pay_without_code_fails_decoding",
+      "outcome": {
+        "reverted": "0x"
+      },
+      "stage": "optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_pay_without_code_fails_decoding_optimized"
+    },
+    {
+      "case": "mint_via_calls_token",
+      "outcome": {
+        "returned": "0x"
+      },
+      "stage": "ir",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_mint_via_calls_token_ir"
+    },
+    {
+      "case": "mint_via_calls_token",
+      "outcome": {
+        "returned": "0x"
+      },
+      "stage": "ir-optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_mint_via_calls_token_ir_optimized"
+    },
+    {
+      "case": "mint_via_calls_token",
+      "outcome": {
+        "returned": "0x"
+      },
+      "stage": "optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_mint_via_calls_token_optimized"
+    },
+    {
+      "case": "mint_via_bubbles_callee_revert",
+      "outcome": {
+        "reverted": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c6d696e7420746f207a65726f0000000000000000000000000000000000000000"
+      },
+      "stage": "ir",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_mint_via_bubbles_callee_revert_ir"
+    },
+    {
+      "case": "mint_via_bubbles_callee_revert",
+      "outcome": {
+        "reverted": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c6d696e7420746f207a65726f0000000000000000000000000000000000000000"
+      },
+      "stage": "ir-optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_mint_via_bubbles_callee_revert_ir_optimized"
+    },
+    {
+      "case": "mint_via_bubbles_callee_revert",
+      "outcome": {
+        "reverted": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c6d696e7420746f207a65726f0000000000000000000000000000000000000000"
+      },
+      "stage": "optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_mint_via_bubbles_callee_revert_optimized"
+    },
+    {
+      "case": "mint_via_without_code_reverts",
+      "outcome": {
+        "reverted": "0x"
+      },
+      "stage": "ir",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_mint_via_without_code_reverts_ir"
+    },
+    {
+      "case": "mint_via_without_code_reverts",
+      "outcome": {
+        "reverted": "0x"
+      },
+      "stage": "ir-optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_mint_via_without_code_reverts_ir_optimized"
+    },
+    {
+      "case": "mint_via_without_code_reverts",
+      "outcome": {
+        "reverted": "0x"
+      },
+      "stage": "optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_mint_via_without_code_reverts_optimized"
+    },
+    {
+      "case": "balance_via_static_call",
+      "outcome": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000009"
+      },
+      "stage": "ir",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_balance_via_static_call_ir"
+    },
+    {
+      "case": "balance_via_static_call",
+      "outcome": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000009"
+      },
+      "stage": "ir-optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_balance_via_static_call_ir_optimized"
+    },
+    {
+      "case": "balance_via_static_call",
+      "outcome": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000009"
+      },
+      "stage": "optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_balance_via_static_call_optimized"
+    },
+    {
+      "case": "bump_self_sees_callee_write",
+      "outcome": {
+        "returned": "0x000000000000000000000000000000000000000000000000000000000000000e"
+      },
+      "stage": "ir",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_bump_self_sees_callee_write_ir"
+    },
+    {
+      "case": "bump_self_sees_callee_write",
+      "outcome": {
+        "returned": "0x000000000000000000000000000000000000000000000000000000000000000e"
+      },
+      "stage": "ir-optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_bump_self_sees_callee_write_ir_optimized"
+    },
+    {
+      "case": "bump_self_sees_callee_write",
+      "outcome": {
+        "returned": "0x000000000000000000000000000000000000000000000000000000000000000e"
+      },
+      "stage": "optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_bump_self_sees_callee_write_optimized"
+    },
+    {
+      "case": "bump_static_halts_on_write",
+      "outcome": {
+        "reverted": "0x"
+      },
+      "stage": "ir",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_bump_static_halts_on_write_ir"
+    },
+    {
+      "case": "bump_static_halts_on_write",
+      "outcome": {
+        "reverted": "0x"
+      },
+      "stage": "ir-optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_bump_static_halts_on_write_ir_optimized"
+    },
+    {
+      "case": "bump_static_halts_on_write",
+      "outcome": {
+        "reverted": "0x"
+      },
+      "stage": "optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_bump_static_halts_on_write_optimized"
+    },
+    {
+      "case": "forward_passes_value",
+      "outcome": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000003"
+      },
+      "stage": "ir",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_forward_passes_value_ir"
+    },
+    {
+      "case": "forward_passes_value",
+      "outcome": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000003"
+      },
+      "stage": "ir-optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_forward_passes_value_ir_optimized"
+    },
+    {
+      "case": "forward_passes_value",
+      "outcome": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000003"
+      },
+      "stage": "optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_forward_passes_value_optimized"
+    },
+    {
+      "case": "forward_without_balance_reverts",
+      "outcome": {
+        "reverted": "0x"
+      },
+      "stage": "ir",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_forward_without_balance_reverts_ir"
+    },
+    {
+      "case": "forward_without_balance_reverts",
+      "outcome": {
+        "reverted": "0x"
+      },
+      "stage": "ir-optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_forward_without_balance_reverts_ir_optimized"
+    },
+    {
+      "case": "forward_without_balance_reverts",
+      "outcome": {
+        "reverted": "0x"
+      },
+      "stage": "optimized",
+      "status": "proved",
+      "suite": "external",
+      "theorem": "yul_external_forward_without_balance_reverts_optimized"
+    },
+    {
       "case": "base_calls_run_overrides",
       "outcome": {
         "returned": "0x0000000000000000000000000000000000000000000000000000000000000006"
@@ -11419,19 +11187,19 @@
   ],
   "per_stage": {
     "ir": {
-      "agreements": 342,
+      "agreements": 353,
       "cases_run": 353,
       "stages_admitted": 19,
       "stages_expected": 19
     },
     "ir-optimized": {
-      "agreements": 342,
+      "agreements": 353,
       "cases_run": 353,
       "stages_admitted": 19,
       "stages_expected": 19
     },
     "optimized": {
-      "agreements": 342,
+      "agreements": 353,
       "cases_run": 353,
       "stages_admitted": 19,
       "stages_expected": 19
@@ -11444,10 +11212,8 @@
     "optimized"
   ],
   "totals": {
-    "agreements": 1026,
-    "case_statuses": {
-      "inconclusive": 33
-    },
+    "agreements": 1059,
+    "case_statuses": {},
     "cases_expected": 1059,
     "cases_run": 1059,
     "stages_admitted": 57,
