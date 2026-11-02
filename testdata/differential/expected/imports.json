@@ -43,7 +43,7 @@
         "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.37;\n\nimport {Counter, ICounter, Point} from \"./imports_base.sol\";\n\n// A contract whose base, interface, event and struct come from another file,\n// and which calls through the imported interface.\ncontract Imports is Counter {\n    Point internal last;\n\n    function count() external view returns (uint256) {\n        return n;\n    }\n\n    function bump(uint256 by) public override returns (uint256) {\n        last.x = n;\n        last.y = by;\n        n += 2 * by;\n        emit Bumped(n);\n        return n;\n    }\n\n    function lastSum() external view returns (uint256) {\n        return last.x + last.y;\n    }\n\n    function countOf(address counter) external view returns (uint256) {\n        return ICounter(counter).count();\n    }\n}\n"
       },
       "testdata/differential/imports_base.sol": {
-        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.37;\n\n// Declarations imports.sol takes from another file: a file-level struct, an\n// interface with an event, and an abstract base contract.\n\nstruct Point {\n    uint256 x;\n    uint256 y;\n}\n\ninterface ICounter {\n    event Bumped(uint256 count);\n\n    function count() external view returns (uint256);\n}\n\nabstract contract Counter is ICounter {\n    uint256 internal n;\n\n    function bump(uint256 by) public virtual returns (uint256) {\n        n += by;\n        emit Bumped(n);\n        return n;\n    }\n}\n"
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.37;\n\n// Declarations imports.sol takes from another file: a file-level struct, an\n// interface with an event, and an abstract base contract.\n\nstruct Point {\n    uint256 x;\n    uint256 y;\n}\n\ninterface ICounter {\n    event Bumped(uint256 count);\n\n    function count() external view returns (uint256);\n}\n\nabstract contract Counter is ICounter {\n    uint256 internal n;\n\n    function bump(uint256 by) public virtual returns (uint256) {\n        n += by;\n        emit Bumped(n);\n        return n;\n    }\n}\n\n// Not referred to by imports.sol, so not imported with it.\nstruct Label {\n    string text;\n}\n"
       }
     }
   },
@@ -381,7 +381,7 @@
               "nameLocation": "-1:-1:-1",
               "nodeType": "ImportDirective",
               "scope": 79,
-              "sourceUnit": 119,
+              "sourceUnit": 122,
               "src": "57:60:0",
               "symbolAliases": [
                 {
@@ -1288,11 +1288,14 @@
             "ICounter": [
               95
             ],
+            "Label": [
+              121
+            ],
             "Point": [
               85
             ]
           },
-          "id": 119,
+          "id": 122,
           "license": "MIT",
           "nodeType": "SourceUnit",
           "nodes": [
@@ -1368,7 +1371,7 @@
               "name": "Point",
               "nameLocation": "201:5:1",
               "nodeType": "StructDefinition",
-              "scope": 119,
+              "scope": 122,
               "src": "194:46:1",
               "visibility": "public"
             },
@@ -1487,7 +1490,7 @@
                   "visibility": "external"
                 }
               ],
-              "scope": 119,
+              "scope": 122,
               "src": "242:110:1",
               "usedErrors": [],
               "usedEvents": [
@@ -1759,15 +1762,54 @@
                   "visibility": "public"
                 }
               ],
-              "scope": 119,
+              "scope": 122,
               "src": "354:196:1",
               "usedErrors": [],
               "usedEvents": [
                 89
               ]
+            },
+            {
+              "canonicalName": "Label",
+              "id": 121,
+              "members": [
+                {
+                  "constant": false,
+                  "id": 120,
+                  "mutability": "mutable",
+                  "name": "text",
+                  "nameLocation": "638:4:1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 121,
+                  "src": "631:11:1",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_string_storage_ptr",
+                    "typeString": "string"
+                  },
+                  "typeName": {
+                    "id": 119,
+                    "name": "string",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "631:6:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_string_storage_ptr",
+                      "typeString": "string"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "name": "Label",
+              "nameLocation": "619:5:1",
+              "nodeType": "StructDefinition",
+              "scope": 122,
+              "src": "612:33:1",
+              "visibility": "public"
             }
           ],
-          "src": "32:519:1"
+          "src": "32:614:1"
         },
         "id": 1
       }

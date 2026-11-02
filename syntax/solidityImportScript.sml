@@ -23,7 +23,8 @@
  * decode_type_identifier_valid). Literals keep their exact rational type.
  *
  * valid_src_unit then establishes, for an imported unit:
- *  - all node ids are distinct;
+ *  - all node ids are distinct, and the unit is among its compilation's
+ *    source units;
  *  - every parameter, return, local and state variable has a normalized
  *    elementary, array or mapping type, the default data location, and a
  *    type identifier agreeing with that type, and the enclosing function,
@@ -1158,7 +1159,7 @@ End
 
 Definition valid_src_unit_def:
   valid_src_unit (u : src_unit) ⇔
-    ALL_DISTINCT (unit_ids u) ∧
+    ALL_DISTINCT (unit_ids u) ∧ MEM u.unit_info.node_id u.unit_sources ∧
     EVERY (check_contract u.unit_info.node_id u.unit_sources) u.unit_contracts
 End
 
