@@ -62,3 +62,48 @@ holbuild -j8 build --skip-checkpoints --skip-proof-steps solidityHolTheory
 Pass `--solc /path/to/pinned/solc` to reproduce the compiler artifacts as well.
 The upstream `semanticTests` acceptance report is a separate preparation check;
 it does not execute those tests' call expectations.
+
+## The compiler's own Yul
+
+Neither run above sees the Yul the compiler emitted: one evaluates the core
+program the source elaborates to, the other the bytecode solc recorded. The
+third run closes that gap, and it is the hinge the roadmap turns on — a
+disagreement between the compiler's own IR and the bytecode compiled from it
+is invisible to the two-sided comparison. `tools/run_yul_differential.py`
+compiles the same sources with the pinned compiler, imports the runtime Yul it
+emitted, and executes that in the Yul semantics.
+
+It runs three stages separately, because they are three different programs:
+`irAst`, the code generator's output; the `irOptimizedAst` of that same
+compile, with the optimizer off, which is what the Yul transformations leave;
+and the production build's `irOptimizedAst`, the optimizer on with
+`runs: 200`. The importer (`syntax/yulImportLib.sml`) reads the JSON AST
+alongside the text IR — the tree the compiler's own converter walks — and it
+fails closed: a node kind, builtin or object form it does not know rejects the
+stage rather than being worked around. The report counts a rejected stage
+separately from a disagreement, and the stage's cases are not run there.
+
+Each case at each stage gets one `yul_agrees` theorem
+(`tests/yulDifferentialScript.sml`), which is the corpus's comparison with the
+Yul run standing where the core run stands: the same calldata, the same
+outcome, the complete committed storage, and the log the case declares. The
+frame is the bytecode run's world — the same sender, value, calldata,
+transaction parameters and peer contract — with the imported Yul in place of
+the contract's own code.
+
+What the run cannot reach is the evaluator, not the importer: the dialect names
+the call family, so a stage that uses it is admitted, but the Yul semantics
+answers those builtins with `YulInvalid "builtin not evaluated"`, so a case
+that calls the peer is a diagnostic on every stage of the Yul run.
+
+The ASTs are tens of megabytes across the corpus, so the tool generates them
+with the pinned compiler instead of committing them, and the run is far longer
+than the rest of CI. It writes the report, which is committed:
+
+```sh
+python3 tools/run_yul_differential.py --solc ~/.local/opt/solc-0.8.37/solc -j8
+```
+
+`docs/yul-differential.md` is the last run's result: the stages admitted, the
+agreements, and every case that is not an agreement, with its status.
+`--no-hol` runs the compiler-side checks alone.

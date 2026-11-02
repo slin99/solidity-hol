@@ -316,6 +316,7 @@ Theorem yul_fuel_loop[local]:
       rb = yul_pop_result (eval_yul_block n fns body (yul_push_scope m')) /\
       rb.completion <> YulBreak /\ ~(rb.completion <> YulNormal /\ rb.completion <> YulContinue) /\
       rp = yul_pop_result (eval_yul_block n fns post (yul_push_scope rb.machine)) /\
+      ~(rp.completion = YulBreak \/ rp.completion = YulContinue) /\
       ~(rp.completion <> YulNormal) /\ n <> 0 ==>
       !k. (eval_yul_loop (n-1) fns cond post body rp.machine).completion <> YulOutOfFuel /\ n-1 <= k ==>
           eval_yul_loop k fns cond post body rp.machine = eval_yul_loop (n-1) fns cond post body rp.machine) /\
@@ -353,7 +354,8 @@ Proof
   strip_tac >>
   simp[] >>
   Cases_on `P.completion <> YulNormal`
-  >- (gvs[Abbr `rp`]) >>
+  >- (`P.completion <> YulOutOfFuel` by (Cases_on `P.completion` >> gvs[Abbr `rp`]) >>
+      gvs[Abbr `rp`]) >>
   Cases_on `n = 0` >> gvs[] >>
   drule_all yul_fuel_predecessor >> strip_tac >>
   simp[Abbr `rp`]

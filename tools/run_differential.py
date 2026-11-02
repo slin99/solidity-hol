@@ -395,23 +395,24 @@ def reproduce_artifacts(root: Path, corpus: dict[str, Any], solc: Path, regenera
 # The HOL run
 
 
-def parse_results(text: str) -> list[dict[str, Any]]:
+def parse_results(text: str, prefix: str = RESULT_PREFIX) -> list[dict[str, Any]]:
     results = []
     for line in text.splitlines():
-        if line.startswith(RESULT_PREFIX):
+        if line.startswith(prefix):
             try:
-                results.append(json.loads(line[len(RESULT_PREFIX):]))
+                results.append(json.loads(line[len(prefix):]))
             except json.JSONDecodeError:
                 pass
     return results
 
 
 def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
-            build_args: list[str]) -> dict[str, Any]:
+            build_args: list[str], theory: str = CORPUS_THEORY,
+            prefix: str = RESULT_PREFIX) -> dict[str, Any]:
     command = [holbuild]
     if jobs is not None:
         command += ["-j", str(jobs)]
-    command += ["build"] + (["--force=theory"] if force else []) + build_args + [CORPUS_THEORY]
+    command += ["build"] + (["--force=theory"] if force else []) + build_args + [theory]
     print("+", " ".join(command), flush=True)
     lines = []
     try:
@@ -427,14 +428,14 @@ def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
     output = "".join(lines)
     logs = re.findall(r"child log: (.*)", output)
     log = Path(logs[-1].strip()) if logs else (
-        root / ".holbuild" / "logs" / "current" / "solidity-hol" / CORPUS_THEORY / "build.log")
-    ran = bool(logs) or re.search(rf"^{CORPUS_THEORY} built$", output, re.M) is not None
+        root / ".holbuild" / "logs" / "current" / "solidity-hol" / theory / "build.log")
+    ran = bool(logs) or re.search(rf"^{theory} built$", output, re.M) is not None
     results = []
     if ran:
         try:
-            results = parse_results(log.read_text(encoding="utf-8", errors="replace"))
+            results = parse_results(log.read_text(encoding="utf-8", errors="replace"), prefix)
         except OSError:
-            results = parse_results(output)
+            results = parse_results(output, prefix)
     return {"command": command, "status": status, "ran": ran, "results": results,
             "log": str(log) if ran else None}
 

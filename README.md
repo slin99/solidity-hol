@@ -67,9 +67,9 @@ fuel-indexed evaluator in `syntax/yulAST`, `semantics/yulDialect`,
 `semantics/yulState` and `semantics/yulEvaluator`;
 `semantics/yulEvaluatorProps` proves that a run which does not run out of fuel
 gives the same answer at any larger fuel. Input outside the modelled subset is
-an explicit invalid outcome rather than a value; the two ill-formed inputs the
-compiler rejects by itself — a `break` in a `for` loop's post block, and a call
-returning several values in argument position — are accepted. The node kinds
+an explicit invalid outcome rather than a value, as are two ill-formed inputs
+the compiler rejects by itself: a `break` or `continue` in a `for` loop's post
+block, and a call argument that is not exactly one value. The node kinds
 and builtins the pinned compiler emits, per fixture and per stage of its Yul
 pipeline — the unoptimized Yul, and the optimized artifact with the Yul
 optimizer off and on — are enumerated in

@@ -528,6 +528,55 @@ End
 
 val () = cv_auto_trans pop_binding_code_def;
 
+(* let n := 0
+ * for { let o := 0 } lt(o, 2) { o := add(o, 1) } {
+ *   for { } lt(n, 9) { s } { n := add(n, 1) } }
+ * mstore(0, n) return(0, 32)
+ * s is break or continue, which Yul allows only in a loop's body.  Escaping
+ * the inner loop's post, a break would end the outer loop with n = 1, and a
+ * continue would run the outer post and return n = 2.
+ *)
+Definition post_escape_code_def:
+  post_escape_code s =
+    [YulLet ["n"] (SOME (YulLit (LitNumber 0w)));
+     YulFor
+       [YulLet ["o"] (SOME (YulLit (LitNumber 0w)))]
+       (YulBuiltin YLt [YulName "o"; YulLit (LitNumber 2w)])
+       [YulAssign ["o"] (YulBuiltin YAdd [YulName "o"; YulLit (LitNumber 1w)])]
+       [YulFor []
+          (YulBuiltin YLt [YulName "n"; YulLit (LitNumber 9w)])
+          [s]
+          [YulAssign ["n"] (YulBuiltin YAdd [YulName "n"; YulLit (LitNumber 1w)])]];
+     YulExprStmt (YulBuiltin YMStore [YulLit (LitNumber 0w); YulName "n"]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 0w); YulLit (LitNumber 32w)])]
+End
+
+val () = cv_auto_trans post_escape_code_def;
+
+(* function two() -> a, b { a := 1  b := 2 }
+ * function none() { }
+ * function f(x, y) -> s { s := add(x, y) }
+ * mstore(0, f(args)) return(0, 32)
+ * Each argument is one value.  Flattened, f(two()) and f(none(), 1, 2) both
+ * hand f two values and return 3.
+ *)
+Definition argument_values_code_def:
+  argument_values_code args =
+    [YulFunction "two" [] ["a"; "b"]
+       [YulAssign ["a"] (YulLit (LitNumber 1w));
+        YulAssign ["b"] (YulLit (LitNumber 2w))];
+     YulFunction "none" [] [] [];
+     YulFunction "f" ["x"; "y"] ["s"]
+       [YulAssign ["s"] (YulBuiltin YAdd [YulName "x"; YulName "y"])];
+     YulExprStmt (YulBuiltin YMStore
+       [YulLit (LitNumber 0w); YulApply "f" args]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 0w); YulLit (LitNumber 32w)])]
+End
+
+val () = cv_auto_trans argument_values_code_def;
+
 Theorem add_returns_five:
   (run 20 add_code).completion = YulReturn (word_to_bytes_be (5w : bytes32))
 Proof
@@ -721,6 +770,15 @@ Proof
   CONV_TAC cv_eval
 QED
 
+Theorem a_break_or_continue_in_a_loop_post_is_invalid:
+  (run 20 (post_escape_code YulBreak)).completion =
+    YulInvalid "break or continue in loop post" ∧
+  (run 20 (post_escape_code YulContinue)).completion =
+    YulInvalid "break or continue in loop post"
+Proof
+  CONV_TAC cv_eval
+QED
+
 Theorem environment_builtins_read_the_frame_transaction_and_block:
   (run_frame 20 environment_code).completion =
   YulReturn (word_to_bytes_be (0x1234w : bytes32) ++
@@ -732,6 +790,17 @@ Theorem environment_builtins_read_the_frame_transaction_and_block:
              word_to_bytes_be (9w : bytes32) ++
              word_to_bytes_be (3w : bytes32) ++
              word_to_bytes_be (30000w : bytes32))
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem an_argument_that_is_not_one_value_is_invalid:
+  (run 20 (argument_values_code [YulApply "two" []])).completion =
+    YulInvalid "argument is not one value" ∧
+  (run 20 (argument_values_code
+             [YulApply "none" []; YulLit (LitNumber 1w);
+              YulLit (LitNumber 2w)])).completion =
+    YulInvalid "argument is not one value"
 Proof
   CONV_TAC cv_eval
 QED

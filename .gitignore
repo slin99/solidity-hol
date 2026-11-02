@@ -1,3 +1,7 @@
 .holbuild
 differential-report
 __pycache__
+
+# The Yul ASTs tools/run_yul_differential.py generates with the pinned
+# compiler; regenerate them rather than committing tens of megabytes.
+testdata/yul/generated

@@ -20,11 +20,15 @@
  *
  * Values: expressions produce a list of 256-bit words, since a call to a
  * user-defined function can return several. Binding or returning the wrong
- * number of them is an error rather than a silent truncation, as is a literal
- * too long for the dialect, an unknown function, an unbound name, a builtin
- * called with the wrong number of arguments, an immutable the frame does not
- * carry, and the object-level builtins, which read the running code or the
- * object's layout, neither of which the evaluator models.
+ * number of them is an error rather than a silent truncation, as is an
+ * argument that is not exactly one value, a literal too long for the dialect,
+ * an unknown function, an unbound name, a builtin called with the wrong number
+ * of arguments, an immutable the frame does not carry, and the object-level
+ * builtins, which read the running code or the object's layout, neither of
+ * which the evaluator models.
+ * So is a break or continue that leaves a loop's post statement: Yul allows
+ * them only in a loop's body, and one from the post would otherwise reach an
+ * enclosing loop.
  *
  * Memory, storage, calls and logs: the builtins that read or write them are in
  * eval_yul_builtin below, on the machine in yulState. Memory is byte-addressed
@@ -34,8 +38,8 @@
  *)
 Theory yulEvaluator
 Ancestors
-  yulAST yulState yulDialect vfmState vfmConstants vfmExecution keccak
-  cv_string_fmap
+  yulAST yulState yulDialect vfmState vfmConstants vfmExecution vfmCompute
+  keccak cv_string_fmap
 Libs
   cv_transLib wordsLib
 
@@ -549,7 +553,9 @@ Definition eval_yul_block_def:
      | EvalValues vs m' =>
          (case eval_yul_expr n fns a m' of
             EvalAbrupt c m'' => EvalAbrupt c m''
-          | EvalValues w m'' => EvalValues (w ++ vs) m'')) ∧
+          | EvalValues [w] m'' => EvalValues (w :: vs) m''
+          | EvalValues _ m'' =>
+              EvalAbrupt (YulInvalid "argument is not one value") m'')) ∧
 
   (* one iteration of a for loop, in the scope the prelude made; fuel is spent
    * on the back edge, so the first iteration is free *)
@@ -567,7 +573,10 @@ Definition eval_yul_block_def:
              else
                let rp = yul_pop_result
                           (eval_yul_block n fns post (yul_push_scope rb.machine)) in
-                 if rp.completion ≠ YulNormal then yul_pop_result rp
+                 if rp.completion = YulBreak ∨ rp.completion = YulContinue then
+                   yul_invalid "break or continue in loop post"
+                     (yul_pop_scope rp.machine)
+                 else if rp.completion ≠ YulNormal then yul_pop_result rp
                  else if n = 0 then
                    yul_abrupt YulOutOfFuel (yul_pop_scope rp.machine)
                  else eval_yul_loop (n - 1) fns cond post body rp.machine
