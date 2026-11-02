@@ -24,3 +24,8 @@ abstract contract Counter is ICounter {
         return n;
     }
 }
+
+// Not referred to by imports.sol, so not imported with it.
+struct Label {
+    string text;
+}

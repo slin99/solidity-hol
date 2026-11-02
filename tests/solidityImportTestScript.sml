@@ -712,7 +712,8 @@ Proof
   CONV_TAC cv_eval
 QED
 
-(* Counter.bump is overridden; ICounter.count has no body. *)
+(* Counter.bump is overridden; ICounter.count has no body. Only Point, of
+ * imports_base.sol's two structs, is referred to. *)
 Theorem imports_unit_resolved:
   LENGTH imports_unit.unit_sources = 2 ∧
   MAP (λc. c.contract_name) imports_unit.unit_contracts = ["Imports"] ∧
@@ -723,7 +724,7 @@ Theorem imports_unit_resolved:
   EVERY (λs. s.struct_scope ≠ imports_unit.unit_info.node_id ∧
              MEM s.struct_scope imports_unit.unit_sources)
     (HD imports_unit.unit_contracts).contract_structs ∧
-  (HD imports_unit.unit_contracts).contract_structs ≠ []
+  LENGTH (HD imports_unit.unit_contracts).contract_structs = 1
 Proof
   EVAL_TAC
 QED
