@@ -5,7 +5,8 @@
  * closed: an unknown nodeType, a missing required field, or a feature outside
  * the subset (public, constant, immutable or initialised state variables,
  * modifiers, super, named or try calls, built-ins other than
- * require, assert, revert, members of msg, tx and block and address(this), literal subdenominations,
+ * require, assert, revert, members of msg, tx and block, address(this) and
+ * type(T).max and .min for integer types T, literal subdenominations,
  * inline arrays, type names other than elementary types, arrays and mappings, ...)
  * raises ImportError. Semantic nodes keep their compiler id and source range;
  * declarations are referred to by id, and names are diagnostic only. Type
@@ -38,7 +39,8 @@
  *    contract, the most derived override of the one it names (call_table);
  *    calls have matching arity and are annotated with the callee's
  *    return types; conversions are annotated with their normalized target type;
- *    environment reads with their member's type; emits name an event of the
+ *    environment reads with their member's type; type(T).max and .min an
+ *    integer type T, with T's type; emits name an event of the
  *    contract with as many arguments as it has parameters, and reverts with
  *    an error carry as many arguments as the error has parameters;
  *  - declaration statements list exactly their declarations' ids as
@@ -155,6 +157,7 @@ Datatype:
   | SrcTypeConversion node_info src_type_name src_expr string
   | SrcEnvironment node_info environment_field string
   | SrcExternalCall node_info src_external bool (src_expr list) string
+  | SrcTypeMember node_info string src_type_name string
 End
 
 (* VariableDeclarationStatement: assignments, declarations (NONE for a hole),
@@ -628,6 +631,7 @@ Definition expr_ids_def:
   (expr_ids (SrcTypeConversion info tn e _) =
     info.node_id :: type_name_ids tn ++ expr_ids e) ∧
   (expr_ids (SrcEnvironment info _ _) = [info.node_id]) ∧
+  (expr_ids (SrcTypeMember info _ tn _) = info.node_id :: type_name_ids tn) ∧
   (expr_ids (SrcExternalCall info _ _ operands _) =
     info.node_id :: exprs_ids operands) ∧
   (component_ids [] = []) ∧
@@ -768,6 +772,19 @@ Definition builtin_shape_def:
     (case message of NONE => T | SOME m => IS_SOME (literal_message m)))
 End
 
+(* type(T).max and type(T).min of an integer type T. *)
+Definition type_bound_def:
+  type_bound member ty =
+    case ty of
+      UintT n =>
+        if member = "max" then SOME (&(2 ** n) - 1 : int)
+        else if member = "min" then SOME 0 else NONE
+    | IntT n =>
+        if member = "max" then SOME (&(2 ** (n - 1)) - 1)
+        else if member = "min" then SOME (-&(2 ** (n - 1))) else NONE
+    | _ => NONE
+End
+
 (* The decoded type of a checked expression. *)
 Definition check_expr_def:
   (check_expr (env : import_env) (SrcIdentifier _ _ x tid) =
@@ -870,6 +887,12 @@ Definition check_expr_def:
   (check_expr env (SrcEnvironment _ f tid) =
     if source_type_matches (environment_type f) tid
     then SOME (SrcType (environment_type f)) else NONE) ∧
+  (check_expr env (SrcTypeMember _ member tn tid) =
+    case normalize_type_name tn of
+      SOME ty =>
+        if IS_SOME (type_bound member ty) ∧ source_type_matches ty tid
+        then SOME (SrcType ty) else NONE
+    | NONE => NONE) ∧
   (* Value only for a payable callee, as the compiler requires; elaboration
      converts the target to an address. *)
   (check_expr env (SrcExternalCall _ callee with_value operands tid) =
@@ -1217,6 +1240,7 @@ val () = cv_auto_trans unit_ids_def;
 val () = cv_auto_trans source_struct_field_def;
 val () = cv_auto_trans literal_message_def;
 val () = cv_auto_trans builtin_shape_def;
+val () = cv_auto_trans type_bound_def;
 
 val check_expr_pre_def = cv_auto_trans_pre_rec
   "check_expr_pre check_components_pre check_exprs_pre" check_expr_def (

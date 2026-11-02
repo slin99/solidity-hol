@@ -7252,6 +7252,242 @@
     {
       "contracts": [
         {
+          "contract": "TypeBounds",
+          "objects": [
+            {
+              "builtins": {
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "TypeBounds_138",
+              "nodeKinds": {
+                "assignment": 1,
+                "block": 5,
+                "expressionStatement": 6,
+                "functionCall": 13,
+                "functionDefinition": 3,
+                "identifier": 2,
+                "if": 1,
+                "literal:number": 5,
+                "literal:string": 3,
+                "variableDeclaration": 1
+              },
+              "role": "creation",
+              "stage": "ir",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 20,
+                "and": 2,
+                "calldataload": 4,
+                "calldatasize": 6,
+                "callvalue": 5,
+                "eq": 4,
+                "gt": 2,
+                "iszero": 9,
+                "lt": 1,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 9,
+                "or": 1,
+                "return": 5,
+                "revert": 8,
+                "sgt": 2,
+                "shr": 1,
+                "signextend": 2,
+                "slt": 7,
+                "sub": 12
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "TypeBounds_138_deployed",
+              "nodeKinds": {
+                "assignment": 63,
+                "block": 88,
+                "case": 5,
+                "default": 1,
+                "expressionStatement": 55,
+                "functionCall": 202,
+                "functionDefinition": 57,
+                "identifier": 200,
+                "if": 19,
+                "leave": 5,
+                "literal:number": 84,
+                "switch": 1,
+                "variableDeclaration": 77
+              },
+              "role": "runtime",
+              "stage": "ir",
+              "subobjects": 0
+            },
+            {
+              "builtins": {
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "TypeBounds_138",
+              "nodeKinds": {
+                "assignment": 1,
+                "block": 5,
+                "expressionStatement": 5,
+                "functionCall": 12,
+                "functionDefinition": 2,
+                "identifier": 2,
+                "if": 1,
+                "literal:number": 5,
+                "literal:string": 3,
+                "variableDeclaration": 1
+              },
+              "role": "creation",
+              "stage": "ir-optimized-off",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 20,
+                "and": 2,
+                "calldataload": 4,
+                "calldatasize": 6,
+                "callvalue": 5,
+                "eq": 4,
+                "gt": 2,
+                "iszero": 9,
+                "lt": 1,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 9,
+                "not": 6,
+                "or": 1,
+                "return": 5,
+                "revert": 7,
+                "sgt": 2,
+                "shl": 3,
+                "shr": 1,
+                "signextend": 2,
+                "slt": 7,
+                "sub": 13
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "TypeBounds_138_deployed",
+              "nodeKinds": {
+                "assignment": 63,
+                "block": 83,
+                "case": 5,
+                "default": 1,
+                "expressionStatement": 54,
+                "functionCall": 211,
+                "functionDefinition": 56,
+                "identifier": 200,
+                "if": 19,
+                "leave": 5,
+                "literal:number": 86,
+                "switch": 1,
+                "variableDeclaration": 77
+              },
+              "role": "runtime",
+              "stage": "ir-optimized-off",
+              "subobjects": 0
+            },
+            {
+              "builtins": {
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 1,
+                "memoryguard": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "TypeBounds_138",
+              "nodeKinds": {
+                "block": 3,
+                "expressionStatement": 4,
+                "functionCall": 8,
+                "identifier": 5,
+                "if": 1,
+                "literal:number": 4,
+                "literal:string": 2,
+                "variableDeclaration": 2
+              },
+              "role": "creation",
+              "stage": "ir-optimized-on",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 12,
+                "calldataload": 6,
+                "calldatasize": 6,
+                "callvalue": 5,
+                "eq": 2,
+                "gt": 2,
+                "iszero": 7,
+                "lt": 1,
+                "memoryguard": 1,
+                "mload": 4,
+                "mstore": 18,
+                "not": 11,
+                "or": 1,
+                "return": 5,
+                "revert": 15,
+                "sgt": 2,
+                "shl": 5,
+                "shr": 1,
+                "signextend": 2,
+                "slt": 7,
+                "sub": 3
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "TypeBounds_138_deployed",
+              "nodeKinds": {
+                "assignment": 2,
+                "block": 24,
+                "case": 5,
+                "expressionStatement": 38,
+                "functionCall": 116,
+                "identifier": 38,
+                "if": 17,
+                "literal:number": 104,
+                "switch": 1,
+                "variableDeclaration": 14
+              },
+              "role": "runtime",
+              "stage": "ir-optimized-on",
+              "subobjects": 0
+            }
+          ]
+        }
+      ],
+      "sha256": "c348f559d632c3c110cf588a919efca411880b79cd7269d7d2962fb9244998e0",
+      "source": "testdata/differential/type_bounds.sol"
+    },
+    {
+      "contracts": [
+        {
           "contract": "EvaluationOrder",
           "objects": [
             {
@@ -8324,12 +8560,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 827,
+          "runtime": 847,
           "subobject": 0
         },
         "address": {
@@ -8367,12 +8604,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 177,
+          "runtime": 179,
           "subobject": 0
         },
         "basefee": {
@@ -8413,12 +8651,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 112,
+          "runtime": 116,
           "subobject": 0
         },
         "calldatasize": {
@@ -8444,12 +8683,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 268,
+          "runtime": 274,
           "subobject": 0
         },
         "caller": {
@@ -8464,7 +8704,7 @@
           "subobject": 0
         },
         "callvalue": {
-          "creation": 36,
+          "creation": 37,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -8490,12 +8730,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 246,
+          "runtime": 251,
           "subobject": 0
         },
         "chainid": {
@@ -8507,7 +8748,7 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 39,
+          "creation": 40,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -8533,6 +8774,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -8559,7 +8801,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -8585,6 +8827,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -8594,7 +8837,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 74,
+          "creation": 76,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -8620,6 +8863,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -8673,12 +8917,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 144,
+          "runtime": 148,
           "subobject": 0
         },
         "exp": {
@@ -8747,12 +8992,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 70,
+          "runtime": 72,
           "subobject": 0
         },
         "iszero": {
@@ -8780,12 +9026,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 283,
+          "runtime": 292,
           "subobject": 0
         },
         "keccak256": {
@@ -8874,16 +9121,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 96,
+          "runtime": 97,
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -8909,16 +9157,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 35,
+          "runtime": 36,
           "subobject": 0
         },
         "mload": {
-          "creation": 39,
+          "creation": 40,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -8944,12 +9193,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 41,
+          "runtime": 42,
           "subobject": 0
         },
         "mod": {
@@ -8967,7 +9217,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 59,
+          "creation": 60,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -8993,12 +9243,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 358,
+          "runtime": 367,
           "subobject": 0
         },
         "mul": {
@@ -9089,12 +9340,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 66,
+          "runtime": 67,
           "subobject": 0
         },
         "origin": {
@@ -9106,7 +9358,7 @@
           "subobject": 0
         },
         "return": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -9132,12 +9384,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 238,
+          "runtime": 243,
           "subobject": 0
         },
         "returndatacopy": {
@@ -9159,7 +9412,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 55,
+          "creation": 56,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -9185,12 +9438,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 270,
+          "runtime": 278,
           "subobject": 0
         },
         "sar": {
@@ -9213,9 +9467,10 @@
           "creation": 0,
           "fixtures": [
             "testdata/differential/scalars.sol",
-            "testdata/differential/storage.sol"
+            "testdata/differential/storage.sol",
+            "testdata/differential/type_bounds.sol"
           ],
-          "runtime": 4,
+          "runtime": 6,
           "subobject": 0
         },
         "shl": {
@@ -9275,12 +9530,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 76,
+          "runtime": 77,
           "subobject": 0
         },
         "signextend": {
@@ -9294,10 +9550,11 @@
             "testdata/differential/storage.sol",
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_structs.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 18,
+          "runtime": 20,
           "subobject": 0
         },
         "sload": {
@@ -9353,12 +9610,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 121,
+          "runtime": 128,
           "subobject": 0
         },
         "smod": {
@@ -9442,12 +9700,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 442,
+          "runtime": 454,
           "subobject": 0
         },
         "timestamp": {
@@ -9469,7 +9728,7 @@
       },
       "nodeKinds": {
         "assignment": {
-          "creation": 183,
+          "creation": 184,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -9495,16 +9754,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2831,
+          "runtime": 2894,
           "subobject": 0
         },
         "block": {
-          "creation": 367,
+          "creation": 372,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -9530,12 +9790,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 3857,
+          "runtime": 3945,
           "subobject": 0
         },
         "break": {
@@ -9569,12 +9830,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 249,
+          "runtime": 254,
           "subobject": 0
         },
         "continue": {
@@ -9608,16 +9870,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 32,
+          "runtime": 33,
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 331,
+          "creation": 337,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -9643,12 +9906,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2414,
+          "runtime": 2469,
           "subobject": 0
         },
         "for": {
@@ -9663,7 +9927,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 927,
+          "creation": 940,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -9689,16 +9953,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 10202,
+          "runtime": 10404,
           "subobject": 0
         },
         "functionDefinition": {
-          "creation": 274,
+          "creation": 277,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -9724,16 +9989,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2598,
+          "runtime": 2655,
           "subobject": 0
         },
         "identifier": {
-          "creation": 514,
+          "creation": 516,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -9759,16 +10025,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 11142,
+          "runtime": 11342,
           "subobject": 0
         },
         "if": {
-          "creation": 54,
+          "creation": 55,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -9794,12 +10061,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 701,
+          "runtime": 720,
           "subobject": 0
         },
         "leave": {
@@ -9825,16 +10093,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 236,
+          "runtime": 241,
           "subobject": 0
         },
         "literal:number": {
-          "creation": 345,
+          "creation": 350,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -9860,16 +10129,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 3654,
+          "runtime": 3738,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 109,
+          "creation": 112,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -9895,6 +10165,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -9925,16 +10196,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 35,
+          "runtime": 36,
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 198,
+          "creation": 199,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -9960,12 +10232,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5476,
+          "runtime": 5553,
           "subobject": 0
         }
       },
@@ -9997,12 +10270,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 35,
+          "runtime": 36,
           "subobject": 0
         },
         "datacopy": {
@@ -10012,7 +10286,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -10038,6 +10312,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -10047,7 +10322,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 74,
+          "creation": 76,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -10073,6 +10348,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -10082,7 +10358,7 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -10108,6 +10384,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -10154,12 +10431,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 822,
+          "runtime": 842,
           "subobject": 0
         },
         "address": {
@@ -10197,12 +10475,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 177,
+          "runtime": 179,
           "subobject": 0
         },
         "basefee": {
@@ -10243,12 +10522,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 112,
+          "runtime": 116,
           "subobject": 0
         },
         "calldatasize": {
@@ -10274,12 +10554,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 268,
+          "runtime": 274,
           "subobject": 0
         },
         "caller": {
@@ -10294,7 +10575,7 @@
           "subobject": 0
         },
         "callvalue": {
-          "creation": 36,
+          "creation": 37,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -10320,12 +10601,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 246,
+          "runtime": 251,
           "subobject": 0
         },
         "chainid": {
@@ -10337,7 +10619,7 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 39,
+          "creation": 40,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -10363,6 +10645,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -10389,7 +10672,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -10415,6 +10698,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -10424,7 +10708,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 74,
+          "creation": 76,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -10450,6 +10734,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -10501,12 +10786,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 144,
+          "runtime": 148,
           "subobject": 0
         },
         "exp": {
@@ -10575,12 +10861,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 70,
+          "runtime": 72,
           "subobject": 0
         },
         "iszero": {
@@ -10608,12 +10895,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 283,
+          "runtime": 292,
           "subobject": 0
         },
         "keccak256": {
@@ -10700,16 +10988,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 96,
+          "runtime": 97,
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -10735,16 +11024,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 35,
+          "runtime": 36,
           "subobject": 0
         },
         "mload": {
-          "creation": 39,
+          "creation": 40,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -10770,12 +11060,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 33,
+          "runtime": 34,
           "subobject": 0
         },
         "mod": {
@@ -10791,7 +11082,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 59,
+          "creation": 60,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -10817,12 +11108,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 353,
+          "runtime": 362,
           "subobject": 0
         },
         "mul": {
@@ -10873,12 +11165,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 94,
+          "runtime": 100,
           "subobject": 0
         },
         "number": {
@@ -10915,12 +11208,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 66,
+          "runtime": 67,
           "subobject": 0
         },
         "origin": {
@@ -10932,7 +11226,7 @@
           "subobject": 0
         },
         "return": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -10958,12 +11252,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 238,
+          "runtime": 243,
           "subobject": 0
         },
         "returndatacopy": {
@@ -10985,7 +11280,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 51,
+          "creation": 52,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11011,12 +11306,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 248,
+          "runtime": 255,
           "subobject": 0
         },
         "sar": {
@@ -11039,9 +11335,10 @@
           "creation": 0,
           "fixtures": [
             "testdata/differential/scalars.sol",
-            "testdata/differential/storage.sol"
+            "testdata/differential/storage.sol",
+            "testdata/differential/type_bounds.sol"
           ],
-          "runtime": 4,
+          "runtime": 6,
           "subobject": 0
         },
         "shl": {
@@ -11070,12 +11367,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 150,
+          "runtime": 153,
           "subobject": 0
         },
         "shr": {
@@ -11104,12 +11402,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 68,
+          "runtime": 69,
           "subobject": 0
         },
         "signextend": {
@@ -11123,10 +11422,11 @@
             "testdata/differential/storage.sol",
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_structs.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 18,
+          "runtime": 20,
           "subobject": 0
         },
         "sload": {
@@ -11182,12 +11482,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 121,
+          "runtime": 128,
           "subobject": 0
         },
         "smod": {
@@ -11271,12 +11572,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 461,
+          "runtime": 474,
           "subobject": 0
         },
         "timestamp": {
@@ -11298,7 +11600,7 @@
       },
       "nodeKinds": {
         "assignment": {
-          "creation": 183,
+          "creation": 184,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11324,16 +11626,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2794,
+          "runtime": 2857,
           "subobject": 0
         },
         "block": {
-          "creation": 346,
+          "creation": 351,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11359,12 +11662,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 3654,
+          "runtime": 3737,
           "subobject": 0
         },
         "break": {
@@ -11398,12 +11702,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 249,
+          "runtime": 254,
           "subobject": 0
         },
         "continue": {
@@ -11437,16 +11742,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 32,
+          "runtime": 33,
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 279,
+          "creation": 284,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11472,12 +11778,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2386,
+          "runtime": 2440,
           "subobject": 0
         },
         "for": {
@@ -11492,7 +11799,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 899,
+          "creation": 911,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11518,16 +11825,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 10293,
+          "runtime": 10504,
           "subobject": 0
         },
         "functionDefinition": {
-          "creation": 222,
+          "creation": 224,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11553,16 +11861,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2548,
+          "runtime": 2604,
           "subobject": 0
         },
         "identifier": {
-          "creation": 503,
+          "creation": 505,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11588,16 +11897,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 10957,
+          "runtime": 11157,
           "subobject": 0
         },
         "if": {
-          "creation": 54,
+          "creation": 55,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11623,12 +11933,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 701,
+          "runtime": 720,
           "subobject": 0
         },
         "leave": {
@@ -11654,16 +11965,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 236,
+          "runtime": 241,
           "subobject": 0
         },
         "literal:number": {
-          "creation": 355,
+          "creation": 360,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11689,16 +12001,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 3694,
+          "runtime": 3780,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 109,
+          "creation": 112,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11724,6 +12037,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -11754,16 +12068,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 35,
+          "runtime": 36,
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 187,
+          "creation": 188,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11789,12 +12104,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5327,
+          "runtime": 5404,
           "subobject": 0
         }
       },
@@ -11826,12 +12142,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 35,
+          "runtime": 36,
           "subobject": 0
         },
         "datacopy": {
@@ -11841,7 +12158,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11867,6 +12184,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -11876,7 +12194,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 74,
+          "creation": 76,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11902,6 +12220,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -11911,7 +12230,7 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -11937,6 +12256,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -11982,12 +12302,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 588,
+          "runtime": 600,
           "subobject": 0
         },
         "address": {
@@ -12065,12 +12386,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 219,
+          "runtime": 225,
           "subobject": 0
         },
         "calldatasize": {
@@ -12096,12 +12418,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 269,
+          "runtime": 275,
           "subobject": 0
         },
         "caller": {
@@ -12116,7 +12439,7 @@
           "subobject": 0
         },
         "callvalue": {
-          "creation": 36,
+          "creation": 37,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -12142,12 +12465,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 246,
+          "runtime": 251,
           "subobject": 0
         },
         "chainid": {
@@ -12159,7 +12483,7 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 39,
+          "creation": 40,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -12185,6 +12509,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -12211,7 +12536,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -12237,6 +12562,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -12246,7 +12572,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 39,
+          "creation": 40,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -12272,6 +12598,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -12319,12 +12646,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 141,
+          "runtime": 143,
           "subobject": 0
         },
         "exp": {
@@ -12392,12 +12720,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 110,
+          "runtime": 112,
           "subobject": 0
         },
         "iszero": {
@@ -12424,12 +12753,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 339,
+          "runtime": 346,
           "subobject": 0
         },
         "keccak256": {
@@ -12516,16 +12846,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 105,
+          "runtime": 106,
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -12551,12 +12882,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 27,
+          "runtime": 28,
           "subobject": 0
         },
         "mload": {
@@ -12581,12 +12913,13 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 252,
+          "runtime": 256,
           "subobject": 0
         },
         "mod": {
@@ -12600,7 +12933,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 99,
+          "creation": 100,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -12626,12 +12959,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1056,
+          "runtime": 1074,
           "subobject": 0
         },
         "mul": {
@@ -12673,12 +13007,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 370,
+          "runtime": 381,
           "subobject": 0
         },
         "number": {
@@ -12706,12 +13041,13 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 109,
+          "runtime": 110,
           "subobject": 0
         },
         "origin": {
@@ -12732,7 +13068,7 @@
           "subobject": 0
         },
         "return": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -12758,12 +13094,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 225,
+          "runtime": 230,
           "subobject": 0
         },
         "returndatacopy": {
@@ -12785,7 +13122,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 69,
+          "creation": 70,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -12811,12 +13148,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 840,
+          "runtime": 855,
           "subobject": 0
         },
         "sar": {
@@ -12839,9 +13177,10 @@
           "creation": 0,
           "fixtures": [
             "testdata/differential/scalars.sol",
-            "testdata/differential/storage.sol"
+            "testdata/differential/storage.sol",
+            "testdata/differential/type_bounds.sol"
           ],
-          "runtime": 6,
+          "runtime": 8,
           "subobject": 0
         },
         "shl": {
@@ -12869,12 +13208,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 469,
+          "runtime": 474,
           "subobject": 0
         },
         "shr": {
@@ -12899,12 +13239,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 111,
+          "runtime": 112,
           "subobject": 0
         },
         "signextend": {
@@ -12918,10 +13259,11 @@
             "testdata/differential/storage.sol",
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_structs.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 47,
+          "runtime": 49,
           "subobject": 0
         },
         "sload": {
@@ -12975,12 +13317,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 239,
+          "runtime": 246,
           "subobject": 0
         },
         "smod": {
@@ -13058,11 +13401,12 @@
             "testdata/differential/storage.sol",
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 91,
+          "runtime": 94,
           "subobject": 0
         },
         "timestamp": {
@@ -13106,16 +13450,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 398,
+          "runtime": 400,
           "subobject": 0
         },
         "block": {
-          "creation": 143,
+          "creation": 146,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -13141,12 +13486,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1369,
+          "runtime": 1393,
           "subobject": 0
         },
         "break": {
@@ -13177,12 +13523,13 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 245,
+          "runtime": 250,
           "subobject": 0
         },
         "continue": {
@@ -13205,7 +13552,7 @@
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 271,
+          "creation": 275,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -13231,12 +13578,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2382,
+          "runtime": 2420,
           "subobject": 0
         },
         "for": {
@@ -13251,7 +13599,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 636,
+          "creation": 644,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -13277,12 +13625,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 7459,
+          "runtime": 7575,
           "subobject": 0
         },
         "functionDefinition": {
@@ -13313,7 +13662,7 @@
           "subobject": 0
         },
         "identifier": {
-          "creation": 360,
+          "creation": 365,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -13339,16 +13688,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 3115,
+          "runtime": 3153,
           "subobject": 0
         },
         "if": {
-          "creation": 69,
+          "creation": 70,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -13374,12 +13724,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 885,
+          "runtime": 902,
           "subobject": 0
         },
         "leave": {
@@ -13395,7 +13746,7 @@
           "subobject": 0
         },
         "literal:number": {
-          "creation": 487,
+          "creation": 491,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -13421,16 +13772,17 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6663,
+          "runtime": 6767,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 74,
+          "creation": 76,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -13456,6 +13808,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -13483,16 +13836,17 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 31,
+          "runtime": 32,
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 136,
+          "creation": 138,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -13518,12 +13872,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1284,
+          "runtime": 1298,
           "subobject": 0
         }
       },
@@ -13555,12 +13910,13 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 35,
+          "runtime": 36,
           "subobject": 0
         },
         "datacopy": {
@@ -13570,7 +13926,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -13596,6 +13952,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -13605,7 +13962,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 39,
+          "creation": 40,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -13631,6 +13988,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",
@@ -13640,7 +13998,7 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -13666,6 +14024,7 @@
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol",

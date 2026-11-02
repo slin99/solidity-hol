@@ -567,6 +567,25 @@
         {"name": "nonzero_reverts_with_parameterless_error", "function": "nonzero", "args": [0], "expect": {"revert": "0x3db2a12a"}},
         {"name": "odd_encodes_signed_bool_and_literal", "function": "odd", "args": [-3, true], "expect": {"revert": "0x056ee4fafffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"}}
       ]
+    },
+    {
+      "name": "type_bounds",
+      "source": "testdata/differential/type_bounds.sol",
+      "contract": "TypeBounds",
+      "artifact": "testdata/differential/expected/type_bounds.json",
+      "cases": [
+        {"name": "bounds", "function": "bounds", "args": [], "expect": {"return": [0, 255, -128, 127, 115792089237316195423570985008687907853269984665640564039457584007913129639935, -57896044618658097711785492504343953926634992332820282019728792003956564819968, 57896044618658097711785492504343953926634992332820282019728792003956564819967]}},
+        {"name": "spend_infinite_allowance_kept", "function": "spend", "args": [115792089237316195423570985008687907853269984665640564039457584007913129639935, 5], "expect": {"return": [115792089237316195423570985008687907853269984665640564039457584007913129639935]}},
+        {"name": "spend_finite_allowance_decreased", "function": "spend", "args": [10, 3], "expect": {"return": [7]}},
+        {"name": "spend_underflow_panics", "function": "spend", "args": [2, 3], "expect": {"panic": "0x11"}},
+        {"name": "fits_int8_max", "function": "fitsInt8", "args": [127], "expect": {"return": [true]}},
+        {"name": "fits_int8_above_max", "function": "fitsInt8", "args": [128], "expect": {"return": [false]}},
+        {"name": "fits_int8_min", "function": "fitsInt8", "args": [-128], "expect": {"return": [true]}},
+        {"name": "fits_int8_below_min", "function": "fitsInt8", "args": [-129], "expect": {"return": [false]}},
+        {"name": "above_uint16_widens", "function": "aboveUint16", "args": [1], "expect": {"return": [65536]}},
+        {"name": "below_int16_min_in_range", "function": "belowInt16Min", "args": [-1], "expect": {"return": [-32767]}},
+        {"name": "below_int16_min_overflow_panics", "function": "belowInt16Min", "args": [1], "expect": {"panic": "0x11"}}
+      ]
     }
   ]
 }

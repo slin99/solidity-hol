@@ -20,7 +20,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/storage_structs.json",
   "../testdata/differential/expected/inheritance.json",
   "../testdata/differential/expected/imports.json",
-  "../testdata/differential/expected/errors.json"
+  "../testdata/differential/expected/errors.json",
+  "../testdata/differential/expected/type_bounds.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -771,6 +772,35 @@ Theorem errors_reverts_resolved:
           (HD errors_unit.unit_contracts).contract_functions) =
   [([0xdbw; 0x42w; 0x14w; 0x4dw], 3, 3); ([0x8ew; 0x4aw; 0x23w; 0xd6w], 1, 1);
    ([0x3dw; 0xb2w; 0xa1w; 0x2aw], 0, 0); ([0x05w; 0x6ew; 0xe4w; 0xfaw], 3, 3)]
+Proof
+  EVAL_TAC
+QED
+
+(* type(T).max and type(T).min: integer types only. *)
+
+Definition type_bounds_unit_def:
+  type_bounds_unit = ^(import_artifact
+    "../testdata/differential/expected/type_bounds.json"
+    "testdata/differential/type_bounds.sol")
+End
+
+val () = cv_auto_trans type_bounds_unit_def;
+
+Theorem type_bounds_unit_valid:
+  valid_src_unit type_bounds_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem type_bound_values:
+  type_bound "min" (UintT 8) = SOME 0 ∧
+  type_bound "max" (UintT 8) = SOME 255 ∧
+  type_bound "min" (IntT 8) = SOME (-128) ∧
+  type_bound "max" (IntT 8) = SOME 127 ∧
+  type_bound "max" (UintT 256) = SOME (&(2 ** 256) - 1) ∧
+  type_bound "min" (IntT 256) = SOME (-&(2 ** 255)) ∧
+  type_bound "max" BoolT = NONE ∧
+  type_bound "interfaceId" (UintT 8) = NONE
 Proof
   EVAL_TAC
 QED
