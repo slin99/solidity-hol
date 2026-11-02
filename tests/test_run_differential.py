@@ -142,7 +142,11 @@ class CorpusTests(unittest.TestCase):
                   "logs": [{"topics": ["0x" + "11" * 32, 2], "data": "0x"},
                            {"logger": "0x5000", "topics": [], "data": "0x"}]},
                  {"name": "named", "function": "f", "args": [], "value": "7",
-                  "expect": {"revert": "0x"}, "logs": []}]
+                  "expect": {"revert": "0x"}, "logs": []},
+                 {"name": "deploy", "deploy": True, "args": [1],
+                  "expect": {"return": []}},
+                 {"name": "deploy_raw", "deploy": True, "calldata": "0x01",
+                  "expect": {"revert": "0x"}}]
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "corpus.json"
             path.write_text(json.dumps(corpus(cases)), encoding="utf-8")
@@ -152,6 +156,10 @@ class CorpusTests(unittest.TestCase):
         base = {"name": "f", "expect": {"return": []}}
         for fields, message in [
                 ({"calldata": "0x", "function": "f"}, "calldata excludes"),
+                ({"calldata": "0x", "deploy": True, "args": []}, "calldata excludes"),
+                ({"deploy": False, "args": []}, "deploy must be true"),
+                ({"deploy": True, "function": "f", "args": []}, "deploy must be true"),
+                ({"deploy": True, "args": [], "storage": {"0": 1}}, "deploy must be true"),
                 ({"calldata": "00"}, "calldata must be"),
                 ({}, "function must be"),
                 ({"calldata": "0x", "sender": 2**160}, "sender must be a 160-bit word"),

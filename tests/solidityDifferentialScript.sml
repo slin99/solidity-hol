@@ -186,8 +186,13 @@ End
 
 (* Cases *)
 
+(* A call to the deployed contract, or its creation from initcode with
+ * constructor arguments, given as values or as raw bytes. *)
 Datatype:
-  call_input = NamedCall string (argument list) | RawCall (byte list)
+  call_input =
+    NamedCall string (argument list)
+  | RawCall (byte list)
+  | Deploy (byte list) (argument list + byte list)
 End
 
 Datatype:
@@ -221,7 +226,19 @@ Definition call_data_def:
     | NONE => NONE
 End
 
-(* The calldata and the declared return types of a call. *)
+Definition constructor_types_def:
+  constructor_types u =
+    case u.unit_contracts of
+      c :: _ =>
+        (case contract_constructor c.contract_info.node_id c.contract_functions of
+           SOME f => callee_types f
+         | NONE => SOME ([], []))
+    | [] => NONE
+End
+
+(* The calldata and the declared return types of a call; for a creation, the
+ * encoded constructor arguments, which follow the initcode in the
+ * transaction's data. *)
 Definition input_call_def:
   (input_call u (NamedCall name args) =
     case function_types u name of
@@ -233,7 +250,18 @@ Definition input_call_def:
             case call_data name params vs of
               NONE => INL UnencodableArguments
             | SOME data => INR (data, rets)) ∧
-  (input_call u (RawCall data) = INR (data, []))
+  (input_call u (RawCall data) = INR (data, [])) ∧
+  (input_call u (Deploy code (INR data)) = INR (data, [])) ∧
+  (input_call u (Deploy code (INL args)) =
+    case constructor_types u of
+      NONE => INL UnknownFunction
+    | SOME (params, _) =>
+        case argument_values params args of
+          NONE => INL UnencodableArguments
+        | SOME vs =>
+            case encoded_values params vs of
+              NONE => INL UnencodableArguments
+            | SOME data => INR (data, []))
 End
 
 Definition expected_logs_def:
@@ -272,6 +300,23 @@ Definition differential_tx_def:
   |>
 End
 
+(* The account a case observes: the contract, or the one its creation
+ * transaction makes. *)
+Definition case_address_def:
+  case_address c =
+    case c.case_input of
+      Deploy _ _ => address_for_create c.case_sender 0
+    | _ => contract_address
+End
+
+Definition case_tx_def:
+  case_tx c data =
+    case c.case_input of
+      Deploy code _ =>
+        differential_tx c.case_sender c.case_value (code ++ data) with to := NONE
+    | _ => differential_tx c.case_sender c.case_value data
+End
+
 (* The evaluator run *)
 
 (* The contract's frame, with the transaction parameters Verifereum gives
@@ -294,14 +339,12 @@ End
 
 (* The outcome, complete committed contract storage and logs of a run. *)
 Definition contract_observation_def:
-  contract_observation r =
+  contract_observation a r =
     case r of
       ContractReturned data w =>
-        (Returned data, SOME (lookup_account contract_address w.accounts).storage,
-         w.logs)
+        (Returned data, SOME (lookup_account a w.accounts).storage, w.logs)
     | ContractReverted data w =>
-        (Reverted data, SOME (lookup_account contract_address w.accounts).storage,
-         w.logs)
+        (Reverted data, SOME (lookup_account a w.accounts).storage, w.logs)
     | ContractInvalid _ => (Diagnostic InvalidCompletion, NONE, [])
     | ContractOutOfFuel => (Diagnostic OutOfFuel, NONE, [])
 End
@@ -311,12 +354,17 @@ Definition source_execution_def:
     case input_call u c.case_input of
       INL d => (Diagnostic d, NONE, [])
     | INR (data, _) =>
-        contract_observation
-          (call_contract fuel prog (differential_frame c.case_sender c.case_value data)
-             (differential_world
-                (transfer_value c.case_sender contract_address c.case_value
-                   (case_accounts code c.case_storage c.case_sender
-                      c.case_peer_code c.case_peer_storage))))
+        let a = case_address c in
+        let fr = differential_frame c.case_sender c.case_value data with
+                   <| self_address := a; code_address := a |> in
+        let w = differential_world
+                  (transfer_value c.case_sender a c.case_value
+                     (case_accounts code c.case_storage c.case_sender
+                        c.case_peer_code c.case_peer_storage)) in
+        contract_observation a
+          (case c.case_input of
+             Deploy _ _ => deploy_contract fuel prog fr w
+           | _ => call_contract fuel prog fr w)
 End
 
 Definition source_observation_def:
@@ -335,15 +383,15 @@ Definition evm_execution_def:
                differential_block
                (case_accounts code c.case_storage c.case_sender c.case_peer_code
                   c.case_peer_storage)
-               (differential_tx c.case_sender c.case_value data) of
+               (case_tx c data) of
           SOME (r, accounts) =>
-            (case r.result of
+            (let st = SOME (lookup_account (case_address c) accounts).storage in
+             case r.result of
                NONE =>
-                 (Returned r.output,
-                  SOME (lookup_account contract_address accounts).storage, r.logs)
-             | SOME Reverted =>
-                 (Reverted r.output,
-                  SOME (lookup_account contract_address accounts).storage, r.logs)
+                 (case c.case_input of
+                    Deploy _ _ => (Returned [], st, r.logs)
+                  | _ => (Returned r.output, st, r.logs))
+             | SOME Reverted => (Reverted r.output, st, r.logs)
              | SOME _ => (Diagnostic ExceptionalHalt, NONE, []))
         | NONE => (Diagnostic InvalidTransaction, NONE, [])
 End
@@ -523,9 +571,12 @@ val () = cv_auto_trans storage_values_def;
 val () = cv_auto_trans project_observation_def;
 val () = cv_auto_trans expected_storage_def;
 val () = cv_auto_trans call_data_def;
+val () = cv_auto_trans constructor_types_def;
 val () = cv_auto_trans input_call_def;
 val () = cv_auto_trans expected_logs_def;
 val () = cv_auto_trans differential_tx_def;
+val () = cv_auto_trans case_address_def;
+val () = cv_auto_trans case_tx_def;
 val () = cv_auto_trans differential_frame_def;
 val () = cv_auto_trans differential_world_def;
 val () = cv_auto_trans contract_observation_def;

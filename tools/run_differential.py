@@ -143,14 +143,20 @@ def check_logs(value: Any, what: str) -> None:
 
 
 def check_call(case: dict[str, Any], what: str) -> None:
-    """A case calls either raw calldata or a named function with arguments."""
+    """A case calls either raw calldata or a named function with arguments, or
+    deploys the contract with the constructor's arguments or, as calldata,
+    their raw encoding."""
+    if "deploy" in case and (case["deploy"] is not True or "function" in case
+                             or "storage" in case):
+        raise CorpusError(f"{what}: deploy must be true and excludes function and storage")
     if "calldata" in case:
         if "function" in case or "args" in case:
             raise CorpusError(f"{what}: calldata excludes function and args")
         if not isinstance(case["calldata"], str) or HEX.fullmatch(case["calldata"]) is None:
             raise CorpusError(f"{what}: calldata must be 0x-prefixed hex")
         return
-    if not isinstance(case.get("function"), str) or not case["function"]:
+    if "deploy" not in case and (not isinstance(case.get("function"), str)
+                                 or not case["function"]):
         raise CorpusError(f"{what}: function must be a string")
     args = case.get("args")
     if not isinstance(args, list):
@@ -228,7 +234,7 @@ def load_corpus(path: Path) -> dict[str, Any]:
                     check_storage(case[key], f"{what}.{key}")
             if "peer_storage" in case and "peer" not in suite:
                 raise CorpusError(f"{what}: peer_storage without a peer")
-            unknown = set(case) - {"name", "function", "args", "calldata", "sender",
+            unknown = set(case) - {"name", "function", "deploy", "args", "calldata", "sender",
                                    "value", "storage", "peer_storage", "expect",
                                    "final_storage", "logs", "fuel"}
             if unknown:
@@ -449,7 +455,7 @@ def write_reproduction(root: Path, directory: Path, suite: dict[str, Any],
                    if key in suite})
     if case is not None:
         inputs.update({"case": case["name"],
-                       **{key: case[key] for key in ("function", "args", "calldata")
+                       **{key: case[key] for key in ("function", "deploy", "args", "calldata")
                           if key in case},
                        "sender": case.get("sender", "0x2000"),
                        "value": case.get("value", 0),

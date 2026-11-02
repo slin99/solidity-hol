@@ -228,7 +228,10 @@ End
 (* A contract flattened along its linearization (the compiler's
  * linearizedBaseContracts, most derived first, which bases lists): the
  * members of all its bases, functions most derived first, state variables in
- * storage order. Declarations without a body are left out.
+ * storage order. Declarations without a body are left out. Initializers
+ * give state variables (by id) their declared values; base arguments are
+ * the base constructor arguments: the base giving them, the base whose
+ * constructor takes them, and the arguments, in evaluation order.
  *)
 Datatype:
   src_contract = <|
@@ -237,6 +240,8 @@ Datatype:
     contract_scope : num;
     contract_bases : num list;
     contract_state_variables : src_variable list;
+    contract_initializers : (num # src_expr) list;
+    contract_base_arguments : (num # num # src_expr list) list;
     contract_storage : src_storage_entry list;
     contract_structs : src_struct list;
     contract_events : src_event list;
@@ -666,6 +671,8 @@ Definition contract_ids_def:
     FLAT (MAP (λs. s.struct_info.node_id ::
       FLAT (MAP variable_ids s.struct_members)) c.contract_structs) ++
     FLAT (MAP variable_ids c.contract_state_variables) ++
+    FLAT (MAP (λ(_, e). expr_ids e) c.contract_initializers) ++
+    FLAT (MAP (λ(_, _, es). exprs_ids es) c.contract_base_arguments) ++
     FLAT (MAP (λe. e.event_info.node_id ::
       FLAT (MAP (variable_ids o FST) e.event_parameters)) c.contract_events) ++
     FLAT (MAP function_ids c.contract_functions)
@@ -1017,13 +1024,31 @@ Definition live_functions_def:
                 (ALOOKUP table f.fn_info.node_id) = SOME f.fn_info.node_id) fs
 End
 
+(* The constructor a base declares, if any. *)
+Definition contract_constructor_def:
+  (contract_constructor x [] = NONE) ∧
+  (contract_constructor x ((f : src_function) :: fs) =
+    if f.fn_kind = "constructor" ∧ f.fn_scope = x then SOME f
+    else contract_constructor x fs)
+End
+
+(* The variables the base constructor arguments a base gives see: the
+ * parameters of its constructor. *)
+Definition constructor_parameters_def:
+  constructor_parameters x fs =
+    case contract_constructor x fs of
+      NONE => SOME []
+    | SOME f => all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_parameters)
+End
+
 (* A pure function sees no state variables. Whether a view function writes
  * one is the compiler's check.
  *)
 Definition check_function_def:
   check_function structs events functions state bases (f : src_function) ⇔
     MEM f.fn_scope bases ∧
-    (f.fn_kind = "function" ∨ f.fn_kind = "receive" ∨ f.fn_kind = "fallback") ∧
+    (f.fn_kind = "function" ∨ f.fn_kind = "receive" ∨ f.fn_kind = "fallback" ∨
+     f.fn_kind = "constructor") ∧
     (f.fn_mutability = "pure" ∨ f.fn_mutability = "view" ∨
      f.fn_mutability = "nonpayable" ∨ f.fn_mutability = "payable") ∧
     case (all_some (MAP (scoped_variable f.fn_info.node_id)
@@ -1070,6 +1095,18 @@ Definition check_event_def:
       e.event_parameters
 End
 
+(* Initializers and base constructor arguments see the state variables and
+ * call functions; base constructor arguments also see the parameters of the
+ * constructor of the base giving them. *)
+Definition initializer_env_def:
+  initializer_env (c : src_contract) state =
+    <| functions := call_table c.contract_functions;
+       structs := c.contract_structs;
+       events := MAP (λe. (e.event_info.node_id, e)) c.contract_events;
+       variables := []; state := state; scope := c.contract_info.node_id;
+       returns_id := c.contract_info.node_id; in_loop := F |>
+End
+
 Definition check_contract_def:
   check_contract unit_id (c : src_contract) ⇔
     c.contract_scope = unit_id ∧
@@ -1085,7 +1122,16 @@ Definition check_contract_def:
                  (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
                  (call_table c.contract_functions)
                  state c.contract_bases)
-          (live_functions c.contract_functions)
+          (live_functions c.contract_functions) ∧
+        EVERY (λ(x, e). IS_SOME (ALOOKUP state x) ∧
+                        IS_SOME (check_expr (initializer_env c state) e))
+          c.contract_initializers ∧
+        EVERY (λ(x, b, args).
+                 case constructor_parameters x c.contract_functions of
+                   SOME ps => check_exprs (initializer_env c state with
+                                             variables := ps) args
+                 | NONE => F)
+          c.contract_base_arguments
     | NONE => F
 End
 
@@ -1197,10 +1243,13 @@ QED
 val () = cv_auto_trans scoped_variable_def;
 val () = cv_auto_trans state_variable_def;
 val () = cv_auto_trans call_table_def;
+val () = cv_auto_trans contract_constructor_def;
+val () = cv_auto_trans constructor_parameters_def;
 val () = cv_auto_trans live_functions_def;
 val () = cv_auto_trans storage_layout_ok_def;
 val () = cv_auto_trans check_function_def;
 val () = cv_auto_trans check_struct_def;
 val () = cv_auto_trans check_event_def;
+val () = cv_auto_trans initializer_env_def;
 val () = cv_auto_trans check_contract_def;
 val () = cv_auto_trans valid_src_unit_def;

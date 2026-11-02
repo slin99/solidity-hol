@@ -195,7 +195,7 @@ fun declaration state v = within v (fn v =>
       else "expected a local variable");
    require v (string_field v "mutability" = "mutable")
      "immutable variables are not supported";
-   require v (not (isSome (optional_field v "value")))
+   require v (state orelse not (isSome (optional_field v "value")))
      "declaration values are not supported";
    require v (not state orelse string_field v "visibility" <> "public")
      "public state variables are not supported";
@@ -501,10 +501,13 @@ fun function v = within v (fn v =>
   in
     expect v "FunctionDefinition";
     require v (List.exists (fn k => k = string_field v "kind")
-                 ["function", "receive", "fallback"])
+                 ["function", "receive", "fallback", "constructor"])
       ("unsupported function kind " ^ string_field v "kind");
-    require v (null (JSONUtil.arrayMap I (field v "modifiers")))
-      "modifiers are not supported";
+    (* base constructor arguments are imported with the contract *)
+    List.app (fn m => within m (fn m =>
+                require m (string_field m "kind" = "baseConstructorSpecifier")
+                  "modifiers are not supported"))
+      (JSONUtil.arrayMap I (field v "modifiers"));
     record "src_function"
       [("fn_info", info v), ("fn_name", mk_str (string_field v "name")),
        ("fn_scope", mk_num (int_field v "scope")),
@@ -576,9 +579,11 @@ fun struct_declaration types v = within v (fn v =>
 
 (* A deployable contract, flattened along its linearization (most derived
  * first), whose contracts declared lists by id: the implemented functions of
- * its bases, most derived first, their events and structs, and their state
- * variables base first, the order of the storage layout. The layout also
- * describes file-level struct types referenced by its state variables.
+ * its bases, most derived first, their events and structs, their state
+ * variables base first, the order of the storage layout, with their
+ * initializers, and the base constructor arguments each base gives, most
+ * derived base first. The layout also describes file-level struct types
+ * referenced by its state variables.
  *)
 fun contract external_structs contracts declared v = within v (fn v =>
   let
@@ -617,6 +622,38 @@ fun contract external_structs contracts declared v = within v (fn v =>
     val layout =
       JSONUtil.get (contracts,
         [JSONUtil.SEL name, JSONUtil.SEL "storageLayout"])
+    val state_variables = members_of "VariableDeclaration" (rev bases)
+    (* The base constructor arguments base x gives: those of its inheritance
+     * specifiers and its constructor's base constructor specifiers, in the
+     * order of x's own linearization. *)
+    fun base_arguments x =
+      let
+        val specifiers =
+          map (fn b => (field b "baseName", optional_field b "arguments"))
+            (JSONUtil.arrayMap I (field x "baseContracts")) @
+          List.concat
+            (map (fn f =>
+                    if string_field f "kind" = "constructor" then
+                      map (fn m => (field m "modifierName",
+                                    optional_field m "arguments"))
+                        (JSONUtil.arrayMap I (field f "modifiers"))
+                    else [])
+               (members_of "FunctionDefinition" [x]))
+        val given =
+          List.mapPartial
+            (fn (n, SOME args) => SOME (int_field n "referencedDeclaration", args)
+              | (_, NONE) => NONE)
+            specifiers
+      in
+        List.mapPartial
+          (fn b => case List.find (fn (i, _) => i = b) given of
+                     SOME (_, args) =>
+                       SOME (pairSyntax.list_mk_pair
+                         [mk_num (int_field x "id"), mk_num b,
+                          listSyntax.mk_list (JSONUtil.arrayMap expr args, expr_ty)])
+                   | NONE => NONE)
+          (JSONUtil.arrayMap JSONUtil.asIntInf (field x "linearizedBaseContracts"))
+      end
   in
     expect v "ContractDefinition";
     record "src_contract"
@@ -627,9 +664,18 @@ fun contract external_structs contracts declared v = within v (fn v =>
           (JSONUtil.arrayMap (mk_num o JSONUtil.asIntInf)
              (field v "linearizedBaseContracts"), numSyntax.num)),
        ("contract_state_variables",
-        listSyntax.mk_list
-          (map (declaration true) (members_of "VariableDeclaration" (rev bases)),
-           variable_ty)),
+        listSyntax.mk_list (map (declaration true) state_variables, variable_ty)),
+       ("contract_initializers", listSyntax.mk_list
+          (List.mapPartial
+             (fn d => Option.map (fn e => pairSyntax.mk_pair
+                                    (mk_num (int_field d "id"), expr e))
+                        (optional_field d "value"))
+             state_variables,
+           pairSyntax.mk_prod (numSyntax.num, expr_ty))),
+       ("contract_base_arguments", listSyntax.mk_list
+          (List.concat (map base_arguments bases),
+           pairSyntax.list_mk_prod
+             [numSyntax.num, numSyntax.num, listSyntax.mk_list_type expr_ty])),
        ("contract_storage",
         listSyntax.mk_list
           (JSONUtil.arrayMap storage_entry (field layout "storage"), storage_entry_ty)),

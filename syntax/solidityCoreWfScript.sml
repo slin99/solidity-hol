@@ -778,7 +778,7 @@ End
 
 (* Calldata reaches procedures whose parameters and returns are elementary,
  * the types the entry ABI-decodes and encodes; receive and the fallback take
- * and return nothing.
+ * and return nothing, and the creation procedure returns nothing.
  *)
 Definition abi_procedure_def:
   abi_procedure env f ⇔
@@ -806,6 +806,13 @@ Definition wf_core_dispatch_def:
      | NONE => T) ∧
     (case prog.fallback_procedure of
        SOME (f, _) => plain_procedure env f
+     | NONE => T) ∧
+    (case prog.creation_procedure of
+       SOME (f, _) =>
+         abi_procedure env f ∧
+         (case lookup_procedure env f of
+            SOME p => p.return_bindings = []
+          | NONE => F)
      | NONE => T)
 End
 

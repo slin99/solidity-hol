@@ -122,7 +122,9 @@ selectors. Contract definitions record inheritance-related and used-event/error
 metadata. Inheritance needs two of these annotations (the differential fixture
 `inheritance.sol`): the importer flattens a contract along its
 `linearizedBaseContracts`, and `call_table` resolves overrides through each
-function's `baseFunctions`. The corpus has no modifiers or `super` calls, so
+function's `baseFunctions`. The only modifiers admitted are base-constructor
+specifiers on constructors (`constructors.sol`), resolved through their
+`referencedDeclaration`; other modifiers and `super` calls are rejected, and
 their resolution requirements remain to be established.
 
 ## Storage layout
@@ -147,8 +149,9 @@ slot, byte offset and type identifier; `valid_src_unit` requires one entry per
 state variable, naming its declaration and type, and leaves the layout
 calculation itself, including that packed variables don't overlap, to the
 compiler. Elaboration copies slot and offset into the core program's
-`state_variables`. Public state variables, initialisers, constants and immutables
-are import errors. Mapping key/value types come from recursive type-name
+`state_variables`. Initialisers are imported and run by the creation
+procedure; public state variables, constants and immutables are import
+errors. Mapping key/value types come from recursive type-name
 normalization. AST and layout type identifiers use different encodings; both
 are checked against the normalized type. The scalar leaf width determines
 its storage read/write, and aggregate root slots come from the layout. Fixed

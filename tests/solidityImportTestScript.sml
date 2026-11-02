@@ -179,7 +179,9 @@ val () = malformed_input "function as state variable"
      (set_field "nodeType" (JSON.STRING "VariableDeclaration")) ast)
 val () = import_error "modifier"
   (edit_first "FunctionDefinition"
-     (set_field "modifiers" (JSON.ARRAY [JSON.OBJECT []])) ast)
+     (set_field "modifiers"
+        (JSON.ARRAY [JSON.OBJECT [("kind", JSON.STRING "modifierInvocation")]]))
+     ast)
 val () = import_error "named arguments"
   (edit_first "FunctionCall"
      (set_field "names" (JSON.ARRAY [JSON.STRING "n"])) ast)
@@ -330,12 +332,6 @@ val () = import_error_with Unsupported storage_contracts "constant state variabl
 val () = import_error_with Unsupported storage_contracts "immutable state variable"
   (edit_first "VariableDeclaration"
      (set_field "mutability" (JSON.STRING "immutable")) storage_ast)
-val () = import_error_with Unsupported storage_contracts "state variable initialiser"
-  (edit_first "VariableDeclaration"
-     (fn JSON.OBJECT kvs =>
-           JSON.OBJECT (kvs @ [("value", edit_first "Literal" I storage_ast)])
-       | v => v)
-     storage_ast)
 val () = import_error_with Malformed (JSON.OBJECT []) "missing storage layout" storage_ast
 
 (* The contracts output with an edit to the layout entries; the first is

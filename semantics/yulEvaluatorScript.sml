@@ -24,7 +24,8 @@
  * argument that is not exactly one value, a literal too long for the dialect,
  * an unknown function, an unbound name, a builtin called with the wrong number
  * of arguments, an immutable the frame does not carry, and the object-level
- * builtins, which a runtime object never contains.
+ * builtins, which read the running code or the object's layout, neither of
+ * which the evaluator models.
  * So is a break or continue that leaves a loop's post statement: Yul allows
  * them only in a loop's body, and one from the post would otherwise reach an
  * enclosing loop.
@@ -274,8 +275,8 @@ End
 
 (* One builtin, on values that have already been evaluated, left to right.
  * Anything the pinned dialect does not define -- a wrong number of arguments,
- * or one of the object-level builtins, which a runtime object cannot contain
- * -- is an error rather than a silent no-op.
+ * or one of the object-level builtins, whose code and object the evaluator
+ * does not model -- is an error rather than a silent no-op.
  *)
 Definition eval_yul_builtin_def:
   eval_yul_builtin op args m =
@@ -380,6 +381,7 @@ Definition eval_yul_builtin_def:
     | (YRevert, [p; s]) =>
         let (m', bs) = yul_memory_region m (w2n p) (w2n s) in
           EvalAbrupt (YulRevert bs) m'
+    | (YCodeSize, _) => EvalAbrupt (YulInvalid "object-level builtin") m
     | (YCodeCopy, _) => EvalAbrupt (YulInvalid "object-level builtin") m
     | (YDataSize, _) => EvalAbrupt (YulInvalid "object-level builtin") m
     | (YDataOffset, _) => EvalAbrupt (YulInvalid "object-level builtin") m

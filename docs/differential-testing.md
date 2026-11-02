@@ -17,7 +17,17 @@ as bytecode in Verifereum. The evaluator runs the same calldata
 through the elaborated program's dispatcher (`solidityEntry`), so selector
 lookup, payability, argument decoding, `receive` and `fallback` are compared
 too. Raw calldata declares no return types, so its `return` expectation is
-`[]`. The HOL corpus theory proves one
+`[]`.
+
+A case with `"deploy": true` and the constructor's `args` (or, as
+`calldata`, their raw encoding) is a creation instead: Verifereum runs a creation transaction whose data is the artifact's
+initcode followed by the encoded arguments, and the evaluator runs the
+program's creation procedure (`deploy_contract`) on the encoded arguments, at
+the address the transaction creates (`address_for_create` of the sender at
+nonce 0). Both observe that account, which starts with no code or storage,
+so `storage` must be empty and `logger` names that address. A successful
+creation is observed as returning no data, so its `return` expectation is
+`[]`; the deployed code is not compared. The HOL corpus theory proves one
 `differential_agrees` theorem per case. Diagnostic failures and exhausted fuel
 are inconclusive, never agreement.
 

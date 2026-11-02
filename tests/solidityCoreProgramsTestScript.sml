@@ -275,7 +275,7 @@ Definition programs_def:
     state_variables := [];
     entry_procedure := AstId 16;
     external_functions := []; receive_procedure := NONE;
-    fallback_procedure := NONE
+    fallback_procedure := NONE; creation_procedure := NONE
   |>
 End
 

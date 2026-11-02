@@ -1,0 +1,283 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.methodIdentifiers",
+            "ir",
+            "irOptimized"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/initializers_only.sol": {
+        "content": "// SPDX-License-Identifier: UNLICENSED\npragma solidity ^0.8.0;\n\n// A contract with initializers and no functions: creation is its only code.\ncontract Init {\n    uint256 x = 5;\n    uint256 y = x + 1;\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/initializers_only.sol": {
+        "Init": {
+          "abi": [],
+          "evm": {
+            "bytecode": {
+              "object": "60806040523461002557610011610154565b61001961002a565b60086101888239600890f35b610030565b60405190565b5f80fd5b5f1b90565b906100455f1991610034565b9181191691161790565b90565b90565b90565b61006c6100676100719261004f565b610055565b610052565b90565b90565b9061008c61008761009392610058565b610074565b8254610039565b9055565b5f1c90565b90565b6100ab6100b091610097565b61009c565b90565b6100bd905461009f565b90565b90565b6100d76100d26100dc926100c0565b610055565b610052565b90565b634e487b7160e01b5f52601160045260245ffd5b61010261010891939293610052565b92610052565b820180921161011357565b6100df565b61012c61012761013192610052565b610055565b610052565b90565b9061014961014461015092610118565b610074565b8254610039565b9055565b61015f60055f610077565b61018561017e61016e5f6100b3565b61017860016100c3565b906100f3565b6001610134565b56fe60806040525f80fd"
+            },
+            "deployedBytecode": {
+              "object": "60806040525f80fd"
+            },
+            "methodIdentifiers": {}
+          },
+          "ir": "\n/// @use-src 0:\"testdata/differential/initializers_only.sol\"\nobject \"Init_10\" {\n    code {\n        /// @src 0:141:200  \"contract Init {...\"\n        mstore(64, memoryguard(128))\n        if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n\n        constructor_Init_10()\n\n        let _1 := allocate_unbounded()\n        codecopy(_1, dataoffset(\"Init_10_deployed\"), datasize(\"Init_10_deployed\"))\n\n        return(_1, datasize(\"Init_10_deployed\"))\n\n        function allocate_unbounded() -> memPtr {\n            memPtr := mload(64)\n        }\n\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n            revert(0, 0)\n        }\n\n        function shift_left_0(value) -> newValue {\n            newValue :=\n\n            shl(0, value)\n\n        }\n\n        function update_byte_slice_32_shift_0(value, toInsert) -> result {\n            let mask := 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\n            toInsert := shift_left_0(toInsert)\n            value := and(value, not(mask))\n            result := or(value, and(toInsert, mask))\n        }\n\n        function cleanup_t_rational_5_by_1(value) -> cleaned {\n            cleaned := value\n        }\n\n        function cleanup_t_uint256(value) -> cleaned {\n            cleaned := value\n        }\n\n        function identity(value) -> ret {\n            ret := value\n        }\n\n        function convert_t_rational_5_by_1_to_t_uint256(value) -> converted {\n            converted := cleanup_t_uint256(identity(cleanup_t_rational_5_by_1(value)))\n        }\n\n        function prepare_store_t_uint256(value) -> ret {\n            ret := value\n        }\n\n        function update_storage_value_offset_0_t_rational_5_by_1_to_t_uint256(slot, value_0) {\n            let convertedValue_0 := convert_t_rational_5_by_1_to_t_uint256(value_0)\n            sstore(slot, update_byte_slice_32_shift_0(sload(slot), prepare_store_t_uint256(convertedValue_0)))\n        }\n\n        function shift_right_0_unsigned(value) -> newValue {\n            newValue :=\n\n            shr(0, value)\n\n        }\n\n        function cleanup_from_storage_t_uint256(value) -> cleaned {\n            cleaned := value\n        }\n\n        function extract_from_storage_value_offset_0_t_uint256(slot_value) -> value {\n            value := cleanup_from_storage_t_uint256(shift_right_0_unsigned(slot_value))\n        }\n\n        function read_from_storage_split_offset_0_t_uint256(slot) -> value {\n            value := extract_from_storage_value_offset_0_t_uint256(sload(slot))\n\n        }\n\n        function cleanup_t_rational_1_by_1(value) -> cleaned {\n            cleaned := value\n        }\n\n        function convert_t_rational_1_by_1_to_t_uint256(value) -> converted {\n            converted := cleanup_t_uint256(identity(cleanup_t_rational_1_by_1(value)))\n        }\n\n        function panic_error_0x11() {\n            mstore(0, 35408467139433450592217433187231851964531694900788300625387963629091585785856)\n            mstore(4, 0x11)\n            revert(0, 0x24)\n        }\n\n        function checked_add_t_uint256(x, y) -> sum {\n            x := cleanup_t_uint256(x)\n            y := cleanup_t_uint256(y)\n            sum := add(x, y)\n\n            if gt(x, sum) { panic_error_0x11() }\n\n        }\n\n        function convert_t_uint256_to_t_uint256(value) -> converted {\n            converted := cleanup_t_uint256(identity(cleanup_t_uint256(value)))\n        }\n\n        function update_storage_value_offset_0_t_uint256_to_t_uint256(slot, value_0) {\n            let convertedValue_0 := convert_t_uint256_to_t_uint256(value_0)\n            sstore(slot, update_byte_slice_32_shift_0(sload(slot), prepare_store_t_uint256(convertedValue_0)))\n        }\n\n        /// @src 0:141:200  \"contract Init {...\"\n        function constructor_Init_10() {\n\n            /// @src 0:141:200  \"contract Init {...\"\n\n            /// @src 0:173:174  \"5\"\n            let expr_3 := 0x05\n            update_storage_value_offset_0_t_rational_5_by_1_to_t_uint256(0x00, expr_3)\n            /// @src 0:192:193  \"x\"\n            let _2 := read_from_storage_split_offset_0_t_uint256(0x00)\n            let expr_6 := _2\n            /// @src 0:196:197  \"1\"\n            let expr_7 := 0x01\n            /// @src 0:192:197  \"x + 1\"\n            let expr_8 := checked_add_t_uint256(expr_6, convert_t_rational_1_by_1_to_t_uint256(expr_7))\n\n            update_storage_value_offset_0_t_uint256_to_t_uint256(0x01, expr_8)\n\n        }\n        /// @src 0:141:200  \"contract Init {...\"\n\n    }\n    /// @use-src 0:\"testdata/differential/initializers_only.sol\"\n    object \"Init_10_deployed\" {\n        code {\n            /// @src 0:141:200  \"contract Init {...\"\n            mstore(64, memoryguard(128))\n\n            revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n\n            function shift_right_224_unsigned(value) -> newValue {\n                newValue :=\n\n                shr(224, value)\n\n            }\n\n            function allocate_unbounded() -> memPtr {\n                memPtr := mload(64)\n            }\n\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74() {\n                revert(0, 0)\n            }\n\n        }\n\n        data \".metadata\" hex\"\"\n    }\n\n}\n\n",
+          "irOptimized": "/// @use-src 0:\"testdata/differential/initializers_only.sol\"\nobject \"Init_10\" {\n    code {\n        {\n            /// @src 0:141:200  \"contract Init {...\"\n            mstore(64, memoryguard(0x80))\n            if callvalue()\n            {\n                revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            }\n            constructor_Init()\n            let _1 := allocate_unbounded()\n            codecopy(_1, dataoffset(\"Init_10_deployed\"), datasize(\"Init_10_deployed\"))\n            return(_1, datasize(\"Init_10_deployed\"))\n        }\n        function allocate_unbounded() -> memPtr\n        { memPtr := mload(64) }\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n        { revert(0, 0) }\n        function shift_left(value) -> newValue\n        { newValue := shl(0, value) }\n        function update_byte_slice_shift(value, toInsert) -> result\n        {\n            let mask := not(0)\n            toInsert := shift_left(toInsert)\n            value := and(value, not(mask))\n            result := or(value, and(toInsert, mask))\n        }\n        function cleanup_t_rational_by(value) -> cleaned\n        { cleaned := value }\n        function cleanup_uint256(value) -> cleaned\n        { cleaned := value }\n        function identity(value) -> ret\n        { ret := value }\n        function convert_t_rational_by_to_t_uint256(value) -> converted\n        {\n            converted := cleanup_uint256(identity(cleanup_t_rational_by(value)))\n        }\n        function prepare_store_uint256(value) -> ret\n        { ret := value }\n        function update_storage_value_offset_rational_by_to_uint256(slot, value)\n        {\n            let convertedValue := convert_t_rational_by_to_t_uint256(value)\n            sstore(slot, update_byte_slice_shift(sload(slot), prepare_store_uint256(convertedValue)))\n        }\n        function shift_right_unsigned(value) -> newValue\n        { newValue := shr(0, value) }\n        function cleanup_from_storage_uint256(value) -> cleaned\n        { cleaned := value }\n        function extract_from_storage_value_offset_uint256(slot_value) -> value\n        {\n            value := cleanup_from_storage_uint256(shift_right_unsigned(slot_value))\n        }\n        function read_from_storage_split_offset_uint256(slot) -> value\n        {\n            value := extract_from_storage_value_offset_uint256(sload(slot))\n        }\n        function cleanup_rational_by(value) -> cleaned\n        { cleaned := value }\n        function convert_rational_by_to_uint256(value) -> converted\n        {\n            converted := cleanup_uint256(identity(cleanup_rational_by(value)))\n        }\n        function panic_error_0x11()\n        {\n            mstore(0, shl(224, 0x4e487b71))\n            mstore(4, 0x11)\n            revert(0, 0x24)\n        }\n        function checked_add_uint256(x, y) -> sum\n        {\n            x := cleanup_uint256(x)\n            y := cleanup_uint256(y)\n            sum := add(x, y)\n            if gt(x, sum) { panic_error_0x11() }\n        }\n        function convert_uint256_to_uint256(value) -> converted\n        {\n            converted := cleanup_uint256(identity(cleanup_uint256(value)))\n        }\n        function update_storage_value_offset_uint256_to_uint256(slot, value)\n        {\n            let convertedValue := convert_uint256_to_uint256(value)\n            sstore(slot, update_byte_slice_shift(sload(slot), prepare_store_uint256(convertedValue)))\n        }\n        function constructor_Init()\n        {\n            /// @src 0:173:174  \"5\"\n            let expr := 0x05\n            update_storage_value_offset_rational_by_to_uint256(0x00, expr)\n            /// @src 0:192:193  \"x\"\n            let _1 := read_from_storage_split_offset_uint256(0x00)\n            let expr_1 := _1\n            /// @src 0:196:197  \"1\"\n            let expr_2 := 0x01\n            /// @src 0:192:197  \"x + 1\"\n            let expr_3 := checked_add_uint256(expr_1, convert_rational_by_to_uint256(expr_2))\n            update_storage_value_offset_uint256_to_uint256(0x01, expr_3)\n        }\n    }\n    /// @use-src 0:\"testdata/differential/initializers_only.sol\"\n    object \"Init_10_deployed\" {\n        code {\n            {\n                /// @src 0:141:200  \"contract Init {...\"\n                mstore(64, memoryguard(0x80))\n                revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            }\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            { revert(0, 0) }\n        }\n        data \".metadata\" hex\"\"\n    }\n}\n",
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 4,
+                "contract": "testdata/differential/initializers_only.sol:Init",
+                "label": "x",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_uint256"
+              },
+              {
+                "astId": 9,
+                "contract": "testdata/differential/initializers_only.sol:Init",
+                "label": "y",
+                "offset": 0,
+                "slot": "1",
+                "type": "t_uint256"
+              }
+            ],
+            "types": {
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/initializers_only.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/initializers_only.sol",
+          "exportedSymbols": {
+            "Init": [
+              10
+            ]
+          },
+          "id": 11,
+          "license": "UNLICENSED",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "^",
+                "0.8",
+                ".0"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "39:23:0"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "Init",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 10,
+              "linearizedBaseContracts": [
+                10
+              ],
+              "name": "Init",
+              "nameLocation": "150:4:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": false,
+                  "id": 4,
+                  "mutability": "mutable",
+                  "name": "x",
+                  "nameLocation": "169:1:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 10,
+                  "src": "161:13:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 2,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "161:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": {
+                    "hexValue": "35",
+                    "id": 3,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": true,
+                    "kind": "number",
+                    "lValueRequested": false,
+                    "nodeType": "Literal",
+                    "src": "173:1:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_rational_5_by_1",
+                      "typeString": "int_const 5"
+                    },
+                    "value": "5"
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 9,
+                  "mutability": "mutable",
+                  "name": "y",
+                  "nameLocation": "188:1:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 10,
+                  "src": "180:17:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 5,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "180:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": {
+                    "commonType": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    },
+                    "id": 8,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "lValueRequested": false,
+                    "leftExpression": {
+                      "id": 6,
+                      "name": "x",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 4,
+                      "src": "192:1:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    },
+                    "nodeType": "BinaryOperation",
+                    "operator": "+",
+                    "rightExpression": {
+                      "hexValue": "31",
+                      "id": 7,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": true,
+                      "kind": "number",
+                      "lValueRequested": false,
+                      "nodeType": "Literal",
+                      "src": "196:1:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_rational_1_by_1",
+                        "typeString": "int_const 1"
+                      },
+                      "value": "1"
+                    },
+                    "src": "192:5:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "scope": 11,
+              "src": "141:59:0",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "39:162:0"
+        },
+        "id": 0
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}

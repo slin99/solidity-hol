@@ -507,6 +507,37 @@
         {"name": "fallback_override_runs", "calldata": "0xdeadbeef", "expect": {"return": []}, "final_storage": {"0": 200}},
         {"name": "call_reaches_implementation_through_redeclaration", "function": "viaH", "args": [], "expect": {"return": [7]}}
       ]
+    },
+    {
+      "name": "constructors",
+      "source": "testdata/differential/constructors.sol",
+      "contract": "Top",
+      "artifact": "testdata/differential/expected/constructors.json",
+      "cases": [
+        {"name": "creation_runs_arguments_then_initializers_base_first", "deploy": true, "args": [5], "expect": {"return": []}, "final_storage": {"0": 8, "1": 30, "2": 18, "3": 500, "4": 11, "5": 13, "6": 7000}},
+        {"name": "creation_panics_in_base_constructor", "deploy": true, "args": ["115792089237316195423570985008687907853269984665640564039457584007913129639935"], "expect": {"panic": "0x11"}},
+        {"name": "payable_creation_keeps_value", "deploy": true, "args": [5], "value": 3, "expect": {"return": []}, "final_storage": {"0": 8, "1": 30, "2": 18, "3": 500, "4": 11, "5": 13, "6": 7000, "7": 3}},
+        {"name": "creation_with_short_arguments_reverts", "deploy": true, "calldata": "0x05", "expect": {"revert": "0x"}}
+      ]
+    },
+    {
+      "name": "inherited_payable",
+      "source": "testdata/differential/inherited_payable.sol",
+      "contract": "Plain",
+      "artifact": "testdata/differential/expected/inherited_payable.json",
+      "cases": [
+        {"name": "creation_runs_base_constructor", "deploy": true, "args": [], "expect": {"return": []}, "final_storage": {"0": 1}},
+        {"name": "creation_with_value_reverts_despite_payable_base", "deploy": true, "args": [], "value": 1, "expect": {"revert": "0x"}}
+      ]
+    },
+    {
+      "name": "initializers_only",
+      "source": "testdata/differential/initializers_only.sol",
+      "contract": "Init",
+      "artifact": "testdata/differential/expected/initializers_only.json",
+      "cases": [
+        {"name": "creation_runs_initializers", "deploy": true, "args": [], "expect": {"return": []}, "final_storage": {"0": 5, "1": 6}}
+      ]
     }
   ]
 }

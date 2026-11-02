@@ -16,6 +16,9 @@
  * call runs the most derived override of the function it names (call_table);
  * the functions no other overrides are elaborated, and the external and
  * public ones among them, receive and fallback form the dispatch table.
+ * State-variable initializers, constructors and base-constructor arguments
+ * (inheritance specifiers or constructor modifiers) form one creation
+ * procedure.
  * Other string runtime operations and unsupported forms are rejected (NONE).
  *
  * Schedules, read from the compiler's IR for this profile (the ir output in
@@ -31,7 +34,10 @@
  *  - a tuple assignment evaluates its right-hand side into fresh values, then
  *    writes the targets from right to left;
  *  - return values and declared variables are converted as the source types
- *    require.
+ *    require;
+ *  - creation evaluates the base-constructor arguments of each contract, most
+ *    derived first, then, base first, runs each contract's state-variable
+ *    initializers in declaration order and then its constructor body.
  *
  * Loops: a while condition is elaborated into the loop prelude, which reruns
  * on every iteration. for (init; c; next) body runs init once, then a loop
@@ -1058,8 +1064,101 @@ Definition special_function_def:
     else special_function kind fs)
 End
 
+(* Creation: the order of the compiler's IR for this profile (its constructor
+ * functions in testdata/differential/expected/constructors.json). First the
+ * base constructor arguments, in evaluation order, each list with the
+ * parameters of the giving base's constructor in scope, define the
+ * parameters of the constructor they are given to. Then, base first, each
+ * base's state variable initializers in declaration order, then its
+ * constructor.
+ *)
+Definition define_parameters_def:
+  (define_parameters ((x, ty) :: ps) (a :: as) =
+    DefineStmt (AstId x) (SingleType ty) (ConvertOperation ty a) ::
+    define_parameters ps as) ∧
+  (define_parameters _ _ = [])
+End
+
+Definition elab_base_arguments_def:
+  (elab_base_arguments ctx fs n [] = SOME ([], n)) ∧
+  (elab_base_arguments ctx fs n ((x, b, args) :: rest) =
+    case (constructor_parameters x fs, constructor_parameters b fs) of
+      (SOME xps, SOME bps) =>
+        (case elab_args (ctx with variables := xps) n (MAP SND bps) args of
+           SOME ((ss, atoms), n1) =>
+             (case elab_base_arguments ctx fs n1 rest of
+                SOME (ss', n2) => SOME (ss ++ define_parameters bps atoms ++ ss', n2)
+              | NONE => NONE)
+         | NONE => NONE)
+    | _ => NONE)
+End
+
+(* The initializers of the state variables base x declares. *)
+Definition elab_initializers_def:
+  (elab_initializers ctx n x inits [] = SOME ([], n)) ∧
+  (elab_initializers ctx n x inits ((v : src_variable) :: vs) =
+    case (if v.var_scope = x then ALOOKUP inits v.var_info.node_id else NONE) of
+      NONE => elab_initializers ctx n x inits vs
+    | SOME e =>
+        case elab_expr ctx n
+               (SrcAssignment v.var_info "="
+                  (SrcIdentifier v.var_info v.var_name v.var_info.node_id
+                     v.var_type_id) e v.var_type_id) of
+          SOME ((ss, _, _), n1) =>
+            (case elab_initializers ctx n1 x inits vs of
+               SOME (ss', n2) => SOME (ss ++ ss', n2)
+             | NONE => NONE)
+        | NONE => NONE)
+End
+
+(* Bases, base first. *)
+Definition elab_constructors_def:
+  (elab_constructors ctx (c : src_contract) n [] = SOME ([], n)) ∧
+  (elab_constructors ctx c n (x :: xs) =
+    case elab_initializers ctx n x c.contract_initializers
+           c.contract_state_variables of
+      NONE => NONE
+    | SOME (ss, n1) =>
+        let call =
+          case contract_constructor x c.contract_functions of
+            NONE => []
+          | SOME f =>
+              [DefineStmt (AstId n1) (call_result_type [])
+                 (InternalCallOperation (AstId f.fn_info.node_id)
+                    (MAP (λv. BoundAtom (AstId v.var_info.node_id))
+                       f.fn_parameters))] in
+        case elab_constructors ctx c (n1 + 1) xs of
+          SOME (ss', n2) => SOME (ss ++ call ++ ss', n2)
+        | NONE => NONE)
+End
+
+(* The creation procedure takes the parameters of the contract's own
+ * constructor. *)
+Definition elab_creation_def:
+  elab_creation ctx (c : src_contract) n =
+    case (constructor_parameters c.contract_info.node_id c.contract_functions,
+          elab_base_arguments ctx c.contract_functions n
+            c.contract_base_arguments) of
+      (SOME ps, SOME (sa, n1)) =>
+        (case elab_constructors ctx c (n1 + 1) (REVERSE c.contract_bases) of
+           SOME (sc, n2) =>
+             SOME (<| procedure_id := AstId n1; parameters := core_bindings ps;
+                      return_bindings := []; body := sa ++ sc |>, n2)
+         | NONE => NONE)
+    | _ => NONE
+End
+
+(* Whether the creation transaction may carry value. *)
+Definition creation_payable_def:
+  creation_payable (c : src_contract) ⇔
+    case contract_constructor c.contract_info.node_id c.contract_functions of
+      SOME f => f.fn_mutability = "payable"
+    | NONE => F
+End
+
 (* Raw lowering of a valid unit of one contract, with fresh ids above its
- * node ids; the first live function is the entry procedure. A SOME result is
+ * node ids; the first live function is the entry procedure, or the creation
+ * procedure when there is none. A SOME result is
  * not yet a checked program: consumers must establish wf_core_program
  * through solidityPrepareLib before execution.
  *)
@@ -1079,16 +1178,30 @@ Definition elaborate_unit_def:
                      (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
                      (call_table c.contract_functions)
                      state (MAX_LIST (unit_ids u) + 1) fs) of
-               (SOME decls, SOME layouts, SOME cvs, SOME (p :: ps, _)) =>
-                 SOME <| procedures := p :: ps; state_variables := cvs;
+               (SOME decls, SOME layouts, SOME cvs, SOME (ps, n)) =>
+                 (case elab_creation
+                         <| functions := call_table c.contract_functions;
+                            structs := c.contract_structs;
+                            events := MAP (λe. (e.event_info.node_id, e))
+                                        c.contract_events;
+                            variables := []; state := state; returns := [];
+                            mode := CheckedArithmetic |> c n of
+                    NONE => NONE
+                  | SOME (creation, _) =>
+                 SOME <| procedures := ps ++ [creation]; state_variables := cvs;
                          struct_layouts := layouts; type_declarations := decls;
-                         entry_procedure := p.procedure_id;
+                         entry_procedure :=
+                           (case ps of
+                              p :: _ => p.procedure_id
+                            | [] => creation.procedure_id);
                          external_functions :=
                            external_functions fs;
                          receive_procedure := OPTION_MAP FST
                            (special_function "receive" fs);
                          fallback_procedure :=
-                           special_function "fallback" fs |>
+                           special_function "fallback" fs;
+                         creation_procedure :=
+                           SOME (creation.procedure_id, creation_payable c) |>)
              | _ => NONE)
     | _ => NONE
 End
@@ -1227,4 +1340,20 @@ val () = cv_auto_trans elab_type_declarations_def;
 val () = cv_auto_trans elab_struct_layouts_def;
 val () = cv_auto_trans external_functions_def;
 val () = cv_auto_trans special_function_def;
+val () = cv_auto_trans define_parameters_def;
+val elab_base_arguments_pre_def =
+  cv_auto_trans_pre "elab_base_arguments_pre" elab_base_arguments_def;
+
+Theorem elab_base_arguments_pre[cv_pre,local]:
+  ∀ctx fs n v. elab_base_arguments_pre ctx fs n v
+Proof
+  ho_match_mp_tac elab_base_arguments_ind >> rw[] >>
+  simp[Once elab_base_arguments_pre_def] >> rw[] >>
+  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"]
+QED
+
+val () = cv_auto_trans elab_initializers_def;
+val () = cv_auto_trans elab_constructors_def;
+val () = cv_auto_trans elab_creation_def;
+val () = cv_auto_trans creation_payable_def;
 val () = cv_auto_trans elaborate_unit_def;

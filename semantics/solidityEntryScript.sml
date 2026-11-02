@@ -71,6 +71,23 @@ Definition dispatch_def:
         | _ => DispatchRevert
 End
 
+(* One frame running procedure p on its arguments. *)
+Definition run_entry_def:
+  run_entry fuel env p args (fr : source_frame) (w : source_world) =
+    let st = <| world := w; frame := fr; scopes := []; heap := FEMPTY;
+                next_heap_id := 0; targets := FEMPTY |> in
+    let r = invoke_source fuel env p.procedure_id args st [] in
+    case finish_source_frame w r.state.world r.completion of
+      FrameSuccess vs w' =>
+        (case encoded_values (MAP SND p.return_bindings) vs of
+           SOME data => ContractReturned data w'
+         | NONE => ContractInvalid "unencodable return values")
+    | FrameRevert data w' => ContractReverted data w'
+    | FramePanic code w' => ContractReverted (panic_data code) w'
+    | FrameInvalid reason => ContractInvalid reason
+    | FrameResourceLimit => ContractOutOfFuel
+End
+
 Definition call_contract_def:
   call_contract fuel (prog : core_program) (fr : source_frame)
                 (w : source_world) =
@@ -78,29 +95,42 @@ Definition call_contract_def:
     case dispatch env prog fr of
       DispatchRevert => ContractReverted [] w
     | DispatchInvalid reason => ContractInvalid reason
-    | DispatchCall p args =>
-        let st = <| world := w; frame := fr; scopes := []; heap := FEMPTY;
-                    next_heap_id := 0; targets := FEMPTY |> in
-        let r = invoke_source fuel env p.procedure_id args st [] in
-        case finish_source_frame w r.state.world r.completion of
-          FrameSuccess vs w' =>
-            (case encoded_values (MAP SND p.return_bindings) vs of
-               SOME data => ContractReturned data w'
-             | NONE => ContractInvalid "unencodable return values")
-        | FrameRevert data w' => ContractReverted data w'
-        | FramePanic code w' => ContractReverted (panic_data code) w'
-        | FrameInvalid reason => ContractInvalid reason
-        | FrameResourceLimit => ContractOutOfFuel
+    | DispatchCall p args => run_entry fuel env p args fr w
+End
+
+(* The creation transaction's frame of a contract, from a world in which its
+ * account exists with no storage and holds the value sent. The constructor's
+ * arguments are the frame's calldata, without selector; a creation sent
+ * value reverts unless the constructor is payable, and arguments the decoder
+ * rejects revert. A successful creation returns no data: the deployed code
+ * is the compiler's.
+ *)
+Definition deploy_contract_def:
+  deploy_contract fuel (prog : core_program) (fr : source_frame)
+                  (w : source_world) =
+    let env = core_program_environment prog in
+    case prog.creation_procedure of
+      NONE => ContractInvalid "no creation procedure"
+    | SOME (f, payable) =>
+        if ¬payable ∧ fr.call_value ≠ 0 then ContractReverted [] w else
+        case lookup_procedure env f of
+          NONE => ContractInvalid "unknown procedure"
+        | SOME p =>
+            case decode_arguments (MAP SND p.parameters) fr.call_data of
+              NONE => ContractReverted [] w
+            | SOME args => run_entry fuel env p args fr w
 End
 
 Theorem call_contract_revert_restores_world:
   call_contract fuel prog fr w = ContractReverted data w' ⇒ w' = w
 Proof
-  rw[call_contract_def, solidityStateTheory.finish_source_frame_def,
-     AllCaseEqs()] >> simp[]
+  rw[call_contract_def, run_entry_def,
+     solidityStateTheory.finish_source_frame_def, AllCaseEqs()] >> simp[]
 QED
 
 val () = cv_auto_trans lookup_external_def;
 val () = cv_auto_trans dispatch_procedure_def;
 val () = cv_auto_trans dispatch_def;
+val () = cv_auto_trans run_entry_def;
 val () = cv_auto_trans call_contract_def;
+val () = cv_auto_trans deploy_contract_def;

@@ -198,7 +198,8 @@ End
 
 (* Dispatch: external functions by selector; empty calldata reaches receive,
  * and any other unmatched calldata the fallback, given with whether it is
- * payable. *)
+ * payable. Creation runs the creation procedure on the constructor's
+ * arguments, given with whether it accepts value. *)
 Datatype:
   core_program = <|
     procedures : core_procedure list;
@@ -208,7 +209,8 @@ Datatype:
     entry_procedure : ast_id;
     external_functions : core_external_function list;
     receive_procedure : ast_id option;
-    fallback_procedure : (ast_id # bool) option
+    fallback_procedure : (ast_id # bool) option;
+    creation_procedure : (ast_id # bool) option
   |>
 End
 

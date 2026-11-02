@@ -201,7 +201,7 @@ Definition test_program_def:
     state_variables := [];
     entry_procedure := AstId 6;
     external_functions := []; receive_procedure := NONE;
-    fallback_procedure := NONE
+    fallback_procedure := NONE; creation_procedure := NONE
   |>
 End
 
@@ -886,7 +886,7 @@ Definition struct_layout_environment_def:
          (MAP (λv. (v.state_id, v.state_type)) s.struct_fields))) layouts;
        entry_procedure := AstId 0;
        external_functions := []; receive_procedure := NONE;
-       fallback_procedure := NONE |>
+       fallback_procedure := NONE; creation_procedure := NONE |>
 End
 
 Theorem packed_struct_layout_checked:

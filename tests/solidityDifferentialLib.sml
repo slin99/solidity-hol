@@ -141,14 +141,26 @@ fun word_term bits i =
     wordsSyntax.mk_wordi (Arbnum.fromString (IntInf.toString i), bits)
   else fail ("not a " ^ Int.toString bits ^ "-bit word: " ^ IntInf.toString i)
 
-(* Calldata as 0x hex, or a named function and its arguments. *)
-fun call_input c =
-  case (JSONUtil.findField c "calldata", JSONUtil.findField c "function") of
-    (SOME (JSON.STRING s), NONE) => con "RawCall" [bytes_term (hex_bytes s)]
-  | (NONE, SOME (JSON.STRING f)) =>
+(* Calldata as 0x hex, a named function and its arguments, or a creation
+ * ("deploy": true) from the suite's initcode with the constructor's arguments
+ * or, as calldata, their raw encoding. *)
+fun call_input initcode c =
+  case (JSONUtil.findField c "calldata", JSONUtil.findField c "function",
+        JSONUtil.findField c "deploy") of
+    (SOME (JSON.STRING s), NONE, NONE) => con "RawCall" [bytes_term (hex_bytes s)]
+  | (NONE, SOME (JSON.STRING f), NONE) =>
       con "NamedCall"
         [stringSyntax.fromMLstring f, arguments (array_field c "args")]
-  | _ => fail "a case has either calldata or a function and its arguments"
+  | (NONE, NONE, SOME (JSON.BOOL true)) =>
+      con "Deploy" [initcode (),
+                    sumSyntax.mk_inl (arguments (array_field c "args"),
+                                      listSyntax.mk_list_type byte_ty)]
+  | (SOME (JSON.STRING s), NONE, SOME (JSON.BOOL true)) =>
+      con "Deploy" [initcode (),
+                    sumSyntax.mk_inr (bytes_term (hex_bytes s),
+                                      listSyntax.mk_list_type argument_ty)]
+  | _ => fail "a case has either calldata, a function and its arguments, \
+              \or deploy and the constructor's arguments or calldata"
 
 (* Logs as a list of {"logger": address, "topics": [...], "data": "0x..."},
  * the logger the contract by default. *)
@@ -248,15 +260,16 @@ fun code_definition name hex =
     lhs (concl def)
   end
 
-fun code_constant prefix artifact source contract =
+(* The deployed code ("deployedBytecode") or initcode ("bytecode"). *)
+fun code_constant name kind artifact source contract =
   let
     val hex = JSONUtil.asString (JSONUtil.get (artifact,
       map JSONUtil.SEL ["output", "contracts", source, contract, "evm",
-                        "deployedBytecode", "object"]))
+                        kind, "object"]))
       handle e as JSONUtil.JSONError _ => fail (JSONUtil.exnMessage e)
            | e as JSONUtil.FieldNotFound _ => fail (JSONUtil.exnMessage e)
   in
-    code_definition (prefix ^ "_code") hex
+    code_definition name hex
   end
 
 (* The peer's code, from its own artifact; no code without a peer. *)
@@ -281,7 +294,7 @@ fun is_con name tm =
  * what both the bytecode run and the Yul run are given. peer is the peer
  * contract's code, empty for a suite that declares no peer.
  *)
-fun case_term peer c =
+fun case_term peer input c =
   TypeBase.mk_record
     (mk_thy_type {Thy = "solidityDifferential", Tyop = "differential_case",
                   Args = []},
@@ -293,7 +306,7 @@ fun case_term peer c =
        num_term (case JSONUtil.findField c "value" of
                    SOME v => integer v
                  | NONE => 0)),
-      ("case_input", call_input c),
+      ("case_input", input),
       ("case_storage", storage (JSONUtil.findField c "storage")),
       ("case_peer_code", peer),
       ("case_peer_storage", storage (JSONUtil.findField c "peer_storage")),
@@ -308,14 +321,15 @@ fun case_term peer c =
 fun case_fuel c fuel =
   case JSONUtil.findField c "fuel" of SOME v => integer v | NONE => fuel
 
-fun run_case {suite, code, peer, unit, program, fuel} c =
+fun run_case {suite, code, initcode, peer, unit, program, fuel} c =
   let
     val case_name = name_field c "name"
     val theorem = suite ^ "_" ^ case_name
     val fuel = case_fuel c fuel
-    val input = call_input c
+    val input = call_input initcode c
+
     val expect = expectation (field c "expect")
-    val case_tm = case_term peer c
+    val case_tm = case_term peer input c
     val verdict_tm =
       list_mk_comb (prim_mk_const {Thy = "solidityDifferential",
                                    Name = "differential_verdict"},
@@ -440,15 +454,25 @@ fun run_suite root fuel s =
         {root = root, path = artifact, source = source}
       val () = check_unit_contracts (#prepared checked) contract
       val (unit, program) = prepared_constants prefix (#prepared checked)
-      val code = code_constant prefix (#artifact checked) source contract
+      val code = code_constant (prefix ^ "_code") "deployedBytecode"
+                   (#artifact checked) source contract
+      (* Defined once, by the suite's first creation case. *)
+      val initcode_constant = ref NONE
+      fun initcode () =
+        case !initcode_constant of
+          SOME tm => tm
+        | NONE =>
+            let val tm = code_constant (prefix ^ "_initcode") "bytecode"
+                           (#artifact checked) source contract
+            in initcode_constant := SOME tm; tm end
       val peer = peer_code root prefix s
       val () = emit [("kind", json_string "suite"),
                      ("suite", json_string suite),
                      ("status", json_string "ok"),
                      ("theorems", json_array (map json_string
                        [prefix ^ "_elaborates", prefix ^ "_program_wf"]))]
-      val env = {suite = suite, code = code, peer = peer, unit = unit,
-                 program = program, fuel = fuel}
+      val env = {suite = suite, code = code, initcode = initcode, peer = peer,
+                 unit = unit, program = program, fuel = fuel}
     in
       List.foldl (fn (c, ok) => run_case env c andalso ok) true cases
     end
@@ -658,9 +682,10 @@ fun run_yul_stage env (stage_tag, json_tag, ycode) =
 
 fun run_case_three_way suite_name env c =
   let
+    val input = call_input (fn () => fail "Yul deployment is unsupported") c
     val case_env =
       {suite = suite_name, case_name = name_field c "name",
-       case_tm = case_term (#peer env) c, input = call_input c,
+       case_tm = case_term (#peer env) input c, input = input,
        expect = expectation (field c "expect"),
        unit = #unit env, code = #code env, program = #program env}
   in
@@ -686,7 +711,8 @@ fun run_suite_three_way root yul_root s =
       {root = root, path = artifact, source = source}
     val () = check_unit_contracts (#prepared checked) contract
     val (unit, program) = prepared_constants prefix (#prepared checked)
-    val code = code_constant prefix (#artifact checked) source contract
+    val code = code_constant (prefix ^ "_code") "deployedBytecode"
+                 (#artifact checked) source contract
     val peer = peer_code root prefix s
     val stages = List.mapPartial (yul_stage_code prefix suite source contract)
                    (yul_stages yul_root suite)

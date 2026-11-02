@@ -73,6 +73,7 @@ Definition builtin_name_def:
   builtin_name YPop = "pop" ∧
   builtin_name YReturn = "return" ∧
   builtin_name YRevert = "revert" ∧
+  builtin_name YCodeSize = "codesize" ∧
   builtin_name YCodeCopy = "codecopy" ∧
   builtin_name YDataSize = "datasize" ∧
   builtin_name YDataOffset = "dataoffset"
@@ -138,6 +139,7 @@ Definition builtin_of_name_def:
     else if name = "pop" then SOME YPop
     else if name = "return" then SOME YReturn
     else if name = "revert" then SOME YRevert
+    else if name = "codesize" then SOME YCodeSize
     else if name = "codecopy" then SOME YCodeCopy
     else if name = "datasize" then SOME YDataSize
     else if name = "dataoffset" then SOME YDataOffset
@@ -165,7 +167,8 @@ Datatype:
                        frame's memory size *)
   | EffectHalt      (* ends the frame, returning or reverting data from
                        memory *)
-  | EffectObject    (* the creation object's data and subobjects *)
+  | EffectObject    (* the running code, or the object's data and
+                       subobjects *)
 End
 
 Definition builtin_effect_def:
@@ -227,6 +230,7 @@ Definition builtin_effect_def:
   builtin_effect YPop = EffectPure ∧
   builtin_effect YReturn = EffectHalt ∧
   builtin_effect YRevert = EffectHalt ∧
+  builtin_effect YCodeSize = EffectObject ∧
   builtin_effect YCodeCopy = EffectObject ∧
   builtin_effect YDataSize = EffectObject ∧
   builtin_effect YDataOffset = EffectObject
@@ -238,12 +242,12 @@ Proof
   Cases_on ‘b’ >> EVAL_TAC
 QED
 
-(* The three object-level builtins are the only ones a runtime frame cannot
- * reach, and the evaluator rejects them.
+(* The four object-level builtins read the running code or the object's
+ * layout, which the evaluator does not model, and it rejects them.
  *)
 Theorem builtin_effect_object:
   ∀b. builtin_effect b = EffectObject ⇔
-      b = YCodeCopy ∨ b = YDataSize ∨ b = YDataOffset
+      b = YCodeSize ∨ b = YCodeCopy ∨ b = YDataSize ∨ b = YDataOffset
 Proof
   Cases_on ‘b’ >> EVAL_TAC
 QED

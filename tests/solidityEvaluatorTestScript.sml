@@ -191,7 +191,7 @@ Definition test_program_def:
     state_variables := [];
     entry_procedure := AstId 1;
     external_functions := []; receive_procedure := NONE;
-    fallback_procedure := NONE
+    fallback_procedure := NONE; creation_procedure := NONE
   |>
 End
 
@@ -305,7 +305,7 @@ Definition storage_program_def:
     state_variables := vs;
     entry_procedure := AstId 20;
     external_functions := []; receive_procedure := NONE;
-    fallback_procedure := NONE
+    fallback_procedure := NONE; creation_procedure := NONE
   |>
 End
 
