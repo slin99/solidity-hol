@@ -45,8 +45,9 @@
  * that leaves the model ends in YulInvalid rather than in a guess.
  *
  * Gas is not charged, so gas() reports the whole budget the frame was given
- * and a call's own gas argument is not read: solc always writes gas() there,
- * and the callee is given the frame's budget instead. delegatecall is not
+ * and never falls, and a call hands its own gas argument on to the callee,
+ * capped at that budget: solc writes gas() there unless the source names a
+ * limit. delegatecall is not
  * implemented and the dialect does not name it, so importing Yul that uses it
  * fails closed. docs/yul-call-design.md says why, and what the model does not
  * do.
@@ -295,8 +296,9 @@ End
  * one-frame state a message call needs (semantics/externalCallScript.sml).
  * The caller is this frame, the callee the builtin's address argument
  * truncated to 160 bits, the value moved before the callee runs, and the
- * callee's own budget this frame's: gas is not charged here, so there is no
- * other number to give it. The callee's code is the account's -- a delegated
+ * callee's own budget the builtin's gas argument capped at this frame's: gas
+ * is not charged here, so the frame's budget is the most it can hand on.
+ * The callee's code is the account's -- a delegated
  * account runs its delegate's, as the EVM's CALL does. The Yul frame carries
  * no transient storage, so the callee starts with none.
  *
@@ -309,9 +311,10 @@ End
  * as they were beyond that.
  *
  * run_external_call answers NONE where the call leaves the model: a recipient
- * balance that would overflow, or a callee that ends with accounts pending
- * deletion. That is an invalid outcome, not a failed call, since the model
- * cannot say whether it would have succeeded.
+ * balance overflow, a run outside the domain (one that ends in no frame, in
+ * more than one, or in a vfm_abort), or a callee that ends with accounts
+ * pending deletion. That is an invalid outcome, not a failed call, since the
+ * model cannot say whether it would have succeeded.
  *)
 (* The words are pinned rather than left to inference: every one of the sizes
  * reaches the machine only through w2n, which says nothing about its width, so
@@ -320,12 +323,13 @@ End
  * dispatch is a definition the kernel will not accept.
  *)
 Definition yul_call_def:
-  yul_call (m : yul_machine) (static : bool) (callee : bytes32)
-           (value : bytes32) (input : bytes32) (input_size : bytes32)
-           (output : bytes32) (output_size : bytes32) =
+  yul_call (m : yul_machine) (static : bool) (gas : bytes32)
+           (callee : bytes32) (value : bytes32) (input : bytes32)
+           (input_size : bytes32) (output : bytes32) (output_size : bytes32) =
     let (m1, args) = yul_memory_region m (w2n input) (w2n input_size) in
       case run_external_call m1.self_address (w2w callee) args (w2n value)
-             static m1.gas_limit m1.accounts empty_transient_storage
+             static (MIN (w2n gas) m1.gas_limit) m1.accounts
+             empty_transient_storage
              m1.transaction_parameters of
         NONE => EvalAbrupt (YulInvalid "call outside the model") m1
       | SOME outcome =>
@@ -463,10 +467,10 @@ Definition eval_yul_builtin_def:
     | (YReturnDataCopy, [dst; src; sz]) => yul_return_data_copy m dst src sz
     (* call(gas, address, value, args, argsSize, ret, retSize) *)
     | (YCall, [gl; ad; v; inp; insz; outp; outsz]) =>
-        yul_call m F ad v inp insz outp outsz
+        yul_call m F gl ad v inp insz outp outsz
     (* staticcall(gas, address, args, argsSize, ret, retSize) *)
     | (YStaticCall, [gl; ad; inp; insz; outp; outsz]) =>
-        yul_call m T ad 0w inp insz outp outsz
+        yul_call m T gl ad 0w inp insz outp outsz
     | (YStop, []) => EvalAbrupt (YulReturn []) m
     | (YReturn, [p; s]) =>
         let (m', bs) = yul_memory_region m (w2n p) (w2n s) in

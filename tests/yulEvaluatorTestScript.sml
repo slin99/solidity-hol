@@ -822,7 +822,8 @@ Proof
 QED
 
 (* The frame the call family runs on. The caller runs for 0x1234 and has a gas
- * budget of its own; three callees have code -- 0x77 returns one word, 0x78
+ * budget of its own, big enough for a callee that writes a slot; three callees
+ * have code -- 0x77 returns one word, 0x78
  * writes a slot, 0x7a reverts with one word -- 0x79 has no account at all, and
  * 0x7b holds a balance no value can be added to without overflowing a word,
  * which is what puts a call outside the model.
@@ -848,7 +849,7 @@ Definition yul_call_machine_def:
        logs := []; self_address := 0x1234w; caller_address := 0x5678w;
        call_value := 0w; call_data := []; return_data := [0xaaw; 0xbbw; 0xccw];
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
-       memory_size := 0; gas_limit := 12345; scopes := [];
+       memory_size := 0; gas_limit := 100000; scopes := [];
        transaction_parameters := yul_test_tx_params |>
 End
 
@@ -880,6 +881,24 @@ Definition call_builtin_code_def:
 End
 
 val () = cv_auto_trans call_builtin_code_def;
+
+(* let ok := call(gas(), 0x78, 0, 0, 0, 0, 0)
+ * mstore(0, ok) return(0, 32)
+ * The callee writes a slot and returns, which only a static frame refuses: the
+ * flag is 1 and the caller's world is the callee's, with the write in it.
+ *)
+Definition writing_call_builtin_code_def:
+  writing_call_builtin_code =
+    [YulLet ["ok"] (SOME (YulBuiltin YCall
+       [YulBuiltin YGas []; YulLit (LitNumber 0x78w); YulLit (LitNumber 0w);
+        YulLit (LitNumber 0w); YulLit (LitNumber 0w);
+        YulLit (LitNumber 0w); YulLit (LitNumber 0w)]));
+     YulExprStmt (YulBuiltin YMStore [YulLit (LitNumber 0w); YulName "ok"]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 0w); YulLit (LitNumber 32w)])]
+End
+
+val () = cv_auto_trans writing_call_builtin_code_def;
 
 (* let ok := call(gas(), 0x7a, 0, 0, 0, 0, 0)
  * mstore(0, ok) returndatacopy(32, 0, 32) return(0, 64)
@@ -1033,6 +1052,23 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* A callee that writes a slot runs and its write survives, which is what the
+ * two tests above this one cannot show: the revert rolls it back, and the
+ * static call refuses it before it runs.
+ *)
+Theorem a_non_static_call_keeps_the_callees_writes:
+  (run_call_frame 20 writing_call_builtin_code).completion =
+  YulReturn (word_to_bytes_be (1w : bytes32)) ∧
+  (lookup_account 0x78w
+     (run_call_frame 20 writing_call_builtin_code).machine.accounts).storage =
+    update_storage 0w 1w empty_storage ∧
+  (lookup_account 0x1234w
+     (run_call_frame 20 writing_call_builtin_code).machine.accounts).storage =
+    empty_storage
+Proof
+  CONV_TAC cv_eval
+QED
+
 Theorem extcodesize_is_the_accounts_code_length:
   (run_call_frame 20 extcodesize_code).completion =
   YulReturn (word_to_bytes_be (10w : bytes32) ++
@@ -1059,7 +1095,7 @@ QED
 
 Theorem gas_reports_the_frames_budget:
   (run_call_frame 20 gas_code).completion =
-  YulReturn (word_to_bytes_be (12345w : bytes32))
+  YulReturn (word_to_bytes_be (100000w : bytes32))
 Proof
   CONV_TAC cv_eval
 QED

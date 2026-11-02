@@ -37,9 +37,9 @@ Libs
 (* The frame the corpus's cases run in: the contract account at
  * contract_address holding the case's initial storage, its deployed bytecode
  * and the case's value, the case's sender funded for it, the peer contract the
- * case's suite declares (whose code is bytecode the Yul side never runs: a
- * case that reaches the peer reaches it through a call builtin, and a callee
- * is always the account's bytecode, run by Verifereum), the case's calldata
+ * case's suite declares (reached through a call builtin, whose callee is
+ * always an account's bytecode, run by Verifereum, never the imported Yul),
+ * the case's calldata
  * and call value, and the
  * transaction and block the bytecode run is given -- its own frame's
  * transaction parameters, so that origin, gasprice, chainid and the block
@@ -110,8 +110,8 @@ Definition yul_case_execution_def:
 End
 
 Definition yul_observation_def:
-  yul_observation evm_code code u c fuel slots =
-    project_observation slots (yul_case_execution evm_code code u c fuel)
+  yul_observation evm_code ycode u c fuel slots =
+    project_observation slots (yul_case_execution evm_code ycode u c fuel)
 End
 
 (* The verdict on one case at one stage, as differential_verdict decides it

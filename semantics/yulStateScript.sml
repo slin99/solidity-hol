@@ -33,8 +33,9 @@
  * timestamp(), coinbase(), basefee() and gaslimit().
  *
  * Gas is not modelled, but a frame still has a budget: gas_limit is what the
- * frame's caller gave it, gas() reads it, and a message call hands it on to
- * the callee.  Nothing in the frame spends any of it, so it never falls; the
+ * frame's caller gave it, gas() reads it, and a message call hands the call's
+ * own gas argument on to the callee, capped at this budget.  Nothing in the
+ * frame spends any of it, so it never falls; the
  * callee's own gas is the callee's frame's, which is Verifereum's.
  *
  * return_data is the frame's buffer for the return data of its last message

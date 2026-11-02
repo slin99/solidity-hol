@@ -46,7 +46,7 @@ family:
 | `memory`, `memory_size` | the call's input region, and its output region |
 | `transaction_parameters` | inherited by the callee's frame, so `origin`, `chainid` and the block builtins agree |
 | `return_data` | what `returndatasize` and `returndatacopy` read |
-| `gas_limit` | what `gas` reports, and the budget every callee is given |
+| `gas_limit` | what `gas` reports, and the most a call here can hand on |
 
 `return_data` and `gas_limit` are inputs to the frame like `call_data`: the
 frame's caller supplies them, and nothing in the frame writes `gas_limit`.
@@ -58,11 +58,13 @@ frame's caller supplies them, and nothing in the frame writes `gas_limit`.
 the call to `run_external_call`:
 
 ```
-run_external_call m.self_address callee calldata value static m.gas_limit
-  m.accounts empty_transient_storage m.transaction_parameters
+run_external_call m.self_address callee calldata value static
+  (min gas m.gas_limit) m.accounts empty_transient_storage
+  m.transaction_parameters
 ```
 
-with `callee` the builtin's address argument, `calldata` the bytes the input
+with `callee` the builtin's address argument, `gas` its gas argument capped at
+the frame's budget, `calldata` the bytes the input
 region now holds, and `value` the call's value argument (zero for
 `staticcall`, which has none). Everything after that is Verifereum's: a fresh
 one-frame state whose original accounts are the world after the value
@@ -81,10 +83,13 @@ The caller's world follows the same rule the EVM's does:
 | the callee halted exceptionally | the caller's, unchanged | 0 | empty |
 
 `run_external_call` answers `NONE` where the call leaves the model — a
-recipient-balance overflow, or a callee that ends with accounts pending
-deletion. The builtin then answers `YulInvalid "call outside the model"`, which
+recipient-balance overflow, a run outside the domain (one that ends in no
+frame, in more than one, or in a `vfm_abort`), or a callee that ends with
+accounts pending deletion. The builtin then answers
+`YulInvalid "call outside the model"`, which
 the corpus reports as a diagnostic. A call the model cannot make is never
-guessed at.
+guessed at. A caller that cannot pay is not one of these: it is a failed call,
+a 0 with no return data.
 
 The output region is written after the world update: `min(out_size,
 returndatasize)` bytes, the same `TAKE r.size output` Verifereum's
@@ -145,8 +150,10 @@ until something does.
 
 - **Gas is not charged.** No step in the Yul evaluator costs gas, so
   `gas_limit` never falls and `gas()` reports the frame's whole budget. A
-  call's own gas argument is therefore not read: solc always writes `gas()`
-  there, and the callee is given the frame's `gas_limit` instead. Since the
+  call's own gas argument is what the callee gets, capped at the frame's
+  budget, since the frame cannot hand on more than it holds; solc writes
+  `gas()` there unless the source names a limit, in which case the limit is
+  what the callee runs with. Since the
   callee runs as bytecode, *its* gas is accounted for by Verifereum, and a
   callee that needs more than the budget fails here as it would on chain.
 - **Transient storage is not carried.** A Yul frame has none, so every callee
