@@ -4,7 +4,7 @@
  * Admitted: scalar/convert/tuple/internal-call definitions, reads of state
  * variables, capture of locals and state variables and scalar writes to them,
  * and structured control flow. Bindings hold elementary types, enums and
- * user-defined value types, which are integers and addresses at runtime.
+ * user-defined value types, plus read-only calldata byte references.
  * Function values are deferred together with indirect calls; contract types
  * are deferred until contract metadata (payability, bases) is in the
  * environment. Typed storage references support struct fields, mappings and
@@ -207,7 +207,8 @@ End
 
 (* ProductType is reserved for tuples and multiple returns: never singleton. *)
 Definition wf_core_value_type_def:
-  (wf_core_value_type env (SingleType ty) ⇔ core_scalar_type env ty) ∧
+  (wf_core_value_type env (SingleType ty) ⇔
+    core_scalar_type env ty ∨ ty = LocatedT CalldataLoc BytesT) ∧
   (wf_core_value_type env (ReferenceType ty) ⇔ storage_type_ok env ty) ∧
   (wf_core_value_type env (ProductType tys) ⇔
     LENGTH tys ≠ 1 ∧ wf_core_value_types env tys) ∧
@@ -278,6 +279,8 @@ Definition value_has_type_def:
      (ReferenceValue (StorageReference PersistentStorage _ _ offset rty _)) ⇔
     ty = rty ∧ storage_type_ok env ty ∧
     (case storage_bytes ty of SOME b => offset + b ≤ 32 | NONE => offset = 0)) ∧
+  (value_has_type env (SingleType (LocatedT CalldataLoc BytesT))
+     (ReferenceValue (CalldataReference _ _ BytesT)) ⇔ T) ∧
   (value_has_type env (ProductType tys) (TupleValue vs) ⇔
     values_have_types env tys vs) ∧
   (value_has_type env _ _ ⇔ F) ∧
@@ -467,7 +470,8 @@ End
 Definition environment_type_def:
   environment_type f =
     case f of
-      MsgSender => AddressT NonpayableAddress
+      MsgData => LocatedT CalldataLoc BytesT
+    | MsgSender => AddressT NonpayableAddress
     | SelfAddress => AddressT NonpayableAddress
     | TxOrigin => AddressT NonpayableAddress
     | BlockCoinbase => AddressT PayableAddress
@@ -534,12 +538,17 @@ Definition wf_core_operation_def:
              element = ty ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
          | _ => F)
     | _ => F) ∧
+  (wf_core_operation env ctx annotation (ByteIndexOperation a index) ⇔
+    annotation = SingleType (FixedBytesT 1) ∧
+    wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a ∧
+    wf_core_atom env ctx (SingleType (UintT 256)) index) ∧
   (wf_core_operation env ctx annotation (ArrayLengthOperation a) ⇔
     annotation = SingleType (UintT 256) ∧
     case a of
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
-           SOME (ReferenceType (ArrayT _ NONE)) => T
+           SOME (SingleType (LocatedT CalldataLoc BytesT)) => T
+         | SOME (ReferenceType (ArrayT _ NONE)) => T
          | _ => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (ArrayPushOperation a value) ⇔

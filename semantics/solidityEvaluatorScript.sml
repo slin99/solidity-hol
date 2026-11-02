@@ -176,24 +176,25 @@ End
 Definition environment_value_def:
   environment_value (fr : source_frame) f =
     case f of
-      MsgSender => AddressValue fr.sender_address
+      MsgData => ReferenceValue (CalldataReference 0 (LENGTH fr.call_data) BytesT)
+    | MsgSender => ScalarValue (AddressValue fr.sender_address)
     | MsgValue =>
-        IntegerValue (wrap_integer F 256 (&fr.call_value))
-    | SelfAddress => AddressValue fr.self_address
-    | TxOrigin => AddressValue fr.tx_params.origin
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.call_value)))
+    | SelfAddress => ScalarValue (AddressValue fr.self_address)
+    | TxOrigin => ScalarValue (AddressValue fr.tx_params.origin)
     | TxGasPrice =>
-        IntegerValue (wrap_integer F 256 (&fr.tx_params.gasPrice))
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.gasPrice)))
     | BlockNumber =>
-        IntegerValue (wrap_integer F 256 (&fr.tx_params.blockNumber))
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockNumber)))
     | BlockTimestamp =>
-        IntegerValue (wrap_integer F 256 (&fr.tx_params.blockTimeStamp))
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockTimeStamp)))
     | BlockChainId =>
-        IntegerValue (wrap_integer F 256 (&fr.tx_params.chainId))
-    | BlockCoinbase => AddressValue fr.tx_params.blockCoinBase
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.chainId)))
+    | BlockCoinbase => ScalarValue (AddressValue fr.tx_params.blockCoinBase)
     | BlockBaseFee =>
-        IntegerValue (wrap_integer F 256 (&fr.tx_params.baseFeePerGas))
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.baseFeePerGas)))
     | BlockGasLimit =>
-        IntegerValue (wrap_integer F 256 (&fr.tx_params.blockGasLimit))
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockGasLimit)))
 End
 
 (* Pure operations; calls and array mutations are handled by statements. *)
@@ -208,9 +209,24 @@ Definition eval_operation_def:
         (case eval_atom st.scopes a of
            SOME (ReferenceValue r) => read_storage_reference st.world.accounts ty r
          | _ => ValueAbrupt (InvalidCompletion "bad storage reference"))
+    | ByteIndexOperation a index =>
+        (case (eval_atom st.scopes a, eval_atom st.scopes index) of
+           (SOME (ReferenceValue (CalldataReference offset length BytesT)),
+            SOME (ScalarValue (IntegerValue i))) =>
+             if i < 0 ∨ &length ≤ i then ValueAbrupt (PanicCompletion 50)
+             else if LENGTH st.frame.call_data < offset + length then
+               ValueAbrupt (InvalidCompletion "bad calldata reference")
+             else (case oEL (offset + Num i) st.frame.call_data of
+                     SOME b => ValueOk (ScalarValue (BytesValue [b]))
+                   | NONE => ValueAbrupt (InvalidCompletion "bad calldata reference"))
+         | _ => ValueAbrupt (InvalidCompletion "bad calldata byte index"))
     | ArrayLengthOperation a =>
         (case eval_atom st.scopes a of
-           SOME (ReferenceValue r) => storage_array_length st.world.accounts r
+           SOME (ReferenceValue (CalldataReference offset length BytesT)) =>
+             if offset + length ≤ LENGTH st.frame.call_data then
+               ValueOk (ScalarValue (IntegerValue (&length)))
+             else ValueAbrupt (InvalidCompletion "bad calldata reference")
+         | SOME (ReferenceValue r) => storage_array_length st.world.accounts r
          | _ => ValueAbrupt (InvalidCompletion "bad dynamic array reference"))
     | NavigateOperation ty root_expr (FieldNavigation member_id) =>
         (case eval_atom st.scopes root_expr of
@@ -222,7 +238,7 @@ Definition eval_operation_def:
              navigate_storage env st.world.accounts r s
          | _ => ValueAbrupt (InvalidCompletion "bad index operands"))
     | EnvironmentOperation f =>
-        ValueOk (ScalarValue (environment_value st.frame f))
+        ValueOk (environment_value st.frame f)
     | _ => eval_pure_operation env st.scopes op
 End
 

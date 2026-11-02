@@ -19,7 +19,8 @@
  * State-variable initializers, constructors and base-constructor arguments
  * (inheritance specifiers or constructor modifiers) form one creation
  * procedure.
- * Other string runtime operations and unsupported forms are rejected (NONE).
+ * msg.data admits length and byte reads. Other string runtime operations and
+ * unsupported forms are rejected (NONE).
  *
  * Schedules, read from the compiler's IR for this profile (the ir output in
  * testdata/frontend/expected/pure_core.json) and checked against the compiled
@@ -343,14 +344,19 @@ Definition elab_expr_def:
              SOME ((ls ++ ss, a, ElabType ty), n2)
          | NONE => NONE)
     | SrcArrayLength _ root_expr _ =>
-        (case elab_location ctx n root_expr of
-           SOME ((ss, _, ArrayT _ (SOME length)), n1) =>
-             SOME ((ss, ConstantAtom (IntegerValue (&length)),
-                    ElabType (UintT 256)), n1)
-         | SOME ((ss, ref, ArrayT _ NONE), n1) =>
+        (case elab_expr ctx n root_expr of
+           SOME ((ss, ref, ElabType (LocatedT CalldataLoc BytesT)), n1) =>
              let (rs, a) = bind_value n1 (UintT 256) (ArrayLengthOperation ref) in
              SOME ((ss ++ rs, a, ElabType (UintT 256)), n1 + 1)
-         | _ => NONE)
+         | _ =>
+           case elab_location ctx n root_expr of
+             SOME ((ss, _, ArrayT _ (SOME length)), n1) =>
+               SOME ((ss, ConstantAtom (IntegerValue (&length)),
+                      ElabType (UintT 256)), n1)
+           | SOME ((ss, ref, ArrayT _ NONE), n1) =>
+               let (rs, a) = bind_value n1 (UintT 256) (ArrayLengthOperation ref) in
+               SOME ((ss ++ rs, a, ElabType (UintT 256)), n1 + 1)
+           | _ => NONE)
     | SrcLiteral _ kind value tid =>
         (if kind = "bool" then
            SOME (([], ConstantAtom (BoolValue (value = "true")), ElabType BoolT), n)
@@ -367,13 +373,25 @@ Definition elab_expr_def:
              else NONE
          | NONE => NONE)
     | SrcIndexAccess info root_expr index tid =>
-        (case elab_location ctx n expression of
-           SOME ((ss, ref, ty), n1) =>
-             if is_elementary_type ty then
-               let (rs, a) = bind_value n1 ty (ReadOperation ty ref) in
-               SOME ((ss ++ rs, a, ElabType ty), n1 + 1)
-             else NONE
-         | NONE => NONE)
+        (case elab_expr ctx n root_expr of
+           SOME ((ss, ref, ElabType (LocatedT CalldataLoc BytesT)), n1) =>
+             (case elab_expr ctx n1 index of
+                SOME ((si, i, vt), n2) =>
+                  (case coerce n2 (UintT 256) i vt of
+                     SOME ((cs, i'), n3) =>
+                       let (rs, a) = bind_value n3 (FixedBytesT 1)
+                                       (ByteIndexOperation ref i') in
+                       SOME ((ss ++ si ++ cs ++ rs, a, ElabType (FixedBytesT 1)), n3 + 1)
+                   | NONE => NONE)
+              | NONE => NONE)
+         | _ =>
+           case elab_location ctx n expression of
+             SOME ((ss, ref, ty), n1) =>
+               if is_elementary_type ty then
+                 let (rs, a) = bind_value n1 ty (ReadOperation ty ref) in
+                 SOME ((ss ++ rs, a, ElabType ty), n1 + 1)
+               else NONE
+           | NONE => NONE)
     | SrcUnaryOperation _ op prefix e tid =>
         (if op = "++" ∨ op = "--" then
            case elab_destination ctx n e of
@@ -721,7 +739,7 @@ Definition elab_expr_def:
             SOME ((ss, ReferenceDestination ref ty), n1)
         | NONE => NONE)
 Termination
-  WF_REL_TAC ‘measure (λx. case x of
+  qexists_tac ‘measure (λx. case x of
      INL (ctx, n, e) => 3 * src_expr_size e + 2
    | INR (INL (ctx, n, tys, es)) => 3 * list_size src_expr_size es
    | INR (INR (INL (ctx, n, e))) => 3 * src_expr_size e + 3
@@ -729,7 +747,10 @@ Termination
        3 * list_size (option_size src_expr_size) cs
    | INR (INR (INR (INR (INL (ctx, n, e))))) => 3 * src_expr_size e + 1
    | INR (INR (INR (INR (INR (ctx, n, e))))) => 3 * src_expr_size e + 2)’ >>
-  rw[solidityImportTheory.src_expr_size_def, listTheory.list_size_def,
+  conj_tac >- simp[prim_recTheory.WF_measure] >>
+  rpt conj_tac >>
+  rw[prim_recTheory.measure_thm, solidityImportTheory.src_expr_size_def,
+     listTheory.list_size_def,
      basicSizeTheory.option_size_def]
 End
 

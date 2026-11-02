@@ -476,6 +476,7 @@ End
  * children are checked against their AST types, including nested mappings.
  *)
 Definition storage_type_identifier_def:
+  (storage_type_identifier (LocatedT CalldataLoc BytesT) = "t_bytes_calldata_ptr") ∧
   (storage_type_identifier BoolT = "t_bool") ∧
   (storage_type_identifier (UintT n) = "t_uint" ++ toString n) ∧
   (storage_type_identifier (IntT n) = "t_int" ++ toString n) ∧
@@ -771,6 +772,13 @@ Definition check_expr_def:
     case (check_expr env root_expr, check_expr env index) of
       (SOME (SrcType (MappingT key value)), SOME _) =>
         if source_type_matches value tid then SOME (SrcType value) else NONE
+    | (SOME (SrcType (LocatedT CalldataLoc BytesT)), SOME index_type) =>
+        if tid = "t_bytes1" ∧
+           (case index_type of
+              SrcType (UintT _) => T
+            | SrcRational i d => 0 ≤ i ∧ d = 1
+            | _ => F)
+        then SOME (SrcType (FixedBytesT 1)) else NONE
     | (SOME (SrcType (ArrayT element _)), SOME index_type) =>
         if source_type_matches element tid ∧
            (case index_type of
@@ -781,7 +789,9 @@ Definition check_expr_def:
     | _ => NONE) ∧
   (check_expr env (SrcArrayLength _ root_expr tid) =
     case check_expr env root_expr of
-      SOME (SrcType (ArrayT _ _)) =>
+      SOME (SrcType (LocatedT CalldataLoc BytesT)) =>
+        if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
+    | SOME (SrcType (ArrayT _ _)) =>
         if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
     | _ => NONE) ∧
   (check_expr env (SrcArrayMember _ _ _ _) = NONE) ∧

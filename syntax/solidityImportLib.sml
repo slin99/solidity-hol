@@ -97,6 +97,7 @@ fun environment_field v base member =
       case (IntInf.toInt base, member) of
         (~15, "sender") => "MsgSender"
       | (~15, "value") => "MsgValue"
+      | (~15, "data") => "MsgData"
       | (~26, "origin") => "TxOrigin"
       | (~26, "gasprice") => "TxGasPrice"
       | (~4, "number") => "BlockNumber"
