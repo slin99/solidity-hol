@@ -221,8 +221,8 @@ Definition byte_sequence_value_type_def:
     | _ => F
 End
 
-(* Transaction arguments and call results contain scalars or byte sequences
- * in memory/calldata; storage pointers never cross an ABI boundary. *)
+(* ABI values contain scalars or byte sequences in memory/calldata;
+ * storage pointers never cross an ABI boundary. *)
 Definition abi_value_type_def:
   abi_value_type ty ⇔
     is_elementary_type ty ∨
@@ -662,6 +662,10 @@ Definition wf_core_operation_def:
      (ExternalCallOperation kind selector params rets target value args) ⇔
     kind ≠ ExternalDelegateCall ∧ LENGTH selector = 4 ∧
     EVERY (λty. abi_value_type ty ∧ valid_type_shape ty) (params ++ rets) ∧
+    (* Returndata belongs to the caller's memory, never its calldata. *)
+    EVERY (λty. is_elementary_type ty ∨
+                ty = LocatedT MemoryLoc BytesT ∨
+                ty = LocatedT MemoryLoc StringT) rets ∧
     wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
     wf_core_atom env ctx (SingleType (UintT 256)) value ∧
     (kind = ExternalStaticCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧

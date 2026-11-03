@@ -278,6 +278,30 @@ Proof
   EVAL_TAC
 QED
 
+Theorem external_byte_sequence_memory_results_accepted:
+  EVERY (λelement.
+    wf_core_procedure test_env (with_body [
+      DefineStmt (AstId 82) (SingleType (LocatedT MemoryLoc element))
+        (ExternalCallOperation ExternalCall [1w; 2w; 3w; 4w] []
+          [LocatedT MemoryLoc element]
+          (ConstantAtom (AddressValue 0x5000w))
+          (ConstantAtom (IntegerValue 0)) [])])) [BytesT; StringT]
+Proof
+  EVAL_TAC
+QED
+
+Theorem external_byte_sequence_calldata_results_rejected:
+  EVERY (λelement.
+    ¬wf_core_procedure test_env (with_body [
+      DefineStmt (AstId 82) (SingleType (LocatedT CalldataLoc element))
+        (ExternalCallOperation ExternalCall [1w; 2w; 3w; 4w] []
+          [LocatedT CalldataLoc element]
+          (ConstantAtom (AddressValue 0x5000w))
+          (ConstantAtom (IntegerValue 0)) [])])) [BytesT; StringT]
+Proof
+  EVAL_TAC
+QED
+
 Theorem external_delegate_call_rejected:
   ¬wf_core_procedure test_env
      (with_body (external_call_body ExternalDelegateCall
