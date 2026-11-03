@@ -14,11 +14,11 @@ contract CalldataBytes {
     }
 
     function dataLength() external pure returns (uint256) {
-        return msg.data.length;
+        return (msg.data).length;
     }
 
     function byteAt(uint256 i) external pure returns (bytes1) {
-        return msg.data[i];
+        return (msg.data)[i];
     }
 
     function checkLength(uint256 expected) external pure {

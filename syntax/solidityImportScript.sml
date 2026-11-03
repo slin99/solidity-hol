@@ -321,7 +321,8 @@ End
 
 Definition decode_elementary_identifier_def:
   decode_elementary_identifier s =
-    if s = "t_address_payable" then SOME (AddressT PayableAddress)
+    if s = "t_bytes_calldata_ptr" then SOME (LocatedT CalldataLoc BytesT)
+    else if s = "t_address_payable" then SOME (AddressT PayableAddress)
     else if isPREFIX "t_" s ∧ s ≠ "t_uint" ∧ s ≠ "t_int" then
       elementary_type (DROP 2 s)
     else NONE
@@ -437,7 +438,9 @@ Theorem decode_elementary_identifier_valid:
   decode_elementary_identifier s = SOME ty ⇒ valid_type_shape ty
 Proof
   rw[decode_elementary_identifier_def] >>
-  imp_res_tac elementary_type_valid >> gvs[valid_type_shape_def]
+  imp_res_tac elementary_type_valid >>
+  gvs[valid_type_shape_def, outer_location_free_def, location_shape_ok_def,
+      is_reference_type_def, contains_mapping_def]
 QED
 
 Theorem decode_type_identifier_valid:
