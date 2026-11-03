@@ -77,6 +77,7 @@ Definition yul_contract_machine_def:
          update_account 0x1000w
            (empty_account_state with <| storage := yul_contract_storage |>)
            empty_accounts;
+       transient := empty_transient_storage;
        logs := []; self_address := 0x1000w;
        caller_address := 0x2000w; call_value := 0w; call_data := data;
        return_data := [];

@@ -41,6 +41,13 @@
  * return_data is the frame's buffer for the return data of its last message
  * call, a frame input like the call data: empty before any call, and what
  * returndatasize() and returndatacopy() read.
+ *
+ * transient is the transaction's transient storage, every account's, as the
+ * frame's caller hands it over: tload() and tstore() read and write the
+ * executing account's part of it, and a message call passes it to the callee
+ * and takes back what the callee left, as it does the accounts. It is not
+ * part of the world a frame's caller sees: a fresh transaction starts with
+ * none, and nothing that reads a frame's outcome looks at it.
  *)
 Theory yulState
 Ancestors
@@ -56,6 +63,7 @@ End
 Datatype:
   yul_machine = <|
     accounts : evm_accounts;
+    transient : transient_storage;
     logs : event list;
     self_address : address;
     caller_address : address;
