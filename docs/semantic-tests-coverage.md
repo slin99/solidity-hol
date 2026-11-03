@@ -22,12 +22,12 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 | outcome | tests |
 | --- | ---: |
-| admitted | 246 |
-| elaboration-rejected | 20 |
+| admitted | 245 |
+| elaboration-rejected | 19 |
 | import-rejected | 1068 |
 | compile-failure | 0 |
 | malformed-input | 0 |
-| source-rejected | 236 |
+| source-rejected | 238 |
 | invalid-core | 0 |
 | skipped | 100 |
 | total | 1670 |
@@ -45,7 +45,7 @@ The scan disagrees with the HOL run on 0 tests.
 | array values | `Identifier`, `IndexAccess`, `MemberAccess` | 261 | 9 | 0 |
 | external calls and contract members | `FunctionCall`, `Identifier`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 226 | 1 | 69 |
 | local reference bindings | `VariableDeclaration` | 215 | 0 | 0 |
-| public state variables | `VariableDeclaration` | 206 | 59 | 170 |
+| public state variables | `VariableDeclaration` | 206 | 58 | 170 |
 | structs | `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 165 | 5 | 14 |
 | this | `Identifier` | 140 | 0 | 3 |
 | source units without exactly one contract | `SourceUnit` | 129 | 4 | 0 |
@@ -71,7 +71,7 @@ The scan disagrees with the HOL run on 0 tests.
 | transient storage | `VariableDeclaration` | 41 | 8 | 0 |
 | conditional expressions | `Conditional` | 40 | 11 | 22 |
 | mappings | `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 39 | 3 | 0 |
-| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 11 | 0 |
+| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 10 | 0 |
 | aggregate array mutation | `MemberAccess` | 37 | 3 | 0 |
 | named arguments | `FunctionCall` | 32 | 4 | 17 |
 | literals of non-integer types | `Assignment`, `BinaryOperation`, `FunctionCall`, `Literal`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 32 | 2 | 0 |
@@ -106,6 +106,7 @@ The scan disagrees with the HOL run on 0 tests.
 | built-in blobhash | `Identifier` | 3 | 2 | 3 |
 | array members as values | `MemberAccess` | 3 | 1 | 0 |
 | built-in blockhash | `Identifier` | 3 | 1 | 2 |
+| return variables in modifier arguments | `Identifier` | 3 | 1 | 0 |
 | built-in selfdestruct | `Identifier` | 3 | 0 | 0 |
 | events | `MemberAccess` | 3 | 0 | 3 |
 | built-in gasleft | `Identifier` | 2 | 2 | 2 |
@@ -122,25 +123,25 @@ Supporting the features in this order admits the most rejected tests at each ste
 | step | feature | admitted |
 | ---: | --- | ---: |
 | 1 | inline assembly | 89 |
-| 2 | public state variables | 156 |
-| 3 | constant expressions over literals | 180 |
-| 4 | transient storage | 196 |
-| 5 | address members (balance, call, transfer, …) | 212 |
-| 6 | operator delete | 226 |
-| 7 | array values | 241 |
-| 8 | arrays | 271 |
-| 9 | local reference bindings | 318 |
-| 10 | memory arrays (new T[](n)) | 350 |
-| 11 | structs | 379 |
-| 12 | struct values and copying | 428 |
-| 13 | aggregate array mutation | 459 |
-| 14 | inline arrays | 484 |
-| 15 | abi.* functions | 506 |
-| 16 | hash and signature built-ins | 525 |
-| 17 | bytes push and pop | 544 |
-| 18 | string literals as fixed-size bytes | 562 |
-| 19 | constants | 578 |
-| 20 | literals of non-integer types | 598 |
+| 2 | public state variables | 155 |
+| 3 | constant expressions over literals | 179 |
+| 4 | transient storage | 195 |
+| 5 | address members (balance, call, transfer, …) | 211 |
+| 6 | operator delete | 225 |
+| 7 | array values | 240 |
+| 8 | arrays | 270 |
+| 9 | local reference bindings | 317 |
+| 10 | memory arrays (new T[](n)) | 349 |
+| 11 | structs | 378 |
+| 12 | struct values and copying | 427 |
+| 13 | aggregate array mutation | 458 |
+| 14 | inline arrays | 483 |
+| 15 | abi.* functions | 505 |
+| 16 | hash and signature built-ins | 524 |
+| 17 | bytes push and pop | 543 |
+| 18 | string literals as fixed-size bytes | 560 |
+| 19 | constants | 576 |
+| 20 | literals of non-integer types | 596 |
 
 ## Skipped and compile failures
 
@@ -279,7 +280,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `modifiers/function_modifier_local_variables.sol`
 - `modifiers/function_modifier_loop_viair.sol`
 - `modifiers/function_modifier_multi_invocation_viair.sol`
-- `modifiers/function_modifier_return_reference.sol`
 - `modifiers/modifier_in_constructor_ice.sol`
 - `modifiers/modifiers_in_construction_context.sol`
 - `multiSource/import.sol`
@@ -572,6 +572,8 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `integer/uint.sol`: integer/uint.sol: valid_src_unit failed (source validation/subset restriction)
 - `memoryManagement/memory_types_initialisation.sol`: memoryManagement/memory_types_initialisation.sol: valid_src_unit failed (source validation/subset restriction)
 - `modifiers/evaluation_order.sol`: modifiers/evaluation_order.sol: valid_src_unit failed (source validation/subset restriction)
+- `modifiers/function_modifier_return_reference.sol`: modifiers/function_modifier_return_reference.sol: valid_src_unit failed (source validation/subset restriction)
+- `modifiers/function_return_parameter.sol`: modifiers/function_return_parameter.sol: valid_src_unit failed (source validation/subset restriction)
 - `modifiers/modifier_init_return.sol`: modifiers/modifier_init_return.sol: valid_src_unit failed (source validation/subset restriction)
 - `modifiers/transient_state_variable_value_type.sol`: modifiers/transient_state_variable_value_type.sol: valid_src_unit failed (source validation/subset restriction)
 - `operators/compound_assign_transient_storage.sol`: operators/compound_assign_transient_storage.sol: valid_src_unit failed (source validation/subset restriction)
@@ -661,7 +663,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `expressions/bytes_comparison.sol`: expressions/bytes_comparison.sol: elaborate_unit returned NONE (unsupported lowering)
 - `externalSource/source_import_subdir.sol`: _external/import_with_subdir.sol: elaborate_unit returned NONE (unsupported lowering)
 - `externalSource/source_name_starting_with_dots.sol`: _sourceNameStartingWithDots/dir/contract.sol: elaborate_unit returned NONE (unsupported lowering)
-- `modifiers/function_return_parameter.sol`: modifiers/function_return_parameter.sol: elaborate_unit returned NONE (unsupported lowering)
 - `storage/packed_storage_structs_bytes.sol`: storage/packed_storage_structs_bytes.sol: elaborate_unit returned NONE (unsupported lowering)
 - `storageLayoutSpecifier/variable_cleanup.sol`: storageLayoutSpecifier/variable_cleanup.sol: elaborate_unit returned NONE (unsupported lowering)
 - `strings/string_escapes.sol`: strings/string_escapes.sol: elaborate_unit returned NONE (unsupported lowering)

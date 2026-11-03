@@ -852,7 +852,7 @@
         {"name": "deploy_runs_constructor_modifier_around_body", "deploy": true, "args": [3], "expect": {"return": []}, "final_storage": {"0": 33, "1": 8192, "2": 3}},
         {"name": "modifiers_run_in_order_around_body", "function": "ordered", "args": [7], "expect": {"return": [127]}, "final_storage": {"0": 12721}},
         {"name": "argument_evaluated_after_earlier_modifier", "function": "timed", "args": [], "expect": {"return": [4]}, "final_storage": {"0": 44, "2": 4}},
-        {"name": "placeholder_twice_gets_fresh_return_variables", "function": "fresh", "args": [], "storage": {"3": 1}, "expect": {"return": [0]}},
+        {"name": "placeholder_twice_gets_fresh_return_variables", "function": "fresh", "args": [], "storage": {"3": 1}, "expect": {"return": [0]}, "final_storage": {"3": 0}},
         {"name": "placeholder_twice_runs_body_twice", "function": "addTwice", "args": [5], "storage": {"2": 1}, "expect": {"return": [11]}, "final_storage": {"2": 11}},
         {"name": "inherited_modifier_admits_owner", "function": "guarded", "args": [4], "storage": {"1": 8192}, "expect": {"return": [8]}, "final_storage": {"1": 8192}},
         {"name": "inherited_modifier_rejects_other_sender", "function": "guarded", "args": [4], "sender": 12288, "storage": {"1": 8192}, "expect": {"revert": "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000096e6f74206f776e65720000000000000000000000000000000000000000000000"}},

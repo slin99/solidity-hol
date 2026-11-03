@@ -1,13 +1,13 @@
 {
   "counts": {
-    "admitted": 246,
+    "admitted": 245,
     "compile-failure": 0,
-    "elaboration-rejected": 20,
+    "elaboration-rejected": 19,
     "import-rejected": 1068,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 236
+    "source-rejected": 238
   },
   "features": [
     {
@@ -74,7 +74,7 @@
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 59,
+      "only_blocker": 58,
       "tests": 206
     },
     {
@@ -332,7 +332,7 @@
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
-      "only_blocker": 11,
+      "only_blocker": 10,
       "tests": 38
     },
     {
@@ -670,6 +670,15 @@
       "tests": 3
     },
     {
+      "feature": "return variables in modifier arguments",
+      "first_rejection": 0,
+      "node_types": [
+        "Identifier"
+      ],
+      "only_blocker": 1,
+      "tests": 3
+    },
+    {
       "feature": "built-in selfdestruct",
       "first_rejection": 0,
       "node_types": [
@@ -750,79 +759,79 @@
       "feature": "inline assembly"
     },
     {
-      "admitted": 156,
+      "admitted": 155,
       "feature": "public state variables"
     },
     {
-      "admitted": 180,
+      "admitted": 179,
       "feature": "constant expressions over literals"
     },
     {
-      "admitted": 196,
+      "admitted": 195,
       "feature": "transient storage"
     },
     {
-      "admitted": 212,
+      "admitted": 211,
       "feature": "address members (balance, call, transfer, \u2026)"
     },
     {
-      "admitted": 226,
+      "admitted": 225,
       "feature": "operator delete"
     },
     {
-      "admitted": 241,
+      "admitted": 240,
       "feature": "array values"
     },
     {
-      "admitted": 271,
+      "admitted": 270,
       "feature": "arrays"
     },
     {
-      "admitted": 318,
+      "admitted": 317,
       "feature": "local reference bindings"
     },
     {
-      "admitted": 350,
+      "admitted": 349,
       "feature": "memory arrays (new T[](n))"
     },
     {
-      "admitted": 379,
+      "admitted": 378,
       "feature": "structs"
     },
     {
-      "admitted": 428,
+      "admitted": 427,
       "feature": "struct values and copying"
     },
     {
-      "admitted": 459,
+      "admitted": 458,
       "feature": "aggregate array mutation"
     },
     {
-      "admitted": 484,
+      "admitted": 483,
       "feature": "inline arrays"
     },
     {
-      "admitted": 506,
+      "admitted": 505,
       "feature": "abi.* functions"
     },
     {
-      "admitted": 525,
+      "admitted": 524,
       "feature": "hash and signature built-ins"
     },
     {
-      "admitted": 544,
+      "admitted": 543,
       "feature": "bytes push and pop"
     },
     {
-      "admitted": 562,
+      "admitted": 560,
       "feature": "string literals as fixed-size bytes"
     },
     {
-      "admitted": 578,
+      "admitted": 576,
       "feature": "constants"
     },
     {
-      "admitted": 598,
+      "admitted": 596,
       "feature": "literals of non-integer types"
     }
   ],
@@ -12828,27 +12837,31 @@
       "test": "modifiers/function_modifier_overriding.sol"
     },
     {
-      "category": "admitted",
-      "features": [],
+      "category": "source-rejected",
+      "features": [
+        "return variables in modifier arguments"
+      ],
       "first": null,
-      "reason": null,
+      "reason": "modifiers/function_modifier_return_reference.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "modifiers/function_modifier_return_reference.sol"
     },
     {
-      "category": "elaboration-rejected",
+      "category": "source-rejected",
       "features": [
+        "return variables in modifier arguments",
         "string literals as fixed-size bytes"
       ],
       "first": null,
-      "reason": "modifiers/function_return_parameter.sol: elaborate_unit returned NONE (unsupported lowering)",
+      "reason": "modifiers/function_return_parameter.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "modifiers/function_return_parameter.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "public state variables"
+        "public state variables",
+        "return variables in modifier arguments"
       ],
       "first": "public state variables",
       "reason": "modifiers/function_return_parameter_complex.sol: VariableDeclaration 3: public state variables are not supported",
