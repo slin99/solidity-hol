@@ -1730,7 +1730,15 @@ QED
 val () = cv_auto_trans variable_binding_def;
 val () = cv_auto_trans core_bindings_def;
 val () = cv_auto_trans define_parameters_def;
-val () = cv_auto_trans elab_modifier_args_def;
+val elab_modifier_args_pre_def =
+  cv_auto_trans_pre "elab_modifier_args_pre" elab_modifier_args_def;
+
+Theorem elab_modifier_args_pre[cv_pre,local]:
+  ∀ctx n tys es. elab_modifier_args_pre ctx n tys es
+Proof
+  ho_match_mp_tac elab_modifier_args_ind >> rpt strip_tac >>
+  simp[Once elab_modifier_args_pre_def]
+QED
 val elab_levels_pre_def = cv_auto_trans_pre "elab_levels_pre" elab_levels_def;
 
 Theorem elab_levels_pre[cv_pre,local]:
