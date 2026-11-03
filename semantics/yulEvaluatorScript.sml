@@ -406,6 +406,9 @@ Definition eval_yul_builtin_def:
     | (YShl, [n; w]) => EvalValues [word_lsl w (w2n n)] m
     | (YShr, [n; w]) => EvalValues [word_lsr w (w2n n)] m
     | (YSar, [n; w]) => EvalValues [word_asr w (w2n n)] m
+    | (YByte, [i; w]) =>
+        EvalValues [if w2n i < 32 then n2w ((w2n w DIV 2 ** (8 * (31 - w2n i))) MOD 256)
+                    else 0w] m
     | (YKeccak256, [p; s]) =>
         let (m', bs) = yul_memory_region m (w2n p) (w2n s) in
           EvalValues [word_of_bytes_be (Keccak_256_w64 bs)] m'
@@ -413,6 +416,9 @@ Definition eval_yul_builtin_def:
         let (m', bs) = yul_mload m (w2n p) in
           EvalValues [word_of_bytes_be bs] m'
     | (YMStore, [p; v]) => EvalValues [] (yul_mstore m (w2n p) v)
+    | (YMStore8, [p; v]) =>
+        EvalValues [] (yul_memory_write (yul_memory_touch m (w2n p) 1)
+          (w2n p) [(n2w (w2n v) : byte)])
     | (YMCopy, [d; s; l]) =>
         (* both ranges are touched, whichever of them reaches further, and the
          * bytes are read before any is written, so overlapping regions copy as

@@ -282,7 +282,9 @@ End
 (* Elementary type names, with the widths valid_type_shape requires. *)
 Definition elementary_type_def:
   elementary_type name =
-    if name = "bool" then SOME BoolT
+    if name = "bytes" then SOME BytesT
+    else if name = "string" then SOME StringT
+    else if name = "bool" then SOME BoolT
     else if name = "address" then SOME (AddressT NonpayableAddress)
     else if name = "uint" then SOME (UintT 256)
     else if name = "int" then SOME (IntT 256)
@@ -335,13 +337,17 @@ End
 Datatype:
   src_value_type
   = SrcType sol_type
+  | SrcByteLiteral
   | SrcRational int num
   | SrcTupleType (sol_type list)
 End
 
 Definition decode_elementary_identifier_def:
   decode_elementary_identifier s =
-    if s = "t_bytes_calldata_ptr" then SOME (LocatedT CalldataLoc BytesT)
+    if s = "t_bytes_memory_ptr" then SOME (LocatedT MemoryLoc BytesT)
+    else if s = "t_string_memory_ptr" then SOME (LocatedT MemoryLoc StringT)
+    else if s = "t_bytes_calldata_ptr" then SOME (LocatedT CalldataLoc BytesT)
+    else if s = "t_string_calldata_ptr" then SOME (LocatedT CalldataLoc StringT)
     else if s = "t_address_payable" then SOME (AddressT PayableAddress)
     else if isPREFIX "t_" s ∧ s ≠ "t_uint" ∧ s ≠ "t_int" then
       elementary_type (DROP 2 s)
@@ -394,17 +400,22 @@ Proof
   Cases_on ‘OPT_MMAP I xs’ >> simp[]
 QED
 
-(* A tuple component "_c_", from "t_tuple$_c1_$_c2_$...$". *)
+(* A tuple component "_c_", from "t_tuple$_c1_$_c2_$...$". Literal
+ * byte sequences retain their source string kind here; elaboration supplies
+ * the destination's bytes/string type and location when coercing the value. *)
 Definition tuple_component_def:
   tuple_component p =
     if 2 ≤ LENGTH p ∧ isPREFIX "_" p ∧ isPREFIX "_" (REVERSE p) then
-      decode_elementary_identifier (TAKE (LENGTH p - 2) (DROP 1 p))
+      let tid = TAKE (LENGTH p - 2) (DROP 1 p) in
+      if isPREFIX "t_stringliteral_" tid then SOME StringT
+      else decode_elementary_identifier tid
     else NONE
 End
 
 Definition decode_type_identifier_def:
   decode_type_identifier s =
     if isPREFIX "t_rational_" s then decode_rational (DROP 11 s)
+    else if isPREFIX "t_stringliteral_" s then SOME SrcByteLiteral
     else if s = "t_tuple$__$" then SOME (SrcTupleType [])
     else if isPREFIX "t_tuple$" s then
       case REVERSE (separated_fields #"$" "" (DROP 8 s)) of
@@ -463,6 +474,13 @@ Proof
       is_reference_type_def, contains_mapping_def]
 QED
 
+Theorem tuple_component_valid[local]:
+  tuple_component p = SOME ty ⇒ valid_type_shape ty
+Proof
+  rw[tuple_component_def] >> gvs[valid_type_shape_def] >>
+  metis_tac[decode_elementary_identifier_valid]
+QED
+
 Theorem decode_type_identifier_valid:
   (decode_type_identifier s = SOME (SrcType ty) ⇒ valid_type_shape ty) ∧
   (decode_type_identifier s = SOME (SrcTupleType tys) ⇒
@@ -471,8 +489,7 @@ Proof
   ‘∀ps tys. all_some (MAP tuple_component ps) = SOME tys ⇒
             EVERY valid_type_shape tys’
     by (Induct >> rw[all_some_def, AllCaseEqs()] >>
-        gvs[tuple_component_def] >>
-        metis_tac[decode_elementary_identifier_valid]) >>
+        gvs[] >> metis_tac[tuple_component_valid]) >>
   rw[decode_type_identifier_def, decode_rational_def, rational_type_def,
      AllCaseEqs()] >>
   gvs[] >> metis_tac[decode_elementary_identifier_valid]
@@ -499,7 +516,14 @@ End
  * children are checked against their AST types, including nested mappings.
  *)
 Definition storage_type_identifier_def:
-  (storage_type_identifier (LocatedT CalldataLoc BytesT) = "t_bytes_calldata_ptr") ∧
+  (storage_type_identifier (LocatedT loc ty) =
+    if byte_sequence_type ty then
+      (if ty = BytesT then "t_bytes" else "t_string") ++
+      (case loc of MemoryLoc => "_memory_ptr" | CalldataLoc => "_calldata_ptr"
+                 | StorageLoc => "_storage_ptr")
+    else "") ∧
+  (storage_type_identifier BytesT = "t_bytes_storage") ∧
+  (storage_type_identifier StringT = "t_string_storage") ∧
   (storage_type_identifier BoolT = "t_bool") ∧
   (storage_type_identifier (UintT n) = "t_uint" ++ toString n) ∧
   (storage_type_identifier (IntT n) = "t_int" ++ toString n) ∧
@@ -566,8 +590,14 @@ Definition variable_type_def:
   variable_type (v : src_variable) =
     case normalize_type_name v.var_type_name of
       SOME ty =>
-        if v.var_location = "default" ∧
-           source_type_matches ty v.var_type_id
+        if byte_sequence_type ty then
+          case (if v.var_location = "memory" then SOME MemoryLoc
+                else if v.var_location = "calldata" then SOME CalldataLoc else NONE) of
+            SOME loc =>
+              if source_type_matches (LocatedT loc ty) v.var_type_id then
+                SOME (LocatedT loc ty) else NONE
+          | NONE => NONE
+        else if v.var_location = "default" ∧ source_type_matches ty v.var_type_id
         then SOME ty else NONE
     | NONE => NONE
 End
@@ -810,7 +840,7 @@ Definition check_expr_def:
     case (check_expr env root_expr, check_expr env index) of
       (SOME (SrcType (MappingT key value)), SOME _) =>
         if source_type_matches value tid then SOME (SrcType value) else NONE
-    | (SOME (SrcType (LocatedT CalldataLoc BytesT)), SOME index_type) =>
+    | (SOME (SrcType (LocatedT loc BytesT)), SOME index_type) =>
         if tid = "t_bytes1" ∧
            (case index_type of
               SrcType (UintT _) => T
@@ -827,7 +857,7 @@ Definition check_expr_def:
     | _ => NONE) ∧
   (check_expr env (SrcArrayLength _ root_expr tid) =
     case check_expr env root_expr of
-      SOME (SrcType (LocatedT CalldataLoc BytesT)) =>
+      SOME (SrcType (LocatedT loc BytesT)) =>
         if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
     | SOME (SrcType (ArrayT _ _)) =>
         if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
@@ -838,6 +868,8 @@ Definition check_expr_def:
       case decode_type_identifier tid of
         SOME (SrcRational n d) => SOME (SrcRational n d)
       | _ => NONE
+    else if (kind = "string" ∨ kind = "unicodeString" ∨ kind = "hexString") ∧
+            isPREFIX "t_stringliteral_" tid then SOME SrcByteLiteral
     else if kind = "bool" ∧ (value = "true" ∨ value = "false") ∧
             tid = "t_bool"
     then SOME (SrcType BoolT)
@@ -895,9 +927,13 @@ Definition check_expr_def:
   (check_expr env (SrcTypeConversion _ tn e tid) =
     case normalize_type_name tn of
       SOME ty =>
-        if IS_SOME (check_expr env e) ∧
-           decode_type_identifier tid = SOME (SrcType ty)
-        then SOME (SrcType ty) else NONE
+        if ¬IS_SOME (check_expr env e) then NONE else
+        (case decode_type_identifier tid of
+          SOME (SrcType result) =>
+            if result = ty ∨ (byte_sequence_type ty ∧
+                (case result of LocatedT _ element => ty = element | _ => F)) then
+              SOME (SrcType result) else NONE
+        | _ => NONE)
     | NONE => NONE) ∧
   (check_expr env (SrcEnvironment _ f tid) =
     if source_type_matches (environment_type f) tid

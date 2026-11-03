@@ -72,8 +72,8 @@ Theorem type_name_normalization:
     SOME (UintT 256) ∧
   normalize_type_name (SrcElementaryTypeName i "uint7" NONE) = NONE ∧
   normalize_type_name (SrcElementaryTypeName i "bytes33" NONE) = NONE ∧
-  normalize_type_name (SrcElementaryTypeName i "bytes" NONE) = NONE ∧
-  normalize_type_name (SrcElementaryTypeName i "string" NONE) = NONE ∧
+  normalize_type_name (SrcElementaryTypeName i "bytes" NONE) = SOME BytesT ∧
+  normalize_type_name (SrcElementaryTypeName i "string" NONE) = SOME StringT ∧
   normalize_type_name (SrcElementaryTypeName i "address" (SOME "payable")) =
     SOME (AddressT PayableAddress) ∧
   normalize_type_name (SrcElementaryTypeName i "address" NONE) = NONE ∧
@@ -93,8 +93,8 @@ Theorem type_identifier_decoding:
     SOME (SrcType (AddressT PayableAddress)) ∧
   decode_type_identifier "t_uint7" = NONE ∧
   decode_type_identifier "t_uint" = NONE ∧
-  decode_type_identifier "t_string_memory_ptr" = NONE ∧
-  decode_type_identifier "t_bytes_memory_ptr" = NONE
+  decode_type_identifier "t_string_memory_ptr" = SOME (SrcType (LocatedT MemoryLoc StringT)) ∧
+  decode_type_identifier "t_bytes_memory_ptr" = SOME (SrcType (LocatedT MemoryLoc BytesT))
 Proof
   EVAL_TAC
 QED
