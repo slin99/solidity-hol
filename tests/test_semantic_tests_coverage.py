@@ -44,6 +44,21 @@ def unit(members):
     }]}
 
 
+def error_definition(node_id: int, type_identifier: str) -> dict:
+    return {"nodeType": "ErrorDefinition", "id": node_id, "name": "E",
+            "parameters": {"nodeType": "ParameterList", "id": node_id + 1,
+                           "parameters": [variable(node_id + 2, type_identifier=type_identifier)]}}
+
+
+def revert(node_id: int, error: int, arguments: list) -> dict:
+    return {"nodeType": "RevertStatement", "id": node_id, "errorCall": {
+        "nodeType": "FunctionCall", "id": node_id + 1, "kind": "functionCall", "names": [],
+        "tryCall": False, "typeDescriptions": {"typeIdentifier": "t_tuple$__$"}, "arguments": arguments,
+        "expression": {"nodeType": "Identifier", "id": node_id + 2, "name": "E",
+                       "referencedDeclaration": error,
+                       "typeDescriptions": {"typeIdentifier": "t_function_error_pure$__$returns$__$"}}}}
+
+
 ASSEMBLY = {"nodeType": "InlineAssembly", "id": 20,
             "AST": {"nodeType": "YulBlock", "statements": []}}
 
@@ -202,6 +217,42 @@ class ClassifyTests(unittest.TestCase):
             "VariableDeclarationStatement", "literals of non-integer types", "elaboration")])
         self.assertNotIn(8, found)
         self.assertNotIn(9, found)
+
+    def test_state_initializers_and_revert_arguments_are_coerced(self) -> None:
+        def string(node_id):
+            return {"nodeType": "Literal", "id": node_id, "kind": "string", "value": "abcd",
+                    "typeDescriptions": {"typeIdentifier": "t_stringliteral_abcd"}}
+
+        state = dict(variable(3, state=True, type_identifier="t_bytes4"), value=string(8))
+        error = error_definition(30, "t_bytes4")
+        found = coverage.scan({"t.sol": unit([state, error, function(4, [revert(40, 30, [string(9)])])])})
+        feature = "string literals as fixed-size bytes"
+        self.assertEqual(found[3], [coverage.Blocker("VariableDeclaration", feature, "elaboration")])
+        self.assertEqual(found[40], [coverage.Blocker("RevertStatement", feature, "elaboration")])
+
+    def test_only_reverted_errors_have_their_parameters_read(self) -> None:
+        error = error_definition(30, "t_bytes_memory_ptr")
+        self.assertEqual(coverage.scan({"t.sol": unit([error, function(4, [])])}), {})
+        found = coverage.scan({"t.sol": unit([error, function(4, [revert(40, 30, [])])])})
+        self.assertEqual(found[32], [coverage.Blocker(
+            "VariableDeclaration", "custom errors with reference parameters", "elaboration")])
+
+    def test_overridden_functions_are_only_imported(self) -> None:
+        coerced = {"nodeType": "VariableDeclarationStatement", "id": 6,
+                   "declarations": [variable(7, type_identifier="t_bytes4")],
+                   "initialValue": {"nodeType": "Literal", "id": 8, "kind": "string", "value": "abcd",
+                                    "typeDescriptions": {"typeIdentifier": "t_stringliteral_abcd"}}}
+        base = {"nodeType": "ContractDefinition", "id": 50, "contractKind": "contract",
+                "abstract": False, "baseContracts": [], "linearizedBaseContracts": [50],
+                "nodes": [dict(function(60, [coerced, ASSEMBLY]), virtual=True)]}
+        derived = dict(function(70, []), baseFunctions=[60])
+        ast = unit([derived])
+        ast["nodes"][0]["linearizedBaseContracts"] = [2, 50]
+        ast["nodes"].insert(0, base)
+        found = coverage.scan({"t.sol": ast})
+        self.assertEqual(found, {20: [coverage.Blocker("InlineAssembly", "inline assembly", "import")]})
+        del derived["baseFunctions"]
+        self.assertIn(6, coverage.scan({"t.sol": ast}))
 
     def test_tuples_are_classified_by_a_component(self) -> None:
         self.assertTrue(coverage.decodes("t_tuple$_t_bool_$_t_bytes4_$"))

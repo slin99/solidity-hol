@@ -323,8 +323,9 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
     """The parts of the compilation the importer reads, as subtrees: each
     unit's members other than pragmas, imports, file-level structs and errors,
     interfaces and contracts imported only as bases; the bases of the
-    contracts imported; and the file-level structs, errors and external
-    function parameters those refer to."""
+    contracts imported; the file-level structs and external function
+    parameters those refer to; and the parameters of the errors their revert
+    statements name."""
     roots: list[dict[str, Any]] = []
     for ast in asts.values():
         contracts = {c["id"] for c in deployable(ast)}
@@ -347,12 +348,17 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
             if node["id"] in seen:
                 continue
             seen.add(node["id"])
+            if node["nodeType"] == "RevertStatement":
+                error = by_id.get(node["errorCall"]["expression"].get("referencedDeclaration"))
+                if error is not None and error["parameters"]["id"] not in seen:
+                    roots.append(error["parameters"])
+                    pending.append(error["parameters"])
+                continue
             target = by_id.get(node.get("referencedDeclaration"))
             if target is None or target["id"] in seen:
                 continue
-            if (target["nodeType"] == "ErrorDefinition"
-                    or (target["nodeType"] == "StructDefinition"
-                        and by_id.get(target.get("scope"), {}).get("nodeType") == "SourceUnit")):
+            if (target["nodeType"] == "StructDefinition"
+                    and by_id.get(target.get("scope"), {}).get("nodeType") == "SourceUnit"):
                 roots.append(target)
                 pending.append(target)
             elif (target["nodeType"] == "FunctionDefinition" and node["nodeType"] == "MemberAccess"
@@ -364,8 +370,24 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
 
 def read(node: dict[str, Any]) -> bool:
     """Whether the importer reads a node within an imported contract: not the
-    declarations without a body, which only calls refer to."""
-    return not (node["nodeType"] == "FunctionDefinition" and not node["implemented"])
+    declarations without a body, which only calls refer to, nor errors, whose
+    parameters it reads only where a revert statement names them."""
+    return not ((node["nodeType"] == "FunctionDefinition" and not node["implemented"])
+                or node["nodeType"] == "ErrorDefinition")
+
+
+def overridden(functions: list[dict[str, Any]], by_id: dict[int, dict[str, Any]]) -> set[int]:
+    """The functions some other function overrides, directly or through the
+    functions it overrides: those valid_src_unit and elaborate_unit leave
+    out, as no call or dispatch reaches them."""
+    found: set[int] = set()
+    pending = [b for f in functions for b in f.get("baseFunctions", [])]
+    while pending:
+        base = pending.pop()
+        if base not in found:
+            found.add(base)
+            pending.extend(by_id.get(base, {}).get("baseFunctions", []))
+    return found
 
 
 def is_external(node: dict[str, Any]) -> bool:
@@ -626,12 +648,15 @@ INTEGER_TYPE = re.compile(r"t_u?int[0-9]+")
 def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[Blocker]:
     """Integer literals used where a value of another type is expected, which
     elaborate_unit converts only to integer types, and string literals used
-    as fixed-size bytes, which it does not convert: initial values, returned
-    values, assigned values, operands, arguments and conversions."""
+    as fixed-size bytes, which it does not convert: initial values of locals
+    and state variables, returned values, assigned values, operands,
+    arguments of calls, emits and reverts, and conversions."""
     kind = node["nodeType"]
     expected: list[tuple[dict[str, Any] | None, dict[str, Any]]] = []
     if kind == "VariableDeclarationStatement" and len(node["declarations"]) == 1:
         expected.append((node.get("initialValue"), node["declarations"][0]))
+    elif kind == "VariableDeclaration" and node.get("stateVariable"):
+        expected.append((node.get("value"), node))
     elif kind == "Return" and node.get("expression") is not None:
         returns = by_id.get(node.get("functionReturnParameters"), {}).get("parameters", [])
         if len(returns) == 1:
@@ -661,6 +686,10 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
         event = by_id.get(node["eventCall"]["expression"].get("referencedDeclaration"), {})
         if event.get("nodeType") == "EventDefinition":
             expected.extend(zip(node["eventCall"]["arguments"], event["parameters"]["parameters"]))
+    elif kind == "RevertStatement":
+        error = by_id.get(node["errorCall"]["expression"].get("referencedDeclaration"), {})
+        if error.get("nodeType") == "ErrorDefinition":
+            expected.extend(zip(node["errorCall"]["arguments"], error["parameters"]["parameters"]))
     for value, target in expected:
         target_type = target["typeDescriptions"].get("typeIdentifier") or ""
         if value is None or value["nodeType"] != "Literal" or not VALUE_TYPE.fullmatch(target_type):
@@ -762,8 +791,11 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     conversions = {n["expression"]["id"] for n in calls if n["kind"] == "typeConversion"}
     fields = {v["id"] for n in reached.values() if n["nodeType"] == "StructDefinition"
               for v in n["members"]}
-    error_parameters = {v["id"] for n in reached.values() if n["nodeType"] == "ErrorDefinition"
-                        for v in n["parameters"]["parameters"]}
+    errors = {n["errorCall"]["expression"].get("referencedDeclaration")
+              for n in reached.values() if n["nodeType"] == "RevertStatement"}
+    error_parameters = {v["id"] for e in errors if e in by_id for v in by_id[e]["parameters"]["parameters"]}
+    functions = [n for n in reached.values() if n["nodeType"] == "FunctionDefinition"]
+    dead = {n["id"] for f in overridden(functions, by_id) if f in reached for n in nodes(by_id[f])}
     builtin_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
                        and n["expression"]["nodeType"] == "Identifier"
                        and n["expression"].get("referencedDeclaration") in {REQUIRE, ASSERT, REVERT}}
@@ -798,7 +830,10 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
             blockers.append(Blocker(node["nodeType"], feature, "elaboration"))
         if blockers:
             found.setdefault(node["id"], []).extend(blockers)
-    return {i: bs for i, bs in found.items() if i in reached}
+    # The checker and the elaborator see only the functions nothing overrides.
+    found = {i: [b for b in bs if not (i in dead and b.stage == "elaboration")]
+             for i, bs in found.items() if i in reached}
+    return {i: bs for i, bs in found.items() if bs}
 
 
 # The HOL run

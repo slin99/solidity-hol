@@ -66,7 +66,7 @@
         "VariableDeclaration"
       ],
       "only_blocker": 0,
-      "tests": 216
+      "tests": 215
     },
     {
       "feature": "public state variables",
@@ -117,7 +117,7 @@
         "VariableDeclaration"
       ],
       "only_blocker": 0,
-      "tests": 124
+      "tests": 121
     },
     {
       "feature": "libraries",
@@ -174,7 +174,7 @@
         "FunctionTypeName"
       ],
       "only_blocker": 0,
-      "tests": 99
+      "tests": 96
     },
     {
       "feature": "using for",
@@ -309,6 +309,22 @@
       "tests": 40
     },
     {
+      "feature": "string literals as fixed-size bytes",
+      "first_rejection": 0,
+      "node_types": [
+        "Assignment",
+        "BinaryOperation",
+        "EmitStatement",
+        "FunctionCall",
+        "Return",
+        "RevertStatement",
+        "VariableDeclaration",
+        "VariableDeclarationStatement"
+      ],
+      "only_blocker": 10,
+      "tests": 40
+    },
+    {
       "feature": "modifiers",
       "first_rejection": 35,
       "node_types": [
@@ -341,15 +357,6 @@
       "tests": 37
     },
     {
-      "feature": "named arguments",
-      "first_rejection": 17,
-      "node_types": [
-        "FunctionCall"
-      ],
-      "only_blocker": 3,
-      "tests": 32
-    },
-    {
       "feature": "literals of non-integer types",
       "first_rejection": 0,
       "node_types": [
@@ -358,24 +365,21 @@
         "FunctionCall",
         "Literal",
         "Return",
+        "RevertStatement",
+        "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
       "only_blocker": 2,
-      "tests": 32
+      "tests": 33
     },
     {
-      "feature": "string literals as fixed-size bytes",
-      "first_rejection": 0,
+      "feature": "named arguments",
+      "first_rejection": 17,
       "node_types": [
-        "Assignment",
-        "BinaryOperation",
-        "EmitStatement",
-        "FunctionCall",
-        "Return",
-        "VariableDeclarationStatement"
+        "FunctionCall"
       ],
-      "only_blocker": 10,
-      "tests": 31
+      "only_blocker": 3,
+      "tests": 32
     },
     {
       "feature": "bytes.concat and string.concat",
@@ -464,15 +468,6 @@
       "tests": 22
     },
     {
-      "feature": "custom errors with reference parameters",
-      "first_rejection": 0,
-      "node_types": [
-        "VariableDeclaration"
-      ],
-      "only_blocker": 0,
-      "tests": 22
-    },
-    {
       "feature": "new bytes and string",
       "first_rejection": 11,
       "node_types": [
@@ -507,7 +502,7 @@
       "node_types": [
         "FunctionCall"
       ],
-      "only_blocker": 4,
+      "only_blocker": 9,
       "tests": 18
     },
     {
@@ -574,6 +569,15 @@
       "first_rejection": 0,
       "node_types": [
         "MemberAccess"
+      ],
+      "only_blocker": 0,
+      "tests": 10
+    },
+    {
+      "feature": "custom errors with reference parameters",
+      "first_rejection": 0,
+      "node_types": [
+        "VariableDeclaration"
       ],
       "only_blocker": 0,
       "tests": 10
@@ -6025,7 +6029,8 @@
       "category": "import-rejected",
       "features": [
         "constants",
-        "enums"
+        "enums",
+        "string literals as fixed-size bytes"
       ],
       "first": "enums",
       "reason": "constants/constant_variables.sol: EnumDefinition 8: unsupported contract member",
@@ -6787,10 +6792,7 @@
       "category": "import-rejected",
       "features": [
         "conversions to non-elementary types",
-        "custom errors with reference parameters",
         "external calls and contract members",
-        "function members (selector, address, \u2026)",
-        "function types",
         "require with a custom error",
         "structs"
       ],
@@ -6879,7 +6881,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "custom errors with reference parameters",
         "require with a custom error"
       ],
       "first": null,
@@ -6958,10 +6959,7 @@
       "category": "import-rejected",
       "features": [
         "conversions to non-elementary types",
-        "custom errors with reference parameters",
         "external calls and contract members",
-        "function members (selector, address, \u2026)",
-        "function types",
         "require with a custom error"
       ],
       "first": "conversions to non-elementary types",
@@ -6972,7 +6970,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "custom errors with reference parameters",
         "require with a custom error"
       ],
       "first": null,
@@ -6983,7 +6980,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "custom errors with reference parameters",
         "named arguments",
         "require with a custom error"
       ],
@@ -6995,7 +6991,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "custom errors with reference parameters",
         "named arguments",
         "require with a custom error"
       ],
@@ -7007,7 +7002,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "custom errors with reference parameters",
         "named arguments",
         "require with a custom error"
       ],
@@ -7019,7 +7013,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "custom errors with reference parameters",
         "named arguments",
         "require with a custom error"
       ],
@@ -7031,10 +7024,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "custom errors with reference parameters",
         "external calls and contract members",
-        "function members (selector, address, \u2026)",
-        "function types",
         "public state variables",
         "require with a custom error",
         "this"
@@ -7055,7 +7045,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "custom errors with reference parameters",
         "require with a custom error"
       ],
       "first": null,
@@ -7066,7 +7055,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "custom errors with reference parameters",
         "require with a custom error"
       ],
       "first": null,
@@ -7087,7 +7075,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "custom errors with reference parameters",
         "require with a custom error"
       ],
       "first": null,
@@ -7119,7 +7106,8 @@
       "category": "import-rejected",
       "features": [
         "custom errors with reference parameters",
-        "named arguments"
+        "named arguments",
+        "string literals as fixed-size bytes"
       ],
       "first": "named arguments",
       "reason": "errors/revert_error_named_parameters.sol: FunctionCall 30: named arguments are not supported",
@@ -7141,7 +7129,9 @@
       "category": "import-rejected",
       "features": [
         "custom errors with reference parameters",
-        "named arguments"
+        "literals of non-integer types",
+        "named arguments",
+        "string literals as fixed-size bytes"
       ],
       "first": "named arguments",
       "reason": "errors/revert_error_named_parameters_literal_conversions.sol: FunctionCall 54: named arguments are not supported",
@@ -9861,7 +9851,8 @@
         "function types",
         "functions as values",
         "immutables",
-        "inline assembly"
+        "inline assembly",
+        "string literals as fixed-size bytes"
       ],
       "first": "immutables",
       "reason": "immutable/immutable_signed.sol: VariableDeclaration 4: immutable variables are not supported",
@@ -10186,7 +10177,6 @@
       "features": [
         "array values",
         "arrays",
-        "local reference bindings",
         "memory arrays (new T[](n))",
         "this"
       ],
@@ -10612,7 +10602,8 @@
       "features": [
         "constants",
         "inline assembly",
-        "literals of non-integer types"
+        "literals of non-integer types",
+        "string literals as fixed-size bytes"
       ],
       "first": "constants",
       "reason": "inlineAssembly/constant_access.sol: VariableDeclaration 3: constants are not supported",
@@ -10624,7 +10615,8 @@
       "features": [
         "constants",
         "inline assembly",
-        "literals of non-integer types"
+        "literals of non-integer types",
+        "string literals as fixed-size bytes"
       ],
       "first": "constants",
       "reason": "inlineAssembly/constant_access_referencing.sol: VariableDeclaration 3: constants are not supported",
@@ -14209,7 +14201,8 @@
         "contract creation (new C)",
         "external calls and contract members",
         "public state variables",
-        "source units without exactly one contract"
+        "source units without exactly one contract",
+        "string literals as fixed-size bytes"
       ],
       "first": "public state variables",
       "reason": "smoke/alignment.sol: VariableDeclaration 7: public state variables are not supported",
@@ -15663,7 +15656,8 @@
       "category": "import-rejected",
       "features": [
         "constants",
-        "public state variables"
+        "public state variables",
+        "string literals as fixed-size bytes"
       ],
       "first": "public state variables",
       "reason": "strings/constant_string_literal.sol: VariableDeclaration 3: constants are not supported",
@@ -17525,6 +17519,7 @@
         "inline arrays",
         "inline assembly",
         "public state variables",
+        "string literals as fixed-size bytes",
         "user-defined value types"
       ],
       "first": "public state variables",

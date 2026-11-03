@@ -44,18 +44,18 @@ The scan disagrees with the HOL run on 0 tests.
 | inline assembly | `InlineAssembly` | 266 | 87 | 178 |
 | array values | `Identifier`, `IndexAccess`, `MemberAccess` | 261 | 9 | 0 |
 | external calls and contract members | `FunctionCall`, `Identifier`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 226 | 1 | 67 |
-| local reference bindings | `VariableDeclaration` | 216 | 0 | 0 |
+| local reference bindings | `VariableDeclaration` | 215 | 0 | 0 |
 | public state variables | `VariableDeclaration` | 206 | 49 | 158 |
 | structs | `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 165 | 5 | 14 |
 | this | `Identifier` | 140 | 0 | 3 |
 | source units without exactly one contract | `SourceUnit` | 129 | 4 | 0 |
-| function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 124 | 0 | 14 |
+| function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 121 | 0 | 14 |
 | libraries | `ContractDefinition` | 116 | 1 | 35 |
 | memory arrays (new T[](n)) | `NewExpression` | 111 | 0 | 70 |
 | struct values and copying | `Identifier`, `IndexAccess`, `MemberAccess` | 108 | 2 | 0 |
 | library calls and contract-name members | `IndexAccess`, `MemberAccess` | 101 | 8 | 0 |
 | abi.* functions | `MemberAccess` | 100 | 5 | 51 |
-| function types | `FunctionTypeName` | 99 | 0 | 67 |
+| function types | `FunctionTypeName` | 96 | 0 | 67 |
 | using for | `MemberAccess`, `UsingForDirective` | 81 | 0 | 46 |
 | contract creation (new C) | `NewExpression` | 80 | 0 | 8 |
 | operator delete | `UnaryOperation` | 75 | 5 | 0 |
@@ -70,12 +70,12 @@ The scan disagrees with the HOL run on 0 tests.
 | inline arrays | `TupleExpression` | 47 | 0 | 21 |
 | transient storage | `VariableDeclaration` | 41 | 7 | 0 |
 | conditional expressions | `Conditional` | 40 | 11 | 22 |
+| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `RevertStatement`, `VariableDeclaration`, `VariableDeclarationStatement` | 40 | 10 | 0 |
 | modifiers | `ModifierDefinition`, `ModifierInvocation`, `PlaceholderStatement` | 39 | 13 | 35 |
 | mappings | `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 39 | 3 | 0 |
 | aggregate array mutation | `MemberAccess` | 37 | 3 | 0 |
+| literals of non-integer types | `Assignment`, `BinaryOperation`, `FunctionCall`, `Literal`, `Return`, `RevertStatement`, `VariableDeclaration`, `VariableDeclarationStatement` | 33 | 2 | 0 |
 | named arguments | `FunctionCall` | 32 | 3 | 17 |
-| literals of non-integer types | `Assignment`, `BinaryOperation`, `FunctionCall`, `Literal`, `Return`, `VariableDeclarationStatement` | 32 | 2 | 0 |
-| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclarationStatement` | 31 | 10 | 0 |
 | bytes.concat and string.concat | `MemberAccess`, `TupleExpression` | 30 | 0 | 13 |
 | enums | `EnumDefinition`, `EnumValue`, `FunctionCall`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 29 | 3 | 25 |
 | tuples of literals | `TupleExpression` | 28 | 4 | 0 |
@@ -84,11 +84,10 @@ The scan disagrees with the HOL run on 0 tests.
 | members of elementary type names | `IndexAccess`, `TupleExpression` | 24 | 0 | 0 |
 | bytes push and pop | `MemberAccess` | 23 | 10 | 0 |
 | call options ({value: …, gas: …}) | `FunctionCallOptions`, `IndexAccess`, `MemberAccess`, `NewExpression`, `TupleExpression` | 22 | 0 | 3 |
-| custom errors with reference parameters | `VariableDeclaration` | 22 | 0 | 0 |
 | new bytes and string | `NewExpression` | 20 | 1 | 11 |
 | try/catch | `FunctionCall`, `TryCatchClause`, `TryStatement` | 20 | 0 | 11 |
 | array slices | `IndexRangeAccess` | 19 | 3 | 13 |
-| require with a custom error | `FunctionCall` | 18 | 4 | 0 |
+| require with a custom error | `FunctionCall` | 18 | 9 | 0 |
 | mapping values | `Identifier`, `IndexAccess`, `MemberAccess` | 17 | 0 | 0 |
 | type(…) | `Identifier` | 16 | 2 | 7 |
 | super calls | `Identifier`, `MemberAccess`, `TupleExpression` | 15 | 6 | 8 |
@@ -96,6 +95,7 @@ The scan disagrees with the HOL run on 0 tests.
 | fixed-size bytes members and indexing | `IndexAccess`, `MemberAccess` | 12 | 1 | 0 |
 | literal subdenominations (ether, days, …) | `Literal` | 11 | 0 | 1 |
 | bytes and string | `MemberAccess` | 10 | 0 | 0 |
+| custom errors with reference parameters | `VariableDeclaration` | 10 | 0 | 0 |
 | events named through a contract or library | `MemberAccess` | 8 | 3 | 5 |
 | imports | `MemberAccess`, `TupleExpression` | 8 | 0 | 0 |
 | msg/block/tx globals | `MemberAccess` | 6 | 5 | 6 |
