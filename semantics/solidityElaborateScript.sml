@@ -647,8 +647,8 @@ Definition elab_expr_def:
                    | NONE => NONE)
               | NONE => NONE))
     | SrcExternalCall _ callee with_value operands _ =>
-        (case (all_some (MAP variable_type callee.ext_parameters),
-               all_some (MAP variable_type callee.ext_returns)) of
+        (case (all_some (MAP call_variable_type callee.ext_parameters),
+               all_some (MAP call_variable_type callee.ext_returns)) of
            (SOME params, SOME rets) =>
              (case elab_args ctx n
                      (AddressT NonpayableAddress ::
@@ -900,7 +900,7 @@ End
 
 Definition event_parameter_def:
   event_parameter ((v : src_variable), (indexed : bool)) =
-    OPTION_MAP (λty. (ty, indexed)) (variable_type v)
+    OPTION_MAP (λty. (ty, indexed)) (event_variable_type v)
 End
 
 Definition emit_arguments_def:

@@ -459,7 +459,7 @@ Definition emit_event_def:
     else case eval_event_args st.scopes args of
       NONE => abrupt_result (InvalidCompletion "unbound atom") st gas
     | SOME vs =>
-        case event_log st.frame.self_address topic vs of
+        case event_log st st.frame.self_address topic vs of
           SOME e =>
             normal_result
               (st with world := st.world with logs := st.world.logs ++ [e]) gas
@@ -486,7 +486,7 @@ Definition call_external_def:
           eval_atoms st.scopes args) of
       (SOME (ScalarValue (AddressValue callee)),
        SOME (ScalarValue (IntegerValue v)), SOME vs) =>
-        (case encoded_values params vs of
+        (case encoded_runtime_values st params vs of
            NONE => abrupt_result (InvalidCompletion "bad call arguments") st gas
          | SOME data =>
            let static = (kind = ExternalStaticCall ∨ st.frame.static_context) in
@@ -508,10 +508,18 @@ Definition call_external_def:
                        <| accounts := r.call_accounts;
                           transient := r.call_transient;
                           logs := st.world.logs ++ r.call_logs |> in
-                 case decode_arguments rets r.call_return of
-                   SOME rvs =>
-                     normal_result (define_binding x ty (pack_results rvs) st') gas
-                 | NONE => abrupt_result (RevertCompletion []) st' gas)
+                 let reserved = if EXISTS byte_sequence_value_type rets then
+                       LENGTH r.call_return
+                     else MIN (32 * LENGTH rets) (LENGTH r.call_return) in
+                 let st1 = st' with memory_allocated := st'.memory_allocated +
+                       32 * ((reserved + 31) DIV 32) in
+                 case decode_arguments rets r.call_return 0 (memory_free_pointer st1) of
+                   INL rvs =>
+                     (case materialize_arguments rets rvs st1 of
+                        SOME (values, st2) =>
+                          normal_result (define_binding x ty (pack_results values) st2) gas
+                      | NONE => abrupt_result (InvalidCompletion "bad call results") st' gas)
+                 | INR c => abrupt_result c st' gas)
     | _ => abrupt_result (InvalidCompletion "bad call operands") st gas
 End
 

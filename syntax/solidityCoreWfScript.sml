@@ -221,6 +221,15 @@ Definition byte_sequence_value_type_def:
     | _ => F
 End
 
+(* Transaction arguments and call results contain scalars or byte sequences
+ * in memory/calldata; storage pointers never cross an ABI boundary. *)
+Definition abi_value_type_def:
+  abi_value_type ty ⇔
+    is_elementary_type ty ∨
+    (byte_sequence_value_type ty ∧
+     case ty of LocatedT StorageLoc _ => F | _ => T)
+End
+
 Definition core_binding_type_def:
   core_binding_type env ty ⇔ core_scalar_type env ty ∨ byte_sequence_value_type ty
 End
@@ -633,7 +642,7 @@ Definition wf_core_operation_def:
   (wf_core_operation env ctx annotation
      (ExternalCallOperation kind selector params rets target value args) ⇔
     kind ≠ ExternalDelegateCall ∧ LENGTH selector = 4 ∧
-    EVERY (λty. is_elementary_type ty ∧ valid_type_shape ty) (params ++ rets) ∧
+    EVERY (λty. abi_value_type ty ∧ valid_type_shape ty) (params ++ rets) ∧
     wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
     wf_core_atom env ctx (SingleType (UintT 256)) value ∧
     (kind = ExternalStaticCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
@@ -656,7 +665,7 @@ End
 Definition emit_indexed_count_def:
   (emit_indexed_count env ctx [] = SOME (0 : num)) ∧
   (emit_indexed_count env ctx ((ty, indexed, a) :: args) =
-    if is_elementary_type ty ∧ valid_type_shape ty ∧
+    if abi_value_type ty ∧ valid_type_shape ty ∧
        wf_core_atom env ctx (SingleType ty) a then
       case emit_indexed_count env ctx args of
         SOME n => SOME (if indexed then n + 1 else n)
@@ -854,7 +863,7 @@ Definition abi_procedure_def:
   abi_procedure env f ⇔
     case lookup_procedure env f of
       SOME p =>
-        EVERY (λ(_, ty). is_elementary_type ty)
+        EVERY (λ(_, ty). abi_value_type ty)
           (p.parameters ++ p.return_bindings)
     | NONE => F
 End

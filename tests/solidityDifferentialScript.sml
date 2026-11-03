@@ -57,6 +57,9 @@ Definition argument_value_def:
     if LENGTH bs = 20 then
       SOME (ScalarValue (AddressValue (n2w (num_of_be_bytes bs))))
     else NONE) ∧
+  (argument_value (LocatedT loc ty) (BytesArg bs) =
+    if byte_sequence_type ty ∧ loc ≠ StorageLoc then
+      SOME (ScalarValue (BytesValue bs)) else NONE) ∧
   (argument_value ty a =
     if elementary_scalar_has_type ty (argument_scalar a) then
       SOME (ScalarValue (argument_scalar a))
@@ -197,7 +200,8 @@ End
 
 Datatype:
   expectation =
-    ExpectReturn (argument list) | ExpectPanic num | ExpectRevert (byte list)
+    ExpectReturn (argument list) | ExpectRawReturn (byte list)
+  | ExpectPanic num | ExpectRevert (byte list)
 End
 
 (* A transaction from the sender to the contract, from the initial storage
@@ -416,6 +420,7 @@ Definition expected_outcome_def:
                  case encoded_values rets vs of
                    SOME bs => Returned bs
                  | NONE => Diagnostic UnencodableResult)
+    | ExpectRawReturn bs => Returned bs
     | ExpectPanic n => Reverted (panic_data n)
     | ExpectRevert bs => Reverted bs
 End

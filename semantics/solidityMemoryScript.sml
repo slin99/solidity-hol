@@ -18,7 +18,9 @@ Definition allocate_bytes_def:
     let obj = <| object_type := ty; object_length := LENGTH bs;
                  object_cells := byte_cells bs |> in
     (ReferenceValue (MemoryReference (HeapId id) 0 ty),
-     st with <| heap := st.heap |+ (id, obj); next_heap_id := id |>)
+     st with <| heap := st.heap |+ (id, obj); next_heap_id := id;
+               memory_allocated := st.memory_allocated +
+                 32 + 32 * ((LENGTH bs + 31) DIV 32) |>)
 End
 
 Definition memory_byte_def:

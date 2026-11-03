@@ -57,6 +57,7 @@ Datatype:
     scopes : (num |-> source_binding) list;
     heap : num |-> heap_object;
     next_heap_id : num;
+    memory_allocated : num;
     targets : num |-> captured_target
   |>
 End

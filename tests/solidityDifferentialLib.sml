@@ -116,10 +116,12 @@ fun arguments vs = listSyntax.mk_list (map argument vs, argument_ty)
 fun expectation v =
   case v of
     JSON.OBJECT [("return", JSON.ARRAY vs)] => con "ExpectReturn" [arguments vs]
+  | JSON.OBJECT [("returned", JSON.STRING s)] =>
+      con "ExpectRawReturn" [bytes_term (hex_bytes s)]
   | JSON.OBJECT [("panic", code)] => con "ExpectPanic" [num_term (integer code)]
   | JSON.OBJECT [("revert", JSON.STRING s)] =>
       con "ExpectRevert" [bytes_term (hex_bytes s)]
-  | _ => fail "expect is one of {\"return\": [...]}, {\"panic\": code}, \
+  | _ => fail "expect is one of {\"return\": [...]}, {\"returned\": \"0x...\"}, {\"panic\": code}, \
               \{\"revert\": \"0x...\"}"
 
 (* An object from slot to value, both 256-bit words. *)

@@ -73,7 +73,7 @@ def check_argument(value: Any, what: str) -> None:
 
 def check_expectation(value: Any, what: str) -> None:
     if not isinstance(value, dict) or len(value) != 1:
-        raise CorpusError(f"{what} must have exactly one of return, panic and revert")
+        raise CorpusError(f"{what} must have exactly one of return, returned, panic and revert")
     (kind, payload), = value.items()
     if kind == "return":
         if not isinstance(payload, list):
@@ -86,9 +86,9 @@ def check_expectation(value: Any, what: str) -> None:
             or (isinstance(payload, str) and HEX.fullmatch(payload) and payload != "0x")
         ):
             raise CorpusError(f"{what}.panic must be a natural number or 0x-prefixed hex")
-    elif kind == "revert":
+    elif kind in {"revert", "returned"}:
         if not isinstance(payload, str) or HEX.fullmatch(payload) is None:
-            raise CorpusError(f"{what}.revert must be 0x-prefixed hex")
+            raise CorpusError(f"{what}.{kind} must be 0x-prefixed hex")
     else:
         raise CorpusError(f"{what} has unknown kind {kind!r}")
 

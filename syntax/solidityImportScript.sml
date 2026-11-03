@@ -574,6 +574,29 @@ Definition variable_type_def:
     | NONE => NONE
 End
 
+(* A caller serializes dynamic arguments from memory regardless of the
+ * callee's declared parameter location. *)
+Definition call_variable_type_def:
+  call_variable_type v =
+    OPTION_MAP (λty. case ty of
+      LocatedT CalldataLoc element => LocatedT MemoryLoc element
+    | _ => ty) (variable_type v)
+End
+
+(* Event declarations omit an explicit location; analyzed byte parameters
+ * carry memory identifiers. *)
+Definition event_variable_type_def:
+  event_variable_type (v : src_variable) =
+    case normalize_type_name v.var_type_name of
+      SOME ty =>
+        if byte_sequence_type ty then
+          if v.var_location = "default" ∧
+             source_type_matches (LocatedT MemoryLoc ty) v.var_type_id then
+            SOME (LocatedT MemoryLoc ty) else NONE
+        else variable_type v
+    | NONE => NONE
+End
+
 (* Struct fields use storage pointer identifiers for arrays and structs,
  * unlike state declarations. Mappings retain their ordinary identifier. *)
 Definition field_variable_type_def:
@@ -905,8 +928,8 @@ Definition check_expr_def:
   (* Value only for a payable callee, as the compiler requires; elaboration
      converts the target to an address. *)
   (check_expr env (SrcExternalCall _ callee with_value operands tid) =
-    case (all_some (MAP variable_type callee.ext_parameters),
-          all_some (MAP variable_type callee.ext_returns),
+    case (all_some (MAP call_variable_type callee.ext_parameters),
+          all_some (MAP call_variable_type callee.ext_returns),
           decode_type_identifier tid) of
       (SOME params, SOME rets, SOME vt) =>
         if MEM callee.ext_mutability ["pure"; "view"; "nonpayable"; "payable"] ∧
@@ -1147,7 +1170,8 @@ End
 (* Event parameters are elementary value types declared by the event. *)
 Definition check_event_def:
   check_event (e : src_event) ⇔
-    EVERY (λp. IS_SOME (scoped_variable e.event_info.node_id (FST p)))
+    EVERY (λp. (FST p).var_scope = e.event_info.node_id ∧
+                  IS_SOME (event_variable_type (FST p)))
       e.event_parameters
 End
 
@@ -1220,6 +1244,8 @@ val () = cv_auto_trans canonical_storage_identifier_def;
 val () = cv_auto_trans source_type_matches_def;
 val () = cv_auto_trans storage_layout_identifier_def;
 val () = cv_auto_trans variable_type_def;
+val () = cv_auto_trans call_variable_type_def;
+val () = cv_auto_trans event_variable_type_def;
 val () = cv_auto_trans field_variable_type_def;
 val () = cv_auto_trans call_value_type_def;
 val () = cv_auto_trans_rec expr_ids_def (
