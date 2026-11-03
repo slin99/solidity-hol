@@ -493,6 +493,27 @@ Proof
   rw [] >> Cases_on `l` >> simp [listTheory.list_case_def]
 QED
 
+(* The case in a conditional's *test*, pushed in: the case comes to the top and
+ * each of its branches carries the conditional, on what that branch holds.
+ *
+ * A statement whose own evaluation is a decision -- a guard the evaluator
+ * cannot settle because the call in it is folded, `if <the call's value> then
+ * <the invalid answer> else <the normal one>` -- leaves the case in the test,
+ * which is the one place the continuation's push (`COND_RAND`) cannot reach:
+ * the continuation goes into the conditional's two branches, both of which
+ * keep it, and the branch the evaluator's own literal would have dropped is
+ * only decided once the case is outside.  A body of k such guards is 2^k times
+ * the size without this, and linear with it. *)
+Theorem yul_expr_result_CASE_cond:
+  ∀X b1 b2 t e.
+    (if yul_expr_result_CASE X b1 b2 then t else e) =
+    yul_expr_result_CASE X
+      (λvs m. if b1 vs m then t else e)
+      (λc m. if b2 c m then t else e)
+Proof
+  Cases_on `X` >> simp [yul_expr_result_case_def]
+QED
+
 (* A call that ends abruptly never ends `YulNormal`.  Read off the call's own
  * clause: the abrupt answers it can give are out of fuel, an unknown function,
  * a bad arity, and the callee's own completion, which it tests for `YulNormal`

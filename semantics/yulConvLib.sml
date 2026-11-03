@@ -17,8 +17,8 @@
  *  - The scopes.  A scope is a chain of updates over the empty map, keyed by
  *    the names the compiler emitted, so `FLOOKUP` on one is decided by
  *    walking the chain: each update's key is a closed string, so the test
- *    `FLOOKUP_UPDATE` leaves is one `EVAL` answers.  Nothing else has to know
- *    the names are literals.
+ *    `FLOOKUP_UPDATE` leaves is one the test set answers.  Nothing else has to
+ *    know the names are literals.
  *
  *  - The call itself.  `invoke_yul`'s equation is deliberately not a compute
  *    rule, so a call the body makes stops there and is handed back to the
@@ -87,16 +87,41 @@ fun consts_in tm =
   | Term.LAMB (_, b) => consts_in b
   | Term.COMB (a, b) => consts_in a @ consts_in b
 
-(* Whether a term holds a call the conversion has left folded.  What copies a
- * form is always the scaffolding around one of these, so a rule that would copy
- * asks this first. *)
-fun contains_invoke tm = Lib.mem ("yulEvaluator", "invoke_yul") (consts_in tm)
+(* The two things a rule asks about a term before it copies one: does it hold a
+ * call the conversion has left folded -- what copies a form is always the
+ * scaffolding around one of these -- and does it hold a `word_exp`, which a
+ * test's own reduction is kept off (see `eval_unsafe` below).  Both are
+ * questions about the term alone, and the terms are the machines and statement
+ * results the conversion is about, the same one asked about again and again as
+ * a body's tail is handed from branch to branch, so the answer is remembered.
+ * One walk settles both. *)
+local
+  val answers : (bool * bool) Termtab.table ref = ref Termtab.empty
+in
+  fun clear_answers () = answers := Termtab.empty
+
+  fun scan tm =
+    case Termtab.lookup (!answers) tm of
+      SOME b => b
+    | NONE =>
+        let
+          val ks = consts_in tm
+          val b = (Lib.mem ("yulEvaluator", "invoke_yul") ks,
+                   Lib.mem ("words", "word_exp") ks orelse
+                   Lib.mem ("words", "word_exp_tailrec") ks)
+        in
+          answers := Termtab.update (tm, b) (!answers);
+          b
+        end
+end
+
+fun contains_invoke tm = #1 (scan tm)
 
 (*---------------------------------------------------------------------------
    One scope lookup.
 
    `FLOOKUP f k` where f is FEMPTY or an update of one: the evaluator's own
-   equation, whose test k' = k a closed EVAL decides, then one update in when
+   equation, whose test k' = k the test set decides, then one update in when
    the test is false.  Any other map -- a variable, or something no rule reads
    -- is left alone, so a lookup the conversion cannot decide shows up as a
    residue rather than as a wrong answer.
@@ -120,6 +145,63 @@ fun cond_conv tm =
   end
   handle HOL_ERR _ => raise Conv.UNCHANGED
 
+(*---------------------------------------------------------------------------
+   The set a test is reduced on.
+
+   `EVAL` is not usable for this.  `wordsLib` adds the word library's rules to
+   the *global* set when it is loaded (`computeLib.upd_compset
+   (add_words_compset false)`), so `word_exp w v = word_exp_tailrec w v 1w` is
+   there whatever set the caller built, and the tail recursion takes the
+   exponent apart a bit at a time with no bottom on a symbolic one.  A test that
+   holds a `word_exp` must therefore not be reduced on that set -- and it is not
+   only a test that holds one: a test whose reduction *reaches* one does too.
+   `FLOOKUP scope x = NONE`, the guard the evaluator's own lookup writes, is a
+   lookup of a scope whose values hold what the body's calls returned, and the
+   conditional `FLOOKUP_UPDATE` makes of it has those values in its branches,
+   which a call-by-value reduction takes as well as the guard.  That is how
+   `power := cleanup_uint8(exp(base, exponent))` -- one statement of one corpus
+   function, its exponent symbolic -- stopped the conversion: nothing in the
+   test named `word_exp`, so the scan that keeps `EVAL` off one did not fire,
+   and the branches' `word_exp` unfolded the tail recursion on a symbolic
+   exponent, which has no bottom.
+
+   So the rules here reduce a test on a set of their own: the global one as it
+   was when this file loaded, with the evaluator's own clause for `invoke_yul`
+   and for the block taken out (a test's reduction must not unfold a callee
+   either, and a scope's values are folded calls), and with the word library's
+   exponentiation recursion taken out and the literal-only rule put back.
+ ---------------------------------------------------------------------------*)
+val word_exp_c = prim_mk_const {Thy = "words", Name = "word_exp"}
+val word_exp_tailrec_c =
+  prim_mk_const {Thy = "words", Name = "word_exp_tailrec"}
+
+(* The literal case, on a set that has the word library's own rules: `n2w` of a
+ * numeral is what makes `word_exp 2w 3w` a value rather than a term.  A copy,
+ * because `add_words_compset` adds to the compset it is given and a compset's
+ * per-constant entries are shared refs -- building it on `the_compset ()` would
+ * put the word library into the global set, and with it `EVAL`. *)
+val exp_compset =
+  wordsLib.add_words_compset true (computeLib.copy (computeLib.the_compset ()))
+
+(* Both arguments literal is the only case worth taking: with a symbolic base
+ * the answer is `n2w (w2n base ** k)`, a longer term rather than a value, so a
+ * symbolic exponentiation stays as the value it is. *)
+fun word_exp_conv tm =
+  case Lib.total (fn () => snd (strip_comb tm)) () of
+    SOME [a, b] =>
+      if wordsSyntax.is_word_literal a andalso wordsSyntax.is_word_literal b
+      then computeLib.CBV_CONV exp_compset tm
+      else raise Conv.UNCHANGED
+  | _ => raise Conv.UNCHANGED
+
+val test_compset =
+  computeLib.add_conv (word_exp_c, 2, word_exp_conv)
+    (List.foldl (fn (c, cs) => computeLib.scrub_const cs c)
+       (computeLib.copy (computeLib.the_compset ()))
+       [eval_yul_block_c, invoke_c, word_exp_c, word_exp_tailrec_c])
+
+fun eval_test tm = computeLib.CBV_CONV test_compset tm
+
 fun flookup_conv tm =
   let val (f, _) = dest_flookup tm in
     if is_fempty f then
@@ -129,7 +211,7 @@ fun flookup_conv tm =
       let
         val update = Conv.REWR_CONV finite_mapTheory.FLOOKUP_UPDATE tm
         val (test, _, _) = boolSyntax.dest_cond (rhs (concl update))
-        val test_thm = EVAL test
+        val test_thm = eval_test test
         val truth = rhs (concl test_thm)
         val is_true = truth ~~ boolSyntax.T
         val is_false = truth ~~ boolSyntax.F
@@ -332,7 +414,7 @@ fun beta_conv tm =
     Term.COMB (rator, arg) =>
       if is_abs rator then
         let val (bv, body) = dest_abs rator in
-          if occurrences bv body >= 2 andalso contains_invoke arg
+          if contains_invoke arg andalso occurrences bv body >= 2
           then raise Conv.UNCHANGED
           else Thm.BETA_CONV tm
         end
@@ -352,7 +434,7 @@ fun let_conv tm =
     val applied = rhs (concl unlet)
     val (bv, body) = dest_abs (rator applied)
   in
-    if occurrences bv body >= 2 andalso contains_invoke (rand applied)
+    if contains_invoke (rand applied) andalso occurrences bv body >= 2
     then raise Conv.UNCHANGED
     else Thm.TRANS unlet (Thm.BETA_CONV applied)
   end
@@ -362,8 +444,11 @@ fun let_conv tm =
  * moves inside the inner one, which is what surfaces the branches the inner
  * case decides -- and those are the ones the whole split exists to prune.
  * Applied at the top only, repeatedly, since the pushed-out inner case is at
- * the top again and may itself be one. *)
-val push_lemmas = [yul_expr_result_CASE_CASE,
+ * the top again and may itself be one.  The conditional is in the list for
+ * the same reason: a guard the evaluator leaves undecided, because the call in
+ * it is folded, leaves the case in the test, where nothing else reaches it. *)
+val push_lemmas = [yul_expr_result_CASE_cond,
+                   yul_expr_result_CASE_CASE,
                    yul_expr_result_CASE_option,
                    yul_expr_result_CASE_list]
 
@@ -424,17 +509,25 @@ fun prune_all_conv tm =
     go (Thm.REFL tm) 4
   end
 
-(* `if <test> then t1 else t2` with a test `EVAL` can decide: a completion
+(* Whether a test is worth handing to the set at all, which is not the case
+ * while it holds either of the two things `scan` reports.  A folded call, and a
+ * `word_exp`: both are things a form carries on purpose, and a test is decided
+ * by the small terms in it rather than by evaluating those.  The set the test
+ * is reduced on has both taken out, so this is a question of cost, not of
+ * soundness -- reducing a test that holds a call's whole argument list to
+ * decide an equality is work with no answer at the end of it. *)
+fun eval_unsafe tm =
+  let val (call, exp) = scan tm in call orelse exp end
+
+(* `if <test> then t1 else t2` with a test the set can decide: a completion
  * carrying a message is told apart from YulNormal the same way a bare
  * constructor is, and one that is still a variable leaves the conditional
- * alone.  The test is not evaluated at all while it holds a folded call: the
- * compset `EVAL` runs is not the one this file builds, and a call left folded
- * has to stay folded. *)
+ * alone. *)
 fun decide_conv tm =
   let
     val (test, t1, t2) = boolSyntax.dest_cond tm
-    val test_thm = if contains_invoke test then raise Conv.UNCHANGED
-                   else EVAL test
+    val test_thm = if eval_unsafe test then raise Conv.UNCHANGED
+                   else eval_test test
     val truth = rhs (concl test_thm)
     val rule = if truth ~~ boolSyntax.T then cond_true
                else if truth ~~ boolSyntax.F then cond_false
@@ -496,6 +589,23 @@ fun is_result_field c = List.exists (fn eq => same_const c (eq_accessor eq))
  * and the statement rule below.  It has to be the set the rule is part of, so
  * that a block nested in what they reduce is taken the same way; the reference
  * closes that circle. *)
+(* A block the conversion has already taken, remembered by its term.  What the
+ * rule derives is a function of the term alone -- the compute set it runs on is
+ * fixed for the whole of one call -- and a body's continuation is handed to the
+ * branch of every decision above it, so the same `eval_yul_block n fns ss m`
+ * is converted again and again as the body's own guarantees are split out.
+ * Emptying the table whenever the set changes is what keeps the equations
+ * valid: they hold for the set that produced them, and not for another.
+ *
+ * Terms are hash-consed, so `Term.compare`'s first test -- pointer equality --
+ * settles the entry the lookup is after, and only the misses past it walk both
+ * terms. *)
+val blocks : thm Termtab.table ref = ref Termtab.empty
+
+fun memo_blocks tm = Termtab.lookup (!blocks) tm
+
+fun remember_block tm th = blocks := Termtab.update (tm, th) (!blocks)
+
 local
   val cs_ref : compset option ref = ref NONE
 in
@@ -504,12 +614,12 @@ in
       SOME c => c
     | NONE => raise ERR "yulConvLib" "the compute set is not set yet"
 
-  fun set_block_compset c = cs_ref := SOME c
+  fun set_block_compset c =
+    (cs_ref := SOME c; blocks := Termtab.empty; clear_answers ())
 end
-
 (* A field, read off a record: `sel v` for a term whose selector is one of the
  * datatype's fields.  Anything else is left alone, which is what keeps this
- * out of the way of the rest of `exposed_conv`'s work. *)
+ * out of the way of the rest of `step_conv`'s work. *)
 fun reduce_field tm =
   case Lib.total dest_comb tm of
     SOME (acc, _) =>
@@ -556,7 +666,8 @@ fun result_conv v tm =
  * `b2 (YulInvalid …) m` -- so the branch that answers abruptly is reached and
  * its completion read off a literal.  And a field of a record is what the
  * record holds, so the test the clause wrote on the branch's own variable
- * becomes a test on a literal.  What is left is a conditional `EVAL` decides.
+ * becomes a test on a literal.  What is left is a conditional the test set
+ * decides.
  *
  * Neither reduction is one of the evaluator's own clauses: the branches'
  * scrutinees are the case's bound variables, so no compute rule reaches them,
@@ -609,36 +720,75 @@ val case_equations =
   CONJUNCTS optionTheory.option_case_def @
   CONJUNCTS listTheory.list_case_def
 
-local
-  fun matching [] tm = raise Conv.UNCHANGED
-    | matching (eq :: rest) tm =
-        Conv.REWR_CONV eq tm handle HOL_ERR _ => matching rest tm
+fun matching [] tm = raise Conv.UNCHANGED
+  | matching (eq :: rest) tm =
+      Conv.REWR_CONV eq tm handle HOL_ERR _ => matching rest tm
 
-  fun case_conv tm = matching case_equations tm
-in
-  fun exposed_conv tm =
-    case_conv tm
-    handle Conv.UNCHANGED =>
-      (reduce_field tm
-       handle Conv.UNCHANGED => decide_conv tm)
-end
+fun case_conv tm = matching case_equations tm
 
 (* A binding, taken: the continuation is pushed inside whatever decision the
  * statement ended in, and what is left is an ordinary beta redex or `let`,
  * which the two rules below take with the exceptions they make for a term that
- * has to be kept once.  Distribution is tried first at every node, so that a
- * decision is never copied into the continuation's uses -- which is the copy
- * the whole pass exists to avoid. *)
-val binding_convs = [distribute_conv, beta_conv, let_conv]
+ * has to be kept once.  Distribution is tried before either, so that a decision
+ * is never copied into the continuation's uses -- which is the copy the whole
+ * pass exists to avoid. *)
+fun binding_step_conv tm =
+  if not (is_comb tm) then raise Conv.UNCHANGED
+  else
+    let
+      val (c, _) = strip_comb tm
+      val (rator, _) = dest_comb tm
+      val is_beta = is_abs rator
+    in
+      if is_beta orelse is_const_named "bool" "LET" c then
+        distribute_conv tm
+        handle Conv.UNCHANGED =>
+          (if is_beta then beta_conv tm else let_conv tm)
+      else raise Conv.UNCHANGED
+    end
+
+(* One node of the pass, dispatched on what the node is.  A depth-first pass
+ * reaches every node of the form, and most of them are neither a case on one
+ * of these types nor a binding nor a field, so trying every rule at all of them
+ * pays a failed match -- and an exception -- for every rule at every node: on
+ * a body whose form is tens of thousands of nodes, and with the pass repeated
+ * until it changes nothing, that is what a form costs seconds in.  The head
+ * constant (or an abstraction where a function goes) is the test, and the rules
+ * it dispatches to cannot overlap: a case's head is its own type's constant, a
+ * binding's is `LET` or an abstraction, and a field's is a selector.
+ *
+ * Taking a case or a conditional apart can leave a beta redex in the node's
+ * place -- the branch a case applies is written as a function even when it is
+ * the abstraction it was pushed into -- so those two nodes hand on to the
+ * binding rules, as the pass did when every rule was tried at every node. *)
+fun after_binding th =
+  let val t = rhs (concl th)
+  in Thm.TRANS th (binding_step_conv t handle Conv.UNCHANGED => Thm.REFL t) end
+
+fun step_conv tm =
+  if not (is_comb tm) then raise Conv.UNCHANGED
+  else
+    let
+      val (c, _) = strip_comb tm
+      val (rator, _) = dest_comb tm
+      val is_beta = is_abs rator
+    in
+      if is_const_named "yulEvaluator" "yul_expr_result_CASE" c orelse
+         is_const_named "option" "option_CASE" c orelse
+         is_const_named "list" "list_CASE" c
+      then after_binding (case_conv tm)
+      else if is_beta orelse is_const_named "bool" "LET" c
+      then binding_step_conv tm
+      else if is_const_named "bool" "COND" c then after_binding (decide_conv tm)
+      else reduce_field tm
+    end
 
 (* `QCONV`: a pass that finds nothing to take is this conversion's way of
  * saying so, and it has to be the identity here rather than an exception --
  * `block_conv` is a compute rule, and one that raises `UNCHANGED` is read as a
  * rule that does not apply, which leaves the block standing in the form with
  * nothing said about it. *)
-val expose_conv =
-  Conv.QCONV
-    (Conv.DEPTH_CONV (Conv.EVERY_CONV (exposed_conv :: binding_convs)))
+val expose_conv = Conv.QCONV (Conv.DEPTH_CONV step_conv)
 
 (* Repeated, since taking a case apart exposes another one, and one pass of a
  * depth-first reduction does not return to what beta reduction has just put at
@@ -661,6 +811,29 @@ fun expose_all_conv tm =
     go (Thm.REFL tm) 6
   end
 
+(* Taking the cases apart and dropping the dead ones, until neither has
+ * anything left to do.  The order matters: a case that has just been pushed
+ * out from inside a scrutinee is at the top and may be a call's, which the
+ * prune is what drops -- and a branch the prune drops may leave a case that
+ * has just become reducible behind it.  Doing all the taking apart first and
+ * the pruning after leaves every call case the push surfaced unpruned, and a
+ * body of k calls at 2^k times the size. *)
+fun settle_conv tm =
+  let
+    fun go acc 0 = acc
+      | go acc k =
+          let
+            val exposed = expose_all_conv (rhs (concl acc))
+            val pruned = prune_all_conv (rhs (concl exposed))
+            val next = Thm.TRANS acc (Thm.TRANS exposed pruned)
+          in
+            if aconv (rhs (concl next)) (rhs (concl acc)) then next
+            else go next (k - 1)
+          end
+  in
+    go (Thm.REFL tm) 3
+  end
+
 (* `(λr. CONT r) (case stmt of …)`: the continuation moves into the branches
  * (`yul_expr_result_RAND`), a call's own abrupt branch is dropped, and what
  * the case exposed is taken.  The branches' own bindings are taken here, before
@@ -670,12 +843,11 @@ fun expose_all_conv tm =
 fun split_conv tm =
   let
     val split = Conv.REWR_CONV yul_expr_result_RAND tm
-    val betad = Conv.QCONV (Conv.DEPTH_CONV (Conv.EVERY_CONV binding_convs))
+    val betad = Conv.QCONV (Conv.DEPTH_CONV binding_step_conv)
                           (rhs (concl split))
-    val pruned = prune_all_conv (rhs (concl betad))
-    val out = expose_all_conv (rhs (concl pruned))
+    val out = settle_conv (rhs (concl betad))
   in
-    Thm.TRANS split (Thm.TRANS betad (Thm.TRANS pruned out))
+    Thm.TRANS split (Thm.TRANS betad out)
   end
 
 (* `(λr. CONT r) v` where `v` is the record the clause reads its fields off:
@@ -698,10 +870,9 @@ fun value_conv v redex =
   handle Conv.UNCHANGED =>
     (let
        val pushed = distribute_conv redex
-       val recd = Conv.QCONV
-                    (Conv.DEPTH_CONV (Conv.EVERY_CONV binding_convs))
+       val recd = Conv.QCONV (Conv.DEPTH_CONV binding_step_conv)
                     (rhs (concl pushed))
-       val out = expose_all_conv (rhs (concl recd))
+       val out = settle_conv (rhs (concl recd))
      in
        Thm.TRANS pushed (Thm.TRANS recd out)
      end
@@ -733,7 +904,7 @@ val block_cons_clause =
 (* The statement rule, run as a compute rule (`add_conv` below): the clause is
  * instantiated, the statement is reduced with the compute set, and what the
  * statement reduced to is taken apart as `split_conv` or `value_conv` says. *)
-fun block_conv tm =
+fun block_conv_raw tm =
   let
     val (_, tms) = strip_comb tm
   in
@@ -773,6 +944,20 @@ fun block_conv tm =
           end
   end
 
+(* The rule itself: a block the table has is returned as the equation the
+ * conversion derived for it, and one it does not have is converted and put
+ * there.  A term the rule declines is not remembered -- `UNCHANGED` is the
+ * set's way of saying the rule does not apply, not an answer about the term. *)
+fun block_conv tm =
+  case memo_blocks tm of
+    SOME th => th
+  | NONE =>
+      let val th = block_conv_raw tm
+      in
+        remember_block tm th;
+        th
+      end
+
 (* The base is EVAL's own compute set rather than the boolean one: an
  * evaluator clause is full of `case` over the Yul datatypes, and a datatype's
  * case equations are put where its definition registered them, not into the
@@ -780,18 +965,30 @@ fun block_conv tm =
  * evaluator reaches its memory through `w2n` of an address and EVAL's set
  * alone leaves `w2n 0w` standing, which is enough to strand every memory
  * operation -- the byte it would read never becomes a list to recurse on.
- *)
+ * The word library's exponentiation recursion is taken back out, with the
+ * literal-only rule for `word_exp` put in its place (see `test_compset`
+ * above).
+ *
+ * On a copy of the global set: `add_words_compset` adds the word library's
+ * rules to the compset it is given, and a compset's per-constant entries are
+ * shared refs, so building this on `computeLib.the_compset ()` would change
+ * what every later `EVAL` in the process reduces. *)
 val eval_compset =
   let
     val base =
       computeLib.add_thms (evaluator_clauses @ helper_defs)
         (computeLib.add_conv (flookup_tm, 2, flookup_conv)
-           (wordsLib.add_words_compset true
+           (computeLib.add_conv (word_exp_c, 2, word_exp_conv)
               (computeLib.scrub_const
                  (computeLib.scrub_const
-                    (computeLib.copy (computeLib.the_compset ()))
-                    eval_yul_block_c)
-                 invoke_c)))
+                    (wordsLib.add_words_compset true
+                       (computeLib.scrub_const
+                          (computeLib.scrub_const
+                             (computeLib.copy (computeLib.the_compset ()))
+                             eval_yul_block_c)
+                          invoke_c))
+                    word_exp_c)
+                 word_exp_tailrec_c)))
     (* A guarded operation has no equation in the set at all -- the set's own
      * clause would run before any conversion and take the copy -- so its
      * clauses go on as this one rule, which declines on a term holding a call. *)
@@ -858,6 +1055,59 @@ fun binding_thm defs fns name =
   end
 
 (*---------------------------------------------------------------------------
+   Keeping the client's table out of the set the conversion runs on.
+
+   HOL's compute set imports a theory's definitions as they are made
+   (`computeLib.auto_import_definitions`), so a definition a client made before
+   this library was loaded is already in `the_compset ()`, and `eval_compset` --
+   built on a copy of it -- holds its equation.  A body that calls keeps the
+   table as the folded call's own argument, so a set that unfolds it
+   substitutes the compiler's whole object into the form -- `CBV_CONV` on the
+   global set folds the corpus table to 414 885 nodes, against a statement's own
+   evaluation in the tens -- and the machine every later statement is handed
+   holds that copy, so the form is proportional to the object rather than to the
+   body.
+
+   A client whose fixture is defined *after* this library's load has none of it
+   in the set to begin with, so the scrub below is a no-op there: on the corpus
+   test, `CBV_CONV eval_compset` leaves both `scalars_function_table` and
+   `yul_env scalars_object` standing, neither constant having an equation in the
+   set, while the global set folds the table to 414 885 nodes.  What the scrub
+   covers is the other order -- a fixture defined before this library loaded --
+   and the literal table term a caller may pass instead of a name, whose
+   constants do have equations in the set (`yul_env`'s, from `yulAST`).
+
+   Nothing here wants the table unfolded.  The function the conversion was
+   asked for is read off the folded chain at the kernel level (`binding_thm`),
+   and a call the body makes is left as an `invoke_yul` application, so the
+   table is only ever the constant the caller gave.  The client's own
+   definitions are therefore scrubbed from the set, which leaves that constant
+   alone -- in the form and in the set's own view of it.
+ ---------------------------------------------------------------------------*)
+
+val scrub_const = computeLib.scrub_const
+
+fun scrub_defs cs defs =
+  List.foldl (fn (th, cs) => scrub_const cs (head_const_of th)) cs defs
+
+fun const_terms tm =
+  case dest_term tm of
+    Term.VAR _ => []
+  | Term.CONST _ => [tm]
+  | Term.LAMB (_, b) => const_terms b
+  | Term.COMB (a, b) => const_terms a @ const_terms b
+
+fun uniq_terms [] = []
+  | uniq_terms (t :: ts) =
+      t :: uniq_terms (List.filter (fn u => not (aconv t u)) ts)
+
+(* The definitions the table needs *are* folded, deliberately, in
+ * `table_compset`; this is the set the body's evaluation runs on. *)
+fun body_set base defs table =
+  List.foldl (fn (c, cs) => scrub_const cs c) (scrub_defs base defs)
+    (uniq_terms (const_terms table))
+
+(*---------------------------------------------------------------------------
    The conversion.
  ---------------------------------------------------------------------------*)
 
@@ -877,7 +1127,12 @@ fun yul_invoke_conv defs tm =
     val step = Conv.REWR_CONV invoke_clause tm
     (* A copy: add_thms adds to the FLOOKUP entry in place, so a shared set
      * would collect one binding per call and get slower with each. *)
-    val cs = computeLib.add_thms [bind] (computeLib.copy eval_compset)
+    val cs = computeLib.add_thms [bind]
+               (body_set (computeLib.copy eval_compset) defs fns)
+    (* The statement rule reduces the statement on the set the conversion is
+     * running on, not on the one made at load time: same rules, with the
+     * client's table scrubbed out of it. *)
+    val () = set_block_compset cs
     val res = computeLib.CBV_CONV cs (rhs (concl step))
   in
     Thm.TRANS step res
@@ -927,7 +1182,7 @@ fun is_closed_form tm = null (residues tm)
  * catches a residue whose map or argument the conversion did not reach as
  * well as one it did.  The table reader is not in the set, so the function a
  * form names is not read again here. *)
-fun is_fixed_point tm =
-  aconv tm (rhs (concl (computeLib.CBV_CONV eval_compset tm)))
+fun is_fixed_point defs tm =
+  aconv tm (rhs (concl (computeLib.CBV_CONV (scrub_defs eval_compset defs) tm)))
 
 end

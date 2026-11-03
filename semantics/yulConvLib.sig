@@ -62,6 +62,11 @@ sig
    * output should be one, which is how a test says that no step of the
    * evaluation was left in a form, as opposed to a residue that is there on
    * purpose.
+   *
+   * `defs` are the same definitions yul_invoke_conv was given, and they are
+   * left unfolded here too: a form names the table the caller gave it, and
+   * folding that table back over the form would put the client's whole object
+   * in it instead of judging the form.
    *)
-  val is_fixed_point : term -> bool
+  val is_fixed_point : thm list -> term -> bool
 end
