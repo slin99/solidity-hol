@@ -19,7 +19,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/builtins.json",
   "../testdata/differential/expected/storage_structs.json",
   "../testdata/differential/expected/inheritance.json",
-  "../testdata/differential/expected/imports.json"
+  "../testdata/differential/expected/imports.json",
+  "../testdata/differential/expected/errors.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -734,3 +735,43 @@ val () = import_error_with Unsupported
   (artifact_part imports_fixture ["contracts", imports_source])
   "imports without the imported file"
   (artifact_part imports_fixture ["sources", imports_source, "ast"])
+
+(* Custom errors: each revert carries the selector and parameters of the
+ * error it names, wherever that is declared: at file level or in an
+ * interface base, both in errors_base.sol, or in the contract. *)
+
+val errors_fixture = "../testdata/differential/expected/errors.json"
+val errors_source = "testdata/differential/errors.sol"
+
+Definition errors_unit_def:
+  errors_unit = ^(import_artifact errors_fixture errors_source)
+End
+
+val () = cv_auto_trans errors_unit_def;
+
+Theorem errors_unit_valid:
+  valid_src_unit errors_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* The errors a body reverts with, in order: selector, parameter count and
+ * argument count. *)
+Definition revert_errors_def:
+  (revert_errors (SrcBlock _ ss) = revert_errors_list ss) ∧
+  (revert_errors (SrcIfStatement _ _ t NONE) = revert_errors t) ∧
+  (revert_errors (SrcRevertError _ err args) =
+    [(err.error_selector, LENGTH err.error_parameters, LENGTH args)]) ∧
+  (revert_errors _ = []) ∧
+  (revert_errors_list [] = []) ∧
+  (revert_errors_list (s :: ss) = revert_errors s ++ revert_errors_list ss)
+End
+
+Theorem errors_reverts_resolved:
+  FLAT (MAP (λf. revert_errors f.fn_body)
+          (HD errors_unit.unit_contracts).contract_functions) =
+  [([0xdbw; 0x42w; 0x14w; 0x4dw], 3, 3); ([0x8ew; 0x4aw; 0x23w; 0xd6w], 1, 1);
+   ([0x3dw; 0xb2w; 0xa1w; 0x2aw], 0, 0); ([0x05w; 0x6ew; 0xe4w; 0xfaw], 3, 3)]
+Proof
+  EVAL_TAC
+QED

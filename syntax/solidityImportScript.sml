@@ -40,7 +40,9 @@
  *    calls have matching arity and are annotated with the callee's
  *    return types; conversions are annotated with their normalized target type;
  *    environment reads with their member's type; emits name an event of the
- *    contract with as many arguments as it has parameters;
+ *    contract with as many arguments as it has parameters, and reverts with
+ *    an error carry as many arguments as the error has parameters, which
+ *    are of elementary types;
  *  - declaration statements list exactly their declarations' ids as
  *    assignments, returns name the enclosing function's return list, break and
  *    continue occur in loop bodies, conditions are boolean;
@@ -129,6 +131,14 @@ Datatype:
   |>
 End
 
+(* The error a revert statement names: its selector and parameters. *)
+Datatype:
+  src_error = <|
+    error_selector : byte list;
+    error_parameters : src_variable list
+  |>
+End
+
 Datatype:
   src_expr
   = SrcIdentifier node_info string num string
@@ -152,6 +162,7 @@ End
 (* VariableDeclarationStatement: assignments, declarations (NONE for a hole),
  * initial value. ForStatement: initialization, condition, loop expression,
  * body. Return: functionReturnParameters, expression. Emit: the event's id,
+ * positional arguments. RevertError: revert E(args), the error and the
  * positional arguments.
  *)
 Datatype:
@@ -170,6 +181,7 @@ Datatype:
   | SrcContinue node_info
   | SrcReturn node_info num (src_expr option)
   | SrcEmit node_info num (src_expr list)
+  | SrcRevertError node_info src_error (src_expr list)
 End
 
 (* Parameter lists are represented by their ids and declarations. The kind is
@@ -657,6 +669,7 @@ Definition stmt_ids_def:
   (stmt_ids (SrcContinue info) = [info.node_id]) ∧
   (stmt_ids (SrcReturn info _ e) = info.node_id :: option_expr_ids e) ∧
   (stmt_ids (SrcEmit info _ args) = info.node_id :: exprs_ids args) ∧
+  (stmt_ids (SrcRevertError info _ args) = info.node_id :: exprs_ids args) ∧
   (option_stmt_ids NONE = []) ∧
   (option_stmt_ids (SOME s) = stmt_ids s) ∧
   (stmts_ids [] = []) ∧
@@ -981,6 +994,13 @@ Definition check_stmts_def:
   (check_stmt env (SrcEmit _ ev args) ⇔
     case ALOOKUP env.events ev of
       SOME e => LENGTH args = LENGTH e.event_parameters ∧ check_exprs env args
+    | NONE => F) ∧
+  (check_stmt env (SrcRevertError _ err args) ⇔
+    LENGTH err.error_selector = 4 ∧
+    case all_some (MAP variable_type err.error_parameters) of
+      SOME params =>
+        EVERY is_elementary_type params ∧ LENGTH args = LENGTH params ∧
+        check_exprs env args
     | NONE => F)
 Termination
   WF_REL_TAC ‘measure (λx. case x of

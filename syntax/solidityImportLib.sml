@@ -225,6 +225,20 @@ fun function_declaration v id =
     SOME (_, d) => d
   | NONE => fail (describe v ^ ": calls only functions declared in the compilation")
 
+(* The error declarations of the compilation, by id: the errors revert
+ * statements name. *)
+val error_declarations : (IntInf.int * JSON.value) list ref = ref []
+
+(* The error a revert statement names. *)
+fun error_declaration v id =
+  case List.find (fn (i, _) => i = id) (!error_declarations) of
+    SOME (_, d) =>
+      within d (fn d =>
+        record "src_error"
+          [("error_selector", mk_bytes d (string_field d "errorSelector")),
+           ("error_parameters", #2 (parameter_list (field d "parameters")))])
+  | NONE => fail (describe v ^ ": reverts only with errors declared in the compilation")
+
 (* A call of an external function of a contract or interface value. *)
 fun is_external_call callee =
   node_type callee = "MemberAccess" andalso
@@ -474,6 +488,23 @@ fun stmt v = within v (fn v =>
               listSyntax.mk_list
                 (JSONUtil.arrayMap expr (field call "arguments"), expr_ty)]))
       end
+  | "RevertStatement" =>
+      let val call = field v "errorCall" in
+        within call (fn call =>
+          (require call (null (JSONUtil.arrayMap I (field call "names")))
+             "named arguments are not supported";
+           (* E, or a qualified I.E, which names a declaration only *)
+           within (field call "expression") (fn e =>
+             require e (node_type e = "Identifier" orelse
+                        node_type e = "MemberAccess")
+               "unsupported error name");
+           con "SrcRevertError"
+             [info v,
+              error_declaration call
+                (int_field (field call "expression") "referencedDeclaration"),
+              listSyntax.mk_list
+                (JSONUtil.arrayMap expr (field call "arguments"), expr_ty)]))
+      end
   | other => fail (describe v ^ ": unsupported statement " ^ other))
 and stmts v = listSyntax.mk_list (JSONUtil.arrayMap stmt v, stmt_ty)
 and optional_stmt v k = mk_opt stmt_ty (Option.map stmt (optional_field v k))
@@ -635,7 +666,8 @@ fun contract external_structs contracts declared v = within v (fn v =>
                      require m (node_type m = "FunctionDefinition" orelse
                                 node_type m = "VariableDeclaration" orelse
                                 node_type m = "StructDefinition" orelse
-                                node_type m = "EventDefinition")
+                                node_type m = "EventDefinition" orelse
+                                node_type m = "ErrorDefinition")
                        "unsupported contract member"))
            (nodes c))))
         bases
@@ -714,8 +746,9 @@ fun contract external_structs contracts declared v = within v (fn v =>
   end)
 
 (* File-level structs, of any source unit of the compilation, accompany each
- * contract that refers to them; pragmas and import directives carry no
- * semantics for the pinned profile, since declarations are referred to by id.
+ * contract that refers to them, and revert statements carry the errors
+ * they name; pragmas and import directives carry no semantics for the pinned
+ * profile, since declarations are referred to by id.
  * Interfaces, abstract contracts and the bases of other contracts of the unit
  * are imported only as bases, which may come from any unit.
  *)
@@ -739,6 +772,15 @@ fun import_source_unit units v contracts = within v (fn v =>
                              then SOME (int_field f "id", f) else NONE)
                     (JSONUtil.arrayMap I (field c "nodes")))
              declared)
+    val () =
+      error_declarations :=
+        map (fn e => (int_field e "id", e))
+          (all_members "ErrorDefinition" @
+           List.concat
+             (map (fn (_, c) =>
+                     List.filter (fn m => node_type m = "ErrorDefinition")
+                       (JSONUtil.arrayMap I (field c "nodes")))
+                declared))
     val inherited =
       List.concat
         (map (fn c =>
@@ -752,6 +794,7 @@ fun import_source_unit units v contracts = within v (fn v =>
         "PragmaDirective" => acc
       | "ImportDirective" => acc
       | "StructDefinition" => acc
+      | "ErrorDefinition" => acc
       | "ContractDefinition" =>
           if string_field m "contractKind" = "interface" then acc
           else
