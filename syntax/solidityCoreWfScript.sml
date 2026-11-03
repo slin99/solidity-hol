@@ -920,7 +920,10 @@ Definition wf_core_dispatch_def:
        SOME (f, _) =>
          abi_procedure env f ∧
          (case lookup_procedure env f of
-            SOME p => p.return_bindings = []
+            SOME p => p.return_bindings = [] ∧
+              EVERY (λ(_, ty). is_elementary_type ty ∨
+                       ty = LocatedT MemoryLoc BytesT ∨
+                       ty = LocatedT MemoryLoc StringT) p.parameters
           | NONE => F)
      | NONE => T)
 End
