@@ -68,6 +68,7 @@ Datatype:
     variables : (num # sol_type) list;
     state : (num # sol_type) list;
     returns : (num # sol_type) list;
+    placeholder : (num # (num # sol_type) list) option;
     mode : arithmetic_mode
   |>
 End
@@ -963,6 +964,27 @@ Definition emit_arguments_def:
   (emit_arguments _ _ = [])
 End
 
+(* Writes of a call's values to return variables. *)
+Definition return_writes_def:
+  (return_writes n ((x, ty) :: rs) ((a, _) :: vs) =
+    assign_local n x ty a ++ return_writes (n + 1) rs vs) ∧
+  (return_writes n _ _ = [])
+End
+
+(* The placeholder of a modifier: a call of the procedure of the rest of the
+ * function with its parameters, whose values become the return variables.
+ *)
+Definition placeholder_call_def:
+  placeholder_call n next ps rs =
+    let call = DefineStmt (AstId n) (call_result_type (MAP SND rs))
+                 (InternalCallOperation (AstId next) (return_atoms ps)) in
+    let (ss, vs, n1) =
+      case rs of
+        [(_, ty)] => ([], [(BoundAtom (AstId n), ElabType ty)], n + 1)
+      | _ => tuple_components (n + 1) (BoundAtom (AstId n)) 0 (MAP SND rs) in
+    (call :: ss ++ return_writes n1 rs vs, n1 + LENGTH rs)
+End
+
 (* Statements; lists return the context after their declarations. Nested
  * blocks are spliced into the enclosing list: ids are unique, so the core
  * scopes need not mirror the source blocks.
@@ -1097,6 +1119,12 @@ Definition elab_stmts_def:
               | NONE => NONE)
          | NONE => NONE)
     | NONE => NONE) ∧
+  (elab_stmt ctx n (SrcPlaceholder _) =
+    case ctx.placeholder of
+      SOME (next, ps) =>
+        let (ss, n1) = placeholder_call n next ps ctx.returns in
+        SOME ((ss, ctx), n1)
+    | NONE => NONE) ∧
   (elab_stmt ctx n (SrcBreak _) = SOME (([BreakStmt], ctx), n)) ∧
   (elab_stmt ctx n (SrcContinue _) = SOME (([ContinueStmt], ctx), n)) ∧
   (elab_stmt ctx n (SrcReturn _ _ NONE) =
@@ -1166,34 +1194,94 @@ Definition core_bindings_def:
   (core_bindings ((x, ty) :: bs) = (AstId x, ty) :: core_bindings bs)
 End
 
-(* A procedure, checked arithmetic by default; parameters and returns keep
- * their declaration ids.
+(* Parameters defined by arguments. *)
+Definition define_parameters_def:
+  (define_parameters ((x, ty) :: ps) (a :: as) =
+    DefineStmt (AstId x) (SingleType ty) (ConvertOperation ty a) ::
+    define_parameters ps as) ∧
+  (define_parameters _ _ = [])
+End
+
+(* A modifier invocation's arguments, each evaluated, converted to its
+ * parameter's type and bound to the parameter before the next is evaluated:
+ * the compiler binds a modifier's parameters one by one, where an internal
+ * call evaluates every argument before converting any.
+ *)
+Definition elab_modifier_args_def:
+  (elab_modifier_args ctx n [] [] = SOME ([], n)) ∧
+  (elab_modifier_args ctx n ((x, ty) :: ps) (e :: es) =
+    case elab_args ctx n [ty] [e] of
+      SOME ((ss, as), n1) =>
+        (case elab_modifier_args ctx n1 ps es of
+           SOME (ss', n2) =>
+             SOME (ss ++ define_parameters [(x, ty)] as ++ ss', n2)
+         | NONE => NONE)
+    | NONE => NONE) ∧
+  (elab_modifier_args ctx n _ _ = NONE)
+End
+
+(* The procedures of a function with modifiers: one per modifier invocation,
+ * the first with the function's id, then one for the body. Each takes the
+ * function's parameters and has its return variables; the invocation's
+ * arguments define the modifier's parameters, and the modifier's
+ * placeholder calls the next procedure (the compiler's IR does the same).
+ * Fresh ids name the procedures after the first.
+ *)
+Definition elab_levels_def:
+  (elab_levels ctx modifiers ps rs x n [] ss =
+    case elab_stmts ctx n ss of
+      SOME ((code, _), n1) =>
+        SOME ([<| procedure_id := AstId x; parameters := core_bindings ps;
+                  return_bindings := core_bindings rs; body := code |>], n1)
+    | NONE => NONE) ∧
+  (elab_levels ctx modifiers ps rs x n ((m, args) :: ms) ss =
+    case ALOOKUP modifiers m of
+      NONE => NONE
+    | SOME (md : src_modifier) =>
+        case (all_some (MAP variable_binding md.modifier_parameters),
+              md.modifier_body) of
+          (SOME mps, SrcBlock _ mss) =>
+            (case elab_modifier_args ctx (n + 1) mps args of
+               SOME (sa, n1) =>
+                 (case elab_stmts (ctx with <| variables := mps;
+                                               placeholder := SOME (n, ps) |>)
+                         n1 mss of
+                    SOME ((code, _), n2) =>
+                      (case elab_levels ctx modifiers ps rs n n2 ms ss of
+                         SOME (levels, n3) =>
+                           SOME (<| procedure_id := AstId x;
+                                    parameters := core_bindings ps;
+                                    return_bindings := core_bindings rs;
+                                    body := sa ++ code |> :: levels, n3)
+                       | NONE => NONE)
+                  | NONE => NONE)
+             | NONE => NONE)
+        | _ => NONE)
+End
+
+(* A function's procedures, checked arithmetic by default; parameters and
+ * returns keep their declaration ids.
  *)
 Definition elab_function_def:
-  elab_function structs events functions state n (f : src_function) =
+  elab_function structs events functions modifiers state n (f : src_function) =
     case (all_some (MAP variable_binding f.fn_parameters),
           all_some (MAP variable_binding f.fn_returns), f.fn_body) of
       (SOME ps, SOME rs, SrcBlock _ ss) =>
-        (case elab_stmts <| functions := functions; structs := structs;
-                            events := events; variables := ps ++ rs;
-                            state := state; returns := rs;
-                            mode := CheckedArithmetic |> n ss of
-           SOME ((code, _), n1) =>
-             SOME (<| procedure_id := AstId f.fn_info.node_id;
-                      parameters := core_bindings ps;
-                      return_bindings := core_bindings rs;
-                      body := code |>, n1)
-         | NONE => NONE)
+        elab_levels <| functions := functions; structs := structs;
+                       events := events; variables := ps ++ rs;
+                       state := state; returns := rs; placeholder := NONE;
+                       mode := CheckedArithmetic |>
+          modifiers ps rs f.fn_info.node_id n f.fn_modifiers ss
     | _ => NONE
 End
 
 Definition elab_functions_def:
-  (elab_functions structs events functions state n [] = SOME ([], n)) ∧
-  (elab_functions structs events functions state n (f :: fs) =
-    case elab_function structs events functions state n f of
-      SOME (p, n1) =>
-        (case elab_functions structs events functions state n1 fs of
-           SOME (ps, n2) => SOME (p :: ps, n2)
+  (elab_functions structs events functions modifiers state n [] = SOME ([], n)) ∧
+  (elab_functions structs events functions modifiers state n (f :: fs) =
+    case elab_function structs events functions modifiers state n f of
+      SOME (ps, n1) =>
+        (case elab_functions structs events functions modifiers state n1 fs of
+           SOME (ps', n2) => SOME (ps ++ ps', n2)
          | NONE => NONE)
     | NONE => NONE)
 End
@@ -1353,13 +1441,6 @@ End
  * base's state variable initializers in declaration order, then its
  * constructor.
  *)
-Definition define_parameters_def:
-  (define_parameters ((x, ty) :: ps) (a :: as) =
-    DefineStmt (AstId x) (SingleType ty) (ConvertOperation ty a) ::
-    define_parameters ps as) ∧
-  (define_parameters _ _ = [])
-End
-
 Definition elab_base_arguments_def:
   (elab_base_arguments ctx fs n [] = SOME ([], n)) ∧
   (elab_base_arguments ctx fs n ((x, b, args) :: rest) =
@@ -1458,6 +1539,7 @@ Definition elaborate_unit_def:
                    elab_functions c.contract_structs
                      (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
                      (call_table c.contract_functions)
+                     (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
                      state (MAX_LIST (unit_ids u) + 1) fs) of
                (SOME decls, SOME layouts, SOME cvs, SOME (fps, n0)) =>
                  (case elab_getters state n0 (MAP FST c.contract_getters) of
@@ -1470,7 +1552,7 @@ Definition elaborate_unit_def:
                             events := MAP (λe. (e.event_info.node_id, e))
                                         c.contract_events;
                             variables := []; state := state; returns := [];
-                            mode := CheckedArithmetic |> c n of
+                            placeholder := NONE; mode := CheckedArithmetic |> c n of
                     NONE => NONE
                   | SOME (creation, _) =>
                  SOME <| procedures := ps ++ [creation]; state_variables := cvs;
@@ -1662,6 +1744,8 @@ QED
 val () = cv_auto_trans return_atoms_def;
 val () = cv_auto_trans elab_assembly_reference_def;
 val () = cv_auto_trans elab_assembly_references_def;
+val () = cv_auto_trans return_writes_def;
+val () = cv_auto_trans placeholder_call_def;
 val () = cv_auto_trans flag_def;
 val () = cv_auto_trans set_flag_def;
 
@@ -1687,6 +1771,27 @@ QED
 
 val () = cv_auto_trans variable_binding_def;
 val () = cv_auto_trans core_bindings_def;
+val () = cv_auto_trans define_parameters_def;
+val elab_modifier_args_pre_def =
+  cv_auto_trans_pre "elab_modifier_args_pre" elab_modifier_args_def;
+
+Theorem elab_modifier_args_pre[cv_pre,local]:
+  ∀ctx n tys es. elab_modifier_args_pre ctx n tys es
+Proof
+  ho_match_mp_tac elab_modifier_args_ind >> rpt strip_tac >>
+  simp[Once elab_modifier_args_pre_def]
+QED
+val elab_levels_pre_def = cv_auto_trans_pre "elab_levels_pre" elab_levels_def;
+
+Theorem elab_levels_pre[cv_pre,local]:
+  ∀ctx modifiers ps rs x n ms ss. elab_levels_pre ctx modifiers ps rs x n ms ss
+Proof
+  ho_match_mp_tac elab_levels_ind >> rpt strip_tac >>
+  simp[Once elab_levels_pre_def] >> rw[] >> fs[] >>
+  (* the record update appears as a case on the context *)
+  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"]
+QED
+
 val () = cv_auto_trans elab_function_def;
 val () = cv_auto_trans elab_functions_def;
 val () = cv_auto_trans core_state_variables_def;
@@ -1699,7 +1804,6 @@ val () = cv_auto_trans elab_getter_def;
 val () = cv_auto_trans elab_getters_def;
 val () = cv_auto_trans external_functions_def;
 val () = cv_auto_trans special_function_def;
-val () = cv_auto_trans define_parameters_def;
 val elab_base_arguments_pre_def =
   cv_auto_trans_pre "elab_base_arguments_pre" elab_base_arguments_def;
 

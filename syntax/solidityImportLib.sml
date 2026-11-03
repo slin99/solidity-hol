@@ -546,9 +546,14 @@ fun stmt v = within v (fn v =>
   | "Break" => con "SrcBreak" [info v]
   | "Continue" => con "SrcContinue" [info v]
   | "Return" =>
+      (* a return in a modifier has no return parameters *)
       con "SrcReturn"
-        [info v, mk_num (int_field v "functionReturnParameters"),
+        [info v,
+         mk_num (case optional_field v "functionReturnParameters" of
+                   SOME x => JSONUtil.asIntInf x
+                 | NONE => 0),
          optional_expr v "expression"]
+  | "PlaceholderStatement" => con "SrcPlaceholder" [info v]
   | "EmitStatement" =>
       let val call = field v "eventCall" in
         within call (fn call =>
@@ -604,16 +609,27 @@ fun function v = within v (fn v =>
   let
     val (params_id, params) = parameter_list (field v "parameters")
     val (returns_id, returns) = parameter_list (field v "returnParameters")
+    (* the modifier invocations; base constructor arguments are imported
+     * with the contract *)
+    val modifiers =
+      List.mapPartial (fn m => within m (fn m =>
+        if string_field m "kind" = "baseConstructorSpecifier" then NONE
+        else
+          (require m (string_field m "kind" = "modifierInvocation")
+             ("unsupported modifier invocation kind " ^ string_field m "kind");
+           SOME (pairSyntax.mk_pair
+             (mk_num (int_field (field m "modifierName") "referencedDeclaration"),
+              listSyntax.mk_list
+                (case optional_field m "arguments" of
+                   SOME args => JSONUtil.arrayMap expr args
+                 | NONE => [],
+                 expr_ty))))))
+      (JSONUtil.arrayMap I (field v "modifiers"))
   in
     expect v "FunctionDefinition";
     require v (List.exists (fn k => k = string_field v "kind")
                  ["function", "receive", "fallback", "constructor"])
       ("unsupported function kind " ^ string_field v "kind");
-    (* base constructor arguments are imported with the contract *)
-    List.app (fn m => within m (fn m =>
-                require m (string_field m "kind" = "baseConstructorSpecifier")
-                  "modifiers are not supported"))
-      (JSONUtil.arrayMap I (field v "modifiers"));
     record "src_function"
       [("fn_info", info v), ("fn_name", mk_str (string_field v "name")),
        ("fn_scope", mk_num (int_field v "scope")),
@@ -628,7 +644,26 @@ fun function v = within v (fn v =>
         listSyntax.mk_list (map mk_num (overridden v), numSyntax.num)),
        ("fn_parameters_id", params_id), ("fn_parameters", params),
        ("fn_returns_id", returns_id), ("fn_returns", returns),
+       ("fn_modifiers", listSyntax.mk_list
+          (modifiers, pairSyntax.mk_prod
+                        (numSyntax.num, listSyntax.mk_list_type expr_ty))),
        ("fn_body", stmt (field v "body"))]
+  end)
+
+(* A modifier invocation runs the modifier it names, so one that could be
+ * overridden is not supported. *)
+fun modifier v = within v (fn v =>
+  let
+    val (params_id, params) = parameter_list (field v "parameters")
+  in
+    expect v "ModifierDefinition";
+    require v (not (bool_field v "virtual") andalso
+               not (isSome (optional_field v "overrides")))
+      "virtual modifiers are not supported";
+    record "src_modifier"
+      [("modifier_info", info v), ("modifier_parameters_id", params_id),
+       ("modifier_parameters", params),
+       ("modifier_body", stmt (field v "body"))]
   end)
 
 fun event v = within v (fn v =>
@@ -740,7 +775,8 @@ fun contract external_structs contracts declared v = within v (fn v =>
                                 node_type m = "VariableDeclaration" orelse
                                 node_type m = "StructDefinition" orelse
                                 node_type m = "EventDefinition" orelse
-                                node_type m = "ErrorDefinition")
+                                node_type m = "ErrorDefinition" orelse
+                                node_type m = "ModifierDefinition")
                        "unsupported contract member"))
            (nodes c))))
         bases
@@ -810,6 +846,9 @@ fun contract external_structs contracts declared v = within v (fn v =>
            struct_ty)),
        ("contract_events", listSyntax.mk_list
           (map event (members_of "EventDefinition" bases), event_ty)),
+       ("contract_modifiers", listSyntax.mk_list
+          (map modifier (members_of "ModifierDefinition" bases),
+           import_type "src_modifier")),
        ("contract_functions",
         listSyntax.mk_list
           (map function

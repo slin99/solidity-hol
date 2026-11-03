@@ -414,6 +414,134 @@ Proof
   >> MATCH_ACCEPT_TAC yul_fuel_invoke
 QED
 
+(* One call's own form of the same fact, which is the shape a per-function
+ * theorem's Yul side has: the run at a fuel large enough for it is the run at
+ * any larger fuel.  A caller that has evaluated the body at a numeral fuel
+ * has nothing left to say about the bound it chose. *)
+Theorem invoke_yul_fuel_stable:
+  ∀n fns name args m k. yul_running (invoke_yul n fns name args m) ∧ n ≤ k ⇒
+  invoke_yul k fns name args m = invoke_yul n fns name args m
+Proof
+  MATCH_ACCEPT_TAC (List.last (CONJUNCTS eval_yul_fuel_stable))
+QED
+
+(* What a statement's result is handed on as: a block tests the result of one
+ * statement and runs the rest of the body on it, and an expression's result is
+ * what a statement branches on.  A body that has to be built once per outcome
+ * rather than once per use of a bound name pushes the function it is being
+ * handed to inside the case, which says the two are the same term.  The
+ * distributions themselves are not stated here: `TypeBase.case_rand_of` has
+ * them for every datatype, on the case the evaluator's own clauses leave
+ * behind, and the conversion takes them from there. *)
+
+(* A result the evaluator's own clauses do not decide, whose scrutinee is itself
+ * a case: the outer case is pushed into the inner one, so that a branch the
+ * inner case decides -- a lookup's NONE, which the evaluator answers with a
+ * literal `YulInvalid` -- is decided here rather than left standing with the
+ * rest of the body inside it.  Without this, a statement whose result is not
+ * decided by one of its own equations leaves the body's continuation in the
+ * branches of two nested cases, and neither branch is decided, so both survive
+ * and a body of k such statements comes out at about 2^k times the size.
+ *
+ * The three inner cases are the ones the evaluator reaches: a lookup answers
+ * with an `option`, `eval_yul_args` and the argument scanners case over a
+ * `list`, and a statement over an expression's result cases on a
+ * `yul_expr_result` again. *)
+Theorem yul_expr_result_CASE_CASE:
+  ∀X A B b1 b2.
+    yul_expr_result_CASE (yul_expr_result_CASE X A B) b1 b2 =
+    yul_expr_result_CASE X
+      (λvs m. yul_expr_result_CASE (A vs m) b1 b2)
+      (λc m. yul_expr_result_CASE (B c m) b1 b2)
+Proof
+  rw [] >> Cases_on `X` >> simp [yul_expr_result_case_def]
+QED
+
+Theorem yul_expr_result_CASE_option:
+  ∀x n s b1 b2.
+    yul_expr_result_CASE (option_CASE x n s) b1 b2 =
+    option_CASE x (yul_expr_result_CASE n b1 b2)
+      (λv. yul_expr_result_CASE (s v) b1 b2)
+Proof
+  rw [] >> Cases_on `x` >> simp [optionTheory.option_case_def]
+QED
+
+Theorem yul_expr_result_CASE_list:
+  ∀l n c b1 b2.
+    yul_expr_result_CASE (list_CASE l n c) b1 b2 =
+    list_CASE l (yul_expr_result_CASE n b1 b2)
+      (λh t. yul_expr_result_CASE (c h t) b1 b2)
+Proof
+  rw [] >> Cases_on `l` >> simp [listTheory.list_case_def]
+QED
+
+(* The case in a conditional's *test*, pushed in: the case comes to the top and
+ * each of its branches carries the conditional, on what that branch holds.
+ *
+ * A statement whose own evaluation is a decision -- a guard the evaluator
+ * cannot settle because the call in it is folded, `if <the call's value> then
+ * <the invalid answer> else <the normal one>` -- leaves the case in the test,
+ * which is the one place the continuation's push (`COND_RAND`) cannot reach:
+ * the continuation goes into the conditional's two branches, both of which
+ * keep it, and the branch the evaluator's own literal would have dropped is
+ * only decided once the case is outside.  A body of k such guards is 2^k times
+ * the size without this, and linear with it. *)
+Theorem yul_expr_result_CASE_cond:
+  ∀X b1 b2 t e.
+    (if yul_expr_result_CASE X b1 b2 then t else e) =
+    yul_expr_result_CASE X
+      (λvs m. if b1 vs m then t else e)
+      (λc m. if b2 c m then t else e)
+Proof
+  Cases_on `X` >> simp [yul_expr_result_case_def]
+QED
+
+(* A call that ends abruptly never ends `YulNormal`.  Read off the call's own
+ * clause: the abrupt answers it can give are out of fuel, an unknown function,
+ * a bad arity, and the callee's own completion, which it tests for `YulNormal`
+ * (and for `YulLeave`) before it takes that branch. *)
+Theorem invoke_yul_abrupt_neq_normal:
+  invoke_yul n fns name args m = EvalAbrupt c m' ⇒ c ≠ YulNormal
+Proof
+  rw [eval_yul_block_def] >> BasicProvers.every_case_tac >> gvs []
+QED
+
+(* So the branch a caller's own continuation puts on a call's abrupt outcome is
+ * dead, and a body handed to one -- `let r = <call> in if r.completion =
+ * YulNormal then <the rest> else r` -- is just that outcome.  Stated on the
+ * lifted case the block's clause leaves behind, with the continuation as a
+ * function of the case's own variable and machine, which is the shape the
+ * splitting conv hands it. *)
+Theorem yul_expr_result_CASE_invoke_abrupt:
+  ∀n fns name args m b1 T.
+    yul_expr_result_CASE (invoke_yul n fns name args m) b1
+      (λc m'. if (yul_abrupt c m').completion = YulNormal then T c m'
+              else yul_abrupt c m') =
+    yul_expr_result_CASE (invoke_yul n fns name args m) b1
+      (λc m'. yul_abrupt c m')
+Proof
+  rw [] >> Cases_on `invoke_yul n fns name args m` >>
+  imp_res_tac invoke_yul_abrupt_neq_normal >>
+  gvs [yul_abrupt_def, yul_expr_result_case_def]
+QED
+
+(* The same, with the outcome written out as the record it is.  A compute set
+ * that has the helper unfolded hands the branch the record itself, and the test
+ * on it is still unreduced when the rule runs, so this is the shape the rule
+ * sees for a call inside a converted body. *)
+Theorem yul_expr_result_CASE_invoke_abrupt_lit:
+  ∀n fns name args m b1 T.
+    yul_expr_result_CASE (invoke_yul n fns name args m) b1
+      (λc m'. if (<|completion := c; machine := m'|>).completion = YulNormal
+              then T c m' else <|completion := c; machine := m'|>) =
+    yul_expr_result_CASE (invoke_yul n fns name args m) b1
+      (λc m'. <|completion := c; machine := m'|>)
+Proof
+  rw [] >> Cases_on `invoke_yul n fns name args m` >>
+  imp_res_tac invoke_yul_abrupt_neq_normal >>
+  gvs [yul_expr_result_case_def]
+QED
+
 Theorem run_yul_fuel_stable:
   run_yul n code m = r ∧ r.completion ≠ YulOutOfFuel ∧ n ≤ k ⇒
   run_yul k code m = r
