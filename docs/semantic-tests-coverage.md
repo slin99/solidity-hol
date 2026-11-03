@@ -22,13 +22,13 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 | outcome | tests |
 | --- | ---: |
-| admitted | 300 |
+| admitted | 303 |
 | elaboration-rejected | 28 |
 | import-rejected | 964 |
 | compile-failure | 0 |
 | malformed-input | 0 |
 | source-rejected | 275 |
-| invalid-core | 3 |
+| invalid-core | 0 |
 | skipped | 100 |
 | total | 1670 |
 
@@ -36,7 +36,7 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 Each rejected test is scanned for every construct the importer or the elaborator rejects. *tests* counts the rejected tests a feature occurs in; *only blocker* the tests in which it is the only feature found, which supporting it would admit as far as the scan can tell; *first* the tests the importer stopped at it.
 
-The scan disagrees with the HOL run on 3 tests, listed at the end.
+The scan disagrees with the HOL run on 0 tests.
 
 | feature | AST nodes | tests | only blocker | first |
 | --- | --- | ---: | ---: | ---: |
@@ -217,6 +217,8 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `cleanup/exp_cleanup_direct.sol`
 - `cleanup/exp_cleanup_nonzero_base.sol`
 - `cleanup/exp_cleanup_smaller_base.sol`
+- `cleanup/indexed_log_topic_during_explicit_downcast.sol`
+- `cleanup/indexed_log_topic_during_explicit_downcast_during_emissions.sol`
 - `constructor/base_constructor_arguments.sol`
 - `constructor/constructor_arguments_external.sol`
 - `constructor/inline_member_init_inheritence_without_constructor.sol`
@@ -407,6 +409,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `various/gasleft_shadow_resolution.sol`
 - `various/inline_member_init.sol`
 - `various/inline_member_init_inheritence.sol`
+- `various/iszero_bnot_correct.sol`
 - `various/multi_variable_declaration.sol`
 - `various/single_copy_with_multiple_inheritance.sol`
 - `various/store_bytes.sol`
@@ -774,9 +777,3 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `viaYul/string_format.sol`: viaYul/string_format.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/string_literals.sol`: viaYul/string_literals.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/unary_fixedbytes.sol`: viaYul/unary_fixedbytes.sol: elaborate_unit returned NONE (unsupported lowering)
-
-## Scan disagreements
-
-- `cleanup/indexed_log_topic_during_explicit_downcast.sol` (invalid-core): cleanup/indexed_log_topic_during_explicit_downcast.sol: generated program fails wf_core_program
-- `cleanup/indexed_log_topic_during_explicit_downcast_during_emissions.sol` (invalid-core): cleanup/indexed_log_topic_during_explicit_downcast_during_emissions.sol: generated program fails wf_core_program
-- `various/iszero_bnot_correct.sol` (invalid-core): various/iszero_bnot_correct.sol: generated program fails wf_core_program

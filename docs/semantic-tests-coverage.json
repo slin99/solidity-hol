@@ -1,10 +1,10 @@
 {
   "counts": {
-    "admitted": 300,
+    "admitted": 303,
     "compile-failure": 0,
     "elaboration-rejected": 28,
     "import-rejected": 964,
-    "invalid-core": 3,
+    "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
     "source-rejected": 275
@@ -5842,19 +5842,19 @@
       "test": "cleanup/exp_cleanup_smaller_base.sol"
     },
     {
-      "category": "invalid-core",
+      "category": "admitted",
       "features": [],
       "first": null,
-      "reason": "cleanup/indexed_log_topic_during_explicit_downcast.sol: generated program fails wf_core_program",
-      "scan_agrees": false,
+      "reason": null,
+      "scan_agrees": true,
       "test": "cleanup/indexed_log_topic_during_explicit_downcast.sol"
     },
     {
-      "category": "invalid-core",
+      "category": "admitted",
       "features": [],
       "first": null,
-      "reason": "cleanup/indexed_log_topic_during_explicit_downcast_during_emissions.sol: generated program fails wf_core_program",
-      "scan_agrees": false,
+      "reason": null,
+      "scan_agrees": true,
       "test": "cleanup/indexed_log_topic_during_explicit_downcast_during_emissions.sol"
     },
     {
@@ -18185,11 +18185,11 @@
       "test": "various/inline_tuple_with_rational_numbers.sol"
     },
     {
-      "category": "invalid-core",
+      "category": "admitted",
       "features": [],
       "first": null,
-      "reason": "various/iszero_bnot_correct.sol: generated program fails wf_core_program",
-      "scan_agrees": false,
+      "reason": null,
+      "scan_agrees": true,
       "test": "various/iszero_bnot_correct.sol"
     },
     {
