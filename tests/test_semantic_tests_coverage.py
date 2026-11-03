@@ -391,6 +391,22 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(found[70], [coverage.Blocker("ModifierInvocation", feature, "elaboration")])
         found = coverage.scan({"t.sol": unit([dict(modifier, virtual=True), function(4, [])])})
         self.assertEqual(found[60], [coverage.Blocker("ModifierDefinition", "virtual modifiers", "import")])
+        returns = {"nodeType": "ParameterList", "id": 80, "parameters": [variable(81)]}
+        assignment = {"nodeType": "Assignment", "id": 82, "operator": "=",
+                      "leftHandSide": {"nodeType": "Identifier", "id": 83, "name": "r",
+                                       "referencedDeclaration": 81,
+                                       "typeDescriptions": {"typeIdentifier": "t_uint256"}},
+                      "rightHandSide": {"nodeType": "Literal", "id": 84, "kind": "number", "value": "7",
+                                        "typeDescriptions": {"typeIdentifier": "t_rational_7_by_1"}},
+                      "typeDescriptions": {"typeIdentifier": "t_uint256"}}
+        uses_return = dict(invocation, arguments=[assignment])
+        found = coverage.scan({"t.sol": unit([modifier, dict(function(4, []), returnParameters=returns,
+                                                              modifiers=[uses_return])])})
+        self.assertIn(coverage.Blocker("Identifier", "return variables in modifier arguments", "elaboration"),
+                      found[83])
+        found = coverage.scan({"t.sol": unit([modifier, dict(function(4, []),
+                                                              modifiers=[dict(invocation, kind="other")])])})
+        self.assertIn(coverage.Blocker("ModifierInvocation", "modifiers", "import"), found[70])
 
     def test_mapping_keys_parentheses_and_tuples_are_coerced(self) -> None:
         def string(node_id):

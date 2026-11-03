@@ -2,8 +2,9 @@
 pragma solidity 0.8.37;
 
 // Modifiers: invocations in order, arguments over the function's parameters,
-// placeholders run zero, one or two times, returns in the modifier and in the
-// body, an inherited modifier, and a constructor modifier.
+// arguments evaluated when their modifier is reached, placeholders run zero,
+// one or two times with fresh return variables each time, returns in the
+// modifier and in the body, an inherited modifier, and a constructor modifier.
 
 contract ModifierBase {
     uint256 internal trace;
@@ -24,6 +25,7 @@ contract ModifierBase {
 
 contract Modifiers is ModifierBase {
     uint256 private total;
+    bool private active;
 
     error TooLarge(uint256 value);
 
@@ -47,6 +49,17 @@ contract Modifiers is ModifierBase {
         _;
     }
 
+    modifier capture(uint256 seen) {
+        total = seen;
+        _;
+    }
+
+    modifier resetBetween() {
+        _;
+        active = false;
+        _;
+    }
+
     modifier bumpAfter() {
         _;
         total += 1;
@@ -57,6 +70,10 @@ contract Modifiers is ModifierBase {
         return trace;
     }
 
+    function timed() public mark(4) capture(trace) returns (uint256) {
+        return total;
+    }
+
     function addTwice(uint256 x) public twice returns (uint256) {
         total += x;
         return total;
@@ -64,6 +81,10 @@ contract Modifiers is ModifierBase {
 
     function guarded(uint256 x) public onlyOwner atMost(100, x + 1) returns (uint256 r) {
         r = x * 2;
+    }
+
+    function fresh() public resetBetween returns (uint256 r) {
+        if (active) r = 1;
     }
 
     function skipped(uint256 v) public skipIfZero(v) returns (uint256 r, bool ok) {

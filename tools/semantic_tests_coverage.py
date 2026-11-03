@@ -493,6 +493,9 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
     elif kind == "ModifierDefinition":
         if node["virtual"] or node.get("overrides"):
             found.append("virtual modifiers")
+    elif kind == "ModifierInvocation":
+        if node.get("kind") not in ("modifierInvocation", "baseConstructorSpecifier"):
+            found.append("modifiers")
     elif kind == "VariableDeclaration":
         if node["stateVariable"] and node.get("visibility") == "public":
             found.append("public state variables")
@@ -931,6 +934,14 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
             blockers.append(Blocker(node["nodeType"], feature, "elaboration"))
         if blockers:
             found.setdefault(node["id"], []).extend(blockers)
+    # Modifier arguments see the function's parameters, not its returns.
+    for f in live:
+        returns = {v["id"] for v in by_id[f].get("returnParameters", {}).get("parameters", [])}
+        for n in (n for m in by_id[f].get("modifiers", []) for a in m.get("arguments") or []
+                  for n in nodes(a)):
+            if n["nodeType"] == "Identifier" and n.get("referencedDeclaration") in returns:
+                found.setdefault(n["id"], []).append(
+                    Blocker("Identifier", "return variables in modifier arguments", "elaboration"))
     # The checker and the elaborator see only the functions nothing overrides.
     found = {i: [b for b in bs if not (i in dead and b.stage == "elaboration")]
              for i, bs in found.items() if i in reached}

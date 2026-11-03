@@ -851,9 +851,12 @@
       "cases": [
         {"name": "deploy_runs_constructor_modifier_around_body", "deploy": true, "args": [3], "expect": {"return": []}, "final_storage": {"0": 33, "1": 8192, "2": 3}},
         {"name": "modifiers_run_in_order_around_body", "function": "ordered", "args": [7], "expect": {"return": [127]}, "final_storage": {"0": 12721}},
+        {"name": "argument_evaluated_after_earlier_modifier", "function": "timed", "args": [], "expect": {"return": [4]}, "final_storage": {"0": 44, "2": 4}},
+        {"name": "placeholder_twice_gets_fresh_return_variables", "function": "fresh", "args": [], "storage": {"3": 1}, "expect": {"return": [0]}},
         {"name": "placeholder_twice_runs_body_twice", "function": "addTwice", "args": [5], "storage": {"2": 1}, "expect": {"return": [11]}, "final_storage": {"2": 11}},
         {"name": "inherited_modifier_admits_owner", "function": "guarded", "args": [4], "storage": {"1": 8192}, "expect": {"return": [8]}, "final_storage": {"1": 8192}},
         {"name": "inherited_modifier_rejects_other_sender", "function": "guarded", "args": [4], "sender": 12288, "storage": {"1": 8192}, "expect": {"revert": "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000096e6f74206f776e65720000000000000000000000000000000000000000000000"}},
+        {"name": "guard_rejects_before_later_argument_overflows", "function": "guarded", "args": ["115792089237316195423570985008687907853269984665640564039457584007913129639935"], "sender": 12288, "storage": {"1": 8192}, "expect": {"revert": "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000096e6f74206f776e65720000000000000000000000000000000000000000000000"}},
         {"name": "argument_over_parameter_at_limit", "function": "guarded", "args": [99], "storage": {"1": 8192}, "expect": {"return": [198]}, "final_storage": {"1": 8192}},
         {"name": "argument_over_parameter_reverts_with_error", "function": "guarded", "args": [100], "storage": {"1": 8192}, "expect": {"revert": "0x1f4d5abe0000000000000000000000000000000000000000000000000000000000000065"}},
         {"name": "argument_overflow_panics", "function": "guarded", "args": ["115792089237316195423570985008687907853269984665640564039457584007913129639935"], "storage": {"1": 8192}, "expect": {"panic": "0x11"}},

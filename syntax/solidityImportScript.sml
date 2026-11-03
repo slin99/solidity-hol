@@ -1220,7 +1220,9 @@ Definition check_modifier_def:
 End
 
 (* A pure function sees no state variables. Whether a view function writes
- * one is the compiler's check.
+ * one is the compiler's check. Modifier arguments see the parameters but not
+ * the return variables: the compiler's IR passes each modifier its own copies
+ * of the return variables, which the elaborator does not model.
  *)
 Definition check_function_def:
   check_function structs events functions modifiers state bases (f : src_function) ⇔
@@ -1229,15 +1231,17 @@ Definition check_function_def:
      f.fn_kind = "constructor") ∧
     (f.fn_mutability = "pure" ∨ f.fn_mutability = "view" ∨
      f.fn_mutability = "nonpayable" ∨ f.fn_mutability = "payable") ∧
-    case (all_some (MAP (scoped_variable f.fn_info.node_id)
-                     (f.fn_parameters ++ f.fn_returns)), f.fn_body) of
-      (SOME variables, SrcBlock info ss) =>
+    case (all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_parameters),
+          all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_returns),
+          f.fn_body) of
+      (SOME ps, SOME rs, SrcBlock info ss) =>
         let env = <| functions := functions; structs := structs; events := events;
-                     variables := variables;
+                     variables := ps ++ rs;
                      state := if f.fn_mutability = "pure" then [] else state;
                      scope := info.node_id; returns_id := f.fn_returns_id;
                      in_loop := F; in_modifier := F |> in
-        EVERY (check_modifier modifiers env) f.fn_modifiers ∧
+        EVERY (check_modifier modifiers (env with variables := ps))
+          f.fn_modifiers ∧
         IS_SOME (check_stmts env ss)
     | _ => F
 End
