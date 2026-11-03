@@ -1,13 +1,13 @@
 {
   "counts": {
-    "admitted": 237,
+    "admitted": 279,
     "compile-failure": 0,
-    "elaboration-rejected": 19,
-    "import-rejected": 1081,
+    "elaboration-rejected": 20,
+    "import-rejected": 1004,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 233
+    "source-rejected": 267
   },
   "features": [
     {
@@ -21,16 +21,16 @@
         "TupleExpression",
         "VariableDeclaration"
       ],
-      "only_blocker": 5,
+      "only_blocker": 6,
       "tests": 322
     },
     {
       "feature": "inline assembly",
-      "first_rejection": 178,
+      "first_rejection": 192,
       "node_types": [
         "InlineAssembly"
       ],
-      "only_blocker": 87,
+      "only_blocker": 95,
       "tests": 266
     },
     {
@@ -46,7 +46,7 @@
     },
     {
       "feature": "external calls and contract members",
-      "first_rejection": 67,
+      "first_rejection": 79,
       "node_types": [
         "FunctionCall",
         "Identifier",
@@ -69,17 +69,8 @@
       "tests": 215
     },
     {
-      "feature": "public state variables",
-      "first_rejection": 158,
-      "node_types": [
-        "VariableDeclaration"
-      ],
-      "only_blocker": 49,
-      "tests": 206
-    },
-    {
       "feature": "structs",
-      "first_rejection": 14,
+      "first_rejection": 15,
       "node_types": [
         "FunctionCall",
         "IndexAccess",
@@ -92,7 +83,7 @@
     },
     {
       "feature": "this",
-      "first_rejection": 3,
+      "first_rejection": 4,
       "node_types": [
         "Identifier"
       ],
@@ -110,7 +101,7 @@
     },
     {
       "feature": "function members (selector, address, \u2026)",
-      "first_rejection": 14,
+      "first_rejection": 16,
       "node_types": [
         "MemberAccess",
         "TupleExpression",
@@ -121,7 +112,7 @@
     },
     {
       "feature": "libraries",
-      "first_rejection": 35,
+      "first_rejection": 37,
       "node_types": [
         "ContractDefinition"
       ],
@@ -130,7 +121,7 @@
     },
     {
       "feature": "memory arrays (new T[](n))",
-      "first_rejection": 70,
+      "first_rejection": 73,
       "node_types": [
         "NewExpression"
       ],
@@ -155,12 +146,12 @@
         "IndexAccess",
         "MemberAccess"
       ],
-      "only_blocker": 8,
+      "only_blocker": 10,
       "tests": 101
     },
     {
       "feature": "abi.* functions",
-      "first_rejection": 51,
+      "first_rejection": 52,
       "node_types": [
         "MemberAccess"
       ],
@@ -169,7 +160,7 @@
     },
     {
       "feature": "function types",
-      "first_rejection": 67,
+      "first_rejection": 74,
       "node_types": [
         "FunctionTypeName"
       ],
@@ -215,7 +206,7 @@
     },
     {
       "feature": "hash and signature built-ins",
-      "first_rejection": 12,
+      "first_rejection": 13,
       "node_types": [
         "Identifier"
       ],
@@ -224,11 +215,11 @@
     },
     {
       "feature": "address members (balance, call, transfer, \u2026)",
-      "first_rejection": 13,
+      "first_rejection": 18,
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 9,
+      "only_blocker": 14,
       "tests": 58
     },
     {
@@ -238,7 +229,7 @@
         "BinaryOperation",
         "UnaryOperation"
       ],
-      "only_blocker": 15,
+      "only_blocker": 19,
       "tests": 57
     },
     {
@@ -261,7 +252,7 @@
     },
     {
       "feature": "user-defined value types",
-      "first_rejection": 33,
+      "first_rejection": 42,
       "node_types": [
         "MemberAccess",
         "TupleExpression",
@@ -274,21 +265,30 @@
     },
     {
       "feature": "constants",
-      "first_rejection": 30,
+      "first_rejection": 34,
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 6,
+      "only_blocker": 8,
       "tests": 47
     },
     {
       "feature": "inline arrays",
-      "first_rejection": 21,
+      "first_rejection": 25,
       "node_types": [
         "TupleExpression"
       ],
       "only_blocker": 0,
       "tests": 47
+    },
+    {
+      "feature": "public state variables",
+      "first_rejection": 0,
+      "node_types": [
+        "VariableDeclaration"
+      ],
+      "only_blocker": 4,
+      "tests": 46
     },
     {
       "feature": "transient storage",
@@ -316,7 +316,7 @@
         "ModifierInvocation",
         "PlaceholderStatement"
       ],
-      "only_blocker": 13,
+      "only_blocker": 24,
       "tests": 39
     },
     {
@@ -343,7 +343,7 @@
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
-      "only_blocker": 10,
+      "only_blocker": 11,
       "tests": 38
     },
     {
@@ -357,7 +357,7 @@
     },
     {
       "feature": "named arguments",
-      "first_rejection": 17,
+      "first_rejection": 19,
       "node_types": [
         "FunctionCall"
       ],
@@ -376,7 +376,7 @@
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
-      "only_blocker": 2,
+      "only_blocker": 3,
       "tests": 32
     },
     {
@@ -385,6 +385,15 @@
       "node_types": [
         "MemberAccess",
         "TupleExpression"
+      ],
+      "only_blocker": 0,
+      "tests": 30
+    },
+    {
+      "feature": "external calls to getters",
+      "first_rejection": 0,
+      "node_types": [
+        "MemberAccess"
       ],
       "only_blocker": 0,
       "tests": 30
@@ -426,11 +435,11 @@
     },
     {
       "feature": "immutables",
-      "first_rejection": 16,
+      "first_rejection": 20,
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 7,
+      "only_blocker": 9,
       "tests": 24
     },
     {
@@ -454,7 +463,7 @@
     },
     {
       "feature": "call options ({value: \u2026, gas: \u2026})",
-      "first_rejection": 3,
+      "first_rejection": 4,
       "node_types": [
         "FunctionCallOptions",
         "IndexAccess",
@@ -500,7 +509,7 @@
       "node_types": [
         "FunctionCall"
       ],
-      "only_blocker": 9,
+      "only_blocker": 10,
       "tests": 18
     },
     {
@@ -516,16 +525,16 @@
     },
     {
       "feature": "type(\u2026)",
-      "first_rejection": 7,
+      "first_rejection": 9,
       "node_types": [
         "Identifier"
       ],
-      "only_blocker": 2,
+      "only_blocker": 3,
       "tests": 16
     },
     {
       "feature": "super calls",
-      "first_rejection": 8,
+      "first_rejection": 9,
       "node_types": [
         "Identifier",
         "MemberAccess",
@@ -555,11 +564,11 @@
     },
     {
       "feature": "literal subdenominations (ether, days, \u2026)",
-      "first_rejection": 1,
+      "first_rejection": 2,
       "node_types": [
         "Literal"
       ],
-      "only_blocker": 0,
+      "only_blocker": 1,
       "tests": 11
     },
     {
@@ -654,6 +663,15 @@
       "tests": 3
     },
     {
+      "feature": "built-in blockhash",
+      "first_rejection": 3,
+      "node_types": [
+        "Identifier"
+      ],
+      "only_blocker": 2,
+      "tests": 3
+    },
+    {
       "feature": "array members as values",
       "first_rejection": 0,
       "node_types": [
@@ -663,10 +681,10 @@
       "tests": 3
     },
     {
-      "feature": "built-in blockhash",
-      "first_rejection": 2,
+      "feature": "overriding state variables",
+      "first_rejection": 3,
       "node_types": [
-        "Identifier"
+        "VariableDeclaration"
       ],
       "only_blocker": 1,
       "tests": 3
@@ -748,84 +766,84 @@
   "format": "solidity-hol-semantic-tests-coverage-v1",
   "greedy_order": [
     {
-      "admitted": 87,
+      "admitted": 95,
       "feature": "inline assembly"
     },
     {
-      "admitted": 144,
-      "feature": "public state variables"
-    },
-    {
-      "admitted": 170,
+      "admitted": 121,
       "feature": "modifiers"
     },
     {
-      "admitted": 194,
+      "admitted": 145,
       "feature": "constant expressions over literals"
     },
     {
-      "admitted": 210,
-      "feature": "transient storage"
-    },
-    {
-      "admitted": 226,
+      "admitted": 160,
       "feature": "address members (balance, call, transfer, \u2026)"
     },
     {
-      "admitted": 240,
+      "admitted": 175,
+      "feature": "transient storage"
+    },
+    {
+      "admitted": 189,
       "feature": "operator delete"
     },
     {
-      "admitted": 255,
+      "admitted": 204,
       "feature": "array values"
     },
     {
-      "admitted": 285,
+      "admitted": 234,
       "feature": "arrays"
     },
     {
-      "admitted": 332,
+      "admitted": 281,
       "feature": "local reference bindings"
     },
     {
-      "admitted": 364,
+      "admitted": 312,
       "feature": "memory arrays (new T[](n))"
     },
     {
-      "admitted": 393,
+      "admitted": 341,
       "feature": "structs"
     },
     {
-      "admitted": 442,
+      "admitted": 385,
       "feature": "struct values and copying"
     },
     {
-      "admitted": 473,
+      "admitted": 414,
       "feature": "aggregate array mutation"
     },
     {
-      "admitted": 498,
+      "admitted": 439,
       "feature": "inline arrays"
     },
     {
-      "admitted": 520,
+      "admitted": 461,
       "feature": "abi.* functions"
     },
     {
-      "admitted": 539,
+      "admitted": 479,
       "feature": "hash and signature built-ins"
     },
     {
-      "admitted": 558,
+      "admitted": 498,
       "feature": "bytes push and pop"
     },
     {
-      "admitted": 576,
+      "admitted": 516,
       "feature": "string literals as fixed-size bytes"
     },
     {
-      "admitted": 592,
+      "admitted": 532,
       "feature": "constants"
+    },
+    {
+      "admitted": 552,
+      "feature": "literals of non-integer types"
     }
   ],
   "profile": "solc-0.8.37-via-ir-osaka",
@@ -1935,6 +1953,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
         "structs",
@@ -2473,21 +2492,18 @@
     {
       "category": "import-rejected",
       "features": [
-        "constants",
-        "public state variables"
+        "constants"
       ],
-      "first": "public state variables",
+      "first": "constants",
       "reason": "accessor/accessor_for_const_state_variable.sol: VariableDeclaration 3: constants are not supported",
       "scan_agrees": true,
       "test": "accessor/accessor_for_const_state_variable.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "accessor/accessor_for_state_variable.sol: VariableDeclaration 3: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "accessor/accessor_for_state_variable.sol"
     },
@@ -2527,7 +2543,7 @@
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
         "external calls and contract members",
-        "public state variables",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "contract creation (new C)",
@@ -2848,14 +2864,13 @@
       "test": "array/array_storage_push_pop.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
-        "arrays",
-        "public state variables"
+        "arrays"
       ],
-      "first": "public state variables",
-      "reason": "array/arrays_complex_from_and_to_storage.sol: VariableDeclaration 5: public state variables are not supported",
+      "first": null,
+      "reason": "array/arrays_complex_from_and_to_storage.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/arrays_complex_from_and_to_storage.sol"
     },
@@ -3010,8 +3025,7 @@
       "features": [
         "array values",
         "arrays",
-        "constants",
-        "public state variables"
+        "constants"
       ],
       "first": "constants",
       "reason": "array/constant_var_as_array_length.sol: VariableDeclaration 3: constants are not supported",
@@ -3439,14 +3453,13 @@
       "test": "array/copying/array_to_mapping.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
-        "arrays",
-        "public state variables"
+        "arrays"
       ],
-      "first": "public state variables",
-      "reason": "array/copying/arrays_from_and_to_storage.sol: VariableDeclaration 3: public state variables are not supported",
+      "first": null,
+      "reason": "array/copying/arrays_from_and_to_storage.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/copying/arrays_from_and_to_storage.sol"
     },
@@ -3727,8 +3740,8 @@
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "operator delete",
-        "public state variables",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -3859,28 +3872,26 @@
       "test": "array/copying/nested_array_calldata_to_storage.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "local reference bindings",
-        "public state variables"
+        "local reference bindings"
       ],
-      "first": "public state variables",
-      "reason": "array/copying/nested_array_dynamic_dynamic_calldata_to_storage.sol: VariableDeclaration 5: public state variables are not supported",
+      "first": null,
+      "reason": "array/copying/nested_array_dynamic_dynamic_calldata_to_storage.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/copying/nested_array_dynamic_dynamic_calldata_to_storage.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "local reference bindings",
-        "public state variables"
+        "local reference bindings"
       ],
-      "first": "public state variables",
-      "reason": "array/copying/nested_array_dynamic_static_calldata_to_storage.sol: VariableDeclaration 6: public state variables are not supported",
+      "first": null,
+      "reason": "array/copying/nested_array_dynamic_static_calldata_to_storage.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/copying/nested_array_dynamic_static_calldata_to_storage.sol"
     },
@@ -4413,11 +4424,10 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "public state variables",
         "this"
       ],
-      "first": "public state variables",
-      "reason": "array/evm_exceptions_out_of_band_access.sol: VariableDeclaration 7: public state variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "array/evm_exceptions_out_of_band_access.sol: Identifier 26: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "array/evm_exceptions_out_of_band_access.sol"
     },
@@ -4458,13 +4468,12 @@
       "test": "array/fixed_arrays_as_return_type.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "arrays",
-        "public state variables"
+        "arrays"
       ],
-      "first": "public state variables",
-      "reason": "array/fixed_arrays_in_constructors.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": null,
+      "reason": "array/fixed_arrays_in_constructors.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/fixed_arrays_in_constructors.sol"
     },
@@ -4569,11 +4578,10 @@
         "array values",
         "fixed-size bytes members and indexing",
         "inline arrays",
-        "public state variables",
         "string literals as fixed-size bytes"
       ],
-      "first": "public state variables",
-      "reason": "array/indexAccess/fixed_bytes_index_access.sol: VariableDeclaration 3: public state variables are not supported",
+      "first": "inline arrays",
+      "reason": "array/indexAccess/fixed_bytes_index_access.sol: TupleExpression 32: inline arrays are not supported",
       "scan_agrees": true,
       "test": "array/indexAccess/fixed_bytes_index_access.sol"
     },
@@ -4603,11 +4611,10 @@
       "category": "import-rejected",
       "features": [
         "arrays",
-        "inline arrays",
-        "public state variables"
+        "inline arrays"
       ],
-      "first": "public state variables",
-      "reason": "array/indexAccess/inline_array_index_access_strings.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "inline arrays",
+      "reason": "array/indexAccess/inline_array_index_access_strings.sol: TupleExpression 10: inline arrays are not supported",
       "scan_agrees": true,
       "test": "array/indexAccess/inline_array_index_access_strings.sol"
     },
@@ -4696,11 +4703,10 @@
         "abi.* functions",
         "bytes push and pop",
         "inline assembly",
-        "operator delete",
-        "public state variables"
+        "operator delete"
       ],
-      "first": "public state variables",
-      "reason": "array/invalid_encoding_for_storage_byte_array.sol: VariableDeclaration 3: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "array/invalid_encoding_for_storage_byte_array.sol: InlineAssembly 8: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "array/invalid_encoding_for_storage_byte_array.sol"
     },
@@ -5075,8 +5081,8 @@
         "abi.* functions",
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "hash and signature built-ins",
-        "public state variables",
         "source units without exactly one contract",
         "this"
       ],
@@ -5188,14 +5194,14 @@
       "test": "array/storage_array_ref.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "public state variables",
         "struct values and copying",
         "structs"
       ],
-      "first": "public state variables",
-      "reason": "array/string_allocation_bug.sol: VariableDeclaration 14: public state variables are not supported",
+      "first": null,
+      "reason": "array/string_allocation_bug.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/string_allocation_bug.sol"
     },
@@ -5208,12 +5214,10 @@
       "test": "array/string_bytes_conversion.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "array/string_literal_assign_to_storage_bytes.sol: VariableDeclaration 3: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/string_literal_assign_to_storage_bytes.sol"
     },
@@ -5224,8 +5228,8 @@
         "struct values and copying",
         "structs"
       ],
-      "first": "public state variables",
-      "reason": "array/strings_in_struct.sol: VariableDeclaration 3: public state variables are not supported",
+      "first": "structs",
+      "reason": "array/strings_in_struct.sol: FunctionCall 21: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "array/strings_in_struct.sol"
     },
@@ -5493,11 +5497,10 @@
         "external calls and contract members",
         "function members (selector, address, \u2026)",
         "function types",
-        "public state variables",
         "this"
       ],
-      "first": "public state variables",
-      "reason": "builtinFunctions/function_types_sig.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "function members (selector, address, \u2026)",
+      "reason": "builtinFunctions/function_types_sig.sol: MemberAccess 9: unsupported built-in member",
       "scan_agrees": true,
       "test": "builtinFunctions/function_types_sig.sol"
     },
@@ -5713,11 +5716,10 @@
         "bytes push and pop",
         "inline assembly",
         "memory arrays (new T[](n))",
-        "new bytes and string",
-        "public state variables"
+        "new bytes and string"
       ],
-      "first": "public state variables",
-      "reason": "cleanup/byte_array_to_storage_cleanup.sol: VariableDeclaration 9: public state variables are not supported",
+      "first": "memory arrays (new T[](n))",
+      "reason": "cleanup/byte_array_to_storage_cleanup.sol: NewExpression 21: unsupported expression NewExpression",
       "scan_agrees": true,
       "test": "cleanup/byte_array_to_storage_cleanup.sol"
     },
@@ -5941,10 +5943,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "constants",
-        "public state variables"
+        "constants"
       ],
-      "first": "public state variables",
+      "first": "constants",
       "reason": "constants/constant_public_getter_checked_unchecked.sol: VariableDeclaration 8: constants are not supported",
       "scan_agrees": true,
       "test": "constants/constant_public_getter_checked_unchecked.sol"
@@ -6100,7 +6101,7 @@
         "arrays",
         "contract creation (new C)",
         "external calls and contract members",
-        "public state variables",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -6121,7 +6122,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
-        "public state variables",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -6130,12 +6131,10 @@
       "test": "constructor/bytes_in_constructors_packer.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "constructor/bytes_in_constructors_unpacker.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "constructor/bytes_in_constructors_unpacker.sol"
     },
@@ -6187,9 +6186,9 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
-        "public state variables",
         "source units without exactly one contract",
         "this"
       ],
@@ -6199,14 +6198,13 @@
       "test": "constructor/constructor_function_complex.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
-        "arrays",
-        "public state variables"
+        "arrays"
       ],
-      "first": "public state variables",
-      "reason": "constructor/constructor_static_array_argument.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": null,
+      "reason": "constructor/constructor_static_array_argument.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "constructor/constructor_static_array_argument.sol"
     },
@@ -6216,11 +6214,10 @@
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
         "external calls and contract members",
-        "public state variables",
         "source units without exactly one contract"
       ],
-      "first": "public state variables",
-      "reason": "constructor/evm_exceptions_in_constructor_call_fail.sol: VariableDeclaration 16: public state variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "constructor/evm_exceptions_in_constructor_call_fail.sol: UserDefinedTypeName 20: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "constructor/evm_exceptions_in_constructor_call_fail.sol"
     },
@@ -6297,12 +6294,10 @@
       "test": "constructor/payable_constructor.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "constructor/state_variable_initialization.sol: VariableDeclaration 3: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "constructor/state_variable_initialization.sol"
     },
@@ -6311,11 +6306,10 @@
       "features": [
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "public state variables"
+        "functions as values"
       ],
-      "first": "public state variables",
-      "reason": "constructor/store_function_in_constructor.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "function types",
+      "reason": "constructor/store_function_in_constructor.sol: FunctionTypeName 9: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "constructor/store_function_in_constructor.sol"
     },
@@ -6324,11 +6318,10 @@
       "features": [
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "public state variables"
+        "functions as values"
       ],
-      "first": "public state variables",
-      "reason": "constructor/store_function_in_constructor_packed.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "function types",
+      "reason": "constructor/store_function_in_constructor_packed.sol: FunctionTypeName 9: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "constructor/store_function_in_constructor_packed.sol"
     },
@@ -6842,13 +6835,12 @@
       "test": "errors/require_custom_error_can_be_parenthesized.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "public state variables",
         "require with a custom error"
       ],
-      "first": "public state variables",
-      "reason": "errors/require_custom_error_constructor_side_effect.sol: VariableDeclaration 7: public state variables are not supported",
+      "first": null,
+      "reason": "errors/require_custom_error_constructor_side_effect.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "errors/require_custom_error_constructor_side_effect.sol"
     },
@@ -7023,12 +7015,11 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "public state variables",
         "require with a custom error",
         "this"
       ],
-      "first": "public state variables",
-      "reason": "errors/require_error_stack_check.sol: VariableDeclaration 18: public state variables are not supported",
+      "first": "this",
+      "reason": "errors/require_error_stack_check.sol: Identifier 45: built-in this is not supported",
       "scan_agrees": true,
       "test": "errors/require_error_stack_check.sol"
     },
@@ -8148,8 +8139,8 @@
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "operator delete",
-        "public state variables",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -8158,34 +8149,30 @@
       "test": "fallback/call_forward_bytes.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "fallback/falback_return.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "fallback/falback_return.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "address members (balance, call, transfer, \u2026)",
-        "public state variables"
+        "address members (balance, call, transfer, \u2026)"
       ],
-      "first": "public state variables",
-      "reason": "fallback/fallback_argument.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "address members (balance, call, transfer, \u2026)",
+      "reason": "fallback/fallback_argument.sol: MemberAccess 32: unsupported built-in member",
       "scan_agrees": true,
       "test": "fallback/fallback_argument.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "address members (balance, call, transfer, \u2026)",
-        "public state variables"
+        "address members (balance, call, transfer, \u2026)"
       ],
-      "first": "public state variables",
-      "reason": "fallback/fallback_argument_to_storage.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "address members (balance, call, transfer, \u2026)",
+      "reason": "fallback/fallback_argument_to_storage.sol: MemberAccess 31: unsupported built-in member",
       "scan_agrees": true,
       "test": "fallback/fallback_argument_to_storage.sol"
     },
@@ -8246,12 +8233,10 @@
       "test": "fallback/inherited.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "fallback/short_data_calls_fallback.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "fallback/short_data_calls_fallback.sol"
     },
@@ -8279,7 +8264,6 @@
       "category": "import-rejected",
       "features": [
         "free functions",
-        "public state variables",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
@@ -8320,8 +8304,8 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "free functions",
-        "public state variables",
         "source units without exactly one contract"
       ],
       "first": "free functions",
@@ -8442,11 +8426,10 @@
       "features": [
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "public state variables"
+        "functions as values"
       ],
-      "first": "public state variables",
-      "reason": "functionCall/call_function_returning_nothing_via_pointer.sol: VariableDeclaration 3: public state variables are not supported",
+      "first": "function types",
+      "reason": "functionCall/call_function_returning_nothing_via_pointer.sol: FunctionTypeName 18: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "functionCall/call_function_returning_nothing_via_pointer.sol"
     },
@@ -8705,7 +8688,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
-        "public state variables",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -8718,7 +8701,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
-        "public state variables",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -8732,7 +8715,7 @@
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
         "external calls and contract members",
-        "public state variables",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -8860,12 +8843,11 @@
         "contract creation (new C)",
         "external calls and contract members",
         "function members (selector, address, \u2026)",
-        "public state variables",
         "source units without exactly one contract",
         "this"
       ],
-      "first": "public state variables",
-      "reason": "functionCall/failed_create.sol: VariableDeclaration 7: public state variables are not supported",
+      "first": "call options ({value: \u2026, gas: \u2026})",
+      "reason": "functionCall/failed_create.sol: FunctionCallOptions 28: only the value call option is supported",
       "scan_agrees": true,
       "test": "functionCall/failed_create.sol"
     },
@@ -8896,24 +8878,22 @@
       "test": "functionCall/gas_and_value_basic.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "library calls and contract-name members",
-        "public state variables"
+        "library calls and contract-name members"
       ],
-      "first": "public state variables",
-      "reason": "functionCall/inheritance/base_base_overload.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": null,
+      "reason": "functionCall/inheritance/base_base_overload.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "functionCall/inheritance/base_base_overload.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "library calls and contract-name members",
-        "public state variables"
+        "library calls and contract-name members"
       ],
-      "first": "public state variables",
-      "reason": "functionCall/inheritance/base_overload.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": null,
+      "reason": "functionCall/inheritance/base_overload.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "functionCall/inheritance/base_overload.sol"
     },
@@ -9021,11 +9001,10 @@
       "category": "import-rejected",
       "features": [
         "hash and signature built-ins",
-        "public state variables",
         "string literals as fixed-size bytes"
       ],
-      "first": "public state variables",
-      "reason": "functionCall/member_accessors.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "hash and signature built-ins",
+      "reason": "functionCall/member_accessors.sol: Identifier 20: unsupported built-in declaration ~8",
       "scan_agrees": true,
       "test": "functionCall/member_accessors.sol"
     },
@@ -9286,8 +9265,8 @@
         "public state variables",
         "this"
       ],
-      "first": "public state variables",
-      "reason": "functionTypes/function_external_delete_storage.sol: VariableDeclaration 4: public state variables are not supported",
+      "first": "function types",
+      "reason": "functionTypes/function_external_delete_storage.sol: FunctionTypeName 3: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "functionTypes/function_external_delete_storage.sol"
     },
@@ -9340,11 +9319,10 @@
       "features": [
         "function types",
         "functions as values",
-        "mappings",
-        "public state variables"
+        "mappings"
       ],
-      "first": "public state variables",
-      "reason": "functionTypes/mapping_of_functions.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "function types",
+      "reason": "functionTypes/mapping_of_functions.sol: FunctionTypeName 6: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "functionTypes/mapping_of_functions.sol"
     },
@@ -9374,12 +9352,10 @@
       "test": "functionTypes/pass_function_types_internally.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "functionTypes/same_function_in_construction_and_runtime.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "functionTypes/same_function_in_construction_and_runtime.sol"
     },
@@ -9427,11 +9403,10 @@
         "conditional expressions",
         "external calls and contract members",
         "function members (selector, address, \u2026)",
-        "public state variables",
         "this"
       ],
-      "first": "public state variables",
-      "reason": "functionTypes/selector_assignment_expression.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "function members (selector, address, \u2026)",
+      "reason": "functionTypes/selector_assignment_expression.sol: MemberAccess 15: unsupported built-in member",
       "scan_agrees": true,
       "test": "functionTypes/selector_assignment_expression.sol"
     },
@@ -9507,6 +9482,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
         "this"
@@ -9581,11 +9557,10 @@
       "features": [
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "public state variables"
+        "functions as values"
       ],
-      "first": "public state variables",
-      "reason": "functionTypes/uninitialized_internal_storage_function_pointer_comparison.sol: VariableDeclaration 3: public state variables are not supported",
+      "first": "function types",
+      "reason": "functionTypes/uninitialized_internal_storage_function_pointer_comparison.sol: FunctionTypeName 6: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "functionTypes/uninitialized_internal_storage_function_pointer_comparison.sol"
     },
@@ -9607,124 +9582,113 @@
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
-        "public state variables",
         "transient storage"
       ],
-      "first": "public state variables",
-      "reason": "functionTypes/uninitialized_internal_transient_storage_function_pointer_comparison.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "function types",
+      "reason": "functionTypes/uninitialized_internal_transient_storage_function_pointer_comparison.sol: FunctionTypeName 5: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "functionTypes/uninitialized_internal_transient_storage_function_pointer_comparison.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "aggregate array mutation",
         "public state variables"
       ],
-      "first": "public state variables",
-      "reason": "getters/array_mapping_struct.sol: VariableDeclaration 11: public state variables are not supported",
+      "first": null,
+      "reason": "getters/array_mapping_struct.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "getters/array_mapping_struct.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "getters/arrays.sol: VariableDeclaration 5: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "getters/arrays.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "getters/bytes.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "getters/bytes.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "getters/mapping.sol: VariableDeclaration 6: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "getters/mapping.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "aggregate array mutation",
         "public state variables"
       ],
-      "first": "public state variables",
-      "reason": "getters/mapping_array_struct.sol: VariableDeclaration 11: public state variables are not supported",
+      "first": null,
+      "reason": "getters/mapping_array_struct.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "getters/mapping_array_struct.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "mappings",
         "public state variables"
       ],
-      "first": "public state variables",
-      "reason": "getters/mapping_of_string.sol: VariableDeclaration 6: public state variables are not supported",
+      "first": null,
+      "reason": "getters/mapping_of_string.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "getters/mapping_of_string.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "public state variables"
       ],
-      "first": "public state variables",
-      "reason": "getters/mapping_to_struct.sol: VariableDeclaration 16: public state variables are not supported",
+      "first": null,
+      "reason": "getters/mapping_to_struct.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "getters/mapping_to_struct.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "getters/mapping_with_names.sol: VariableDeclaration 6: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "getters/mapping_with_names.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "getters/string_and_bytes.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "getters/string_and_bytes.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "public state variables"
       ],
-      "first": "public state variables",
-      "reason": "getters/struct_with_bytes.sol: VariableDeclaration 17: public state variables are not supported",
+      "first": null,
+      "reason": "getters/struct_with_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "getters/struct_with_bytes.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "public state variables"
       ],
-      "first": "public state variables",
-      "reason": "getters/struct_with_bytes_simple.sol: VariableDeclaration 17: public state variables are not supported",
+      "first": null,
+      "reason": "getters/struct_with_bytes_simple.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "getters/struct_with_bytes_simple.sol"
     },
@@ -9733,12 +9697,12 @@
       "features": [
         "constant expressions over literals",
         "external calls and contract members",
-        "public state variables",
+        "external calls to getters",
         "this",
         "transient storage"
       ],
-      "first": "public state variables",
-      "reason": "getters/transient_value_types.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "getters/transient_value_types.sol: Identifier 12: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "getters/transient_value_types.sol"
     },
@@ -9747,23 +9711,22 @@
       "features": [
         "constant expressions over literals",
         "external calls and contract members",
-        "public state variables",
+        "external calls to getters",
         "this",
         "transient storage"
       ],
-      "first": "public state variables",
-      "reason": "getters/transient_value_types_multi_frame_call.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "getters/transient_value_types_multi_frame_call.sol: Identifier 12: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "getters/transient_value_types_multi_frame_call.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "literals of non-integer types",
-        "public state variables"
+        "literals of non-integer types"
       ],
-      "first": "public state variables",
-      "reason": "getters/value_types.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": null,
+      "reason": "getters/value_types.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "getters/value_types.sol"
     },
@@ -9780,10 +9743,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "immutables",
-        "public state variables"
+        "immutables"
       ],
-      "first": "public state variables",
+      "first": "immutables",
       "reason": "immutable/assign_from_immutables.sol: VariableDeclaration 2: immutable variables are not supported",
       "scan_agrees": true,
       "test": "immutable/assign_from_immutables.sol"
@@ -9792,10 +9754,9 @@
       "category": "import-rejected",
       "features": [
         "immutables",
-        "operator delete",
-        "public state variables"
+        "operator delete"
       ],
-      "first": "public state variables",
+      "first": "immutables",
       "reason": "immutable/delete.sol: VariableDeclaration 2: immutable variables are not supported",
       "scan_agrees": true,
       "test": "immutable/delete.sol"
@@ -9813,10 +9774,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "immutables",
-        "public state variables"
+        "immutables"
       ],
-      "first": "public state variables",
+      "first": "immutables",
       "reason": "immutable/getter.sol: VariableDeclaration 3: immutable variables are not supported",
       "scan_agrees": true,
       "test": "immutable/getter.sol"
@@ -9826,8 +9786,8 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "immutables",
-        "public state variables",
         "source units without exactly one contract",
         "this",
         "try/catch"
@@ -9904,7 +9864,6 @@
         "contract creation (new C)",
         "external calls and contract members",
         "immutables",
-        "public state variables",
         "source units without exactly one contract"
       ],
       "first": "immutables",
@@ -9939,10 +9898,9 @@
       "features": [
         "array values",
         "immutables",
-        "inline arrays",
-        "public state variables"
+        "inline arrays"
       ],
-      "first": "public state variables",
+      "first": "immutables",
       "reason": "immutable/small_types_in_reverse.sol: VariableDeclaration 2: immutable variables are not supported",
       "scan_agrees": true,
       "test": "immutable/small_types_in_reverse.sol"
@@ -9971,8 +9929,7 @@
       "category": "import-rejected",
       "features": [
         "immutables",
-        "memory arrays (new T[](n))",
-        "public state variables"
+        "memory arrays (new T[](n))"
       ],
       "first": "immutables",
       "reason": "immutable/use_scratch.sol: VariableDeclaration 2: immutable variables are not supported",
@@ -10014,22 +9971,18 @@
       "test": "inheritance/base_access_to_function_type_variables.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "inheritance/constructor_inheritance_init_order.sol: VariableDeclaration 25: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/constructor_inheritance_init_order.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "inheritance/constructor_inheritance_init_order_2.sol: VariableDeclaration 18: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/constructor_inheritance_init_order_2.sol"
     },
@@ -10042,52 +9995,42 @@
       "test": "inheritance/constructor_inheritance_init_order_3_legacy.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "inheritance/constructor_inheritance_init_order_3_viaIR.sol: VariableDeclaration 3: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/constructor_inheritance_init_order_3_viaIR.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "inheritance/constructor_with_params.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/constructor_with_params.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "inheritance/constructor_with_params_diamond_inheritance.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/constructor_with_params_diamond_inheritance.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "inheritance/constructor_with_params_inheritance.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/constructor_with_params_inheritance.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "inheritance/constructor_with_params_inheritance_2.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/constructor_with_params_inheritance_2.sol"
     },
@@ -10278,62 +10221,50 @@
       "test": "inheritance/overloaded_function_call_with_if_else.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "inheritance/pass_dynamic_arguments_to_the_base.sol: VariableDeclaration 12: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/pass_dynamic_arguments_to_the_base.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "inheritance/pass_dynamic_arguments_to_the_base_base.sol: VariableDeclaration 12: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/pass_dynamic_arguments_to_the_base_base.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "inheritance/pass_dynamic_arguments_to_the_base_base_with_gap.sol: VariableDeclaration 12: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/pass_dynamic_arguments_to_the_base_base_with_gap.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "inheritance/state_variables_init_order.sol: VariableDeclaration 3: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/state_variables_init_order.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "inheritance/state_variables_init_order_2.sol: VariableDeclaration 3: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/state_variables_init_order_2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "inheritance/state_variables_init_order_3.sol: VariableDeclaration 3: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/state_variables_init_order_3.sol"
     },
@@ -10847,22 +10778,20 @@
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
-        "public state variables"
+        "inline assembly"
       ],
-      "first": "public state variables",
-      "reason": "inlineAssembly/inline_assembly_storage_access.sol: VariableDeclaration 4: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "inlineAssembly/inline_assembly_storage_access.sol: InlineAssembly 17: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_storage_access.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
-        "public state variables"
+        "inline assembly"
       ],
-      "first": "public state variables",
-      "reason": "inlineAssembly/inline_assembly_storage_access_inside_function.sol: VariableDeclaration 4: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "inlineAssembly/inline_assembly_storage_access_inside_function.sol: InlineAssembly 17: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_storage_access_inside_function.sol"
     },
@@ -10872,11 +10801,10 @@
         "array values",
         "arrays",
         "inline assembly",
-        "local reference bindings",
-        "public state variables"
+        "local reference bindings"
       ],
-      "first": "public state variables",
-      "reason": "inlineAssembly/inline_assembly_storage_access_local_var.sol: VariableDeclaration 3: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "inlineAssembly/inline_assembly_storage_access_local_var.sol: InlineAssembly 18: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_storage_access_local_var.sol"
     },
@@ -10889,8 +10817,8 @@
         "struct values and copying",
         "structs"
       ],
-      "first": "public state variables",
-      "reason": "inlineAssembly/inline_assembly_storage_access_via_pointer.sol: VariableDeclaration 5: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "inlineAssembly/inline_assembly_storage_access_via_pointer.sol: InlineAssembly 23: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_storage_access_via_pointer.sol"
     },
@@ -10908,11 +10836,10 @@
       "category": "import-rejected",
       "features": [
         "inline assembly",
-        "public state variables",
         "transient storage"
       ],
-      "first": "public state variables",
-      "reason": "inlineAssembly/inline_assembly_transient_storage_access_inside_function.sol: VariableDeclaration 4: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "inlineAssembly/inline_assembly_transient_storage_access_inside_function.sol: InlineAssembly 14: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_transient_storage_access_inside_function.sol"
     },
@@ -11116,8 +11043,8 @@
         "struct values and copying",
         "structs"
       ],
-      "first": "public state variables",
-      "reason": "inlineAssembly/slot_access.sol: VariableDeclaration 10: public state variables are not supported",
+      "first": "abi.* functions",
+      "reason": "inlineAssembly/slot_access.sol: MemberAccess 26: unsupported built-in member encode",
       "scan_agrees": true,
       "test": "inlineAssembly/slot_access.sol"
     },
@@ -11233,8 +11160,8 @@
         "public state variables",
         "source units without exactly one contract"
       ],
-      "first": "public state variables",
-      "reason": "inlineAssembly/transient_storage_selfdestruct.sol: VariableDeclaration 28: public state variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "inlineAssembly/transient_storage_selfdestruct.sol: UserDefinedTypeName 27: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "inlineAssembly/transient_storage_selfdestruct.sol"
     },
@@ -11345,11 +11272,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "public state variables",
         "type(\u2026)"
       ],
-      "first": "public state variables",
-      "reason": "interfaceID/interfaceId_events.sol: VariableDeclaration 26: public state variables are not supported",
+      "first": "type(\u2026)",
+      "reason": "interfaceID/interfaceId_events.sol: Identifier 23: expected ElementaryTypeNameExpression",
       "scan_agrees": true,
       "test": "interfaceID/interfaceId_events.sol"
     },
@@ -11359,11 +11285,10 @@
         "external calls and contract members",
         "function members (selector, address, \u2026)",
         "literals of non-integer types",
-        "public state variables",
         "type(\u2026)"
       ],
-      "first": "public state variables",
-      "reason": "interfaceID/interfaces.sol: VariableDeclaration 30: public state variables are not supported",
+      "first": "type(\u2026)",
+      "reason": "interfaceID/interfaces.sol: Identifier 27: expected ElementaryTypeNameExpression",
       "scan_agrees": true,
       "test": "interfaceID/interfaces.sol"
     },
@@ -12053,11 +11978,10 @@
       "category": "import-rejected",
       "features": [
         "libraries",
-        "library calls and contract-name members",
-        "public state variables"
+        "library calls and contract-name members"
       ],
-      "first": "public state variables",
-      "reason": "libraries/library_call_in_homestead.sol: VariableDeclaration 12: public state variables are not supported",
+      "first": "libraries",
+      "reason": "libraries/library_call_in_homestead.sol: ContractDefinition 10: unsupported contract kind library",
       "scan_agrees": true,
       "test": "libraries/library_call_in_homestead.sol"
     },
@@ -12132,11 +12056,11 @@
         "conditional expressions",
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "function members (selector, address, \u2026)",
         "libraries",
         "library calls and contract-name members",
         "members of elementary type names",
-        "public state variables",
         "source units without exactly one contract",
         "type names as values"
       ],
@@ -12502,11 +12426,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "literal subdenominations (ether, days, \u2026)",
-        "public state variables"
+        "literal subdenominations (ether, days, \u2026)"
       ],
-      "first": "public state variables",
-      "reason": "literals/fractional_denominations.sol: VariableDeclaration 3: public state variables are not supported",
+      "first": "literal subdenominations (ether, days, \u2026)",
+      "reason": "literals/fractional_denominations.sol: Literal 2: literal subdenominations are not supported",
       "scan_agrees": true,
       "test": "literals/fractional_denominations.sol"
     },
@@ -12641,8 +12564,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "modifiers",
-        "public state variables"
+        "modifiers"
       ],
       "first": "modifiers",
       "reason": "modifiers/access_through_contract_name.sol: ModifierDefinition 23: unsupported contract member",
@@ -12652,8 +12574,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "modifiers",
-        "public state variables"
+        "modifiers"
       ],
       "first": "modifiers",
       "reason": "a: ModifierDefinition 11: unsupported contract member",
@@ -12663,8 +12584,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "modifiers",
-        "public state variables"
+        "modifiers"
       ],
       "first": "modifiers",
       "reason": "modifiers/break_in_modifier.sol: ModifierDefinition 23: unsupported contract member",
@@ -12674,8 +12594,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "modifiers",
-        "public state variables"
+        "modifiers"
       ],
       "first": "modifiers",
       "reason": "modifiers/continue_in_modifier.sol: ModifierDefinition 25: unsupported contract member",
@@ -12823,8 +12742,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "modifiers",
-        "public state variables"
+        "modifiers"
       ],
       "first": "modifiers",
       "reason": "modifiers/function_modifier_multiple_times.sol: ModifierDefinition 12: unsupported contract member",
@@ -12834,8 +12752,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "modifiers",
-        "public state variables"
+        "modifiers"
       ],
       "first": "modifiers",
       "reason": "modifiers/function_modifier_multiple_times_local_vars.sol: ModifierDefinition 26: unsupported contract member",
@@ -12876,8 +12793,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "modifiers",
-        "public state variables"
+        "modifiers"
       ],
       "first": "modifiers",
       "reason": "modifiers/function_return_parameter_complex.sol: ModifierDefinition 28: unsupported contract member",
@@ -12888,8 +12804,7 @@
       "category": "import-rejected",
       "features": [
         "conditional expressions",
-        "modifiers",
-        "public state variables"
+        "modifiers"
       ],
       "first": "modifiers",
       "reason": "modifiers/modifer_recursive.sol: ModifierDefinition 9: unsupported contract member",
@@ -12930,8 +12845,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "modifiers",
-        "public state variables"
+        "modifiers"
       ],
       "first": "modifiers",
       "reason": "modifiers/return_does_not_skip_modifier.sol: ModifierDefinition 10: unsupported contract member",
@@ -12941,8 +12855,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "modifiers",
-        "public state variables"
+        "modifiers"
       ],
       "first": "modifiers",
       "reason": "modifiers/return_in_modifier.sol: ModifierDefinition 23: unsupported contract member",
@@ -12952,8 +12865,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "modifiers",
-        "public state variables"
+        "modifiers"
       ],
       "first": "modifiers",
       "reason": "modifiers/stacked_return_with_modifiers.sol: ModifierDefinition 22: unsupported contract member",
@@ -13215,13 +13127,12 @@
       "test": "operators/shifts/shift_cleanup_garbled.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "constant expressions over literals",
-        "public state variables"
+        "constant expressions over literals"
       ],
-      "first": "public state variables",
-      "reason": "operators/shifts/shift_constant_left.sol: VariableDeclaration 5: public state variables are not supported",
+      "first": null,
+      "reason": "operators/shifts/shift_constant_left.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "operators/shifts/shift_constant_left.sol"
     },
@@ -13234,13 +13145,12 @@
       "test": "operators/shifts/shift_constant_left_assignment.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "constant expressions over literals",
-        "public state variables"
+        "constant expressions over literals"
       ],
-      "first": "public state variables",
-      "reason": "operators/shifts/shift_constant_right.sol: VariableDeclaration 5: public state variables are not supported",
+      "first": null,
+      "reason": "operators/shifts/shift_constant_right.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "operators/shifts/shift_constant_right.sol"
     },
@@ -13301,24 +13211,22 @@
       "test": "operators/shifts/shift_left_uint8.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "constant expressions over literals",
-        "public state variables"
+        "constant expressions over literals"
       ],
-      "first": "public state variables",
-      "reason": "operators/shifts/shift_negative_constant_left.sol: VariableDeclaration 6: public state variables are not supported",
+      "first": null,
+      "reason": "operators/shifts/shift_negative_constant_left.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "operators/shifts/shift_negative_constant_left.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "constant expressions over literals",
-        "public state variables"
+        "constant expressions over literals"
       ],
-      "first": "public state variables",
-      "reason": "operators/shifts/shift_negative_constant_right.sol: VariableDeclaration 6: public state variables are not supported",
+      "first": null,
+      "reason": "operators/shifts/shift_negative_constant_right.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "operators/shifts/shift_negative_constant_right.sol"
     },
@@ -13775,11 +13683,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
-        "public state variables"
+        "inline assembly"
       ],
-      "first": "public state variables",
-      "reason": "optimizer/unused_store_storage_removal_bug.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "optimizer/unused_store_storage_removal_bug.sol: InlineAssembly 27: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "optimizer/unused_store_storage_removal_bug.sol"
     },
@@ -13794,12 +13701,10 @@
       "test": "payable/no_nonpayable_circumvention_by_modifier.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "receive/empty_calldata_calls_receive.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "receive/empty_calldata_calls_receive.sol"
     },
@@ -14087,11 +13992,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
-        "public state variables"
+        "inline assembly"
       ],
-      "first": "public state variables",
-      "reason": "reverts/revert.sol: VariableDeclaration 3: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "reverts/revert.sol: InlineAssembly 21: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "reverts/revert.sol"
     },
@@ -14121,7 +14025,6 @@
         "contract creation (new C)",
         "external calls and contract members",
         "hash and signature built-ins",
-        "public state variables",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
@@ -14194,12 +14097,12 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
-        "public state variables",
+        "external calls to getters",
         "source units without exactly one contract",
         "string literals as fixed-size bytes"
       ],
-      "first": "public state variables",
-      "reason": "smoke/alignment.sol: VariableDeclaration 7: public state variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "smoke/alignment.sol: TupleExpression 22: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "smoke/alignment.sol"
     },
@@ -14240,11 +14143,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "address members (balance, call, transfer, \u2026)",
-        "public state variables"
+        "address members (balance, call, transfer, \u2026)"
       ],
-      "first": "public state variables",
-      "reason": "smoke/constructor.sol: VariableDeclaration 3: public state variables are not supported",
+      "first": "address members (balance, call, transfer, \u2026)",
+      "reason": "smoke/constructor.sol: MemberAccess 22: unsupported built-in member",
       "scan_agrees": true,
       "test": "smoke/constructor.sol"
     },
@@ -14259,12 +14161,10 @@
       "test": "smoke/failure.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "smoke/fallback.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "smoke/fallback.sol"
     },
@@ -14443,11 +14343,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "built-in blockhash",
-        "public state variables"
+        "built-in blockhash"
       ],
-      "first": "public state variables",
-      "reason": "state/blockhash_basic.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "built-in blockhash",
+      "reason": "state/blockhash_basic.sol: Identifier 15: unsupported built-in declaration ~5",
       "scan_agrees": true,
       "test": "state/blockhash_basic.sol"
     },
@@ -14550,12 +14449,10 @@
       "test": "statements/empty_for_loop.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "storage/accessors_mapping_for_array.sol: VariableDeclaration 6: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storage/accessors_mapping_for_array.sol"
     },
@@ -14566,8 +14463,8 @@
         "memory arrays (new T[](n))",
         "public state variables"
       ],
-      "first": "public state variables",
-      "reason": "storage/array_accessor.sol: VariableDeclaration 4: public state variables are not supported",
+      "first": "memory arrays (new T[](n))",
+      "reason": "storage/array_accessor.sol: NewExpression 53: unsupported expression NewExpression",
       "scan_agrees": true,
       "test": "storage/array_accessor.sol"
     },
@@ -14578,34 +14475,31 @@
         "arrays",
         "constant expressions over literals",
         "inline arrays",
-        "memory arrays (new T[](n))",
-        "public state variables"
+        "memory arrays (new T[](n))"
       ],
-      "first": "public state variables",
-      "reason": "storage/chop_sign_bits.sol: VariableDeclaration 8: public state variables are not supported",
+      "first": "inline arrays",
+      "reason": "storage/chop_sign_bits.sol: TupleExpression 7: inline arrays are not supported",
       "scan_agrees": true,
       "test": "storage/chop_sign_bits.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "public state variables",
         "string literals as fixed-size bytes"
       ],
-      "first": "public state variables",
-      "reason": "storage/complex_accessors.sol: VariableDeclaration 4: public state variables are not supported",
+      "first": null,
+      "reason": "storage/complex_accessors.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "storage/complex_accessors.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "operator delete",
-        "public state variables",
         "transient storage"
       ],
-      "first": "public state variables",
-      "reason": "storage/delete_overlapping_transient_after_inherited_storage_same_value_type.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": null,
+      "reason": "storage/delete_overlapping_transient_after_inherited_storage_same_value_type.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storage/delete_overlapping_transient_after_inherited_storage_same_value_type.sol"
     },
@@ -14636,14 +14530,13 @@
       "test": "storage/delete_overlapping_transient_after_storage_array_pop_same_base_type.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "operator delete",
-        "public state variables",
         "transient storage"
       ],
-      "first": "public state variables",
-      "reason": "storage/delete_overlapping_transient_after_storage_delete_same_value_type.sol: VariableDeclaration 5: public state variables are not supported",
+      "first": null,
+      "reason": "storage/delete_overlapping_transient_after_storage_delete_same_value_type.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storage/delete_overlapping_transient_after_storage_delete_same_value_type.sol"
     },
@@ -14672,14 +14565,13 @@
       "test": "storage/delete_overlapping_transient_after_storage_struct_delete_same_value_type.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "operator delete",
-        "public state variables",
         "transient storage"
       ],
-      "first": "public state variables",
-      "reason": "storage/delete_overlapping_transient_before_inherited_storage_same_value_type.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": null,
+      "reason": "storage/delete_overlapping_transient_before_inherited_storage_same_value_type.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storage/delete_overlapping_transient_before_inherited_storage_same_value_type.sol"
     },
@@ -14712,14 +14604,13 @@
       "test": "storage/delete_overlapping_transient_before_storage_array_partial_assignment_same_base_type.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "operator delete",
-        "public state variables",
         "transient storage"
       ],
-      "first": "public state variables",
-      "reason": "storage/delete_overlapping_transient_before_storage_delete_same_value_type.sol: VariableDeclaration 5: public state variables are not supported",
+      "first": null,
+      "reason": "storage/delete_overlapping_transient_before_storage_delete_same_value_type.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storage/delete_overlapping_transient_before_storage_delete_same_value_type.sol"
     },
@@ -14806,7 +14697,6 @@
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
-        "public state variables",
         "this"
       ],
       "first": "function types",
@@ -14864,12 +14754,10 @@
       "test": "storage/packed_storage_structs_uint.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "storage/simple_accessor.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storage/simple_accessor.sol"
     },
@@ -14888,12 +14776,11 @@
         "arrays",
         "named arguments",
         "operator delete",
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
-      "first": "public state variables",
-      "reason": "storage/static_array_copy_cleanup.sol: VariableDeclaration 26: public state variables are not supported",
+      "first": "named arguments",
+      "reason": "storage/static_array_copy_cleanup.sol: FunctionCall 75: named arguments are not supported",
       "scan_agrees": true,
       "test": "storage/static_array_copy_cleanup.sol"
     },
@@ -14961,11 +14848,10 @@
         "arrays",
         "inline assembly",
         "local reference bindings",
-        "operator delete",
-        "public state variables"
+        "operator delete"
       ],
-      "first": "public state variables",
-      "reason": "storage/storage_boundary_array_delete_overlapping_variable.sol: VariableDeclaration 3: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "storage/storage_boundary_array_delete_overlapping_variable.sol: InlineAssembly 12: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "storage/storage_boundary_array_delete_overlapping_variable.sol"
     },
@@ -15092,12 +14978,12 @@
       "test": "storage/storage_packed_array_copy.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "public state variables"
       ],
-      "first": "public state variables",
-      "reason": "storage/struct_accessor.sol: VariableDeclaration 16: public state variables are not supported",
+      "first": null,
+      "reason": "storage/struct_accessor.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storage/struct_accessor.sol"
     },
@@ -15110,24 +14996,21 @@
       "test": "storageLayoutSpecifier/base_slot_max_value.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/constructor.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/constructor.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
-        "operator delete",
-        "public state variables"
+        "operator delete"
       ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/delete.sol: VariableDeclaration 5: public state variables are not supported",
+      "first": null,
+      "reason": "storageLayoutSpecifier/delete.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/delete.sol"
     },
@@ -15154,21 +15037,18 @@
       "category": "import-rejected",
       "features": [
         "library calls and contract-name members",
-        "public state variables",
         "super calls"
       ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/function_from_base_contract.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "super calls",
+      "reason": "storageLayoutSpecifier/function_from_base_contract.sol: Identifier 48: built-in super is not supported",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/function_from_base_contract.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/getters.sol: VariableDeclaration 5: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/getters.sol"
     },
@@ -15189,7 +15069,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
-        "public state variables",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -15227,22 +15107,18 @@
       "test": "storageLayoutSpecifier/inheritance_fallback_calling_revert.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/inheritance_from_abstract_contract.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_from_abstract_contract.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/inheritance_from_interface.sol: VariableDeclaration 14: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_from_interface.sol"
     },
@@ -15252,7 +15128,6 @@
         "contract creation (new C)",
         "external calls and contract members",
         "inline assembly",
-        "public state variables",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -15265,8 +15140,8 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "immutables",
-        "public state variables",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -15318,12 +15193,10 @@
       "test": "storageLayoutSpecifier/inheritance_receive_calling_revert.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/inheritance_simple.sol: VariableDeclaration 3: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_simple.sol"
     },
@@ -15342,7 +15215,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
-        "public state variables",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -15353,32 +15226,28 @@
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
-        "public state variables"
+        "inline assembly"
       ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/inline_assembly_direct_load.sol: VariableDeclaration 4: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "storageLayoutSpecifier/inline_assembly_direct_load.sol: InlineAssembly 13: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inline_assembly_direct_load.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
-        "public state variables"
+        "inline assembly"
       ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/inline_assembly_direct_store.sol: VariableDeclaration 4: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "storageLayoutSpecifier/inline_assembly_direct_store.sol: InlineAssembly 9: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inline_assembly_direct_store.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/last_allowed_storage_slot.sol: VariableDeclaration 8: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/last_allowed_storage_slot.sol"
     },
@@ -15391,12 +15260,10 @@
       "test": "storageLayoutSpecifier/mapping_storage_end.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/multiple_inheritance.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/multiple_inheritance.sol"
     },
@@ -15411,12 +15278,10 @@
       "test": "storageLayoutSpecifier/multiple_inheritance_state_var_slots.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/state_variable_arithmetic_expression.sol: VariableDeclaration 4: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/state_variable_arithmetic_expression.sol"
     },
@@ -15435,11 +15300,10 @@
       "category": "import-rejected",
       "features": [
         "array values",
-        "memory arrays (new T[](n))",
-        "public state variables"
+        "memory arrays (new T[](n))"
       ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/state_variable_dynamic_array.sol: VariableDeclaration 3: public state variables are not supported",
+      "first": "memory arrays (new T[](n))",
+      "reason": "storageLayoutSpecifier/state_variable_dynamic_array.sol: NewExpression 62: unsupported expression NewExpression",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/state_variable_dynamic_array.sol"
     },
@@ -15469,30 +15333,29 @@
         "public state variables",
         "transient storage"
       ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/state_variable_reference_types_slot_offset.sol: VariableDeclaration 10: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "storageLayoutSpecifier/state_variable_reference_types_slot_offset.sol: InlineAssembly 42: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/state_variable_reference_types_slot_offset.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
-        "public state variables"
+        "inline assembly"
       ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/state_variable_slot_offset.sol: VariableDeclaration 4: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "storageLayoutSpecifier/state_variable_slot_offset.sol: InlineAssembly 15: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/state_variable_slot_offset.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "public state variables",
         "transient storage"
       ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/state_variable_struct.sol: VariableDeclaration 10: public state variables are not supported",
+      "first": null,
+      "reason": "storageLayoutSpecifier/state_variable_struct.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/state_variable_struct.sol"
     },
@@ -15508,28 +15371,27 @@
       "test": "storageLayoutSpecifier/state_variables_transient.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "local reference bindings",
-        "public state variables"
+        "local reference bindings"
       ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/storage_reference_array.sol: VariableDeclaration 5: public state variables are not supported",
+      "first": null,
+      "reason": "storageLayoutSpecifier/storage_reference_array.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/storage_reference_array.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "local reference bindings",
         "public state variables",
         "struct values and copying",
         "structs"
       ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/storage_reference_inheritance.sol: VariableDeclaration 9: public state variables are not supported",
+      "first": null,
+      "reason": "storageLayoutSpecifier/storage_reference_inheritance.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/storage_reference_inheritance.sol"
     },
@@ -15543,8 +15405,8 @@
         "struct values and copying",
         "structs"
       ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/storage_reference_library_function.sol: VariableDeclaration 29: public state variables are not supported",
+      "first": "libraries",
+      "reason": "storageLayoutSpecifier/storage_reference_library_function.sol: ContractDefinition 26: unsupported contract kind library",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/storage_reference_library_function.sol"
     },
@@ -15581,12 +15443,10 @@
       "test": "storageLayoutSpecifier/variable_cleanup_sstore.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "storageLayoutSpecifier/virtual_functions.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/virtual_functions.sol"
     },
@@ -15650,10 +15510,9 @@
       "category": "import-rejected",
       "features": [
         "constants",
-        "public state variables",
         "string literals as fixed-size bytes"
       ],
-      "first": "public state variables",
+      "first": "constants",
       "reason": "strings/constant_string_literal.sol: VariableDeclaration 3: constants are not supported",
       "scan_agrees": true,
       "test": "strings/constant_string_literal.sol"
@@ -15686,12 +15545,10 @@
       "test": "strings/empty_string_input.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "strings/return_string.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "strings/return_string.sol"
     },
@@ -16053,6 +15910,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
         "structs",
@@ -16392,8 +16250,8 @@
         "struct values and copying",
         "structs"
       ],
-      "first": "public state variables",
-      "reason": "structs/struct_named_constructor.sol: VariableDeclaration 8: public state variables are not supported",
+      "first": "named arguments",
+      "reason": "structs/struct_named_constructor.sol: FunctionCall 15: named arguments are not supported",
       "scan_agrees": true,
       "test": "structs/struct_named_constructor.sol"
     },
@@ -16746,15 +16604,14 @@
       "test": "tryCatch/try_catch_library_call.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "local reference bindings",
-        "public state variables"
+        "local reference bindings"
       ],
-      "first": "public state variables",
-      "reason": "types/array_mapping_abstract_constructor_param.sol: VariableDeclaration 32: public state variables are not supported",
+      "first": null,
+      "reason": "types/array_mapping_abstract_constructor_param.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "types/array_mapping_abstract_constructor_param.sol"
     },
@@ -16915,15 +16772,14 @@
       "test": "types/mapping/user_defined_types_mapping_storage.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "local reference bindings",
         "mapping values",
-        "mappings",
-        "public state variables"
+        "mappings"
       ],
-      "first": "public state variables",
-      "reason": "types/mapping_abstract_constructor_param.sol: VariableDeclaration 21: public state variables are not supported",
+      "first": null,
+      "reason": "types/mapping_abstract_constructor_param.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "types/mapping_abstract_constructor_param.sol"
     },
@@ -16942,12 +16798,13 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "external calls to getters",
         "mappings",
         "public state variables",
         "this"
       ],
-      "first": "public state variables",
-      "reason": "types/mapping_contract_key_getter.sol: VariableDeclaration 6: public state variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "types/mapping_contract_key_getter.sol: UserDefinedTypeName 3: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "types/mapping_contract_key_getter.sol"
     },
@@ -16979,6 +16836,7 @@
       "features": [
         "enums",
         "external calls and contract members",
+        "external calls to getters",
         "mappings",
         "public state variables",
         "this"
@@ -17150,8 +17008,7 @@
       "features": [
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "public state variables"
+        "functions as values"
       ],
       "first": "function types",
       "reason": "uninitializedFunctionPointer/store2.sol: FunctionTypeName 4: unsupported type name FunctionTypeName",
@@ -17242,8 +17099,8 @@
         "this",
         "user-defined value types"
       ],
-      "first": "public state variables",
-      "reason": "userDefinedValueType/calldata.sol: VariableDeclaration 7: public state variables are not supported",
+      "first": "user-defined value types",
+      "reason": "userDefinedValueType/calldata.sol: UserDefinedTypeName 5: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "userDefinedValueType/calldata.sol"
     },
@@ -17258,8 +17115,8 @@
         "structs",
         "user-defined value types"
       ],
-      "first": "public state variables",
-      "reason": "userDefinedValueType/calldata_to_storage.sol: VariableDeclaration 19: public state variables are not supported",
+      "first": "user-defined value types",
+      "reason": "userDefinedValueType/calldata_to_storage.sol: UserDefinedTypeName 21: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "userDefinedValueType/calldata_to_storage.sol"
     },
@@ -17293,7 +17150,7 @@
         "public state variables",
         "user-defined value types"
       ],
-      "first": "public state variables",
+      "first": "constants",
       "reason": "userDefinedValueType/constant.sol: VariableDeclaration 13: constants are not supported",
       "scan_agrees": true,
       "test": "userDefinedValueType/constant.sol"
@@ -17324,8 +17181,8 @@
         "public state variables",
         "user-defined value types"
       ],
-      "first": "public state variables",
-      "reason": "userDefinedValueType/dirty_slot.sol: VariableDeclaration 11: public state variables are not supported",
+      "first": "user-defined value types",
+      "reason": "userDefinedValueType/dirty_slot.sol: UserDefinedTypeName 6: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "userDefinedValueType/dirty_slot.sol"
     },
@@ -17337,8 +17194,8 @@
         "public state variables",
         "user-defined value types"
       ],
-      "first": "public state variables",
-      "reason": "userDefinedValueType/dirty_uint8_read.sol: VariableDeclaration 10: public state variables are not supported",
+      "first": "user-defined value types",
+      "reason": "userDefinedValueType/dirty_uint8_read.sol: UserDefinedTypeName 4: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "userDefinedValueType/dirty_uint8_read.sol"
     },
@@ -17402,8 +17259,8 @@
         "public state variables",
         "user-defined value types"
       ],
-      "first": "public state variables",
-      "reason": "userDefinedValueType/mapping_key.sol: VariableDeclaration 7: public state variables are not supported",
+      "first": "user-defined value types",
+      "reason": "userDefinedValueType/mapping_key.sol: UserDefinedTypeName 4: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "userDefinedValueType/mapping_key.sol"
     },
@@ -17417,8 +17274,8 @@
         "structs",
         "user-defined value types"
       ],
-      "first": "public state variables",
-      "reason": "userDefinedValueType/memory_to_storage.sol: VariableDeclaration 19: public state variables are not supported",
+      "first": "user-defined value types",
+      "reason": "userDefinedValueType/memory_to_storage.sol: UserDefinedTypeName 21: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "userDefinedValueType/memory_to_storage.sol"
     },
@@ -17500,8 +17357,8 @@
         "structs",
         "user-defined value types"
       ],
-      "first": "public state variables",
-      "reason": "userDefinedValueType/storage_layout_struct.sol: VariableDeclaration 33: public state variables are not supported",
+      "first": "user-defined value types",
+      "reason": "userDefinedValueType/storage_layout_struct.sol: UserDefinedTypeName 4: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "userDefinedValueType/storage_layout_struct.sol"
     },
@@ -17516,8 +17373,8 @@
         "string literals as fixed-size bytes",
         "user-defined value types"
       ],
-      "first": "public state variables",
-      "reason": "userDefinedValueType/storage_signed.sol: VariableDeclaration 13: public state variables are not supported",
+      "first": "user-defined value types",
+      "reason": "userDefinedValueType/storage_signed.sol: UserDefinedTypeName 7: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "userDefinedValueType/storage_signed.sol"
     },
@@ -17832,41 +17689,42 @@
     {
       "category": "import-rejected",
       "features": [
-        "public state variables"
+        "overriding state variables"
       ],
-      "first": "public state variables",
-      "reason": "variables/public_state_overridding.sol: VariableDeclaration 14: public state variables are not supported",
+      "first": "overriding state variables",
+      "reason": "variables/public_state_overridding.sol: VariableDeclaration 14: overriding state variables are not supported",
       "scan_agrees": true,
       "test": "variables/public_state_overridding.sol"
     },
     {
       "category": "import-rejected",
       "features": [
+        "overriding state variables",
         "public state variables"
       ],
-      "first": "public state variables",
-      "reason": "variables/public_state_overridding_dynamic_struct.sol: VariableDeclaration 29: public state variables are not supported",
+      "first": "overriding state variables",
+      "reason": "variables/public_state_overridding_dynamic_struct.sol: VariableDeclaration 29: overriding state variables are not supported",
       "scan_agrees": true,
       "test": "variables/public_state_overridding_dynamic_struct.sol"
     },
     {
       "category": "import-rejected",
       "features": [
+        "overriding state variables",
         "public state variables"
       ],
-      "first": "public state variables",
-      "reason": "variables/public_state_overridding_mapping_to_dynamic_struct.sol: VariableDeclaration 33: public state variables are not supported",
+      "first": "overriding state variables",
+      "reason": "variables/public_state_overridding_mapping_to_dynamic_struct.sol: VariableDeclaration 33: overriding state variables are not supported",
       "scan_agrees": true,
       "test": "variables/public_state_overridding_mapping_to_dynamic_struct.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
-        "public state variables"
+        "inline assembly"
       ],
-      "first": "public state variables",
-      "reason": "variables/storing_invalid_boolean.sol: VariableDeclaration 6: public state variables are not supported",
+      "first": "inline assembly",
+      "reason": "variables/storing_invalid_boolean.sol: InlineAssembly 14: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "variables/storing_invalid_boolean.sol"
     },
@@ -17912,12 +17770,11 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "public state variables",
         "this",
         "transient storage"
       ],
-      "first": "public state variables",
-      "reason": "variables/transient_state_variable.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "variables/transient_state_variable.sol: Identifier 19: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "variables/transient_state_variable.sol"
     },
@@ -17983,19 +17840,18 @@
         "transient storage",
         "user-defined value types"
       ],
-      "first": "public state variables",
-      "reason": "variables/transient_state_variable_udvt.sol: VariableDeclaration 5: public state variables are not supported",
+      "first": "user-defined value types",
+      "reason": "variables/transient_state_variable_udvt.sol: UserDefinedTypeName 4: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "variables/transient_state_variable_udvt.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "address members (balance, call, transfer, \u2026)",
-        "public state variables"
+        "address members (balance, call, transfer, \u2026)"
       ],
-      "first": "public state variables",
-      "reason": "various/address_code.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "address members (balance, call, transfer, \u2026)",
+      "reason": "various/address_code.sol: MemberAccess 10: unsupported built-in member",
       "scan_agrees": true,
       "test": "various/address_code.sol"
     },
@@ -18049,9 +17905,9 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "hash and signature built-ins",
         "inline assembly",
-        "public state variables",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
@@ -18177,12 +18033,10 @@
       "test": "various/crazy_elementary_typenames_on_stack.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "various/create_calldata.sol: VariableDeclaration 2: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "various/create_calldata.sol"
     },
@@ -18244,7 +18098,7 @@
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
         "external calls and contract members",
-        "public state variables",
+        "external calls to getters",
         "source units without exactly one contract",
         "transient storage"
       ],
@@ -18275,6 +18129,7 @@
         "contract creation (new C)",
         "conversions to non-elementary types",
         "external calls and contract members",
+        "external calls to getters",
         "public state variables",
         "source units without exactly one contract",
         "this"
@@ -18354,12 +18209,11 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "public state variables",
         "string literals as fixed-size bytes",
         "this"
       ],
-      "first": "public state variables",
-      "reason": "various/literal_empty_string.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "various/literal_empty_string.sol: Identifier 23: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "various/literal_empty_string.sol"
     },
@@ -18389,8 +18243,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "modifiers",
-        "public state variables"
+        "modifiers"
       ],
       "first": "modifiers",
       "reason": "various/multi_modifiers.sol: ModifierDefinition 14: unsupported contract member",
@@ -18414,12 +18267,10 @@
       "test": "various/negative_stack_height.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "various/positive_integers_to_signed.sol: VariableDeclaration 3: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "various/positive_integers_to_signed.sol"
     },
@@ -18435,8 +18286,8 @@
         "public state variables",
         "source units without exactly one contract"
       ],
-      "first": "public state variables",
-      "reason": "various/selfdestruct_post_cancun.sol: VariableDeclaration 24: public state variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "various/selfdestruct_post_cancun.sol: UserDefinedTypeName 23: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "various/selfdestruct_post_cancun.sol"
     },
@@ -18453,8 +18304,8 @@
         "public state variables",
         "source units without exactly one contract"
       ],
-      "first": "public state variables",
-      "reason": "various/selfdestruct_post_cancun_multiple_beneficiaries.sol: VariableDeclaration 37: public state variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "various/selfdestruct_post_cancun_multiple_beneficiaries.sol: UserDefinedTypeName 36: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "various/selfdestruct_post_cancun_multiple_beneficiaries.sol"
     },
@@ -18473,8 +18324,8 @@
         "source units without exactly one contract",
         "string literals as fixed-size bytes"
       ],
-      "first": "public state variables",
-      "reason": "various/selfdestruct_post_cancun_redeploy.sol: VariableDeclaration 77: public state variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "various/selfdestruct_post_cancun_redeploy.sol: UserDefinedTypeName 72: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "various/selfdestruct_post_cancun_redeploy.sol"
     },
@@ -18558,12 +18409,13 @@
       "features": [
         "array values",
         "external calls and contract members",
+        "external calls to getters",
         "inline arrays",
         "public state variables",
         "this"
       ],
-      "first": "public state variables",
-      "reason": "various/skip_dynamic_types_for_structs.sol: VariableDeclaration 13: public state variables are not supported",
+      "first": "inline arrays",
+      "reason": "various/skip_dynamic_types_for_structs.sol: TupleExpression 38: inline arrays are not supported",
       "scan_agrees": true,
       "test": "various/skip_dynamic_types_for_structs.sol"
     },
@@ -18668,14 +18520,14 @@
       "test": "various/super_parentheses.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "public state variables",
         "struct values and copying",
         "structs"
       ],
-      "first": "public state variables",
-      "reason": "various/swap_in_storage_overwrite.sol: VariableDeclaration 8: public state variables are not supported",
+      "first": null,
+      "reason": "various/swap_in_storage_overwrite.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "various/swap_in_storage_overwrite.sol"
     },
@@ -18736,7 +18588,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
-        "public state variables",
+        "external calls to getters",
         "source units without exactly one contract",
         "this"
       ],
@@ -18949,6 +18801,7 @@
       "features": [
         "aggregate array mutation",
         "external calls and contract members",
+        "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
         "struct values and copying",
@@ -19289,15 +19142,14 @@
       "test": "viaYul/local_bool_assignment.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "arrays",
-        "public state variables",
         "tuples of literals",
         "tuples with empty components"
       ],
-      "first": "public state variables",
-      "reason": "viaYul/local_tuple_assignment.sol: VariableDeclaration 3: public state variables are not supported",
+      "first": null,
+      "reason": "viaYul/local_tuple_assignment.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "viaYul/local_tuple_assignment.sol"
     },
@@ -19354,12 +19206,10 @@
       "test": "viaYul/mapping_enum_key_getter.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "public state variables"
-      ],
-      "first": "public state variables",
-      "reason": "viaYul/mapping_getters.sol: VariableDeclaration 4: public state variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/mapping_getters.sol"
     },
@@ -19479,11 +19329,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "address members (balance, call, transfer, \u2026)",
-        "public state variables"
+        "address members (balance, call, transfer, \u2026)"
       ],
-      "first": "public state variables",
-      "reason": "viaYul/stack_limit_evader_mutual_recursion.sol: VariableDeclaration 2: public state variables are not supported",
+      "first": "address members (balance, call, transfer, \u2026)",
+      "reason": "viaYul/stack_limit_evader_mutual_recursion.sol: MemberAccess 26: unsupported built-in member",
       "scan_agrees": true,
       "test": "viaYul/stack_limit_evader_mutual_recursion.sol"
     },
