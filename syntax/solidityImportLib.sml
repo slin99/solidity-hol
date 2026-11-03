@@ -200,8 +200,8 @@ fun declaration state v = within v (fn v =>
      "immutable variables are not supported";
    require v (state orelse not (isSome (optional_field v "value")))
      "declaration values are not supported";
-   require v (not state orelse string_field v "visibility" <> "public")
-     "public state variables are not supported";
+   require v (not (isSome (optional_field v "overrides")))
+     "overriding state variables are not supported";
    record "src_variable"
      [("var_info", info v), ("var_name", mk_str (string_field v "name")),
       ("var_scope", mk_num (int_field v "scope")),
@@ -794,7 +794,17 @@ fun contract external_structs contracts declared v = within v (fn v =>
           (map function
              (List.filter (fn f => bool_field f "implemented")
                 (members_of "FunctionDefinition" bases)),
-           function_ty))]
+           function_ty)),
+       ("contract_getters", listSyntax.mk_list
+          (List.mapPartial
+             (fn d => if string_field d "visibility" = "public" then
+                        SOME (pairSyntax.mk_pair
+                          (mk_num (int_field d "id"),
+                           mk_bytes d (string_field d "functionSelector")))
+                      else NONE)
+             state_variables,
+           pairSyntax.mk_prod (numSyntax.num,
+             listSyntax.mk_list_type (wordsSyntax.mk_int_word_type 8))))]
   end)
 
 (* File-level structs, of any source unit of the compilation, accompany each

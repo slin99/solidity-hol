@@ -325,10 +325,21 @@ val storage_ast =
 val storage_contracts =
   artifact_part storage_fixture ["contracts", storage_source]
 
-(* The first variable declaration is the state variable total. *)
-val () = import_error_with Unsupported storage_contracts "public state variable"
+(* The first variable declaration is the state variable total. A public
+ * one needs its getter's selector. *)
+val () = import_error_with Malformed storage_contracts "public state variable without a selector"
   (edit_first "VariableDeclaration"
      (set_field "visibility" (JSON.STRING "public")) storage_ast)
+val () = import_error_with Unsupported storage_contracts "overriding state variable"
+  (edit_first "VariableDeclaration"
+     (fn v => case drop_field "overrides" v of
+                JSON.OBJECT kvs =>
+                  JSON.OBJECT (("overrides",
+                    JSON.OBJECT [("nodeType", JSON.STRING "OverrideSpecifier"),
+                                 ("id", JSON.INT 100000),
+                                 ("overrides", JSON.ARRAY [])]) :: kvs)
+              | v' => v')
+     storage_ast)
 val () = import_error_with Unsupported storage_contracts "constant state variable"
   (edit_first "VariableDeclaration" (set_field "constant" (JSON.BOOL true))
      storage_ast)

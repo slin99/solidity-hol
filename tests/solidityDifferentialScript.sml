@@ -113,11 +113,25 @@ Definition unit_function_def:
     | [] => NONE
 End
 
+(* A function's types, or those of the getter of a public state variable. *)
 Definition function_types_def:
   function_types u name =
     case unit_function u name of
       SOME f => callee_types f
-    | NONE => NONE
+    | NONE =>
+        case u.unit_contracts of
+          c :: _ =>
+            (case FILTER (λv. v.var_name = name ∧
+                              MEM v.var_info.node_id (MAP FST c.contract_getters))
+                    c.contract_state_variables of
+               v :: _ =>
+                 (case state_variable c.contract_bases v of
+                    SOME (_, ty) =>
+                      OPTION_MAP (λ(keys, result). (keys, [getter_result result]))
+                        (getter_shape ty)
+                  | NONE => NONE)
+             | [] => NONE)
+        | [] => NONE
 End
 
 (* Storage *)
