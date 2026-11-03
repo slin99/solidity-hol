@@ -419,6 +419,7 @@ End
 Definition decode_type_identifier_def:
   decode_type_identifier s =
     if isPREFIX "t_rational_" s then decode_rational (DROP 11 s)
+    else if isPREFIX "t_stringliteral_" s then SOME SrcByteLiteral
     else if s = "t_tuple$__$" then SOME (SrcTupleType [])
     else if isPREFIX "t_tuple$" s then
       case REVERSE (separated_fields #"$" "" (DROP 8 s)) of

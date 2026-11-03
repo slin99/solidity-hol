@@ -986,7 +986,7 @@ Definition elab_stmts_def:
           (case ty of
              LocatedT MemoryLoc element =>
                SOME (([DefineStmt (AstId v.var_info.node_id) (SingleType ty)
-                         (BytesLiteralOperation element [])],
+                         (DefaultBytesOperation element)],
                       ctx with variables := (v.var_info.node_id, ty) :: ctx.variables), n)
            | _ => NONE)
         else (case default_elementary ty of

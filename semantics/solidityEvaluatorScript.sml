@@ -202,7 +202,11 @@ End
 Definition eval_operation_def:
   eval_operation env (st : source_state) op =
     case op of
-      StateReferenceOperation x =>
+      DefaultBytesOperation element =>
+        if byte_sequence_type element then
+          ValueOk (ReferenceValue (MemoryReference (HeapId 0) 0 element))
+        else ValueAbrupt (InvalidCompletion "bad default byte type")
+    | StateReferenceOperation x =>
         (case state_reference env st.frame.self_address x of
            SOME r => ValueOk (ReferenceValue r)
          | _ => ValueAbrupt (InvalidCompletion "bad state reference"))
