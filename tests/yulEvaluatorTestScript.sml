@@ -1109,3 +1109,30 @@ Theorem a_call_outside_the_model_is_invalid:
 Proof
   CONV_TAC cv_eval
 QED
+
+Definition calldatacopy_code_def:
+  calldatacopy_code =
+    [YulExprStmt (YulBuiltin YCallDataCopy
+       [YulLit (LitNumber 31w); YulLit (LitNumber 1w); YulLit (LitNumber 4w)]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 30w); YulLit (LitNumber 6w)])]
+End
+
+val () = cv_auto_trans calldatacopy_code_def;
+
+Theorem calldatacopy_zero_pads_and_expands_memory:
+  (run_yul 20 calldatacopy_code
+    (yul_frame_machine with call_data := [0x11w; 0x22w; 0x33w])).completion =
+      YulReturn [0w; 0x22w; 0x33w; 0w; 0w; 0w] ∧
+  (run_yul 20 calldatacopy_code
+    (yul_frame_machine with call_data := [0x11w; 0x22w; 0x33w])).machine.memory_size = 64
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem calldatacopy_empty_range_touches_nothing:
+  eval_yul_builtin YCallDataCopy [0xffffw; 0xffffw; 0w]
+    yul_frame_machine = EvalValues [] yul_frame_machine
+Proof
+  CONV_TAC cv_eval
+QED
