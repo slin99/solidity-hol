@@ -264,8 +264,11 @@ class ClassifyTests(unittest.TestCase):
                          [coverage.Blocker("InlineAssembly", "inline assembly", "import")])
         calls = assembly([statement(yul_call("pop", yul_call("gas")))], [{"declaration": 6}])
         self.assertEqual(coverage.assembly_blockers(calls, by_id), [
-            coverage.Blocker("InlineAssembly", "inline assembly calls, gas and return data", "elaboration"),
+            coverage.Blocker("InlineAssembly", "inline assembly calls, gas, return data and code", "elaboration"),
             coverage.Blocker("InlineAssembly", "inline assembly memory references", "elaboration")])
+        code = assembly([statement(yul_call("pop", yul_call("codesize")))], [])
+        self.assertEqual(coverage.assembly_blockers(code, by_id), [
+            coverage.Blocker("InlineAssembly", "inline assembly calls, gas, return data and code", "elaboration")])
         own = assembly([{"nodeType": "YulFunctionDefinition", "name": "gas", "body": {
                             "nodeType": "YulBlock", "statements": [{
                                 "nodeType": "YulFunctionDefinition", "name": "inner",

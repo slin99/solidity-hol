@@ -697,7 +697,10 @@ YUL_BUILTINS = {
     "staticcall", "extcodesize", "returndatasize", "returndatacopy", "gas", "pop", "return",
     "revert", "codesize", "codecopy", "datasize", "dataoffset",
 }
-YUL_UNSUPPORTED = {"gas", "call", "staticcall", "returndatasize", "returndatacopy"}
+YUL_UNSUPPORTED = {
+    "gas", "call", "staticcall", "returndatasize", "returndatacopy",
+    "codesize", "codecopy", "datasize", "dataoffset",
+}
 
 
 def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[Blocker]:
@@ -733,7 +736,7 @@ def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) ->
                 if name not in defined and name not in YUL_BUILTINS:
                     blocker("inline assembly", "import")
                 elif name not in defined and name in YUL_UNSUPPORTED:
-                    blocker("inline assembly calls, gas and return data", "elaboration")
+                    blocker("inline assembly calls, gas, return data and code", "elaboration")
             for k, v in value.items():
                 if k != "functionName":
                     walk(v, top and kind == "YulBlock" and value is node["AST"])

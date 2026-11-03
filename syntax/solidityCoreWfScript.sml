@@ -718,11 +718,12 @@ Definition assembly_value_type_def[simp]:
 End
 
 (* The builtins an inline assembly block may not use. The source state keeps
- * no remaining gas and no return data buffer, so gas, calls and return data
- * are left out. *)
+ * no remaining gas, no return data buffer and no code, so gas, calls, return
+ * data and the code and data builtins are left out. *)
 Definition assembly_unsupported_def:
   assembly_unsupported =
-    [YGas; YCall; YStaticCall; YReturnDataSize; YReturnDataCopy]
+    [YGas; YCall; YStaticCall; YReturnDataSize; YReturnDataCopy;
+     YCodeSize; YCodeCopy; YDataSize; YDataOffset]
 End
 
 (* The builtins that change the world, which a static frame forbids. *)

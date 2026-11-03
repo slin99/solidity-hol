@@ -1,8 +1,8 @@
 {
   "counts": {
-    "admitted": 303,
+    "admitted": 302,
     "compile-failure": 0,
-    "elaboration-rejected": 28,
+    "elaboration-rejected": 29,
     "import-rejected": 964,
     "invalid-core": 0,
     "malformed-input": 0,
@@ -146,7 +146,7 @@
         "IndexAccess",
         "MemberAccess"
       ],
-      "only_blocker": 9,
+      "only_blocker": 8,
       "tests": 101
     },
     {
@@ -540,7 +540,7 @@
         "MemberAccess",
         "TupleExpression"
       ],
-      "only_blocker": 7,
+      "only_blocker": 6,
       "tests": 15
     },
     {
@@ -570,6 +570,15 @@
       ],
       "only_blocker": 0,
       "tests": 11
+    },
+    {
+      "feature": "inline assembly calls, gas, return data and code",
+      "first_rejection": 0,
+      "node_types": [
+        "InlineAssembly"
+      ],
+      "only_blocker": 3,
+      "tests": 10
     },
     {
       "feature": "bytes and string",
@@ -703,15 +712,6 @@
       "first_rejection": 2,
       "node_types": [
         "Identifier"
-      ],
-      "only_blocker": 2,
-      "tests": 2
-    },
-    {
-      "feature": "inline assembly calls, gas and return data",
-      "first_rejection": 0,
-      "node_types": [
-        "InlineAssembly"
       ],
       "only_blocker": 2,
       "tests": 2
@@ -6402,6 +6402,7 @@
       "category": "import-rejected",
       "features": [
         "free functions",
+        "inline assembly calls, gas, return data and code",
         "structs",
         "using for"
       ],
@@ -6413,6 +6414,7 @@
     {
       "category": "import-rejected",
       "features": [
+        "inline assembly calls, gas, return data and code",
         "libraries",
         "library calls and contract-name members"
       ],
@@ -6441,6 +6443,7 @@
       "features": [
         "free functions",
         "imports",
+        "inline assembly calls, gas, return data and code",
         "source units without exactly one contract"
       ],
       "first": "free functions",
@@ -6467,6 +6470,7 @@
     {
       "category": "source-rejected",
       "features": [
+        "inline assembly calls, gas, return data and code",
         "library calls and contract-name members"
       ],
       "first": null,
@@ -6493,6 +6497,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "inline assembly calls, gas, return data and code",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
@@ -6504,6 +6509,7 @@
     {
       "category": "import-rejected",
       "features": [
+        "inline assembly calls, gas, return data and code",
         "super calls"
       ],
       "first": "super calls",
@@ -6526,10 +6532,12 @@
       "test": "deployedCodeExclusion/super_function_deployed.sol"
     },
     {
-      "category": "admitted",
-      "features": [],
+      "category": "elaboration-rejected",
+      "features": [
+        "inline assembly calls, gas, return data and code"
+      ],
       "first": null,
-      "reason": null,
+      "reason": "deployedCodeExclusion/virtual_function.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "deployedCodeExclusion/virtual_function.sol"
     },
@@ -10997,7 +11005,7 @@
     {
       "category": "elaboration-rejected",
       "features": [
-        "inline assembly calls, gas and return data"
+        "inline assembly calls, gas, return data and code"
       ],
       "first": null,
       "reason": "inlineAssembly/returndatacopy_using_stale_returndatasize.sol: elaborate_unit returned NONE (unsupported lowering)",
@@ -13972,7 +13980,7 @@
     {
       "category": "elaboration-rejected",
       "features": [
-        "inline assembly calls, gas and return data"
+        "inline assembly calls, gas, return data and code"
       ],
       "first": null,
       "reason": "reverts/revert_return_area.sol: elaborate_unit returned NONE (unsupported lowering)",
@@ -17893,6 +17901,7 @@
         "external calls and contract members",
         "hash and signature built-ins",
         "inline assembly",
+        "inline assembly calls, gas, return data and code",
         "inline assembly memory references",
         "public state variables",
         "source units without exactly one contract",

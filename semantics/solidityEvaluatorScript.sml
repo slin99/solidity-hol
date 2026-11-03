@@ -613,6 +613,11 @@ End
  * writes to memory outside the scratch space [0, 0x40) fail closed, since the
  * source heap has no byte image. In a static frame, a block that names a
  * builtin changing the world fails closed, whether or not it would run it.
+ *
+ * Known gap: source values carry no dirty bits, so a block reading a local
+ * sees its clean word. The compiler's word for a bool local can be dirty: a
+ * bool read from a storage byte holding 2, or one an earlier block wrote 2
+ * to, is 2 on the stack, where the block here sees 1.
  *)
 
 (* A value-type scalar as the stack word the compiler keeps it in: integers

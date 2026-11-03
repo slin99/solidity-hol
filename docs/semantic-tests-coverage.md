@@ -22,8 +22,8 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 | outcome | tests |
 | --- | ---: |
-| admitted | 303 |
-| elaboration-rejected | 28 |
+| admitted | 302 |
+| elaboration-rejected | 29 |
 | import-rejected | 964 |
 | compile-failure | 0 |
 | malformed-input | 0 |
@@ -52,7 +52,7 @@ The scan disagrees with the HOL run on 0 tests.
 | libraries | `ContractDefinition` | 116 | 1 | 37 |
 | memory arrays (new T[](n)) | `NewExpression` | 111 | 0 | 70 |
 | struct values and copying | `Identifier`, `IndexAccess`, `MemberAccess` | 108 | 2 | 0 |
-| library calls and contract-name members | `IndexAccess`, `MemberAccess` | 101 | 9 | 0 |
+| library calls and contract-name members | `IndexAccess`, `MemberAccess` | 101 | 8 | 0 |
 | abi.* functions | `MemberAccess` | 100 | 5 | 52 |
 | function types | `FunctionTypeName` | 96 | 0 | 69 |
 | inline assembly memory references | `InlineAssembly` | 90 | 4 | 0 |
@@ -91,10 +91,11 @@ The scan disagrees with the HOL run on 0 tests.
 | require with a custom error | `FunctionCall` | 18 | 10 | 0 |
 | mapping values | `Identifier`, `IndexAccess`, `MemberAccess` | 17 | 0 | 0 |
 | type(…) | `Identifier` | 16 | 2 | 7 |
-| super calls | `Identifier`, `MemberAccess`, `TupleExpression` | 15 | 7 | 8 |
+| super calls | `Identifier`, `MemberAccess`, `TupleExpression` | 15 | 6 | 8 |
 | built-in erc7201 | `Identifier` | 12 | 1 | 5 |
 | fixed-size bytes members and indexing | `IndexAccess`, `MemberAccess` | 12 | 1 | 0 |
 | literal subdenominations (ether, days, …) | `Literal` | 11 | 0 | 1 |
+| inline assembly calls, gas, return data and code | `InlineAssembly` | 10 | 3 | 0 |
 | bytes and string | `MemberAccess` | 10 | 0 | 0 |
 | custom errors with reference parameters | `VariableDeclaration` | 10 | 0 | 0 |
 | events named through a contract or library | `MemberAccess` | 8 | 3 | 5 |
@@ -110,7 +111,6 @@ The scan disagrees with the HOL run on 0 tests.
 | built-in selfdestruct | `Identifier` | 3 | 0 | 0 |
 | events | `MemberAccess` | 3 | 0 | 3 |
 | built-in gasleft | `Identifier` | 2 | 2 | 2 |
-| inline assembly calls, gas and return data | `InlineAssembly` | 2 | 2 | 0 |
 | built-in addmod | `Identifier` | 2 | 0 | 2 |
 | custom errors | `MemberAccess`, `TupleExpression` | 2 | 0 | 1 |
 | nested tuples | `TupleExpression` | 1 | 1 | 0 |
@@ -224,7 +224,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `constructor/inline_member_init_inheritence_without_constructor.sol`
 - `constructor/payable_constructor.sol`
 - `conversions/string_to_bytes.sol`
-- `deployedCodeExclusion/virtual_function.sol`
 - `errors/simple.sol`
 - `errors/weird_name.sol`
 - `events/emit_three_identical_events.sol`
@@ -753,6 +752,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `cleanup/cleanup_bytes_types_shortening_newCodeGen.sol`: cleanup/cleanup_bytes_types_shortening_newCodeGen.sol: elaborate_unit returned NONE (unsupported lowering)
 - `cleanup/cleanup_bytes_types_v2.sol`: cleanup/cleanup_bytes_types_v2.sol: elaborate_unit returned NONE (unsupported lowering)
 - `constructor/functions_called_by_constructor.sol`: constructor/functions_called_by_constructor.sol: elaborate_unit returned NONE (unsupported lowering)
+- `deployedCodeExclusion/virtual_function.sol`: deployedCodeExclusion/virtual_function.sol: elaborate_unit returned NONE (unsupported lowering)
 - `errors/error_throw_from_module_via_member_access.sol`: A.sol: elaborate_unit returned NONE (unsupported lowering)
 - `errors/panic_via_import.sol`: s1.sol: elaborate_unit returned NONE (unsupported lowering)
 - `errors/via_import.sol`: s1.sol: elaborate_unit returned NONE (unsupported lowering)

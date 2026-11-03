@@ -3,7 +3,7 @@
  *)
 Theory solidityEvaluatorTest
 Ancestors
-  solidityEvaluator
+  solidityEvaluator solidityEntry
 Libs
   cv_transLib wordsLib intLib
 
@@ -429,6 +429,123 @@ QED
 
 Theorem valid_header_reaches_static_event_guard:
   static_byte_event 0w = InvalidCompletion "emit in static frame"
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* Inline assembly. asm(x) runs code with x bound to the block's "x" and
+ * returns x; asm_caller() calls asm(7); halt() stops from a block. *)
+Overload ylit = “λn. YulLit (LitNumber n)”
+
+Definition asm_proc_def:
+  asm_proc code = <|
+    procedure_id := AstId 110;
+    parameters := [(AstId 111, u256)];
+    return_bindings := [(AstId 112, u256)];
+    body := [AssemblyStmt code [("x", AssemblyLocal (AstId 111) u256)];
+             ReturnStmt [BoundAtom (AstId 111)]]
+  |>
+End
+
+Definition asm_caller_def:
+  asm_caller = <|
+    procedure_id := AstId 120;
+    parameters := [];
+    return_bindings := [(AstId 121, u256)];
+    body := [
+      DefineStmt (AstId 122) (SingleType u256)
+        (InternalCallOperation (AstId 110) [k 7]);
+      ReturnStmt [k 1]]
+  |>
+End
+
+Definition halt_proc_def:
+  halt_proc = <|
+    procedure_id := AstId 130;
+    parameters := [];
+    return_bindings := [];
+    body := [AssemblyStmt [YulExprStmt (YulBuiltin YStop [])] []]
+  |>
+End
+
+Definition asm_env_def:
+  asm_env code = core_program_environment <|
+    procedures := [asm_proc code; asm_caller; halt_proc];
+    struct_layouts := []; type_declarations := [];
+    state_variables := [];
+    entry_procedure := AstId 110;
+    external_functions := []; receive_procedure := NONE;
+    fallback_procedure := NONE; creation_procedure := NONE
+  |>
+End
+
+Definition run_asm_def:
+  run_asm code st f args =
+    (invoke_source 20 (asm_env code) f args st []).completion
+End
+
+Definition store_x_def:
+  store_x = YulExprStmt (YulBuiltin YSStore [ylit 0w; YulName "x"])
+End
+
+Definition run_halt_def:
+  run_halt creating =
+    run_entry 20 (asm_env []) halt_proc [] initial_state.frame
+      initial_state.world 0 creating
+End
+
+val () = cv_auto_trans asm_env_def;
+val () = cv_auto_trans run_asm_def;
+val () = cv_auto_trans store_x_def;
+val () = cv_auto_trans run_halt_def;
+
+Theorem asm_writes_local_back:
+  run_asm [YulAssign ["x"] (YulBuiltin YAdd [YulName "x"; ylit 1w])]
+    initial_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+  ReturnCompletion [ScalarValue (IntegerValue 8)]
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* A static frame rejects a block naming sstore, even on a path not taken. *)
+Theorem asm_static_store_invalid:
+  run_asm [store_x] static_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    InvalidCompletion "unsupported assembly builtin" ∧
+  run_asm [YulIf (ylit 0w) [store_x]] static_state (AstId 110)
+    [ScalarValue (IntegerValue 7)] =
+    InvalidCompletion "unsupported assembly builtin"
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* Scratch space round-trips; a write above it fails closed. *)
+Theorem asm_memory_outside_scratch_invalid:
+  run_asm [YulExprStmt (YulBuiltin YMStore [ylit 0x20w; YulName "x"]);
+           YulAssign ["x"] (YulBuiltin YMLoad [ylit 0x20w])]
+    initial_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    ReturnCompletion [ScalarValue (IntegerValue 7)] ∧
+  run_asm [YulExprStmt (YulBuiltin YMStore [ylit 0x80w; YulName "x"])]
+    initial_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    InvalidCompletion "assembly wrote memory outside the scratch space"
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* return(...) in a callee ends the whole frame with its bytes. *)
+Theorem asm_halt_passes_through_call:
+  run_asm [YulExprStmt (YulBuiltin YMStore [ylit 0w; YulName "x"]);
+           YulExprStmt (YulBuiltin YReturn [ylit 0w; ylit 32w])]
+    initial_state (AstId 120) [] =
+  HaltCompletion (REPLICATE 31 0w ++ [7w])
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* A halt returns its bytes from a call frame and fails closed in a creation
+ * frame. *)
+Theorem asm_halt_in_creation_invalid:
+  run_halt F = ContractReturned [] initial_state.world ∧
+  run_halt T = ContractInvalid "assembly halt in a creation frame"
 Proof
   CONV_TAC cv_eval
 QED

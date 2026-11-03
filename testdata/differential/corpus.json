@@ -862,6 +862,7 @@
         {"name": "slot_and_offset", "function": "locations", "args": [], "expect": {"return": [1, 8, 0, 0]}},
         {"name": "store_through_slot", "function": "store", "args": [7], "expect": {"return": []}, "final_storage": {"0": 7}},
         {"name": "load_through_slot", "function": "load", "args": [], "expect": {"return": [42]}, "storage": {"0": 42}},
+        {"name": "mapping_slot_hashed_in_scratch", "function": "balanceOf", "args": [5], "expect": {"return": [99]}, "storage": {"83924299613623144815152306351111586190008510169577290076514507543974912713604": 99}},
         {"name": "free_pointer_initial", "function": "freePointer", "args": [], "expect": {"return": [128]}},
         {"name": "free_pointer_after_allocation", "function": "freePointerAfterAllocation", "args": [], "expect": {"return": [192, 10]}},
         {"name": "loop_break_continue_function", "function": "loops", "args": [10], "expect": {"return": [27]}},
