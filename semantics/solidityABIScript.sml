@@ -1,5 +1,5 @@
-(* The ABI at the contract boundary, for elementary value types: calldata
- * arguments, return data, Panic(uint256) revert data and event logs, over
+(* The ABI at the contract boundary, for scalars and bytes/string values:
+ * calldata arguments, return data, Panic(uint256) revert data and event logs, over
  * Verifereum's contractABI encoding.
  *)
 Theory solidityABI
@@ -219,7 +219,15 @@ val () = cv_auto_trans memory_free_pointer_def;
 val () = cv_auto_trans decode_abi_argument_def;
 val () = cv_auto_trans decode_abi_arguments_def;
 val () = cv_auto_trans decode_arguments_def;
-val () = cv_auto_trans materialize_arguments_def;
+val materialize_arguments_pre_def =
+  cv_auto_trans_pre "materialize_arguments_pre" materialize_arguments_def;
+
+Theorem materialize_arguments_pre[cv_pre,local]:
+  ∀tys vs st. materialize_arguments_pre tys vs st
+Proof
+  ho_match_mp_tac materialize_arguments_ind >> rpt strip_tac >>
+  simp[Once materialize_arguments_pre_def] >> rw[] >> fs[]
+QED
 val () = cv_auto_trans panic_data_def;
 val () = cv_auto_trans
   (REWRITE_RULE [GSYM byteTheory.word_of_bytes_be_def] event_parts_def);
