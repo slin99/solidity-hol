@@ -22,8 +22,8 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 | outcome | tests |
 | --- | ---: |
-| admitted | 352 |
-| elaboration-rejected | 30 |
+| admitted | 348 |
+| elaboration-rejected | 34 |
 | import-rejected | 874 |
 | compile-failure | 0 |
 | malformed-input | 0 |
@@ -44,7 +44,7 @@ The scan disagrees with the HOL run on 0 tests.
 | array values | `Identifier`, `IndexAccess`, `MemberAccess` | 261 | 9 | 0 |
 | external calls and contract members | `FunctionCall`, `Identifier`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 226 | 1 | 87 |
 | local reference bindings | `VariableDeclaration` | 215 | 0 | 0 |
-| structs | `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 165 | 6 | 16 |
+| structs | `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 165 | 5 | 16 |
 | this | `Identifier` | 140 | 0 | 4 |
 | source units without exactly one contract | `SourceUnit` | 129 | 4 | 0 |
 | function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 121 | 0 | 20 |
@@ -54,12 +54,12 @@ The scan disagrees with the HOL run on 0 tests.
 | library calls and contract-name members | `IndexAccess`, `MemberAccess` | 101 | 10 | 0 |
 | abi.* functions | `MemberAccess` | 100 | 5 | 54 |
 | function types | `FunctionTypeName` | 96 | 0 | 76 |
-| inline assembly memory references | `InlineAssembly` | 90 | 4 | 0 |
+| inline assembly memory references | `InlineAssembly` | 90 | 0 | 0 |
 | using for | `MemberAccess`, `UsingForDirective` | 81 | 0 | 47 |
 | contract creation (new C) | `NewExpression` | 80 | 0 | 8 |
 | operator delete | `UnaryOperation` | 75 | 5 | 0 |
 | free functions | `FunctionDefinition` | 73 | 7 | 37 |
-| hash and signature built-ins | `Identifier` | 62 | 9 | 14 |
+| hash and signature built-ins | `Identifier` | 62 | 8 | 14 |
 | address members (balance, call, transfer, …) | `MemberAccess` | 58 | 15 | 19 |
 | constant expressions over literals | `BinaryOperation`, `UnaryOperation` | 57 | 24 | 0 |
 | functions as values | `Identifier` | 55 | 1 | 0 |
@@ -68,6 +68,7 @@ The scan disagrees with the HOL run on 0 tests.
 | constants | `VariableDeclaration` | 47 | 8 | 35 |
 | inline arrays | `TupleExpression` | 47 | 0 | 29 |
 | public state variables | `VariableDeclaration` | 46 | 4 | 0 |
+| inline assembly memory outside the scratch space | `InlineAssembly` | 44 | 4 | 0 |
 | transient storage | `VariableDeclaration` | 41 | 12 | 0 |
 | conditional expressions | `Conditional` | 40 | 11 | 22 |
 | modifiers | `ModifierDefinition`, `ModifierInvocation`, `PlaceholderStatement` | 39 | 26 | 35 |
@@ -82,7 +83,7 @@ The scan disagrees with the HOL run on 0 tests.
 | enums | `EnumDefinition`, `EnumValue`, `FunctionCall`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 29 | 4 | 25 |
 | tuples of literals | `TupleExpression` | 28 | 4 | 0 |
 | conversions to non-elementary types | `Identifier`, `IndexAccess`, `MemberAccess` | 26 | 0 | 1 |
-| immutables | `VariableDeclaration` | 24 | 10 | 20 |
+| immutables | `VariableDeclaration` | 24 | 9 | 20 |
 | members of elementary type names | `IndexAccess`, `TupleExpression` | 24 | 0 | 0 |
 | bytes push and pop | `MemberAccess` | 23 | 12 | 0 |
 | call options ({value: …, gas: …}) | `FunctionCallOptions`, `IndexAccess`, `MemberAccess`, `NewExpression`, `TupleExpression` | 22 | 0 | 4 |
@@ -134,17 +135,17 @@ Supporting the features in this order admits the most rejected tests at each ste
 | 7 | arrays | 135 |
 | 8 | local reference bindings | 174 |
 | 9 | memory arrays (new T[](n)) | 203 |
-| 10 | structs | 230 |
-| 11 | struct values and copying | 273 |
-| 12 | aggregate array mutation | 300 |
-| 13 | abi.* functions | 322 |
-| 14 | inline assembly memory references | 343 |
-| 15 | inline arrays | 368 |
-| 16 | hash and signature built-ins | 386 |
-| 17 | bytes push and pop | 405 |
-| 18 | string literals as fixed-size bytes | 423 |
-| 19 | inline assembly | 440 |
-| 20 | constants | 456 |
+| 10 | structs | 229 |
+| 11 | struct values and copying | 272 |
+| 12 | aggregate array mutation | 299 |
+| 13 | abi.* functions | 321 |
+| 14 | inline arrays | 342 |
+| 15 | hash and signature built-ins | 359 |
+| 16 | string literals as fixed-size bytes | 377 |
+| 17 | bytes push and pop | 395 |
+| 18 | inline assembly memory references | 411 |
+| 19 | inline assembly | 428 |
+| 20 | constants | 444 |
 
 ## Skipped and compile failures
 
@@ -320,14 +321,11 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `inlineAssembly/keccak256_optimizer_cache_bug.sol`
 - `inlineAssembly/keccak_yul_optimization.sol`
 - `inlineAssembly/leave.sol`
-- `inlineAssembly/optimize_memory_store_multi_block.sol`
-- `inlineAssembly/optimize_memory_store_multi_block_bugreport.sol`
 - `inlineAssembly/shadowing_local_function_opcode.sol`
 - `inlineAssembly/slotnum_pre_amsterdam_function.sol`
 - `inlineAssembly/transient_storage_creation.sol`
 - `inlineAssembly/transient_storage_multiple_transactions.sol`
 - `inlineAssembly/transient_storage_reset_between_creation_runtime.sol`
-- `inlineAssembly/transient_storage_sanity_checks.sol`
 - `integer/many_local_variables.sol`
 - `integer/small_signed_types.sol`
 - `isoltestTesting/account.sol`
@@ -482,7 +480,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `viaYul/detect_mul_overflow_signed.sol`
 - `viaYul/detect_sub_overflow.sol`
 - `viaYul/detect_sub_overflow_signed.sol`
-- `viaYul/empty_return_corrupted_free_memory_pointer.sol`
 - `viaYul/exp.sol`
 - `viaYul/exp_neg.sol`
 - `viaYul/exp_neg_overflow.sol`
@@ -856,7 +853,10 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `inlineAssembly/keccak_optimization_bug_string.sol`: inlineAssembly/keccak_optimization_bug_string.sol: elaborate_unit returned NONE (unsupported lowering)
 - `inlineAssembly/mcopy.sol`: inlineAssembly/mcopy.sol: elaborate_unit returned NONE (unsupported lowering)
 - `inlineAssembly/mcopy_empty.sol`: inlineAssembly/mcopy_empty.sol: elaborate_unit returned NONE (unsupported lowering)
+- `inlineAssembly/optimize_memory_store_multi_block.sol`: inlineAssembly/optimize_memory_store_multi_block.sol: elaborate_unit returned NONE (unsupported lowering)
+- `inlineAssembly/optimize_memory_store_multi_block_bugreport.sol`: inlineAssembly/optimize_memory_store_multi_block_bugreport.sol: elaborate_unit returned NONE (unsupported lowering)
 - `inlineAssembly/returndatacopy_using_stale_returndatasize.sol`: inlineAssembly/returndatacopy_using_stale_returndatasize.sol: elaborate_unit returned NONE (unsupported lowering)
+- `inlineAssembly/transient_storage_sanity_checks.sol`: inlineAssembly/transient_storage_sanity_checks.sol: elaborate_unit returned NONE (unsupported lowering)
 - `reverts/revert_return_area.sol`: reverts/revert_return_area.sol: elaborate_unit returned NONE (unsupported lowering)
 - `storage/complex_accessors.sol`: storage/complex_accessors.sol: elaborate_unit returned NONE (unsupported lowering)
 - `storage/packed_storage_structs_bytes.sol`: storage/packed_storage_structs_bytes.sol: elaborate_unit returned NONE (unsupported lowering)
@@ -866,6 +866,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `types/strings.sol`: types/strings.sol: elaborate_unit returned NONE (unsupported lowering)
 - `various/memory_overwrite.sol`: various/memory_overwrite.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/comparison.sol`: viaYul/comparison.sol: elaborate_unit returned NONE (unsupported lowering)
+- `viaYul/empty_return_corrupted_free_memory_pointer.sol`: viaYul/empty_return_corrupted_free_memory_pointer.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/string_format.sol`: viaYul/string_format.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/string_literals.sol`: viaYul/string_literals.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/unary_fixedbytes.sol`: viaYul/unary_fixedbytes.sol: elaborate_unit returned NONE (unsupported lowering)

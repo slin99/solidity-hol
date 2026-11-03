@@ -1,8 +1,8 @@
 {
   "counts": {
-    "admitted": 352,
+    "admitted": 348,
     "compile-failure": 0,
-    "elaboration-rejected": 30,
+    "elaboration-rejected": 34,
     "import-rejected": 874,
     "invalid-core": 0,
     "malformed-input": 0,
@@ -69,7 +69,7 @@
         "TupleExpression",
         "VariableDeclaration"
       ],
-      "only_blocker": 6,
+      "only_blocker": 5,
       "tests": 165
     },
     {
@@ -164,7 +164,7 @@
       "node_types": [
         "InlineAssembly"
       ],
-      "only_blocker": 4,
+      "only_blocker": 0,
       "tests": 90
     },
     {
@@ -210,7 +210,7 @@
       "node_types": [
         "Identifier"
       ],
-      "only_blocker": 9,
+      "only_blocker": 8,
       "tests": 62
     },
     {
@@ -289,6 +289,15 @@
       ],
       "only_blocker": 4,
       "tests": 46
+    },
+    {
+      "feature": "inline assembly memory outside the scratch space",
+      "first_rejection": 0,
+      "node_types": [
+        "InlineAssembly"
+      ],
+      "only_blocker": 4,
+      "tests": 44
     },
     {
       "feature": "transient storage",
@@ -448,7 +457,7 @@
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 10,
+      "only_blocker": 9,
       "tests": 24
     },
     {
@@ -820,47 +829,47 @@
       "feature": "memory arrays (new T[](n))"
     },
     {
-      "admitted": 230,
+      "admitted": 229,
       "feature": "structs"
     },
     {
-      "admitted": 273,
+      "admitted": 272,
       "feature": "struct values and copying"
     },
     {
-      "admitted": 300,
+      "admitted": 299,
       "feature": "aggregate array mutation"
     },
     {
-      "admitted": 322,
+      "admitted": 321,
       "feature": "abi.* functions"
     },
     {
-      "admitted": 343,
-      "feature": "inline assembly memory references"
-    },
-    {
-      "admitted": 368,
+      "admitted": 342,
       "feature": "inline arrays"
     },
     {
-      "admitted": 386,
+      "admitted": 359,
       "feature": "hash and signature built-ins"
     },
     {
-      "admitted": 405,
-      "feature": "bytes push and pop"
-    },
-    {
-      "admitted": 423,
+      "admitted": 377,
       "feature": "string literals as fixed-size bytes"
     },
     {
-      "admitted": 440,
+      "admitted": 395,
+      "feature": "bytes push and pop"
+    },
+    {
+      "admitted": 411,
+      "feature": "inline assembly memory references"
+    },
+    {
+      "admitted": 428,
       "feature": "inline assembly"
     },
     {
-      "admitted": 456,
+      "admitted": 444,
       "feature": "constants"
     }
   ],
@@ -2197,6 +2206,7 @@
         "array values",
         "arrays",
         "external calls and contract members",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "local reference bindings",
         "memory arrays (new T[](n))",
@@ -2232,6 +2242,7 @@
         "external calls and contract members",
         "function members (selector, address, \u2026)",
         "function types",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "local reference bindings",
         "struct values and copying",
@@ -2259,6 +2270,7 @@
       "features": [
         "abi.* functions",
         "external calls and contract members",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "this"
       ],
@@ -2274,6 +2286,7 @@
         "arrays",
         "external calls and contract members",
         "inline arrays",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "local reference bindings",
         "this"
@@ -2298,6 +2311,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "local reference bindings",
         "struct values and copying",
@@ -2397,6 +2411,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "inline assembly memory outside the scratch space",
         "this"
       ],
       "first": "external calls and contract members",
@@ -2913,6 +2928,7 @@
       "category": "import-rejected",
       "features": [
         "array slices",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references"
       ],
       "first": "array slices",
@@ -3761,6 +3777,7 @@
     {
       "category": "elaboration-rejected",
       "features": [
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references"
       ],
       "first": null,
@@ -4252,6 +4269,7 @@
       "features": [
         "array values",
         "arrays",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "memory arrays (new T[](n))",
         "operator delete"
@@ -5708,6 +5726,7 @@
         "array values",
         "arrays",
         "bytes push and pop",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "memory arrays (new T[](n))",
         "new bytes and string"
@@ -6127,6 +6146,7 @@
       "category": "import-rejected",
       "features": [
         "inline assembly",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "source units without exactly one contract",
         "type(\u2026)"
@@ -6581,7 +6601,8 @@
     {
       "category": "import-rejected",
       "features": [
-        "hash and signature built-ins"
+        "hash and signature built-ins",
+        "inline assembly memory outside the scratch space"
       ],
       "first": "hash and signature built-ins",
       "reason": "ecrecover/failing_ecrecover_invalid_input_asm.sol: Identifier 6: unsupported built-in declaration ~6",
@@ -7895,6 +7916,7 @@
       "features": [
         "conditional expressions",
         "constants",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "libraries",
         "library calls and contract-name members",
@@ -7988,6 +8010,7 @@
         "array values",
         "arrays",
         "inline arrays",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "libraries",
         "library calls and contract-name members",
@@ -8013,6 +8036,7 @@
         "conditional expressions",
         "constant expressions over literals",
         "fixed-size bytes members and indexing",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "libraries",
         "literals of non-integer types",
@@ -9792,7 +9816,8 @@
     {
       "category": "import-rejected",
       "features": [
-        "immutables"
+        "immutables",
+        "inline assembly memory outside the scratch space"
       ],
       "first": "immutables",
       "reason": "immutable/immutable_tag_too_large_bug.sol: VariableDeclaration 3: immutable variables are not supported",
@@ -10703,6 +10728,7 @@
     {
       "category": "import-rejected",
       "features": [
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "new bytes and string"
       ],
@@ -10839,6 +10865,7 @@
     {
       "category": "elaboration-rejected",
       "features": [
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references"
       ],
       "first": null,
@@ -10865,6 +10892,7 @@
     {
       "category": "elaboration-rejected",
       "features": [
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references"
       ],
       "first": null,
@@ -10883,6 +10911,7 @@
     {
       "category": "elaboration-rejected",
       "features": [
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references"
       ],
       "first": null,
@@ -10894,6 +10923,7 @@
       "category": "import-rejected",
       "features": [
         "free functions",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references"
       ],
       "first": "free functions",
@@ -10902,18 +10932,22 @@
       "test": "inlineAssembly/mcopy_overlap.sol"
     },
     {
-      "category": "admitted",
-      "features": [],
+      "category": "elaboration-rejected",
+      "features": [
+        "inline assembly memory outside the scratch space"
+      ],
       "first": null,
-      "reason": null,
+      "reason": "inlineAssembly/optimize_memory_store_multi_block.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "inlineAssembly/optimize_memory_store_multi_block.sol"
     },
     {
-      "category": "admitted",
-      "features": [],
+      "category": "elaboration-rejected",
+      "features": [
+        "inline assembly memory outside the scratch space"
+      ],
       "first": null,
-      "reason": null,
+      "reason": "inlineAssembly/optimize_memory_store_multi_block_bugreport.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "inlineAssembly/optimize_memory_store_multi_block_bugreport.sol"
     },
@@ -11054,10 +11088,12 @@
       "test": "inlineAssembly/transient_storage_reset_between_creation_runtime.sol"
     },
     {
-      "category": "admitted",
-      "features": [],
+      "category": "elaboration-rejected",
+      "features": [
+        "inline assembly memory outside the scratch space"
+      ],
       "first": null,
-      "reason": null,
+      "reason": "inlineAssembly/transient_storage_sanity_checks.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "inlineAssembly/transient_storage_sanity_checks.sol"
     },
@@ -13448,6 +13484,7 @@
         "contract creation (new C)",
         "external calls and contract members",
         "free functions",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "source units without exactly one contract",
         "user-defined value types",
@@ -13465,6 +13502,7 @@
         "contract creation (new C)",
         "external calls and contract members",
         "free functions",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "source units without exactly one contract",
         "user-defined value types",
@@ -16244,6 +16282,7 @@
       "features": [
         "abi.* functions",
         "external calls and contract members",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "string literals as fixed-size bytes",
         "this",
@@ -16271,6 +16310,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "inline assembly memory outside the scratch space",
         "this",
         "try/catch"
       ],
@@ -16283,6 +16323,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "inline assembly memory outside the scratch space",
         "this",
         "try/catch"
       ],
@@ -16295,6 +16336,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "inline assembly memory outside the scratch space",
         "this",
         "try/catch"
       ],
@@ -16307,6 +16349,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "inline assembly memory outside the scratch space",
         "this",
         "try/catch"
       ],
@@ -16319,6 +16362,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "inline assembly memory outside the scratch space",
         "this",
         "try/catch"
       ],
@@ -16978,6 +17022,7 @@
         "array values",
         "arrays",
         "free functions",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "memory arrays (new T[](n))",
         "user-defined value types"
@@ -17201,6 +17246,7 @@
       "category": "import-rejected",
       "features": [
         "constant expressions over literals",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "public state variables",
         "struct values and copying",
@@ -17751,6 +17797,7 @@
         "hash and signature built-ins",
         "inline assembly",
         "inline assembly calls, gas, return data and code",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "source units without exactly one contract",
         "type(\u2026)"
@@ -17765,6 +17812,7 @@
       "features": [
         "external calls and contract members",
         "inline assembly",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "source units without exactly one contract",
         "type(\u2026)"
@@ -18162,6 +18210,7 @@
         "external calls and contract members",
         "hash and signature built-ins",
         "inline assembly",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "literal subdenominations (ether, days, \u2026)",
         "public state variables",
@@ -18758,6 +18807,7 @@
       "category": "import-rejected",
       "features": [
         "arrays",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "memory arrays (new T[](n))"
       ],
@@ -18771,6 +18821,7 @@
       "features": [
         "arrays",
         "constant expressions over literals",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references"
       ],
       "first": null,
@@ -18782,6 +18833,7 @@
       "category": "source-rejected",
       "features": [
         "arrays",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references"
       ],
       "first": null,
@@ -18794,6 +18846,7 @@
       "features": [
         "array values",
         "arrays",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "memory arrays (new T[](n))",
         "structs"
@@ -18807,6 +18860,7 @@
       "category": "source-rejected",
       "features": [
         "arrays",
+        "inline assembly memory outside the scratch space",
         "inline assembly memory references"
       ],
       "first": null,
@@ -18815,10 +18869,12 @@
       "test": "viaYul/dirty_memory_uint32.sol"
     },
     {
-      "category": "admitted",
-      "features": [],
+      "category": "elaboration-rejected",
+      "features": [
+        "inline assembly memory outside the scratch space"
+      ],
       "first": null,
-      "reason": null,
+      "reason": "viaYul/empty_return_corrupted_free_memory_pointer.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "viaYul/empty_return_corrupted_free_memory_pointer.sol"
     },
@@ -19057,6 +19113,7 @@
     {
       "category": "source-rejected",
       "features": [
+        "inline assembly memory outside the scratch space",
         "structs"
       ],
       "first": null,
