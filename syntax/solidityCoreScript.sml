@@ -117,6 +117,8 @@ Datatype:
   | ReadOperation sol_type core_atom
   | StateReferenceOperation ast_id
   | NavigateOperation sol_type core_atom navigation
+  | BytesLiteralOperation sol_type (byte list)
+  | AllocateBytesOperation sol_type core_atom
   | ByteIndexOperation core_atom core_atom
   | ArrayLengthOperation core_atom
   | ArrayPushOperation core_atom (core_atom option)

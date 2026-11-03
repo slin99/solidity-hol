@@ -23,8 +23,8 @@ Datatype:
   |>
 End
 
-(* Addressable sparse objects: references carry identity and a captured offset.
- * Allocation, array length metadata, and typed validity remain future rules.
+(* Addressable heap objects: references carry identity and a captured offset.
+ * Byte sequences use the length and byte cells; other heap values are deferred.
  *)
 Datatype:
   heap_object = <|
