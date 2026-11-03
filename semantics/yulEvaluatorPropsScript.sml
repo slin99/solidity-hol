@@ -429,28 +429,10 @@ QED
  * statement and runs the rest of the body on it, and an expression's result is
  * what a statement branches on.  A body that has to be built once per outcome
  * rather than once per use of a bound name pushes the function it is being
- * handed to inside the case, which this says is the same term.  Stated on the
- * lifted case (`yul_expr_result_CASE`), because that is the form the
- * evaluator's own clauses leave behind. *)
-Theorem yul_expr_result_RAND:
-  ∀f b1 b2 x.
-    f (yul_expr_result_CASE x b1 b2) =
-    yul_expr_result_CASE x (λvs m. f (b1 vs m)) (λc m. f (b2 c m))
-Proof
-  rw [] >> Cases_on `x` >> simp [yul_expr_result_case_def]
-QED
-
-(* The same for the other case a statement's result is built as: what a scope
- * or a value is looked up into is an `option`, and a lookup the machine does
- * not decide leaves the continuation above that case.  Pushed in, each branch
- * is handed what it holds, so the branch the evaluator answers abruptly with a
- * literal is decided and the continuation stays once, in the branch that has a
- * machine. *)
-Theorem option_RAND:
-  ∀f x n s. f (option_CASE x n s) = option_CASE x (f n) (λv. f (s v))
-Proof
-  rw [] >> Cases_on `x` >> simp [optionTheory.option_case_def]
-QED
+ * handed to inside the case, which says the two are the same term.  The
+ * distributions themselves are not stated here: `TypeBase.case_rand_of` has
+ * them for every datatype, on the case the evaluator's own clauses leave
+ * behind, and the conversion takes them from there. *)
 
 (* A result the evaluator's own clauses do not decide, whose scrutinee is itself
  * a case: the outer case is pushed into the inner one, so that a branch the

@@ -386,9 +386,10 @@ fun guarded_unfold eqs tm =
  * hands the block a `yul_result`, and an expression hands a statement a
  * `yul_expr_result`, so the case being split need not be the one `f` is on.
  *
- * `yul_expr_result_RAND` is the lemma, in yulEvaluatorProps: a theorem about
- * the evaluator's own equations belongs in the theory that proves them, and a
- * structure compiled as a library has no theory open to prove one into. *)
+ * The lemmas are `TypeBase.case_rand_of`'s: the kernel states the distribution
+ * for every datatype, on the case its `case_def` gives, which is the one the
+ * evaluator's own clauses leave behind.  A structure compiled as a library has
+ * no theory open to prove a lemma into, and nothing here needs one. *)
 
 (* A case on the evaluator's expression result.  After the compute set has run
  * over a statement this is what being stuck looks like -- for a call, or for a
@@ -698,6 +699,9 @@ fun result_conv v tm =
  * m` on a machine that is an `if`, is left where it is: nothing there is read
  * off the decision, and pushing would copy the rest of the body into both
  * branches of a decision the block's own clause does not branch on. *)
+val yul_expr_result_RAND = TypeBase.case_rand_of ``:yul_expr_result``
+val option_RAND = TypeBase.case_rand_of ``:'a option``
+
 val distribute_lemmas = [boolTheory.COND_RAND,
                          yul_expr_result_RAND,
                          option_RAND]

@@ -170,10 +170,17 @@ val () =
  * pays, and at the extreme does not come back at all.
  *
  * The line is drawn at a size rather than at a measured time because a time
- * moves with the machine the build runs on and a size does not, and it sits in
- * a gap: the largest form below it is 182k nodes and the smallest above it
- * 352k.  What is left is 85 of the 137, whose slowest form takes about a second
- * (0.8s to 1.6s across runs on this box) and whose largest is 181k.
+ * moves with the machine the build runs on and a size does not.  The sizes on
+ * these lines are a sweep's output over the list, not something the suite
+ * checks -- they say how far over the line each one is, and they move when the
+ * conversion does, so they are re-measured with the list rather than read as an
+ * invariant.  The line itself is checked: the suite fails if a form it does
+ * cover is not under 200k nodes, so a change that moves one of these under the
+ * line is caught by that name being coverable rather than by its number here.
+ * The gap is narrow at the bottom: the largest form below the line is 182k
+ * nodes and the smallest above it 200k.  What is left is 85 of the 137, whose
+ * slowest form takes about a second (0.8s to 1.6s across runs on this box) and
+ * whose largest is 181k.
  *
  * So this list is the work list of the next piece, and it should empty: what the
  * suite is asked for is a conversion whose form is linear in the body, one leaf
@@ -194,12 +201,12 @@ val excluded = [
   ("external_fun_widen", "form of 2511131 nodes"),
   ("external_fun_signedLess", "form of 2506871 nodes"),
   ("external_fun_boolLogic", "form of 2506691 nodes"),
-  ("checked_div_int8", "form of 2339452 nodes"),
+  ("checked_div_int8", "form of 3169372 nodes"),
   ("external_fun_truncate", "form of 2014671 nodes"),
   ("external_fun_shifts", "form of 2013231 nodes"),
   ("external_fun_reinterpret", "form of 2012751 nodes"),
-  ("checked_mul_uint16", "form of 1695334 nodes"),
-  ("checked_mul_int8", "form of 1691344 nodes"),
+  ("checked_mul_uint16", "form of 1488358 nodes"),
+  ("checked_mul_int8", "form of 1484368 nodes"),
   ("external_fun_wrappingMultiply", "form of 1526211 nodes"),
   ("external_fun_wrappingDivide", "form of 1525811 nodes"),
   ("external_fun_signedShift", "form of 1525491 nodes"),
@@ -218,23 +225,23 @@ val excluded = [
   ("external_fun_signedToUnsigned", "form of 1008921 nodes"),
   ("external_fun_implicitWidening", "form of 1008841 nodes"),
   ("external_fun_increment", "form of 1007621 nodes"),
-  ("abi_decode_int8t_uint256", "form of 681859 nodes"),
-  ("abi_decode_uint8t_uint256", "form of 681539 nodes"),
-  ("abi_decode_uint256t_int256", "form of 681315 nodes"),
-  ("abi_decode_int8t_int8", "form of 681219 nodes"),
-  ("abi_decode_int8t_uint8", "form of 680419 nodes"),
-  ("abi_decode_uint8t_uint8", "form of 680099 nodes"),
-  ("abi_decode_boolt_bool", "form of 679091 nodes"),
-  ("checked_add_uint256", "form of 656748 nodes"),
-  ("mod_int8", "form of 549972 nodes"),
-  ("wrapping_div_int8", "form of 549860 nodes"),
+  ("abi_decode_int8t_uint256", "form of 496395 nodes"),
+  ("abi_decode_uint8t_uint256", "form of 496075 nodes"),
+  ("abi_decode_uint256t_int256", "form of 495851 nodes"),
+  ("abi_decode_int8t_int8", "form of 495755 nodes"),
+  ("abi_decode_int8t_uint8", "form of 494955 nodes"),
+  ("abi_decode_uint8t_uint8", "form of 494635 nodes"),
+  ("abi_decode_boolt_bool", "form of 493627 nodes"),
+  ("checked_add_uint256", "form of 553260 nodes"),
+  ("mod_int8", "form of 492544 nodes"),
+  ("wrapping_div_int8", "form of 492432 nodes"),
   ("fun_implicitWidening", "form of 464892 nodes"),
   ("abi_encode_uint8_uint8_uint8_uint8", "form of 464345 nodes"),
-  ("checked_sub_uint8", "form of 366100 nodes"),
-  ("abi_decode_tuple_uint256", "form of 352985 nodes"),
-  ("abi_decode_int8", "form of 352761 nodes"),
-  ("abi_decode_tuple_int256", "form of 352705 nodes"),
-  ("abi_decode_tuple_uint8", "form of 352481 nodes"),
+  ("checked_sub_uint8", "form of 262780 nodes"),
+  ("abi_decode_tuple_uint256", "form of 200560 nodes"),
+  ("abi_decode_int8", "form of 200336 nodes"),
+  ("abi_decode_tuple_int256", "form of 200280 nodes"),
+  ("abi_decode_tuple_uint8", "form of 200056 nodes"),
 ]
 
 val excluded_names = List.map #1 excluded
@@ -274,10 +281,14 @@ fun size_of tm =
 
 val started = Timer.startRealTimer ()
 
-fun convert f =
+(* Every check a form has to pass, on one function's name, body and call term:
+ * what the conversion is asked for is the body evaluated, so anything of the
+ * body's own evaluation left in the form is a failure, and a form that is the
+ * call it was given is a conversion that did nothing.  The two forms stated
+ * further down are held to the same checks as these, so no form the test keeps
+ * is one the suite never looked at. *)
+fun checked_form (nm, body) t th =
   let
-    val nm = #1 f
-    val th = yulConvLib.yul_invoke_conv table_defs (call_term f)
     val form = rhs (concl th)
     val res = yulConvLib.residues form
   in
@@ -285,14 +296,14 @@ fun convert f =
       fail ("the conversion left something to evaluate in " ^ nm)
     else if not (List.all (fn k => Lib.mem k call_residues) res) then
       fail ("the conversion left " ^ show_residues res ^ " in " ^ nm)
-    else if not (has_call (#3 f)) andalso
+    else if not (has_call body) andalso
             Lib.mem ("yulEvaluator", "invoke_yul") res then
       fail ("the body of " ^ nm ^ " calls nothing, but its form is left "
             ^ "waiting on a call")
     (* A call the body makes is what the form carries in place of the callee's
      * body, so a form that names no call is one whose callees were unfolded
      * instead of left folded. *)
-    else if has_call (#3 f) andalso
+    else if has_call body andalso
             not (Lib.mem ("yulEvaluator", "invoke_yul") (consts_in form)) then
       fail ("the body of " ^ nm ^ " calls, but its form keeps no call")
     (* And the check that says the conversion did anything at all: the form has
@@ -302,9 +313,23 @@ fun convert f =
      * equation is not in the fixed-point set, so the call is its own fixed
      * point.  For a body that calls nothing the check above catches that; this
      * is the one that catches it for a body that calls. *)
-    else if aconv form (call_term f) then
+    else if aconv form t then
       fail ("the conversion returned " ^ nm ^ "'s call unchanged")
-    else (nm, th)
+    else th
+  end
+
+fun convert f =
+  let val t = call_term f in
+    (#1 f, checked_form (#1 f, #3 f) t
+             (yulConvLib.yul_invoke_conv table_defs t))
+  end
+
+fun stated_form nm =
+  let
+    val f = valOf (List.find (fn (n, _, _) => n = nm) functions)
+    val t = call_term f
+  in
+    checked_form (#1 f, #3 f) t (yulConvLib.yul_invoke_conv table_defs t)
   end
 
 (* Timed one at a time: what the conversion is asked for is seconds per
@@ -351,19 +376,27 @@ val () =
   else fail ("the slowest form took " ^ Real.toString (#2 slowest) ^ "s ("
              ^ #1 slowest ^ ")")
 
+(* And the line the list above is drawn at, enforced from this side: a form this
+ * suite does cover that has reached 200k nodes is one the list should have
+ * named, so a conversion that stopped closing for a function (or a fixture
+ * that changed under the list) fails here rather than passing quietly. *)
+val () =
+  if #2 largest < 200000 then ()
+  else fail ("the largest covered form is " ^ Int.toString (#2 largest)
+             ^ " nodes (" ^ #1 largest ^ "), at or over the line the "
+             ^ "excluded list is drawn at")
+
 (* Two of the forms, stated: one that calls nothing else, and one whose body
  * is calls and arithmetic.  These are the theorems a reader can look at, and
  * the terms the matching step of the translation-validation driver will be
- * given. *)
+ * given.  They are held to the checks above like every other conversion --
+ * `checked_sub_uint8` is one of the excluded functions, so its theorem is the
+ * only form whose checks would otherwise be nobody's. *)
 val scalars_cleanup_uint8 = save_thm ("scalars_cleanup_uint8",
-  yulConvLib.yul_invoke_conv table_defs
-    (call_term (valOf (List.find (fn (nm, _, _) => nm = "cleanup_uint8")
-                                 functions))))
+  stated_form "cleanup_uint8")
 
 val scalars_checked_sub_uint8 = save_thm ("scalars_checked_sub_uint8",
-  yulConvLib.yul_invoke_conv table_defs
-    (call_term (valOf (List.find (fn (nm, _, _) => nm = "checked_sub_uint8")
-                                 functions))))
+  stated_form "checked_sub_uint8")
 
 (* One function converted over the table *term* rather than over the constant it
  * is bound to.  A caller may give either, `defs` being what that term is folded
@@ -418,3 +451,4 @@ Theorem scalars_checked_sub_uint8_fuel_stable:
 Proof
   metis_tac [invoke_yul_fuel_stable]
 QED
+
