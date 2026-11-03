@@ -16,6 +16,12 @@ Libs
 fun holbuild_extra_deps (_ : string list) = ()
 val () = holbuild_extra_deps [
   "../testdata/differential/corpus.json",
+  "../testdata/differential/expected/calldata_bytes.json",
+  "../testdata/differential/expected/memory_bytes.json",
+  "../testdata/differential/expected/storage_bytes.json",
+  "../testdata/differential/expected/dynamic_bytes.json",
+  "../testdata/differential/expected/dynamic_bytes_peer.json",
+  "../testdata/differential/expected/storage_bytes_aliases.json",
   "../SOLIDITY_PIN",
   "../profiles/solc-0.8.37-via-ir-osaka.json",
   "../testdata/frontend/expected/pure_core.json",
@@ -39,7 +45,11 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/inheritance_diamond.json",
   "../testdata/differential/expected/constructors.json",
   "../testdata/differential/expected/inherited_payable.json",
-  "../testdata/differential/expected/initializers_only.json"
+  "../testdata/differential/expected/initializers_only.json",
+  "../testdata/differential/expected/imports.json",
+  "../testdata/differential/expected/errors.json",
+  "../testdata/differential/expected/type_bounds.json",
+  "../testdata/differential/expected/oz_erc20.json"
 ]
 
 val () = run_corpus {root = "..", corpus = "testdata/differential/corpus.json"}

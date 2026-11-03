@@ -21,6 +21,14 @@ Libs
 fun holbuild_extra_deps (_ : string list) = ()
 val () = holbuild_extra_deps [
   "../testdata/differential/corpus.json",
+  "../testdata/differential/expected/calldata_bytes.json",
+  "../testdata/differential/expected/memory_bytes.json",
+  "../testdata/differential/expected/storage_bytes.json",
+  "../testdata/differential/expected/dynamic_bytes.json",
+  "../testdata/differential/expected/dynamic_bytes_peer.json",
+  "../testdata/yul/generated/dynamic_bytes.ir.json",
+  "../testdata/yul/generated/dynamic_bytes.optimized.json",
+  "../testdata/differential/expected/storage_bytes_aliases.json",
   "../SOLIDITY_PIN",
   "../profiles/solc-0.8.37-via-ir-osaka.json",
   "../profiles/solc-0.8.37-via-ir-osaka-optimized.json",
@@ -46,6 +54,18 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/constructors.json",
   "../testdata/differential/expected/inherited_payable.json",
   "../testdata/differential/expected/initializers_only.json",
+  "../testdata/differential/expected/imports.json",
+  "../testdata/differential/expected/errors.json",
+  "../testdata/differential/expected/type_bounds.json",
+  "../testdata/differential/expected/oz_erc20.json",
+  "../testdata/yul/generated/calldata_bytes.ir.json",
+  "../testdata/yul/generated/memory_bytes.ir.json",
+  "../testdata/yul/generated/storage_bytes.ir.json",
+  "../testdata/yul/generated/storage_bytes_aliases.ir.json",
+  "../testdata/yul/generated/calldata_bytes.optimized.json",
+  "../testdata/yul/generated/memory_bytes.optimized.json",
+  "../testdata/yul/generated/storage_bytes.optimized.json",
+  "../testdata/yul/generated/storage_bytes_aliases.optimized.json",
   "../testdata/yul/generated/pure_core.ir.json",
   "../testdata/yul/generated/pure_core.optimized.json",
   "../testdata/yul/generated/scalars.ir.json",
@@ -90,6 +110,14 @@ val () = holbuild_extra_deps [
   "../testdata/yul/generated/inherited_payable.optimized.json",
   "../testdata/yul/generated/initializers_only.ir.json",
   "../testdata/yul/generated/initializers_only.optimized.json",
+  "../testdata/yul/generated/imports.ir.json",
+  "../testdata/yul/generated/imports.optimized.json",
+  "../testdata/yul/generated/errors.ir.json",
+  "../testdata/yul/generated/errors.optimized.json",
+  "../testdata/yul/generated/type_bounds.ir.json",
+  "../testdata/yul/generated/type_bounds.optimized.json",
+  "../testdata/yul/generated/oz_erc20.ir.json",
+  "../testdata/yul/generated/oz_erc20.optimized.json"
 ]
 
 val () = solidityDifferentialLib.run_three_way

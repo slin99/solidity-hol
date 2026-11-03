@@ -32,6 +32,7 @@ Datatype:
   dispatch_result
   = DispatchCall core_procedure (runtime_value list)
   | DispatchRevert
+  | DispatchPanic num
   | DispatchInvalid string
 End
 
@@ -59,9 +60,10 @@ Definition dispatch_def:
         (case lookup_procedure env e.external_procedure of
            NONE => DispatchInvalid "unknown procedure"
          | SOME p =>
-             case decode_arguments (MAP SND p.parameters) (DROP 4 data) of
-               SOME args => DispatchCall p args
-             | NONE => DispatchRevert)
+             case decode_arguments (MAP SND p.parameters) (DROP 4 data) 4 128 of
+               INL args => DispatchCall p args
+             | INR (PanicCompletion n) => DispatchPanic n
+             | INR _ => DispatchRevert)
     | NONE =>
         case (data, prog.receive_procedure, prog.fallback_procedure) of
           ([], SOME f, _) => dispatch_procedure env f []
@@ -73,15 +75,18 @@ End
 
 (* One frame running procedure p on its arguments. *)
 Definition run_entry_def:
-  run_entry fuel env p args (fr : source_frame) (w : source_world) =
+  run_entry fuel env p args (fr : source_frame) (w : source_world) reserved =
     let st = <| world := w; frame := fr; scopes := []; heap := FEMPTY;
-                next_heap_id := 0; targets := FEMPTY |> in
-    let r = invoke_source fuel env p.procedure_id args st [] in
+                next_heap_id := 0; memory_allocated := reserved; targets := FEMPTY |> in
+    let r = case materialize_arguments (MAP SND p.parameters) args st of
+      SOME (values, st1) => invoke_source fuel env p.procedure_id values st1 []
+    | NONE => abrupt_result (InvalidCompletion "bad entry arguments") st [] in
     case finish_source_frame w r.state.world r.completion of
       FrameSuccess vs w' =>
-        (case encoded_values (MAP SND p.return_bindings) vs of
-           SOME data => ContractReturned data w'
-         | NONE => ContractInvalid "unencodable return values")
+        (case encoded_runtime_values r.state (MAP SND p.return_bindings) vs of
+           INL data => ContractReturned data w'
+         | INR (PanicCompletion code) => ContractReverted (panic_data code) w
+         | INR _ => ContractInvalid "unencodable return values")
     | FrameRevert data w' => ContractReverted data w'
     | FramePanic code w' => ContractReverted (panic_data code) w'
     | FrameInvalid reason => ContractInvalid reason
@@ -94,14 +99,17 @@ Definition call_contract_def:
     let env = core_program_environment prog in
     case dispatch env prog fr of
       DispatchRevert => ContractReverted [] w
+    | DispatchPanic n => ContractReverted (panic_data n) w
     | DispatchInvalid reason => ContractInvalid reason
-    | DispatchCall p args => run_entry fuel env p args fr w
+    | DispatchCall p args => run_entry fuel env p args fr w 0
 End
 
 (* The creation transaction's frame of a contract, from a world in which its
  * account exists with no storage and holds the value sent. The constructor's
- * arguments are the frame's calldata, without selector; a creation sent
- * value reverts unless the constructor is payable, and arguments the decoder
+ * encoded arguments are supplied in the input frame and decoded before its
+ * call_data is cleared: creation reads arguments from initcode, while msg.data
+ * is empty. A creation sent value reverts unless the constructor is payable,
+ * and arguments the decoder
  * rejects revert. A successful creation returns no data: the deployed code
  * is the compiler's.
  *)
@@ -116,9 +124,12 @@ Definition deploy_contract_def:
         case lookup_procedure env f of
           NONE => ContractInvalid "unknown procedure"
         | SOME p =>
-            case decode_arguments (MAP SND p.parameters) fr.call_data of
-              NONE => ContractReverted [] w
-            | SOME args => run_entry fuel env p args fr w
+            case decode_arguments (MAP SND p.parameters) fr.call_data 0
+              (128 + 32 * ((LENGTH fr.call_data + 31) DIV 32)) of
+              INR (PanicCompletion n) => ContractReverted (panic_data n) w
+            | INR _ => ContractReverted [] w
+            | INL args => run_entry fuel env p args (fr with call_data := []) w
+                (32 * ((LENGTH fr.call_data + 31) DIV 32))
 End
 
 Theorem call_contract_revert_restores_world:

@@ -278,6 +278,58 @@ Proof
   EVAL_TAC
 QED
 
+Theorem external_byte_sequence_memory_results_accepted:
+  EVERY (λelement.
+    wf_core_procedure test_env (with_body [
+      DefineStmt (AstId 82) (SingleType (LocatedT MemoryLoc element))
+        (ExternalCallOperation ExternalCall [1w; 2w; 3w; 4w] []
+          [LocatedT MemoryLoc element]
+          (ConstantAtom (AddressValue 0x5000w))
+          (ConstantAtom (IntegerValue 0)) [])])) [BytesT; StringT]
+Proof
+  EVAL_TAC
+QED
+
+Theorem external_byte_sequence_calldata_results_rejected:
+  EVERY (λelement.
+    ¬wf_core_procedure test_env (with_body [
+      DefineStmt (AstId 82) (SingleType (LocatedT CalldataLoc element))
+        (ExternalCallOperation ExternalCall [1w; 2w; 3w; 4w] []
+          [LocatedT CalldataLoc element]
+          (ConstantAtom (AddressValue 0x5000w))
+          (ConstantAtom (IntegerValue 0)) [])])) [BytesT; StringT]
+Proof
+  EVAL_TAC
+QED
+
+Definition byte_constructor_program_def:
+  byte_constructor_program loc element = test_program with <|
+    procedures := [<|
+      procedure_id := AstId 8;
+      parameters := [(AstId 80, LocatedT loc element)];
+      return_bindings := []; body := [] |>];
+    entry_procedure := AstId 8;
+    creation_procedure := SOME (AstId 8, F) |>
+End
+
+Theorem byte_sequence_memory_constructor_accepted:
+  EVERY (λelement.
+    wf_core_program
+      (core_program_environment (byte_constructor_program MemoryLoc element))
+      (byte_constructor_program MemoryLoc element)) [BytesT; StringT]
+Proof
+  EVAL_TAC
+QED
+
+Theorem byte_sequence_calldata_constructor_rejected:
+  EVERY (λelement.
+    ¬wf_core_program
+      (core_program_environment (byte_constructor_program CalldataLoc element))
+      (byte_constructor_program CalldataLoc element)) [BytesT; StringT]
+Proof
+  EVAL_TAC
+QED
+
 Theorem external_delegate_call_rejected:
   ¬wf_core_procedure test_env
      (with_body (external_call_body ExternalDelegateCall
@@ -453,6 +505,32 @@ QED
 Theorem emit_mistyped_argument_rejected:
   ¬wf_core_procedure test_env (with_body [
      EmitStmt NONE [(BoolT, F, BoundAtom (AstId 80))];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+(* Custom errors: a 4-byte selector and elementary arguments of their
+ * parameter types. *)
+Theorem revert_error_admitted:
+  wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [u256; BoolT]
+       [BoundAtom (AstId 80); ConstantAtom (BoolValue T)];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_short_selector_rejected:
+  ¬wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w] [] []; ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_mistyped_argument_rejected:
+  ¬wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [BoolT] [BoundAtom (AstId 80)];
      ReturnStmt [BoundAtom (AstId 80)]])
 Proof
   EVAL_TAC
@@ -979,4 +1057,21 @@ Theorem layoutless_struct_declaration_retained:
   lookup_struct_layout (core_program_environment layoutless_program) (AstId 960) = NONE
 Proof
   CONV_TAC cv_eval
+QED
+
+(* Calldata bytes are read-only values, never writable storage locations. *)
+Theorem calldata_byte_is_not_a_writable_reference:
+  ¬wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT CalldataLoc BytesT))];
+       targets := []; returns := []; in_loop := F |>
+    (ReferenceType (FixedBytesT 1))
+    (ByteIndexOperation (BoundAtom (AstId 1)) (ConstantAtom (IntegerValue 0))) ∧
+  ¬wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT CalldataLoc BytesT))];
+       targets := []; returns := []; in_loop := F |>
+    (ReferenceType (FixedBytesT 1))
+    (NavigateOperation (FixedBytesT 1) (BoundAtom (AstId 1))
+      (IndexNavigation (ConstantAtom (IntegerValue 0))))
+Proof
+  EVAL_TAC
 QED

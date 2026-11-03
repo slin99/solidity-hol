@@ -29,7 +29,7 @@ import re
 import subprocess
 import sys
 import tempfile
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 
 import export_solc_artifacts as exporter
 
@@ -183,43 +183,34 @@ EXPRESSIONS = {
 STATEMENTS = {
     "Block", "UncheckedBlock", "ExpressionStatement", "VariableDeclarationStatement",
     "IfStatement", "WhileStatement", "DoWhileStatement", "ForStatement", "Break",
-    "Continue", "Return",
+    "Continue", "Return", "EmitStatement", "RevertStatement",
 }
 # Nodes the importer reads only in a fixed position, checked there, and nodes
 # it never reaches because it rejects their parents (IdentifierPath) or never
-# reads the field holding them (StructuredDocumentation).
+# reads the field holding them (StructuredDocumentation, base and override
+# names, which it takes from the linearization and baseFunctions).
 STRUCTURAL = {
-    "SourceUnit", "PragmaDirective", "ContractDefinition", "FunctionDefinition",
-    "ParameterList", "VariableDeclaration", "ElementaryTypeName",
-    "ElementaryTypeNameExpression", "IdentifierPath", "StructuredDocumentation", "Mapping", "StructDefinition",
+    "SourceUnit", "PragmaDirective", "ImportDirective", "ContractDefinition",
+    "FunctionDefinition", "ParameterList", "VariableDeclaration", "ElementaryTypeName",
+    "ElementaryTypeNameExpression", "IdentifierPath", "StructuredDocumentation", "Mapping",
+    "StructDefinition", "EventDefinition", "ErrorDefinition", "InheritanceSpecifier",
+    "OverrideSpecifier",
 }
 FEATURES = {
     "Conditional": "conditional expressions",
-    "EmitStatement": "events",
     "EnumDefinition": "enums",
     "EnumValue": "enums",
-    "ErrorDefinition": "custom errors",
-    "EventDefinition": "events",
-    "FunctionCallOptions": "call options ({value: …, gas: …})",
     "FunctionTypeName": "function types",
-    "ImportDirective": "imports",
     "IndexRangeAccess": "array slices",
-    "InheritanceSpecifier": "inheritance",
     "InlineAssembly": "inline assembly",
     "ModifierDefinition": "modifiers",
-    "ModifierInvocation": "modifiers",
-    "OverrideSpecifier": "overrides",
     "PlaceholderStatement": "modifiers",
-    "RevertStatement": "custom errors",
     "TryCatchClause": "try/catch",
     "TryStatement": "try/catch",
     "UserDefinedValueTypeDefinition": "user-defined value types",
     "UsingForDirective": "using for",
 }
-FUNCTION_KINDS = {
-    "constructor": "constructors", "fallback": "fallback functions",
-    "receive": "receive functions", "freeFunction": "free functions",
-}
+FUNCTION_KINDS = {"function", "constructor", "receive", "fallback"}
 # By the leading part of a type identifier.
 TYPE_FEATURES = [
     ("t_magic_message", "msg/block/tx globals"),
@@ -231,9 +222,9 @@ TYPE_FEATURES = [
     ("t_type$_t_struct", "structs"),
     ("t_type$_t_userDefinedValueType", "user-defined value types"),
     ("t_type$_t_contract", "library calls and contract-name members"),
-    ("t_type$_t_super", "inheritance"),
-    ("t_type$_t_bytes_", "bytes and string"),
-    ("t_type$_t_string", "bytes and string"),
+    ("t_type$_t_super", "super calls"),
+    ("t_type$_t_bytes_", "bytes.concat and string.concat"),
+    ("t_type$_t_string", "bytes.concat and string.concat"),
     ("t_type$_t_array", "arrays"),
     ("t_type", "members of elementary type names"),
     ("t_struct", "structs"),
@@ -245,7 +236,7 @@ TYPE_FEATURES = [
     ("t_bytes", "fixed-size bytes members and indexing"),
     ("t_string", "bytes and string"),
     ("t_contract", "external calls and contract members"),
-    ("t_super", "inheritance"),
+    ("t_super", "super calls"),
     ("t_address", "address members (balance, call, transfer, …)"),
     ("t_function_event", "events"),
     ("t_function_error", "custom errors"),
@@ -261,10 +252,21 @@ BUILTINS = {
     "msg": "msg/block/tx globals", "block": "msg/block/tx globals",
     "tx": "msg/block/tx globals", "abi": "abi.* functions", "type": "type(…)",
     "require": "require/assert/revert", "assert": "require/assert/revert",
-    "revert": "require/assert/revert", "this": "this", "super": "inheritance",
+    "revert": "require/assert/revert", "this": "this", "super": "super calls",
     "keccak256": "hash and signature built-ins", "sha256": "hash and signature built-ins",
     "ripemd160": "hash and signature built-ins", "ecrecover": "hash and signature built-ins",
 }
+# The members of msg, tx and block, by the built-in declaration ids of the
+# pinned compiler (environment_field in solidityImportLib).
+ENVIRONMENT = {
+    -15: {"sender", "value", "data"},
+    -26: {"origin", "gasprice"},
+    -4: {"number", "timestamp", "chainid", "coinbase", "basefee", "gaslimit"},
+}
+# require, assert and revert.
+REQUIRE, ASSERT, REVERT = -18, -3, -19
+THIS = -28
+STRING_LITERALS = {"string", "unicodeString", "hexString"}
 
 
 def type_feature(type_identifier: str | None) -> str:
@@ -277,7 +279,7 @@ def type_feature(type_identifier: str | None) -> str:
             component = component.removesuffix("_$")
             if component.startswith("t_tuple"):
                 return "nested tuples"
-            if not (VALUE_TYPE.fullmatch(component) or RATIONAL.fullmatch(component)):
+            if not decodes_component(component):
                 return type_feature(component)
     for prefix, feature in TYPE_FEATURES:
         if (type_identifier or "").startswith(prefix):
@@ -285,22 +287,160 @@ def type_feature(type_identifier: str | None) -> str:
     return f"values of type {type_identifier}"
 
 
-def nodes(value: Any) -> Iterator[dict[str, Any]]:
-    """Every Solidity AST node under `value`, in document order. The Yul nodes
-    of inline assembly, which have no id, are left out, and so are storage
-    layout specifiers, which the importer does not read."""
+def nodes(value: Any, *, skip: Callable[[dict[str, Any]], bool] = lambda _: False
+          ) -> Iterator[dict[str, Any]]:
+    """Every Solidity AST node under `value`, in document order, leaving out
+    the subtrees of the nodes `skip` holds. The Yul nodes of inline assembly,
+    which have no id, are left out, and so are storage layout specifiers,
+    which the importer does not read."""
     if isinstance(value, dict):
         if value.get("nodeType") == "StorageLayoutSpecifier":
             return
         if "nodeType" in value and "id" in value:
+            if skip(value):
+                return
             yield value
         for key, child in value.items():
             if value.get("nodeType") == "ArrayTypeName" and key == "length":
                 continue
-            yield from nodes(child)
+            yield from nodes(child, skip=skip)
     elif isinstance(value, list):
         for child in value:
-            yield from nodes(child)
+            yield from nodes(child, skip=skip)
+
+
+def deployable(unit: dict[str, Any]) -> list[dict[str, Any]]:
+    """The contracts a source unit is imported as: those that are neither
+    interfaces, libraries, abstract nor a base of another contract of the
+    unit."""
+    contracts = [m for m in unit["nodes"] if m["nodeType"] == "ContractDefinition"]
+    inherited = {b for c in contracts for b in c["linearizedBaseContracts"][1:]}
+    return [c for c in contracts if c["contractKind"] == "contract" and not c["abstract"]
+            and c["id"] not in inherited]
+
+
+def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dict[str, Any]]:
+    """The parts of the compilation the importer reads, as subtrees: each
+    unit's members other than pragmas, imports, file-level structs and errors,
+    interfaces and contracts imported only as bases; the bases of the
+    contracts imported; the file-level structs and external function
+    parameters those refer to; and the parameters of the errors their revert
+    statements name."""
+    roots: list[dict[str, Any]] = []
+    for ast in asts.values():
+        contracts = {c["id"] for c in deployable(ast)}
+        for member in ast["nodes"]:
+            kind = member["nodeType"]
+            if kind in {"PragmaDirective", "ImportDirective", "StructDefinition",
+                        "ErrorDefinition"}:
+                continue
+            if kind == "ContractDefinition":
+                if member["contractKind"] == "library":
+                    roots.append(member)
+                elif member["id"] in contracts:
+                    roots.extend(by_id[b] for b in member["linearizedBaseContracts"] if b in by_id)
+                continue
+            roots.append(member)
+    # Structs are found from every reference, read or not, as the importer
+    # finds them from the whole of each base.
+    seen: set[int] = set()
+    rooted = {root["id"] for root in roots}
+
+    def add(root: dict[str, Any]) -> None:
+        if root["id"] not in rooted:
+            rooted.add(root["id"])
+            roots.append(root)
+            pending.append(root)
+
+    pending = list(roots)
+    while pending:
+        for node in nodes(pending.pop()):
+            if node["id"] in seen:
+                continue
+            seen.add(node["id"])
+            for _, signature in signatures(node, by_id):
+                add(signature)
+            target = by_id.get(node.get("referencedDeclaration"))
+            if (target is not None and target["nodeType"] == "StructDefinition"
+                    and by_id.get(target.get("scope"), {}).get("nodeType") == "SourceUnit"):
+                add(target)
+    return roots
+
+
+def signatures(node: dict[str, Any], by_id: dict[int, dict[str, Any]]
+               ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """The parameter lists the importer reads at a node, with their
+    declarations: those of the error a revert names, and those of an
+    external function a call calls through a member access."""
+    if node["nodeType"] == "RevertStatement":
+        error = by_id.get(node["errorCall"]["expression"].get("referencedDeclaration"))
+        return [] if error is None else [(error, error["parameters"])]
+    if node["nodeType"] != "FunctionCall":
+        return []
+    callee = node["expression"]
+    if callee["nodeType"] == "FunctionCallOptions":
+        callee = callee["expression"]
+    target = by_id.get(callee.get("referencedDeclaration"))
+    if (target is not None and target["nodeType"] == "FunctionDefinition"
+            and callee["nodeType"] == "MemberAccess" and is_external(callee)):
+        return [(target, target["parameters"]), (target, target["returnParameters"])]
+    return []
+
+
+def read(node: dict[str, Any]) -> bool:
+    """Whether the importer reads a node within an imported contract: not the
+    declarations without a body, which only calls refer to, nor errors, whose
+    parameters it reads only where a revert statement names them."""
+    return not ((node["nodeType"] == "FunctionDefinition" and not node["implemented"])
+                or node["nodeType"] == "ErrorDefinition")
+
+
+def overridden(functions: list[dict[str, Any]], by_id: dict[int, dict[str, Any]]) -> set[int]:
+    """The functions some other function overrides, directly or through the
+    functions it overrides: those valid_src_unit and elaborate_unit leave
+    out, as no call or dispatch reaches them."""
+    found: set[int] = set()
+    pending = [b for f in functions for b in f.get("baseFunctions", [])]
+    while pending:
+        base = pending.pop()
+        if base not in found:
+            found.add(base)
+            pending.extend(by_id.get(base, {}).get("baseFunctions", []))
+    return found
+
+
+def live_functions(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> tuple[set[int], set[int]]:
+    """The implemented functions of the deployable contracts' bases, and those
+    of them no other function of the same contract overrides: the functions
+    valid_src_unit and elaborate_unit see."""
+    based: set[int] = set()
+    live: set[int] = set()
+    for ast in asts.values():
+        for contract in deployable(ast):
+            functions = [m for b in contract["linearizedBaseContracts"] if b in by_id
+                         for m in by_id[b]["nodes"]
+                         if m["nodeType"] == "FunctionDefinition" and m["implemented"]]
+            dead = overridden(functions, by_id)
+            based.update(f["id"] for f in functions)
+            live.update(f["id"] for f in functions if f["id"] not in dead)
+    return based, live
+
+
+def constructor_parameters(contract: dict[str, Any]) -> list[dict[str, Any]]:
+    return next((m["parameters"]["parameters"] for m in contract.get("nodes", [])
+                 if m["nodeType"] == "FunctionDefinition" and m["kind"] == "constructor"), [])
+
+
+def is_external(node: dict[str, Any]) -> bool:
+    return (node["nodeType"] == "MemberAccess"
+            and node["typeDescriptions"].get("typeIdentifier", "").startswith("t_function_external_"))
+
+
+def is_type_call(node: dict[str, Any]) -> bool:
+    """Whether a node is type(T), which the importer reads with its member."""
+    return (node["nodeType"] == "FunctionCall" and node["expression"]["nodeType"] == "Identifier"
+            and node["expression"]["name"] == "type"
+            and node["expression"].get("referencedDeclaration", 0) < 0)
 
 
 def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list[Blocker]:
@@ -320,14 +460,19 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
         if length is not None and (match is None or int(match[1]) == 0):
             found.append("arrays")
     elif kind == "MemberAccess":
-        if (node.get("referencedDeclaration") is None
-                and node["memberName"] not in {"length", "push", "pop"}):
-            found.append(type_feature(node["expression"]["typeDescriptions"].get("typeIdentifier")))
+        base = node["expression"]
+        if node.get("referencedDeclaration") is not None:
+            pass
+        elif base["nodeType"] == "Identifier" and base.get("referencedDeclaration", 0) < 0:
+            if node["memberName"] not in ENVIRONMENT.get(base["referencedDeclaration"], set()):
+                found.append(type_feature(base["typeDescriptions"].get("typeIdentifier")))
+        elif node["memberName"] not in {"length", "push", "pop"} and not is_type_call(base):
+            found.append(type_feature(base["typeDescriptions"].get("typeIdentifier")))
     elif kind == "NewExpression":
         created = node["typeName"]
         found.append("contract creation (new C)" if created["nodeType"] == "UserDefinedTypeName"
                      else "memory arrays (new T[](n))" if created["nodeType"] == "ArrayTypeName"
-                     else type_feature(created["typeDescriptions"].get("typeIdentifier")))
+                     else "new bytes and string")
     elif kind == "UserDefinedTypeName":
         if not node["typeDescriptions"].get("typeIdentifier", "").startswith("t_struct$_"):
             found.append(type_feature(node["typeDescriptions"].get("typeIdentifier")))
@@ -347,6 +492,9 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
             found.append("try/catch")
         if node["kind"] == "structConstructorCall":
             found.append("structs")
+    elif kind == "ModifierInvocation":
+        if node.get("kind") != "baseConstructorSpecifier":
+            found.append("modifiers")
     elif kind == "VariableDeclaration":
         if node["stateVariable"] and node.get("visibility") == "public":
             found.append("public state variables")
@@ -354,26 +502,13 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
             found.append("constants")
         if node["mutability"] == "immutable":
             found.append("immutables")
-        if node.get("value") is not None:
-            found.append("declaration values")
     elif kind == "FunctionDefinition":
-        if node["kind"] != "function":
-            found.append(FUNCTION_KINDS.get(node["kind"], f"{node['kind']} functions"))
-        if not node["implemented"]:
-            found.append("unimplemented functions")
-        if node["modifiers"]:
-            found.append("modifiers")
-        if node["virtual"]:
-            found.append("virtual functions")
-        if node.get("overrides") is not None:
-            found.append("overrides")
+        if node["kind"] not in FUNCTION_KINDS:
+            found.append("free functions" if node["kind"] == "freeFunction"
+                         else f"{node['kind']} functions")
     elif kind == "ContractDefinition":
-        if node["contractKind"] != "contract":
-            found.append({"library": "libraries", "interface": "interfaces"}[node["contractKind"]])
-        if node["abstract"]:
-            found.append("abstract contracts")
-        if node["baseContracts"] or node["linearizedBaseContracts"] != [node["id"]]:
-            found.append("inheritance")
+        if node["contractKind"] == "library":
+            found.append("libraries")
     elif kind not in EXPRESSIONS | STATEMENTS | STRUCTURAL:
         found.append(f"{kind} nodes")
     return [Blocker(kind, feature, "import") for feature in found]
@@ -385,12 +520,24 @@ VALUE_TYPE = re.compile(
     r"|bytes([1-9]|[12][0-9]|3[0-2]))(?=_\$_|_\$|$)"
 )
 RATIONAL = re.compile(r"t_rational_(minus_)?[0-9]+_by_[0-9]+")
+# bytes and string in storage, and references to them in each location
+# (decode_elementary_identifier).
+BYTE_SEQUENCE = re.compile(r"t_(bytes|string)_(storage|(memory|calldata|storage)_ptr)")
+
+
+def decodes_component(type_identifier: str) -> bool:
+    """Whether tuple_component admits a component's type identifier."""
+    return (VALUE_TYPE.fullmatch(type_identifier) is not None
+            or BYTE_SEQUENCE.fullmatch(type_identifier) is not None
+            or type_identifier.startswith("t_stringliteral_"))
 
 
 def decodes(type_identifier: str) -> bool:
     """Whether decode_type_identifier admits a type identifier: an elementary
-    value type, a rational literal type, or a tuple of elementary types."""
-    if VALUE_TYPE.fullmatch(type_identifier) or RATIONAL.fullmatch(type_identifier):
+    value type or byte sequence, a literal type, or a tuple of those."""
+    if (VALUE_TYPE.fullmatch(type_identifier) or RATIONAL.fullmatch(type_identifier)
+            or BYTE_SEQUENCE.fullmatch(type_identifier)
+            or type_identifier.startswith("t_stringliteral_")):
         return True
     if type_identifier == "t_tuple$__$":
         return True
@@ -398,13 +545,14 @@ def decodes(type_identifier: str) -> bool:
         return False
     *components, last = type_identifier[len("t_tuple$"):].split("$")
     return last == "" and all(
-        len(c) >= 2 and c[0] == c[-1] == "_" and VALUE_TYPE.fullmatch(c[1:-1]) is not None
+        len(c) >= 2 and c[0] == c[-1] == "_" and decodes_component(c[1:-1])
         for c in components
     )
 
 
 def storage_type_supported(type_identifier: str) -> bool:
-    """Storage scalars, structs and combinations of arrays and mappings."""
+    """Storage scalars, bytes and strings, structs and combinations of arrays
+    and mappings."""
     def parse_at(start: int) -> int | None:
         array = "t_array$_"
         if type_identifier.startswith(array, start):
@@ -430,6 +578,9 @@ def storage_type_supported(type_identifier: str) -> bool:
                           type_identifier[start:])
         if struct is not None:
             return start + struct.end()
+        sequence = re.match(r"t_(bytes|string)_storage(?=_\$_|_\$|$)", type_identifier[start:])
+        if sequence is not None:
+            return start + sequence.end()
         scalar = VALUE_TYPE.match(type_identifier, start)
         return scalar.end() if scalar is not None else None
 
@@ -437,32 +588,37 @@ def storage_type_supported(type_identifier: str) -> bool:
 
 
 UNARY_OPERATORS = {"++", "--", "-", "!", "~"}
+# The bases bytes may be indexed and measured through: in storage, and
+# references to it in each location.
+BYTES = re.compile(r"t_bytes_(storage|(memory|calldata|storage)_ptr)")
 
 
 def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
-                         literal_message: bool = False) -> list[Blocker]:
+                         error_parameter: bool = False) -> list[Blocker]:
     """What valid_src_unit or elaborate_unit rejects at a node the importer
     admits: unsupported storage/reference types and indexing, conversions
-    outside the elementary types, string literals, payable functions, `delete`,
-    and units that are not one
-    contract with functions. Other expressions get their types from these, or
+    outside the elementary types and byte sequences, `delete`, and units that
+    are not one contract. Other expressions get their types from these, or
     are rejected by the importer."""
     kind = node["nodeType"]
     found: list[str] = []
     if (kind == "VariableDeclaration"
             or (kind == "FunctionCall" and node["kind"] == "typeConversion")
-            or (kind == "Literal" and node["kind"] not in ("number", "bool")
-                and not literal_message)):
+            or (kind == "Literal" and node["kind"] not in ("number", "bool"))):
         type_identifier = node["typeDescriptions"].get("typeIdentifier") or ""
         admitted_storage = (kind == "VariableDeclaration" and (node["stateVariable"] or storage_field)
                             and storage_type_supported(type_identifier.removesuffix("_ptr")
                                                        if storage_field else type_identifier))
         if not decodes(type_identifier) and not admitted_storage:
             found.append(type_feature(type_identifier))
-        if (kind == "VariableDeclaration"
-                and node["storageLocation"] not in ("default", "memory")):
-            found.append("transient storage" if node["storageLocation"] == "transient"
-                         else "local reference bindings")
+        if kind == "VariableDeclaration":
+            location = node["storageLocation"]
+            if location == "transient":
+                found.append("transient storage")
+            elif location not in ("default", "memory") and not BYTE_SEQUENCE.fullmatch(type_identifier):
+                found.append("local reference bindings")
+            if error_parameter and not VALUE_TYPE.fullmatch(type_identifier):
+                found.append("custom errors with reference parameters")
     elif (kind == "TupleExpression" and not node["isInlineArray"]
           and not decodes(node["typeDescriptions"]["typeIdentifier"])):
         type_identifier = node["typeDescriptions"]["typeIdentifier"]
@@ -477,33 +633,33 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
     elif kind == "Literal" and node["kind"] == "number" and not RATIONAL.fullmatch(
             node["typeDescriptions"].get("typeIdentifier") or ""):
         found.append("literals of non-integer types")
-    elif kind == "FunctionDefinition" and node["stateMutability"] == "payable":
-        found.append("payable functions")
     elif kind == "IndexAccess":
         base_type = node["baseExpression"]["typeDescriptions"].get("typeIdentifier") or ""
-        if (not base_type.startswith(("t_mapping$_", "t_array$_"))
-                or not storage_type_supported(base_type)):
+        if not (BYTES.fullmatch(base_type)
+                or (base_type.startswith(("t_mapping$_", "t_array$_"))
+                    and storage_type_supported(base_type))):
             found.append(type_feature(base_type))
     elif kind == "MemberAccess":
         base_type = node["expression"]["typeDescriptions"].get("typeIdentifier") or ""
         if node.get("referencedDeclaration") is not None:
             if not base_type.startswith("t_struct$_") or not storage_type_supported(base_type):
                 found.append(type_feature(base_type))
-        elif node["memberName"] in {"length", "push", "pop"}:
-            if not base_type.startswith("t_array$_") or not storage_type_supported(base_type):
+        elif node["memberName"] == "length":
+            if not BYTES.fullmatch(base_type) and not (
+                    base_type.startswith("t_array$_") and storage_type_supported(base_type)):
                 found.append(type_feature(base_type))
-            elif node["memberName"] != "length":
-                if not base_type.endswith("_$dyn_storage"):
-                    found.append("fixed array mutation")
-                elif not VALUE_TYPE.fullmatch(base_type[len("t_array$_"):-len("_$dyn_storage")]):
-                    found.append("aggregate array mutation")
+        elif node["memberName"] in {"push", "pop"}:
+            if BYTES.fullmatch(base_type):
+                found.append("bytes push and pop")
+            elif not base_type.startswith("t_array$_") or not storage_type_supported(base_type):
+                found.append(type_feature(base_type))
+            elif not base_type.endswith("_$dyn_storage"):
+                found.append("fixed array mutation")
+            elif not VALUE_TYPE.fullmatch(base_type[len("t_array$_"):-len("_$dyn_storage")]):
+                found.append("aggregate array mutation")
     elif kind == "SourceUnit":
-        contracts = [m for m in node["nodes"] if m["nodeType"] == "ContractDefinition"]
-        if len(contracts) != 1:
+        if len(deployable(node)) != 1:
             found.append("source units without exactly one contract")
-    elif kind == "ContractDefinition":
-        if not any(m["nodeType"] == "FunctionDefinition" for m in node["nodes"]):
-            found.append("contracts without functions")
     return [Blocker(kind, feature, "elaboration") for feature in found]
 
 
@@ -532,27 +688,55 @@ INTEGER_TYPE = re.compile(r"t_u?int[0-9]+")
 
 def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[Blocker]:
     """Integer literals used where a value of another type is expected, which
-    elaborate_unit converts only to integer types: initial values, returned
-    values, assigned values, operands and arguments."""
+    elaborate_unit converts only to integer types, and string literals used
+    as fixed-size bytes, which it does not convert: initial values of locals
+    and state variables, returned and assigned values, tuple components
+    included, operands, mapping keys, arguments of calls, emits and reverts,
+    and conversions."""
     kind = node["nodeType"]
-    expected: list[tuple[dict[str, Any] | None, dict[str, Any]]] = []
-    if kind == "VariableDeclarationStatement" and len(node["declarations"]) == 1:
-        expected.append((node.get("initialValue"), node["declarations"][0]))
+    expected: list[tuple[dict[str, Any] | None, dict[str, Any] | None]] = []
+
+    def components(value: dict[str, Any] | None, targets: list[Any]) -> None:
+        """Each value of a tuple with the target of its position."""
+        value = unwrap(value)
+        if len(targets) == 1:
+            expected.append((value, targets[0]))
+        elif value is not None and value["nodeType"] == "TupleExpression":
+            expected.extend(zip(value["components"], targets))
+
+    if kind == "VariableDeclarationStatement":
+        components(node.get("initialValue"), node["declarations"])
+    elif kind == "VariableDeclaration" and node.get("stateVariable"):
+        expected.append((node.get("value"), node))
     elif kind == "Return" and node.get("expression") is not None:
-        returns = by_id.get(node.get("functionReturnParameters"), {}).get("parameters", [])
-        if len(returns) == 1:
-            expected.append((node["expression"], returns[0]))
+        components(node["expression"],
+                   by_id.get(node.get("functionReturnParameters"), {}).get("parameters", []))
+    elif kind == "InheritanceSpecifier" or (kind == "ModifierInvocation"
+                                            and node.get("kind") == "baseConstructorSpecifier"):
+        base = node["baseName" if kind == "InheritanceSpecifier" else "modifierName"]
+        expected.extend(zip(node.get("arguments") or [],
+                            constructor_parameters(by_id.get(base.get("referencedDeclaration"), {}))))
     elif kind == "Assignment" and node["operator"] not in ("<<=", ">>="):
-        expected.append((node["rightHandSide"], node))
+        target = unwrap(node["leftHandSide"])
+        components(node["rightHandSide"],
+                   target["components"] if target["nodeType"] == "TupleExpression" else [node])
+    elif kind == "IndexAccess" and node.get("indexExpression") is not None:
+        match = re.match(r"t_mapping\$_(t_[^$]+)_\$_",
+                         node["baseExpression"]["typeDescriptions"].get("typeIdentifier") or "")
+        if match is not None:
+            expected.append((node["indexExpression"], {"typeDescriptions": {"typeIdentifier": match[1]}}))
     elif kind == "BinaryOperation":
         common = {"typeDescriptions": node["commonType"]}
         expected.append((node["leftExpression"], common))
         if node["operator"] not in ("<<", ">>", "**"):
             expected.append((node["rightExpression"], common))
     elif kind == "FunctionCall" and node["kind"] == "functionCall":
-        callee = by_id.get(node["expression"].get("referencedDeclaration"), {})
+        name = node["expression"]
+        if name["nodeType"] == "FunctionCallOptions":
+            name = name["expression"]
+        callee = by_id.get(name.get("referencedDeclaration"), {})
         if callee.get("nodeType") == "FunctionDefinition":
-            expected.extend(zip(node["arguments"], callee["parameters"]["parameters"]))
+            expected.extend(arguments(node, callee["parameters"]["parameters"]))
         member = node["expression"]
         if (member.get("nodeType") == "MemberAccess" and member["memberName"] == "push"
                 and len(node["arguments"]) == 1):
@@ -561,67 +745,188 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
             if match is not None:
                 expected.append((node["arguments"][0],
                                  {"typeDescriptions": {"typeIdentifier": match[1]}}))
+    elif kind == "FunctionCall" and node["kind"] == "typeConversion" and len(node["arguments"]) == 1:
+        expected.append((node["arguments"][0], node))
+    elif kind == "EmitStatement":
+        event = by_id.get(node["eventCall"]["expression"].get("referencedDeclaration"), {})
+        if event.get("nodeType") == "EventDefinition":
+            expected.extend(arguments(node["eventCall"], event["parameters"]["parameters"]))
+    elif kind == "RevertStatement":
+        error = by_id.get(node["errorCall"]["expression"].get("referencedDeclaration"), {})
+        if error.get("nodeType") == "ErrorDefinition":
+            expected.extend(arguments(node["errorCall"], error["parameters"]["parameters"]))
+    found: list[str] = []
     for value, target in expected:
-        target_type = target["typeDescriptions"].get("typeIdentifier") or ""
-        if (value is not None and value["nodeType"] == "Literal"
-                and RATIONAL.fullmatch(value["typeDescriptions"].get("typeIdentifier") or "")
-                and VALUE_TYPE.fullmatch(target_type) and not INTEGER_TYPE.fullmatch(target_type)):
-            return [Blocker(kind, "literals of non-integer types", "elaboration")]
-    return []
+        value = unwrap(value)
+        target_type = (target or {}).get("typeDescriptions", {}).get("typeIdentifier") or ""
+        if value is None or value["nodeType"] != "Literal" or not VALUE_TYPE.fullmatch(target_type):
+            continue
+        value_type = value["typeDescriptions"].get("typeIdentifier") or ""
+        conversion = kind == "FunctionCall" and node["kind"] == "typeConversion"
+        if RATIONAL.fullmatch(value_type) and not INTEGER_TYPE.fullmatch(target_type) and not conversion:
+            found.append("literals of non-integer types")
+        if value_type.startswith("t_stringliteral_"):
+            found.append("string literals as fixed-size bytes")
+    return [Blocker(kind, feature, "elaboration") for feature in dict.fromkeys(found)]
+
+
+def arguments(call: dict[str, Any], parameters: list[dict[str, Any]]
+              ) -> list[tuple[dict[str, Any], dict[str, Any] | None]]:
+    """A call's arguments with the parameters they are given to, by name for
+    named arguments."""
+    if not call.get("names"):
+        return list(zip(call["arguments"], parameters))
+    named = {p["name"]: p for p in parameters}
+    return [(a, named.get(n)) for a, n in zip(call["arguments"], call["names"])]
+
+
+def unwrap(value: dict[str, Any] | None) -> dict[str, Any] | None:
+    """A value without the parentheses around it."""
+    while (value is not None and value["nodeType"] == "TupleExpression"
+           and not value.get("isInlineArray") and len(value["components"]) == 1):
+        value = value["components"][0]
+    return value
+
+
+def special_forms(by_id: dict[int, dict[str, Any]]) -> tuple[set[int], dict[int, list[Blocker]]]:
+    """The nodes the importer reads as part of a larger form rather than as
+    expressions of their own, and what it and the checker reject in those
+    forms: event and error names, the members and contract conversions of
+    external calls, address(this), type(T), the members of msg, block and tx,
+    and the messages of require and revert."""
+    unread: set[int] = set()
+    found: dict[int, list[Blocker]] = {}
+
+    def block(node: dict[str, Any], feature: str, stage: str) -> None:
+        found.setdefault(node["id"], []).append(Blocker(node["nodeType"], feature, stage))
+
+    for node in by_id.values():
+        kind = node["nodeType"]
+        if kind == "EmitStatement":
+            callee = node["eventCall"]["expression"]
+            unread.update({node["eventCall"]["id"], callee["id"]})
+            unread.update(n["id"] for n in nodes(callee))
+            if node["eventCall"]["names"]:
+                block(node["eventCall"], "named arguments", "import")
+            if callee["nodeType"] != "Identifier":
+                block(callee, "events named through a contract or library", "import")
+        elif kind == "RevertStatement":
+            callee = node["errorCall"]["expression"]
+            unread.add(node["errorCall"]["id"])
+            unread.update(n["id"] for n in nodes(callee))
+            if node["errorCall"]["names"]:
+                block(node["errorCall"], "named arguments", "import")
+        elif kind == "MemberAccess" and node.get("referencedDeclaration") is None:
+            base = node["expression"]
+            if base["nodeType"] == "Identifier" and base.get("referencedDeclaration", 0) < 0:
+                unread.add(base["id"])
+            elif is_type_call(base):
+                argument = base["arguments"][0] if base["arguments"] else base
+                unread.update({base["id"], base["expression"]["id"], argument["id"]})
+                if argument["nodeType"] != "ElementaryTypeNameExpression":
+                    block(argument, "type(…)", "import")
+                elif (node["memberName"] not in {"max", "min"}
+                      or not re.fullmatch(r"u?int[0-9]*", argument["typeName"]["name"])):
+                    block(node, "type(…)", "elaboration")
+                unread.update(n["id"] for n in nodes(argument))
+        elif kind == "FunctionCall" and node["kind"] == "functionCall":
+            callee = node["expression"]
+            member = callee["expression"] if callee["nodeType"] == "FunctionCallOptions" else callee
+            if callee["nodeType"] == "FunctionCallOptions":
+                unread.add(callee["id"])
+                if callee["names"] != ["value"]:
+                    block(callee, "call options ({value: …, gas: …})", "import")
+                elif not is_external(member):
+                    block(member, "call options ({value: …, gas: …})", "import")
+            if is_external(member):
+                unread.add(member["id"])
+                target = member["expression"]
+                if (target["nodeType"] == "FunctionCall" and target["kind"] == "typeConversion"
+                        and target["typeDescriptions"].get("typeIdentifier", "").startswith("t_contract$_")):
+                    unread.update({target["id"], target["expression"]["id"]})
+                else:
+                    block(target, "external calls and contract members", "import")
+            elif (callee["nodeType"] == "Identifier"
+                  and callee.get("referencedDeclaration") in {REQUIRE, REVERT}):
+                message = node["arguments"][-1] if node["arguments"] else None
+                if (message is not None and len(node["arguments"]) == (2 if callee["referencedDeclaration"] == REQUIRE else 1)
+                        and not (message["nodeType"] == "Literal" and message["kind"] in STRING_LITERALS
+                                 and message["typeDescriptions"]["typeIdentifier"].startswith("t_stringliteral_"))):
+                    error = message["nodeType"] == "FunctionCall" and message["expression"][
+                        "typeDescriptions"].get("typeIdentifier", "").startswith("t_function_error")
+                    block(node, "require with a custom error" if error else "messages that are not literals",
+                          "elaboration")
+        elif (kind == "FunctionCall" and node["kind"] == "typeConversion"
+              and len(node["arguments"]) == 1 and node["arguments"][0]["nodeType"] == "Identifier"
+              and node["arguments"][0].get("referencedDeclaration") == THIS
+              and node["expression"]["nodeType"] == "ElementaryTypeNameExpression"
+              and node["expression"]["typeName"]["name"] == "address"):
+            unread.add(node["arguments"][0]["id"])
+    return unread, found
 
 
 def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
-    """Every node the semantics rejects, by node id, the importer's reasons
-    first."""
-    found: dict[int, list[Blocker]] = {}
-    for ast in asts.values():
-        by_id = {n["id"]: n for n in nodes(ast)}
-        calls = [n for n in by_id.values() if n["nodeType"] == "FunctionCall"]
-        callees = {n["expression"]["id"] for n in calls}
-        conversions = {n["expression"]["id"] for n in calls if n["kind"] == "typeConversion"}
-        fields = {v["id"] for n in by_id.values() if n["nodeType"] == "StructDefinition"
-                  for v in n["members"]}
-        builtins = [n for n in calls if n["kind"] == "functionCall"
-                    and n["expression"]["nodeType"] == "Identifier"
-                    and n["expression"].get("referencedDeclaration") in {-18, -3, -19}]
-        builtin_callees = {n["expression"]["id"] for n in builtins}
-        builtin_calls = {n["id"] for n in builtins}
-        literal_messages: set[int] = set()
-        for call in builtins:
-            declaration = call["expression"]["referencedDeclaration"]
-            args = call["arguments"]
-            message = (args[1] if declaration == -18 and len(args) == 2 else
-                       args[0] if declaration == -19 and len(args) == 1 else None)
-            if (message is not None and message["nodeType"] == "Literal"
-                    and message["kind"] in {"string", "unicodeString", "hexString"}
-                    and message["typeDescriptions"]["typeIdentifier"].startswith("t_stringliteral_")):
-                literal_messages.add(message["id"])
-        storage_bases = {n["baseExpression"]["id"] for n in by_id.values()
-                         if n["nodeType"] == "IndexAccess"}
-        storage_bases.update(n["expression"]["id"] for n in by_id.values()
-                             if n["nodeType"] == "MemberAccess")
-        for node in nodes(ast):
-            blockers = (node_blockers(node, builtin_callee=node["id"] in builtin_callees)
-                        + callee_blockers(node, callees, conversions)
-                        + elaboration_blockers(node, storage_field=node["id"] in fields,
-                                               literal_message=node["id"] in literal_messages)
-                        + coerced_literals(node, by_id))
-            if node["id"] in builtin_calls:
-                declaration = node["expression"]["referencedDeclaration"]
-                if len(node["arguments"]) not in ({1, 2} if declaration == -18 else
-                                                  {1} if declaration == -3 else {0, 1}):
-                    blockers.append(Blocker("FunctionCall", "custom errors", "import"))
-            if (node["nodeType"] in {"Identifier", "IndexAccess", "MemberAccess"}
-                    and node.get("typeDescriptions", {}).get("typeIdentifier", "").startswith(("t_mapping$_", "t_array$_", "t_struct$_"))
-                    and node["id"] not in storage_bases):
-                tid = node["typeDescriptions"]["typeIdentifier"]
-                feature = ("array values" if tid.startswith("t_array$_")
-                           else "mapping values" if tid.startswith("t_mapping$_")
-                           else "struct values and copying")
-                blockers.append(Blocker(node["nodeType"], feature, "elaboration"))
-            if blockers:
-                found.setdefault(node["id"], []).extend(blockers)
-    return found
+    """Every node the importer reads that the semantics rejects, by node id,
+    the importer's reasons first."""
+    by_id = {n["id"]: n for ast in asts.values() for n in nodes(ast)}
+    reached = {n["id"]: n for root in imported(asts, by_id) for n in nodes(root, skip=lambda n: not read(n))}
+    reached.update((ast["id"], ast) for ast in asts.values())
+    calls = [n for n in reached.values() if n["nodeType"] == "FunctionCall"]
+    callees = {n["expression"]["id"] for n in calls}
+    conversions = {n["expression"]["id"] for n in calls if n["kind"] == "typeConversion"}
+    fields = {v["id"] for n in reached.values() if n["nodeType"] == "StructDefinition"
+              for v in n["members"]}
+    based, live = live_functions(asts, by_id)
+    dead = {n["id"] for f in based - live if f in reached for n in nodes(by_id[f])}
+    # The signatures read only at nodes of overridden functions, unless they
+    # belong to a function of an imported contract, which is read as such.
+    read_at: dict[int, bool] = {}
+    for n in reached.values():
+        for declaration, signature in signatures(n, by_id):
+            if declaration["id"] not in reached:
+                read_at[signature["id"]] = read_at.get(signature["id"], False) or n["id"] not in dead
+    dead.update(n["id"] for i, alive in read_at.items() if not alive for n in nodes(by_id[i]))
+    errors = {n["errorCall"]["expression"].get("referencedDeclaration")
+              for n in reached.values() if n["nodeType"] == "RevertStatement" and n["id"] not in dead}
+    error_parameters = {v["id"] for e in errors if e in by_id for v in by_id[e]["parameters"]["parameters"]}
+    builtin_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
+                       and n["expression"]["nodeType"] == "Identifier"
+                       and n["expression"].get("referencedDeclaration") in {REQUIRE, ASSERT, REVERT}}
+    unread, found = special_forms(reached)
+    file_level = {m["id"] for ast in asts.values() for m in ast["nodes"]}
+    storage_bases = {n["baseExpression"]["id"] for n in reached.values()
+                     if n["nodeType"] == "IndexAccess"}
+    storage_bases.update(n["expression"]["id"] for n in reached.values()
+                         if n["nodeType"] == "MemberAccess")
+    for node in reached.values():
+        if node["id"] in unread:
+            continue
+        blockers = (node_blockers(node, builtin_callee=node["id"] in builtin_callees)
+                    + callee_blockers(node, callees, conversions)
+                    + elaboration_blockers(node, storage_field=node["id"] in fields,
+                                           error_parameter=node["id"] in error_parameters)
+                    + coerced_literals(node, by_id))
+        if node["nodeType"] == "EventDefinition" and node["id"] in file_level:
+            blockers.append(Blocker("EventDefinition", "file-level events", "import"))
+        if node["id"] in builtin_callees:
+            call = next(c for c in calls if c["expression"]["id"] == node["id"])
+            if len(call["arguments"]) not in ({1, 2} if node["referencedDeclaration"] == REQUIRE else
+                                              {1} if node["referencedDeclaration"] == ASSERT else {0, 1}):
+                blockers.append(Blocker("FunctionCall", "custom errors", "import"))
+        if (node["nodeType"] in {"Identifier", "IndexAccess", "MemberAccess"}
+                and node.get("typeDescriptions", {}).get("typeIdentifier", "").startswith(("t_mapping$_", "t_array$_", "t_struct$_"))
+                and node["id"] not in storage_bases):
+            tid = node["typeDescriptions"]["typeIdentifier"]
+            feature = ("array values" if tid.startswith("t_array$_")
+                       else "mapping values" if tid.startswith("t_mapping$_")
+                       else "struct values and copying")
+            blockers.append(Blocker(node["nodeType"], feature, "elaboration"))
+        if blockers:
+            found.setdefault(node["id"], []).extend(blockers)
+    # The checker and the elaborator see only the functions nothing overrides.
+    found = {i: [b for b in bs if not (i in dead and b.stage == "elaboration")]
+             for i, bs in found.items() if i in reached}
+    return {i: bs for i, bs in found.items() if bs}
 
 
 # The HOL run

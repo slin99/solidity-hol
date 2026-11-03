@@ -229,7 +229,9 @@ Existing internal-call propagation preserves the failure and the source-frame
 boundary rolls back all earlier writes. Literal messages have no evaluation
 effects. Dynamic message expressions remain rejected, including on a successful
 require; future string support must evaluate them on both paths according to
-the compiler profile's argument schedule. Custom errors are a later increment.
+the compiler profile's argument schedule. A revert with a custom error,
+`revert E(args)`, reverts with the error's 4-byte selector followed by the ABI
+encoding of its arguments, which must be of elementary types.
 
 ## Required validation
 

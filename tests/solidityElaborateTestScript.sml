@@ -48,6 +48,7 @@ Definition initial_state_def:
     scopes := [];
     heap := FEMPTY;
     next_heap_id := 0;
+    memory_allocated := 0;
     targets := FEMPTY
   |>
 End

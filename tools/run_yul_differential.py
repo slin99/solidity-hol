@@ -89,12 +89,14 @@ def generate_artifacts(root: Path, corpus: dict[str, Any], solc: Path,
     written: list[str] = []
     for suite in corpus["suites"]:
         source = suite["source"]
-        sources = {source: (root / source).read_text(encoding="utf-8")}
         try:
             corpus_artifact = core.read_artifact(root, suite["artifact"])
         except (OSError, json.JSONDecodeError, core.CorpusError) as error:
             checks.append(core.check("corpus-artifact-readable", suite["artifact"], str(error)))
             corpus_artifact = None
+        # The suite's source with the files it imports, as the corpus compiled it.
+        names = sorted(corpus_artifact["input"]["sources"]) if corpus_artifact else [source]
+        sources = {name: (root / name).read_text(encoding="utf-8") for name in names}
         for tag, profile in ARTIFACT_STAGES:
             path = YUL_ROOT / f"{suite['name']}.{tag}.json"
             written.append(path.as_posix())

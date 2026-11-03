@@ -3,7 +3,11 @@
 `tools/run_differential.py` checks the maintained corpus in
 `testdata/differential/corpus.json`. Each suite supplies a compiler artifact,
 source unit and deployed contract; each case is a transaction to the contract
-with initial storage and an expected result, final storage and logs.
+with initial storage and an expected result, final storage and logs. The
+artifact compiles the source together with the files it imports, so its
+contract's bases, interfaces and structs may be declared in any of them; the
+runner checks that each of those files is the one the artifact was compiled
+from.
 
 A case calls either a named function with arguments (`function`, `args`),
 encoded after its selector, or raw `calldata`. Optional `sender` (default
@@ -16,8 +20,12 @@ the evaluator's high-level calls run it, and any call back into the contract,
 as bytecode in Verifereum. The evaluator runs the same calldata
 through the elaborated program's dispatcher (`solidityEntry`), so selector
 lookup, payability, argument decoding, `receive` and `fallback` are compared
-too. Raw calldata declares no return types, so its `return` expectation is
-`[]`.
+too. An expectation is `{"return": [...]}` for typed results,
+`{"returned": "0x..."}` for exact return bytes, `{"panic": code}`, or
+`{"revert": "0x..."}`. Raw calldata declares no return types; use `returned`
+to check its successful return payload, or `{"return": []}` for empty data.
+Dynamic bytes and strings are supplied as `0x` byte strings, preserving UTF-8,
+NUL bytes and arbitrary binary contents.
 
 A case with `"deploy": true` and the constructor's `args` (or, as
 `calldata`, their raw encoding) is a creation instead: Verifereum runs a creation transaction whose data is the artifact's

@@ -123,6 +123,11 @@ class CorpusTests(unittest.TestCase):
             with self.assertRaisesRegex(driver.CorpusError, "exactly one"):
                 driver.load_corpus(path)
 
+    def test_raw_return_expectation(self) -> None:
+        driver.check_expectation({"returned": "0x00ff"}, "expect")
+        with self.assertRaisesRegex(driver.CorpusError, "returned must be"):
+            driver.check_expectation({"returned": [0, 255]}, "expect")
+
     def test_rejects_malformed_storage(self) -> None:
         for storage, message in [([1], "object from slot"),
                                  ({"0x1": 1}, "slot '0x1'"),
@@ -219,6 +224,17 @@ class CorpusTests(unittest.TestCase):
             checks = driver.check_artifacts(fake.root, corpus())
             failed = [c["check"] for c in checks if c["status"] != "pass"]
             self.assertEqual(failed, ["source-fresh"])
+
+    def test_detects_stale_imported_source(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            artifact = json.loads((fake.root / ARTIFACT).read_text(encoding="utf-8"))
+            artifact["input"]["sources"]["testdata/base.sol"] = {"content": "contract B {}\n"}
+            fake.write(ARTIFACT, json.dumps(artifact))
+            fake.write("testdata/base.sol", "contract B { }\n")
+            checks = driver.check_artifacts(fake.root, corpus())
+            failed = [(c["check"], c["subject"]) for c in checks if c["status"] != "pass"]
+            self.assertEqual(failed, [("source-fresh", f"{ARTIFACT}:testdata/base.sol")])
 
     def test_detects_unstaged_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

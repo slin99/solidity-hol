@@ -73,7 +73,7 @@ def check_argument(value: Any, what: str) -> None:
 
 def check_expectation(value: Any, what: str) -> None:
     if not isinstance(value, dict) or len(value) != 1:
-        raise CorpusError(f"{what} must have exactly one of return, panic and revert")
+        raise CorpusError(f"{what} must have exactly one of return, returned, panic and revert")
     (kind, payload), = value.items()
     if kind == "return":
         if not isinstance(payload, list):
@@ -86,9 +86,9 @@ def check_expectation(value: Any, what: str) -> None:
             or (isinstance(payload, str) and HEX.fullmatch(payload) and payload != "0x")
         ):
             raise CorpusError(f"{what}.panic must be a natural number or 0x-prefixed hex")
-    elif kind == "revert":
+    elif kind in {"revert", "returned"}:
         if not isinstance(payload, str) or HEX.fullmatch(payload) is None:
-            raise CorpusError(f"{what}.revert must be 0x-prefixed hex")
+            raise CorpusError(f"{what}.{kind} must be 0x-prefixed hex")
     else:
         raise CorpusError(f"{what} has unknown kind {kind!r}")
 
@@ -330,17 +330,21 @@ def check_artifacts(root: Path, corpus: dict[str, Any]) -> list[dict[str, str]]:
             continue
         source = suite["source"]
         subject = f"{path}:{source}"
-        recorded = artifact.get("input", {}).get("sources", {}).get(source, {}).get("content")
-        try:
-            current = (root / source).read_text(encoding="utf-8")
-        except OSError as error:
-            checks.append(check("source-fresh", subject, str(error)))
+        recorded_sources = artifact.get("input", {}).get("sources", {})
+        if source not in recorded_sources:
+            checks.append(check("source-fresh", subject, "the artifact was not compiled from this source"))
             continue
-        checks.append(check(
-            "source-fresh", subject,
-            None if recorded == current
-            else "the artifact was not compiled from the current source; regenerate it",
-        ))
+        for name, recorded in sorted(recorded_sources.items()):
+            try:
+                current = (root / name).read_text(encoding="utf-8")
+            except OSError as error:
+                checks.append(check("source-fresh", f"{path}:{name}", str(error)))
+                continue
+            checks.append(check(
+                "source-fresh", f"{path}:{name}",
+                None if recorded.get("content") == current
+                else "the artifact was not compiled from the current source; regenerate it",
+            ))
         bytecode = (
             artifact.get("output", {}).get("contracts", {}).get(source, {})
             .get(suite["contract"], {}).get("evm", {}).get("deployedBytecode", {}).get("object")

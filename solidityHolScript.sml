@@ -11,7 +11,7 @@ Ancestors
   solidityEVMBoundaryProps solidityCoreWfTest
   solidityEVMCallTest solidityEVMCreateTest solidityEVMFrameTest
   solidityEVMReentryTest solidityEVMBookkeepingTest
-  externalCall solidityEvaluator solidityABI solidityEntry solidityEvaluatorProps solidityEvaluatorTest
+  externalCall solidityMemory solidityEvaluator solidityABI solidityEntry solidityEvaluatorProps solidityEvaluatorTest
   solidityCoreProgramsTest solidityImport solidityImportTest
   solidityElaborate solidityElaborateTest solidityPrepareTest solidityDifferential
   solidityDifferentialCorpus solidityDifferentialTest

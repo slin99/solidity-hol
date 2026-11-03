@@ -249,6 +249,23 @@ Definition yul_sstore_def:
           m.accounts
 End
 
+(* Transient storage, the executing account's part of the frame's.  The frame
+ * has no static mode, so tstore always takes effect, as sstore does. *)
+
+Definition yul_tload_def:
+  yul_tload m slot =
+    lookup_storage slot (lookup_transient_storage m.self_address m.transient)
+End
+
+Definition yul_tstore_def:
+  yul_tstore m slot value =
+    m with transient :=
+      update_transient_storage m.self_address
+        (update_storage slot value
+           (lookup_transient_storage m.self_address m.transient))
+        m.transient
+End
+
 (* SIGNEXTEND(i, x): the low 8*(i+1) bits of x as a signed number, extended
  * through the word; i ≥ 31 leaves x alone, since the whole word is already in
  * view.  This is what the EVM's SIGNEXTEND does, spelled with HOL's
@@ -300,12 +317,12 @@ End
  * callee's own budget the builtin's gas argument capped at this frame's: gas
  * is not charged here, so the frame's budget is the most it can hand on.
  * The callee's code is the account's -- a delegated
- * account runs its delegate's, as the EVM's CALL does. The Yul frame carries
- * no transient storage, so the callee starts with none.
+ * account runs its delegate's, as the EVM's CALL does. The callee starts
+ * from the frame's transient storage, as it does from the frame's accounts.
  *
  * What comes back is CALL's own answer: 1 if the callee stopped or returned
- * and 0 if it reverted or halted exceptionally, with the frame's accounts and
- * logs taken from the callee only in the first case. The return data is the
+ * and 0 if it reverted or halted exceptionally, with the frame's accounts,
+ * transient storage and logs taken from the callee only in the first case. The return data is the
  * callee's output either way -- the revert data for a revert, nothing for an
  * exceptional halt -- and is kept whole in return_data, while the output
  * region gets only the first min(outsize, returndatasize) bytes of it, left
@@ -329,12 +346,12 @@ Definition yul_call_def:
            (input_size : bytes32) (output : bytes32) (output_size : bytes32) =
     let (m1, args) = yul_memory_region m (w2n input) (w2n input_size) in
       case run_external_call m1.self_address (w2w callee) args (w2n value)
-             static (MIN (w2n gas) m1.gas_limit) m1.accounts
-             empty_transient_storage
+             static (MIN (w2n gas) m1.gas_limit) m1.accounts m1.transient
              m1.transaction_parameters of
         NONE => EvalAbrupt (YulInvalid "call outside the model") m1
       | SOME outcome =>
           let m2 = m1 with <| accounts := outcome.call_accounts;
+                               transient := outcome.call_transient;
                                logs := m1.logs ++ outcome.call_logs;
                                return_data := outcome.call_return |> in
             EvalValues [b2w outcome.call_success]
@@ -389,6 +406,9 @@ Definition eval_yul_builtin_def:
     | (YShl, [n; w]) => EvalValues [word_lsl w (w2n n)] m
     | (YShr, [n; w]) => EvalValues [word_lsr w (w2n n)] m
     | (YSar, [n; w]) => EvalValues [word_asr w (w2n n)] m
+    | (YByte, [i; w]) =>
+        EvalValues [if w2n i < 32 then n2w ((w2n w DIV 2 ** (8 * (31 - w2n i))) MOD 256)
+                    else 0w] m
     | (YKeccak256, [p; s]) =>
         let (m', bs) = yul_memory_region m (w2n p) (w2n s) in
           EvalValues [word_of_bytes_be (Keccak_256_w64 bs)] m'
@@ -396,6 +416,9 @@ Definition eval_yul_builtin_def:
         let (m', bs) = yul_mload m (w2n p) in
           EvalValues [word_of_bytes_be bs] m'
     | (YMStore, [p; v]) => EvalValues [] (yul_mstore m (w2n p) v)
+    | (YMStore8, [p; v]) =>
+        EvalValues [] (yul_memory_write (yul_memory_touch m (w2n p) 1)
+          (w2n p) [(n2w (w2n v) : byte)])
     | (YMCopy, [d; s; l]) =>
         (* both ranges are touched, whichever of them reaches further, and the
          * bytes are read before any is written, so overlapping regions copy as
@@ -406,6 +429,8 @@ Definition eval_yul_builtin_def:
                (w2n d) bs)
     | (YSLoad, [s]) => EvalValues [yul_sload m s] m
     | (YSStore, [s; v]) => EvalValues [] (yul_sstore m s v)
+    | (YTLoad, [s]) => EvalValues [yul_tload m s] m
+    | (YTStore, [s; v]) => EvalValues [] (yul_tstore m s v)
     | (YCallDataLoad, [i]) =>
         EvalValues
           [word_of_bytes_be (take_pad_0 32 (DROP (w2n i) m.call_data))]

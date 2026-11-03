@@ -7,8 +7,9 @@
  *
  * The effect of a builtin is what a caller has to know to reason about it:
  * whether it reads or writes the frame's memory, the executing account's
- * storage, the frame's own fields, or the log, or ends the frame. It is
- * deliberately coarse -- one classification per builtin, not per access.
+ * storage or transient storage, the frame's own fields, or the log, or ends
+ * the frame. It is deliberately coarse -- one classification per builtin,
+ * not per access.
  *)
 Theory yulDialect
 Ancestors
@@ -37,12 +38,16 @@ Definition builtin_name_def:
   builtin_name YShl = "shl" ∧
   builtin_name YShr = "shr" ∧
   builtin_name YSar = "sar" ∧
+  builtin_name YByte = "byte" ∧
   builtin_name YKeccak256 = "keccak256" ∧
   builtin_name YMLoad = "mload" ∧
   builtin_name YMStore = "mstore" ∧
+  builtin_name YMStore8 = "mstore8" ∧
   builtin_name YMCopy = "mcopy" ∧
   builtin_name YSLoad = "sload" ∧
   builtin_name YSStore = "sstore" ∧
+  builtin_name YTLoad = "tload" ∧
+  builtin_name YTStore = "tstore" ∧
   builtin_name YCallDataLoad = "calldataload" ∧
   builtin_name YCallDataSize = "calldatasize" ∧
   builtin_name YCallDataCopy = "calldatacopy" ∧
@@ -104,12 +109,16 @@ Definition builtin_of_name_def:
     else if name = "shl" then SOME YShl
     else if name = "shr" then SOME YShr
     else if name = "sar" then SOME YSar
+    else if name = "byte" then SOME YByte
     else if name = "keccak256" then SOME YKeccak256
     else if name = "mload" then SOME YMLoad
     else if name = "mstore" then SOME YMStore
+    else if name = "mstore8" then SOME YMStore8
     else if name = "mcopy" then SOME YMCopy
     else if name = "sload" then SOME YSLoad
     else if name = "sstore" then SOME YSStore
+    else if name = "tload" then SOME YTLoad
+    else if name = "tstore" then SOME YTStore
     else if name = "calldataload" then SOME YCallDataLoad
     else if name = "calldatasize" then SOME YCallDataSize
     else if name = "calldatacopy" then SOME YCallDataCopy
@@ -155,7 +164,8 @@ Datatype:
                        in the unoptimized IR, and pop, which discards its
                        argument *)
   | EffectMemory    (* reads or writes the frame's memory *)
-  | EffectStorage   (* reads or writes the executing account's storage *)
+  | EffectStorage   (* reads or writes the executing account's storage or
+                       its transient storage *)
   | EffectFrame     (* reads the frame: its call data, its call value, the
                        account it runs for, an immutable the constructor
                        patched into its code, the transaction and block it
@@ -196,12 +206,16 @@ Definition builtin_effect_def:
   builtin_effect YShl = EffectPure ∧
   builtin_effect YShr = EffectPure ∧
   builtin_effect YSar = EffectPure ∧
+  builtin_effect YByte = EffectPure ∧
   builtin_effect YKeccak256 = EffectMemory ∧
   builtin_effect YMLoad = EffectMemory ∧
   builtin_effect YMStore = EffectMemory ∧
+  builtin_effect YMStore8 = EffectMemory ∧
   builtin_effect YMCopy = EffectMemory ∧
   builtin_effect YSLoad = EffectStorage ∧
   builtin_effect YSStore = EffectStorage ∧
+  builtin_effect YTLoad = EffectStorage ∧
+  builtin_effect YTStore = EffectStorage ∧
   builtin_effect YCallDataLoad = EffectFrame ∧
   builtin_effect YCallDataSize = EffectFrame ∧
   builtin_effect YCallDataCopy = EffectMemory ∧

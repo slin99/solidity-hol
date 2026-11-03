@@ -50,6 +50,7 @@ class FakeRoot:
         self.write(CORPUS_ARTIFACT, json.dumps({
             "format": core.ARTIFACT_FORMAT,
             "compiler": {"pin": pin, "reportedVersion": f"Version: 0.8.37+commit.{pin[:8]}"},
+            "input": {"sources": {SOURCE: {"content": "contract A {}\n"}}},
             "output": {"contracts": {SOURCE: {CONTRACT: {
                 "evm": {"deployedBytecode": {"object": DEPLOYED}}}}}},
         }))

@@ -18,7 +18,10 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/dynamic_storage_arrays.json",
   "../testdata/differential/expected/builtins.json",
   "../testdata/differential/expected/storage_structs.json",
-  "../testdata/differential/expected/inheritance.json"
+  "../testdata/differential/expected/inheritance.json",
+  "../testdata/differential/expected/imports.json",
+  "../testdata/differential/expected/errors.json",
+  "../testdata/differential/expected/type_bounds.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -69,8 +72,8 @@ Theorem type_name_normalization:
     SOME (UintT 256) ∧
   normalize_type_name (SrcElementaryTypeName i "uint7" NONE) = NONE ∧
   normalize_type_name (SrcElementaryTypeName i "bytes33" NONE) = NONE ∧
-  normalize_type_name (SrcElementaryTypeName i "bytes" NONE) = NONE ∧
-  normalize_type_name (SrcElementaryTypeName i "string" NONE) = NONE ∧
+  normalize_type_name (SrcElementaryTypeName i "bytes" NONE) = SOME BytesT ∧
+  normalize_type_name (SrcElementaryTypeName i "string" NONE) = SOME StringT ∧
   normalize_type_name (SrcElementaryTypeName i "address" (SOME "payable")) =
     SOME (AddressT PayableAddress) ∧
   normalize_type_name (SrcElementaryTypeName i "address" NONE) = NONE ∧
@@ -90,8 +93,8 @@ Theorem type_identifier_decoding:
     SOME (SrcType (AddressT PayableAddress)) ∧
   decode_type_identifier "t_uint7" = NONE ∧
   decode_type_identifier "t_uint" = NONE ∧
-  decode_type_identifier "t_string_memory_ptr" = NONE ∧
-  decode_type_identifier "t_bytes_memory_ptr" = NONE
+  decode_type_identifier "t_string_memory_ptr" = SOME (SrcType (LocatedT MemoryLoc StringT)) ∧
+  decode_type_identifier "t_bytes_memory_ptr" = SOME (SrcType (LocatedT MemoryLoc BytesT))
 Proof
   EVAL_TAC
 QED
@@ -142,7 +145,7 @@ fun type_identifier tid =
 datatype import_failure = Unsupported | Malformed
 
 fun import_error_with expected contracts name v =
-  (import_source_unit v contracts; raise Fail (name ^ ": imported"))
+  (import_source_unit [] v contracts; raise Fail (name ^ ": imported"))
   handle ImportError _ =>
            if expected = Unsupported then () else raise Fail (name ^ ": expected malformed input")
        | MalformedInput _ =>
@@ -154,7 +157,7 @@ val malformed_input = import_error_with Malformed contracts
 (* An edited unit that imports, as a cv-translated constant. *)
 fun edited_unit_with contracts name v =
   let
-    val tm = import_source_unit v contracts
+    val tm = import_source_unit [] v contracts
     val def = new_definition (name ^ "_def", mk_eq (mk_var (name, type_of tm), tm))
   in
     cv_auto_trans def
@@ -185,7 +188,7 @@ val () = import_error "modifier"
 val () = import_error "named arguments"
   (edit_first "FunctionCall"
      (set_field "names" (JSON.ARRAY [JSON.STRING "n"])) ast)
-val () = import_error "base outside the unit"
+val () = import_error "base outside the compilation"
   (edit_first "ContractDefinition"
      (fn c => set_field "linearizedBaseContracts"
                 (JSON.ARRAY [JSONUtil.lookupField c "id", JSON.INT 999999]) c)
@@ -195,7 +198,7 @@ val () = import_error "base outside the unit"
  * names the identifier's node.
  *)
 val () =
-  (import_source_unit
+  (import_source_unit []
      (edit_first "Identifier"
         (set_field "referencedDeclaration" (JSON.INT ~18)) ast) contracts;
    raise Fail "built-in: imported")
@@ -463,7 +466,7 @@ val array_contracts = artifact_part array_fixture ["contracts", array_source]
 
 (* A null index is a valid array type expression, not malformed compiler JSON. *)
 val () =
-  (import_source_unit
+  (import_source_unit []
      (edit_first "IndexAccess" (set_field "indexExpression" JSON.NULL) array_ast)
      array_contracts;
    raise Fail "array type expression imported")
@@ -690,4 +693,115 @@ Theorem unresolved_override_rejected:
   ¬valid_src_unit unresolved_override
 Proof
   CONV_TAC cv_eval
+QED
+
+(* Imports: the contract's base, the interface it implements and calls
+ * through, their event and the struct it stores all come from
+ * imports_base.sol, and resolve by id across the compilation. *)
+
+val imports_fixture = "../testdata/differential/expected/imports.json"
+val imports_source = "testdata/differential/imports.sol"
+
+Definition imports_unit_def:
+  imports_unit = ^(import_artifact imports_fixture imports_source)
+End
+
+val () = cv_auto_trans imports_unit_def;
+
+Theorem imports_unit_valid:
+  valid_src_unit imports_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* Counter.bump is overridden; ICounter.count has no body. Only Point, of
+ * imports_base.sol's two structs, is referred to. *)
+Theorem imports_unit_resolved:
+  LENGTH imports_unit.unit_sources = 2 ∧
+  MAP (λc. c.contract_name) imports_unit.unit_contracts = ["Imports"] ∧
+  LENGTH (HD imports_unit.unit_contracts).contract_bases = 3 ∧
+  MAP (λf. f.fn_name) (HD imports_unit.unit_contracts).contract_functions =
+  ["count"; "bump"; "lastSum"; "countOf"; "bump"] ∧
+  LENGTH (HD imports_unit.unit_contracts).contract_events = 1 ∧
+  EVERY (λs. s.struct_scope ≠ imports_unit.unit_info.node_id ∧
+             MEM s.struct_scope imports_unit.unit_sources)
+    (HD imports_unit.unit_contracts).contract_structs ∧
+  LENGTH (HD imports_unit.unit_contracts).contract_structs = 1
+Proof
+  EVAL_TAC
+QED
+
+(* Without the other file, the base is out of reach. *)
+val () = import_error_with Unsupported
+  (artifact_part imports_fixture ["contracts", imports_source])
+  "imports without the imported file"
+  (artifact_part imports_fixture ["sources", imports_source, "ast"])
+
+(* Custom errors: each revert carries the selector and parameters of the
+ * error it names, wherever that is declared: at file level or in an
+ * interface base, both in errors_base.sol, or in the contract. *)
+
+val errors_fixture = "../testdata/differential/expected/errors.json"
+val errors_source = "testdata/differential/errors.sol"
+
+Definition errors_unit_def:
+  errors_unit = ^(import_artifact errors_fixture errors_source)
+End
+
+val () = cv_auto_trans errors_unit_def;
+
+Theorem errors_unit_valid:
+  valid_src_unit errors_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* The errors a body reverts with, in order: selector, parameter count and
+ * argument count. *)
+Definition revert_errors_def:
+  (revert_errors (SrcBlock _ ss) = revert_errors_list ss) ∧
+  (revert_errors (SrcIfStatement _ _ t NONE) = revert_errors t) ∧
+  (revert_errors (SrcRevertError _ err args) =
+    [(err.error_selector, LENGTH err.error_parameters, LENGTH args)]) ∧
+  (revert_errors _ = []) ∧
+  (revert_errors_list [] = []) ∧
+  (revert_errors_list (s :: ss) = revert_errors s ++ revert_errors_list ss)
+End
+
+Theorem errors_reverts_resolved:
+  FLAT (MAP (λf. revert_errors f.fn_body)
+          (HD errors_unit.unit_contracts).contract_functions) =
+  [([0xdbw; 0x42w; 0x14w; 0x4dw], 3, 3); ([0x8ew; 0x4aw; 0x23w; 0xd6w], 1, 1);
+   ([0x3dw; 0xb2w; 0xa1w; 0x2aw], 0, 0); ([0x05w; 0x6ew; 0xe4w; 0xfaw], 3, 3)]
+Proof
+  EVAL_TAC
+QED
+
+(* type(T).max and type(T).min: integer types only. *)
+
+Definition type_bounds_unit_def:
+  type_bounds_unit = ^(import_artifact
+    "../testdata/differential/expected/type_bounds.json"
+    "testdata/differential/type_bounds.sol")
+End
+
+val () = cv_auto_trans type_bounds_unit_def;
+
+Theorem type_bounds_unit_valid:
+  valid_src_unit type_bounds_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem type_bound_values:
+  type_bound "min" (UintT 8) = SOME 0 ∧
+  type_bound "max" (UintT 8) = SOME 255 ∧
+  type_bound "min" (IntT 8) = SOME (-128) ∧
+  type_bound "max" (IntT 8) = SOME 127 ∧
+  type_bound "max" (UintT 256) = SOME (&(2 ** 256) - 1) ∧
+  type_bound "min" (IntT 256) = SOME (-&(2 ** 255)) ∧
+  type_bound "max" BoolT = NONE ∧
+  type_bound "interfaceId" (UintT 8) = NONE
+Proof
+  EVAL_TAC
 QED

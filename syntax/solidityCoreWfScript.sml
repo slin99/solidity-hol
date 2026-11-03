@@ -4,7 +4,7 @@
  * Admitted: scalar/convert/tuple/internal-call definitions, reads of state
  * variables, capture of locals and state variables and scalar writes to them,
  * and structured control flow. Bindings hold elementary types, enums and
- * user-defined value types, which are integers and addresses at runtime.
+ * user-defined value types, plus located memory and calldata byte sequences.
  * Function values are deferred together with indirect calls; contract types
  * are deferred until contract metadata (payability, bases) is in the
  * environment. Typed storage references support struct fields, mappings and
@@ -186,6 +186,8 @@ Definition fixed_storage_slots_def:
              SOME ((n + per_slot - 1) DIV per_slot)
          | NONE => OPTION_MAP (λslots. n * slots)
                      (fixed_storage_slots env element))
+    | BytesT => SOME 1
+    | StringT => SOME 1
     | ArrayT _ NONE => SOME 1
     | MappingT _ _ => SOME 1
     | StructT id => OPTION_MAP (λs. s.struct_slots) (lookup_struct_layout env id)
@@ -202,12 +204,40 @@ Definition storage_type_ok_def:
     elementary_storage_type_ok key ∧ storage_type_ok env value) ∧
   (storage_type_ok env (ArrayT element NONE) ⇔ storage_type_ok env element) ∧
   (storage_type_ok env (StructT id) ⇔ IS_SOME (lookup_struct_layout env id)) ∧
+  (storage_type_ok env BytesT ⇔ T) ∧
+  (storage_type_ok env StringT ⇔ T) ∧
   (storage_type_ok env ty ⇔ elementary_storage_type_ok ty)
+End
+
+(* Located byte sequences are values; captured lvalues use ReferenceType. *)
+Definition byte_sequence_type_def:
+  byte_sequence_type ty ⇔ ty = BytesT ∨ ty = StringT
+End
+
+Definition byte_sequence_value_type_def:
+  byte_sequence_value_type ty ⇔
+    case ty of
+      LocatedT loc element => byte_sequence_type element
+    | _ => F
+End
+
+(* ABI values contain scalars or byte sequences in memory/calldata;
+ * storage pointers never cross an ABI boundary. *)
+Definition abi_value_type_def:
+  abi_value_type ty ⇔
+    is_elementary_type ty ∨
+    (byte_sequence_value_type ty ∧
+     case ty of LocatedT StorageLoc _ => F | _ => T)
+End
+
+Definition core_binding_type_def:
+  core_binding_type env ty ⇔ core_scalar_type env ty ∨ byte_sequence_value_type ty
 End
 
 (* ProductType is reserved for tuples and multiple returns: never singleton. *)
 Definition wf_core_value_type_def:
-  (wf_core_value_type env (SingleType ty) ⇔ core_scalar_type env ty) ∧
+  (wf_core_value_type env (SingleType ty) ⇔
+    core_binding_type env ty) ∧
   (wf_core_value_type env (ReferenceType ty) ⇔ storage_type_ok env ty) ∧
   (wf_core_value_type env (ProductType tys) ⇔
     LENGTH tys ≠ 1 ∧ wf_core_value_types env tys) ∧
@@ -278,6 +308,15 @@ Definition value_has_type_def:
      (ReferenceValue (StorageReference PersistentStorage _ _ offset rty _)) ⇔
     ty = rty ∧ storage_type_ok env ty ∧
     (case storage_bytes ty of SOME b => offset + b ≤ 32 | NONE => offset = 0)) ∧
+  (value_has_type env (SingleType (LocatedT CalldataLoc ty))
+     (ReferenceValue (CalldataReference _ _ rty)) ⇔
+    ty = rty ∧ byte_sequence_type ty) ∧
+  (value_has_type env (SingleType (LocatedT MemoryLoc ty))
+     (ReferenceValue (MemoryReference _ 0 rty)) ⇔
+    ty = rty ∧ byte_sequence_type ty) ∧
+  (value_has_type env (SingleType (LocatedT StorageLoc ty))
+     (ReferenceValue (StorageReference PersistentStorage _ _ 0 rty _)) ⇔
+    ty = rty ∧ byte_sequence_type ty) ∧
   (value_has_type env (ProductType tys) (TupleValue vs) ⇔
     values_have_types env tys vs) ∧
   (value_has_type env _ _ ⇔ F) ∧
@@ -317,6 +356,23 @@ Definition wf_core_atom_def:
   (wf_core_atom env ctx (SingleType ty) (ConstantAtom s) ⇔
     scalar_has_type env ty s) ∧
   (wf_core_atom env ctx _ (ConstantAtom _) ⇔ F)
+End
+
+(* ABI serialization consumes bytes from their original location. Literal
+ * bytes are already available and need no heap object for encoding. *)
+Definition wf_abi_atom_def:
+  wf_abi_atom env ctx ty a ⇔
+    case ty of
+      LocatedT _ element =>
+        byte_sequence_type element ∧
+        (case a of
+           ConstantAtom (BytesValue _) => T
+         | BoundAtom x =>
+             (case ALOOKUP ctx.bindings x of
+                SOME (SingleType (LocatedT _ actual)) => element = actual
+              | _ => F)
+         | _ => F)
+    | _ => wf_core_atom env ctx (SingleType ty) a
 End
 
 (* Operations *)
@@ -467,11 +523,20 @@ End
 Definition environment_type_def:
   environment_type f =
     case f of
-      MsgSender => AddressT NonpayableAddress
+      MsgData => LocatedT CalldataLoc BytesT
+    | MsgSender => AddressT NonpayableAddress
     | SelfAddress => AddressT NonpayableAddress
     | TxOrigin => AddressT NonpayableAddress
     | BlockCoinbase => AddressT PayableAddress
     | _ => UintT 256
+End
+
+Definition reference_convertible_def:
+  reference_convertible src dst ⇔
+    case (src, dst) of
+      (LocatedT loc a, LocatedT loc' b) =>
+        loc = loc' ∧ byte_sequence_value_type src ∧ byte_sequence_value_type dst
+    | _ => F
 End
 
 Definition wf_core_operation_def:
@@ -489,7 +554,8 @@ Definition wf_core_operation_def:
       ConstantAtom s => scalar_has_type env ty s
     | BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
-           SOME (SingleType src) => core_convertible env src ty
+           SOME (SingleType src) =>
+             core_convertible env src ty ∨ reference_convertible src ty
          | _ => F)) ∧
   (wf_core_operation env ctx annotation (TupleOperation atoms) ⇔
     case annotation of
@@ -508,8 +574,11 @@ Definition wf_core_operation_def:
       SOME v => annotation = ReferenceType v.state_type
     | NONE => F) ∧
   (wf_core_operation env ctx annotation (ReadOperation ty a) ⇔
-    annotation = SingleType ty ∧ core_scalar_type env ty ∧
-    IS_SOME (storage_bytes ty) ∧ wf_core_atom env ctx (ReferenceType ty) a) ∧
+    (if byte_sequence_type ty then
+       annotation = SingleType (LocatedT StorageLoc ty)
+     else annotation = SingleType ty ∧ core_scalar_type env ty ∧
+          IS_SOME (storage_bytes ty)) ∧
+    wf_core_atom env ctx (ReferenceType ty) a) ∧
   (wf_core_operation env ctx annotation
      (NavigateOperation ty base (FieldNavigation field)) ⇔
     annotation = ReferenceType ty ∧
@@ -530,16 +599,33 @@ Definition wf_core_operation_def:
         (case ALOOKUP ctx.bindings x of
            SOME (ReferenceType (MappingT key value)) =>
              value = ty ∧ wf_core_atom env ctx (SingleType key) index
+         | SOME (SingleType (LocatedT loc BytesT)) =>
+             loc ≠ CalldataLoc ∧ ty = FixedBytesT 1 ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
          | SOME (ReferenceType (ArrayT element _)) =>
              element = ty ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
          | _ => F)
     | _ => F) ∧
+  (wf_core_operation env ctx annotation (DefaultBytesOperation ty) ⇔
+    byte_sequence_type ty ∧ annotation = SingleType (LocatedT MemoryLoc ty)) ∧
+  (wf_core_operation env ctx annotation (BytesLiteralOperation ty _) ⇔
+    annotation = SingleType (LocatedT MemoryLoc ty) ∧ byte_sequence_type ty) ∧
+  (wf_core_operation env ctx annotation (AllocateBytesOperation ty length) ⇔
+    annotation = SingleType (LocatedT MemoryLoc ty) ∧ byte_sequence_type ty ∧
+    wf_core_atom env ctx (SingleType (UintT 256)) length) ∧
+  (wf_core_operation env ctx annotation (ByteIndexOperation a index) ⇔
+    annotation = SingleType (FixedBytesT 1) ∧
+    (wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a ∨
+     wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a ∨
+     wf_core_atom env ctx (SingleType (LocatedT StorageLoc BytesT)) a) ∧
+    wf_core_atom env ctx (SingleType (UintT 256)) index) ∧
   (wf_core_operation env ctx annotation (ArrayLengthOperation a) ⇔
     annotation = SingleType (UintT 256) ∧
     case a of
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
-           SOME (ReferenceType (ArrayT _ NONE)) => T
+           SOME (SingleType (LocatedT loc ty)) =>
+             byte_sequence_type ty
+         | SOME (ReferenceType (ArrayT _ NONE)) => T
          | _ => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (ArrayPushOperation a value) ⇔
@@ -575,11 +661,15 @@ Definition wf_core_operation_def:
   (wf_core_operation env ctx annotation
      (ExternalCallOperation kind selector params rets target value args) ⇔
     kind ≠ ExternalDelegateCall ∧ LENGTH selector = 4 ∧
-    EVERY (λty. is_elementary_type ty ∧ valid_type_shape ty) (params ++ rets) ∧
+    EVERY (λty. abi_value_type ty ∧ valid_type_shape ty) (params ++ rets) ∧
+    (* Returndata belongs to the caller's memory, never its calldata. *)
+    EVERY (λty. is_elementary_type ty ∨
+                ty = LocatedT MemoryLoc BytesT ∨
+                ty = LocatedT MemoryLoc StringT) rets ∧
     wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
     wf_core_atom env ctx (SingleType (UintT 256)) value ∧
     (kind = ExternalStaticCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
-    wf_core_atoms env ctx (MAP SingleType params) args ∧
+    LIST_REL (wf_abi_atom env ctx) params args ∧
     annotation = call_result_type rets) ∧
   (wf_core_operation env ctx annotation _ ⇔ F)
 End
@@ -598,8 +688,8 @@ End
 Definition emit_indexed_count_def:
   (emit_indexed_count env ctx [] = SOME (0 : num)) ∧
   (emit_indexed_count env ctx ((ty, indexed, a) :: args) =
-    if is_elementary_type ty ∧ valid_type_shape ty ∧
-       wf_core_atom env ctx (SingleType ty) a then
+    if abi_value_type ty ∧ valid_type_shape ty ∧
+       wf_abi_atom env ctx ty a then
       case emit_indexed_count env ctx args of
         SOME n => SOME (if indexed then n + 1 else n)
       | NONE => NONE
@@ -639,8 +729,20 @@ Definition check_core_stmts_def:
              else NONE
          | _ => NONE)
     | _ => NONE) ∧
+  (check_core_stmts env ctx (BindReferenceStmt t ty a :: ss) =
+    if ALOOKUP ctx.targets t = SOME ty ∧ byte_sequence_value_type ty ∧
+       wf_core_atom env ctx (SingleType ty) a
+    then check_core_stmts env ctx ss else NONE) ∧
+  (check_core_stmts env ctx (CopyContentsStmt src dst a b :: ss) =
+    if byte_sequence_value_type src ∧
+       (case (src, dst) of
+          (LocatedT _ ty, LocatedT loc ty') => loc ≠ CalldataLoc ∧ ty = ty'
+        | _ => F) ∧
+       wf_core_atom env ctx (SingleType src) a ∧
+       wf_core_atom env ctx (SingleType dst) b
+    then check_core_stmts env ctx ss else NONE) ∧
   (check_core_stmts env ctx (WriteScalarStmt t ty a :: ss) =
-    if ALOOKUP ctx.targets t = SOME ty ∧
+    if core_scalar_type env ty ∧ ALOOKUP ctx.targets t = SOME ty ∧
        wf_core_atom env ctx (SingleType ty) a
     then check_core_stmts env ctx ss
     else NONE) ∧
@@ -671,6 +773,13 @@ Definition check_core_stmts_def:
   (check_core_stmts env ctx (RevertStmt a :: ss) =
     if provisional_revert_payload a then check_core_stmts env ctx ss
     else NONE) ∧
+  (* Error arguments are elementary, as the ABI encoding of revert data
+     requires. *)
+  (check_core_stmts env ctx (RevertErrorStmt selector params args :: ss) =
+    if LENGTH selector = 4 ∧
+       EVERY (λty. is_elementary_type ty ∧ valid_type_shape ty) params ∧
+       wf_core_atoms env ctx (MAP SingleType params) args
+    then check_core_stmts env ctx ss else NONE) ∧
   (check_core_stmts env ctx (EmitStmt topic args :: ss) =
     case emit_indexed_count env ctx args of
       SOME n =>
@@ -710,7 +819,7 @@ End
 Definition wf_core_procedure_def:
   wf_core_procedure env (p : core_procedure) ⇔
     ALL_DISTINCT (MAP FST (p.parameters ++ p.return_bindings)) ∧
-    EVERY (λ(_, ty). core_scalar_type env ty)
+    EVERY (λ(_, ty). core_binding_type env ty)
       (p.parameters ++ p.return_bindings) ∧
     wf_core_stmts env (procedure_check_context p) p.body
 End
@@ -784,7 +893,7 @@ Definition abi_procedure_def:
   abi_procedure env f ⇔
     case lookup_procedure env f of
       SOME p =>
-        EVERY (λ(_, ty). is_elementary_type ty)
+        EVERY (λ(_, ty). abi_value_type ty)
           (p.parameters ++ p.return_bindings)
     | NONE => F
 End
@@ -811,7 +920,10 @@ Definition wf_core_dispatch_def:
        SOME (f, _) =>
          abi_procedure env f ∧
          (case lookup_procedure env f of
-            SOME p => p.return_bindings = []
+            SOME p => p.return_bindings = [] ∧
+              EVERY (λ(_, ty). is_elementary_type ty ∨
+                       ty = LocatedT MemoryLoc BytesT ∨
+                       ty = LocatedT MemoryLoc StringT) p.parameters
           | NONE => F)
      | NONE => T)
 End
@@ -894,6 +1006,7 @@ val () = cv_auto_trans_rec inline_storage_shape_def (
   | INR (env, n, tys) => (cv$c2n n, cv_size tys))’ >> cv_termination_tac
 );
 val () = cv_auto_trans environment_type_def;
+val () = cv_auto_trans wf_abi_atom_def;
 val () = cv_auto_trans (SPEC_ALL wf_core_operation_def);
 val () = cv_auto_trans emit_indexed_count_def;
 val () = cv_auto_trans fresh_core_id_def;
