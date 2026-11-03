@@ -392,6 +392,12 @@ val scalars_cleanup_uint8_over_table_term =
             ^ show_residues (yulConvLib.residues form))
     else if not (yulConvLib.is_fixed_point table_defs form) then
       fail "a form over the table term itself is not a fixed point"
+    (* The same anti-degeneracy check the rest of the suite makes, and it matters
+     * most here: this is the only call whose table is a term, and an unchanged
+     * `invoke_yul` passes both checks above.  `cleanup_uint8`'s body calls
+     * nothing, so a form that still holds a call is the call it was given. *)
+    else if aconv form t then
+      fail "the conversion returned the table term's call unchanged"
     else th
   end
 

@@ -979,23 +979,30 @@ fun block_conv tm =
  * On a copy of the global set: `add_words_compset` adds the word library's
  * rules to the compset it is given, and a compset's per-constant entries are
  * shared refs, so building this on `computeLib.the_compset ()` would change
- * what every later `EVAL` in the process reduces. *)
+ * what every later `EVAL` in the process reduces.
+ *
+ * The guarded operations' rules go in *before* the evaluator's clauses are
+ * compiled into the set.  A rule compiled into the set reaches the constants of
+ * its right-hand side through the entries that were there when it was compiled,
+ * so replacing a definition's clauses takes the replacement going in first:
+ * the evaluator's clauses name the frame and memory operations, and a guard
+ * that is not in place when they are compiled is one those occurrences do not
+ * see. *)
 val eval_compset =
   let
     val base =
-      computeLib.add_thms (evaluator_clauses @ helper_defs)
-        (computeLib.add_conv (flookup_tm, 2, flookup_conv)
-           (computeLib.add_conv (word_exp_c, 2, word_exp_conv)
+      computeLib.add_conv (flookup_tm, 2, flookup_conv)
+        (computeLib.add_conv (word_exp_c, 2, word_exp_conv)
+           (computeLib.scrub_const
               (computeLib.scrub_const
-                 (computeLib.scrub_const
-                    (wordsLib.add_words_compset true
+                 (wordsLib.add_words_compset true
+                    (computeLib.scrub_const
                        (computeLib.scrub_const
-                          (computeLib.scrub_const
-                             (computeLib.copy (computeLib.the_compset ()))
-                             eval_yul_block_c)
-                          invoke_c))
-                    word_exp_c)
-                 word_exp_tailrec_c)))
+                          (computeLib.copy (computeLib.the_compset ()))
+                          eval_yul_block_c)
+                       invoke_c))
+                 word_exp_c)
+              word_exp_tailrec_c))
     (* A guarded operation has no equation in the set at all -- the set's own
      * clause would run before any conversion and take the copy -- so its
      * clauses go on as this one rule, which declines on a term holding a call. *)
@@ -1004,7 +1011,8 @@ val eval_compset =
         (computeLib.scrub_const cs c)
   in
     computeLib.add_conv (eval_yul_block_c, 4, block_conv)
-      (List.foldl guard base guarded_helpers)
+      (computeLib.add_thms (evaluator_clauses @ helper_defs)
+         (List.foldl guard base guarded_helpers))
   end
 
 (* The rule above reduces a statement with this compute set; it has to be the
