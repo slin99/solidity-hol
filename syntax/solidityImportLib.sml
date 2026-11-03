@@ -272,6 +272,18 @@ fun expr v = within v (fn v =>
                 environment_field v (int_field base "referencedDeclaration")
                   (string_field v "memberName"),
                 type_id v]
+           else if node_type base = "FunctionCall" andalso
+                   node_type (field base "expression") = "Identifier" andalso
+                   string_field (field base "expression") "name" = "type" andalso
+                   int_field (field base "expression") "referencedDeclaration" < 0
+           then
+             (case JSONUtil.arrayMap I (field base "arguments") of
+                [arg] =>
+                  (within arg (fn a => expect a "ElementaryTypeNameExpression");
+                   con "SrcTypeMember"
+                     [info v, mk_str (string_field v "memberName"),
+                      type_name (field arg "typeName"), type_id v])
+              | _ => fail (describe v ^ ": type takes one argument"))
            else if String.isPrefix "t_struct$_"
                  (string_field (field (field v "expression") "typeDescriptions") "typeIdentifier")
             then raise MalformedInput (describe v ^ ": missing struct field declaration")

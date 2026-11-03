@@ -6,7 +6,8 @@
  * scalar-key mappings and fixed/dynamic storage arrays, member/indexed scalar
  * reads and updates, array lengths, scalar push/pop and locals
  * (including tuple declarations with holes), internal calls with single or
- * multiple returns, explicit elementary conversions, literals, unary, binary,
+ * multiple returns, explicit elementary conversions, literals, type(T).max
+ * and .min of integer types (values of type T), unary, binary,
  * comparison and short-circuit operators, simple and compound assignment to
  * locals and state variables, tuple assignment, ++ and --, if, while,
  * do-while, for, break, continue, return and unchecked blocks. Built-in
@@ -597,6 +598,18 @@ Definition elab_expr_def:
     | SrcEnvironment _ f _ =>
         let (ss, a) = bind_value n (environment_type f) (EnvironmentOperation f) in
         SOME ((ss, a, ElabType (environment_type f)), n + 1)
+    | SrcTypeMember _ member tn _ =>
+        (case normalize_type_name tn of
+           SOME ty =>
+             (* bound to a local of type T, the source type of any
+                later conversion *)
+             (case type_bound member ty of
+                SOME i =>
+                  let (ss, a) = bind_value n ty
+                                  (ConvertOperation ty (ConstantAtom (IntegerValue i))) in
+                  SOME ((ss, a, ElabType ty), n + 1)
+              | NONE => NONE)
+         | NONE => NONE)
     | SrcTypeConversion _ tn e _ =>
         (case (normalize_type_name tn, elab_expr ctx n e) of
            (SOME ty, SOME ((ss, a, vt), n1)) =>
