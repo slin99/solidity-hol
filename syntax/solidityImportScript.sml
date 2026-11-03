@@ -276,7 +276,9 @@ Datatype:
     contract_storage : src_storage_entry list;
     contract_structs : src_struct list;
     contract_events : src_event list;
-    contract_functions : src_function list
+    contract_functions : src_function list;
+    (* the public state variables, each with its getter's selector *)
+    contract_getters : (num # byte list) list
   |>
 End
 
@@ -1201,6 +1203,23 @@ Definition contract_constructor_def:
     else contract_constructor x fs)
 End
 
+(* The parameter types and the result type of the getter of a public state
+ * variable of type ty: a key for each mapping and an index for each array
+ * along its type, down to a value type or a byte sequence.
+ *)
+Definition getter_shape_def:
+  getter_shape ty =
+    case ty of
+      MappingT key value =>
+        if is_elementary_type key then
+          OPTION_MAP (λ(ps, r). (key :: ps, r)) (getter_shape value)
+        else NONE
+    | ArrayT element _ =>
+        OPTION_MAP (λ(ps, r). (UintT 256 :: ps, r)) (getter_shape element)
+    | _ => if is_elementary_type ty ∨ byte_sequence_type ty then SOME ([], ty)
+           else NONE
+End
+
 (* The variables the base constructor arguments a base gives see: the
  * parameters of its constructor. *)
 Definition constructor_parameters_def:
@@ -1298,6 +1317,13 @@ Definition check_contract_def:
         EVERY (λ(x, e). IS_SOME (ALOOKUP state x) ∧
                         IS_SOME (check_expr (initializer_env c state) e))
           c.contract_initializers ∧
+        ALL_DISTINCT (MAP FST c.contract_getters) ∧
+        EVERY (λ(x, selector).
+                 LENGTH selector = 4 ∧
+                 case ALOOKUP state x of
+                   SOME ty => IS_SOME (getter_shape ty)
+                 | NONE => F)
+          c.contract_getters ∧
         EVERY (λ(x, b, args).
                  case constructor_parameters x c.contract_functions of
                    SOME ps => check_exprs (initializer_env c state with
@@ -1418,6 +1444,7 @@ QED
 
 val () = cv_auto_trans scoped_variable_def;
 val () = cv_auto_trans state_variable_def;
+val () = cv_auto_trans getter_shape_def;
 val () = cv_auto_trans call_table_def;
 val () = cv_auto_trans contract_constructor_def;
 val () = cv_auto_trans constructor_parameters_def;

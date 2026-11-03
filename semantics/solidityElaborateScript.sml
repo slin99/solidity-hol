@@ -1241,6 +1241,88 @@ Definition elab_struct_layouts_def:
                           :: layouts))
 End
 
+(* Getters. The location a getter reads, from the state variable's
+ * reference ref of type ty, one parameter per mapping key or array index:
+ * an index past an array's length reverts with no data, as the compiler's
+ * getters do.
+ *)
+Definition getter_location_def:
+  (getter_location n ref ty [] = (([], ref, ty), n)) ∧
+  (getter_location n ref ty (p :: ps) =
+    case ty of
+      MappingT key value =>
+        let ((ss, r, t), n1) = getter_location (n + 1) (BoundAtom (AstId n)) value ps in
+        (([DefineStmt (AstId n) (ReferenceType value)
+             (NavigateOperation value ref (IndexNavigation (BoundAtom (AstId p))))] ++ ss,
+          r, t), n1)
+    | ArrayT element len =>
+        let ((ss, r, t), n1) = getter_location (n + 3) (BoundAtom (AstId (n + 2))) element ps in
+        let (ls, length) =
+          case len of
+            SOME k => ([], ConstantAtom (IntegerValue (&k)))
+          | NONE => ([DefineStmt (AstId n) (SingleType (UintT 256)) (ArrayLengthOperation ref)],
+                     BoundAtom (AstId n)) in
+        ((ls ++
+          [DefineStmt (AstId (n + 1)) (SingleType BoolT)
+             (ScalarOperation (UintT 256) UncheckedArithmetic LessThanOp
+                [BoundAtom (AstId p); length]);
+           IfStmt (BoundAtom (AstId (n + 1))) [] [RevertStmt (ConstantAtom (BytesValue []))];
+           DefineStmt (AstId (n + 2)) (ReferenceType element)
+             (NavigateOperation element ref (IndexNavigation (BoundAtom (AstId p))))] ++ ss,
+          r, t), n1)
+    | _ => (([], ref, ty), n))
+End
+
+(* A getter's parameters: fresh ids from n, one per key. *)
+Definition getter_parameters_def:
+  (getter_parameters (n : num) [] = []) ∧
+  (getter_parameters n (k :: ks) = (n, k) :: getter_parameters (n + 1) ks)
+End
+
+(* What a getter returns: a byte sequence is returned in memory. *)
+Definition getter_result_def:
+  getter_result ty = if byte_sequence_type ty then LocatedT MemoryLoc ty else ty
+End
+
+(* The getter of the public state variable x of type ty, the procedure its
+ * selector reaches: it returns the value at the location its arguments
+ * name, a byte sequence copied to memory. *)
+Definition elab_getter_def:
+  elab_getter state n (x : num) =
+    case ALOOKUP state x of
+      NONE => NONE
+    | SOME ty =>
+        case getter_shape ty of
+          NONE => NONE
+        | SOME (keys, result) =>
+            let params = getter_parameters n keys in
+            let root = n + LENGTH keys in
+            let ((nav, ref, _), n1) =
+                  getter_location (root + 1) (BoundAtom (AstId root)) ty (MAP FST params) in
+            let returned = getter_result result in
+            let (rs, a) = bind_value n1 (read_value_type result) (ReadOperation result ref) in
+            case coerce (n1 + 1) returned a (ElabType (read_value_type result)) of
+              NONE => NONE
+            | SOME ((cs, a'), n2) =>
+                SOME (<| procedure_id := AstId x;
+                         parameters := core_bindings params;
+                         return_bindings := [(AstId n2, returned)];
+                         body := [DefineStmt (AstId root) (ReferenceType ty)
+                                    (StateReferenceOperation (AstId x))] ++
+                                 nav ++ rs ++ cs ++ [ReturnStmt [a']] |>, n2 + 1)
+End
+
+Definition elab_getters_def:
+  (elab_getters state n [] = SOME ([], n)) ∧
+  (elab_getters state n (x :: gs) =
+    case elab_getter state n x of
+      SOME (p, n1) =>
+        (case elab_getters state n1 gs of
+           SOME (ps, n2) => SOME (p :: ps, n2)
+         | NONE => NONE)
+    | NONE => NONE)
+End
+
 (* The dispatch table: the functions with a selector, which the compiler
  * gives exactly the external and public ones. *)
 Definition external_functions_def:
@@ -1355,7 +1437,7 @@ Definition creation_payable_def:
 End
 
 (* Raw lowering of a valid unit of one contract, with fresh ids above its
- * node ids; the first live function is the entry procedure, or the creation
+ * node ids; the first live function or getter is the entry procedure, or the creation
  * procedure when there is none. A SOME result is
  * not yet a checked program: consumers must establish wf_core_program
  * through solidityPrepareLib before execution.
@@ -1376,7 +1458,11 @@ Definition elaborate_unit_def:
                      (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
                      (call_table c.contract_functions)
                      state (MAX_LIST (unit_ids u) + 1) fs) of
-               (SOME decls, SOME layouts, SOME cvs, SOME (ps, n)) =>
+               (SOME decls, SOME layouts, SOME cvs, SOME (fps, n0)) =>
+                 (case elab_getters state n0 (MAP FST c.contract_getters) of
+                    NONE => NONE
+                  | SOME (gps, n) =>
+                 let ps = fps ++ gps in
                  (case elab_creation
                          <| functions := call_table c.contract_functions;
                             structs := c.contract_structs;
@@ -1393,13 +1479,17 @@ Definition elaborate_unit_def:
                               p :: _ => p.procedure_id
                             | [] => creation.procedure_id);
                          external_functions :=
-                           external_functions fs;
+                           external_functions fs ++
+                           MAP (λ(x, selector).
+                                  <| selector := selector;
+                                     external_procedure := AstId x;
+                                     payable := F |>) c.contract_getters;
                          receive_procedure := OPTION_MAP FST
                            (special_function "receive" fs);
                          fallback_procedure :=
                            special_function "fallback" fs;
                          creation_procedure :=
-                           SOME (creation.procedure_id, creation_payable c) |>)
+                           SOME (creation.procedure_id, creation_payable c) |>))
              | _ => NONE)
     | _ => NONE
 End
@@ -1601,6 +1691,11 @@ val () = cv_auto_trans elab_functions_def;
 val () = cv_auto_trans core_state_variables_def;
 val () = cv_auto_trans elab_type_declarations_def;
 val () = cv_auto_trans elab_struct_layouts_def;
+val () = cv_auto_trans getter_location_def;
+val () = cv_auto_trans getter_result_def;
+val () = cv_auto_trans getter_parameters_def;
+val () = cv_auto_trans elab_getter_def;
+val () = cv_auto_trans elab_getters_def;
 val () = cv_auto_trans external_functions_def;
 val () = cv_auto_trans special_function_def;
 val () = cv_auto_trans define_parameters_def;
