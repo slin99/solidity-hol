@@ -50,11 +50,15 @@ Definition scalars_function_table_def:
   scalars_function_table = yul_env scalars_object
 End
 
-(* The frame the bodies run on.  The functions this suite has are pure, so
- * none of it is read; the fields are there to fill the record.  It is written
- * into each call as a literal rather than bound to a name, so that a body
- * which does touch it -- the memory of an mload, the calldata of a
- * calldataload -- reads a field of a record the evaluation can see through.
+(* The frame the bodies run on: empty, and written into each call as a literal
+ * rather than bound to a name, so that a body which does touch it -- the
+ * memory of an mload, the calldata of a calldataload -- reads a field of a
+ * record the evaluation can see through.  It is not a frame the suite really
+ * runs on: a body that reads a variable an initializer would have bound, or a
+ * word written to memory from one, comes out with those steps still in it,
+ * which is the frame's doing and not the conversion's.  What the test says
+ * about a form is about its shape, not about this frame being the one a run
+ * has.
  *)
 Definition yul_conv_tx_params_def:
   yul_conv_tx_params =
