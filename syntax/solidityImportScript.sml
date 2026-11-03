@@ -586,8 +586,8 @@ Definition variable_type_def:
     | NONE => NONE
 End
 
-(* A caller serializes dynamic arguments from memory regardless of the
- * callee's declared parameter location. *)
+(* Canonical ABI types for encoded arguments and decoded returns. Actual
+ * encoded byte references can retain their source location. *)
 Definition call_variable_type_def:
   call_variable_type v =
     OPTION_MAP (λty. case ty of

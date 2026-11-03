@@ -64,4 +64,15 @@ contract MemoryBytes {
         copy[0] = value;
         return (original[0], copy.length, copy[0]);
     }
+    function indexedReadSnapshot() external pure returns (bytes1) {
+        bytes memory data = hex"aa";
+        return data[(data = hex"bbcc").length - 2];
+    }
+
+    function indexedWriteSnapshot(bytes1 replacement) external pure returns (bytes1, bytes1) {
+        bytes memory original = hex"aa";
+        bytes memory data = original;
+        data[(data = hex"bbcc").length - 2] = replacement;
+        return (original[0], data[0]);
+    }
 }

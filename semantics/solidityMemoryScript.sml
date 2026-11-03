@@ -139,14 +139,16 @@ Definition copy_byte_contents_def:
   copy_byte_contents src dst st =
     case dst of
       StorageReference PersistentStorage _ _ _ _ _ =>
-        if src = dst then INL st
-        else if st.frame.static_context then
-          INR (InvalidCompletion "byte copy in static frame")
-        else (case byte_contents st src of
-          INR c => INR c
-        | INL bs => case store_storage_bytes st.world.accounts dst bs of
-            INL accounts => INL (st with world := st.world with accounts := accounts)
-          | INR c => INR c)
+        (case src of
+           StorageReference PersistentStorage _ _ _ _ _ =>
+             (case copy_storage_bytes st.world.accounts src dst st.frame.static_context of
+                INL accounts => INL (st with world := st.world with accounts := accounts)
+              | INR c => INR c)
+         | _ => case byte_contents st src of
+             INR c => INR c
+           | INL bs => case store_storage_bytes st.world.accounts dst bs st.frame.static_context of
+               INL accounts => INL (st with world := st.world with accounts := accounts)
+             | INR c => INR c)
     | _ => (case byte_contents st src of
         INR c => INR c
       | INL bs => case copy_memory_bytes src dst st of

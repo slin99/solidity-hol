@@ -466,13 +466,15 @@ Definition elab_expr_def:
     | SrcIndexAccess info root_expr index tid =>
         (case elab_expr ctx n root_expr of
            SOME ((ss, ref, ElabType (LocatedT loc BytesT)), n1) =>
-             (case elab_expr ctx n1 index of
+             let (captured, next) = snapshot n1 ref (ElabType (LocatedT loc BytesT)) in
+             let (saved, ref') = captured in
+             (case elab_expr ctx next index of
                 SOME ((si, i, vt), n2) =>
                   (case coerce n2 (UintT 256) i vt of
                      SOME ((cs, i'), n3) =>
                        let (rs, a) = bind_value n3 (FixedBytesT 1)
-                                       (ByteIndexOperation ref i') in
-                       SOME ((ss ++ si ++ cs ++ rs, a, ElabType (FixedBytesT 1)), n3 + 1)
+                                       (ByteIndexOperation ref' i') in
+                       SOME ((ss ++ saved ++ si ++ cs ++ rs, a, ElabType (FixedBytesT 1)), n3 + 1)
                    | NONE => NONE)
               | NONE => NONE)
          | _ =>
@@ -690,15 +692,15 @@ Definition elab_expr_def:
                           (AddressT NonpayableAddress ::
                            (if with_value then [UintT 256] else []) ++ params) vs of
                      SOME (cs, t :: atoms, n1) =>
-                  (case (with_value, atoms) of
-                     (T, v :: args) =>
-                       SOME (external_call_value n1 callee.ext_mutability
-                               callee.ext_selector params rets (ss ++ cs) t v args)
-                   | (F, args) =>
-                       SOME (external_call_value n1 callee.ext_mutability
-                               callee.ext_selector params rets (ss ++ cs) t
-                               (ConstantAtom (IntegerValue 0)) args)
-                   | _ => NONE)
+                       (case (with_value, atoms) of
+                          (T, v :: args) =>
+                            SOME (external_call_value n1 callee.ext_mutability
+                                    callee.ext_selector params rets (ss ++ cs) t v args)
+                        | (F, args) =>
+                            SOME (external_call_value n1 callee.ext_mutability
+                                    callee.ext_selector params rets (ss ++ cs) t
+                                    (ConstantAtom (IntegerValue 0)) args)
+                        | _ => NONE)
                    | _ => NONE)
               | NONE => NONE)
          | _ => NONE)
@@ -785,14 +787,16 @@ Definition elab_expr_def:
     | SrcIndexAccess _ root_expr index _ =>
         (case elab_expr ctx n root_expr of
            SOME ((ss, ref, ElabType (LocatedT loc BytesT)), n1) =>
+             let (captured, next) = snapshot n1 ref (ElabType (LocatedT loc BytesT)) in
+             let (saved, ref') = captured in
              (if loc = CalldataLoc then NONE else
-              case elab_expr ctx n1 index of
+              case elab_expr ctx next index of
                 SOME ((si, a, vt), n2) =>
                   (case coerce n2 (UintT 256) a vt of
                      SOME ((cs, a'), n3) =>
-                       SOME ((ss ++ si ++ cs ++
+                       SOME ((ss ++ saved ++ si ++ cs ++
                          [DefineStmt (AstId n3) (ReferenceType (FixedBytesT 1))
-                           (NavigateOperation (FixedBytesT 1) ref (IndexNavigation a'))],
+                           (NavigateOperation (FixedBytesT 1) ref' (IndexNavigation a'))],
                          BoundAtom (AstId n3), FixedBytesT 1), n3 + 1)
                    | NONE => NONE)
               | NONE => NONE)
