@@ -384,11 +384,15 @@ Proof
   Cases_on ‘OPT_MMAP I xs’ >> simp[]
 QED
 
-(* A tuple component "_c_", from "t_tuple$_c1_$_c2_$...$". *)
+(* A tuple component "_c_", from "t_tuple$_c1_$_c2_$...$". Literal
+ * byte sequences retain their source string kind here; elaboration supplies
+ * the destination's bytes/string type and location when coercing the value. *)
 Definition tuple_component_def:
   tuple_component p =
     if 2 ≤ LENGTH p ∧ isPREFIX "_" p ∧ isPREFIX "_" (REVERSE p) then
-      decode_elementary_identifier (TAKE (LENGTH p - 2) (DROP 1 p))
+      let tid = TAKE (LENGTH p - 2) (DROP 1 p) in
+      if isPREFIX "t_stringliteral_" tid then SOME StringT
+      else decode_elementary_identifier tid
     else NONE
 End
 
@@ -453,6 +457,13 @@ Proof
       is_reference_type_def, contains_mapping_def]
 QED
 
+Theorem tuple_component_valid[local]:
+  tuple_component p = SOME ty ⇒ valid_type_shape ty
+Proof
+  rw[tuple_component_def] >> gvs[valid_type_shape_def] >>
+  metis_tac[decode_elementary_identifier_valid]
+QED
+
 Theorem decode_type_identifier_valid:
   (decode_type_identifier s = SOME (SrcType ty) ⇒ valid_type_shape ty) ∧
   (decode_type_identifier s = SOME (SrcTupleType tys) ⇒
@@ -461,8 +472,7 @@ Proof
   ‘∀ps tys. all_some (MAP tuple_component ps) = SOME tys ⇒
             EVERY valid_type_shape tys’
     by (Induct >> rw[all_some_def, AllCaseEqs()] >>
-        gvs[tuple_component_def] >>
-        metis_tac[decode_elementary_identifier_valid]) >>
+        gvs[] >> metis_tac[tuple_component_valid]) >>
   rw[decode_type_identifier_def, decode_rational_def, rational_type_def,
      AllCaseEqs()] >>
   gvs[] >> metis_tac[decode_elementary_identifier_valid]
