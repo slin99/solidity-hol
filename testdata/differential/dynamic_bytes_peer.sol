@@ -15,6 +15,10 @@ contract EchoPeer {
                 mstore(32, 3)
                 return(0, 64)
             }
+            case 4 {
+                mstore(32, 0xffffffffffffff00)
+                return(0, 64)
+            }
             case 3 {
                 mstore(32, 0xffffffffffffff40)
                 return(0, 64)
@@ -28,5 +32,9 @@ contract EchoPeer {
 
     function echo(bytes calldata data, string calldata text) external pure returns (bytes memory, string memory) {
         return (data, text);
+    }
+
+    function afterMutation(bytes calldata data, uint256) external pure returns (bytes memory) {
+        return data;
     }
 }

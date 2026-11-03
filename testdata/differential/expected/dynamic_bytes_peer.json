@@ -40,7 +40,7 @@
     },
     "sources": {
       "testdata/differential/dynamic_bytes_peer.sol": {
-        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.37;\n\ncontract EchoPeer {\n    function raw(uint256 mode) external pure returns (bytes memory) {\n        assembly {\n            mstore(0, 32)\n            switch mode\n            case 0 {\n                mstore(32, 3)\n                mstore(64, shl(232, 0x616263))\n                return(0, 67)\n            }\n            case 1 {\n                mstore(32, 3)\n                return(0, 64)\n            }\n            case 3 {\n                mstore(32, 0xffffffffffffff40)\n                return(0, 64)\n            }\n            default {\n                mstore(32, 0x10000000000000000)\n                return(0, 64)\n            }\n        }\n    }\n\n    function echo(bytes calldata data, string calldata text) external pure returns (bytes memory, string memory) {\n        return (data, text);\n    }\n}\n"
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.37;\n\ncontract EchoPeer {\n    function raw(uint256 mode) external pure returns (bytes memory) {\n        assembly {\n            mstore(0, 32)\n            switch mode\n            case 0 {\n                mstore(32, 3)\n                mstore(64, shl(232, 0x616263))\n                return(0, 67)\n            }\n            case 1 {\n                mstore(32, 3)\n                return(0, 64)\n            }\n            case 4 {\n                mstore(32, 0xffffffffffffff00)\n                return(0, 64)\n            }\n            case 3 {\n                mstore(32, 0xffffffffffffff40)\n                return(0, 64)\n            }\n            default {\n                mstore(32, 0x10000000000000000)\n                return(0, 64)\n            }\n        }\n    }\n\n    function echo(bytes calldata data, string calldata text) external pure returns (bytes memory, string memory) {\n        return (data, text);\n    }\n\n    function afterMutation(bytes calldata data, uint256) external pure returns (bytes memory) {\n        return data;\n    }\n}\n"
       }
     }
   },
@@ -49,6 +49,30 @@
       "testdata/differential/dynamic_bytes_peer.sol": {
         "EchoPeer": {
           "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "bytes",
+                  "name": "data",
+                  "type": "bytes"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "name": "afterMutation",
+              "outputs": [
+                {
+                  "internalType": "bytes",
+                  "name": "",
+                  "type": "bytes"
+                }
+              ],
+              "stateMutability": "pure",
+              "type": "function"
+            },
             {
               "inputs": [
                 {
@@ -100,18 +124,19 @@
           ],
           "evm": {
             "bytecode": {
-              "object": "608060405234601c57600e6020565b61046161002b823961046190f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b610291565b61001d5f3561003c565b8063302e678f146100375763b2eb8f440361000e57610257565b6100eb565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f80fd5b90565b61006081610054565b0361006757565b5f80fd5b9050359061007882610057565b565b9060208282031261009357610090915f0161006b565b90565b61004c565b5190565b60209181520190565b90825f9392825e0152565b601f801991011690565b6100d96100e26020936100e7936100d081610098565b9384809361009c565b958691016100a5565b6100b0565b0190565b34610100576100fb36600461007a565b61029a565b610048565b5f80fd5b5f80fd5b5f80fd5b909182601f8301121561014b5781359167ffffffffffffffff831161014657602001926001830284011161014157565b61010d565b610109565b610105565b909182601f8301121561018a5781359167ffffffffffffffff831161018557602001926001830284011161018057565b61010d565b610109565b610105565b90916040828403126101e9575f82013567ffffffffffffffff81116101e457836101ba918401610111565b929093602082013567ffffffffffffffff81116101df576101db9201610150565b9091565b610050565b610050565b61004c565b5190565b60209181520190565b61021a61022360209361022893610211816101ee565b938480936101f2565b958691016100a5565b6100b0565b0190565b90916102466102549360408401908482035f8601526100ba565b9160208184039101526101fb565b90565b3461028c5761027361026a36600461018f565b92919091610432565b9061028861027f610042565b9283928361022c565b0390f35b610048565b5f80fd5b606090565b6102a2610295565b5060205f52805f146102ea57806001146102e0576003146102cf576801000000000000000060205260405ff35b67ffffffffffffff4060205260405ff35b600360205260405ff35b60036020526261626360e81b60405260435ff35b606090565b5f80fd5b634e487b7160e01b5f52604160045260245ffd5b90610325906100b0565b810190811067ffffffffffffffff82111761033f57604052565b610307565b90610357610350610042565b928361031b565b565b67ffffffffffffffff8111610377576103736020916100b0565b0190565b610307565b90825f939282370152565b9092919261039c61039782610359565b610344565b938185526020850190828401116103b8576103b69261037c565b565b610303565b6103c8913691610387565b90565b67ffffffffffffffff81116103e9576103e56020916100b0565b0190565b610307565b909291926104036103fe826103cb565b610344565b9381855260208501908284011161041f5761041d9261037c565b565b610303565b61042f9136916103ee565b90565b61045e9261045891959495610445610295565b5061044e6102fe565b50929095926103bd565b93610424565b9056"
+              "object": "608060405234601c57600e6020565b61053361002b823961053390f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b610334565b61001d5f3561004c565b8063302e678f14610047578063878573db146100425763b2eb8f440361000e576102fa565b6101bd565b610113565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f80fd5b90565b61007081610064565b0361007757565b5f80fd5b9050359061008882610067565b565b906020828203126100a3576100a0915f0161007b565b90565b61005c565b5190565b60209181520190565b90825f9392825e0152565b601f801991011690565b6100e96100f26020936100f7936100e0816100a8565b938480936100ac565b958691016100b5565b6100c0565b0190565b6101109160208201915f8184039101526100ca565b90565b346101285761012336600461008a565b61033d565b610058565b5f80fd5b5f80fd5b5f80fd5b909182601f830112156101735781359167ffffffffffffffff831161016e57602001926001830284011161016957565b610135565b610131565b61012d565b916040838303126101b8575f83013567ffffffffffffffff81116101b3576101a5836101b0928601610139565b93909460200161007b565b90565b610060565b61005c565b346101ee576101ea6101d96101d3366004610178565b91610482565b6101e1610052565b918291826100fb565b0390f35b610058565b909182601f8301121561022d5781359167ffffffffffffffff831161022857602001926001830284011161022357565b610135565b610131565b61012d565b909160408284031261028c575f82013567ffffffffffffffff8111610287578361025d918401610139565b929093602082013567ffffffffffffffff81116102825761027e92016101f3565b9091565b610060565b610060565b61005c565b5190565b60209181520190565b6102bd6102c66020936102cb936102b481610291565b93848093610295565b958691016100b5565b6100c0565b0190565b90916102e96102f79360408401908482035f8601526100ca565b91602081840391015261029e565b90565b3461032f5761031661030d366004610232565b92919091610504565b9061032b610322610052565b928392836102cf565b0390f35b610058565b5f80fd5b606090565b610345610338565b5060205f52805f146103a6578060011461039c578060041461038b5760031461037a576801000000000000000060205260405ff35b67ffffffffffffff4060205260405ff35b67ffffffffffffff0060205260405ff35b600360205260405ff35b60036020526261626360e81b60405260435ff35b5f80fd5b634e487b7160e01b5f52604160045260245ffd5b906103dc906100c0565b810190811067ffffffffffffffff8211176103f657604052565b6103be565b9061040e610407610052565b92836103d2565b565b67ffffffffffffffff811161042e5761042a6020916100c0565b0190565b6103be565b90825f939282370152565b9092919261045361044e82610410565b6103fb565b9381855260208501908284011161046f5761046d92610433565b565b6103ba565b61047f91369161043e565b90565b610495925061048f610338565b50610474565b90565b606090565b67ffffffffffffffff81116104bb576104b76020916100c0565b0190565b6103be565b909291926104d56104d08261049d565b6103fb565b938185526020850190828401116104f1576104ef92610433565b565b6103ba565b6105019136916104c0565b90565b6105309261052a91959495610517610338565b50610520610498565b5092909592610474565b936104f6565b9056"
             },
             "deployedBytecode": {
-              "object": "60806040526004361015610013575b610291565b61001d5f3561003c565b8063302e678f146100375763b2eb8f440361000e57610257565b6100eb565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f80fd5b90565b61006081610054565b0361006757565b5f80fd5b9050359061007882610057565b565b9060208282031261009357610090915f0161006b565b90565b61004c565b5190565b60209181520190565b90825f9392825e0152565b601f801991011690565b6100d96100e26020936100e7936100d081610098565b9384809361009c565b958691016100a5565b6100b0565b0190565b34610100576100fb36600461007a565b61029a565b610048565b5f80fd5b5f80fd5b5f80fd5b909182601f8301121561014b5781359167ffffffffffffffff831161014657602001926001830284011161014157565b61010d565b610109565b610105565b909182601f8301121561018a5781359167ffffffffffffffff831161018557602001926001830284011161018057565b61010d565b610109565b610105565b90916040828403126101e9575f82013567ffffffffffffffff81116101e457836101ba918401610111565b929093602082013567ffffffffffffffff81116101df576101db9201610150565b9091565b610050565b610050565b61004c565b5190565b60209181520190565b61021a61022360209361022893610211816101ee565b938480936101f2565b958691016100a5565b6100b0565b0190565b90916102466102549360408401908482035f8601526100ba565b9160208184039101526101fb565b90565b3461028c5761027361026a36600461018f565b92919091610432565b9061028861027f610042565b9283928361022c565b0390f35b610048565b5f80fd5b606090565b6102a2610295565b5060205f52805f146102ea57806001146102e0576003146102cf576801000000000000000060205260405ff35b67ffffffffffffff4060205260405ff35b600360205260405ff35b60036020526261626360e81b60405260435ff35b606090565b5f80fd5b634e487b7160e01b5f52604160045260245ffd5b90610325906100b0565b810190811067ffffffffffffffff82111761033f57604052565b610307565b90610357610350610042565b928361031b565b565b67ffffffffffffffff8111610377576103736020916100b0565b0190565b610307565b90825f939282370152565b9092919261039c61039782610359565b610344565b938185526020850190828401116103b8576103b69261037c565b565b610303565b6103c8913691610387565b90565b67ffffffffffffffff81116103e9576103e56020916100b0565b0190565b610307565b909291926104036103fe826103cb565b610344565b9381855260208501908284011161041f5761041d9261037c565b565b610303565b61042f9136916103ee565b90565b61045e9261045891959495610445610295565b5061044e6102fe565b50929095926103bd565b93610424565b9056"
+              "object": "60806040526004361015610013575b610334565b61001d5f3561004c565b8063302e678f14610047578063878573db146100425763b2eb8f440361000e576102fa565b6101bd565b610113565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f80fd5b90565b61007081610064565b0361007757565b5f80fd5b9050359061008882610067565b565b906020828203126100a3576100a0915f0161007b565b90565b61005c565b5190565b60209181520190565b90825f9392825e0152565b601f801991011690565b6100e96100f26020936100f7936100e0816100a8565b938480936100ac565b958691016100b5565b6100c0565b0190565b6101109160208201915f8184039101526100ca565b90565b346101285761012336600461008a565b61033d565b610058565b5f80fd5b5f80fd5b5f80fd5b909182601f830112156101735781359167ffffffffffffffff831161016e57602001926001830284011161016957565b610135565b610131565b61012d565b916040838303126101b8575f83013567ffffffffffffffff81116101b3576101a5836101b0928601610139565b93909460200161007b565b90565b610060565b61005c565b346101ee576101ea6101d96101d3366004610178565b91610482565b6101e1610052565b918291826100fb565b0390f35b610058565b909182601f8301121561022d5781359167ffffffffffffffff831161022857602001926001830284011161022357565b610135565b610131565b61012d565b909160408284031261028c575f82013567ffffffffffffffff8111610287578361025d918401610139565b929093602082013567ffffffffffffffff81116102825761027e92016101f3565b9091565b610060565b610060565b61005c565b5190565b60209181520190565b6102bd6102c66020936102cb936102b481610291565b93848093610295565b958691016100b5565b6100c0565b0190565b90916102e96102f79360408401908482035f8601526100ca565b91602081840391015261029e565b90565b3461032f5761031661030d366004610232565b92919091610504565b9061032b610322610052565b928392836102cf565b0390f35b610058565b5f80fd5b606090565b610345610338565b5060205f52805f146103a6578060011461039c578060041461038b5760031461037a576801000000000000000060205260405ff35b67ffffffffffffff4060205260405ff35b67ffffffffffffff0060205260405ff35b600360205260405ff35b60036020526261626360e81b60405260435ff35b5f80fd5b634e487b7160e01b5f52604160045260245ffd5b906103dc906100c0565b810190811067ffffffffffffffff8211176103f657604052565b6103be565b9061040e610407610052565b92836103d2565b565b67ffffffffffffffff811161042e5761042a6020916100c0565b0190565b6103be565b90825f939282370152565b9092919261045361044e82610410565b6103fb565b9381855260208501908284011161046f5761046d92610433565b565b6103ba565b61047f91369161043e565b90565b610495925061048f610338565b50610474565b90565b606090565b67ffffffffffffffff81116104bb576104b76020916100c0565b0190565b6103be565b909291926104d56104d08261049d565b6103fb565b938185526020850190828401116104f1576104ef92610433565b565b6103ba565b6105019136916104c0565b90565b6105309261052a91959495610517610338565b50610520610498565b5092909592610474565b936104f6565b9056"
             },
             "methodIdentifiers": {
+              "afterMutation(bytes,uint256)": "878573db",
               "echo(bytes,string)": "b2eb8f44",
               "raw(uint256)": "302e678f"
             }
           },
-          "ir": "\n/// @use-src 0:\"testdata/differential/dynamic_bytes_peer.sol\"\nobject \"EchoPeer_27\" {\n    code {\n        /// @src 0:57:847  \"contract EchoPeer {...\"\n        mstore(64, memoryguard(128))\n        if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n\n        constructor_EchoPeer_27()\n\n        let _1 := allocate_unbounded()\n        codecopy(_1, dataoffset(\"EchoPeer_27_deployed\"), datasize(\"EchoPeer_27_deployed\"))\n\n        return(_1, datasize(\"EchoPeer_27_deployed\"))\n\n        function allocate_unbounded() -> memPtr {\n            memPtr := mload(64)\n        }\n\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n            revert(0, 0)\n        }\n\n        /// @src 0:57:847  \"contract EchoPeer {...\"\n        function constructor_EchoPeer_27() {\n\n            /// @src 0:57:847  \"contract EchoPeer {...\"\n\n        }\n        /// @src 0:57:847  \"contract EchoPeer {...\"\n\n    }\n    /// @use-src 0:\"testdata/differential/dynamic_bytes_peer.sol\"\n    object \"EchoPeer_27_deployed\" {\n        code {\n            /// @src 0:57:847  \"contract EchoPeer {...\"\n            mstore(64, 128)\n\n            if iszero(lt(calldatasize(), 4))\n            {\n                let selector := shift_right_224_unsigned(calldataload(0))\n                switch selector\n\n                case 0x302e678f\n                {\n                    // raw(uint256)\n\n                    external_fun_raw_10()\n                }\n\n                case 0xb2eb8f44\n                {\n                    // echo(bytes,string)\n\n                    external_fun_echo_26()\n                }\n\n                default {}\n            }\n\n            revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n\n            function shift_right_224_unsigned(value) -> newValue {\n                newValue :=\n\n                shr(224, value)\n\n            }\n\n            function allocate_unbounded() -> memPtr {\n                memPtr := mload(64)\n            }\n\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n                revert(0, 0)\n            }\n\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() {\n                revert(0, 0)\n            }\n\n            function revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() {\n                revert(0, 0)\n            }\n\n            function cleanup_t_uint256(value) -> cleaned {\n                cleaned := value\n            }\n\n            function validator_revert_t_uint256(value) {\n                if iszero(eq(value, cleanup_t_uint256(value))) { revert(0, 0) }\n            }\n\n            function abi_decode_t_uint256(offset, end) -> value {\n                value := calldataload(offset)\n                validator_revert_t_uint256(value)\n            }\n\n            function abi_decode_tuple_t_uint256(headStart, dataEnd) -> value0 {\n                if slt(sub(dataEnd, headStart), 32) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n                {\n\n                    let offset := 0\n\n                    value0 := abi_decode_t_uint256(add(headStart, offset), dataEnd)\n                }\n\n            }\n\n            function array_length_t_bytes_memory_ptr(value) -> length {\n\n                length := mload(value)\n\n            }\n\n            function array_storeLengthForEncoding_t_bytes_memory_ptr_fromStack(pos, length) -> updated_pos {\n                mstore(pos, length)\n                updated_pos := add(pos, 0x20)\n            }\n\n            function copy_memory_to_memory_with_cleanup(src, dst, length) {\n\n                mcopy(dst, src, length)\n                mstore(add(dst, length), 0)\n\n            }\n\n            function round_up_to_mul_of_32(value) -> result {\n                result := and(add(value, 31), not(31))\n            }\n\n            function abi_encode_t_bytes_memory_ptr_to_t_bytes_memory_ptr_fromStack(value, pos) -> end {\n                let length := array_length_t_bytes_memory_ptr(value)\n                pos := array_storeLengthForEncoding_t_bytes_memory_ptr_fromStack(pos, length)\n                copy_memory_to_memory_with_cleanup(add(value, 0x20), pos, length)\n                end := add(pos, round_up_to_mul_of_32(length))\n            }\n\n            function abi_encode_tuple_t_bytes_memory_ptr__to_t_bytes_memory_ptr__fromStack(headStart , value0) -> tail {\n                tail := add(headStart, 32)\n\n                mstore(add(headStart, 0), sub(tail, headStart))\n                tail := abi_encode_t_bytes_memory_ptr_to_t_bytes_memory_ptr_fromStack(value0,  tail)\n\n            }\n\n            function external_fun_raw_10() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                let param_0 :=  abi_decode_tuple_t_uint256(4, calldatasize())\n                let ret_0 :=  fun_raw_10(param_0)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_bytes_memory_ptr__to_t_bytes_memory_ptr__fromStack(memPos , ret_0)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d() {\n                revert(0, 0)\n            }\n\n            function revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490() {\n                revert(0, 0)\n            }\n\n            function revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef() {\n                revert(0, 0)\n            }\n\n            // bytes\n            function abi_decode_t_bytes_calldata_ptr(offset, end) -> arrayPos, length {\n                if iszero(slt(add(offset, 0x1f), end)) { revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d() }\n                length := calldataload(offset)\n                if gt(length, 0xffffffffffffffff) { revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490() }\n                arrayPos := add(offset, 0x20)\n                if gt(add(arrayPos, mul(length, 0x01)), end) { revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef() }\n            }\n\n            // string\n            function abi_decode_t_string_calldata_ptr(offset, end) -> arrayPos, length {\n                if iszero(slt(add(offset, 0x1f), end)) { revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d() }\n                length := calldataload(offset)\n                if gt(length, 0xffffffffffffffff) { revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490() }\n                arrayPos := add(offset, 0x20)\n                if gt(add(arrayPos, mul(length, 0x01)), end) { revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef() }\n            }\n\n            function abi_decode_tuple_t_bytes_calldata_ptrt_string_calldata_ptr(headStart, dataEnd) -> value0, value1, value2, value3 {\n                if slt(sub(dataEnd, headStart), 64) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n                {\n\n                    let offset := calldataload(add(headStart, 0))\n                    if gt(offset, 0xffffffffffffffff) { revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() }\n\n                    value0, value1 := abi_decode_t_bytes_calldata_ptr(add(headStart, offset), dataEnd)\n                }\n\n                {\n\n                    let offset := calldataload(add(headStart, 32))\n                    if gt(offset, 0xffffffffffffffff) { revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() }\n\n                    value2, value3 := abi_decode_t_string_calldata_ptr(add(headStart, offset), dataEnd)\n                }\n\n            }\n\n            function array_length_t_string_memory_ptr(value) -> length {\n\n                length := mload(value)\n\n            }\n\n            function array_storeLengthForEncoding_t_string_memory_ptr_fromStack(pos, length) -> updated_pos {\n                mstore(pos, length)\n                updated_pos := add(pos, 0x20)\n            }\n\n            function abi_encode_t_string_memory_ptr_to_t_string_memory_ptr_fromStack(value, pos) -> end {\n                let length := array_length_t_string_memory_ptr(value)\n                pos := array_storeLengthForEncoding_t_string_memory_ptr_fromStack(pos, length)\n                copy_memory_to_memory_with_cleanup(add(value, 0x20), pos, length)\n                end := add(pos, round_up_to_mul_of_32(length))\n            }\n\n            function abi_encode_tuple_t_bytes_memory_ptr_t_string_memory_ptr__to_t_bytes_memory_ptr_t_string_memory_ptr__fromStack(headStart , value0, value1) -> tail {\n                tail := add(headStart, 64)\n\n                mstore(add(headStart, 0), sub(tail, headStart))\n                tail := abi_encode_t_bytes_memory_ptr_to_t_bytes_memory_ptr_fromStack(value0,  tail)\n\n                mstore(add(headStart, 32), sub(tail, headStart))\n                tail := abi_encode_t_string_memory_ptr_to_t_string_memory_ptr_fromStack(value1,  tail)\n\n            }\n\n            function external_fun_echo_26() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                let param_0, param_1, param_2, param_3 :=  abi_decode_tuple_t_bytes_calldata_ptrt_string_calldata_ptr(4, calldatasize())\n                let ret_0, ret_1 :=  fun_echo_26(param_0, param_1, param_2, param_3)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_bytes_memory_ptr_t_string_memory_ptr__to_t_bytes_memory_ptr_t_string_memory_ptr__fromStack(memPos , ret_0, ret_1)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74() {\n                revert(0, 0)\n            }\n\n            function zero_value_for_split_t_bytes_memory_ptr() -> ret {\n                ret := 96\n            }\n\n            /// @ast-id 10\n            /// @src 0:81:694  \"function raw(uint256 mode) external pure returns (bytes memory) {...\"\n            function fun_raw_10(var_mode_3) -> var__6_mpos {\n                /// @src 0:131:143  \"bytes memory\"\n                let zero_t_bytes_memory_ptr_1_mpos := zero_value_for_split_t_bytes_memory_ptr()\n                var__6_mpos := zero_t_bytes_memory_ptr_1_mpos\n\n                /// @src 0:155:688  \"assembly {...\"\n                {\n                    mstore(0, 32)\n                    switch var_mode_3\n                    case 0 {\n                        mstore(32, 3)\n                        mstore(64, shl(232, 0x616263))\n                        return(0, 67)\n                    }\n                    case 1 {\n                        mstore(32, 3)\n                        return(0, 64)\n                    }\n                    case 3 {\n                        mstore(32, 0xffffffffffffff40)\n                        return(0, 64)\n                    }\n                    default {\n                        mstore(32, 0x10000000000000000)\n                        return(0, 64)\n                    }\n                }\n\n            }\n            /// @src 0:57:847  \"contract EchoPeer {...\"\n\n            function zero_value_for_split_t_string_memory_ptr() -> ret {\n                ret := 96\n            }\n\n            function revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae() {\n                revert(0, 0)\n            }\n\n            function panic_error_0x41() {\n                mstore(0, 35408467139433450592217433187231851964531694900788300625387963629091585785856)\n                mstore(4, 0x41)\n                revert(0, 0x24)\n            }\n\n            function finalize_allocation(memPtr, size) {\n                let newFreePtr := add(memPtr, round_up_to_mul_of_32(size))\n                // protect against overflow\n                if or(gt(newFreePtr, 0xffffffffffffffff), lt(newFreePtr, memPtr)) { panic_error_0x41() }\n                mstore(64, newFreePtr)\n            }\n\n            function allocate_memory(size) -> memPtr {\n                memPtr := allocate_unbounded()\n                finalize_allocation(memPtr, size)\n            }\n\n            function array_allocation_size_t_bytes_memory_ptr(length) -> size {\n                // Make sure we can allocate memory without overflow\n                if gt(length, 0xffffffffffffffff) { panic_error_0x41() }\n\n                size := round_up_to_mul_of_32(length)\n\n                // add length slot\n                size := add(size, 0x20)\n\n            }\n\n            function copy_calldata_to_memory_with_cleanup(src, dst, length) {\n\n                calldatacopy(dst, src, length)\n                mstore(add(dst, length), 0)\n\n            }\n\n            function abi_decode_available_length_t_bytes_memory_ptr(src, length, end) -> array {\n                array := allocate_memory(array_allocation_size_t_bytes_memory_ptr(length))\n                mstore(array, length)\n                let dst := add(array, 0x20)\n                if gt(add(src, length), end) { revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae() }\n                copy_calldata_to_memory_with_cleanup(src, dst, length)\n            }\n\n            function convert_array_t_bytes_calldata_ptr_to_t_bytes_memory_ptr(value, length) -> converted  {\n\n                // Copy the array to a free position in memory\n                converted :=\n\n                abi_decode_available_length_t_bytes_memory_ptr(value, length, calldatasize())\n\n            }\n\n            function array_allocation_size_t_string_memory_ptr(length) -> size {\n                // Make sure we can allocate memory without overflow\n                if gt(length, 0xffffffffffffffff) { panic_error_0x41() }\n\n                size := round_up_to_mul_of_32(length)\n\n                // add length slot\n                size := add(size, 0x20)\n\n            }\n\n            function abi_decode_available_length_t_string_memory_ptr(src, length, end) -> array {\n                array := allocate_memory(array_allocation_size_t_string_memory_ptr(length))\n                mstore(array, length)\n                let dst := add(array, 0x20)\n                if gt(add(src, length), end) { revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae() }\n                copy_calldata_to_memory_with_cleanup(src, dst, length)\n            }\n\n            function convert_array_t_string_calldata_ptr_to_t_string_memory_ptr(value, length) -> converted  {\n\n                // Copy the array to a free position in memory\n                converted :=\n\n                abi_decode_available_length_t_string_memory_ptr(value, length, calldatasize())\n\n            }\n\n            /// @ast-id 26\n            /// @src 0:700:845  \"function echo(bytes calldata data, string calldata text) external pure returns (bytes memory, string memory) {...\"\n            function fun_echo_26(var_data_12_offset, var_data_12_length, var_text_14_offset, var_text_14_length) -> var__17_mpos, var__19_mpos {\n                /// @src 0:780:792  \"bytes memory\"\n                let zero_t_bytes_memory_ptr_2_mpos := zero_value_for_split_t_bytes_memory_ptr()\n                var__17_mpos := zero_t_bytes_memory_ptr_2_mpos\n                /// @src 0:794:807  \"string memory\"\n                let zero_t_string_memory_ptr_3_mpos := zero_value_for_split_t_string_memory_ptr()\n                var__19_mpos := zero_t_string_memory_ptr_3_mpos\n\n                /// @src 0:827:831  \"data\"\n                let _4_offset := var_data_12_offset\n                let _4_length := var_data_12_length\n                let expr_21_offset := _4_offset\n                let expr_21_length := _4_length\n                /// @src 0:826:838  \"(data, text)\"\n                let expr_23_component_1_offset := expr_21_offset\n                let expr_23_component_1_length := expr_21_length\n                /// @src 0:833:837  \"text\"\n                let _5_offset := var_text_14_offset\n                let _5_length := var_text_14_length\n                let expr_22_offset := _5_offset\n                let expr_22_length := _5_length\n                /// @src 0:826:838  \"(data, text)\"\n                let expr_23_component_2_offset := expr_22_offset\n                let expr_23_component_2_length := expr_22_length\n                /// @src 0:819:838  \"return (data, text)\"\n                var__17_mpos := convert_array_t_bytes_calldata_ptr_to_t_bytes_memory_ptr(expr_23_component_1_offset, expr_23_component_1_length)\n                var__19_mpos := convert_array_t_string_calldata_ptr_to_t_string_memory_ptr(expr_23_component_2_offset, expr_23_component_2_length)\n                leave\n\n            }\n            /// @src 0:57:847  \"contract EchoPeer {...\"\n\n        }\n\n        data \".metadata\" hex\"\"\n    }\n\n}\n\n",
-          "irOptimized": "/// @use-src 0:\"testdata/differential/dynamic_bytes_peer.sol\"\nobject \"EchoPeer_27\" {\n    code {\n        {\n            /// @src 0:57:847  \"contract EchoPeer {...\"\n            mstore(64, memoryguard(0x80))\n            if callvalue()\n            {\n                revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            }\n            let _1 := allocate_unbounded()\n            codecopy(_1, dataoffset(\"EchoPeer_27_deployed\"), datasize(\"EchoPeer_27_deployed\"))\n            return(_1, datasize(\"EchoPeer_27_deployed\"))\n        }\n        function allocate_unbounded() -> memPtr\n        { memPtr := mload(64) }\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n        { revert(0, 0) }\n    }\n    /// @use-src 0:\"testdata/differential/dynamic_bytes_peer.sol\"\n    object \"EchoPeer_27_deployed\" {\n        code {\n            {\n                /// @src 0:57:847  \"contract EchoPeer {...\"\n                mstore(64, 128)\n                if iszero(lt(calldatasize(), 4))\n                {\n                    let selector := shift_right_unsigned(calldataload(0))\n                    switch selector\n                    case 0x302e678f { external_fun_raw() }\n                    case 0xb2eb8f44 { external_fun_echo() }\n                    default { }\n                }\n                revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            }\n            function shift_right_unsigned(value) -> newValue\n            { newValue := shr(224, value) }\n            function allocate_unbounded() -> memPtr\n            { memPtr := mload(64) }\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            { revert(0, 0) }\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n            { revert(0, 0) }\n            function revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db()\n            { revert(0, 0) }\n            function cleanup_uint256(value) -> cleaned\n            { cleaned := value }\n            function validator_revert_uint256(value)\n            {\n                if iszero(eq(value, cleanup_uint256(value))) { revert(0, 0) }\n            }\n            function abi_decode_uint256(offset, end) -> value\n            {\n                value := calldataload(offset)\n                validator_revert_uint256(value)\n            }\n            function abi_decode_tuple_uint256(headStart, dataEnd) -> value0\n            {\n                if slt(sub(dataEnd, headStart), 32)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n                let offset := 0\n                value0 := abi_decode_uint256(add(headStart, offset), dataEnd)\n            }\n            function array_length_bytes(value) -> length\n            { length := mload(value) }\n            function array_storeLengthForEncoding_bytes(pos, length) -> updated_pos\n            {\n                mstore(pos, length)\n                updated_pos := add(pos, 0x20)\n            }\n            function copy_memory_to_memory_with_cleanup(src, dst, length)\n            {\n                mcopy(dst, src, length)\n                mstore(add(dst, length), 0)\n            }\n            function round_up_to_mul_of(value) -> result\n            {\n                result := and(add(value, 31), not(31))\n            }\n            function abi_encode_bytes_memory_ptr(value, pos) -> end\n            {\n                let length := array_length_bytes(value)\n                pos := array_storeLengthForEncoding_bytes(pos, length)\n                copy_memory_to_memory_with_cleanup(add(value, 0x20), pos, length)\n                end := add(pos, round_up_to_mul_of(length))\n            }\n            function abi_encode_bytes(headStart, value0) -> tail\n            {\n                tail := add(headStart, 32)\n                mstore(add(headStart, 0), sub(tail, headStart))\n                tail := abi_encode_bytes_memory_ptr(value0, tail)\n            }\n            function external_fun_raw()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                let param := abi_decode_tuple_uint256(4, calldatasize())\n                let ret := fun_raw(param)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_bytes(memPos, ret)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d()\n            { revert(0, 0) }\n            function revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490()\n            { revert(0, 0) }\n            function revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef()\n            { revert(0, 0) }\n            function abi_decode_bytes_calldata(offset, end) -> arrayPos, length\n            {\n                if iszero(slt(add(offset, 0x1f), end))\n                {\n                    revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d()\n                }\n                length := calldataload(offset)\n                if gt(length, 0xffffffffffffffff)\n                {\n                    revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490()\n                }\n                arrayPos := add(offset, 0x20)\n                if gt(add(arrayPos, mul(length, 0x01)), end)\n                {\n                    revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef()\n                }\n            }\n            function abi_decode_string_calldata(offset, end) -> arrayPos, length\n            {\n                if iszero(slt(add(offset, 0x1f), end))\n                {\n                    revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d()\n                }\n                length := calldataload(offset)\n                if gt(length, 0xffffffffffffffff)\n                {\n                    revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490()\n                }\n                arrayPos := add(offset, 0x20)\n                if gt(add(arrayPos, mul(length, 0x01)), end)\n                {\n                    revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef()\n                }\n            }\n            function abi_decode_bytes_calldatat_string_calldata(headStart, dataEnd) -> value0, value1, value2, value3\n            {\n                if slt(sub(dataEnd, headStart), 64)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n                let offset := calldataload(add(headStart, 0))\n                if gt(offset, 0xffffffffffffffff)\n                {\n                    revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db()\n                }\n                value0, value1 := abi_decode_bytes_calldata(add(headStart, offset), dataEnd)\n                let offset_1 := calldataload(add(headStart, 32))\n                if gt(offset_1, 0xffffffffffffffff)\n                {\n                    revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db()\n                }\n                value2, value3 := abi_decode_string_calldata(add(headStart, offset_1), dataEnd)\n            }\n            function array_length_string(value) -> length\n            { length := mload(value) }\n            function array_storeLengthForEncoding_string(pos, length) -> updated_pos\n            {\n                mstore(pos, length)\n                updated_pos := add(pos, 0x20)\n            }\n            function abi_encode_string(value, pos) -> end\n            {\n                let length := array_length_string(value)\n                pos := array_storeLengthForEncoding_string(pos, length)\n                copy_memory_to_memory_with_cleanup(add(value, 0x20), pos, length)\n                end := add(pos, round_up_to_mul_of(length))\n            }\n            function abi_encode_bytes_string(headStart, value0, value1) -> tail\n            {\n                tail := add(headStart, 64)\n                mstore(add(headStart, 0), sub(tail, headStart))\n                tail := abi_encode_bytes_memory_ptr(value0, tail)\n                mstore(add(headStart, 32), sub(tail, headStart))\n                tail := abi_encode_string(value1, tail)\n            }\n            function external_fun_echo()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                let param, param_1, param_2, param_3 := abi_decode_bytes_calldatat_string_calldata(4, calldatasize())\n                let ret, ret_1 := fun_echo(param, param_1, param_2, param_3)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_bytes_string(memPos, ret, ret_1)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            { revert(0, 0) }\n            function zero_value_for_split_bytes() -> ret\n            { ret := 96 }\n            /// @ast-id 10 @src 0:81:694  \"function raw(uint256 mode) external pure returns (bytes memory) {...\"\n            function fun_raw(var_mode) -> var__mpos\n            {\n                /// @src 0:131:143  \"bytes memory\"\n                let zero_bytes_mpos := zero_value_for_split_bytes()\n                var__mpos := zero_bytes_mpos\n                /// @src 0:155:688  \"assembly {...\"\n                mstore(0, 32)\n                switch var_mode\n                case 0 {\n                    mstore(32, 3)\n                    mstore(64, shl(232, 0x616263))\n                    return(0, 67)\n                }\n                case 1 {\n                    mstore(32, 3)\n                    return(0, 64)\n                }\n                case 3 {\n                    mstore(32, 0xffffffffffffff40)\n                    return(0, 64)\n                }\n                default {\n                    mstore(32, 0x10000000000000000)\n                    return(0, 64)\n                }\n            }\n            /// @src 0:57:847  \"contract EchoPeer {...\"\n            function zero_value_for_split_string() -> ret\n            { ret := 96 }\n            function revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae()\n            { revert(0, 0) }\n            function panic_error_0x41()\n            {\n                mstore(0, shl(224, 0x4e487b71))\n                mstore(4, 0x41)\n                revert(0, 0x24)\n            }\n            function finalize_allocation(memPtr, size)\n            {\n                let newFreePtr := add(memPtr, round_up_to_mul_of(size))\n                if or(gt(newFreePtr, 0xffffffffffffffff), lt(newFreePtr, memPtr)) { panic_error_0x41() }\n                mstore(64, newFreePtr)\n            }\n            function allocate_memory(size) -> memPtr\n            {\n                memPtr := allocate_unbounded()\n                finalize_allocation(memPtr, size)\n            }\n            function array_allocation_size_bytes(length) -> size\n            {\n                if gt(length, 0xffffffffffffffff) { panic_error_0x41() }\n                size := round_up_to_mul_of(length)\n                size := add(size, 0x20)\n            }\n            function copy_calldata_to_memory_with_cleanup(src, dst, length)\n            {\n                calldatacopy(dst, src, length)\n                mstore(add(dst, length), 0)\n            }\n            function abi_decode_available_length_bytes(src, length, end) -> array\n            {\n                array := allocate_memory(array_allocation_size_bytes(length))\n                mstore(array, length)\n                let dst := add(array, 0x20)\n                if gt(add(src, length), end)\n                {\n                    revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae()\n                }\n                copy_calldata_to_memory_with_cleanup(src, dst, length)\n            }\n            function convert_array_bytes_calldata_to_bytes(value, length) -> converted\n            {\n                converted := abi_decode_available_length_bytes(value, length, calldatasize())\n            }\n            function array_allocation_size_string(length) -> size\n            {\n                if gt(length, 0xffffffffffffffff) { panic_error_0x41() }\n                size := round_up_to_mul_of(length)\n                size := add(size, 0x20)\n            }\n            function abi_decode_available_length_string(src, length, end) -> array\n            {\n                array := allocate_memory(array_allocation_size_string(length))\n                mstore(array, length)\n                let dst := add(array, 0x20)\n                if gt(add(src, length), end)\n                {\n                    revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae()\n                }\n                copy_calldata_to_memory_with_cleanup(src, dst, length)\n            }\n            function convert_array_string_calldata_to_string(value, length) -> converted\n            {\n                converted := abi_decode_available_length_string(value, length, calldatasize())\n            }\n            /// @ast-id 26 @src 0:700:845  \"function echo(bytes calldata data, string calldata text) external pure returns (bytes memory, string memory) {...\"\n            function fun_echo(var_data_offset, var_data_length, var_text_offset, var_text_length) -> var_17_mpos, var_mpos\n            {\n                /// @src 0:780:792  \"bytes memory\"\n                let zero_bytes_memory_ptr_mpos := zero_value_for_split_bytes()\n                var_17_mpos := zero_bytes_memory_ptr_mpos\n                /// @src 0:794:807  \"string memory\"\n                let zero_string_mpos := zero_value_for_split_string()\n                var_mpos := zero_string_mpos\n                /// @src 0:827:831  \"data\"\n                let _offset := var_data_offset\n                let _length := var_data_length\n                let expr_offset := _offset\n                let expr_length := _length\n                /// @src 0:826:838  \"(data, text)\"\n                let expr_component_offset := expr_offset\n                let expr_23_component_1_length := expr_length\n                /// @src 0:833:837  \"text\"\n                let _5_offset := var_text_offset\n                let _5_length := var_text_length\n                let expr_22_offset := _5_offset\n                let expr_22_length := _5_length\n                /// @src 0:826:838  \"(data, text)\"\n                let expr_23_component_2_offset := expr_22_offset\n                let expr_component_length := expr_22_length\n                /// @src 0:819:838  \"return (data, text)\"\n                var_17_mpos := convert_array_bytes_calldata_to_bytes(expr_component_offset, expr_23_component_1_length)\n                var_mpos := convert_array_string_calldata_to_string(expr_23_component_2_offset, expr_component_length)\n                leave\n            }\n        }\n        data \".metadata\" hex\"\"\n    }\n}\n",
+          "ir": "\n/// @use-src 0:\"testdata/differential/dynamic_bytes_peer.sol\"\nobject \"EchoPeer_39\" {\n    code {\n        /// @src 0:57:1083  \"contract EchoPeer {...\"\n        mstore(64, memoryguard(128))\n        if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n\n        constructor_EchoPeer_39()\n\n        let _1 := allocate_unbounded()\n        codecopy(_1, dataoffset(\"EchoPeer_39_deployed\"), datasize(\"EchoPeer_39_deployed\"))\n\n        return(_1, datasize(\"EchoPeer_39_deployed\"))\n\n        function allocate_unbounded() -> memPtr {\n            memPtr := mload(64)\n        }\n\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n            revert(0, 0)\n        }\n\n        /// @src 0:57:1083  \"contract EchoPeer {...\"\n        function constructor_EchoPeer_39() {\n\n            /// @src 0:57:1083  \"contract EchoPeer {...\"\n\n        }\n        /// @src 0:57:1083  \"contract EchoPeer {...\"\n\n    }\n    /// @use-src 0:\"testdata/differential/dynamic_bytes_peer.sol\"\n    object \"EchoPeer_39_deployed\" {\n        code {\n            /// @src 0:57:1083  \"contract EchoPeer {...\"\n            mstore(64, 128)\n\n            if iszero(lt(calldatasize(), 4))\n            {\n                let selector := shift_right_224_unsigned(calldataload(0))\n                switch selector\n\n                case 0x302e678f\n                {\n                    // raw(uint256)\n\n                    external_fun_raw_10()\n                }\n\n                case 0x878573db\n                {\n                    // afterMutation(bytes,uint256)\n\n                    external_fun_afterMutation_38()\n                }\n\n                case 0xb2eb8f44\n                {\n                    // echo(bytes,string)\n\n                    external_fun_echo_26()\n                }\n\n                default {}\n            }\n\n            revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n\n            function shift_right_224_unsigned(value) -> newValue {\n                newValue :=\n\n                shr(224, value)\n\n            }\n\n            function allocate_unbounded() -> memPtr {\n                memPtr := mload(64)\n            }\n\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n                revert(0, 0)\n            }\n\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() {\n                revert(0, 0)\n            }\n\n            function revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() {\n                revert(0, 0)\n            }\n\n            function cleanup_t_uint256(value) -> cleaned {\n                cleaned := value\n            }\n\n            function validator_revert_t_uint256(value) {\n                if iszero(eq(value, cleanup_t_uint256(value))) { revert(0, 0) }\n            }\n\n            function abi_decode_t_uint256(offset, end) -> value {\n                value := calldataload(offset)\n                validator_revert_t_uint256(value)\n            }\n\n            function abi_decode_tuple_t_uint256(headStart, dataEnd) -> value0 {\n                if slt(sub(dataEnd, headStart), 32) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n                {\n\n                    let offset := 0\n\n                    value0 := abi_decode_t_uint256(add(headStart, offset), dataEnd)\n                }\n\n            }\n\n            function array_length_t_bytes_memory_ptr(value) -> length {\n\n                length := mload(value)\n\n            }\n\n            function array_storeLengthForEncoding_t_bytes_memory_ptr_fromStack(pos, length) -> updated_pos {\n                mstore(pos, length)\n                updated_pos := add(pos, 0x20)\n            }\n\n            function copy_memory_to_memory_with_cleanup(src, dst, length) {\n\n                mcopy(dst, src, length)\n                mstore(add(dst, length), 0)\n\n            }\n\n            function round_up_to_mul_of_32(value) -> result {\n                result := and(add(value, 31), not(31))\n            }\n\n            function abi_encode_t_bytes_memory_ptr_to_t_bytes_memory_ptr_fromStack(value, pos) -> end {\n                let length := array_length_t_bytes_memory_ptr(value)\n                pos := array_storeLengthForEncoding_t_bytes_memory_ptr_fromStack(pos, length)\n                copy_memory_to_memory_with_cleanup(add(value, 0x20), pos, length)\n                end := add(pos, round_up_to_mul_of_32(length))\n            }\n\n            function abi_encode_tuple_t_bytes_memory_ptr__to_t_bytes_memory_ptr__fromStack(headStart , value0) -> tail {\n                tail := add(headStart, 32)\n\n                mstore(add(headStart, 0), sub(tail, headStart))\n                tail := abi_encode_t_bytes_memory_ptr_to_t_bytes_memory_ptr_fromStack(value0,  tail)\n\n            }\n\n            function external_fun_raw_10() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                let param_0 :=  abi_decode_tuple_t_uint256(4, calldatasize())\n                let ret_0 :=  fun_raw_10(param_0)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_bytes_memory_ptr__to_t_bytes_memory_ptr__fromStack(memPos , ret_0)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d() {\n                revert(0, 0)\n            }\n\n            function revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490() {\n                revert(0, 0)\n            }\n\n            function revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef() {\n                revert(0, 0)\n            }\n\n            // bytes\n            function abi_decode_t_bytes_calldata_ptr(offset, end) -> arrayPos, length {\n                if iszero(slt(add(offset, 0x1f), end)) { revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d() }\n                length := calldataload(offset)\n                if gt(length, 0xffffffffffffffff) { revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490() }\n                arrayPos := add(offset, 0x20)\n                if gt(add(arrayPos, mul(length, 0x01)), end) { revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef() }\n            }\n\n            function abi_decode_tuple_t_bytes_calldata_ptrt_uint256(headStart, dataEnd) -> value0, value1, value2 {\n                if slt(sub(dataEnd, headStart), 64) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n                {\n\n                    let offset := calldataload(add(headStart, 0))\n                    if gt(offset, 0xffffffffffffffff) { revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() }\n\n                    value0, value1 := abi_decode_t_bytes_calldata_ptr(add(headStart, offset), dataEnd)\n                }\n\n                {\n\n                    let offset := 32\n\n                    value2 := abi_decode_t_uint256(add(headStart, offset), dataEnd)\n                }\n\n            }\n\n            function external_fun_afterMutation_38() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                let param_0, param_1, param_2 :=  abi_decode_tuple_t_bytes_calldata_ptrt_uint256(4, calldatasize())\n                let ret_0 :=  fun_afterMutation_38(param_0, param_1, param_2)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_bytes_memory_ptr__to_t_bytes_memory_ptr__fromStack(memPos , ret_0)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            // string\n            function abi_decode_t_string_calldata_ptr(offset, end) -> arrayPos, length {\n                if iszero(slt(add(offset, 0x1f), end)) { revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d() }\n                length := calldataload(offset)\n                if gt(length, 0xffffffffffffffff) { revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490() }\n                arrayPos := add(offset, 0x20)\n                if gt(add(arrayPos, mul(length, 0x01)), end) { revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef() }\n            }\n\n            function abi_decode_tuple_t_bytes_calldata_ptrt_string_calldata_ptr(headStart, dataEnd) -> value0, value1, value2, value3 {\n                if slt(sub(dataEnd, headStart), 64) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n                {\n\n                    let offset := calldataload(add(headStart, 0))\n                    if gt(offset, 0xffffffffffffffff) { revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() }\n\n                    value0, value1 := abi_decode_t_bytes_calldata_ptr(add(headStart, offset), dataEnd)\n                }\n\n                {\n\n                    let offset := calldataload(add(headStart, 32))\n                    if gt(offset, 0xffffffffffffffff) { revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() }\n\n                    value2, value3 := abi_decode_t_string_calldata_ptr(add(headStart, offset), dataEnd)\n                }\n\n            }\n\n            function array_length_t_string_memory_ptr(value) -> length {\n\n                length := mload(value)\n\n            }\n\n            function array_storeLengthForEncoding_t_string_memory_ptr_fromStack(pos, length) -> updated_pos {\n                mstore(pos, length)\n                updated_pos := add(pos, 0x20)\n            }\n\n            function abi_encode_t_string_memory_ptr_to_t_string_memory_ptr_fromStack(value, pos) -> end {\n                let length := array_length_t_string_memory_ptr(value)\n                pos := array_storeLengthForEncoding_t_string_memory_ptr_fromStack(pos, length)\n                copy_memory_to_memory_with_cleanup(add(value, 0x20), pos, length)\n                end := add(pos, round_up_to_mul_of_32(length))\n            }\n\n            function abi_encode_tuple_t_bytes_memory_ptr_t_string_memory_ptr__to_t_bytes_memory_ptr_t_string_memory_ptr__fromStack(headStart , value0, value1) -> tail {\n                tail := add(headStart, 64)\n\n                mstore(add(headStart, 0), sub(tail, headStart))\n                tail := abi_encode_t_bytes_memory_ptr_to_t_bytes_memory_ptr_fromStack(value0,  tail)\n\n                mstore(add(headStart, 32), sub(tail, headStart))\n                tail := abi_encode_t_string_memory_ptr_to_t_string_memory_ptr_fromStack(value1,  tail)\n\n            }\n\n            function external_fun_echo_26() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                let param_0, param_1, param_2, param_3 :=  abi_decode_tuple_t_bytes_calldata_ptrt_string_calldata_ptr(4, calldatasize())\n                let ret_0, ret_1 :=  fun_echo_26(param_0, param_1, param_2, param_3)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_bytes_memory_ptr_t_string_memory_ptr__to_t_bytes_memory_ptr_t_string_memory_ptr__fromStack(memPos , ret_0, ret_1)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74() {\n                revert(0, 0)\n            }\n\n            function zero_value_for_split_t_bytes_memory_ptr() -> ret {\n                ret := 96\n            }\n\n            /// @ast-id 10\n            /// @src 0:81:806  \"function raw(uint256 mode) external pure returns (bytes memory) {...\"\n            function fun_raw_10(var_mode_3) -> var__6_mpos {\n                /// @src 0:131:143  \"bytes memory\"\n                let zero_t_bytes_memory_ptr_1_mpos := zero_value_for_split_t_bytes_memory_ptr()\n                var__6_mpos := zero_t_bytes_memory_ptr_1_mpos\n\n                /// @src 0:155:800  \"assembly {...\"\n                {\n                    mstore(0, 32)\n                    switch var_mode_3\n                    case 0 {\n                        mstore(32, 3)\n                        mstore(64, shl(232, 0x616263))\n                        return(0, 67)\n                    }\n                    case 1 {\n                        mstore(32, 3)\n                        return(0, 64)\n                    }\n                    case 4 {\n                        mstore(32, 0xffffffffffffff00)\n                        return(0, 64)\n                    }\n                    case 3 {\n                        mstore(32, 0xffffffffffffff40)\n                        return(0, 64)\n                    }\n                    default {\n                        mstore(32, 0x10000000000000000)\n                        return(0, 64)\n                    }\n                }\n\n            }\n            /// @src 0:57:1083  \"contract EchoPeer {...\"\n\n            function revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae() {\n                revert(0, 0)\n            }\n\n            function panic_error_0x41() {\n                mstore(0, 35408467139433450592217433187231851964531694900788300625387963629091585785856)\n                mstore(4, 0x41)\n                revert(0, 0x24)\n            }\n\n            function finalize_allocation(memPtr, size) {\n                let newFreePtr := add(memPtr, round_up_to_mul_of_32(size))\n                // protect against overflow\n                if or(gt(newFreePtr, 0xffffffffffffffff), lt(newFreePtr, memPtr)) { panic_error_0x41() }\n                mstore(64, newFreePtr)\n            }\n\n            function allocate_memory(size) -> memPtr {\n                memPtr := allocate_unbounded()\n                finalize_allocation(memPtr, size)\n            }\n\n            function array_allocation_size_t_bytes_memory_ptr(length) -> size {\n                // Make sure we can allocate memory without overflow\n                if gt(length, 0xffffffffffffffff) { panic_error_0x41() }\n\n                size := round_up_to_mul_of_32(length)\n\n                // add length slot\n                size := add(size, 0x20)\n\n            }\n\n            function copy_calldata_to_memory_with_cleanup(src, dst, length) {\n\n                calldatacopy(dst, src, length)\n                mstore(add(dst, length), 0)\n\n            }\n\n            function abi_decode_available_length_t_bytes_memory_ptr(src, length, end) -> array {\n                array := allocate_memory(array_allocation_size_t_bytes_memory_ptr(length))\n                mstore(array, length)\n                let dst := add(array, 0x20)\n                if gt(add(src, length), end) { revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae() }\n                copy_calldata_to_memory_with_cleanup(src, dst, length)\n            }\n\n            function convert_array_t_bytes_calldata_ptr_to_t_bytes_memory_ptr(value, length) -> converted  {\n\n                // Copy the array to a free position in memory\n                converted :=\n\n                abi_decode_available_length_t_bytes_memory_ptr(value, length, calldatasize())\n\n            }\n\n            /// @ast-id 38\n            /// @src 0:963:1081  \"function afterMutation(bytes calldata data, uint256) external pure returns (bytes memory) {...\"\n            function fun_afterMutation_38(var_data_28_offset, var_data_28_length, var__30) -> var__33_mpos {\n                /// @src 0:1039:1051  \"bytes memory\"\n                let zero_t_bytes_memory_ptr_2_mpos := zero_value_for_split_t_bytes_memory_ptr()\n                var__33_mpos := zero_t_bytes_memory_ptr_2_mpos\n\n                /// @src 0:1070:1074  \"data\"\n                let _3_offset := var_data_28_offset\n                let _3_length := var_data_28_length\n                let expr_35_offset := _3_offset\n                let expr_35_length := _3_length\n                /// @src 0:1063:1074  \"return data\"\n                var__33_mpos := convert_array_t_bytes_calldata_ptr_to_t_bytes_memory_ptr(expr_35_offset, expr_35_length)\n                leave\n\n            }\n            /// @src 0:57:1083  \"contract EchoPeer {...\"\n\n            function zero_value_for_split_t_string_memory_ptr() -> ret {\n                ret := 96\n            }\n\n            function array_allocation_size_t_string_memory_ptr(length) -> size {\n                // Make sure we can allocate memory without overflow\n                if gt(length, 0xffffffffffffffff) { panic_error_0x41() }\n\n                size := round_up_to_mul_of_32(length)\n\n                // add length slot\n                size := add(size, 0x20)\n\n            }\n\n            function abi_decode_available_length_t_string_memory_ptr(src, length, end) -> array {\n                array := allocate_memory(array_allocation_size_t_string_memory_ptr(length))\n                mstore(array, length)\n                let dst := add(array, 0x20)\n                if gt(add(src, length), end) { revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae() }\n                copy_calldata_to_memory_with_cleanup(src, dst, length)\n            }\n\n            function convert_array_t_string_calldata_ptr_to_t_string_memory_ptr(value, length) -> converted  {\n\n                // Copy the array to a free position in memory\n                converted :=\n\n                abi_decode_available_length_t_string_memory_ptr(value, length, calldatasize())\n\n            }\n\n            /// @ast-id 26\n            /// @src 0:812:957  \"function echo(bytes calldata data, string calldata text) external pure returns (bytes memory, string memory) {...\"\n            function fun_echo_26(var_data_12_offset, var_data_12_length, var_text_14_offset, var_text_14_length) -> var__17_mpos, var__19_mpos {\n                /// @src 0:892:904  \"bytes memory\"\n                let zero_t_bytes_memory_ptr_4_mpos := zero_value_for_split_t_bytes_memory_ptr()\n                var__17_mpos := zero_t_bytes_memory_ptr_4_mpos\n                /// @src 0:906:919  \"string memory\"\n                let zero_t_string_memory_ptr_5_mpos := zero_value_for_split_t_string_memory_ptr()\n                var__19_mpos := zero_t_string_memory_ptr_5_mpos\n\n                /// @src 0:939:943  \"data\"\n                let _6_offset := var_data_12_offset\n                let _6_length := var_data_12_length\n                let expr_21_offset := _6_offset\n                let expr_21_length := _6_length\n                /// @src 0:938:950  \"(data, text)\"\n                let expr_23_component_1_offset := expr_21_offset\n                let expr_23_component_1_length := expr_21_length\n                /// @src 0:945:949  \"text\"\n                let _7_offset := var_text_14_offset\n                let _7_length := var_text_14_length\n                let expr_22_offset := _7_offset\n                let expr_22_length := _7_length\n                /// @src 0:938:950  \"(data, text)\"\n                let expr_23_component_2_offset := expr_22_offset\n                let expr_23_component_2_length := expr_22_length\n                /// @src 0:931:950  \"return (data, text)\"\n                var__17_mpos := convert_array_t_bytes_calldata_ptr_to_t_bytes_memory_ptr(expr_23_component_1_offset, expr_23_component_1_length)\n                var__19_mpos := convert_array_t_string_calldata_ptr_to_t_string_memory_ptr(expr_23_component_2_offset, expr_23_component_2_length)\n                leave\n\n            }\n            /// @src 0:57:1083  \"contract EchoPeer {...\"\n\n        }\n\n        data \".metadata\" hex\"\"\n    }\n\n}\n\n",
+          "irOptimized": "/// @use-src 0:\"testdata/differential/dynamic_bytes_peer.sol\"\nobject \"EchoPeer_39\" {\n    code {\n        {\n            /// @src 0:57:1083  \"contract EchoPeer {...\"\n            mstore(64, memoryguard(0x80))\n            if callvalue()\n            {\n                revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            }\n            let _1 := allocate_unbounded()\n            codecopy(_1, dataoffset(\"EchoPeer_39_deployed\"), datasize(\"EchoPeer_39_deployed\"))\n            return(_1, datasize(\"EchoPeer_39_deployed\"))\n        }\n        function allocate_unbounded() -> memPtr\n        { memPtr := mload(64) }\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n        { revert(0, 0) }\n    }\n    /// @use-src 0:\"testdata/differential/dynamic_bytes_peer.sol\"\n    object \"EchoPeer_39_deployed\" {\n        code {\n            {\n                /// @src 0:57:1083  \"contract EchoPeer {...\"\n                mstore(64, 128)\n                if iszero(lt(calldatasize(), 4))\n                {\n                    let selector := shift_right_unsigned(calldataload(0))\n                    switch selector\n                    case 0x302e678f { external_fun_raw() }\n                    case 0x878573db { external_fun_afterMutation() }\n                    case 0xb2eb8f44 { external_fun_echo() }\n                    default { }\n                }\n                revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            }\n            function shift_right_unsigned(value) -> newValue\n            { newValue := shr(224, value) }\n            function allocate_unbounded() -> memPtr\n            { memPtr := mload(64) }\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            { revert(0, 0) }\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n            { revert(0, 0) }\n            function revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db()\n            { revert(0, 0) }\n            function cleanup_uint256(value) -> cleaned\n            { cleaned := value }\n            function validator_revert_uint256(value)\n            {\n                if iszero(eq(value, cleanup_uint256(value))) { revert(0, 0) }\n            }\n            function abi_decode_uint256(offset, end) -> value\n            {\n                value := calldataload(offset)\n                validator_revert_uint256(value)\n            }\n            function abi_decode_tuple_uint256(headStart, dataEnd) -> value0\n            {\n                if slt(sub(dataEnd, headStart), 32)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n                let offset := 0\n                value0 := abi_decode_uint256(add(headStart, offset), dataEnd)\n            }\n            function array_length_bytes(value) -> length\n            { length := mload(value) }\n            function array_storeLengthForEncoding_bytes(pos, length) -> updated_pos\n            {\n                mstore(pos, length)\n                updated_pos := add(pos, 0x20)\n            }\n            function copy_memory_to_memory_with_cleanup(src, dst, length)\n            {\n                mcopy(dst, src, length)\n                mstore(add(dst, length), 0)\n            }\n            function round_up_to_mul_of(value) -> result\n            {\n                result := and(add(value, 31), not(31))\n            }\n            function abi_encode_bytes_memory_ptr(value, pos) -> end\n            {\n                let length := array_length_bytes(value)\n                pos := array_storeLengthForEncoding_bytes(pos, length)\n                copy_memory_to_memory_with_cleanup(add(value, 0x20), pos, length)\n                end := add(pos, round_up_to_mul_of(length))\n            }\n            function abi_encode_bytes(headStart, value0) -> tail\n            {\n                tail := add(headStart, 32)\n                mstore(add(headStart, 0), sub(tail, headStart))\n                tail := abi_encode_bytes_memory_ptr(value0, tail)\n            }\n            function external_fun_raw()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                let param := abi_decode_tuple_uint256(4, calldatasize())\n                let ret := fun_raw(param)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_bytes(memPos, ret)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d()\n            { revert(0, 0) }\n            function revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490()\n            { revert(0, 0) }\n            function revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef()\n            { revert(0, 0) }\n            function abi_decode_bytes_calldata(offset, end) -> arrayPos, length\n            {\n                if iszero(slt(add(offset, 0x1f), end))\n                {\n                    revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d()\n                }\n                length := calldataload(offset)\n                if gt(length, 0xffffffffffffffff)\n                {\n                    revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490()\n                }\n                arrayPos := add(offset, 0x20)\n                if gt(add(arrayPos, mul(length, 0x01)), end)\n                {\n                    revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef()\n                }\n            }\n            function abi_decode_bytes_calldatat_uint256(headStart, dataEnd) -> value0, value1, value2\n            {\n                if slt(sub(dataEnd, headStart), 64)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n                let offset := calldataload(add(headStart, 0))\n                if gt(offset, 0xffffffffffffffff)\n                {\n                    revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db()\n                }\n                value0, value1 := abi_decode_bytes_calldata(add(headStart, offset), dataEnd)\n                let offset_1 := 32\n                value2 := abi_decode_uint256(add(headStart, offset_1), dataEnd)\n            }\n            function external_fun_afterMutation()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                let param, param_1, param_2 := abi_decode_bytes_calldatat_uint256(4, calldatasize())\n                let ret := fun_afterMutation(param, param_1, param_2)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_bytes(memPos, ret)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function abi_decode_string_calldata(offset, end) -> arrayPos, length\n            {\n                if iszero(slt(add(offset, 0x1f), end))\n                {\n                    revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d()\n                }\n                length := calldataload(offset)\n                if gt(length, 0xffffffffffffffff)\n                {\n                    revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490()\n                }\n                arrayPos := add(offset, 0x20)\n                if gt(add(arrayPos, mul(length, 0x01)), end)\n                {\n                    revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef()\n                }\n            }\n            function abi_decode_bytes_calldatat_string_calldata(headStart, dataEnd) -> value0, value1, value2, value3\n            {\n                if slt(sub(dataEnd, headStart), 64)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n                let offset := calldataload(add(headStart, 0))\n                if gt(offset, 0xffffffffffffffff)\n                {\n                    revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db()\n                }\n                value0, value1 := abi_decode_bytes_calldata(add(headStart, offset), dataEnd)\n                let offset_1 := calldataload(add(headStart, 32))\n                if gt(offset_1, 0xffffffffffffffff)\n                {\n                    revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db()\n                }\n                value2, value3 := abi_decode_string_calldata(add(headStart, offset_1), dataEnd)\n            }\n            function array_length_string(value) -> length\n            { length := mload(value) }\n            function array_storeLengthForEncoding_string(pos, length) -> updated_pos\n            {\n                mstore(pos, length)\n                updated_pos := add(pos, 0x20)\n            }\n            function abi_encode_string(value, pos) -> end\n            {\n                let length := array_length_string(value)\n                pos := array_storeLengthForEncoding_string(pos, length)\n                copy_memory_to_memory_with_cleanup(add(value, 0x20), pos, length)\n                end := add(pos, round_up_to_mul_of(length))\n            }\n            function abi_encode_bytes_string(headStart, value0, value1) -> tail\n            {\n                tail := add(headStart, 64)\n                mstore(add(headStart, 0), sub(tail, headStart))\n                tail := abi_encode_bytes_memory_ptr(value0, tail)\n                mstore(add(headStart, 32), sub(tail, headStart))\n                tail := abi_encode_string(value1, tail)\n            }\n            function external_fun_echo()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                let param, param_1, param_2, param_3 := abi_decode_bytes_calldatat_string_calldata(4, calldatasize())\n                let ret, ret_1 := fun_echo(param, param_1, param_2, param_3)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_bytes_string(memPos, ret, ret_1)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            { revert(0, 0) }\n            function zero_value_for_split_bytes() -> ret\n            { ret := 96 }\n            /// @ast-id 10 @src 0:81:806  \"function raw(uint256 mode) external pure returns (bytes memory) {...\"\n            function fun_raw(var_mode) -> var_6_mpos\n            {\n                /// @src 0:131:143  \"bytes memory\"\n                let zero_bytes_memory_ptr_mpos := zero_value_for_split_bytes()\n                var_6_mpos := zero_bytes_memory_ptr_mpos\n                /// @src 0:155:800  \"assembly {...\"\n                mstore(0, 32)\n                switch var_mode\n                case 0 {\n                    mstore(32, 3)\n                    mstore(64, shl(232, 0x616263))\n                    return(0, 67)\n                }\n                case 1 {\n                    mstore(32, 3)\n                    return(0, 64)\n                }\n                case 4 {\n                    mstore(32, 0xffffffffffffff00)\n                    return(0, 64)\n                }\n                case 3 {\n                    mstore(32, 0xffffffffffffff40)\n                    return(0, 64)\n                }\n                default {\n                    mstore(32, 0x10000000000000000)\n                    return(0, 64)\n                }\n            }\n            /// @src 0:57:1083  \"contract EchoPeer {...\"\n            function revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae()\n            { revert(0, 0) }\n            function panic_error_0x41()\n            {\n                mstore(0, shl(224, 0x4e487b71))\n                mstore(4, 0x41)\n                revert(0, 0x24)\n            }\n            function finalize_allocation(memPtr, size)\n            {\n                let newFreePtr := add(memPtr, round_up_to_mul_of(size))\n                if or(gt(newFreePtr, 0xffffffffffffffff), lt(newFreePtr, memPtr)) { panic_error_0x41() }\n                mstore(64, newFreePtr)\n            }\n            function allocate_memory(size) -> memPtr\n            {\n                memPtr := allocate_unbounded()\n                finalize_allocation(memPtr, size)\n            }\n            function array_allocation_size_bytes(length) -> size\n            {\n                if gt(length, 0xffffffffffffffff) { panic_error_0x41() }\n                size := round_up_to_mul_of(length)\n                size := add(size, 0x20)\n            }\n            function copy_calldata_to_memory_with_cleanup(src, dst, length)\n            {\n                calldatacopy(dst, src, length)\n                mstore(add(dst, length), 0)\n            }\n            function abi_decode_available_length_bytes(src, length, end) -> array\n            {\n                array := allocate_memory(array_allocation_size_bytes(length))\n                mstore(array, length)\n                let dst := add(array, 0x20)\n                if gt(add(src, length), end)\n                {\n                    revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae()\n                }\n                copy_calldata_to_memory_with_cleanup(src, dst, length)\n            }\n            function convert_array_bytes_calldata_to_bytes(value, length) -> converted\n            {\n                converted := abi_decode_available_length_bytes(value, length, calldatasize())\n            }\n            /// @ast-id 38 @src 0:963:1081  \"function afterMutation(bytes calldata data, uint256) external pure returns (bytes memory) {...\"\n            function fun_afterMutation(var_data_offset, var_data_length, var) -> var__mpos\n            {\n                /// @src 0:1039:1051  \"bytes memory\"\n                let zero_t_bytes_mpos := zero_value_for_split_bytes()\n                var__mpos := zero_t_bytes_mpos\n                /// @src 0:1070:1074  \"data\"\n                let _3_offset := var_data_offset\n                let _3_length := var_data_length\n                let expr_35_offset := _3_offset\n                let expr_35_length := _3_length\n                /// @src 0:1063:1074  \"return data\"\n                var__mpos := convert_array_bytes_calldata_to_bytes(expr_35_offset, expr_35_length)\n                leave\n            }\n            /// @src 0:57:1083  \"contract EchoPeer {...\"\n            function zero_value_for_split_string() -> ret\n            { ret := 96 }\n            function array_allocation_size_string(length) -> size\n            {\n                if gt(length, 0xffffffffffffffff) { panic_error_0x41() }\n                size := round_up_to_mul_of(length)\n                size := add(size, 0x20)\n            }\n            function abi_decode_available_length_string(src, length, end) -> array\n            {\n                array := allocate_memory(array_allocation_size_string(length))\n                mstore(array, length)\n                let dst := add(array, 0x20)\n                if gt(add(src, length), end)\n                {\n                    revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae()\n                }\n                copy_calldata_to_memory_with_cleanup(src, dst, length)\n            }\n            function convert_array_string_calldata_to_string(value, length) -> converted\n            {\n                converted := abi_decode_available_length_string(value, length, calldatasize())\n            }\n            /// @ast-id 26 @src 0:812:957  \"function echo(bytes calldata data, string calldata text) external pure returns (bytes memory, string memory) {...\"\n            function fun_echo(var_data_12_offset, var_data_12_length, var_text_offset, var_text_length) -> var_17_mpos, var_mpos\n            {\n                /// @src 0:892:904  \"bytes memory\"\n                let zero_bytes_mpos := zero_value_for_split_bytes()\n                var_17_mpos := zero_bytes_mpos\n                /// @src 0:906:919  \"string memory\"\n                let zero_string_mpos := zero_value_for_split_string()\n                var_mpos := zero_string_mpos\n                /// @src 0:939:943  \"data\"\n                let _offset := var_data_12_offset\n                let _length := var_data_12_length\n                let expr_offset := _offset\n                let expr_length := _length\n                /// @src 0:938:950  \"(data, text)\"\n                let expr_component_offset := expr_offset\n                let expr_23_component_1_length := expr_length\n                /// @src 0:945:949  \"text\"\n                let _7_offset := var_text_offset\n                let _7_length := var_text_length\n                let expr_22_offset := _7_offset\n                let expr_22_length := _7_length\n                /// @src 0:938:950  \"(data, text)\"\n                let expr_23_component_2_offset := expr_22_offset\n                let expr_component_length := expr_22_length\n                /// @src 0:931:950  \"return (data, text)\"\n                var_17_mpos := convert_array_bytes_calldata_to_bytes(expr_component_offset, expr_23_component_1_length)\n                var_mpos := convert_array_string_calldata_to_string(expr_23_component_2_offset, expr_component_length)\n                leave\n            }\n        }\n        data \".metadata\" hex\"\"\n    }\n}\n",
           "storageLayout": {
             "storage": [],
             "types": null
@@ -129,10 +154,10 @@
           "absolutePath": "testdata/differential/dynamic_bytes_peer.sol",
           "exportedSymbols": {
             "EchoPeer": [
-              27
+              39
             ]
           },
-          "id": 28,
+          "id": 40,
           "license": "MIT",
           "nodeType": "SourceUnit",
           "nodes": [
@@ -153,9 +178,9 @@
               "contractDependencies": [],
               "contractKind": "contract",
               "fullyImplemented": true,
-              "id": 27,
+              "id": 39,
               "linearizedBaseContracts": [
-                27
+                39
               ],
               "name": "EchoPeer",
               "nameLocation": "66:8:0",
@@ -165,13 +190,13 @@
                   "body": {
                     "id": 9,
                     "nodeType": "Block",
-                    "src": "145:549:0",
+                    "src": "145:661:0",
                     "statements": [
                       {
                         "AST": {
-                          "nativeSrc": "164:524:0",
+                          "nativeSrc": "164:636:0",
                           "nodeType": "YulBlock",
-                          "src": "164:524:0",
+                          "src": "164:636:0",
                           "statements": [
                             {
                               "expression": {
@@ -463,7 +488,7 @@
                                               "nodeType": "YulLiteral",
                                               "src": "501:18:0",
                                               "type": "",
-                                              "value": "0xffffffffffffff40"
+                                              "value": "0xffffffffffffff00"
                                             }
                                           ],
                                           "functionName": {
@@ -525,88 +550,176 @@
                                     "nodeType": "YulLiteral",
                                     "src": "470:1:0",
                                     "type": "",
-                                    "value": "3"
+                                    "value": "4"
                                   }
                                 },
                                 {
                                   "body": {
-                                    "nativeSrc": "585:93:0",
+                                    "nativeSrc": "584:92:0",
                                     "nodeType": "YulBlock",
-                                    "src": "585:93:0",
+                                    "src": "584:92:0",
                                     "statements": [
                                       {
                                         "expression": {
                                           "arguments": [
                                             {
                                               "kind": "number",
-                                              "nativeSrc": "610:2:0",
+                                              "nativeSrc": "609:2:0",
                                               "nodeType": "YulLiteral",
-                                              "src": "610:2:0",
+                                              "src": "609:2:0",
                                               "type": "",
                                               "value": "32"
                                             },
                                             {
                                               "kind": "number",
-                                              "nativeSrc": "614:19:0",
+                                              "nativeSrc": "613:18:0",
                                               "nodeType": "YulLiteral",
-                                              "src": "614:19:0",
+                                              "src": "613:18:0",
                                               "type": "",
-                                              "value": "0x10000000000000000"
+                                              "value": "0xffffffffffffff40"
                                             }
                                           ],
                                           "functionName": {
                                             "name": "mstore",
-                                            "nativeSrc": "603:6:0",
+                                            "nativeSrc": "602:6:0",
                                             "nodeType": "YulIdentifier",
-                                            "src": "603:6:0"
+                                            "src": "602:6:0"
                                           },
-                                          "nativeSrc": "603:31:0",
+                                          "nativeSrc": "602:30:0",
                                           "nodeType": "YulFunctionCall",
-                                          "src": "603:31:0"
+                                          "src": "602:30:0"
                                         },
-                                        "nativeSrc": "603:31:0",
+                                        "nativeSrc": "602:30:0",
                                         "nodeType": "YulExpressionStatement",
-                                        "src": "603:31:0"
+                                        "src": "602:30:0"
                                       },
                                       {
                                         "expression": {
                                           "arguments": [
                                             {
                                               "kind": "number",
-                                              "nativeSrc": "658:1:0",
+                                              "nativeSrc": "656:1:0",
                                               "nodeType": "YulLiteral",
-                                              "src": "658:1:0",
+                                              "src": "656:1:0",
                                               "type": "",
                                               "value": "0"
                                             },
                                             {
                                               "kind": "number",
-                                              "nativeSrc": "661:2:0",
+                                              "nativeSrc": "659:2:0",
                                               "nodeType": "YulLiteral",
-                                              "src": "661:2:0",
+                                              "src": "659:2:0",
                                               "type": "",
                                               "value": "64"
                                             }
                                           ],
                                           "functionName": {
                                             "name": "return",
-                                            "nativeSrc": "651:6:0",
+                                            "nativeSrc": "649:6:0",
                                             "nodeType": "YulIdentifier",
-                                            "src": "651:6:0"
+                                            "src": "649:6:0"
                                           },
-                                          "nativeSrc": "651:13:0",
+                                          "nativeSrc": "649:13:0",
                                           "nodeType": "YulFunctionCall",
-                                          "src": "651:13:0"
+                                          "src": "649:13:0"
                                         },
-                                        "nativeSrc": "651:13:0",
+                                        "nativeSrc": "649:13:0",
                                         "nodeType": "YulExpressionStatement",
-                                        "src": "651:13:0"
+                                        "src": "649:13:0"
                                       }
                                     ]
                                   },
-                                  "nativeSrc": "577:101:0",
+                                  "nativeSrc": "577:99:0",
                                   "nodeType": "YulCase",
-                                  "src": "577:101:0",
+                                  "src": "577:99:0",
+                                  "value": {
+                                    "kind": "number",
+                                    "nativeSrc": "582:1:0",
+                                    "nodeType": "YulLiteral",
+                                    "src": "582:1:0",
+                                    "type": "",
+                                    "value": "3"
+                                  }
+                                },
+                                {
+                                  "body": {
+                                    "nativeSrc": "697:93:0",
+                                    "nodeType": "YulBlock",
+                                    "src": "697:93:0",
+                                    "statements": [
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "722:2:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "722:2:0",
+                                              "type": "",
+                                              "value": "32"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "726:19:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "726:19:0",
+                                              "type": "",
+                                              "value": "0x10000000000000000"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "mstore",
+                                            "nativeSrc": "715:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "715:6:0"
+                                          },
+                                          "nativeSrc": "715:31:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "715:31:0"
+                                        },
+                                        "nativeSrc": "715:31:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "715:31:0"
+                                      },
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "770:1:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "770:1:0",
+                                              "type": "",
+                                              "value": "0"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "773:2:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "773:2:0",
+                                              "type": "",
+                                              "value": "64"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "return",
+                                            "nativeSrc": "763:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "763:6:0"
+                                          },
+                                          "nativeSrc": "763:13:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "763:13:0"
+                                        },
+                                        "nativeSrc": "763:13:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "763:13:0"
+                                      }
+                                    ]
+                                  },
+                                  "nativeSrc": "689:101:0",
+                                  "nodeType": "YulCase",
+                                  "src": "689:101:0",
                                   "value": "default"
                                 }
                               ],
@@ -616,9 +729,9 @@
                                 "nodeType": "YulIdentifier",
                                 "src": "211:4:0"
                               },
-                              "nativeSrc": "204:474:0",
+                              "nativeSrc": "204:586:0",
                               "nodeType": "YulSwitch",
-                              "src": "204:474:0"
+                              "src": "204:586:0"
                             }
                           ]
                         },
@@ -634,7 +747,7 @@
                         ],
                         "id": 8,
                         "nodeType": "InlineAssembly",
-                        "src": "155:533:0"
+                        "src": "155:645:0"
                       }
                     ]
                   },
@@ -714,8 +827,8 @@
                     ],
                     "src": "130:14:0"
                   },
-                  "scope": 27,
-                  "src": "81:613:0",
+                  "scope": 39,
+                  "src": "81:725:0",
                   "stateMutability": "pure",
                   "virtual": false,
                   "visibility": "external"
@@ -724,7 +837,7 @@
                   "body": {
                     "id": 25,
                     "nodeType": "Block",
-                    "src": "809:36:0",
+                    "src": "921:36:0",
                     "statements": [
                       {
                         "expression": {
@@ -735,7 +848,7 @@
                               "nodeType": "Identifier",
                               "overloadedDeclarations": [],
                               "referencedDeclaration": 12,
-                              "src": "827:4:0",
+                              "src": "939:4:0",
                               "typeDescriptions": {
                                 "typeIdentifier": "t_bytes_calldata_ptr",
                                 "typeString": "bytes calldata"
@@ -747,7 +860,7 @@
                               "nodeType": "Identifier",
                               "overloadedDeclarations": [],
                               "referencedDeclaration": 14,
-                              "src": "833:4:0",
+                              "src": "945:4:0",
                               "typeDescriptions": {
                                 "typeIdentifier": "t_string_calldata_ptr",
                                 "typeString": "string calldata"
@@ -761,7 +874,7 @@
                           "isPure": false,
                           "lValueRequested": false,
                           "nodeType": "TupleExpression",
-                          "src": "826:12:0",
+                          "src": "938:12:0",
                           "typeDescriptions": {
                             "typeIdentifier": "t_tuple$_t_bytes_calldata_ptr_$_t_string_calldata_ptr_$",
                             "typeString": "tuple(bytes calldata,string calldata)"
@@ -770,7 +883,7 @@
                         "functionReturnParameters": 20,
                         "id": 24,
                         "nodeType": "Return",
-                        "src": "819:19:0"
+                        "src": "931:19:0"
                       }
                     ]
                   },
@@ -780,7 +893,7 @@
                   "kind": "function",
                   "modifiers": [],
                   "name": "echo",
-                  "nameLocation": "709:4:0",
+                  "nameLocation": "821:4:0",
                   "nodeType": "FunctionDefinition",
                   "parameters": {
                     "id": 15,
@@ -791,10 +904,10 @@
                         "id": 12,
                         "mutability": "mutable",
                         "name": "data",
-                        "nameLocation": "729:4:0",
+                        "nameLocation": "841:4:0",
                         "nodeType": "VariableDeclaration",
                         "scope": 26,
-                        "src": "714:19:0",
+                        "src": "826:19:0",
                         "stateVariable": false,
                         "storageLocation": "calldata",
                         "typeDescriptions": {
@@ -805,7 +918,7 @@
                           "id": 11,
                           "name": "bytes",
                           "nodeType": "ElementaryTypeName",
-                          "src": "714:5:0",
+                          "src": "826:5:0",
                           "typeDescriptions": {
                             "typeIdentifier": "t_bytes_storage_ptr",
                             "typeString": "bytes"
@@ -818,10 +931,10 @@
                         "id": 14,
                         "mutability": "mutable",
                         "name": "text",
-                        "nameLocation": "751:4:0",
+                        "nameLocation": "863:4:0",
                         "nodeType": "VariableDeclaration",
                         "scope": 26,
-                        "src": "735:20:0",
+                        "src": "847:20:0",
                         "stateVariable": false,
                         "storageLocation": "calldata",
                         "typeDescriptions": {
@@ -832,7 +945,7 @@
                           "id": 13,
                           "name": "string",
                           "nodeType": "ElementaryTypeName",
-                          "src": "735:6:0",
+                          "src": "847:6:0",
                           "typeDescriptions": {
                             "typeIdentifier": "t_string_storage_ptr",
                             "typeString": "string"
@@ -841,7 +954,7 @@
                         "visibility": "internal"
                       }
                     ],
-                    "src": "713:43:0"
+                    "src": "825:43:0"
                   },
                   "returnParameters": {
                     "id": 20,
@@ -855,7 +968,7 @@
                         "nameLocation": "-1:-1:-1",
                         "nodeType": "VariableDeclaration",
                         "scope": 26,
-                        "src": "780:12:0",
+                        "src": "892:12:0",
                         "stateVariable": false,
                         "storageLocation": "memory",
                         "typeDescriptions": {
@@ -866,7 +979,7 @@
                           "id": 16,
                           "name": "bytes",
                           "nodeType": "ElementaryTypeName",
-                          "src": "780:5:0",
+                          "src": "892:5:0",
                           "typeDescriptions": {
                             "typeIdentifier": "t_bytes_storage_ptr",
                             "typeString": "bytes"
@@ -882,7 +995,7 @@
                         "nameLocation": "-1:-1:-1",
                         "nodeType": "VariableDeclaration",
                         "scope": 26,
-                        "src": "794:13:0",
+                        "src": "906:13:0",
                         "stateVariable": false,
                         "storageLocation": "memory",
                         "typeDescriptions": {
@@ -893,7 +1006,7 @@
                           "id": 18,
                           "name": "string",
                           "nodeType": "ElementaryTypeName",
-                          "src": "794:6:0",
+                          "src": "906:6:0",
                           "typeDescriptions": {
                             "typeIdentifier": "t_string_storage_ptr",
                             "typeString": "string"
@@ -902,22 +1015,157 @@
                         "visibility": "internal"
                       }
                     ],
-                    "src": "779:29:0"
+                    "src": "891:29:0"
                   },
-                  "scope": 27,
-                  "src": "700:145:0",
+                  "scope": 39,
+                  "src": "812:145:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 37,
+                    "nodeType": "Block",
+                    "src": "1053:28:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 35,
+                          "name": "data",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 28,
+                          "src": "1070:4:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bytes_calldata_ptr",
+                            "typeString": "bytes calldata"
+                          }
+                        },
+                        "functionReturnParameters": 34,
+                        "id": 36,
+                        "nodeType": "Return",
+                        "src": "1063:11:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "878573db",
+                  "id": 38,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "afterMutation",
+                  "nameLocation": "972:13:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 31,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 28,
+                        "mutability": "mutable",
+                        "name": "data",
+                        "nameLocation": "1001:4:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 38,
+                        "src": "986:19:0",
+                        "stateVariable": false,
+                        "storageLocation": "calldata",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bytes_calldata_ptr",
+                          "typeString": "bytes"
+                        },
+                        "typeName": {
+                          "id": 27,
+                          "name": "bytes",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "986:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bytes_storage_ptr",
+                            "typeString": "bytes"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 30,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 38,
+                        "src": "1007:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 29,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1007:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "985:30:0"
+                  },
+                  "returnParameters": {
+                    "id": 34,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 33,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 38,
+                        "src": "1039:12:0",
+                        "stateVariable": false,
+                        "storageLocation": "memory",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bytes_memory_ptr",
+                          "typeString": "bytes"
+                        },
+                        "typeName": {
+                          "id": 32,
+                          "name": "bytes",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1039:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bytes_storage_ptr",
+                            "typeString": "bytes"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "1038:14:0"
+                  },
+                  "scope": 39,
+                  "src": "963:118:0",
                   "stateMutability": "pure",
                   "virtual": false,
                   "visibility": "external"
                 }
               ],
-              "scope": 28,
-              "src": "57:790:0",
+              "scope": 40,
+              "src": "57:1026:0",
               "usedErrors": [],
               "usedEvents": []
             }
           ],
-          "src": "32:816:0"
+          "src": "32:1052:0"
         },
         "id": 0
       }

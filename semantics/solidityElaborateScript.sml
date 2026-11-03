@@ -384,6 +384,40 @@ End
  * decoded type. Multiple values (tuples and calls with several returns) are
  * elaborated by elab_values.
  *)
+(* Values converted to a list of types, for returns and declarations. *)
+Definition coerce_values_def:
+  (coerce_values n [] [] = SOME ([], [], n)) ∧
+  (coerce_values n (ty :: tys) ((a, vt) :: vs) =
+    case coerce n ty a vt of
+      SOME ((ss, a'), n1) =>
+        (case coerce_values n1 tys vs of
+           SOME (ss', as, n2) => SOME (ss ++ ss', a' :: as, n2)
+         | NONE => NONE)
+    | NONE => NONE) ∧
+  (coerce_values n _ _ = NONE)
+End
+
+(* Keep byte-sequence references live until ABI serialization. Unlike an
+ * internal memory parameter, an encoded argument needs no location copy. *)
+Definition coerce_abi_values_def:
+  (coerce_abi_values n [] [] = SOME ([], [], n)) ∧
+  (coerce_abi_values n (ty :: tys) ((a, vt) :: vs) =
+    let converted = case (ty, vt) of
+      (LocatedT _ element, ElabType (LocatedT _ actual)) =>
+        if byte_sequence_type element ∧ element = actual then SOME (([], a), n)
+        else NONE
+    | (LocatedT _ element, ElabBytesLiteral) =>
+        if byte_sequence_type element then SOME (([], a), n) else NONE
+    | _ => coerce n ty a vt in
+    case converted of
+      SOME ((ss, a'), n1) =>
+        (case coerce_abi_values n1 tys vs of
+           SOME (ss', as, n2) => SOME (ss ++ ss', a' :: as, n2)
+         | NONE => NONE)
+    | NONE => NONE) ∧
+  (coerce_abi_values n _ _ = NONE)
+End
+
 Definition elab_expr_def:
   (elab_expr ctx n expression =
     case expression of
@@ -650,21 +684,23 @@ Definition elab_expr_def:
         (case (all_some (MAP call_variable_type callee.ext_parameters),
                all_some (MAP call_variable_type callee.ext_returns)) of
            (SOME params, SOME rets) =>
-             (case elab_args ctx n
-                     (AddressT NonpayableAddress ::
-                      (if with_value then [UintT 256] else []) ++ params)
-                     operands of
-                SOME ((ss, t :: atoms), n1) =>
+             (case elab_arg_values ctx n operands of
+                SOME ((ss, vs), next) =>
+                  (case coerce_abi_values next
+                          (AddressT NonpayableAddress ::
+                           (if with_value then [UintT 256] else []) ++ params) vs of
+                     SOME (cs, t :: atoms, n1) =>
                   (case (with_value, atoms) of
                      (T, v :: args) =>
                        SOME (external_call_value n1 callee.ext_mutability
-                               callee.ext_selector params rets ss t v args)
+                               callee.ext_selector params rets (ss ++ cs) t v args)
                    | (F, args) =>
                        SOME (external_call_value n1 callee.ext_mutability
-                               callee.ext_selector params rets ss t
+                               callee.ext_selector params rets (ss ++ cs) t
                                (ConstantAtom (IntegerValue 0)) args)
                    | _ => NONE)
-              | _ => NONE)
+                   | _ => NONE)
+              | NONE => NONE)
          | _ => NONE)
     | SrcEnvironment _ f _ =>
         let (ss, a) = bind_value n (environment_type f) (EnvironmentOperation f) in
@@ -688,23 +724,14 @@ Definition elab_expr_def:
                 let (cs, v) = bind_value n1 ty (ConvertOperation ty a) in
                 SOME ((ss ++ cs, v, ElabType ty), n1 + 1))
          | _ => NONE)) ∧
-  (* Arguments, converted to the parameter types. *)
-  (elab_args ctx n [] [] = SOME (([], []), n)) ∧
-  (elab_args ctx n (ty :: tys) (e :: es) =
-    case elab_expr ctx n e of
-      SOME ((ss, a, vt), n1) =>
-        let (copied, n2) =
-          if exprs_assign es then snapshot n1 a vt else (([], a), n1) in
-        let (ss1, a1) = copied in
-        (case coerce n2 ty a1 vt of
-           SOME ((cs, a2), n3) =>
-             (case elab_args ctx n3 tys es of
-                SOME ((ss', as), n4) =>
-                  SOME ((ss ++ ss1 ++ cs ++ ss', a2 :: as), n4)
-              | NONE => NONE)
+  (* Capture every argument before any location conversion copies contents. *)
+  (elab_args ctx n tys es =
+    case elab_arg_values ctx n es of
+      SOME ((ss, vs), n1) =>
+        (case coerce_values n1 tys vs of
+           SOME (cs, as, n2) => SOME ((ss ++ cs, as), n2)
          | NONE => NONE)
     | NONE => NONE) ∧
-  (elab_args ctx n _ _ = NONE) ∧
   (* Multiple values: tuple expressions, and calls with several returns. *)
   (elab_values ctx n e =
     case e of
@@ -810,15 +837,28 @@ Definition elab_expr_def:
           SOME ((ss, ref, ty), n1) =>
             SOME ((ss, ReferenceDestination ref ty), n1)
         | NONE => NONE)
+  ∧
+  (elab_arg_values ctx n [] = SOME (([], []), n)) ∧
+  (elab_arg_values ctx n (e :: es) =
+    case elab_expr ctx n e of
+      SOME ((ss, a, vt), n1) =>
+        let (captured, n2) =
+          if exprs_assign es then snapshot n1 a vt else (([], a), n1) in
+        let (saved, a') = captured in
+        (case elab_arg_values ctx n2 es of
+           SOME ((ss', vs), n3) => SOME ((ss ++ saved ++ ss', (a', vt) :: vs), n3)
+         | NONE => NONE)
+    | NONE => NONE)
 Termination
   qexists_tac ‘measure (λx. case x of
      INL (ctx, n, e) => 3 * src_expr_size e + 2
-   | INR (INL (ctx, n, tys, es)) => 3 * list_size src_expr_size es
+   | INR (INL (ctx, n, tys, es)) => 3 * list_size src_expr_size es + 1
    | INR (INR (INL (ctx, n, e))) => 3 * src_expr_size e + 3
    | INR (INR (INR (INL (ctx, n, cs)))) =>
        3 * list_size (option_size src_expr_size) cs
    | INR (INR (INR (INR (INL (ctx, n, e))))) => 3 * src_expr_size e + 1
-   | INR (INR (INR (INR (INR (ctx, n, e))))) => 3 * src_expr_size e + 2)’ >>
+   | INR (INR (INR (INR (INR (INL (ctx, n, e)))))) => 3 * src_expr_size e + 2
+   | INR (INR (INR (INR (INR (INR (ctx, n, es)))))) => 3 * list_size src_expr_size es)’ >>
   conj_tac >- simp[prim_recTheory.WF_measure] >>
   rpt conj_tac >>
   rw[prim_recTheory.measure_thm, solidityImportTheory.src_expr_size_def,
@@ -835,19 +875,6 @@ Definition elab_condition_def:
            SOME ((cs, a'), n2) => SOME ((ss ++ cs, a'), n2)
          | NONE => NONE)
     | NONE => NONE
-End
-
-(* Values converted to a list of types, for returns and declarations. *)
-Definition coerce_values_def:
-  (coerce_values n [] [] = SOME ([], [], n)) ∧
-  (coerce_values n (ty :: tys) ((a, vt) :: vs) =
-    case coerce n ty a vt of
-      SOME ((ss, a'), n1) =>
-        (case coerce_values n1 tys vs of
-           SOME (ss', as, n2) => SOME (ss ++ ss', a' :: as, n2)
-         | NONE => NONE)
-    | NONE => NONE) ∧
-  (coerce_values n _ _ = NONE)
 End
 
 (* The variables of a declaration statement, defined from its values, which
@@ -1036,10 +1063,13 @@ Definition elab_stmts_def:
         case all_some (MAP event_parameter e.event_parameters) of
           NONE => NONE
         | SOME ps =>
-            case elab_args ctx n (MAP FST ps) args of
-              SOME ((ss, as), n1) =>
-                SOME ((ss ++ [EmitStmt (event_topic e) (emit_arguments ps as)],
-                       ctx), n1)
+            case elab_arg_values ctx n args of
+              SOME ((ss, vs), next) =>
+                (case coerce_abi_values next (MAP FST ps) vs of
+                   SOME (cs, as, n1) =>
+                     SOME ((ss ++ cs ++ [EmitStmt (event_topic e) (emit_arguments ps as)],
+                            ctx), n1)
+                 | NONE => NONE)
             | NONE => NONE) ∧
   (* An optional for initialization or loop expression. *)
   (elab_for_init ctx n NONE = SOME (([], ctx), n)) ∧
@@ -1351,29 +1381,51 @@ val () = cv_auto_trans_rec expr_assigns_def (
 val () = cv_auto_trans error_string_data_def;
 val () = cv_auto_trans builtin_failure_def;
 
+val coerce_values_pre_def =
+  cv_auto_trans_pre "coerce_values_pre" coerce_values_def;
+
+Theorem coerce_values_pre[cv_pre,local]:
+  ∀n tys vs. coerce_values_pre n tys vs
+Proof
+  ho_match_mp_tac coerce_values_ind >> rpt strip_tac >>
+  simp[Once coerce_values_pre_def] >> rw[] >> fs[]
+QED
+
+val coerce_abi_values_pre_def =
+  cv_auto_trans_pre "coerce_abi_values_pre" coerce_abi_values_def;
+
+Theorem coerce_abi_values_pre[cv_pre,local]:
+  ∀n tys vs. coerce_abi_values_pre n tys vs
+Proof
+  ho_match_mp_tac coerce_abi_values_ind >> rpt strip_tac >>
+  simp[Once coerce_abi_values_pre_def] >> rw[] >> fs[]
+QED
+
 val elab_expr_pre_def = cv_auto_trans_pre_rec
-  "elab_expr_pre elab_args_pre elab_values_pre elab_components_pre elab_location_pre elab_destination_pre"
+  "elab_expr_pre elab_args_pre elab_values_pre elab_components_pre elab_location_pre elab_destination_pre elab_arg_values_pre"
   elab_expr_def (
   WF_REL_TAC ‘measure (λx. case x of
      INL (ctx, n, e) => 3 * cv_size e + 2
-   | INR (INL (ctx, n, tys, es)) => 3 * cv_size es
+   | INR (INL (ctx, n, tys, es)) => 3 * cv_size es + 1
    | INR (INR (INL (ctx, n, e))) => 3 * cv_size e + 3
    | INR (INR (INR (INL (ctx, n, cs)))) => 3 * cv_size cs
    | INR (INR (INR (INR (INL (ctx, n, e))))) => 3 * cv_size e + 1
-   | INR (INR (INR (INR (INR (ctx, n, e))))) => 3 * cv_size e + 2)’ >>
+   | INR (INR (INR (INR (INR (INL (ctx, n, e)))))) => 3 * cv_size e + 2
+   | INR (INR (INR (INR (INR (INR (ctx, n, es)))))) => 3 * cv_size es)’ >>
   cv_termination_tac
 );
 
 Theorem elab_pre_bounded[local]:
   !b.
   (!ctx n e. 3 * src_expr_size e + 2 < b ==> elab_expr_pre ctx n e) /\
-  (!ctx n tys es. 3 * list_size src_expr_size es < b ==>
+  (!ctx n tys es. 3 * list_size src_expr_size es + 1 < b ==>
      elab_args_pre ctx n tys es) /\
   (!ctx n e. 3 * src_expr_size e + 3 < b ==> elab_values_pre ctx n e) /\
   (!ctx n cs. 3 * list_size (option_size src_expr_size) cs < b ==>
      elab_components_pre ctx n cs) /\
   (!ctx n e. 3 * src_expr_size e + 1 < b ==> elab_location_pre ctx n e) /\
-  (!ctx n e. 3 * src_expr_size e + 2 < b ==> elab_destination_pre ctx n e)
+  (!ctx n e. 3 * src_expr_size e + 2 < b ==> elab_destination_pre ctx n e) /\
+  (!ctx n es. 3 * list_size src_expr_size es < b ==> elab_arg_values_pre ctx n es)
 Proof
   completeInduct_on ‘b’ >> rpt conj_tac >> rpt gen_tac >> disch_tac >>
   qpat_x_assum ‘!m. m < b ==> _’ (drule_then strip_assume_tac)
@@ -1384,6 +1436,9 @@ Proof
     (Cases_on ‘e’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
      simp[src_expr_distinct, src_expr_11, solidityImportTheory.src_expr_size_def])
   >~ [‘elab_args_pre ctx n tys es’] >-
+    (Cases_on ‘es’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
+     simp[listTheory.list_size_def])
+  >~ [‘elab_arg_values_pre ctx n es’] >-
     (Cases_on ‘es’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
      simp[listTheory.list_size_def])
   >~ [‘elab_components_pre ctx n cs’] >-
@@ -1406,7 +1461,7 @@ Proof
      qexists_tac ‘3 * src_expr_size v + 3’ >> simp[]) >>
   conj_tac >-
     (rpt gen_tac >> irule (cj 2 elab_pre_bounded) >>
-     qexists_tac ‘3 * list_size src_expr_size es + 1’ >> simp[]) >>
+     qexists_tac ‘3 * list_size src_expr_size es + 2’ >> simp[]) >>
   conj_tac >-
     (rpt gen_tac >> irule (cj 3 elab_pre_bounded) >>
      qexists_tac ‘3 * src_expr_size e + 4’ >> simp[]) >>
@@ -1420,21 +1475,18 @@ Proof
   qexists_tac ‘3 * src_expr_size e + 3’ >> simp[]
 QED
 
+Theorem elab_arg_values_pre[cv_pre,local]:
+  ∀ctx n es. elab_arg_values_pre ctx n es
+Proof
+  rpt gen_tac >> irule (cj 7 elab_pre_bounded) >>
+  qexists_tac ‘3 * list_size src_expr_size es + 1’ >> simp[]
+QED
+
 val () = cv_auto_trans elab_condition_def;
 val () = cv_auto_trans
   (REWRITE_RULE [GSYM byteTheory.word_of_bytes_be_def] event_topic_def);
 val () = cv_auto_trans event_parameter_def;
 val () = cv_auto_trans emit_arguments_def;
-
-val coerce_values_pre_def =
-  cv_auto_trans_pre "coerce_values_pre" coerce_values_def;
-
-Theorem coerce_values_pre[cv_pre,local]:
-  ∀n tys vs. coerce_values_pre n tys vs
-Proof
-  ho_match_mp_tac coerce_values_ind >> rpt strip_tac >>
-  simp[Once coerce_values_pre_def] >> rw[] >> fs[]
-QED
 
 val declare_values_pre_def =
   cv_auto_trans_pre "declare_values_pre" declare_values_def;

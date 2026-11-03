@@ -2,6 +2,7 @@
 pragma solidity 0.8.37;
 
 interface BytePeer {
+    function afterMutation(bytes calldata data, uint256 ignored) external returns (bytes memory);
     function raw(uint256 mode) external pure returns (bytes memory);
     function echo(bytes calldata data, string calldata text) external returns (bytes memory, string memory);
 }
@@ -9,6 +10,9 @@ interface BytePeer {
 contract DynamicBytes {
     string private title;
     bytes private stored;
+    event Snapshot(bytes data, uint256 mutation);
+    event StringSnapshot(string text, uint256 mutation);
+    event One(bytes data);
     event Values(bytes data, string text, uint256 count);
     event Indexed(bytes indexed data, string indexed text, bytes plain);
 
@@ -44,5 +48,31 @@ contract DynamicBytes {
     }
     function throughPeer(address target, bytes memory data, string memory text) external returns (bytes memory, string memory) {
         return BytePeer(target).echo(data, text);
+    }
+
+    function mutate(bytes1 replacement) internal returns (uint256) {
+        stored[0] = replacement;
+        return 0;
+    }
+    function mutateTitle(bytes1 replacement) internal returns (uint256) {
+        bytes(title)[0] = replacement;
+        return 0;
+    }
+    function eventAfterMutation(bytes1 replacement) external {
+        emit Snapshot(stored, mutate(replacement));
+    }
+    function stringEventAfterMutation(bytes1 replacement) external {
+        emit StringSnapshot(title, mutateTitle(replacement));
+    }
+    function peerAfterMutation(address target, bytes1 replacement) external returns (bytes memory) {
+        return BytePeer(target).afterMutation(stored, mutate(replacement));
+    }
+    function eventThenPeerRaw(address target, bytes calldata data) external returns (bytes memory) {
+        emit One(data);
+        return BytePeer(target).raw(4);
+    }
+    function literalEventThenPeerRaw(address target) external returns (bytes memory) {
+        emit One(hex"80");
+        return BytePeer(target).raw(4);
     }
 }
