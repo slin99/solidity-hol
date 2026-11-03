@@ -41,7 +41,7 @@ family:
 | Field | What the call family reads it for |
 | --- | --- |
 | `self_address` | the caller of every message call the frame makes |
-| `accounts`, `logs` | the world a call starts from and the world it leaves |
+| `accounts`, `transient`, `logs` | the world a call starts from and the world it leaves |
 | `call_value`, `call_data` | the callee sees them only through its own frame; the caller's are untouched by a call |
 | `memory`, `memory_size` | the call's input region, and its output region |
 | `transaction_parameters` | inherited by the callee's frame, so `origin`, `chainid` and the block builtins agree |
@@ -158,6 +158,6 @@ until something does.
   callee that needs more than the budget fails here as it would on chain.
 - **A Yul frame is never entered by a static call.** The frame's own
   static-ness is not a field, so a `staticcall` *into* the top-level Yul frame
-  would let it write storage. The callee's static-ness is Verifereum's and is
-  right. No corpus case needs the top-level frame to be static; giving the
+  would let it write storage and transient storage. The callee's static-ness
+  is Verifereum's and is right. No corpus case needs the top-level frame to be static; giving the
   frame a static flag is a small change if one does.
