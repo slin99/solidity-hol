@@ -341,30 +341,38 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
                     roots.extend(by_id[b] for b in member["linearizedBaseContracts"] if b in by_id)
                 continue
             roots.append(member)
+    # Structs are found from every reference, read or not, as the importer
+    # finds them from the whole of each base.
     seen: set[int] = set()
+    rooted = {root["id"] for root in roots}
+
+    def add(root: dict[str, Any]) -> None:
+        if root["id"] not in rooted:
+            rooted.add(root["id"])
+            roots.append(root)
+            pending.append(root)
+
     pending = list(roots)
     while pending:
-        for node in nodes(pending.pop(), skip=lambda n: not read(n)):
+        for node in nodes(pending.pop()):
             if node["id"] in seen:
                 continue
             seen.add(node["id"])
             if node["nodeType"] == "RevertStatement":
                 error = by_id.get(node["errorCall"]["expression"].get("referencedDeclaration"))
-                if error is not None and error["parameters"]["id"] not in seen:
-                    roots.append(error["parameters"])
-                    pending.append(error["parameters"])
+                if error is not None:
+                    add(error["parameters"])
                 continue
             target = by_id.get(node.get("referencedDeclaration"))
-            if target is None or target["id"] in seen:
+            if target is None:
                 continue
             if (target["nodeType"] == "StructDefinition"
                     and by_id.get(target.get("scope"), {}).get("nodeType") == "SourceUnit"):
-                roots.append(target)
-                pending.append(target)
+                add(target)
             elif (target["nodeType"] == "FunctionDefinition" and node["nodeType"] == "MemberAccess"
                   and is_external(node)):
-                roots.extend([target["parameters"], target["returnParameters"]])
-                pending.extend([target["parameters"], target["returnParameters"]])
+                add(target["parameters"])
+                add(target["returnParameters"])
     return roots
 
 
@@ -388,6 +396,28 @@ def overridden(functions: list[dict[str, Any]], by_id: dict[int, dict[str, Any]]
             found.add(base)
             pending.extend(by_id.get(base, {}).get("baseFunctions", []))
     return found
+
+
+def live_functions(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> tuple[set[int], set[int]]:
+    """The implemented functions of the deployable contracts' bases, and those
+    of them no other function of the same contract overrides: the functions
+    valid_src_unit and elaborate_unit see."""
+    based: set[int] = set()
+    live: set[int] = set()
+    for ast in asts.values():
+        for contract in deployable(ast):
+            functions = [m for b in contract["linearizedBaseContracts"] if b in by_id
+                         for m in by_id[b]["nodes"]
+                         if m["nodeType"] == "FunctionDefinition" and m["implemented"]]
+            dead = overridden(functions, by_id)
+            based.update(f["id"] for f in functions)
+            live.update(f["id"] for f in functions if f["id"] not in dead)
+    return based, live
+
+
+def constructor_parameters(contract: dict[str, Any]) -> list[dict[str, Any]]:
+    return next((m["parameters"]["parameters"] for m in contract.get("nodes", [])
+                 if m["nodeType"] == "FunctionDefinition" and m["kind"] == "constructor"), [])
 
 
 def is_external(node: dict[str, Any]) -> bool:
@@ -661,6 +691,13 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
         returns = by_id.get(node.get("functionReturnParameters"), {}).get("parameters", [])
         if len(returns) == 1:
             expected.append((node["expression"], returns[0]))
+        elif node["expression"]["nodeType"] == "TupleExpression":
+            expected.extend(zip(node["expression"]["components"], returns))
+    elif kind == "InheritanceSpecifier" or (kind == "ModifierInvocation"
+                                            and node.get("kind") == "baseConstructorSpecifier"):
+        base = node["baseName" if kind == "InheritanceSpecifier" else "modifierName"]
+        expected.extend(zip(node.get("arguments") or [],
+                            constructor_parameters(by_id.get(base.get("referencedDeclaration"), {}))))
     elif kind == "Assignment" and node["operator"] not in ("<<=", ">>="):
         expected.append((node["rightHandSide"], node))
     elif kind == "BinaryOperation":
@@ -669,7 +706,10 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
         if node["operator"] not in ("<<", ">>", "**"):
             expected.append((node["rightExpression"], common))
     elif kind == "FunctionCall" and node["kind"] == "functionCall":
-        callee = by_id.get(node["expression"].get("referencedDeclaration"), {})
+        name = node["expression"]
+        if name["nodeType"] == "FunctionCallOptions":
+            name = name["expression"]
+        callee = by_id.get(name.get("referencedDeclaration"), {})
         if callee.get("nodeType") == "FunctionDefinition":
             expected.extend(zip(node["arguments"], callee["parameters"]["parameters"]))
         member = node["expression"]
@@ -791,11 +831,11 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     conversions = {n["expression"]["id"] for n in calls if n["kind"] == "typeConversion"}
     fields = {v["id"] for n in reached.values() if n["nodeType"] == "StructDefinition"
               for v in n["members"]}
+    based, live = live_functions(asts, by_id)
+    dead = {n["id"] for f in based - live if f in reached for n in nodes(by_id[f])}
     errors = {n["errorCall"]["expression"].get("referencedDeclaration")
-              for n in reached.values() if n["nodeType"] == "RevertStatement"}
+              for n in reached.values() if n["nodeType"] == "RevertStatement" and n["id"] not in dead}
     error_parameters = {v["id"] for e in errors if e in by_id for v in by_id[e]["parameters"]["parameters"]}
-    functions = [n for n in reached.values() if n["nodeType"] == "FunctionDefinition"]
-    dead = {n["id"] for f in overridden(functions, by_id) if f in reached for n in nodes(by_id[f])}
     builtin_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
                        and n["expression"]["nodeType"] == "Identifier"
                        and n["expression"].get("referencedDeclaration") in {REQUIRE, ASSERT, REVERT}}
