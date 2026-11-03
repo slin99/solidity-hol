@@ -365,6 +365,33 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(coverage.coerced_literals(statement, {30: error}), [coverage.Blocker(
             "RevertStatement", "string literals as fixed-size bytes", "elaboration")])
 
+    def test_modifiers_are_checked_where_live_functions_invoke_them(self) -> None:
+        def string(node_id):
+            return {"nodeType": "Literal", "id": node_id, "kind": "string", "value": "abcd",
+                    "typeDescriptions": {"typeIdentifier": "t_stringliteral_abcd"}}
+
+        coerced = {"nodeType": "VariableDeclarationStatement", "id": 66,
+                   "declarations": [variable(67, type_identifier="t_bytes4")],
+                   "initialValue": string(68)}
+        modifier = {"nodeType": "ModifierDefinition", "id": 60, "name": "m", "virtual": False,
+                    "parameters": {"nodeType": "ParameterList", "id": 61,
+                                   "parameters": [variable(62, type_identifier="t_bytes4")]},
+                    "body": {"nodeType": "Block", "id": 63, "statements": [
+                        coerced, {"nodeType": "PlaceholderStatement", "id": 64}]}}
+        invocation = {"nodeType": "ModifierInvocation", "id": 70, "kind": "modifierInvocation",
+                      "arguments": [string(71)],
+                      "modifierName": {"nodeType": "IdentifierPath", "id": 72, "name": "m",
+                                       "referencedDeclaration": 60}}
+        feature = "string literals as fixed-size bytes"
+        self.assertEqual(coverage.coerced_literals(invocation, {60: modifier}),
+                         [coverage.Blocker("ModifierInvocation", feature, "elaboration")])
+        self.assertEqual(coverage.scan({"t.sol": unit([modifier, function(4, [])])}), {})
+        found = coverage.scan({"t.sol": unit([modifier, dict(function(4, []), modifiers=[invocation])])})
+        self.assertEqual(found[66], [coverage.Blocker("VariableDeclarationStatement", feature, "elaboration")])
+        self.assertEqual(found[70], [coverage.Blocker("ModifierInvocation", feature, "elaboration")])
+        found = coverage.scan({"t.sol": unit([dict(modifier, virtual=True), function(4, [])])})
+        self.assertEqual(found[60], [coverage.Blocker("ModifierDefinition", "virtual modifiers", "import")])
+
     def test_mapping_keys_parentheses_and_tuples_are_coerced(self) -> None:
         def string(node_id):
             return {"nodeType": "Literal", "id": node_id, "kind": "string", "value": "abcd",

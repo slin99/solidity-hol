@@ -22,12 +22,12 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 | outcome | tests |
 | --- | ---: |
-| admitted | 237 |
-| elaboration-rejected | 19 |
-| import-rejected | 1081 |
+| admitted | 246 |
+| elaboration-rejected | 20 |
+| import-rejected | 1068 |
 | compile-failure | 0 |
 | malformed-input | 0 |
-| source-rejected | 233 |
+| source-rejected | 236 |
 | invalid-core | 0 |
 | skipped | 100 |
 | total | 1670 |
@@ -40,12 +40,12 @@ The scan disagrees with the HOL run on 0 tests.
 
 | feature | AST nodes | tests | only blocker | first |
 | --- | --- | ---: | ---: | ---: |
-| arrays | `ArrayTypeName`, `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 322 | 5 | 2 |
-| inline assembly | `InlineAssembly` | 266 | 87 | 178 |
+| arrays | `ArrayTypeName`, `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 322 | 6 | 2 |
+| inline assembly | `InlineAssembly` | 266 | 89 | 180 |
 | array values | `Identifier`, `IndexAccess`, `MemberAccess` | 261 | 9 | 0 |
-| external calls and contract members | `FunctionCall`, `Identifier`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 226 | 1 | 67 |
+| external calls and contract members | `FunctionCall`, `Identifier`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 226 | 1 | 69 |
 | local reference bindings | `VariableDeclaration` | 215 | 0 | 0 |
-| public state variables | `VariableDeclaration` | 206 | 49 | 158 |
+| public state variables | `VariableDeclaration` | 206 | 59 | 170 |
 | structs | `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 165 | 5 | 14 |
 | this | `Identifier` | 140 | 0 | 3 |
 | source units without exactly one contract | `SourceUnit` | 129 | 4 | 0 |
@@ -66,13 +66,12 @@ The scan disagrees with the HOL run on 0 tests.
 | functions as values | `Identifier` | 55 | 1 | 0 |
 | type names as values | `ElementaryTypeNameExpression` | 55 | 0 | 6 |
 | user-defined value types | `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `UserDefinedValueTypeDefinition`, `VariableDeclaration` | 52 | 5 | 33 |
-| constants | `VariableDeclaration` | 47 | 6 | 30 |
+| constants | `VariableDeclaration` | 47 | 6 | 31 |
 | inline arrays | `TupleExpression` | 47 | 0 | 21 |
-| transient storage | `VariableDeclaration` | 41 | 7 | 0 |
+| transient storage | `VariableDeclaration` | 41 | 8 | 0 |
 | conditional expressions | `Conditional` | 40 | 11 | 22 |
-| modifiers | `ModifierDefinition`, `ModifierInvocation`, `PlaceholderStatement` | 39 | 13 | 35 |
 | mappings | `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 39 | 3 | 0 |
-| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 10 | 0 |
+| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 11 | 0 |
 | aggregate array mutation | `MemberAccess` | 37 | 3 | 0 |
 | named arguments | `FunctionCall` | 32 | 4 | 17 |
 | literals of non-integer types | `Assignment`, `BinaryOperation`, `FunctionCall`, `Literal`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 32 | 2 | 0 |
@@ -80,7 +79,7 @@ The scan disagrees with the HOL run on 0 tests.
 | enums | `EnumDefinition`, `EnumValue`, `FunctionCall`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 29 | 3 | 25 |
 | tuples of literals | `TupleExpression` | 28 | 4 | 0 |
 | conversions to non-elementary types | `Identifier`, `IndexAccess`, `MemberAccess` | 26 | 0 | 1 |
-| immutables | `VariableDeclaration` | 24 | 7 | 16 |
+| immutables | `VariableDeclaration` | 24 | 7 | 17 |
 | members of elementary type names | `IndexAccess`, `TupleExpression` | 24 | 0 | 0 |
 | bytes push and pop | `MemberAccess` | 23 | 10 | 0 |
 | call options ({value: …, gas: …}) | `FunctionCallOptions`, `IndexAccess`, `MemberAccess`, `NewExpression`, `TupleExpression` | 22 | 0 | 3 |
@@ -99,6 +98,7 @@ The scan disagrees with the HOL run on 0 tests.
 | events named through a contract or library | `MemberAccess` | 8 | 3 | 5 |
 | imports | `MemberAccess`, `TupleExpression` | 8 | 0 | 0 |
 | msg/block/tx globals | `MemberAccess` | 6 | 5 | 6 |
+| virtual modifiers | `ModifierDefinition` | 6 | 4 | 4 |
 | array type expressions | `IndexAccess` | 6 | 0 | 3 |
 | tuples with empty components | `TupleExpression` | 6 | 0 | 0 |
 | file-level events | `EventDefinition` | 5 | 2 | 3 |
@@ -121,26 +121,26 @@ Supporting the features in this order admits the most rejected tests at each ste
 
 | step | feature | admitted |
 | ---: | --- | ---: |
-| 1 | inline assembly | 87 |
-| 2 | public state variables | 144 |
-| 3 | modifiers | 170 |
-| 4 | constant expressions over literals | 194 |
-| 5 | transient storage | 210 |
-| 6 | address members (balance, call, transfer, …) | 226 |
-| 7 | operator delete | 240 |
-| 8 | array values | 255 |
-| 9 | arrays | 285 |
-| 10 | local reference bindings | 332 |
-| 11 | memory arrays (new T[](n)) | 364 |
-| 12 | structs | 393 |
-| 13 | struct values and copying | 442 |
-| 14 | aggregate array mutation | 473 |
-| 15 | inline arrays | 498 |
-| 16 | abi.* functions | 520 |
-| 17 | hash and signature built-ins | 539 |
-| 18 | bytes push and pop | 558 |
-| 19 | string literals as fixed-size bytes | 576 |
-| 20 | constants | 592 |
+| 1 | inline assembly | 89 |
+| 2 | public state variables | 156 |
+| 3 | constant expressions over literals | 180 |
+| 4 | transient storage | 196 |
+| 5 | address members (balance, call, transfer, …) | 212 |
+| 6 | operator delete | 226 |
+| 7 | array values | 241 |
+| 8 | arrays | 271 |
+| 9 | local reference bindings | 318 |
+| 10 | memory arrays (new T[](n)) | 350 |
+| 11 | structs | 379 |
+| 12 | struct values and copying | 428 |
+| 13 | aggregate array mutation | 459 |
+| 14 | inline arrays | 484 |
+| 15 | abi.* functions | 506 |
+| 16 | hash and signature built-ins | 525 |
+| 17 | bytes push and pop | 544 |
+| 18 | string literals as fixed-size bytes | 562 |
+| 19 | constants | 578 |
+| 20 | literals of non-integer types | 598 |
 
 ## Skipped and compile failures
 
@@ -169,6 +169,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `arithmetics/block_inside_unchecked.sol`
 - `arithmetics/checked_add_v2.sol`
 - `arithmetics/checked_called_by_unchecked.sol`
+- `arithmetics/checked_modifier_called_by_unchecked.sol`
 - `arithmetics/divisiod_by_zero.sol`
 - `arithmetics/exp_associativity.sol`
 - `arithmetics/unchecked_called_by_checked.sol`
@@ -274,6 +275,13 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `isoltestTesting/storage/storage_nonempty.sol`
 - `literals/denominations_in_array_sizes.sol`
 - `literals/hex_string_with_underscore.sol`
+- `modifiers/function_modifier.sol`
+- `modifiers/function_modifier_local_variables.sol`
+- `modifiers/function_modifier_loop_viair.sol`
+- `modifiers/function_modifier_multi_invocation_viair.sol`
+- `modifiers/function_modifier_return_reference.sol`
+- `modifiers/modifier_in_constructor_ice.sol`
+- `modifiers/modifiers_in_construction_context.sol`
 - `multiSource/import.sol`
 - `operators/compound_assign.sol`
 - `operators/shifts/shift_cleanup.sol`
@@ -299,6 +307,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `operators/shifts/shift_right_uint32.sol`
 - `operators/shifts/shift_right_uint8.sol`
 - `operators/shifts/shift_underflow_negative_rvalue.sol`
+- `payable/no_nonpayable_circumvention_by_modifier.sol`
 - `receive/ether_and_data.sol`
 - `receive/inherited.sol`
 - `reverts/assert_require.sol`
@@ -562,6 +571,9 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `integer/int.sol`: integer/int.sol: valid_src_unit failed (source validation/subset restriction)
 - `integer/uint.sol`: integer/uint.sol: valid_src_unit failed (source validation/subset restriction)
 - `memoryManagement/memory_types_initialisation.sol`: memoryManagement/memory_types_initialisation.sol: valid_src_unit failed (source validation/subset restriction)
+- `modifiers/evaluation_order.sol`: modifiers/evaluation_order.sol: valid_src_unit failed (source validation/subset restriction)
+- `modifiers/modifier_init_return.sol`: modifiers/modifier_init_return.sol: valid_src_unit failed (source validation/subset restriction)
+- `modifiers/transient_state_variable_value_type.sol`: modifiers/transient_state_variable_value_type.sol: valid_src_unit failed (source validation/subset restriction)
 - `operators/compound_assign_transient_storage.sol`: operators/compound_assign_transient_storage.sol: valid_src_unit failed (source validation/subset restriction)
 - `operators/shifts/shift_right_negative_literal.sol`: operators/shifts/shift_right_negative_literal.sol: valid_src_unit failed (source validation/subset restriction)
 - `operators/transient_storage_variable_increment_decrement.sol`: operators/transient_storage_variable_increment_decrement.sol: valid_src_unit failed (source validation/subset restriction)
@@ -649,6 +661,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `expressions/bytes_comparison.sol`: expressions/bytes_comparison.sol: elaborate_unit returned NONE (unsupported lowering)
 - `externalSource/source_import_subdir.sol`: _external/import_with_subdir.sol: elaborate_unit returned NONE (unsupported lowering)
 - `externalSource/source_name_starting_with_dots.sol`: _sourceNameStartingWithDots/dir/contract.sol: elaborate_unit returned NONE (unsupported lowering)
+- `modifiers/function_return_parameter.sol`: modifiers/function_return_parameter.sol: elaborate_unit returned NONE (unsupported lowering)
 - `storage/packed_storage_structs_bytes.sol`: storage/packed_storage_structs_bytes.sol: elaborate_unit returned NONE (unsupported lowering)
 - `storageLayoutSpecifier/variable_cleanup.sol`: storageLayoutSpecifier/variable_cleanup.sol: elaborate_unit returned NONE (unsupported lowering)
 - `strings/string_escapes.sol`: strings/string_escapes.sol: elaborate_unit returned NONE (unsupported lowering)

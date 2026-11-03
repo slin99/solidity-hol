@@ -183,7 +183,7 @@ EXPRESSIONS = {
 STATEMENTS = {
     "Block", "UncheckedBlock", "ExpressionStatement", "VariableDeclarationStatement",
     "IfStatement", "WhileStatement", "DoWhileStatement", "ForStatement", "Break",
-    "Continue", "Return", "EmitStatement", "RevertStatement",
+    "Continue", "Return", "EmitStatement", "RevertStatement", "PlaceholderStatement",
 }
 # Nodes the importer reads only in a fixed position, checked there, and nodes
 # it never reaches because it rejects their parents (IdentifierPath) or never
@@ -194,7 +194,7 @@ STRUCTURAL = {
     "FunctionDefinition", "ParameterList", "VariableDeclaration", "ElementaryTypeName",
     "ElementaryTypeNameExpression", "IdentifierPath", "StructuredDocumentation", "Mapping",
     "StructDefinition", "EventDefinition", "ErrorDefinition", "InheritanceSpecifier",
-    "OverrideSpecifier",
+    "OverrideSpecifier", "ModifierDefinition", "ModifierInvocation",
 }
 FEATURES = {
     "Conditional": "conditional expressions",
@@ -203,8 +203,6 @@ FEATURES = {
     "FunctionTypeName": "function types",
     "IndexRangeAccess": "array slices",
     "InlineAssembly": "inline assembly",
-    "ModifierDefinition": "modifiers",
-    "PlaceholderStatement": "modifiers",
     "TryCatchClause": "try/catch",
     "TryStatement": "try/catch",
     "UserDefinedValueTypeDefinition": "user-defined value types",
@@ -492,9 +490,9 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
             found.append("try/catch")
         if node["kind"] == "structConstructorCall":
             found.append("structs")
-    elif kind == "ModifierInvocation":
-        if node.get("kind") != "baseConstructorSpecifier":
-            found.append("modifiers")
+    elif kind == "ModifierDefinition":
+        if node["virtual"] or node.get("overrides"):
+            found.append("virtual modifiers")
     elif kind == "VariableDeclaration":
         if node["stateVariable"] and node.get("visibility") == "public":
             found.append("public state variables")
@@ -711,6 +709,10 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
     elif kind == "Return" and node.get("expression") is not None:
         components(node["expression"],
                    by_id.get(node.get("functionReturnParameters"), {}).get("parameters", []))
+    elif kind == "ModifierInvocation" and node.get("kind") == "modifierInvocation":
+        modifier = by_id.get(node["modifierName"].get("referencedDeclaration"), {})
+        expected.extend(zip(node.get("arguments") or [],
+                            modifier.get("parameters", {}).get("parameters", [])))
     elif kind == "InheritanceSpecifier" or (kind == "ModifierInvocation"
                                             and node.get("kind") == "baseConstructorSpecifier"):
         base = node["baseName" if kind == "InheritanceSpecifier" else "modifierName"]
@@ -878,6 +880,12 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
               for v in n["members"]}
     based, live = live_functions(asts, by_id)
     dead = {n["id"] for f in based - live if f in reached for n in nodes(by_id[f])}
+    # A modifier is checked and elaborated where a live function invokes it.
+    invoked = {m["modifierName"].get("referencedDeclaration")
+               for f in live for m in by_id[f].get("modifiers", [])}
+    dead.update(n["id"] for m in reached.values()
+                if m["nodeType"] == "ModifierDefinition" and m["id"] not in invoked
+                for n in nodes(m))
     # The signatures read only at nodes of overridden functions, unless they
     # belong to a function of an imported contract, which is read as such.
     read_at: dict[int, bool] = {}

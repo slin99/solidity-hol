@@ -185,13 +185,26 @@ Datatype:
   | SrcReturn node_info num (src_expr option)
   | SrcEmit node_info num (src_expr list)
   | SrcRevertError node_info src_error (src_expr list)
+  | SrcPlaceholder node_info
+End
+
+(* A modifier: its parameters and its body, where SrcPlaceholder runs the
+ * rest of the function it modifies. *)
+Datatype:
+  src_modifier = <|
+    modifier_info : node_info;
+    modifier_parameters_id : num;
+    modifier_parameters : src_variable list;
+    modifier_body : src_stmt
+  |>
 End
 
 (* Parameter lists are represented by their ids and declarations. The kind is
  * function, receive or fallback; the selector is that of an external or
  * public function. The base functions are the declarations it overrides,
  * directly or through other overridden declarations (the closure of the
- * compiler's baseFunctions).
+ * compiler's baseFunctions). The modifiers are the modifier invocations, in
+ * order: the modifier's id and the arguments.
  *)
 Datatype:
   src_function = <|
@@ -207,6 +220,7 @@ Datatype:
     fn_parameters : src_variable list;
     fn_returns_id : num;
     fn_returns : src_variable list;
+    fn_modifiers : (num # src_expr list) list;
     fn_body : src_stmt
   |>
 End
@@ -264,6 +278,7 @@ Datatype:
     contract_storage : src_storage_entry list;
     contract_structs : src_struct list;
     contract_events : src_event list;
+    contract_modifiers : src_modifier list;
     contract_functions : src_function list
   |>
 End
@@ -737,6 +752,7 @@ Definition stmt_ids_def:
   (stmt_ids (SrcReturn info _ e) = info.node_id :: option_expr_ids e) ∧
   (stmt_ids (SrcEmit info _ args) = info.node_id :: exprs_ids args) ∧
   (stmt_ids (SrcRevertError info _ args) = info.node_id :: exprs_ids args) ∧
+  (stmt_ids (SrcPlaceholder info) = [info.node_id]) ∧
   (option_stmt_ids NONE = []) ∧
   (option_stmt_ids (SOME s) = stmt_ids s) ∧
   (stmts_ids [] = []) ∧
@@ -747,7 +763,7 @@ Definition function_ids_def:
   function_ids (f : src_function) =
     f.fn_info.node_id :: f.fn_parameters_id :: f.fn_returns_id ::
     FLAT (MAP variable_ids (f.fn_parameters ++ f.fn_returns)) ++
-    stmt_ids f.fn_body
+    FLAT (MAP (exprs_ids o SND) f.fn_modifiers) ++ stmt_ids f.fn_body
 End
 
 Definition contract_ids_def:
@@ -760,6 +776,9 @@ Definition contract_ids_def:
     FLAT (MAP (λ(_, _, es). exprs_ids es) c.contract_base_arguments) ++
     FLAT (MAP (λe. e.event_info.node_id ::
       FLAT (MAP (variable_ids o FST) e.event_parameters)) c.contract_events) ++
+    FLAT (MAP (λm. m.modifier_info.node_id :: m.modifier_parameters_id ::
+      FLAT (MAP variable_ids m.modifier_parameters) ++ stmt_ids m.modifier_body)
+      c.contract_modifiers) ++
     FLAT (MAP function_ids c.contract_functions)
 End
 
@@ -802,7 +821,8 @@ Datatype:
     state : (num # sol_type) list;
     scope : num;
     returns_id : num;
-    in_loop : bool
+    in_loop : bool;
+    in_modifier : bool
   |>
 End
 
@@ -1102,6 +1122,7 @@ Definition check_stmts_def:
     case ALOOKUP env.events ev of
       SOME e => LENGTH args = LENGTH e.event_parameters ∧ check_exprs env args
     | NONE => F) ∧
+  (check_stmt env (SrcPlaceholder _) ⇔ env.in_modifier) ∧
   (check_stmt env (SrcRevertError _ err args) ⇔
     LENGTH err.error_selector = 4 ∧
     case all_some (MAP variable_type err.error_parameters) of
@@ -1180,11 +1201,29 @@ Definition constructor_parameters_def:
     | SOME f => all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_parameters)
 End
 
+(* A modifier invocation: arguments that see the function's variables, and
+ * the modifier's body, which sees its parameters and the function's state
+ * variables. A return in it has no return parameters (id 0). *)
+Definition check_modifier_def:
+  check_modifier modifiers env (x, args) ⇔
+    case ALOOKUP modifiers x of
+      NONE => F
+    | SOME m =>
+        LENGTH args = LENGTH m.modifier_parameters ∧ check_exprs env args ∧
+        case (all_some (MAP (scoped_variable x) m.modifier_parameters),
+              m.modifier_body) of
+          (SOME variables, SrcBlock info ss) =>
+            IS_SOME (check_stmts
+              (env with <| variables := variables; scope := info.node_id;
+                           returns_id := 0; in_modifier := T |>) ss)
+        | _ => F
+End
+
 (* A pure function sees no state variables. Whether a view function writes
  * one is the compiler's check.
  *)
 Definition check_function_def:
-  check_function structs events functions state bases (f : src_function) ⇔
+  check_function structs events functions modifiers state bases (f : src_function) ⇔
     MEM f.fn_scope bases ∧
     (f.fn_kind = "function" ∨ f.fn_kind = "receive" ∨ f.fn_kind = "fallback" ∨
      f.fn_kind = "constructor") ∧
@@ -1193,12 +1232,13 @@ Definition check_function_def:
     case (all_some (MAP (scoped_variable f.fn_info.node_id)
                      (f.fn_parameters ++ f.fn_returns)), f.fn_body) of
       (SOME variables, SrcBlock info ss) =>
-        IS_SOME (check_stmts
-          <| functions := functions; structs := structs; events := events;
-             variables := variables;
-             state := if f.fn_mutability = "pure" then [] else state;
-             scope := info.node_id; returns_id := f.fn_returns_id;
-             in_loop := F |> ss)
+        let env = <| functions := functions; structs := structs; events := events;
+                     variables := variables;
+                     state := if f.fn_mutability = "pure" then [] else state;
+                     scope := info.node_id; returns_id := f.fn_returns_id;
+                     in_loop := F; in_modifier := F |> in
+        EVERY (check_modifier modifiers env) f.fn_modifiers ∧
+        IS_SOME (check_stmts env ss)
     | _ => F
 End
 
@@ -1245,7 +1285,8 @@ Definition initializer_env_def:
        structs := c.contract_structs;
        events := MAP (λe. (e.event_info.node_id, e)) c.contract_events;
        variables := []; state := state; scope := c.contract_info.node_id;
-       returns_id := c.contract_info.node_id; in_loop := F |>
+       returns_id := c.contract_info.node_id; in_loop := F;
+       in_modifier := F |>
 End
 
 Definition check_contract_def:
@@ -1262,6 +1303,7 @@ Definition check_contract_def:
         EVERY (check_function c.contract_structs
                  (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
                  (call_table c.contract_functions)
+                 (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
                  state c.contract_bases)
           (live_functions c.contract_functions) ∧
         EVERY (λ(x, e). IS_SOME (ALOOKUP state x) ∧
@@ -1391,6 +1433,7 @@ val () = cv_auto_trans contract_constructor_def;
 val () = cv_auto_trans constructor_parameters_def;
 val () = cv_auto_trans live_functions_def;
 val () = cv_auto_trans storage_layout_ok_def;
+val () = cv_auto_trans check_modifier_def;
 val () = cv_auto_trans check_function_def;
 val () = cv_auto_trans check_struct_def;
 val () = cv_auto_trans check_event_def;
