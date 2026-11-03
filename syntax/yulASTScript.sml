@@ -38,9 +38,9 @@ Datatype:
     YAdd | YSub | YMul | YDiv | YSDiv | YMod | YSMod | YExp | YSignExtend
     (* comparison and bitwise *)
   | YLt | YGt | YSLt | YSGt | YEq | YIsZero | YAnd | YOr | YXor | YNot
-  | YShl | YShr | YSar
+  | YShl | YShr | YSar | YByte
     (* hashing, memory, storage *)
-  | YKeccak256 | YMLoad | YMStore | YMCopy | YSLoad | YSStore
+  | YKeccak256 | YMLoad | YMStore | YMStore8 | YMCopy | YSLoad | YSStore
     (* frame and call data *)
   | YCallDataLoad | YCallDataSize | YCallDataCopy | YCallValue | YMemoryGuard | YCaller
   | YLoadImmutable | YAddress
