@@ -59,6 +59,13 @@ val (flookup_tm, mk_flookup, dest_flookup, is_flookup) =
 
 val invoke_c = prim_mk_const {Thy = "yulEvaluator", Name = "invoke_yul"}
 val eval_yul_block_c = prim_mk_const {Thy = "yulEvaluator", Name = "eval_yul_block"}
+(* The scope readers.  They are definitions of their own, outside the recursive
+ * group `eval_yul_block_def` holds, so their clauses are not among the ones the
+ * conversion is built from -- but the base set carries them, and a read of a
+ * scope a callee has not returned yet comes out of the conversion standing. *)
+val yul_lookup_c = prim_mk_const {Thy = "yulEvaluator", Name = "yul_lookup"}
+val yul_lookup_names_c =
+  prim_mk_const {Thy = "yulEvaluator", Name = "yul_lookup_names"}
 
 (* The constants are recognised by theory and name, reading the record
  * `dest_term` leaves rather than making one to compare against. *)
@@ -1022,18 +1029,24 @@ local
   (* A list, not a table: there is one table term per suite, and the whole
    * point of the memo is that the fold happens once.
    *
-   * Keyed by the definitions as well as by the term.  A fold is only as
-   * complete as the definitions it was given: `CBV_CONV` leaves what it cannot
-   * reach standing rather than failing, so a chain folded without them is a
-   * partial fold, and a later call that gives them would take that chain from
-   * here and never fold the rest. *)
-  val chains : ((string * string) list * term * thm) list ref = ref []
-  fun chain_key defs =
-    List.map (fn th => const_key (dest_thy_const (head_const_of th))) defs
+   * Keyed by the definitions as well as by the term, and by what those
+   * definitions say rather than by which constants they are about: a fold is
+   * only as complete as the equations it was given, and `CBV_CONV` leaves what
+   * it cannot reach standing rather than failing, so a chain folded without
+   * them is a partial fold, and a later call that gives them -- or gives a
+   * fuller equation for the same constant -- would take that chain from here
+   * and never fold the rest. *)
+  val chains : (term list * term * thm) list ref = ref []
+  fun chain_key defs = List.map (fn th => concl th) defs
 in
   fun table_chain defs fns =
     let val key = chain_key defs in
-      case List.find (fn (k, t, _) => k = key andalso aconv t fns) (!chains) of
+      case List.find
+             (fn (k, t, _) =>
+                List.length k = List.length key andalso
+                ListPair.all (fn (x, y) => aconv x y) (k, key) andalso
+                aconv t fns)
+             (!chains) of
         SOME (_, _, th) => th
       | NONE =>
           let val th = computeLib.CBV_CONV (table_compset defs) fns in
@@ -1154,15 +1167,15 @@ fun yul_invoke_conv defs tm =
  ---------------------------------------------------------------------------*)
 
 (* Everything the conversion's own rules reach: the block and its clauses, which
- * it splits on, the scope and binding operations, which it unfolds only while
- * their input is a value it has, FLOOKUP itself, which is the way a scope that
- * did not come out is seen, the result and value helpers, and the calls it
- * leaves folded.  A name in this list that is still in a term is a step the
- * conversion either could not take or declined; `residues` is what a caller
- * reads to see which. *)
+ * it splits on, the scope readers and the binding operations, which it unfolds
+ * only while their input is a value it has, FLOOKUP itself, which is the way a
+ * scope that did not come out is seen, the result and value helpers, and the
+ * calls it leaves folded.  A name in this list that is still in a term is a
+ * step the conversion either could not take or declined; `residues` is what a
+ * caller reads to see which. *)
 val conversion_consts =
   List.map (const_key o dest_thy_const)
-    (flookup_tm :: invoke_c ::
+    (flookup_tm :: invoke_c :: yul_lookup_c :: yul_lookup_names_c ::
      (clause_heads (evaluator_clauses @ helper_defs @ block_def_clauses) @
       List.map (fn (c, _, _) => c) guarded_helpers))
 
@@ -1172,9 +1185,11 @@ fun residues tm =
 (* What a form may still be standing on: the call it left folded, and the
  * operations whose input is a value nobody has -- the frame and memory
  * operations of `guarded_helper_defs` (a binding over a machine that holds a
- * call, an `FLOOKUP` of a scope that came out of the callee's frame), and the
- * result helpers, which build a record out of a completion that is not a
- * literal.  None of those is a step the conversion could have taken.
+ * call, an `FLOOKUP` of a scope that came out of the callee's frame), the scope
+ * readers, which are unguarded and so always unfold, but whose read of a scope
+ * a callee has not returned yet has nothing to unfold to, and the result
+ * helpers, which build a record out of a completion that is not a literal.
+ * None of those is a step the conversion could have taken.
  *
  * What is *not* in here is the evaluation itself: the block, the statements and
  * the expressions.  A form with one of those in it is one whose body evaluation
@@ -1183,8 +1198,9 @@ fun residues tm =
 val permitted_residues =
   ("yulEvaluator", "invoke_yul")
   :: List.map (const_key o dest_thy_const)
-       (flookup_tm :: (clause_heads helper_defs @
-                       List.map (fn (c, _, _) => c) guarded_helpers))
+       (flookup_tm :: yul_lookup_c :: yul_lookup_names_c ::
+        (clause_heads helper_defs @
+         List.map (fn (c, _, _) => c) guarded_helpers))
 
 (* A form is closed when nothing in it is standing that a form may not stand
  * on, which is the same question the test asks of every residue. *)

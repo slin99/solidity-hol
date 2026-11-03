@@ -12,12 +12,12 @@ sig
    *   |- invoke_yul n fns "f" args m = <form>
    *
    * with f's body evaluated: a case tree over the guards the body branches
-   * on, with every scope lookup in it resolved to the value it holds, and
-   * every call the body makes left as an `invoke_yul` application rather than
-   * unfolded into the callee's body.  A call is a branch of that tree like any
-   * other guard -- the rest of the body hangs off the outcomes the evaluator
-   * gives a call -- so a leaf is the body's remainder with the calls on its
-   * path made and the ones off it absent.
+   * on, with every scope lookup the body itself reads resolved to the value it
+   * holds, and every call the body makes left as an `invoke_yul` application
+   * rather than unfolded into the callee's body.  A call is a branch of that
+   * tree like any other guard -- the rest of the body hangs off the outcomes
+   * the evaluator gives a call -- so a leaf is the body's remainder with the
+   * calls on its path made and the ones off it absent.
    *
    * `defs` are the definitions the table term needs to be folded: the name it
    * is bound to and the object behind it, in the usual arrangement.  They are
@@ -46,12 +46,14 @@ sig
 
   (* The residues a form may have: the call it left folded; the operations
    * whose input is a value nobody has -- the evaluator's own frame and memory
-   * operations, and FLOOKUP of a scope that came out of a callee's frame; and
-   * the result and value helpers, which build a record out of a completion
-   * that is not a literal.  A form with anything else in it -- a block, a
-   * statement or an expression of the evaluator -- is one whose body
-   * evaluation stopped early, which is what a test asks by requiring every
-   * residue of a form to be one of these.
+   * operations, FLOOKUP of a scope that came out of a callee's frame, and the
+   * scope readers, which the conversion always unfolds but which have nothing
+   * to unfold to over a scope a callee has not returned; and the result and
+   * value helpers, which build a record out of a completion that is not a
+   * literal.  A form with anything else in it -- a block, a statement or an
+   * expression of the evaluator -- is one whose body evaluation stopped early,
+   * which is what a test asks by requiring every residue of a form to be one of
+   * these.
    *)
   val permitted_residues : (string * string) list
 

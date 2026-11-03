@@ -173,7 +173,7 @@ val () =
  * moves with the machine the build runs on and a size does not, and it sits in
  * a gap: the largest form below it is 182k nodes and the smallest above it
  * 352k.  What is left is 85 of the 137, whose slowest form takes about a second
- * -- the slowest seen is 1.3s -- and whose largest is 181k.
+ * (0.8s to 1.6s across runs on this box) and whose largest is 181k.
  *
  * So this list is the work list of the next piece, and it should empty: what the
  * suite is asked for is a conversion whose form is linear in the body, one leaf
@@ -252,9 +252,10 @@ val measured = List.filter (fn (nm, _, _) => not (Lib.mem nm excluded_names))
  * takes the body's own evaluation -- the block, the statements, the
  * expressions -- so a form with one of those in it is one whose evaluation
  * stopped early, and every residue must be permitted.  Permitted are the call
- * a body left folded and the evaluator's own operations on a frame or on
- * memory, which wait on a value nobody has: a callee's frame after a call, or
- * a word written to memory from a symbolic value.  A body that calls nothing
+ * a body left folded, the evaluator's own operations on a frame or on memory,
+ * and its scope readers -- which wait on a value nobody has: a callee's frame
+ * after a call, a word written to memory from a symbolic value, or a binding
+ * read out of a scope a callee has not returned.  A body that calls nothing
  * may not be waiting on a call. *)
 val call_residues = yulConvLib.permitted_residues
 
@@ -288,16 +289,21 @@ fun convert f =
             Lib.mem ("yulEvaluator", "invoke_yul") res then
       fail ("the body of " ^ nm ^ " calls nothing, but its form is left "
             ^ "waiting on a call")
-    (* The other direction, and the one that says the conversion did anything
-     * at all: a call the body makes is what the form carries in place of the
-     * callee's body, so a form that names no call is one whose callees were
-     * unfolded instead of left folded.  Without this the checks above are
-     * satisfied by a conversion that hands its input back -- an `invoke_yul`
-     * application has no residue, and the call's own equation is not in the
-     * set, so it is a fixed point too. *)
+    (* A call the body makes is what the form carries in place of the callee's
+     * body, so a form that names no call is one whose callees were unfolded
+     * instead of left folded. *)
     else if has_call (#3 f) andalso
             not (Lib.mem ("yulEvaluator", "invoke_yul") (consts_in form)) then
       fail ("the body of " ^ nm ^ " calls, but its form keeps no call")
+    (* And the check that says the conversion did anything at all: the form has
+     * to be a different term from the call it was given.  Every check above is
+     * satisfied by a conversion that hands the call back -- the entry
+     * application's own name is a permitted residue, and `invoke_yul`'s
+     * equation is not in the fixed-point set, so the call is its own fixed
+     * point.  For a body that calls nothing the check above catches that; this
+     * is the one that catches it for a body that calls. *)
+    else if aconv form (call_term f) then
+      fail ("the conversion returned " ^ nm ^ "'s call unchanged")
     else (nm, th)
   end
 
