@@ -6,13 +6,15 @@
  * scalar-key mappings and fixed/dynamic storage arrays, member/indexed scalar
  * reads and updates, array lengths, scalar push/pop and locals
  * (including tuple declarations with holes), internal calls with single or
- * multiple returns, explicit elementary conversions, literals, unary, binary,
+ * multiple returns, explicit elementary conversions, literals, type(T).max
+ * and .min of integer types (values of type T), unary, binary,
  * comparison and short-circuit operators, simple and compound assignment to
  * locals and state variables, tuple assignment, ++ and --, if, while,
  * do-while, for, break, continue, return and unchecked blocks. Built-in
  * require/assert/revert admit boolean conditions and literal string messages.
  * Reads of msg.sender, msg.value, tx.origin, tx.gasprice, block members and
- * address(this), and emits of events with elementary parameters. An internal
+ * address(this), emits of events and reverts with custom errors, both with
+ * elementary parameters. An internal
  * call runs the most derived override of the function it names (call_table);
  * the functions no other overrides are elaborated, and the external and
  * public ones among them, receive and fallback form the dispatch table.
@@ -26,7 +28,7 @@
  * Schedules, read from the compiler's IR for this profile (the ir output in
  * testdata/frontend/expected/pure_core.json) and checked against the compiled
  * bytecode by the differential tests:
- *  - binary operands, call and emit arguments and tuple components are
+ *  - binary operands, call, emit and error arguments and tuple components are
  *    evaluated left to right, each read of a local or a state variable being a copy taken
  *    when it is evaluated;
  *  - && and || evaluate their right operand only when needed;
@@ -707,6 +709,18 @@ Definition elab_expr_def:
     | SrcEnvironment _ f _ =>
         let (ss, a) = bind_value n (environment_type f) (EnvironmentOperation f) in
         SOME ((ss, a, ElabType (environment_type f)), n + 1)
+    | SrcTypeMember _ member tn _ =>
+        (case normalize_type_name tn of
+           SOME ty =>
+             (* bound to a local of type T, the source type of any
+                later conversion *)
+             (case type_bound member ty of
+                SOME i =>
+                  let (ss, a) = bind_value n ty
+                                  (ConvertOperation ty (ConstantAtom (IntegerValue i))) in
+                  SOME ((ss, a, ElabType ty), n + 1)
+              | NONE => NONE)
+         | NONE => NONE)
     | SrcTypeConversion _ tn e tid =>
         (case (identifier_type tid, elab_expr ctx n e) of
            (SOME ty, SOME ((ss, a, vt), n1)) =>
@@ -972,7 +986,7 @@ Definition elab_stmts_def:
           (case ty of
              LocatedT MemoryLoc element =>
                SOME (([DefineStmt (AstId v.var_info.node_id) (SingleType ty)
-                         (BytesLiteralOperation element [])],
+                         (DefaultBytesOperation element)],
                       ctx with variables := (v.var_info.node_id, ty) :: ctx.variables), n)
            | _ => NONE)
         else (case default_elementary ty of
@@ -1075,6 +1089,17 @@ Definition elab_stmts_def:
                             ctx), n1)
                  | NONE => NONE)
             | NONE => NONE) ∧
+  (* Arguments are coerced to the error's parameter types, which must be
+     elementary for the revert data's ABI encoding. *)
+  (elab_stmt ctx n (SrcRevertError _ err args) =
+    case all_some (MAP variable_type err.error_parameters) of
+      NONE => NONE
+    | SOME params =>
+        if ¬EVERY is_elementary_type params then NONE else
+        case elab_args ctx n params args of
+          SOME ((ss, as), n1) =>
+            SOME ((ss ++ [RevertErrorStmt err.error_selector params as], ctx), n1)
+        | NONE => NONE) ∧
   (* An optional for initialization or loop expression. *)
   (elab_for_init ctx n NONE = SOME (([], ctx), n)) ∧
   (elab_for_init ctx n (SOME st) = elab_stmt ctx n st)
