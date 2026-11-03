@@ -465,11 +465,23 @@ fun decide_conv tm =
  * what a block's clause reads its fields off is the record a statement reduced
  * to; the equations that read a field off one are the datatype's own, saved by
  * the record package (`RecordType.sml`'s `save_thm(typename^"_accessors", …)`)
- * as `yul_result_accessors`: one per field, `sel (yul_result c m) = c` and
- * `= m`.  Which of the two is which is not written down here: the equation that
- * does not read this field does not match the term, and is passed over. *)
+ * as `yul_result_accessors`: one per field, `∀c m. sel (yul_result c m) = c`
+ * and `= m`.  Those equations are not what reads a field here.  They are
+ * stated on the constructor application, and a literal this evaluator builds
+ * is a chain of updates over one rather than that application: the head of the
+ * selector on a statement's result is a `_fupd` constant, the constructor is
+ * nowhere in the term, and every `REWR_CONV` of an accessor equation on it
+ * fails.  All that is taken from them is which constants are fields; the
+ * reading itself is left to the compute set, whose own rules for the datatype
+ * (`_accfupds`, saved by the record package with the accessors, and the
+ * type's update equations) do know the chain.
+ *
+ * They are also quantified over the fields, so they are specialised before
+ * anything is read off them: `lhs` on a theorem that is still a `∀` is a
+ * `HOL_ERR`, and raised where the equations are read -- inside a `DEPTH_CONV`
+ * -- it would come out as "nothing to take" rather than as the mistake it is. *)
 val result_field_eqs =
-  case CONJUNCTS yulStateTheory.yul_result_accessors of
+  case List.map SPEC_ALL (CONJUNCTS yulStateTheory.yul_result_accessors) of
     [eq1, eq2] => [eq1, eq2]
   | _ => raise ERR "yulConvLib"
                 "yul_result_accessors is not one equation per field"
@@ -479,26 +491,53 @@ fun eq_accessor eq = fst (strip_comb (lhs (concl eq)))
 fun is_result_field c = List.exists (fn eq => same_const c (eq_accessor eq))
                                     result_field_eqs
 
-fun read_field [] tm = raise Conv.UNCHANGED
-  | read_field (eq :: rest) tm =
-      Conv.REWR_CONV eq tm handle HOL_ERR _ => read_field rest tm
+(* The compute set with `block_conv` in it, closed over by the two conversions
+ * that have to reduce a term which is part of one: reading a record's field,
+ * and the statement rule below.  It has to be the set the rule is part of, so
+ * that a block nested in what they reduce is taken the same way; the reference
+ * closes that circle. *)
+local
+  val cs_ref : compset option ref = ref NONE
+in
+  fun cs () =
+    case !cs_ref of
+      SOME c => c
+    | NONE => raise ERR "yulConvLib" "the compute set is not set yet"
+
+  fun set_block_compset c = cs_ref := SOME c
+end
+
+(* A field, read off a record: `sel v` for a term whose selector is one of the
+ * datatype's fields.  Anything else is left alone, which is what keeps this
+ * out of the way of the rest of `exposed_conv`'s work. *)
+fun reduce_field tm =
+  case Lib.total dest_comb tm of
+    SOME (acc, _) =>
+      if not (is_result_field acc) then raise Conv.UNCHANGED
+      else
+        let val th = computeLib.CBV_CONV (cs ()) tm in
+          if aconv tm (rhs (concl th)) then raise Conv.UNCHANGED else th
+        end
+  | NONE => raise Conv.UNCHANGED
 
 fun result_field_conv v tm =
-  let val (acc, x) = dest_comb tm in
-    if not (aconv x v) orelse not (is_result_field acc) then
-      raise Conv.UNCHANGED
-    else read_field result_field_eqs tm
+  let val (_, x) = dest_comb tm in
+    if aconv x v then reduce_field tm else raise Conv.UNCHANGED
   end
   handle HOL_ERR _ => raise Conv.UNCHANGED
 
 (* The binding, taken with its fields in hand.  A `let` in a definition is
  * either an application of `LET` or the beta redex itself -- this evaluator's
  * clause is the redex, `(λr. …) (eval_yul_stmt n fns s m)`, which is also why
- * `beta_conv` above sees it -- and the beta reduction is what takes it. *)
+ * `beta_conv` above sees it -- and the beta reduction is what takes it.  The
+ * `LET` form is what the rule is stated on, and it is the only shape that
+ * rewrite can take; the redex is left to the beta reduction below. *)
 fun result_conv v tm =
   let
-    val unlet = Conv.REWR_CONV boolTheory.LET_THM tm
-                  handle HOL_ERR _ => Thm.REFL tm
+    val unlet =
+      if is_const_named "bool" "LET" (head_const tm) then
+        Conv.REWR_CONV boolTheory.LET_THM tm
+      else Thm.REFL tm
     val beta = Thm.BETA_CONV (rhs (concl unlet))
     val body = rhs (concl beta)
     val proj = Conv.DEPTH_CONV (result_field_conv v) body
@@ -580,7 +619,7 @@ in
   fun exposed_conv tm =
     case_conv tm
     handle Conv.UNCHANGED =>
-      (read_field result_field_eqs tm
+      (reduce_field tm
        handle Conv.UNCHANGED => decide_conv tm)
 end
 
@@ -661,64 +700,54 @@ val block_nil_clause = valOf (List.find clause_is_nil block_def_clauses)
 val block_cons_clause =
   valOf (List.find (fn th => not (clause_is_nil th)) block_def_clauses)
 
-local
-  (* The compute set, for reducing a statement on its own.  It has to be the one
-   * with this rule in it, so that a block nested in the statement is taken the
-   * same way; the reference closes that circle. *)
-  val cs_ref : compset option ref = ref NONE
-  fun cs () =
-    case !cs_ref of
-      SOME c => c
-    | NONE => raise ERR "yulConvLib.block_conv" "the compute set is not set yet"
-in
-  fun set_block_compset c = cs_ref := SOME c
-
-  fun block_conv tm =
-    let
-      val (_, tms) = strip_comb tm
-    in
-      if List.length tms <> 4 then raise Conv.UNCHANGED
-      else
-        (* Only a literal statement list is taken here.  The clause matches
-         * any list, but a body's list is a literal in the table the
-         * conversion reads, and one that is not means the term is not a
-         * form this rule can take apart. *)
-        case Lib.total listSyntax.dest_list (List.nth (tms, 2)) of
-          NONE => raise Conv.UNCHANGED
-        | SOME (ss, _) =>
-            let
-              val clause = Conv.REWR_CONV
-                             (if null ss then block_nil_clause
-                              else block_cons_clause) tm
-            in
-              if null ss then clause
-              else
-                let
-                  val redex = rhs (concl clause)
-                  val (_, stmt) = dest_comb redex
-                  val ev = computeLib.CBV_CONV (cs ()) stmt
-                  val taken = Thm.TRANS clause
-                                (Conv.RAND_CONV (fn _ => ev) redex)
-                  val redex' = rhs (concl taken)
-                in
-                  (* A case at the top is the split; anything else is the
-                   * statement's own result, and the binding is taken with its
-                   * fields in hand (see `result_conv` above).  A shape neither
-                   * rule recognises is left to the beta reduction, which is what
-                   * the conversion did before those two. *)
-                  let val ev_form = rhs (concl ev) in
-                  if is_yul_case ev_form
-                  then Thm.TRANS taken (split_conv redex')
-                  else
-                    Thm.TRANS taken
-                      (result_conv ev_form redex'
-                         handle HOL_ERR _ =>
-                           Conv.QCONV (Conv.DEPTH_CONV beta_conv) redex')
-                  end
+(* The statement rule, run as a compute rule (`add_conv` below): the clause is
+ * instantiated, the statement is reduced with the compute set, and what the
+ * statement reduced to is taken apart as `split_conv` or `result_conv` says. *)
+fun block_conv tm =
+  let
+    val (_, tms) = strip_comb tm
+  in
+    if List.length tms <> 4 then raise Conv.UNCHANGED
+    else
+      (* Only a literal statement list is taken here.  The clause matches
+       * any list, but a body's list is a literal in the table the
+       * conversion reads, and one that is not means the term is not a
+       * form this rule can take apart. *)
+      case Lib.total listSyntax.dest_list (List.nth (tms, 2)) of
+        NONE => raise Conv.UNCHANGED
+      | SOME (ss, _) =>
+          let
+            val clause = Conv.REWR_CONV
+                           (if null ss then block_nil_clause
+                            else block_cons_clause) tm
+          in
+            if null ss then clause
+            else
+              let
+                val redex = rhs (concl clause)
+                val (_, stmt) = dest_comb redex
+                val ev = computeLib.CBV_CONV (cs ()) stmt
+                val taken = Thm.TRANS clause
+                              (Conv.RAND_CONV (fn _ => ev) redex)
+                val redex' = rhs (concl taken)
+              in
+                (* A case at the top is the split; anything else is the
+                 * statement's own result, and the binding is taken with its
+                 * fields in hand (see `result_conv` above).  A shape neither
+                 * rule recognises is left to the beta reduction, which is what
+                 * the conversion did before those two. *)
+                let val ev_form = rhs (concl ev) in
+                if is_yul_case ev_form
+                then Thm.TRANS taken (split_conv redex')
+                else
+                  Thm.TRANS taken
+                    (result_conv ev_form redex'
+                       handle HOL_ERR _ =>
+                         Conv.QCONV (Conv.DEPTH_CONV beta_conv) redex')
                 end
-            end
-    end
-end
+              end
+          end
+  end
 
 (* The base is EVAL's own compute set rather than the boolean one: an
  * evaluator clause is full of `case` over the Yul datatypes, and a datatype's
