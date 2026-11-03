@@ -155,6 +155,27 @@ class GetterTests(unittest.TestCase):
         self.assertEqual({b.feature for b in coverage.scan({"t.sol": unit([overriding, function(4, [])])})[3]},
                          {"overriding state variables"})
 
+    def test_external_calls_to_getters_are_blocked(self) -> None:
+        # C(a).x() for the public state variable x of C
+        state = dict(variable(3, state=True, visibility="public"),
+                     typeName={"nodeType": "ElementaryTypeName", "id": 103, "name": "uint256",
+                               "typeDescriptions": {"typeIdentifier": "t_uint256"}})
+        address = {"nodeType": "Identifier", "id": 20, "name": "a", "referencedDeclaration": 30,
+                   "typeDescriptions": {"typeIdentifier": "t_address"}}
+        target = {"nodeType": "FunctionCall", "id": 21, "kind": "typeConversion", "names": [], "tryCall": False,
+                  "arguments": [address],
+                  "expression": {"nodeType": "Identifier", "id": 22, "name": "C", "referencedDeclaration": 2,
+                                 "typeDescriptions": {"typeIdentifier": "t_type$_t_contract$_C_$2_$"}},
+                  "typeDescriptions": {"typeIdentifier": "t_contract$_C_$2"}}
+        member = {"nodeType": "MemberAccess", "id": 23, "memberName": "x", "referencedDeclaration": 3,
+                  "expression": target,
+                  "typeDescriptions": {"typeIdentifier": "t_function_external_view$__$returns$_t_uint256_$"}}
+        call = {"nodeType": "FunctionCall", "id": 24, "kind": "functionCall", "names": [], "arguments": [], "tryCall": False,
+                "expression": member, "typeDescriptions": {"typeIdentifier": "t_uint256"}}
+        statement = {"nodeType": "ExpressionStatement", "id": 25, "expression": call}
+        found = coverage.scan({"t.sol": unit([state, function(4, [statement])])})
+        self.assertIn(coverage.Blocker("MemberAccess", "external calls to getters", "import"), found[23])
+
 
 class ClassifyTests(unittest.TestCase):
     def test_preparation_failures_are_not_unsupported_features(self) -> None:

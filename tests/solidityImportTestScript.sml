@@ -330,6 +330,12 @@ val storage_contracts =
 val () = import_error_with Malformed storage_contracts "public state variable without a selector"
   (edit_first "VariableDeclaration"
      (set_field "visibility" (JSON.STRING "public")) storage_ast)
+val () = import_error_with Unsupported storage_contracts "overriding state variable"
+  (edit_first "VariableDeclaration"
+     (set_field "overrides"
+        (JSON.OBJECT [("nodeType", JSON.STRING "OverrideSpecifier"),
+                      ("id", JSON.INT 100000), ("overrides", JSON.ARRAY [])]))
+     storage_ast)
 val () = import_error_with Unsupported storage_contracts "constant state variable"
   (edit_first "VariableDeclaration" (set_field "constant" (JSON.BOOL true))
      storage_ast)

@@ -859,6 +859,8 @@ def special_forms(by_id: dict[int, dict[str, Any]]) -> tuple[set[int], dict[int,
                     block(member, "call options ({value: …, gas: …})", "import")
             if is_external(member):
                 unread.add(member["id"])
+                if by_id.get(member.get("referencedDeclaration"), {}).get("nodeType") == "VariableDeclaration":
+                    block(member, "external calls to getters", "import")
                 target = member["expression"]
                 if (target["nodeType"] == "FunctionCall" and target["kind"] == "typeConversion"
                         and target["typeDescriptions"].get("typeIdentifier", "").startswith("t_contract$_")):
