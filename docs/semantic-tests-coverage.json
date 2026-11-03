@@ -291,6 +291,22 @@
       "tests": 47
     },
     {
+      "feature": "string literals as fixed-size bytes",
+      "first_rejection": 0,
+      "node_types": [
+        "Assignment",
+        "BinaryOperation",
+        "EmitStatement",
+        "FunctionCall",
+        "Return",
+        "RevertStatement",
+        "VariableDeclaration",
+        "VariableDeclarationStatement"
+      ],
+      "only_blocker": 10,
+      "tests": 41
+    },
+    {
       "feature": "transient storage",
       "first_rejection": 0,
       "node_types": [
@@ -306,22 +322,6 @@
         "Conditional"
       ],
       "only_blocker": 11,
-      "tests": 40
-    },
-    {
-      "feature": "string literals as fixed-size bytes",
-      "first_rejection": 0,
-      "node_types": [
-        "Assignment",
-        "BinaryOperation",
-        "EmitStatement",
-        "FunctionCall",
-        "Return",
-        "RevertStatement",
-        "VariableDeclaration",
-        "VariableDeclarationStatement"
-      ],
-      "only_blocker": 10,
       "tests": 40
     },
     {
@@ -18476,7 +18476,8 @@
         "inline assembly",
         "literal subdenominations (ether, days, \u2026)",
         "public state variables",
-        "source units without exactly one contract"
+        "source units without exactly one contract",
+        "string literals as fixed-size bytes"
       ],
       "first": "public state variables",
       "reason": "various/selfdestruct_post_cancun_redeploy.sol: VariableDeclaration 77: public state variables are not supported",

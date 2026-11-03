@@ -68,9 +68,9 @@ The scan disagrees with the HOL run on 0 tests.
 | user-defined value types | `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `UserDefinedValueTypeDefinition`, `VariableDeclaration` | 52 | 5 | 33 |
 | constants | `VariableDeclaration` | 47 | 6 | 30 |
 | inline arrays | `TupleExpression` | 47 | 0 | 21 |
+| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `RevertStatement`, `VariableDeclaration`, `VariableDeclarationStatement` | 41 | 10 | 0 |
 | transient storage | `VariableDeclaration` | 41 | 7 | 0 |
 | conditional expressions | `Conditional` | 40 | 11 | 22 |
-| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `RevertStatement`, `VariableDeclaration`, `VariableDeclarationStatement` | 40 | 10 | 0 |
 | modifiers | `ModifierDefinition`, `ModifierInvocation`, `PlaceholderStatement` | 39 | 13 | 35 |
 | mappings | `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 39 | 3 | 0 |
 | aggregate array mutation | `MemberAccess` | 37 | 3 | 0 |
