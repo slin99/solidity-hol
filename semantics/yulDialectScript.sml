@@ -46,8 +46,8 @@ Definition builtin_name_def:
   builtin_name YSLoad = "sload" ∧
   builtin_name YSStore = "sstore" ∧
   builtin_name YCallDataLoad = "calldataload" ∧
-  builtin_name YCallDataCopy = "calldatacopy" ∧
   builtin_name YCallDataSize = "calldatasize" ∧
+  builtin_name YCallDataCopy = "calldatacopy" ∧
   builtin_name YCallValue = "callvalue" ∧
   builtin_name YMemoryGuard = "memoryguard" ∧
   builtin_name YCaller = "caller" ∧
@@ -115,8 +115,8 @@ Definition builtin_of_name_def:
     else if name = "sload" then SOME YSLoad
     else if name = "sstore" then SOME YSStore
     else if name = "calldataload" then SOME YCallDataLoad
-    else if name = "calldatacopy" then SOME YCallDataCopy
     else if name = "calldatasize" then SOME YCallDataSize
+    else if name = "calldatacopy" then SOME YCallDataCopy
     else if name = "callvalue" then SOME YCallValue
     else if name = "memoryguard" then SOME YMemoryGuard
     else if name = "caller" then SOME YCaller
@@ -209,8 +209,8 @@ Definition builtin_effect_def:
   builtin_effect YSLoad = EffectStorage ∧
   builtin_effect YSStore = EffectStorage ∧
   builtin_effect YCallDataLoad = EffectFrame ∧
-  builtin_effect YCallDataCopy = EffectMemory ∧
   builtin_effect YCallDataSize = EffectFrame ∧
+  builtin_effect YCallDataCopy = EffectMemory ∧
   builtin_effect YCallValue = EffectFrame ∧
   builtin_effect YMemoryGuard = EffectPure ∧
   builtin_effect YCaller = EffectFrame ∧

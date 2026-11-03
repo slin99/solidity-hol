@@ -42,7 +42,7 @@ Datatype:
     (* hashing, memory, storage *)
   | YKeccak256 | YMLoad | YMStore | YMStore8 | YMCopy | YSLoad | YSStore
     (* frame and call data *)
-  | YCallDataLoad | YCallDataCopy | YCallDataSize | YCallValue | YMemoryGuard | YCaller
+  | YCallDataLoad | YCallDataSize | YCallDataCopy | YCallValue | YMemoryGuard | YCaller
   | YLoadImmutable | YAddress
     (* the transaction and block *)
   | YOrigin | YGasPrice | YChainId | YNumber | YTimestamp | YCoinbase | YBaseFee
