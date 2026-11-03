@@ -165,10 +165,9 @@ Definition store_byte_chunks_def:
       addr (slot + 1w) (DROP 32 bs))
 End
 
-(* The caller snapshots the source before updating the destination. The
- * compiler clears only the obsolete long-data slots and masks new tails. *)
+(* Memory and calldata sources are independent of the destination storage. *)
 Definition store_storage_bytes_def:
-  store_storage_bytes accounts r (bs : byte list) =
+  store_storage_bytes accounts r (bs : byte list) static =
     case r of
       StorageReference PersistentStorage addr slot 0 ty _ =>
         if ¬byte_sequence_type ty then INR (InvalidCompletion "not storage bytes")
@@ -176,6 +175,7 @@ Definition store_storage_bytes_def:
         else (case storage_byte_length accounts addr slot of
           INR c => INR c
         | INL old_length =>
+            if static then INR (InvalidCompletion "byte copy in static frame") else
             let length = LENGTH bs in
             let old_slots = if old_length < 32 then 0 else (old_length + 31) DIV 32 in
             let new_slots = if length < 32 then 0 else (length + 31) DIV 32 in
@@ -190,6 +190,55 @@ Definition store_storage_bytes_def:
               INL (set_storage_word
                 (store_byte_chunks new_slots cleared addr data_slot bs)
                 addr slot (n2w (2 * length + 1))))
+    | _ => INR (InvalidCompletion "not storage bytes")
+End
+
+(* Storage copies read each source word after clearing obsolete destination
+ * slots, and after earlier destination writes. Array indices can alias these
+ * locations without any hash collision. *)
+Definition copy_storage_byte_chunks_def:
+  (copy_storage_byte_chunks 0 remaining accounts src_addr src_slot dst_addr dst_slot = accounts) ∧
+  (copy_storage_byte_chunks (SUC n) remaining accounts src_addr src_slot dst_addr dst_slot =
+    let used = MIN 32 remaining in
+    let shift = 2 ** (8 * (32 - used)) in
+    let value = w2n (lookup_storage src_slot (lookup_account src_addr accounts).storage) in
+    let updated = set_storage_word accounts dst_addr dst_slot (n2w ((value DIV shift) * shift)) in
+    copy_storage_byte_chunks n (remaining - used) updated
+      src_addr (src_slot + 1w) dst_addr (dst_slot + 1w))
+End
+
+Definition copy_storage_bytes_def:
+  copy_storage_bytes accounts src dst static =
+    case (src, dst) of
+      (StorageReference PersistentStorage src_addr src_slot 0 src_ty _,
+       StorageReference PersistentStorage dst_addr dst_slot 0 dst_ty _) =>
+        if ¬byte_sequence_type src_ty ∨ ¬byte_sequence_type dst_ty then
+          INR (InvalidCompletion "not storage bytes")
+        else if src_addr = dst_addr ∧ src_slot = dst_slot then INL accounts
+        else (case storage_byte_length accounts src_addr src_slot of
+          INR c => INR c
+        | INL length =>
+            if 2 ** 64 ≤ length then INR (PanicCompletion 65) else
+            case storage_byte_length accounts dst_addr dst_slot of
+              INR c => INR c
+            | INL old_length =>
+                if static then INR (InvalidCompletion "byte copy in static frame") else
+                let old_slots = if old_length < 32 then 0 else (old_length + 31) DIV 32 in
+                let new_slots = if length < 32 then 0 else (length + 31) DIV 32 in
+                let data_slot = mapping_slot [] dst_slot in
+                let cleared = clear_byte_slots (old_slots - new_slots) accounts dst_addr
+                                (data_slot + n2w new_slots) in
+                if length < 32 then
+                  let value = if length = 0 then 0 else
+                    w2n (lookup_storage src_slot (lookup_account src_addr cleared).storage) in
+                  let shift = 2 ** (8 * (32 - length)) in
+                  INL (set_storage_word cleared dst_addr dst_slot
+                    (n2w ((value DIV shift) * shift + 2 * length)))
+                else
+                  INL (set_storage_word
+                    (copy_storage_byte_chunks new_slots length cleared src_addr
+                      (mapping_slot [] src_slot) dst_addr data_slot)
+                    dst_addr dst_slot (n2w (2 * length + 1))))
     | _ => INR (InvalidCompletion "not storage bytes")
 End
 
@@ -305,6 +354,8 @@ val () = cv_auto_trans set_storage_word_def;
 val () = cv_auto_trans clear_byte_slots_def;
 val () = cv_auto_trans store_byte_chunks_def;
 val () = cv_auto_trans store_storage_bytes_def;
+val () = cv_auto_trans copy_storage_byte_chunks_def;
+val () = cv_auto_trans copy_storage_bytes_def;
 val () = cv_auto_trans navigate_storage_def;
 val () = cv_auto_trans read_storage_reference_def;
 val () = cv_auto_trans storage_array_length_def;

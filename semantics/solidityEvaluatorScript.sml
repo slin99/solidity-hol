@@ -304,6 +304,11 @@ Definition default_runtime_value_def:
         if byte_sequence_type element then
           SOME (ReferenceValue (CalldataReference 0 0 element))
         else NONE
+    | LocatedT StorageLoc element =>
+        if byte_sequence_type element then
+          SOME (ReferenceValue
+            (StorageReference PersistentStorage 0w 0w 0 element (LayoutId 0)))
+        else NONE
     | _ => OPTION_MAP ScalarValue (default_scalar env ty)
 End
 
