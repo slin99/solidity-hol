@@ -117,7 +117,7 @@ val () = holbuild_extra_deps [
   "../testdata/yul/generated/type_bounds.ir.json",
   "../testdata/yul/generated/type_bounds.optimized.json",
   "../testdata/yul/generated/oz_erc20.ir.json",
-  "../testdata/yul/generated/oz_erc20.optimized.json",
+  "../testdata/yul/generated/oz_erc20.optimized.json"
 ]
 
 val () = solidityDifferentialLib.run_three_way
