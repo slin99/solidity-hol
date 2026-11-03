@@ -324,7 +324,9 @@ End
 
 Definition decode_elementary_identifier_def:
   decode_elementary_identifier s =
-    if s = "t_bytes_memory_ptr" then SOME (LocatedT MemoryLoc BytesT)
+    if s = "t_bytes_storage" then SOME BytesT
+    else if s = "t_string_storage" then SOME StringT
+    else if s = "t_bytes_memory_ptr" then SOME (LocatedT MemoryLoc BytesT)
     else if s = "t_string_memory_ptr" then SOME (LocatedT MemoryLoc StringT)
     else if s = "t_bytes_calldata_ptr" then SOME (LocatedT CalldataLoc BytesT)
     else if s = "t_string_calldata_ptr" then SOME (LocatedT CalldataLoc StringT)
