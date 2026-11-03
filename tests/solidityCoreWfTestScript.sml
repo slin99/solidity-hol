@@ -1006,3 +1006,20 @@ Theorem layoutless_struct_declaration_retained:
 Proof
   CONV_TAC cv_eval
 QED
+
+(* Calldata bytes are read-only values, never writable storage locations. *)
+Theorem calldata_byte_is_not_a_writable_reference:
+  ¬wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT CalldataLoc BytesT))];
+       targets := []; returns := []; in_loop := F |>
+    (ReferenceType (FixedBytesT 1))
+    (ByteIndexOperation (BoundAtom (AstId 1)) (ConstantAtom (IntegerValue 0))) ∧
+  ¬wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT CalldataLoc BytesT))];
+       targets := []; returns := []; in_loop := F |>
+    (ReferenceType (FixedBytesT 1))
+    (NavigateOperation (FixedBytesT 1) (BoundAtom (AstId 1))
+      (IndexNavigation (ConstantAtom (IntegerValue 0))))
+Proof
+  EVAL_TAC
+QED
