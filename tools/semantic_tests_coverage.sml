@@ -5,6 +5,9 @@
  *)
 load "wordsLib";
 load "solidityPrepareLib";
+(* cv_eval proves lemmas as it goes (to unfold record updates), and HOL
+ * refuses to prove anything without a current theory. *)
+val () = Theory.new_theory "semanticTestsCoverage";
 
 local
   open HolKernel boolLib
