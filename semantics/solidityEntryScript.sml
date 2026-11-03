@@ -84,8 +84,9 @@ Definition run_entry_def:
     case finish_source_frame w r.state.world r.completion of
       FrameSuccess vs w' =>
         (case encoded_runtime_values r.state (MAP SND p.return_bindings) vs of
-           SOME data => ContractReturned data w'
-         | NONE => ContractInvalid "unencodable return values")
+           INL data => ContractReturned data w'
+         | INR (PanicCompletion code) => ContractReverted (panic_data code) w
+         | INR _ => ContractInvalid "unencodable return values")
     | FrameRevert data w' => ContractReverted data w'
     | FramePanic code w' => ContractReverted (panic_data code) w'
     | FrameInvalid reason => ContractInvalid reason

@@ -459,16 +459,16 @@ End
  *)
 Definition emit_event_def:
   emit_event topic args (st : source_state) gas =
-    if st.frame.static_context then
-      abrupt_result (InvalidCompletion "emit in static frame") st gas
-    else case eval_event_args st.scopes args of
+    case eval_event_args st.scopes args of
       NONE => abrupt_result (InvalidCompletion "unbound atom") st gas
     | SOME vs =>
         case event_log st st.frame.self_address topic vs of
-          SOME e =>
-            normal_result
+          INL e =>
+            if st.frame.static_context then
+              abrupt_result (InvalidCompletion "emit in static frame") st gas
+            else normal_result
               (st with world := st.world with logs := st.world.logs ++ [e]) gas
-        | NONE => abrupt_result (InvalidCompletion "bad event arguments") st gas
+        | INR c => abrupt_result c st gas
 End
 
 (* The gas a high-level call gives its callee. The source does not track gas,
@@ -492,8 +492,8 @@ Definition call_external_def:
       (SOME (ScalarValue (AddressValue callee)),
        SOME (ScalarValue (IntegerValue v)), SOME vs) =>
         (case encoded_runtime_values st params vs of
-           NONE => abrupt_result (InvalidCompletion "bad call arguments") st gas
-         | SOME data =>
+           INR c => abrupt_result c st gas
+         | INL data =>
            let static = (kind = ExternalStaticCall ∨ st.frame.static_context) in
            if rets = [] ∧ (lookup_account callee st.world.accounts).code = []
            then abrupt_result (RevertCompletion []) st gas

@@ -37,4 +37,7 @@ contract EchoPeer {
     function afterMutation(bytes calldata data, uint256) external pure returns (bytes memory) {
         return data;
     }
+    function rawInput(bytes calldata) external pure returns (bytes memory) {
+        return msg.data;
+    }
 }
