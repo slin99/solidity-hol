@@ -48,7 +48,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/initializers_only.json",
   "../testdata/differential/expected/imports.json",
   "../testdata/differential/expected/errors.json",
-  "../testdata/differential/expected/type_bounds.json"
+  "../testdata/differential/expected/type_bounds.json",
+  "../testdata/differential/expected/oz_erc20.json"
 ]
 
 val () = run_corpus {root = "..", corpus = "testdata/differential/corpus.json"}
