@@ -21,6 +21,7 @@ Libs
 fun holbuild_extra_deps (_ : string list) = ()
 val () = holbuild_extra_deps [
   "../testdata/differential/corpus.json",
+  "../testdata/differential/expected/calldata_bytes.json",
   "../SOLIDITY_PIN",
   "../profiles/solc-0.8.37-via-ir-osaka.json",
   "../profiles/solc-0.8.37-via-ir-osaka-optimized.json",
@@ -50,6 +51,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/errors.json",
   "../testdata/differential/expected/type_bounds.json",
   "../testdata/differential/expected/oz_erc20.json",
+  "../testdata/yul/generated/calldata_bytes.ir.json",
+  "../testdata/yul/generated/calldata_bytes.optimized.json",
   "../testdata/yul/generated/pure_core.ir.json",
   "../testdata/yul/generated/pure_core.optimized.json",
   "../testdata/yul/generated/scalars.ir.json",

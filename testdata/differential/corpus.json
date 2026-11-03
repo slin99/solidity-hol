@@ -589,6 +589,30 @@
       ]
     },
     {
+      "name": "calldata_bytes",
+      "source": "testdata/differential/calldata_bytes.sol",
+      "contract": "CalldataBytes",
+      "artifact": "testdata/differential/expected/calldata_bytes.json",
+      "cases": [
+        {"name": "constructor_calldata_is_empty", "deploy": true, "args": [9], "expect": {"return": []}, "final_storage": {"0": 9}},
+        {"name": "constructor_calldata_index_panics", "deploy": true, "args": [0], "expect": {"panic": "0x32"}},
+        {"name": "empty_calldata", "calldata": "0x", "expect": {"return": []}},
+        {"name": "short_calldata", "calldata": "0xff", "expect": {"panic": "0x01"}},
+        {"name": "three_byte_calldata", "calldata": "0xabcdef", "expect": {"panic": "0x01"}},
+        {"name": "selector_is_part_of_data", "function": "dataLength", "args": [], "expect": {"return": [4]}},
+        {"name": "selector_byte_0", "function": "byteAt", "args": [0], "expect": {"return": ["0x71"]}},
+        {"name": "selector_byte_1", "function": "byteAt", "args": [1], "expect": {"return": ["0x04"]}},
+        {"name": "selector_byte_2", "function": "byteAt", "args": [2], "expect": {"return": ["0x22"]}},
+        {"name": "selector_byte_3", "function": "byteAt", "args": [3], "expect": {"return": ["0xc6"]}},
+        {"name": "argument_first_byte", "function": "byteAt", "args": [4], "expect": {"return": ["0x00"]}},
+        {"name": "argument_last_byte", "function": "byteAt", "args": [35], "expect": {"return": ["0x23"]}},
+        {"name": "index_at_length_panics", "function": "byteAt", "args": [36], "expect": {"panic": "0x32"}},
+        {"name": "huge_index_panics", "function": "byteAt", "args": [115792089237316195423570985008687907853269984665640564039457584007913129639935], "expect": {"panic": "0x32"}},
+        {"name": "length_with_argument", "function": "checkLength", "args": [36], "expect": {"return": []}},
+        {"name": "trailing_calldata", "calldata": "0xa651f4e9000000000000000000000000000000000000000000000000000000000000004700ff1100ff1100ff1100ff1100ff1100ff1100ff1100ff1100ff1100ff1100ff11aabb", "expect": {"return": []}}
+      ]
+    },
+    {
       "name": "oz_erc20",
       "source": "testdata/differential/oz_erc20.sol",
       "contract": "OZToken",

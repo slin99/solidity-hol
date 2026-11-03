@@ -357,3 +357,20 @@ Theorem static_store_invalid:
 Proof
   CONV_TAC cv_eval
 QED
+
+(* Checked identity conversions preserve a calldata slice's offset and length. *)
+Theorem calldata_identity_conversion:
+  wf_core_value_type test_env (SingleType (LocatedT CalldataLoc BytesT)) ∧
+  wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT CalldataLoc BytesT))];
+       targets := []; returns := []; in_loop := F |>
+    (SingleType (LocatedT CalldataLoc BytesT))
+    (ConvertOperation (LocatedT CalldataLoc BytesT) (BoundAtom (AstId 1))) ∧
+  eval_pure_operation test_env
+    [FEMPTY |+ (1, <| binding_type := SingleType (LocatedT CalldataLoc BytesT);
+                      binding_value := ReferenceValue (CalldataReference 7 3 BytesT) |>)]
+    (ConvertOperation (LocatedT CalldataLoc BytesT) (BoundAtom (AstId 1))) =
+    ValueOk (ReferenceValue (CalldataReference 7 3 BytesT))
+Proof
+  CONV_TAC cv_eval
+QED
