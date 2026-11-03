@@ -134,7 +134,7 @@ Unclassified builtin names (must be empty): none.
 - `testdata/differential/dynamic_storage_arrays.sol` `DynamicStorageArrays` (DynamicStorageArrays_739_deployed)
   - kinds: `assignment`, `block`, `case`, `default`, `expressionStatement`, `functionCall`, `functionDefinition`, `identifier`, `if`, `leave`, `literal:number`, `switch`, `variableDeclaration`
   - builtins: `add`, `and`, `calldataload`, `calldatasize`, `callvalue`, `div`, `eq`, `gt`, `iszero`, `keccak256`, `lt`, `memoryguard`, `mload`, `mod`, `mstore`, `mul`, `not`, `or`, `return`, `revert`, `shl`, `shr`, `signextend`, `sload`, `slt`, `sstore`, `sub`
-- `testdata/differential/errors.sol` `Vault` (Vault_114_deployed)
+- `testdata/differential/errors.sol` `Vault` (Vault_116_deployed)
   - kinds: `assignment`, `block`, `case`, `default`, `expressionStatement`, `functionCall`, `functionDefinition`, `identifier`, `if`, `leave`, `literal:number`, `switch`, `variableDeclaration`
   - builtins: `add`, `and`, `calldataload`, `calldatasize`, `caller`, `callvalue`, `eq`, `gt`, `iszero`, `keccak256`, `lt`, `memoryguard`, `mload`, `mstore`, `not`, `or`, `return`, `revert`, `shl`, `shr`, `signextend`, `sload`, `slt`, `sstore`, `sub`
 - `testdata/differential/external.sol` `Caller` (Caller_225_deployed)
@@ -343,7 +343,7 @@ Unclassified builtin names (must be empty): none.
 - `testdata/differential/dynamic_storage_arrays.sol` `DynamicStorageArrays` (DynamicStorageArrays_739_deployed)
   - kinds: `assignment`, `block`, `case`, `default`, `expressionStatement`, `functionCall`, `functionDefinition`, `identifier`, `if`, `leave`, `literal:number`, `switch`, `variableDeclaration`
   - builtins: `add`, `and`, `calldataload`, `calldatasize`, `callvalue`, `div`, `eq`, `gt`, `iszero`, `keccak256`, `lt`, `memoryguard`, `mload`, `mod`, `mstore`, `mul`, `not`, `or`, `return`, `revert`, `shl`, `shr`, `signextend`, `sload`, `slt`, `sstore`, `sub`
-- `testdata/differential/errors.sol` `Vault` (Vault_114_deployed)
+- `testdata/differential/errors.sol` `Vault` (Vault_116_deployed)
   - kinds: `assignment`, `block`, `case`, `default`, `expressionStatement`, `functionCall`, `functionDefinition`, `identifier`, `if`, `leave`, `literal:number`, `switch`, `variableDeclaration`
   - builtins: `add`, `and`, `calldataload`, `calldatasize`, `caller`, `callvalue`, `eq`, `gt`, `iszero`, `keccak256`, `lt`, `memoryguard`, `mload`, `mstore`, `not`, `or`, `return`, `revert`, `shl`, `shr`, `signextend`, `sload`, `slt`, `sstore`, `sub`
 - `testdata/differential/external.sol` `Caller` (Caller_225_deployed)
@@ -553,7 +553,7 @@ Unclassified builtin names (must be empty): none.
 - `testdata/differential/dynamic_storage_arrays.sol` `DynamicStorageArrays` (DynamicStorageArrays_739_deployed)
   - kinds: `assignment`, `block`, `case`, `expressionStatement`, `functionCall`, `functionDefinition`, `identifier`, `if`, `literal:number`, `switch`, `variableDeclaration`
   - builtins: `add`, `and`, `calldataload`, `calldatasize`, `callvalue`, `div`, `eq`, `gt`, `iszero`, `keccak256`, `lt`, `memoryguard`, `mload`, `mod`, `mstore`, `mul`, `not`, `or`, `return`, `revert`, `shl`, `shr`, `signextend`, `sload`, `slt`, `sstore`, `sub`
-- `testdata/differential/errors.sol` `Vault` (Vault_114_deployed)
+- `testdata/differential/errors.sol` `Vault` (Vault_116_deployed)
   - kinds: `block`, `case`, `expressionStatement`, `functionCall`, `identifier`, `if`, `literal:number`, `switch`, `variableDeclaration`
   - builtins: `add`, `and`, `calldataload`, `calldatasize`, `caller`, `callvalue`, `eq`, `gt`, `iszero`, `keccak256`, `lt`, `memoryguard`, `mload`, `mstore`, `not`, `return`, `revert`, `shl`, `shr`, `signextend`, `sload`, `slt`, `sstore`, `sub`
 - `testdata/differential/external.sol` `Caller` (Caller_225_deployed)
