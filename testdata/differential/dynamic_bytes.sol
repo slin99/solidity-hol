@@ -46,4 +46,3 @@ contract DynamicBytes {
         return BytePeer(target).echo(data, text);
     }
 }
-
