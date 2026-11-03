@@ -583,6 +583,7 @@
         {"name": "fits_int8_min", "function": "fitsInt8", "args": [-128], "expect": {"return": [true]}},
         {"name": "fits_int8_below_min", "function": "fitsInt8", "args": [-129], "expect": {"return": [false]}},
         {"name": "above_uint16_widens", "function": "aboveUint16", "args": [1], "expect": {"return": [65536]}},
+        {"name": "converted_from_bound_type", "function": "converted", "args": [], "expect": {"return": [255, 57896044618658097711785492504343953926634992332820282019728792003956564819968, -1]}},
         {"name": "below_int16_min_in_range", "function": "belowInt16Min", "args": [-1], "expect": {"return": [-32767]}},
         {"name": "below_int16_min_overflow_panics", "function": "belowInt16Min", "args": [1], "expect": {"panic": "0x11"}}
       ]

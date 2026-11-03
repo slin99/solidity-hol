@@ -7,7 +7,7 @@
  * reads and updates, array lengths, scalar push/pop and locals
  * (including tuple declarations with holes), internal calls with single or
  * multiple returns, explicit elementary conversions, literals, type(T).max
- * and .min of integer types (constants of type T), unary, binary,
+ * and .min of integer types (values of type T), unary, binary,
  * comparison and short-circuit operators, simple and compound assignment to
  * locals and state variables, tuple assignment, ++ and --, if, while,
  * do-while, for, break, continue, return and unchecked blocks. Built-in
@@ -601,8 +601,13 @@ Definition elab_expr_def:
     | SrcTypeMember _ member tn _ =>
         (case normalize_type_name tn of
            SOME ty =>
+             (* bound to a local of type T, the source type of any
+                later conversion *)
              (case type_bound member ty of
-                SOME i => SOME (([], ConstantAtom (IntegerValue i), ElabType ty), n)
+                SOME i =>
+                  let (ss, a) = bind_value n ty
+                                  (ConvertOperation ty (ConstantAtom (IntegerValue i))) in
+                  SOME ((ss, a, ElabType ty), n + 1)
               | NONE => NONE)
          | NONE => NONE)
     | SrcTypeConversion _ tn e _ =>

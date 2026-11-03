@@ -37,6 +37,15 @@ contract TypeBounds {
         return x + type(uint16).max;
     }
 
+    // Explicit conversions start from the bound's own type.
+    function converted() external pure returns (uint8, uint256, int16) {
+        return (
+            uint8(type(uint16).max),
+            uint256(type(int256).min),
+            int16(type(uint16).max)
+        );
+    }
+
     // Arithmetic in the bound's own type: int16 overflow reverts.
     function belowInt16Min(int16 x) external pure returns (int16) {
         return type(int16).min - x;
