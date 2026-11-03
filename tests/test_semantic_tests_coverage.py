@@ -49,14 +49,24 @@ ASSEMBLY = {"nodeType": "InlineAssembly", "id": 20,
 
 
 class BuiltinCoverageTests(unittest.TestCase):
-    def test_literal_messages_are_admitted_only_in_builtin_calls(self) -> None:
-        artifact = json.loads((ROOT / "testdata/differential/expected/builtins.json").read_text())
-        ast = artifact["output"]["sources"]["testdata/differential/builtins.sol"]["ast"]
-        self.assertEqual(coverage.scan({"builtins.sol": ast}), {})
-        literal = next(n for n in coverage.nodes(ast)
-                       if n["nodeType"] == "Literal" and n["kind"] == "string")
-        self.assertEqual(coverage.elaboration_blockers(literal), [
-            coverage.Blocker("Literal", "bytes and string", "elaboration")])
+    def test_messages_must_be_literals(self) -> None:
+        def call(message: dict) -> dict:
+            return {"nodeType": "FunctionCall", "id": 5, "kind": "functionCall", "names": [],
+                    "tryCall": False, "typeDescriptions": {"typeIdentifier": "t_tuple$__$"},
+                    "expression": {"nodeType": "Identifier", "id": 6, "name": "revert",
+                                   "referencedDeclaration": coverage.REVERT,
+                                   "typeDescriptions": {"typeIdentifier": "t_function_revert_pure$__$"}},
+                    "arguments": [message]}
+
+        literal = {"nodeType": "Literal", "id": 7, "kind": "string", "value": "no",
+                   "typeDescriptions": {"typeIdentifier": "t_stringliteral_abc"}}
+        statement = {"nodeType": "ExpressionStatement", "id": 8, "expression": call(literal)}
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [statement])])}), {})
+        variable_message = {"nodeType": "Identifier", "id": 7, "name": "s", "referencedDeclaration": 3,
+                            "typeDescriptions": {"typeIdentifier": "t_string_memory_ptr"}}
+        statement["expression"] = call(variable_message)
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [statement])])})[5], [
+            coverage.Blocker("FunctionCall", "messages that are not literals", "elaboration")])
 
     def test_shadowed_names_are_ordinary_calls(self) -> None:
         artifact = json.loads((ROOT / "testdata/differential/expected/shadowed_builtins.json").read_text())
@@ -151,14 +161,14 @@ class ClassifyTests(unittest.TestCase):
         self.assertTrue(named.scan_agrees)
 
     def test_elaboration_rejection_and_admission(self) -> None:
-        strings = unit([function(4, [{
+        arrays = unit([function(4, [{
             "nodeType": "VariableDeclarationStatement", "id": 5,
-            "declarations": [variable(6, type_identifier="t_string_memory_ptr")],
+            "declarations": [variable(6, type_identifier="t_array$_t_uint256_$dyn_memory_ptr")],
         }])])
         rejected = coverage.classify(
-            "s.sol", coverage.scan({"s.sol": strings}),
+            "s.sol", coverage.scan({"s.sol": arrays}),
             {"status": "elaboration-rejected", "message": "elaborate_unit returned NONE"})
-        self.assertEqual([b.feature for b in rejected.blockers], ["bytes and string"])
+        self.assertEqual([b.feature for b in rejected.blockers], ["arrays"])
         self.assertTrue(rejected.scan_agrees)
         admitted = coverage.classify(
             "a.sol", coverage.scan({"a.sol": unit([function(4, [])])}), {"status": "admitted"})
@@ -170,7 +180,7 @@ class ClassifyTests(unittest.TestCase):
                         value={"nodeType": "Literal", "id": 4, "kind": "number",
                                "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}})
         self.assertEqual({b.feature for b in coverage.scan({"t.sol": unit([constant])})[3]},
-                         {"constants", "declaration values"})
+                         {"constants"})
 
     def test_scan_finds_literals_of_non_integer_types(self) -> None:
         def literal(node_id, type_identifier):
@@ -195,21 +205,20 @@ class ClassifyTests(unittest.TestCase):
 
     def test_tuples_are_classified_by_a_component(self) -> None:
         self.assertTrue(coverage.decodes("t_tuple$_t_bool_$_t_bytes4_$"))
-        self.assertFalse(coverage.decodes("t_tuple$_t_bool_$_t_bytes_memory_ptr_$"))
-        self.assertEqual(coverage.type_feature("t_tuple$_t_bool_$_t_bytes_memory_ptr_$"),
-                         "bytes and string")
+        self.assertTrue(coverage.decodes("t_tuple$_t_bool_$_t_bytes_memory_ptr_$"))
+        self.assertFalse(coverage.decodes("t_tuple$_t_bool_$_t_array$_t_uint8_$dyn_memory_ptr_$"))
+        self.assertEqual(coverage.type_feature("t_tuple$_t_bool_$_t_array$_t_uint8_$dyn_memory_ptr_$"),
+                         "arrays")
         self.assertEqual(coverage.type_feature("t_bytes32"),
                          "fixed-size bytes members and indexing")
 
-    def test_storage_and_nonpayable_functions_are_admitted(self) -> None:
-        f = dict(function(4, []), stateMutability="nonpayable")
+    def test_storage_and_every_mutability_are_admitted(self) -> None:
+        f = function(4, [])
         ast = unit([variable(3, state=True), f])
-        self.assertEqual(coverage.scan({"t.sol": ast}), {})
-        f["stateMutability"] = "view"
-        self.assertEqual(coverage.scan({"t.sol": ast}), {})
-        f["stateMutability"] = "payable"
-        self.assertEqual(coverage.scan({"t.sol": ast})[4], [
-            coverage.Blocker("FunctionDefinition", "payable functions", "elaboration")])
+        for mutability in ("pure", "view", "nonpayable", "payable"):
+            with self.subTest(mutability=mutability):
+                f["stateMutability"] = mutability
+                self.assertEqual(coverage.scan({"t.sol": ast}), {})
 
     def test_nested_mappings_are_storage_types(self) -> None:
         tid = "t_mapping$_t_int8_$_t_mapping$_t_address_$_t_bytes4_$_$"
@@ -259,13 +268,18 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(coverage.node_blockers(node),
                          [coverage.Blocker("IndexAccess", "array type expressions", "import")])
 
-    def test_struct_fixtures_have_no_coverage_blockers(self) -> None:
-        for name in ("storage_structs", "storage_structs_top_level"):
-            with self.subTest(name=name):
-                artifact = json.loads((ROOT / "testdata" / "differential" / "expected"
-                                       / f"{name}.json").read_text())
-                source = f"testdata/differential/{name}.sol"
-                self.assertEqual(coverage.scan({source: artifact["output"]["sources"][source]["ast"]}), {})
+    def test_corpus_suites_have_no_coverage_blockers(self) -> None:
+        """The scan admits what the differential corpus prepares: each suite's
+        own source. Its other sources only hold bases, interfaces and errors,
+        so they are units without exactly one contract."""
+        corpus = json.loads((ROOT / "testdata/differential/corpus.json").read_text())
+        for suite in corpus["suites"]:
+            with self.subTest(suite=suite["name"]):
+                artifact = json.loads((ROOT / suite["artifact"]).read_text())
+                asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+                others = {ast["id"] for s, ast in asts.items() if s != suite["source"]}
+                found = {i: bs for i, bs in coverage.scan(asts).items() if i not in others}
+                self.assertEqual(found, {})
 
     def test_compilation_retains_artifact_contract_for_preparation(self) -> None:
         metadata = {"storageLayout": {"storage": [{"astId": 3, "slot": "0"}]},
