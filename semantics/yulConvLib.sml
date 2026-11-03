@@ -465,6 +465,24 @@ val eliminated =
 fun residues tm =
   Lib.mk_set (List.filter (fn k => Lib.mem k eliminated) (consts_in tm))
 
+(* What a form may still contain: the call it left folded, and the evaluator's
+ * own operations on a frame or on memory -- the ones under `helper_defs`.
+ * What is *not* in here is the evaluation itself, the block, the statements
+ * and the expressions, so a form with one of those in it is a form whose body
+ * evaluation stopped early, which a test can say by asking a residue to be one
+ * of these.
+ *
+ * A helper is in a form because its input is a value nobody has: after a call
+ * the frame is the callee's; memory is a map to words, so a read of a word
+ * written from a symbolic value is decided only when that value is; a scope
+ * whose map came out of such a word is the same.  None of that is a step the
+ * conversion could have taken.
+ *)
+val permitted_residues =
+  ("yulEvaluator", "invoke_yul")
+  :: List.map (const_key o dest_thy_const)
+       (flookup_tm :: clause_heads helper_defs)
+
 fun is_closed_form tm = null (residues tm)
 
 (* The other half of what "closed" means, and the stronger half: the

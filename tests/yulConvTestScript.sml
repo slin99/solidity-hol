@@ -146,21 +146,15 @@ val () =
           ^ Int.toString (List.length loop_free) ^ " loop-free, looping: "
           ^ String.concatWith ", " (List.map (fn (nm, _, _) => nm) looping))
 
-(* What a form that made a call is allowed to be waiting on.  A call is left
- * folded, as `invoke_yul` for the callee, and it hands back a frame: the value
- * the caller reads out of it, and any binding it does afterwards, are the
- * evaluator's own steps applied to a machine the callee made, so no equation
- * here can say what they come to.  A body that makes no call has no such
- * excuse, which is what the check below says; anything else left standing is a
- * step of the evaluation the conversion should have taken. *)
-val call_residues =
-  [("yulEvaluator", "invoke_yul"),
-   ("yulEvaluator", "yul_lookup"),
-   ("yulEvaluator", "yul_lookup_names"),
-   ("yulEvaluator", "yul_assign"),
-   ("yulEvaluator", "yul_assign_list"),
-   ("yulEvaluator", "yul_update"),
-   ("finite_map", "FLOOKUP")]
+(* What a form may still be waiting on, and what it may not.  The conversion
+ * takes the body's own evaluation -- the block, the statements, the
+ * expressions -- so a form with one of those in it is one whose evaluation
+ * stopped early, and every residue must be permitted.  Permitted are the call
+ * a body left folded and the evaluator's own operations on a frame or on
+ * memory, which wait on a value nobody has: a callee's frame after a call, or
+ * a word written to memory from a symbolic value.  A body that calls nothing
+ * may not be waiting on a call. *)
+val call_residues = yulConvLib.permitted_residues
 
 fun show_residues res =
   String.concatWith ", " (List.map (fn (t, n) => t ^ "." ^ n) res)
@@ -178,9 +172,10 @@ fun convert f =
       fail ("the conversion left something to evaluate in " ^ nm)
     else if not (List.all (fn k => Lib.mem k call_residues) res) then
       fail ("the conversion left " ^ show_residues res ^ " in " ^ nm)
-    else if not (has_call (#3 f)) andalso not (null res) then
+    else if not (has_call (#3 f)) andalso
+            Lib.mem ("yulEvaluator", "invoke_yul") res then
       fail ("the body of " ^ nm ^ " calls nothing, but its form is left "
-            ^ "waiting on " ^ show_residues res)
+            ^ "waiting on a call")
     else (nm, th)
   end
 

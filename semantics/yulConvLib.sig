@@ -37,13 +37,19 @@ sig
   val yul_invoke_conv : thm list -> conv
 
   (* What the conversion did not get out of a form, as (theory, name)
-   * constants; empty for a body that calls nothing.  A body that makes calls
-   * has two things left: the call itself, left folded as `invoke_yul`, and the
-   * reading of the callee's result out of the machine the callee returned,
-   * as `yul_lookup_names`, `yul_lookup` and `FLOOKUP`.  That machine is the
-   * callee's, so no equation here can say what is in it.
+   * constants: the steps of the evaluation that are still standing, of the
+   * block, the statements and the expressions that the conversion takes, and
+   * of the evaluator's own frame and memory operations that it does not.
    *)
   val residues : term -> (string * string) list
+
+  (* The residues a form may have: the call it left folded, and the
+   * evaluator's frame and memory operations.  A form with anything else in it
+   * -- a block, a statement or an expression of the evaluator -- is one whose
+   * body evaluation stopped early, which is what a test asks by requiring
+   * every residue of a form to be one of these.
+   *)
+  val permitted_residues : (string * string) list
 
   (* Whether a form the conversion produced is closed: no residue in it, so
    * every part of it is a term over the arguments and the entry machine, the
