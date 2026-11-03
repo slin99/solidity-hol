@@ -306,16 +306,60 @@ class ClassifyTests(unittest.TestCase):
             "VariableDeclarationStatement", "string literals as fixed-size bytes", "elaboration")])
 
     def test_reverts_in_overridden_functions_leave_errors_unchecked(self) -> None:
-        base = {"nodeType": "ContractDefinition", "id": 50, "contractKind": "contract",
-                "abstract": False, "baseContracts": [], "linearizedBaseContracts": [50],
-                "nodes": [dict(function(60, [revert(40, 30, [])]), virtual=True)]}
-        derived = dict(function(70, []), baseFunctions=[60])
-        ast = unit([error_definition(30, "t_bytes_memory_ptr"), derived])
-        ast["nodes"][0]["linearizedBaseContracts"] = [2, 50]
-        ast["nodes"].insert(0, base)
-        self.assertNotIn(32, coverage.scan({"t.sol": ast}))
-        del derived["baseFunctions"]
-        self.assertIn(32, coverage.scan({"t.sol": ast}))
+        for parameter in ("t_bytes_memory_ptr", "t_array$_t_uint256_$dyn_memory_ptr"):
+            base = {"nodeType": "ContractDefinition", "id": 50, "contractKind": "contract",
+                    "abstract": False, "baseContracts": [], "linearizedBaseContracts": [50],
+                    "nodes": [dict(function(60, [revert(40, 30, [])]), virtual=True)]}
+            derived = dict(function(70, []), baseFunctions=[60])
+            ast = unit([error_definition(30, parameter), derived])
+            ast["nodes"][0]["linearizedBaseContracts"] = [2, 50]
+            ast["nodes"].insert(0, base)
+            self.assertNotIn(32, coverage.scan({"t.sol": ast}))
+            del derived["baseFunctions"]
+            self.assertIn(32, coverage.scan({"t.sol": ast}))
+
+    def test_mapping_keys_parentheses_and_tuples_are_coerced(self) -> None:
+        def string(node_id):
+            return {"nodeType": "Literal", "id": node_id, "kind": "string", "value": "abcd",
+                    "typeDescriptions": {"typeIdentifier": "t_stringliteral_abcd"}}
+
+        def tuple_of(node_id, *components):
+            return {"nodeType": "TupleExpression", "id": node_id, "isInlineArray": False,
+                    "components": list(components)}
+
+        def feature(kind):
+            return coverage.Blocker(kind, "string literals as fixed-size bytes", "elaboration")
+
+        index = {"nodeType": "IndexAccess", "id": 10, "indexExpression": string(11),
+                 "baseExpression": {"nodeType": "Identifier", "id": 12, "typeDescriptions": {
+                     "typeIdentifier": "t_mapping$_t_bytes4_$_t_uint256_$"}}}
+        self.assertEqual(coverage.coerced_literals(index, {}), [feature("IndexAccess")])
+
+        returns = {"nodeType": "ParameterList", "id": 20,
+                   "parameters": [variable(21, type_identifier="t_bytes4")]}
+        statement = {"nodeType": "Return", "id": 22, "functionReturnParameters": 20,
+                     "expression": tuple_of(23, string(24))}
+        self.assertEqual(coverage.coerced_literals(statement, {20: returns}),
+                         [feature("Return")])
+
+        flag = {"nodeType": "Literal", "id": 34, "kind": "number", "value": "1",
+                "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}}
+        declaration = {"nodeType": "VariableDeclarationStatement", "id": 30,
+                       "declarations": [variable(31, type_identifier="t_bytes4"),
+                                        variable(32, type_identifier="t_bool")],
+                       "initialValue": tuple_of(33, string(35), flag)}
+        self.assertEqual(coverage.coerced_literals(declaration, {}), [
+            coverage.Blocker("VariableDeclarationStatement", "string literals as fixed-size bytes",
+                             "elaboration"),
+            coverage.Blocker("VariableDeclarationStatement", "literals of non-integer types",
+                             "elaboration")])
+
+        assignment = {"nodeType": "Assignment", "id": 40, "operator": "=",
+                      "typeDescriptions": {"typeIdentifier": "t_tuple$__$"},
+                      "leftHandSide": tuple_of(41, variable(42, type_identifier="t_bytes4"),
+                                               variable(45, type_identifier="t_uint256")),
+                      "rightHandSide": tuple_of(43, string(44), dict(flag, id=46))}
+        self.assertEqual(coverage.coerced_literals(assignment, {}), [feature("Assignment")])
 
     def test_structs_only_unused_errors_refer_to_are_imported(self) -> None:
         struct = {"nodeType": "StructDefinition", "id": 10, "scope": 1, "members": []}

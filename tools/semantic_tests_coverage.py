@@ -358,22 +358,28 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
             if node["id"] in seen:
                 continue
             seen.add(node["id"])
-            if node["nodeType"] == "RevertStatement":
-                error = by_id.get(node["errorCall"]["expression"].get("referencedDeclaration"))
-                if error is not None:
-                    add(error["parameters"])
-                continue
+            for _, signature in signatures(node, by_id):
+                add(signature)
             target = by_id.get(node.get("referencedDeclaration"))
-            if target is None:
-                continue
-            if (target["nodeType"] == "StructDefinition"
+            if (target is not None and target["nodeType"] == "StructDefinition"
                     and by_id.get(target.get("scope"), {}).get("nodeType") == "SourceUnit"):
                 add(target)
-            elif (target["nodeType"] == "FunctionDefinition" and node["nodeType"] == "MemberAccess"
-                  and is_external(node)):
-                add(target["parameters"])
-                add(target["returnParameters"])
     return roots
+
+
+def signatures(node: dict[str, Any], by_id: dict[int, dict[str, Any]]
+               ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
+    """The parameter lists the importer reads at a node, with their
+    declarations: those of the error a revert names, and those of an
+    external function a member access calls."""
+    if node["nodeType"] == "RevertStatement":
+        error = by_id.get(node["errorCall"]["expression"].get("referencedDeclaration"))
+        return [] if error is None else [(error, error["parameters"])]
+    target = by_id.get(node.get("referencedDeclaration"))
+    if (target is not None and target["nodeType"] == "FunctionDefinition"
+            and node["nodeType"] == "MemberAccess" and is_external(node)):
+        return [(target, target["parameters"]), (target, target["returnParameters"])]
+    return []
 
 
 def read(node: dict[str, Any]) -> bool:
@@ -679,27 +685,41 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
     """Integer literals used where a value of another type is expected, which
     elaborate_unit converts only to integer types, and string literals used
     as fixed-size bytes, which it does not convert: initial values of locals
-    and state variables, returned values, assigned values, operands,
-    arguments of calls, emits and reverts, and conversions."""
+    and state variables, returned and assigned values, tuple components
+    included, operands, mapping keys, arguments of calls, emits and reverts,
+    and conversions."""
     kind = node["nodeType"]
-    expected: list[tuple[dict[str, Any] | None, dict[str, Any]]] = []
-    if kind == "VariableDeclarationStatement" and len(node["declarations"]) == 1:
-        expected.append((node.get("initialValue"), node["declarations"][0]))
+    expected: list[tuple[dict[str, Any] | None, dict[str, Any] | None]] = []
+
+    def components(value: dict[str, Any] | None, targets: list[Any]) -> None:
+        """Each value of a tuple with the target of its position."""
+        value = unwrap(value)
+        if len(targets) == 1:
+            expected.append((value, targets[0]))
+        elif value is not None and value["nodeType"] == "TupleExpression":
+            expected.extend(zip(value["components"], targets))
+
+    if kind == "VariableDeclarationStatement":
+        components(node.get("initialValue"), node["declarations"])
     elif kind == "VariableDeclaration" and node.get("stateVariable"):
         expected.append((node.get("value"), node))
     elif kind == "Return" and node.get("expression") is not None:
-        returns = by_id.get(node.get("functionReturnParameters"), {}).get("parameters", [])
-        if len(returns) == 1:
-            expected.append((node["expression"], returns[0]))
-        elif node["expression"]["nodeType"] == "TupleExpression":
-            expected.extend(zip(node["expression"]["components"], returns))
+        components(node["expression"],
+                   by_id.get(node.get("functionReturnParameters"), {}).get("parameters", []))
     elif kind == "InheritanceSpecifier" or (kind == "ModifierInvocation"
                                             and node.get("kind") == "baseConstructorSpecifier"):
         base = node["baseName" if kind == "InheritanceSpecifier" else "modifierName"]
         expected.extend(zip(node.get("arguments") or [],
                             constructor_parameters(by_id.get(base.get("referencedDeclaration"), {}))))
     elif kind == "Assignment" and node["operator"] not in ("<<=", ">>="):
-        expected.append((node["rightHandSide"], node))
+        target = unwrap(node["leftHandSide"])
+        components(node["rightHandSide"],
+                   target["components"] if target["nodeType"] == "TupleExpression" else [node])
+    elif kind == "IndexAccess" and node.get("indexExpression") is not None:
+        match = re.match(r"t_mapping\$_(t_[^$]+)_\$_",
+                         node["baseExpression"]["typeDescriptions"].get("typeIdentifier") or "")
+        if match is not None:
+            expected.append((node["indexExpression"], {"typeDescriptions": {"typeIdentifier": match[1]}}))
     elif kind == "BinaryOperation":
         common = {"typeDescriptions": node["commonType"]}
         expected.append((node["leftExpression"], common))
@@ -730,17 +750,27 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
         error = by_id.get(node["errorCall"]["expression"].get("referencedDeclaration"), {})
         if error.get("nodeType") == "ErrorDefinition":
             expected.extend(zip(node["errorCall"]["arguments"], error["parameters"]["parameters"]))
+    found: list[str] = []
     for value, target in expected:
-        target_type = target["typeDescriptions"].get("typeIdentifier") or ""
+        value = unwrap(value)
+        target_type = (target or {}).get("typeDescriptions", {}).get("typeIdentifier") or ""
         if value is None or value["nodeType"] != "Literal" or not VALUE_TYPE.fullmatch(target_type):
             continue
         value_type = value["typeDescriptions"].get("typeIdentifier") or ""
         conversion = kind == "FunctionCall" and node["kind"] == "typeConversion"
         if RATIONAL.fullmatch(value_type) and not INTEGER_TYPE.fullmatch(target_type) and not conversion:
-            return [Blocker(kind, "literals of non-integer types", "elaboration")]
+            found.append("literals of non-integer types")
         if value_type.startswith("t_stringliteral_"):
-            return [Blocker(kind, "string literals as fixed-size bytes", "elaboration")]
-    return []
+            found.append("string literals as fixed-size bytes")
+    return [Blocker(kind, feature, "elaboration") for feature in dict.fromkeys(found)]
+
+
+def unwrap(value: dict[str, Any] | None) -> dict[str, Any] | None:
+    """A value without the parentheses around it."""
+    while (value is not None and value["nodeType"] == "TupleExpression"
+           and not value.get("isInlineArray") and len(value["components"]) == 1):
+        value = value["components"][0]
+    return value
 
 
 def special_forms(by_id: dict[int, dict[str, Any]]) -> tuple[set[int], dict[int, list[Blocker]]]:
@@ -833,6 +863,14 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
               for v in n["members"]}
     based, live = live_functions(asts, by_id)
     dead = {n["id"] for f in based - live if f in reached for n in nodes(by_id[f])}
+    # The signatures read only at nodes of overridden functions, unless they
+    # belong to a function of an imported contract, which is read as such.
+    read_at: dict[int, bool] = {}
+    for n in reached.values():
+        for declaration, signature in signatures(n, by_id):
+            if declaration["id"] not in reached:
+                read_at[signature["id"]] = read_at.get(signature["id"], False) or n["id"] not in dead
+    dead.update(n["id"] for i, alive in read_at.items() if not alive for n in nodes(by_id[i]))
     errors = {n["errorCall"]["expression"].get("referencedDeclaration")
               for n in reached.values() if n["nodeType"] == "RevertStatement" and n["id"] not in dead}
     error_parameters = {v["id"] for e in errors if e in by_id for v in by_id[e]["parameters"]["parameters"]}
