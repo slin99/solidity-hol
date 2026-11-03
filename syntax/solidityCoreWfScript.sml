@@ -570,6 +570,8 @@ Definition wf_core_operation_def:
              element = ty ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
          | _ => F)
     | _ => F) ∧
+  (wf_core_operation env ctx annotation (DefaultBytesOperation ty) ⇔
+    byte_sequence_type ty ∧ annotation = SingleType (LocatedT MemoryLoc ty)) ∧
   (wf_core_operation env ctx annotation (BytesLiteralOperation ty _) ⇔
     annotation = SingleType (LocatedT MemoryLoc ty) ∧ byte_sequence_type ty) ∧
   (wf_core_operation env ctx annotation (AllocateBytesOperation ty length) ⇔

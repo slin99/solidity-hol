@@ -581,7 +581,9 @@
         {"name": "string_bytes_conversion_aliases_utf8_and_nul", "function": "stringAlias", "args": ["0xff"], "expect": {"return": ["0xff", 4, "0xa9", "0x00"]}},
         {"name": "calldata_to_memory_copies", "function": "calldataCopy", "args": ["0xab"], "expect": {"return": ["0x2b", 36, "0xab"]}},
         {"name": "index_read_snapshots_base", "function": "indexedReadSnapshot", "args": [], "expect": {"return": ["0xaa"]}},
-        {"name": "index_write_snapshots_base", "function": "indexedWriteSnapshot", "args": ["0xdd"], "expect": {"return": ["0xdd", "0xbb"]}}
+        {"name": "index_write_snapshots_base", "function": "indexedWriteSnapshot", "args": ["0xdd"], "expect": {"return": ["0xdd", "0xbb"]}},
+        {"name": "parenthesized_byte_literal", "function": "parenthesizedLiteral", "args": [], "expect": {"return": ["0xaa"]}},
+        {"name": "multiple_byte_literal_returns", "function": "multipleLiteralReturns", "args": [], "expect": {"return": ["0xbb", "0x78"]}}
       ]
     }
   ]
