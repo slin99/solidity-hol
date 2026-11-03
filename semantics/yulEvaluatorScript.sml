@@ -411,6 +411,10 @@ Definition eval_yul_builtin_def:
           [word_of_bytes_be (take_pad_0 32 (DROP (w2n i) m.call_data))]
           m
     | (YCallDataSize, []) => EvalValues [n2w (LENGTH m.call_data)] m
+    | (YCallDataCopy, [dst; src; sz]) =>
+        EvalValues []
+          (yul_memory_write (yul_memory_touch m (w2n dst) (w2n sz))
+            (w2n dst) (take_pad_0 (w2n sz) (DROP (w2n src) m.call_data)))
     | (YCallValue, []) => EvalValues [m.call_value] m
     | (YMemoryGuard, [x]) => EvalValues [x] m
     | (YCaller, []) => EvalValues [n2w (w2n m.caller_address)] m
