@@ -2,9 +2,10 @@
 pragma solidity 0.8.37;
 
 // Modifiers: invocations in order, arguments over the function's parameters,
-// arguments evaluated when their modifier is reached, placeholders run zero,
-// one or two times with fresh return variables each time, returns in the
-// modifier and in the body, an inherited modifier, and a constructor modifier.
+// arguments evaluated when their modifier is reached and each converted
+// before the next is evaluated, placeholders run zero, one or two times with
+// fresh return variables each time, returns in the modifier and in the body,
+// an inherited modifier, and a constructor modifier.
 
 contract ModifierBase {
     uint256 internal trace;
@@ -26,6 +27,7 @@ contract ModifierBase {
 contract Modifiers is ModifierBase {
     uint256 private total;
     bool private active;
+    bytes private data;
 
     error TooLarge(uint256 value);
 
@@ -60,6 +62,13 @@ contract Modifiers is ModifierBase {
         _;
     }
 
+    // records the first byte of b, copied from storage before the next
+    // argument runs
+    modifier firstByte(bytes memory b, uint256 unused) {
+        total = uint8(b[0]);
+        _;
+    }
+
     modifier bumpAfter() {
         _;
         total += 1;
@@ -72,6 +81,15 @@ contract Modifiers is ModifierBase {
 
     function timed() public mark(4) capture(trace) returns (uint256) {
         return total;
+    }
+
+    function converted() public firstByte(data, change()) returns (uint256) {
+        return total;
+    }
+
+    function change() internal returns (uint256) {
+        data[0] = 0x42;
+        return 0;
     }
 
     function addTwice(uint256 x) public twice returns (uint256) {

@@ -865,6 +865,7 @@
         {"name": "return_in_body_runs_rest_of_modifier", "function": "early", "args": [9], "storage": {"2": 1}, "expect": {"return": [9]}, "final_storage": {"2": 2}},
         {"name": "body_falls_through_to_rest_of_modifier", "function": "early", "args": [3], "storage": {"2": 1}, "expect": {"return": [0]}, "final_storage": {"2": 4}},
         {"name": "bytes_return_through_modifier", "function": "echo", "args": ["0x616263"], "expect": {"return": ["0x616263"]}, "final_storage": {"0": 33}},
+        {"name": "argument_converted_before_next_argument", "function": "converted", "args": [], "storage": {"4": 29400335157912315244266070412362164103369332044010299463143527189509193072642}, "expect": {"return": [65]}, "final_storage": {"2": 65, "4": 29852648006495581632639394572552351243421167921610457916422658377040103735298}},
         {"name": "unmodified_view", "function": "state", "args": [], "storage": {"0": 5, "2": 6}, "expect": {"return": [5, 6]}}
       ]
     }

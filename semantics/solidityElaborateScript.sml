@@ -1162,6 +1162,23 @@ Definition define_parameters_def:
   (define_parameters _ _ = [])
 End
 
+(* A modifier invocation's arguments, each evaluated and converted to its
+ * parameter's type before the next is evaluated: the compiler binds a
+ * modifier's parameters one by one, where an internal call evaluates every
+ * argument before converting any.
+ *)
+Definition elab_modifier_args_def:
+  (elab_modifier_args ctx n [] [] = SOME (([], []), n)) ∧
+  (elab_modifier_args ctx n (ty :: tys) (e :: es) =
+    case elab_args ctx n [ty] [e] of
+      SOME ((ss, as), n1) =>
+        (case elab_modifier_args ctx n1 tys es of
+           SOME ((ss', as'), n2) => SOME ((ss ++ ss', as ++ as'), n2)
+         | NONE => NONE)
+    | NONE => NONE) ∧
+  (elab_modifier_args ctx n _ _ = NONE)
+End
+
 (* The procedures of a function with modifiers: one per modifier invocation,
  * the first with the function's id, then one for the body. Each takes the
  * function's parameters and has its return variables; the invocation's
@@ -1183,7 +1200,7 @@ Definition elab_levels_def:
         case (all_some (MAP variable_binding md.modifier_parameters),
               md.modifier_body) of
           (SOME mps, SrcBlock _ mss) =>
-            (case elab_args ctx (n + 1) (MAP SND mps) args of
+            (case elab_modifier_args ctx (n + 1) (MAP SND mps) args of
                SOME ((sa, atoms), n1) =>
                  (case elab_stmts (ctx with <| variables := mps;
                                                placeholder := SOME (n, ps) |>)
@@ -1623,6 +1640,7 @@ QED
 val () = cv_auto_trans variable_binding_def;
 val () = cv_auto_trans core_bindings_def;
 val () = cv_auto_trans define_parameters_def;
+val () = cv_auto_trans elab_modifier_args_def;
 val elab_levels_pre_def = cv_auto_trans_pre "elab_levels_pre" elab_levels_def;
 
 Theorem elab_levels_pre[cv_pre,local]:
