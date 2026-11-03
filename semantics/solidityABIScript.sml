@@ -222,7 +222,7 @@ val () = cv_auto_trans decode_arguments_def;
 val materialize_arguments_pre_def =
   cv_auto_trans_pre "materialize_arguments_pre" materialize_arguments_def;
 
-Theorem materialize_arguments_pre[cv_pre,local]:
+Theorem materialize_arguments_pre[cv_pre]:
   ∀tys vs st. materialize_arguments_pre tys vs st
 Proof
   ho_match_mp_tac materialize_arguments_ind >> rpt strip_tac >>

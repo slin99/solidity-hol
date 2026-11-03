@@ -1119,18 +1119,18 @@ Theorem byte_extraction:
   eval_yul_builtin YByte [32w; 0x1234w] yul_test_machine =
     EvalValues [0w] yul_test_machine
 Proof
-  cv_eval
+  CONV_TAC cv_eval
 QED
 
 Theorem byte_memory_write_preserves_neighbors:
   case eval_yul_builtin YMStore8 [30w; 0x1AAw]
-         (yul_mstore yul_test_machine 0 0x11223344w) of
+         (yul_mstore yul_test_machine 0 (0x11223344w : bytes32)) of
     EvalValues [] m =>
       yul_memory_read m 28 4 = [0x11w; 0x22w; 0xAAw; 0x44w] ∧
       m.memory_size = 32
   | _ => F
 Proof
-  cv_eval
+  EVAL_TAC
 QED
 
 Theorem calldata_copy_zero_pads:
@@ -1141,5 +1141,5 @@ Theorem calldata_copy_zero_pads:
       m.memory_size = 32
   | _ => F
 Proof
-  cv_eval
+  EVAL_TAC
 QED
