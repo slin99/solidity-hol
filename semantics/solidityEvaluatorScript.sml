@@ -26,7 +26,7 @@
  *)
 Theory solidityEvaluator
 Ancestors
-  solidityStorage solidityABI externalCall
+  solidityMemory solidityABI externalCall
 Libs
   cv_transLib wordsLib intLib
 
@@ -154,6 +154,7 @@ Definition eval_pure_operation_def:
         (case (conversion_source_type scopes ty a, eval_atom scopes a) of
            (SOME src, SOME (ScalarValue s)) =>
              scalar_outcome_value (eval_conversion env src ty s)
+         | (SOME src, SOME (ReferenceValue r)) => convert_byte_reference src ty r
          | _ => ValueAbrupt (InvalidCompletion "ill-typed conversion"))
     | TupleOperation atoms =>
         (case eval_atoms scopes atoms of
@@ -176,24 +177,25 @@ End
 Definition environment_value_def:
   environment_value (fr : source_frame) f =
     case f of
-      MsgSender => AddressValue fr.sender_address
+      MsgData => ReferenceValue (CalldataReference 0 (LENGTH fr.call_data) BytesT)
+    | MsgSender => ScalarValue (AddressValue fr.sender_address)
     | MsgValue =>
-        IntegerValue (wrap_integer F 256 (&fr.call_value))
-    | SelfAddress => AddressValue fr.self_address
-    | TxOrigin => AddressValue fr.tx_params.origin
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.call_value)))
+    | SelfAddress => ScalarValue (AddressValue fr.self_address)
+    | TxOrigin => ScalarValue (AddressValue fr.tx_params.origin)
     | TxGasPrice =>
-        IntegerValue (wrap_integer F 256 (&fr.tx_params.gasPrice))
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.gasPrice)))
     | BlockNumber =>
-        IntegerValue (wrap_integer F 256 (&fr.tx_params.blockNumber))
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockNumber)))
     | BlockTimestamp =>
-        IntegerValue (wrap_integer F 256 (&fr.tx_params.blockTimeStamp))
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockTimeStamp)))
     | BlockChainId =>
-        IntegerValue (wrap_integer F 256 (&fr.tx_params.chainId))
-    | BlockCoinbase => AddressValue fr.tx_params.blockCoinBase
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.chainId)))
+    | BlockCoinbase => ScalarValue (AddressValue fr.tx_params.blockCoinBase)
     | BlockBaseFee =>
-        IntegerValue (wrap_integer F 256 (&fr.tx_params.baseFeePerGas))
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.baseFeePerGas)))
     | BlockGasLimit =>
-        IntegerValue (wrap_integer F 256 (&fr.tx_params.blockGasLimit))
+        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockGasLimit)))
 End
 
 (* Pure operations; calls and array mutations are handled by statements. *)
@@ -206,23 +208,51 @@ Definition eval_operation_def:
          | _ => ValueAbrupt (InvalidCompletion "bad state reference"))
     | ReadOperation ty a =>
         (case eval_atom st.scopes a of
-           SOME (ReferenceValue r) => read_storage_reference st.world.accounts ty r
+           SOME (ReferenceValue (MemoryReference h i rty)) =>
+             read_memory_reference st ty (MemoryReference h i rty)
+         | SOME (ReferenceValue r) => read_storage_reference st.world.accounts ty r
          | _ => ValueAbrupt (InvalidCompletion "bad storage reference"))
+    | ByteIndexOperation a index =>
+        (case (eval_atom st.scopes a, eval_atom st.scopes index) of
+           (SOME (ReferenceValue r), SOME (ScalarValue (IntegerValue i))) =>
+             (case r of
+                StorageReference _ _ _ _ _ _ =>
+                  (case navigate_storage env st.world.accounts r (IntegerValue i) of
+                     ValueOk (ReferenceValue element) =>
+                       read_storage_reference st.world.accounts (FixedBytesT 1) element
+                   | ValueAbrupt c => ValueAbrupt c
+                   | _ => ValueAbrupt (InvalidCompletion "bad storage byte reference"))
+              | _ => case byte_contents st r of
+                INL bs =>
+                  if i < 0 ∨ &(LENGTH bs) ≤ i then ValueAbrupt (PanicCompletion 50)
+                  else (case oEL (Num i) bs of
+                          SOME b => ValueOk (ScalarValue (BytesValue [b]))
+                        | NONE => ValueAbrupt (InvalidCompletion "bad byte index"))
+              | INR c => ValueAbrupt c)
+         | _ => ValueAbrupt (InvalidCompletion "bad byte index operands"))
     | ArrayLengthOperation a =>
         (case eval_atom st.scopes a of
-           SOME (ReferenceValue r) => storage_array_length st.world.accounts r
-         | _ => ValueAbrupt (InvalidCompletion "bad dynamic array reference"))
+           SOME (ReferenceValue r) =>
+             (case r of
+                StorageReference _ _ _ _ _ _ => storage_array_length st.world.accounts r
+              | _ => case reference_bytes st r of
+                       SOME bs => ValueOk (ScalarValue (IntegerValue (&(LENGTH bs))))
+                     | NONE => ValueAbrupt (InvalidCompletion "bad byte sequence reference"))
+         | _ => ValueAbrupt (InvalidCompletion "bad array reference"))
     | NavigateOperation ty root_expr (FieldNavigation member_id) =>
         (case eval_atom st.scopes root_expr of
            SOME (ReferenceValue r) => navigate_storage_field env r member_id
          | _ => ValueAbrupt (InvalidCompletion "bad struct reference"))
     | NavigateOperation ty root_expr (IndexNavigation index) =>
         (case (eval_atom st.scopes root_expr, eval_atom st.scopes index) of
-           (SOME (ReferenceValue r), SOME (ScalarValue s)) =>
+           (SOME (ReferenceValue (MemoryReference h offset rty)),
+            SOME (ScalarValue (IntegerValue i))) =>
+             navigate_memory_byte st (MemoryReference h offset rty) i
+         | (SOME (ReferenceValue r), SOME (ScalarValue s)) =>
              navigate_storage env st.world.accounts r s
          | _ => ValueAbrupt (InvalidCompletion "bad index operands"))
     | EnvironmentOperation f =>
-        ValueOk (ScalarValue (environment_value st.frame f))
+        ValueOk (environment_value st.frame f)
     | _ => eval_pure_operation env st.scopes op
 End
 
@@ -263,12 +293,26 @@ Definition bind_parameters_def:
   (bind_parameters _ _ = NONE)
 End
 
+Definition default_runtime_value_def:
+  default_runtime_value env ty =
+    case ty of
+      LocatedT MemoryLoc element =>
+        if byte_sequence_type element then
+          SOME (ReferenceValue (MemoryReference (HeapId 0) 0 element))
+        else NONE
+    | LocatedT CalldataLoc element =>
+        if byte_sequence_type element then
+          SOME (ReferenceValue (CalldataReference 0 0 element))
+        else NONE
+    | _ => OPTION_MAP ScalarValue (default_scalar env ty)
+End
+
 Definition bind_defaults_def:
   (bind_defaults env [] = SOME FEMPTY) ∧
   (bind_defaults env ((x, ty) :: rets) =
-    case (default_scalar env ty, bind_defaults env rets) of
+    case (default_runtime_value env ty, bind_defaults env rets) of
       (SOME s, SOME scope) =>
-        SOME (scope |+ (ast_key x, single_binding ty (ScalarValue s)))
+        SOME (scope |+ (ast_key x, single_binding ty s))
     | _ => NONE)
 End
 
@@ -314,6 +358,8 @@ Definition write_target_def:
         (case update_binding x v st.scopes of
            SOME scopes => SOME (st with scopes := scopes)
          | NONE => NONE)
+    | (SOME (ValueTarget (MemoryReference h i ty)), SOME (ScalarValue s)) =>
+        write_memory_byte (MemoryReference h i ty) s st
     | (SOME (ValueTarget (StorageReference PersistentStorage addr slot offset
                             ty _)), SOME (ScalarValue s)) =>
         if st.frame.static_context then NONE else
@@ -473,7 +519,18 @@ End
 Definition simple_stmt_def:
   simple_stmt env s st gas =
     case s of
-      DefineStmt x ty (ArrayPushOperation a value) =>
+      DefineStmt x ty (BytesLiteralOperation element bs) =>
+        let (v, st') = allocate_bytes element bs st in
+        normal_result (define_binding x ty v st') gas
+    | DefineStmt x ty (AllocateBytesOperation element length) =>
+        (case eval_atom st.scopes length of
+           SOME (ScalarValue (IntegerValue n)) =>
+             if n < 0 then abrupt_result (InvalidCompletion "negative byte allocation") st gas
+             else if 2 ** 64 ≤ Num n then abrupt_result (PanicCompletion 65) st gas
+             else let (v, st') = allocate_bytes element (REPLICATE (Num n) 0w) st in
+                  normal_result (define_binding x ty v st') gas
+         | _ => abrupt_result (InvalidCompletion "bad byte allocation length") st gas)
+    | DefineStmt x ty (ArrayPushOperation a value) =>
         push_storage_array env x ty a value st gas
     | DefineStmt x ty (ArrayPopOperation a) =>
         pop_storage_array env x ty a st gas
@@ -493,6 +550,17 @@ Definition simple_stmt_def:
              normal_result
                (st with targets := set_target t (ValueTarget r) st.targets) gas
          | _ => abrupt_result (InvalidCompletion "bad captured reference") st gas)
+    | BindReferenceStmt t _ a =>
+        (case write_target t a st of
+           SOME st' => normal_result st' gas
+         | NONE => abrupt_result (InvalidCompletion "bad reference binding") st gas)
+    | CopyContentsStmt _ _ a b =>
+        (case (eval_atom st.scopes a, eval_atom st.scopes b) of
+           (SOME (ReferenceValue src), SOME (ReferenceValue dst)) =>
+             (case copy_byte_contents src dst st of
+                INL st' => normal_result st' gas
+              | INR c => abrupt_result c st gas)
+         | _ => abrupt_result (InvalidCompletion "bad byte sequence copy") st gas)
     | WriteScalarStmt t ty a =>
         (case write_target t a st of
            SOME st' => normal_result st' gas

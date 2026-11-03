@@ -262,7 +262,9 @@ End
 (* Elementary type names, with the widths valid_type_shape requires. *)
 Definition elementary_type_def:
   elementary_type name =
-    if name = "bool" then SOME BoolT
+    if name = "bytes" then SOME BytesT
+    else if name = "string" then SOME StringT
+    else if name = "bool" then SOME BoolT
     else if name = "address" then SOME (AddressT NonpayableAddress)
     else if name = "uint" then SOME (UintT 256)
     else if name = "int" then SOME (IntT 256)
@@ -315,13 +317,20 @@ End
 Datatype:
   src_value_type
   = SrcType sol_type
+  | SrcByteLiteral
   | SrcRational int num
   | SrcTupleType (sol_type list)
 End
 
 Definition decode_elementary_identifier_def:
   decode_elementary_identifier s =
-    if s = "t_address_payable" then SOME (AddressT PayableAddress)
+    if s = "t_bytes_memory_ptr" then SOME (LocatedT MemoryLoc BytesT)
+    else if s = "t_string_memory_ptr" then SOME (LocatedT MemoryLoc StringT)
+    else if s = "t_bytes_calldata_ptr" then SOME (LocatedT CalldataLoc BytesT)
+    else if s = "t_string_calldata_ptr" then SOME (LocatedT CalldataLoc StringT)
+    else if s = "t_bytes_storage_ptr" then SOME (LocatedT StorageLoc BytesT)
+    else if s = "t_string_storage_ptr" then SOME (LocatedT StorageLoc StringT)
+    else if s = "t_address_payable" then SOME (AddressT PayableAddress)
     else if isPREFIX "t_" s ∧ s ≠ "t_uint" ∧ s ≠ "t_int" then
       elementary_type (DROP 2 s)
     else NONE
@@ -437,7 +446,9 @@ Theorem decode_elementary_identifier_valid:
   decode_elementary_identifier s = SOME ty ⇒ valid_type_shape ty
 Proof
   rw[decode_elementary_identifier_def] >>
-  imp_res_tac elementary_type_valid >> gvs[valid_type_shape_def]
+  imp_res_tac elementary_type_valid >>
+  gvs[valid_type_shape_def, outer_location_free_def, location_shape_ok_def,
+      is_reference_type_def, contains_mapping_def]
 QED
 
 Theorem decode_type_identifier_valid:
@@ -476,6 +487,14 @@ End
  * children are checked against their AST types, including nested mappings.
  *)
 Definition storage_type_identifier_def:
+  (storage_type_identifier (LocatedT loc ty) =
+    if byte_sequence_type ty then
+      (if ty = BytesT then "t_bytes" else "t_string") ++
+      (case loc of MemoryLoc => "_memory_ptr" | CalldataLoc => "_calldata_ptr"
+                 | StorageLoc => "_storage_ptr")
+    else "") ∧
+  (storage_type_identifier BytesT = "t_bytes_storage") ∧
+  (storage_type_identifier StringT = "t_string_storage") ∧
   (storage_type_identifier BoolT = "t_bool") ∧
   (storage_type_identifier (UintT n) = "t_uint" ++ toString n) ∧
   (storage_type_identifier (IntT n) = "t_int" ++ toString n) ∧
@@ -542,8 +561,15 @@ Definition variable_type_def:
   variable_type (v : src_variable) =
     case normalize_type_name v.var_type_name of
       SOME ty =>
-        if v.var_location = "default" ∧
-           source_type_matches ty v.var_type_id
+        if byte_sequence_type ty then
+          case (if v.var_location = "memory" then SOME MemoryLoc
+                else if v.var_location = "calldata" then SOME CalldataLoc
+                else if v.var_location = "storage" then SOME StorageLoc else NONE) of
+            SOME loc =>
+              if source_type_matches (LocatedT loc ty) v.var_type_id then
+                SOME (LocatedT loc ty) else NONE
+          | NONE => NONE
+        else if v.var_location = "default" ∧ source_type_matches ty v.var_type_id
         then SOME ty else NONE
     | NONE => NONE
 End
@@ -554,7 +580,8 @@ Definition field_variable_type_def:
   field_variable_type (v : src_variable) =
     case normalize_type_name v.var_type_name of
       SOME ty =>
-        let suffix = case ty of ArrayT _ _ => "_ptr" | StructT _ => "_ptr" | _ => "" in
+        let suffix = case ty of ArrayT _ _ => "_ptr" | StructT _ => "_ptr"
+                            | BytesT => "_ptr" | StringT => "_ptr" | _ => "" in
         if v.var_location = "default" ∧
            canonical_storage_identifier 0 0 v.var_type_id =
              storage_type_identifier ty ++ suffix
@@ -771,6 +798,17 @@ Definition check_expr_def:
     case (check_expr env root_expr, check_expr env index) of
       (SOME (SrcType (MappingT key value)), SOME _) =>
         if source_type_matches value tid then SOME (SrcType value) else NONE
+    | (SOME (SrcType BytesT), SOME index_type) =>
+        if tid = "t_bytes1" ∧
+           (case index_type of SrcType (UintT _) => T | SrcRational _ _ => T | _ => F)
+        then SOME (SrcType (FixedBytesT 1)) else NONE
+    | (SOME (SrcType (LocatedT loc BytesT)), SOME index_type) =>
+        if tid = "t_bytes1" ∧
+           (case index_type of
+              SrcType (UintT _) => T
+            | SrcRational i d => 0 ≤ i ∧ d = 1
+            | _ => F)
+        then SOME (SrcType (FixedBytesT 1)) else NONE
     | (SOME (SrcType (ArrayT element _)), SOME index_type) =>
         if source_type_matches element tid ∧
            (case index_type of
@@ -781,7 +819,11 @@ Definition check_expr_def:
     | _ => NONE) ∧
   (check_expr env (SrcArrayLength _ root_expr tid) =
     case check_expr env root_expr of
-      SOME (SrcType (ArrayT _ _)) =>
+      SOME (SrcType BytesT) =>
+        if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
+    | SOME (SrcType (LocatedT loc BytesT)) =>
+        if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
+    | SOME (SrcType (ArrayT _ _)) =>
         if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
     | _ => NONE) ∧
   (check_expr env (SrcArrayMember _ _ _ _) = NONE) ∧
@@ -790,6 +832,8 @@ Definition check_expr_def:
       case decode_type_identifier tid of
         SOME (SrcRational n d) => SOME (SrcRational n d)
       | _ => NONE
+    else if (kind = "string" ∨ kind = "unicodeString" ∨ kind = "hexString") ∧
+            isPREFIX "t_stringliteral_" tid then SOME SrcByteLiteral
     else if kind = "bool" ∧ (value = "true" ∨ value = "false") ∧
             tid = "t_bool"
     then SOME (SrcType BoolT)
@@ -847,9 +891,13 @@ Definition check_expr_def:
   (check_expr env (SrcTypeConversion _ tn e tid) =
     case normalize_type_name tn of
       SOME ty =>
-        if IS_SOME (check_expr env e) ∧
-           decode_type_identifier tid = SOME (SrcType ty)
-        then SOME (SrcType ty) else NONE
+        if ¬IS_SOME (check_expr env e) then NONE else
+        (case decode_type_identifier tid of
+          SOME (SrcType result) =>
+            if result = ty ∨ (byte_sequence_type ty ∧
+                (case result of LocatedT _ element => ty = element | _ => F)) then
+              SOME (SrcType result) else NONE
+        | _ => NONE)
     | NONE => NONE) ∧
   (check_expr env (SrcEnvironment _ f tid) =
     if source_type_matches (environment_type f) tid
@@ -999,7 +1047,14 @@ End
 (* A state variable, declared by one of the contract's bases. *)
 Definition state_variable_def:
   state_variable bases (v : src_variable) =
-    if MEM v.var_scope bases then scoped_variable v.var_scope v else NONE
+    if ¬MEM v.var_scope bases then NONE else
+    case normalize_type_name v.var_type_name of
+      SOME ty =>
+        if byte_sequence_type ty then
+          if v.var_location = "default" ∧ source_type_matches ty v.var_type_id then
+            SOME (v.var_info.node_id, ty) else NONE
+        else scoped_variable v.var_scope v
+    | NONE => NONE
 End
 
 (* The function a call to each declaration runs: the most derived function
@@ -1068,7 +1123,8 @@ Definition storage_layout_ok_def:
   (storage_layout_ok fields [] [] ⇔ T) ∧
   (storage_layout_ok fields ((v : src_variable) :: vs) (e :: es) ⇔
      e.storage_id = v.var_info.node_id ∧
-     (case (if fields then field_variable_type v else variable_type v) of
+     (case (if fields then field_variable_type v
+            else OPTION_MAP SND (state_variable [v.var_scope] v)) of
         SOME ty => canonical_storage_identifier 0 0 e.storage_type_id = storage_layout_identifier ty
       | NONE => F) ∧
      e.storage_slot < 2 ** 256 ∧ storage_layout_ok fields vs es) ∧

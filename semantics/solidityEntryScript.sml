@@ -100,8 +100,10 @@ End
 
 (* The creation transaction's frame of a contract, from a world in which its
  * account exists with no storage and holds the value sent. The constructor's
- * arguments are the frame's calldata, without selector; a creation sent
- * value reverts unless the constructor is payable, and arguments the decoder
+ * encoded arguments are supplied in the input frame and decoded before its
+ * call_data is cleared: creation reads arguments from initcode, while msg.data
+ * is empty. A creation sent value reverts unless the constructor is payable,
+ * and arguments the decoder
  * rejects revert. A successful creation returns no data: the deployed code
  * is the compiler's.
  *)
@@ -118,7 +120,7 @@ Definition deploy_contract_def:
         | SOME p =>
             case decode_arguments (MAP SND p.parameters) fr.call_data of
               NONE => ContractReverted [] w
-            | SOME args => run_entry fuel env p args fr w
+            | SOME args => run_entry fuel env p args (fr with call_data := []) w
 End
 
 Theorem call_contract_revert_restores_world:

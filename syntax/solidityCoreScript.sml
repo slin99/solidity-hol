@@ -46,7 +46,9 @@ Datatype:
 End
 
 (* Operands are pure: effects and intermediate results have already been named.
- * Types belong to operations/bindings, not integer payloads.
+ * Types belong to operations/bindings, not integer payloads. SingleType
+ * includes located reference values; ReferenceType denotes a captured lvalue,
+ * including a scalar storage leaf.
  *)
 Datatype:
   core_value_type = SingleType sol_type | ReferenceType sol_type
@@ -92,11 +94,12 @@ Datatype:
 End
 
 (* The call and transaction context a body reads: msg.sender, msg.value,
- * address(this), tx.origin, tx.gasprice and the block's scalars.
+ * address(this), tx.origin, tx.gasprice and the block's scalars. msg.data is
+ * the complete read-only calldata bytes, including the selector.
  *)
 Datatype:
   environment_field
-  = MsgSender | MsgValue | SelfAddress | TxOrigin | TxGasPrice
+  = MsgSender | MsgValue | MsgData | SelfAddress | TxOrigin | TxGasPrice
   | BlockNumber | BlockTimestamp | BlockChainId | BlockCoinbase
   | BlockBaseFee | BlockGasLimit
 End
@@ -114,6 +117,9 @@ Datatype:
   | ReadOperation sol_type core_atom
   | StateReferenceOperation ast_id
   | NavigateOperation sol_type core_atom navigation
+  | BytesLiteralOperation sol_type (byte list)
+  | AllocateBytesOperation sol_type core_atom
+  | ByteIndexOperation core_atom core_atom
   | ArrayLengthOperation core_atom
   | ArrayPushOperation core_atom (core_atom option)
   | ArrayPopOperation core_atom
