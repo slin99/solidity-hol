@@ -154,6 +154,10 @@ Definition eval_pure_operation_def:
         (case (conversion_source_type scopes ty a, eval_atom scopes a) of
            (SOME src, SOME (ScalarValue s)) =>
              scalar_outcome_value (eval_conversion env src ty s)
+         | (SOME src, SOME (ReferenceValue (CalldataReference offset length BytesT))) =>
+             if src = LocatedT CalldataLoc BytesT ∧ ty = src then
+               ValueOk (ReferenceValue (CalldataReference offset length BytesT))
+             else ValueAbrupt (InvalidCompletion "ill-typed conversion")
          | _ => ValueAbrupt (InvalidCompletion "ill-typed conversion"))
     | TupleOperation atoms =>
         (case eval_atoms scopes atoms of
