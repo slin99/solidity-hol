@@ -1,13 +1,13 @@
 {
   "counts": {
-    "admitted": 279,
+    "admitted": 296,
     "compile-failure": 0,
     "elaboration-rejected": 20,
-    "import-rejected": 1004,
+    "import-rejected": 981,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 267
+    "source-rejected": 273
   },
   "features": [
     {
@@ -21,16 +21,16 @@
         "TupleExpression",
         "VariableDeclaration"
       ],
-      "only_blocker": 6,
+      "only_blocker": 7,
       "tests": 322
     },
     {
       "feature": "inline assembly",
-      "first_rejection": 192,
+      "first_rejection": 194,
       "node_types": [
         "InlineAssembly"
       ],
-      "only_blocker": 95,
+      "only_blocker": 97,
       "tests": 266
     },
     {
@@ -46,7 +46,7 @@
     },
     {
       "feature": "external calls and contract members",
-      "first_rejection": 79,
+      "first_rejection": 81,
       "node_types": [
         "FunctionCall",
         "Identifier",
@@ -265,7 +265,7 @@
     },
     {
       "feature": "constants",
-      "first_rejection": 34,
+      "first_rejection": 35,
       "node_types": [
         "VariableDeclaration"
       ],
@@ -296,28 +296,17 @@
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 7,
+      "only_blocker": 8,
       "tests": 41
     },
     {
       "feature": "conditional expressions",
-      "first_rejection": 22,
+      "first_rejection": 23,
       "node_types": [
         "Conditional"
       ],
-      "only_blocker": 11,
+      "only_blocker": 12,
       "tests": 40
-    },
-    {
-      "feature": "modifiers",
-      "first_rejection": 35,
-      "node_types": [
-        "ModifierDefinition",
-        "ModifierInvocation",
-        "PlaceholderStatement"
-      ],
-      "only_blocker": 24,
-      "tests": 39
     },
     {
       "feature": "mappings",
@@ -435,7 +424,7 @@
     },
     {
       "feature": "immutables",
-      "first_rejection": 20,
+      "first_rejection": 21,
       "node_types": [
         "VariableDeclaration"
       ],
@@ -618,6 +607,15 @@
       "tests": 6
     },
     {
+      "feature": "virtual modifiers",
+      "first_rejection": 5,
+      "node_types": [
+        "ModifierDefinition"
+      ],
+      "only_blocker": 5,
+      "tests": 6
+    },
+    {
       "feature": "array type expressions",
       "first_rejection": 3,
       "node_types": [
@@ -665,6 +663,15 @@
     {
       "feature": "built-in blockhash",
       "first_rejection": 3,
+      "node_types": [
+        "Identifier"
+      ],
+      "only_blocker": 2,
+      "tests": 3
+    },
+    {
+      "feature": "return variables in modifier arguments",
+      "first_rejection": 0,
       "node_types": [
         "Identifier"
       ],
@@ -766,84 +773,84 @@
   "format": "solidity-hol-semantic-tests-coverage-v1",
   "greedy_order": [
     {
-      "admitted": 95,
+      "admitted": 97,
       "feature": "inline assembly"
     },
     {
       "admitted": 121,
-      "feature": "modifiers"
-    },
-    {
-      "admitted": 145,
       "feature": "constant expressions over literals"
     },
     {
-      "admitted": 160,
+      "admitted": 136,
       "feature": "address members (balance, call, transfer, \u2026)"
     },
     {
-      "admitted": 175,
+      "admitted": 151,
       "feature": "transient storage"
     },
     {
-      "admitted": 189,
+      "admitted": 165,
       "feature": "operator delete"
     },
     {
-      "admitted": 204,
+      "admitted": 180,
       "feature": "array values"
     },
     {
-      "admitted": 234,
+      "admitted": 210,
       "feature": "arrays"
     },
     {
-      "admitted": 281,
+      "admitted": 257,
       "feature": "local reference bindings"
     },
     {
-      "admitted": 312,
+      "admitted": 288,
       "feature": "memory arrays (new T[](n))"
     },
     {
-      "admitted": 341,
+      "admitted": 317,
       "feature": "structs"
     },
     {
-      "admitted": 385,
+      "admitted": 361,
       "feature": "struct values and copying"
     },
     {
-      "admitted": 414,
+      "admitted": 390,
       "feature": "aggregate array mutation"
     },
     {
-      "admitted": 439,
+      "admitted": 415,
       "feature": "inline arrays"
     },
     {
-      "admitted": 461,
+      "admitted": 437,
       "feature": "abi.* functions"
     },
     {
-      "admitted": 479,
+      "admitted": 455,
       "feature": "hash and signature built-ins"
     },
     {
-      "admitted": 498,
+      "admitted": 474,
       "feature": "bytes push and pop"
     },
     {
-      "admitted": 516,
+      "admitted": 491,
       "feature": "string literals as fixed-size bytes"
     },
     {
-      "admitted": 532,
+      "admitted": 507,
       "feature": "constants"
     },
     {
-      "admitted": 552,
+      "admitted": 527,
       "feature": "literals of non-integer types"
+    },
+    {
+      "admitted": 542,
+      "feature": "public state variables"
     }
   ],
   "profile": "solc-0.8.37-via-ir-osaka",
@@ -1264,12 +1271,11 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
-        "modifiers",
         "source units without exactly one contract",
         "structs"
       ],
-      "first": "modifiers",
-      "reason": "A: ModifierDefinition 48: unsupported contract member",
+      "first": "external calls and contract members",
+      "reason": "A: UserDefinedTypeName 25: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_v2_in_modifier_used_in_v1_contract.sol"
     },
@@ -2576,12 +2582,10 @@
       "test": "arithmetics/checked_called_by_unchecked.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "arithmetics/checked_modifier_called_by_unchecked.sol: ModifierDefinition 13: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "arithmetics/checked_modifier_called_by_unchecked.sol"
     },
@@ -7902,13 +7906,12 @@
         "literal subdenominations (ether, days, \u2026)",
         "literals of non-integer types",
         "local reference bindings",
-        "modifiers",
         "operator delete",
         "struct values and copying",
         "structs"
       ],
-      "first": "modifiers",
-      "reason": "externalContracts/FixedFeeRegistrar.sol: ModifierDefinition 59: unsupported contract member",
+      "first": "constants",
+      "reason": "externalContracts/FixedFeeRegistrar.sol: VariableDeclaration 351: constants are not supported",
       "scan_agrees": true,
       "test": "externalContracts/FixedFeeRegistrar.sol"
     },
@@ -9875,11 +9878,10 @@
       "category": "import-rejected",
       "features": [
         "immutables",
-        "library calls and contract-name members",
-        "modifiers"
+        "library calls and contract-name members"
       ],
-      "first": "modifiers",
-      "reason": "immutable/multiple_initializations.sol: ModifierDefinition 40: unsupported contract member",
+      "first": "immutables",
+      "reason": "immutable/multiple_initializations.sol: VariableDeclaration 5: immutable variables are not supported",
       "scan_agrees": true,
       "test": "immutable/multiple_initializations.sol"
     },
@@ -10736,11 +10738,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
-        "modifiers"
+        "inline assembly"
       ],
-      "first": "modifiers",
-      "reason": "inlineAssembly/inline_assembly_in_modifiers.sol: ModifierDefinition 16: unsupported contract member",
+      "first": "inline assembly",
+      "reason": "inlineAssembly/inline_assembly_in_modifiers.sol: InlineAssembly 6: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_in_modifiers.sol"
     },
@@ -11168,11 +11169,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
-        "modifiers"
+        "inline assembly"
       ],
-      "first": "modifiers",
-      "reason": "inlineAssembly/transient_storage_simple_reentrancy_lock.sol: ModifierDefinition 6: unsupported contract member",
+      "first": "inline assembly",
+      "reason": "inlineAssembly/transient_storage_simple_reentrancy_lock.sol: InlineAssembly 2: unsupported statement InlineAssembly",
       "scan_agrees": true,
       "test": "inlineAssembly/transient_storage_simple_reentrancy_lock.sol"
     },
@@ -12564,92 +12564,83 @@
     {
       "category": "import-rejected",
       "features": [
-        "modifiers"
+        "virtual modifiers"
       ],
-      "first": "modifiers",
-      "reason": "modifiers/access_through_contract_name.sol: ModifierDefinition 23: unsupported contract member",
+      "first": "virtual modifiers",
+      "reason": "modifiers/access_through_contract_name.sol: ModifierDefinition 23: virtual modifiers are not supported",
       "scan_agrees": true,
       "test": "modifiers/access_through_contract_name.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "a: ModifierDefinition 11: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/access_through_module_name.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "modifiers/break_in_modifier.sol: ModifierDefinition 23: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/break_in_modifier.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "modifiers/continue_in_modifier.sol: ModifierDefinition 25: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/continue_in_modifier.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
-        "arrays",
-        "modifiers"
+        "arrays"
       ],
-      "first": "modifiers",
-      "reason": "modifiers/evaluation_order.sol: ModifierDefinition 83: unsupported contract member",
+      "first": null,
+      "reason": "modifiers/evaluation_order.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "modifiers/evaluation_order.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "modifiers/function_modifier.sol: ModifierDefinition 19: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/function_modifier.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "modifiers"
+        "virtual modifiers"
       ],
-      "first": "modifiers",
-      "reason": "modifiers/function_modifier_calling_functions_in_creation_context.sol: ModifierDefinition 68: unsupported contract member",
+      "first": "virtual modifiers",
+      "reason": "modifiers/function_modifier_calling_functions_in_creation_context.sol: ModifierDefinition 68: virtual modifiers are not supported",
       "scan_agrees": true,
       "test": "modifiers/function_modifier_calling_functions_in_creation_context.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "modifiers"
+        "virtual modifiers"
       ],
-      "first": "modifiers",
-      "reason": "modifiers/function_modifier_empty.sol: ModifierDefinition 22: unsupported contract member",
+      "first": "virtual modifiers",
+      "reason": "modifiers/function_modifier_empty.sol: ModifierDefinition 22: virtual modifiers are not supported",
       "scan_agrees": true,
       "test": "modifiers/function_modifier_empty.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "modifiers"
+        "virtual modifiers"
       ],
-      "first": "modifiers",
-      "reason": "modifiers/function_modifier_for_constructor.sol: ModifierDefinition 40: unsupported contract member",
+      "first": "virtual modifiers",
+      "reason": "modifiers/function_modifier_for_constructor.sol: ModifierDefinition 40: virtual modifiers are not supported",
       "scan_agrees": true,
       "test": "modifiers/function_modifier_for_constructor.sol"
     },
@@ -12659,7 +12650,6 @@
         "libraries",
         "library calls and contract-name members",
         "local reference bindings",
-        "modifiers",
         "struct values and copying",
         "structs",
         "using for"
@@ -12675,7 +12665,6 @@
         "libraries",
         "library calls and contract-name members",
         "local reference bindings",
-        "modifiers",
         "struct values and copying",
         "structs",
         "using for"
@@ -12686,12 +12675,10 @@
       "test": "modifiers/function_modifier_library_inheritance.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "modifiers/function_modifier_local_variables.sol: ModifierDefinition 12: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/function_modifier_local_variables.sol"
     },
@@ -12704,12 +12691,10 @@
       "test": "modifiers/function_modifier_loop.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "modifiers/function_modifier_loop_viair.sol: ModifierDefinition 20: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/function_modifier_loop_viair.sol"
     },
@@ -12722,12 +12707,10 @@
       "test": "modifiers/function_modifier_multi_invocation.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "modifiers/function_modifier_multi_invocation_viair.sol: ModifierDefinition 9: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/function_modifier_multi_invocation_viair.sol"
     },
@@ -12740,146 +12723,129 @@
       "test": "modifiers/function_modifier_multi_with_return.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "modifiers/function_modifier_multiple_times.sol: ModifierDefinition 12: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/function_modifier_multiple_times.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "modifiers/function_modifier_multiple_times_local_vars.sol: ModifierDefinition 26: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/function_modifier_multiple_times_local_vars.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "modifiers"
+        "virtual modifiers"
       ],
-      "first": "modifiers",
-      "reason": "modifiers/function_modifier_overriding.sol: ModifierDefinition 24: unsupported contract member",
+      "first": "virtual modifiers",
+      "reason": "modifiers/function_modifier_overriding.sol: ModifierDefinition 24: virtual modifiers are not supported",
       "scan_agrees": true,
       "test": "modifiers/function_modifier_overriding.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "modifiers"
+        "return variables in modifier arguments"
       ],
-      "first": "modifiers",
-      "reason": "modifiers/function_modifier_return_reference.sol: ModifierDefinition 6: unsupported contract member",
+      "first": null,
+      "reason": "modifiers/function_modifier_return_reference.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "modifiers/function_modifier_return_reference.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "modifiers",
+        "return variables in modifier arguments",
         "string literals as fixed-size bytes"
       ],
-      "first": "modifiers",
-      "reason": "modifiers/function_return_parameter.sol: ModifierDefinition 25: unsupported contract member",
+      "first": null,
+      "reason": "modifiers/function_return_parameter.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "modifiers/function_return_parameter.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "modifiers"
+        "return variables in modifier arguments"
       ],
-      "first": "modifiers",
-      "reason": "modifiers/function_return_parameter_complex.sol: ModifierDefinition 28: unsupported contract member",
+      "first": null,
+      "reason": "modifiers/function_return_parameter_complex.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "modifiers/function_return_parameter_complex.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "conditional expressions",
-        "modifiers"
+        "conditional expressions"
       ],
-      "first": "modifiers",
-      "reason": "modifiers/modifer_recursive.sol: ModifierDefinition 9: unsupported contract member",
+      "first": "conditional expressions",
+      "reason": "modifiers/modifer_recursive.sol: Conditional 29: unsupported expression Conditional",
       "scan_agrees": true,
       "test": "modifiers/modifer_recursive.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "modifiers/modifier_in_constructor_ice.sol: ModifierDefinition 4: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/modifier_in_constructor_ice.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "arrays",
-        "modifiers"
+        "arrays"
       ],
-      "first": "modifiers",
-      "reason": "modifiers/modifier_init_return.sol: ModifierDefinition 8: unsupported contract member",
+      "first": null,
+      "reason": "modifiers/modifier_init_return.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "modifiers/modifier_init_return.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "modifiers/modifiers_in_construction_context.sol: ModifierDefinition 17: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/modifiers_in_construction_context.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "modifiers/return_does_not_skip_modifier.sol: ModifierDefinition 10: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/return_does_not_skip_modifier.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "modifiers/return_in_modifier.sol: ModifierDefinition 23: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/return_in_modifier.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "modifiers/stacked_return_with_modifiers.sol: ModifierDefinition 22: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/stacked_return_with_modifiers.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "modifiers",
         "transient storage"
       ],
-      "first": "modifiers",
-      "reason": "modifiers/transient_state_variable_value_type.sol: ModifierDefinition 12: unsupported contract member",
+      "first": null,
+      "reason": "modifiers/transient_state_variable_value_type.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "modifiers/transient_state_variable_value_type.sol"
     },
@@ -13691,12 +13657,10 @@
       "test": "optimizer/unused_store_storage_removal_bug.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "payable/no_nonpayable_circumvention_by_modifier.sol: ModifierDefinition 6: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "payable/no_nonpayable_circumvention_by_modifier.sol"
     },
@@ -15154,8 +15118,8 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
-        "modifiers",
-        "source units without exactly one contract"
+        "source units without exactly one contract",
+        "virtual modifiers"
       ],
       "first": "external calls and contract members",
       "reason": "storageLayoutSpecifier/inheritance_modifier_calling_revert.sol: FunctionCall 73: calls only on an address converted to a contract type",
@@ -17305,7 +17269,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "modifiers",
         "named arguments",
         "public state variables",
         "user-defined value types"
@@ -18241,12 +18204,10 @@
       "test": "various/memory_overwrite.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "modifiers"
-      ],
-      "first": "modifiers",
-      "reason": "various/multi_modifiers.sol: ModifierDefinition 14: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "various/multi_modifiers.sol"
     },
@@ -18545,12 +18506,11 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "modifiers",
         "this",
         "transient storage"
       ],
-      "first": "modifiers",
-      "reason": "various/transient_storage_reentrancy_lock.sol: ModifierDefinition 20: unsupported contract member",
+      "first": "external calls and contract members",
+      "reason": "various/transient_storage_reentrancy_lock.sol: Identifier 41: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "various/transient_storage_reentrancy_lock.sol"
     },
