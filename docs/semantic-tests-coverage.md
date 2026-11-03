@@ -24,11 +24,11 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 | --- | ---: |
 | admitted | 279 |
 | elaboration-rejected | 20 |
-| import-rejected | 1001 |
+| import-rejected | 1004 |
 | compile-failure | 0 |
 | malformed-input | 0 |
-| source-rejected | 269 |
-| invalid-core | 1 |
+| source-rejected | 267 |
+| invalid-core | 0 |
 | skipped | 100 |
 | total | 1670 |
 
@@ -36,7 +36,7 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 Each rejected test is scanned for every construct the importer or the elaborator rejects. *tests* counts the rejected tests a feature occurs in; *only blocker* the tests in which it is the only feature found, which supporting it would admit as far as the scan can tell; *first* the tests the importer stopped at it.
 
-The scan disagrees with the HOL run on 1 tests, listed at the end.
+The scan disagrees with the HOL run on 0 tests.
 
 | feature | AST nodes | tests | only blocker | first |
 | --- | --- | ---: | ---: | ---: |
@@ -67,7 +67,7 @@ The scan disagrees with the HOL run on 1 tests, listed at the end.
 | user-defined value types | `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `UserDefinedValueTypeDefinition`, `VariableDeclaration` | 52 | 5 | 42 |
 | constants | `VariableDeclaration` | 47 | 8 | 34 |
 | inline arrays | `TupleExpression` | 47 | 0 | 25 |
-| public state variables | `VariableDeclaration` | 46 | 6 | 0 |
+| public state variables | `VariableDeclaration` | 46 | 4 | 0 |
 | transient storage | `VariableDeclaration` | 41 | 7 | 0 |
 | conditional expressions | `Conditional` | 40 | 11 | 22 |
 | modifiers | `ModifierDefinition`, `ModifierInvocation`, `PlaceholderStatement` | 39 | 24 | 35 |
@@ -106,6 +106,7 @@ The scan disagrees with the HOL run on 1 tests, listed at the end.
 | built-in blobhash | `Identifier` | 3 | 2 | 3 |
 | built-in blockhash | `Identifier` | 3 | 2 | 3 |
 | array members as values | `MemberAccess` | 3 | 1 | 0 |
+| overriding state variables | `VariableDeclaration` | 3 | 1 | 3 |
 | built-in selfdestruct | `Identifier` | 3 | 0 | 0 |
 | events | `MemberAccess` | 3 | 0 | 3 |
 | built-in gasleft | `Identifier` | 2 | 2 | 2 |
@@ -139,8 +140,8 @@ Supporting the features in this order admits the most rejected tests at each ste
 | 16 | hash and signature built-ins | 479 |
 | 17 | bytes push and pop | 498 |
 | 18 | string literals as fixed-size bytes | 516 |
-| 19 | public state variables | 533 |
-| 20 | constants | 549 |
+| 19 | constants | 532 |
+| 20 | literals of non-integer types | 552 |
 
 ## Skipped and compile failures
 
@@ -692,8 +693,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `variables/mapping_local_assignment.sol`: variables/mapping_local_assignment.sol: valid_src_unit failed (source validation/subset restriction)
 - `variables/mapping_local_compound_assignment.sol`: variables/mapping_local_compound_assignment.sol: valid_src_unit failed (source validation/subset restriction)
 - `variables/mapping_local_tuple_assignment.sol`: variables/mapping_local_tuple_assignment.sol: valid_src_unit failed (source validation/subset restriction)
-- `variables/public_state_overridding_dynamic_struct.sol`: variables/public_state_overridding_dynamic_struct.sol: valid_src_unit failed (source validation/subset restriction)
-- `variables/public_state_overridding_mapping_to_dynamic_struct.sol`: variables/public_state_overridding_mapping_to_dynamic_struct.sol: valid_src_unit failed (source validation/subset restriction)
 - `variables/transient_state_variable_slots_and_offsets.sol`: variables/transient_state_variable_slots_and_offsets.sol: valid_src_unit failed (source validation/subset restriction)
 - `variables/transient_state_variable_tuple_assignment.sol`: variables/transient_state_variable_tuple_assignment.sol: valid_src_unit failed (source validation/subset restriction)
 - `various/flipping_sign_tests.sol`: various/flipping_sign_tests.sol: valid_src_unit failed (source validation/subset restriction)
@@ -737,7 +736,3 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `viaYul/string_format.sol`: viaYul/string_format.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/string_literals.sol`: viaYul/string_literals.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/unary_fixedbytes.sol`: viaYul/unary_fixedbytes.sol: elaborate_unit returned NONE (unsupported lowering)
-
-## Scan disagreements
-
-- `variables/public_state_overridding.sol` (invalid-core): variables/public_state_overridding.sol: generated program fails wf_core_program

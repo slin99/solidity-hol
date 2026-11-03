@@ -3,11 +3,11 @@
     "admitted": 279,
     "compile-failure": 0,
     "elaboration-rejected": 20,
-    "import-rejected": 1001,
-    "invalid-core": 1,
+    "import-rejected": 1004,
+    "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 269
+    "source-rejected": 267
   },
   "features": [
     {
@@ -287,7 +287,7 @@
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 6,
+      "only_blocker": 4,
       "tests": 46
     },
     {
@@ -672,6 +672,15 @@
       "tests": 3
     },
     {
+      "feature": "overriding state variables",
+      "first_rejection": 3,
+      "node_types": [
+        "VariableDeclaration"
+      ],
+      "only_blocker": 1,
+      "tests": 3
+    },
+    {
       "feature": "built-in selfdestruct",
       "first_rejection": 0,
       "node_types": [
@@ -820,12 +829,12 @@
       "feature": "string literals as fixed-size bytes"
     },
     {
-      "admitted": 533,
-      "feature": "public state variables"
+      "admitted": 532,
+      "feature": "constants"
     },
     {
-      "admitted": 549,
-      "feature": "constants"
+      "admitted": 552,
+      "feature": "literals of non-integer types"
     }
   ],
   "profile": "solc-0.8.37-via-ir-osaka",
@@ -17645,30 +17654,34 @@
       "test": "variables/mapping_local_tuple_assignment.sol"
     },
     {
-      "category": "invalid-core",
-      "features": [],
-      "first": null,
-      "reason": "variables/public_state_overridding.sol: generated program fails wf_core_program",
-      "scan_agrees": false,
+      "category": "import-rejected",
+      "features": [
+        "overriding state variables"
+      ],
+      "first": "overriding state variables",
+      "reason": "variables/public_state_overridding.sol: VariableDeclaration 14: overriding state variables are not supported",
+      "scan_agrees": true,
       "test": "variables/public_state_overridding.sol"
     },
     {
-      "category": "source-rejected",
+      "category": "import-rejected",
       "features": [
+        "overriding state variables",
         "public state variables"
       ],
-      "first": null,
-      "reason": "variables/public_state_overridding_dynamic_struct.sol: valid_src_unit failed (source validation/subset restriction)",
+      "first": "overriding state variables",
+      "reason": "variables/public_state_overridding_dynamic_struct.sol: VariableDeclaration 29: overriding state variables are not supported",
       "scan_agrees": true,
       "test": "variables/public_state_overridding_dynamic_struct.sol"
     },
     {
-      "category": "source-rejected",
+      "category": "import-rejected",
       "features": [
+        "overriding state variables",
         "public state variables"
       ],
-      "first": null,
-      "reason": "variables/public_state_overridding_mapping_to_dynamic_struct.sol: valid_src_unit failed (source validation/subset restriction)",
+      "first": "overriding state variables",
+      "reason": "variables/public_state_overridding_mapping_to_dynamic_struct.sol: VariableDeclaration 33: overriding state variables are not supported",
       "scan_agrees": true,
       "test": "variables/public_state_overridding_mapping_to_dynamic_struct.sol"
     },
