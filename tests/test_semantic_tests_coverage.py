@@ -303,6 +303,34 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(found[32], [coverage.Blocker(
             "VariableDeclaration", "custom errors with reference parameters", "elaboration")])
 
+    def test_inline_assembly_memory(self) -> None:
+        def lit(n):
+            return {"nodeType": "YulLiteral", "kind": "number", "value": hex(n)}
+
+        def call(name, *args):
+            return {"nodeType": "YulExpressionStatement", "expression": yul_call(name, *args)}
+
+        x = {"nodeType": "YulIdentifier", "name": "x"}
+        ok = coverage.assembly_memory_ok
+        # scratch written then read in the same block; the free memory pointer
+        self.assertTrue(ok([call("mstore", lit(0), x), call("mstore", lit(0x20), x),
+                            call("pop", yul_call("keccak256", lit(0), lit(0x40))),
+                            call("pop", yul_call("mload", lit(0x40)))]))
+        # scratch read the block did not write, or only partly wrote
+        self.assertFalse(ok([call("pop", yul_call("mload", lit(0)))]))
+        self.assertFalse(ok([call("mstore", lit(1), x), call("log0", lit(0), lit(0x40))]))
+        # a write in a nested list covers nothing after it
+        self.assertFalse(ok([{"nodeType": "YulIf", "condition": x, "body": {
+                                 "nodeType": "YulBlock", "statements": [call("mstore", lit(0), x)]}},
+                             call("pop", yul_call("mload", lit(0)))]))
+        # writes outside the scratch space only in a block that halts
+        self.assertFalse(ok([call("mstore", lit(0x40), x)]))
+        self.assertFalse(ok([call("mstore", yul_call("mload", lit(0x40)), x)]))
+        self.assertTrue(ok([call("mstore", lit(0x80), x), call("return", lit(0x80), lit(0x20))]))
+        found = coverage.assembly_blockers(assembly([call("mstore", lit(0x40), x)]), {})
+        self.assertEqual(found, [coverage.Blocker(
+            "InlineAssembly", "inline assembly memory outside the scratch space", "elaboration")])
+
     def test_inline_assembly_by_slice(self) -> None:
         def statement(expression):
             return {"nodeType": "YulExpressionStatement", "expression": expression}

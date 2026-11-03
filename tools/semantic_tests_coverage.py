@@ -722,13 +722,103 @@ YUL_UNSUPPORTED = {
 }
 
 
+def yul_literal(value: dict[str, Any]) -> int | None:
+    """A number literal's value (yul_lit)."""
+    if value.get("nodeType") != "YulLiteral" or value.get("kind") != "number":
+        return None
+    text = value["value"]
+    return int(text, 16) if text.startswith("0x") else int(text)
+
+
+def assembly_memory_ok(statements: list[dict[str, Any]]) -> bool:
+    """assembly_memory_ok: memory reads at literal ranges covered by earlier
+    literal mstores on the same path (or mload(0x40)), and, unless the block's
+    last statement halts, memory writes only at literal ranges inside the
+    scratch space [0, 0x40)."""
+    last = statements[-1] if statements else {}
+    halts = (last.get("nodeType") == "YulExpressionStatement"
+             and last["expression"].get("nodeType") == "YulFunctionCall"
+             and last["expression"]["functionName"]["name"] in ("return", "revert", "stop"))
+
+    def covered(ws: list[int], a: int, n: int) -> bool:
+        return n <= 32 * len(ws) and all(any(w <= a + i < w + 32 for w in ws) for i in range(n))
+
+    def read_ok(ws: list[int], p: dict[str, Any], length: dict[str, Any]) -> bool:
+        a, n = yul_literal(p), yul_literal(length)
+        return a is not None and n is not None and covered(ws, a, n)
+
+    def write_ok(p: dict[str, Any], n: int | None) -> bool:
+        a = yul_literal(p)
+        return halts or (a is not None and n is not None and a + n <= 64)
+
+    def builtin_ok(ws: list[int], name: str, args: list[dict[str, Any]]) -> bool:
+        if name == "mload":
+            return len(args) == 1 and (yul_literal(args[0]) == 64 or read_ok(
+                ws, args[0], {"nodeType": "YulLiteral", "kind": "number", "value": "32"}))
+        if name == "mstore":
+            return len(args) == 2 and write_ok(args[0], 32)
+        if name == "mstore8":
+            return len(args) == 2 and write_ok(args[0], 1)
+        if name == "mcopy":
+            return len(args) == 3 and write_ok(args[0], yul_literal(args[2])) and read_ok(ws, args[1], args[2])
+        if name == "calldatacopy":
+            return len(args) == 3 and write_ok(args[0], yul_literal(args[2]))
+        if name in ("keccak256", "return", "revert", "log0"):
+            return len(args) == 2 and read_ok(ws, args[0], args[1])
+        if name in ("log1", "log2", "log3", "log4"):
+            return len(args) >= 2 and read_ok(ws, args[0], args[1])
+        return True
+
+    def expr_ok(ws: list[int], e: dict[str, Any] | None) -> bool:
+        if e is None or e.get("nodeType") != "YulFunctionCall":
+            return True
+        args = e.get("arguments", [])
+        return builtin_ok(ws, e["functionName"]["name"], args) and all(expr_ok(ws, a) for a in args)
+
+    def stmts_ok(ws: list[int], ss: list[dict[str, Any]]) -> bool:
+        for st in ss:
+            if not stmt_ok(ws, st):
+                return False
+            if (st["nodeType"] == "YulExpressionStatement"
+                    and st["expression"].get("nodeType") == "YulFunctionCall"
+                    and st["expression"]["functionName"]["name"] == "mstore"
+                    and len(st["expression"].get("arguments", [])) == 2):
+                a = yul_literal(st["expression"]["arguments"][0])
+                if a is not None:
+                    ws = [a] + ws
+        return True
+
+    def stmt_ok(ws: list[int], st: dict[str, Any]) -> bool:
+        kind = st["nodeType"]
+        if kind == "YulBlock":
+            return stmts_ok(ws, st["statements"])
+        if kind == "YulFunctionDefinition":
+            return stmts_ok([], st["body"]["statements"])
+        if kind in ("YulVariableDeclaration", "YulAssignment"):
+            return expr_ok(ws, st.get("value"))
+        if kind == "YulIf":
+            return expr_ok(ws, st["condition"]) and stmts_ok(ws, st["body"]["statements"])
+        if kind == "YulSwitch":
+            return expr_ok(ws, st["expression"]) and all(
+                stmts_ok(ws, c["body"]["statements"]) for c in st["cases"])
+        if kind == "YulForLoop":
+            return (stmts_ok(ws, st["pre"]["statements"]) and expr_ok(ws, st["condition"])
+                    and stmts_ok(ws, st["post"]["statements"]) and stmts_ok(ws, st["body"]["statements"]))
+        if kind == "YulExpressionStatement":
+            return expr_ok(ws, st["expression"])
+        return True
+
+    return stmts_ok([], statements)
+
+
 def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[Blocker]:
     """What the importer and the elaborator reject in an inline assembly
     block: Yul the importer does not read (functions other than the block's
     own, builtins outside the dialect, boolean literals, references other
     than slot and offset), then builtins the source state cannot run (gas,
-    calls, return data) and references to anything but value-type locals and
-    state variable locations."""
+    calls, return data, code), memory use outside assembly_memory_ok, and
+    references to anything but value-type locals and state variable
+    locations."""
     if node["nodeType"] != "InlineAssembly":
         return []
     found: list[Blocker] = []
@@ -761,6 +851,8 @@ def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) ->
                     walk(v, top and kind == "YulBlock" and value is node["AST"])
 
     walk(statements, True)
+    if not assembly_memory_ok(statements):
+        blocker("inline assembly memory outside the scratch space", "elaboration")
     for reference in node.get("externalReferences", []):
         suffix = reference.get("suffix")
         declaration = by_id.get(reference["declaration"], {})

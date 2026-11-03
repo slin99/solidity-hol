@@ -769,6 +769,132 @@ Definition assembly_stmt_ok_def:
     assembly_stmts_ok bad body ∧ assembly_cases_ok bad cases)
 End
 
+(* The memory a block may touch. A block starts from a memory holding only
+ * the free memory pointer, so it may read only what it wrote itself earlier
+ * on the same path, and the free memory pointer; and a block that can exit
+ * normally may write only the scratch space [0, 0x40), the one part of memory
+ * the source keeps no contents for. Addresses and lengths are literals. A
+ * read is covered by the mstore statements with literal addresses that come
+ * before it in its statement list or an enclosing one; a block halts when its
+ * last statement is return, revert or stop.
+ *)
+Definition yul_lit_def:
+  (yul_lit (YulLit (LitNumber w)) = SOME (w2n (w : bytes32))) ∧
+  (yul_lit _ = NONE)
+End
+
+Definition memory_covered_def:
+  memory_covered ws a n ⇔
+    n ≤ 32 * LENGTH ws ∧
+    EVERY (λi. EXISTS (λw. w ≤ a + i ∧ a + i < w + 32) ws) (COUNT_LIST n)
+End
+
+Definition memory_read_ok_def:
+  memory_read_ok ws p l ⇔
+    case (yul_lit p, yul_lit l) of
+      (SOME a, SOME n) => memory_covered ws a n
+    | _ => F
+End
+
+Definition memory_write_ok_def:
+  memory_write_ok halts p l ⇔
+    halts ∨
+    case (yul_lit p, l) of
+      (SOME a, SOME n) => a + n ≤ 64
+    | _ => F
+End
+
+Definition builtin_memory_ok_def:
+  builtin_memory_ok halts ws b es ⇔
+    case (b, es) of
+      (YMLoad, [p]) =>
+        yul_lit p = SOME 64 ∨ memory_read_ok ws p (YulLit (LitNumber 32w))
+    | (YMStore, [p; _]) => memory_write_ok halts p (SOME 32)
+    | (YMStore8, [p; _]) => memory_write_ok halts p (SOME 1)
+    | (YMCopy, [d; p; l]) =>
+        memory_write_ok halts d (yul_lit l) ∧ memory_read_ok ws p l
+    | (YCallDataCopy, [d; _; l]) => memory_write_ok halts d (yul_lit l)
+    | (YKeccak256, [p; l]) => memory_read_ok ws p l
+    | (YReturn, [p; l]) => memory_read_ok ws p l
+    | (YRevert, [p; l]) => memory_read_ok ws p l
+    | (YLog0, [p; l]) => memory_read_ok ws p l
+    | (YLog1, p :: l :: _) => memory_read_ok ws p l
+    | (YLog2, p :: l :: _) => memory_read_ok ws p l
+    | (YLog3, p :: l :: _) => memory_read_ok ws p l
+    | (YLog4, p :: l :: _) => memory_read_ok ws p l
+    | (YMLoad, _) => F
+    | (YMStore, _) => F
+    | (YMStore8, _) => F
+    | (YMCopy, _) => F
+    | (YCallDataCopy, _) => F
+    | (YKeccak256, _) => F
+    | (YReturn, _) => F
+    | (YRevert, _) => F
+    | (YLog0, _) => F
+    | (YLog1, _) => F
+    | (YLog2, _) => F
+    | (YLog3, _) => F
+    | (YLog4, _) => F
+    | _ => T
+End
+
+(* The address a statement mstores to, when it is a literal. *)
+Definition memory_store_def:
+  (memory_store (YulExprStmt (YulBuiltin YMStore [p; _])) = yul_lit p) ∧
+  (memory_store _ = NONE)
+End
+
+Definition memory_expr_ok_def:
+  (memory_expr_ok h ws (YulBuiltin b es) ⇔
+    builtin_memory_ok h ws b es ∧ memory_exprs_ok h ws es) ∧
+  (memory_expr_ok h ws (YulApply _ es) ⇔ memory_exprs_ok h ws es) ∧
+  (memory_expr_ok h ws (YulLit _) ⇔ T) ∧
+  (memory_expr_ok h ws (YulName _) ⇔ T) ∧
+  (memory_exprs_ok h ws [] ⇔ T) ∧
+  (memory_exprs_ok h ws (e :: es) ⇔
+    memory_expr_ok h ws e ∧ memory_exprs_ok h ws es)
+End
+
+Definition memory_stmt_ok_def:
+  (memory_stmt_ok h ws (YulBlock ss) ⇔ memory_stmts_ok h ws ss) ∧
+  (memory_stmt_ok h ws (YulFunction _ _ _ body) ⇔ memory_stmts_ok h [] body) ∧
+  (memory_stmt_ok h ws (YulLet _ NONE) ⇔ T) ∧
+  (memory_stmt_ok h ws (YulLet _ (SOME e)) ⇔ memory_expr_ok h ws e) ∧
+  (memory_stmt_ok h ws (YulAssign _ e) ⇔ memory_expr_ok h ws e) ∧
+  (memory_stmt_ok h ws (YulIf e body) ⇔
+    memory_expr_ok h ws e ∧ memory_stmts_ok h ws body) ∧
+  (memory_stmt_ok h ws (YulSwitch e cases default) ⇔
+    memory_expr_ok h ws e ∧ memory_cases_ok h ws cases ∧
+    memory_stmts_ok h ws default) ∧
+  (memory_stmt_ok h ws (YulFor pre c post body) ⇔
+    memory_stmts_ok h ws pre ∧ memory_expr_ok h ws c ∧
+    memory_stmts_ok h ws post ∧ memory_stmts_ok h ws body) ∧
+  (memory_stmt_ok h ws YulBreak ⇔ T) ∧
+  (memory_stmt_ok h ws YulContinue ⇔ T) ∧
+  (memory_stmt_ok h ws YulLeave ⇔ T) ∧
+  (memory_stmt_ok h ws (YulExprStmt e) ⇔ memory_expr_ok h ws e) ∧
+  (memory_stmts_ok h ws [] ⇔ T) ∧
+  (memory_stmts_ok h ws (s :: ss) ⇔
+    memory_stmt_ok h ws s ∧
+    memory_stmts_ok h (case memory_store s of
+                         SOME a => a :: ws
+                       | NONE => ws) ss) ∧
+  (memory_cases_ok h ws [] ⇔ T) ∧
+  (memory_cases_ok h ws ((_, body) :: cases) ⇔
+    memory_stmts_ok h ws body ∧ memory_cases_ok h ws cases)
+End
+
+Definition block_halts_def:
+  (block_halts [] ⇔ F) ∧
+  (block_halts [YulExprStmt (YulBuiltin b _)] ⇔ MEM b [YReturn; YRevert; YStop]) ∧
+  (block_halts [_] ⇔ F) ∧
+  (block_halts (_ :: s :: ss) ⇔ block_halts (s :: ss))
+End
+
+Definition assembly_memory_ok_def:
+  assembly_memory_ok code ⇔ memory_stmts_ok (block_halts code) [] code
+End
+
 Definition assembly_reference_ok_def:
   assembly_reference_ok env ctx r ⇔
     case r of
@@ -861,7 +987,8 @@ Definition check_core_stmts_def:
         then check_core_stmts env ctx ss else NONE
     | NONE => NONE) ∧
   (check_core_stmts env ctx (AssemblyStmt code refs :: ss) =
-    if assembly_stmts_ok assembly_unsupported code ∧ ALL_DISTINCT (MAP FST refs) ∧
+    if assembly_stmts_ok assembly_unsupported code ∧ assembly_memory_ok code ∧
+       ALL_DISTINCT (MAP FST refs) ∧
        EVERY (assembly_reference_ok env ctx) (MAP SND refs)
     then check_core_stmts env ctx ss else NONE) ∧
   (check_core_stmts env ctx (_ :: _) = NONE)

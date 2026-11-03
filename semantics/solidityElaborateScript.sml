@@ -1135,7 +1135,8 @@ Definition elab_stmts_def:
             SOME ((ss ++ [RevertErrorStmt err.error_selector params as], ctx), n1)
         | NONE => NONE) ∧
   (elab_stmt ctx n (SrcInlineAssembly _ code refs) =
-    if ¬assembly_stmts_ok assembly_unsupported code then NONE else
+    if ¬assembly_stmts_ok assembly_unsupported code ∨
+       ¬assembly_memory_ok code then NONE else
     case elab_assembly_references ctx refs of
       SOME rs => SOME (([AssemblyStmt code rs], ctx), n)
     | NONE => NONE) ∧

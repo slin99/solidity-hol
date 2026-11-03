@@ -405,7 +405,9 @@ The following issues remain deliberately unresolved:
 - the mechanism for replacing nested EVM bytecode execution with source
   semantics before compiler correctness is available;
 - the point at which abstract source memory should be refined to EVM memory;
-- treatment of inline assembly and Yul;
+- how inline assembly sees the Solidity heap (blocks now run on the Yul
+  evaluator with a memory holding only the scratch space and the free memory
+  pointer);
 - the exact versioning granularity and compatibility policy for AST schemas;
 - handling optimizer- or bug-dependent compiler behavior;
 - the final observational equivalence used by compiler-correctness theorems.
