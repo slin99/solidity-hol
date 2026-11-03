@@ -25,6 +25,7 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/memory_bytes.json",
   "../testdata/differential/expected/storage_bytes.json",
   "../testdata/differential/expected/dynamic_bytes.json",
+  "../testdata/differential/expected/dynamic_bytes_peer.json",
   "../testdata/yul/generated/dynamic_bytes.ir.json",
   "../testdata/yul/generated/dynamic_bytes.optimized.json",
   "../SOLIDITY_PIN",

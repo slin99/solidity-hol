@@ -1,0 +1,944 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.methodIdentifiers",
+            "ir",
+            "irOptimized"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/dynamic_bytes_peer.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.37;\n\ncontract EchoPeer {\n    function raw(uint256 mode) external pure returns (bytes memory) {\n        assembly {\n            mstore(0, 32)\n            switch mode\n            case 0 {\n                mstore(32, 3)\n                mstore(64, shl(232, 0x616263))\n                return(0, 67)\n            }\n            case 1 {\n                mstore(32, 3)\n                return(0, 64)\n            }\n            case 3 {\n                mstore(32, 0xffffffffffffff40)\n                return(0, 64)\n            }\n            default {\n                mstore(32, 0x10000000000000000)\n                return(0, 64)\n            }\n        }\n    }\n\n    function echo(bytes calldata data, string calldata text) external pure returns (bytes memory, string memory) {\n        return (data, text);\n    }\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/dynamic_bytes_peer.sol": {
+        "EchoPeer": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "bytes",
+                  "name": "data",
+                  "type": "bytes"
+                },
+                {
+                  "internalType": "string",
+                  "name": "text",
+                  "type": "string"
+                }
+              ],
+              "name": "echo",
+              "outputs": [
+                {
+                  "internalType": "bytes",
+                  "name": "",
+                  "type": "bytes"
+                },
+                {
+                  "internalType": "string",
+                  "name": "",
+                  "type": "string"
+                }
+              ],
+              "stateMutability": "pure",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "mode",
+                  "type": "uint256"
+                }
+              ],
+              "name": "raw",
+              "outputs": [
+                {
+                  "internalType": "bytes",
+                  "name": "",
+                  "type": "bytes"
+                }
+              ],
+              "stateMutability": "pure",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "608060405234601c57600e6020565b61046161002b823961046190f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b610291565b61001d5f3561003c565b8063302e678f146100375763b2eb8f440361000e57610257565b6100eb565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f80fd5b90565b61006081610054565b0361006757565b5f80fd5b9050359061007882610057565b565b9060208282031261009357610090915f0161006b565b90565b61004c565b5190565b60209181520190565b90825f9392825e0152565b601f801991011690565b6100d96100e26020936100e7936100d081610098565b9384809361009c565b958691016100a5565b6100b0565b0190565b34610100576100fb36600461007a565b61029a565b610048565b5f80fd5b5f80fd5b5f80fd5b909182601f8301121561014b5781359167ffffffffffffffff831161014657602001926001830284011161014157565b61010d565b610109565b610105565b909182601f8301121561018a5781359167ffffffffffffffff831161018557602001926001830284011161018057565b61010d565b610109565b610105565b90916040828403126101e9575f82013567ffffffffffffffff81116101e457836101ba918401610111565b929093602082013567ffffffffffffffff81116101df576101db9201610150565b9091565b610050565b610050565b61004c565b5190565b60209181520190565b61021a61022360209361022893610211816101ee565b938480936101f2565b958691016100a5565b6100b0565b0190565b90916102466102549360408401908482035f8601526100ba565b9160208184039101526101fb565b90565b3461028c5761027361026a36600461018f565b92919091610432565b9061028861027f610042565b9283928361022c565b0390f35b610048565b5f80fd5b606090565b6102a2610295565b5060205f52805f146102ea57806001146102e0576003146102cf576801000000000000000060205260405ff35b67ffffffffffffff4060205260405ff35b600360205260405ff35b60036020526261626360e81b60405260435ff35b606090565b5f80fd5b634e487b7160e01b5f52604160045260245ffd5b90610325906100b0565b810190811067ffffffffffffffff82111761033f57604052565b610307565b90610357610350610042565b928361031b565b565b67ffffffffffffffff8111610377576103736020916100b0565b0190565b610307565b90825f939282370152565b9092919261039c61039782610359565b610344565b938185526020850190828401116103b8576103b69261037c565b565b610303565b6103c8913691610387565b90565b67ffffffffffffffff81116103e9576103e56020916100b0565b0190565b610307565b909291926104036103fe826103cb565b610344565b9381855260208501908284011161041f5761041d9261037c565b565b610303565b61042f9136916103ee565b90565b61045e9261045891959495610445610295565b5061044e6102fe565b50929095926103bd565b93610424565b9056"
+            },
+            "deployedBytecode": {
+              "object": "60806040526004361015610013575b610291565b61001d5f3561003c565b8063302e678f146100375763b2eb8f440361000e57610257565b6100eb565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f80fd5b90565b61006081610054565b0361006757565b5f80fd5b9050359061007882610057565b565b9060208282031261009357610090915f0161006b565b90565b61004c565b5190565b60209181520190565b90825f9392825e0152565b601f801991011690565b6100d96100e26020936100e7936100d081610098565b9384809361009c565b958691016100a5565b6100b0565b0190565b34610100576100fb36600461007a565b61029a565b610048565b5f80fd5b5f80fd5b5f80fd5b909182601f8301121561014b5781359167ffffffffffffffff831161014657602001926001830284011161014157565b61010d565b610109565b610105565b909182601f8301121561018a5781359167ffffffffffffffff831161018557602001926001830284011161018057565b61010d565b610109565b610105565b90916040828403126101e9575f82013567ffffffffffffffff81116101e457836101ba918401610111565b929093602082013567ffffffffffffffff81116101df576101db9201610150565b9091565b610050565b610050565b61004c565b5190565b60209181520190565b61021a61022360209361022893610211816101ee565b938480936101f2565b958691016100a5565b6100b0565b0190565b90916102466102549360408401908482035f8601526100ba565b9160208184039101526101fb565b90565b3461028c5761027361026a36600461018f565b92919091610432565b9061028861027f610042565b9283928361022c565b0390f35b610048565b5f80fd5b606090565b6102a2610295565b5060205f52805f146102ea57806001146102e0576003146102cf576801000000000000000060205260405ff35b67ffffffffffffff4060205260405ff35b600360205260405ff35b60036020526261626360e81b60405260435ff35b606090565b5f80fd5b634e487b7160e01b5f52604160045260245ffd5b90610325906100b0565b810190811067ffffffffffffffff82111761033f57604052565b610307565b90610357610350610042565b928361031b565b565b67ffffffffffffffff8111610377576103736020916100b0565b0190565b610307565b90825f939282370152565b9092919261039c61039782610359565b610344565b938185526020850190828401116103b8576103b69261037c565b565b610303565b6103c8913691610387565b90565b67ffffffffffffffff81116103e9576103e56020916100b0565b0190565b610307565b909291926104036103fe826103cb565b610344565b9381855260208501908284011161041f5761041d9261037c565b565b610303565b61042f9136916103ee565b90565b61045e9261045891959495610445610295565b5061044e6102fe565b50929095926103bd565b93610424565b9056"
+            },
+            "methodIdentifiers": {
+              "echo(bytes,string)": "b2eb8f44",
+              "raw(uint256)": "302e678f"
+            }
+          },
+          "ir": "\n/// @use-src 0:\"testdata/differential/dynamic_bytes_peer.sol\"\nobject \"EchoPeer_27\" {\n    code {\n        /// @src 0:57:847  \"contract EchoPeer {...\"\n        mstore(64, memoryguard(128))\n        if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n\n        constructor_EchoPeer_27()\n\n        let _1 := allocate_unbounded()\n        codecopy(_1, dataoffset(\"EchoPeer_27_deployed\"), datasize(\"EchoPeer_27_deployed\"))\n\n        return(_1, datasize(\"EchoPeer_27_deployed\"))\n\n        function allocate_unbounded() -> memPtr {\n            memPtr := mload(64)\n        }\n\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n            revert(0, 0)\n        }\n\n        /// @src 0:57:847  \"contract EchoPeer {...\"\n        function constructor_EchoPeer_27() {\n\n            /// @src 0:57:847  \"contract EchoPeer {...\"\n\n        }\n        /// @src 0:57:847  \"contract EchoPeer {...\"\n\n    }\n    /// @use-src 0:\"testdata/differential/dynamic_bytes_peer.sol\"\n    object \"EchoPeer_27_deployed\" {\n        code {\n            /// @src 0:57:847  \"contract EchoPeer {...\"\n            mstore(64, 128)\n\n            if iszero(lt(calldatasize(), 4))\n            {\n                let selector := shift_right_224_unsigned(calldataload(0))\n                switch selector\n\n                case 0x302e678f\n                {\n                    // raw(uint256)\n\n                    external_fun_raw_10()\n                }\n\n                case 0xb2eb8f44\n                {\n                    // echo(bytes,string)\n\n                    external_fun_echo_26()\n                }\n\n                default {}\n            }\n\n            revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n\n            function shift_right_224_unsigned(value) -> newValue {\n                newValue :=\n\n                shr(224, value)\n\n            }\n\n            function allocate_unbounded() -> memPtr {\n                memPtr := mload(64)\n            }\n\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n                revert(0, 0)\n            }\n\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() {\n                revert(0, 0)\n            }\n\n            function revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() {\n                revert(0, 0)\n            }\n\n            function cleanup_t_uint256(value) -> cleaned {\n                cleaned := value\n            }\n\n            function validator_revert_t_uint256(value) {\n                if iszero(eq(value, cleanup_t_uint256(value))) { revert(0, 0) }\n            }\n\n            function abi_decode_t_uint256(offset, end) -> value {\n                value := calldataload(offset)\n                validator_revert_t_uint256(value)\n            }\n\n            function abi_decode_tuple_t_uint256(headStart, dataEnd) -> value0 {\n                if slt(sub(dataEnd, headStart), 32) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n                {\n\n                    let offset := 0\n\n                    value0 := abi_decode_t_uint256(add(headStart, offset), dataEnd)\n                }\n\n            }\n\n            function array_length_t_bytes_memory_ptr(value) -> length {\n\n                length := mload(value)\n\n            }\n\n            function array_storeLengthForEncoding_t_bytes_memory_ptr_fromStack(pos, length) -> updated_pos {\n                mstore(pos, length)\n                updated_pos := add(pos, 0x20)\n            }\n\n            function copy_memory_to_memory_with_cleanup(src, dst, length) {\n\n                mcopy(dst, src, length)\n                mstore(add(dst, length), 0)\n\n            }\n\n            function round_up_to_mul_of_32(value) -> result {\n                result := and(add(value, 31), not(31))\n            }\n\n            function abi_encode_t_bytes_memory_ptr_to_t_bytes_memory_ptr_fromStack(value, pos) -> end {\n                let length := array_length_t_bytes_memory_ptr(value)\n                pos := array_storeLengthForEncoding_t_bytes_memory_ptr_fromStack(pos, length)\n                copy_memory_to_memory_with_cleanup(add(value, 0x20), pos, length)\n                end := add(pos, round_up_to_mul_of_32(length))\n            }\n\n            function abi_encode_tuple_t_bytes_memory_ptr__to_t_bytes_memory_ptr__fromStack(headStart , value0) -> tail {\n                tail := add(headStart, 32)\n\n                mstore(add(headStart, 0), sub(tail, headStart))\n                tail := abi_encode_t_bytes_memory_ptr_to_t_bytes_memory_ptr_fromStack(value0,  tail)\n\n            }\n\n            function external_fun_raw_10() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                let param_0 :=  abi_decode_tuple_t_uint256(4, calldatasize())\n                let ret_0 :=  fun_raw_10(param_0)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_bytes_memory_ptr__to_t_bytes_memory_ptr__fromStack(memPos , ret_0)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d() {\n                revert(0, 0)\n            }\n\n            function revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490() {\n                revert(0, 0)\n            }\n\n            function revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef() {\n                revert(0, 0)\n            }\n\n            // bytes\n            function abi_decode_t_bytes_calldata_ptr(offset, end) -> arrayPos, length {\n                if iszero(slt(add(offset, 0x1f), end)) { revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d() }\n                length := calldataload(offset)\n                if gt(length, 0xffffffffffffffff) { revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490() }\n                arrayPos := add(offset, 0x20)\n                if gt(add(arrayPos, mul(length, 0x01)), end) { revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef() }\n            }\n\n            // string\n            function abi_decode_t_string_calldata_ptr(offset, end) -> arrayPos, length {\n                if iszero(slt(add(offset, 0x1f), end)) { revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d() }\n                length := calldataload(offset)\n                if gt(length, 0xffffffffffffffff) { revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490() }\n                arrayPos := add(offset, 0x20)\n                if gt(add(arrayPos, mul(length, 0x01)), end) { revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef() }\n            }\n\n            function abi_decode_tuple_t_bytes_calldata_ptrt_string_calldata_ptr(headStart, dataEnd) -> value0, value1, value2, value3 {\n                if slt(sub(dataEnd, headStart), 64) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n                {\n\n                    let offset := calldataload(add(headStart, 0))\n                    if gt(offset, 0xffffffffffffffff) { revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() }\n\n                    value0, value1 := abi_decode_t_bytes_calldata_ptr(add(headStart, offset), dataEnd)\n                }\n\n                {\n\n                    let offset := calldataload(add(headStart, 32))\n                    if gt(offset, 0xffffffffffffffff) { revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() }\n\n                    value2, value3 := abi_decode_t_string_calldata_ptr(add(headStart, offset), dataEnd)\n                }\n\n            }\n\n            function array_length_t_string_memory_ptr(value) -> length {\n\n                length := mload(value)\n\n            }\n\n            function array_storeLengthForEncoding_t_string_memory_ptr_fromStack(pos, length) -> updated_pos {\n                mstore(pos, length)\n                updated_pos := add(pos, 0x20)\n            }\n\n            function abi_encode_t_string_memory_ptr_to_t_string_memory_ptr_fromStack(value, pos) -> end {\n                let length := array_length_t_string_memory_ptr(value)\n                pos := array_storeLengthForEncoding_t_string_memory_ptr_fromStack(pos, length)\n                copy_memory_to_memory_with_cleanup(add(value, 0x20), pos, length)\n                end := add(pos, round_up_to_mul_of_32(length))\n            }\n\n            function abi_encode_tuple_t_bytes_memory_ptr_t_string_memory_ptr__to_t_bytes_memory_ptr_t_string_memory_ptr__fromStack(headStart , value0, value1) -> tail {\n                tail := add(headStart, 64)\n\n                mstore(add(headStart, 0), sub(tail, headStart))\n                tail := abi_encode_t_bytes_memory_ptr_to_t_bytes_memory_ptr_fromStack(value0,  tail)\n\n                mstore(add(headStart, 32), sub(tail, headStart))\n                tail := abi_encode_t_string_memory_ptr_to_t_string_memory_ptr_fromStack(value1,  tail)\n\n            }\n\n            function external_fun_echo_26() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                let param_0, param_1, param_2, param_3 :=  abi_decode_tuple_t_bytes_calldata_ptrt_string_calldata_ptr(4, calldatasize())\n                let ret_0, ret_1 :=  fun_echo_26(param_0, param_1, param_2, param_3)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_bytes_memory_ptr_t_string_memory_ptr__to_t_bytes_memory_ptr_t_string_memory_ptr__fromStack(memPos , ret_0, ret_1)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74() {\n                revert(0, 0)\n            }\n\n            function zero_value_for_split_t_bytes_memory_ptr() -> ret {\n                ret := 96\n            }\n\n            /// @ast-id 10\n            /// @src 0:81:694  \"function raw(uint256 mode) external pure returns (bytes memory) {...\"\n            function fun_raw_10(var_mode_3) -> var__6_mpos {\n                /// @src 0:131:143  \"bytes memory\"\n                let zero_t_bytes_memory_ptr_1_mpos := zero_value_for_split_t_bytes_memory_ptr()\n                var__6_mpos := zero_t_bytes_memory_ptr_1_mpos\n\n                /// @src 0:155:688  \"assembly {...\"\n                {\n                    mstore(0, 32)\n                    switch var_mode_3\n                    case 0 {\n                        mstore(32, 3)\n                        mstore(64, shl(232, 0x616263))\n                        return(0, 67)\n                    }\n                    case 1 {\n                        mstore(32, 3)\n                        return(0, 64)\n                    }\n                    case 3 {\n                        mstore(32, 0xffffffffffffff40)\n                        return(0, 64)\n                    }\n                    default {\n                        mstore(32, 0x10000000000000000)\n                        return(0, 64)\n                    }\n                }\n\n            }\n            /// @src 0:57:847  \"contract EchoPeer {...\"\n\n            function zero_value_for_split_t_string_memory_ptr() -> ret {\n                ret := 96\n            }\n\n            function revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae() {\n                revert(0, 0)\n            }\n\n            function panic_error_0x41() {\n                mstore(0, 35408467139433450592217433187231851964531694900788300625387963629091585785856)\n                mstore(4, 0x41)\n                revert(0, 0x24)\n            }\n\n            function finalize_allocation(memPtr, size) {\n                let newFreePtr := add(memPtr, round_up_to_mul_of_32(size))\n                // protect against overflow\n                if or(gt(newFreePtr, 0xffffffffffffffff), lt(newFreePtr, memPtr)) { panic_error_0x41() }\n                mstore(64, newFreePtr)\n            }\n\n            function allocate_memory(size) -> memPtr {\n                memPtr := allocate_unbounded()\n                finalize_allocation(memPtr, size)\n            }\n\n            function array_allocation_size_t_bytes_memory_ptr(length) -> size {\n                // Make sure we can allocate memory without overflow\n                if gt(length, 0xffffffffffffffff) { panic_error_0x41() }\n\n                size := round_up_to_mul_of_32(length)\n\n                // add length slot\n                size := add(size, 0x20)\n\n            }\n\n            function copy_calldata_to_memory_with_cleanup(src, dst, length) {\n\n                calldatacopy(dst, src, length)\n                mstore(add(dst, length), 0)\n\n            }\n\n            function abi_decode_available_length_t_bytes_memory_ptr(src, length, end) -> array {\n                array := allocate_memory(array_allocation_size_t_bytes_memory_ptr(length))\n                mstore(array, length)\n                let dst := add(array, 0x20)\n                if gt(add(src, length), end) { revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae() }\n                copy_calldata_to_memory_with_cleanup(src, dst, length)\n            }\n\n            function convert_array_t_bytes_calldata_ptr_to_t_bytes_memory_ptr(value, length) -> converted  {\n\n                // Copy the array to a free position in memory\n                converted :=\n\n                abi_decode_available_length_t_bytes_memory_ptr(value, length, calldatasize())\n\n            }\n\n            function array_allocation_size_t_string_memory_ptr(length) -> size {\n                // Make sure we can allocate memory without overflow\n                if gt(length, 0xffffffffffffffff) { panic_error_0x41() }\n\n                size := round_up_to_mul_of_32(length)\n\n                // add length slot\n                size := add(size, 0x20)\n\n            }\n\n            function abi_decode_available_length_t_string_memory_ptr(src, length, end) -> array {\n                array := allocate_memory(array_allocation_size_t_string_memory_ptr(length))\n                mstore(array, length)\n                let dst := add(array, 0x20)\n                if gt(add(src, length), end) { revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae() }\n                copy_calldata_to_memory_with_cleanup(src, dst, length)\n            }\n\n            function convert_array_t_string_calldata_ptr_to_t_string_memory_ptr(value, length) -> converted  {\n\n                // Copy the array to a free position in memory\n                converted :=\n\n                abi_decode_available_length_t_string_memory_ptr(value, length, calldatasize())\n\n            }\n\n            /// @ast-id 26\n            /// @src 0:700:845  \"function echo(bytes calldata data, string calldata text) external pure returns (bytes memory, string memory) {...\"\n            function fun_echo_26(var_data_12_offset, var_data_12_length, var_text_14_offset, var_text_14_length) -> var__17_mpos, var__19_mpos {\n                /// @src 0:780:792  \"bytes memory\"\n                let zero_t_bytes_memory_ptr_2_mpos := zero_value_for_split_t_bytes_memory_ptr()\n                var__17_mpos := zero_t_bytes_memory_ptr_2_mpos\n                /// @src 0:794:807  \"string memory\"\n                let zero_t_string_memory_ptr_3_mpos := zero_value_for_split_t_string_memory_ptr()\n                var__19_mpos := zero_t_string_memory_ptr_3_mpos\n\n                /// @src 0:827:831  \"data\"\n                let _4_offset := var_data_12_offset\n                let _4_length := var_data_12_length\n                let expr_21_offset := _4_offset\n                let expr_21_length := _4_length\n                /// @src 0:826:838  \"(data, text)\"\n                let expr_23_component_1_offset := expr_21_offset\n                let expr_23_component_1_length := expr_21_length\n                /// @src 0:833:837  \"text\"\n                let _5_offset := var_text_14_offset\n                let _5_length := var_text_14_length\n                let expr_22_offset := _5_offset\n                let expr_22_length := _5_length\n                /// @src 0:826:838  \"(data, text)\"\n                let expr_23_component_2_offset := expr_22_offset\n                let expr_23_component_2_length := expr_22_length\n                /// @src 0:819:838  \"return (data, text)\"\n                var__17_mpos := convert_array_t_bytes_calldata_ptr_to_t_bytes_memory_ptr(expr_23_component_1_offset, expr_23_component_1_length)\n                var__19_mpos := convert_array_t_string_calldata_ptr_to_t_string_memory_ptr(expr_23_component_2_offset, expr_23_component_2_length)\n                leave\n\n            }\n            /// @src 0:57:847  \"contract EchoPeer {...\"\n\n        }\n\n        data \".metadata\" hex\"\"\n    }\n\n}\n\n",
+          "irOptimized": "/// @use-src 0:\"testdata/differential/dynamic_bytes_peer.sol\"\nobject \"EchoPeer_27\" {\n    code {\n        {\n            /// @src 0:57:847  \"contract EchoPeer {...\"\n            mstore(64, memoryguard(0x80))\n            if callvalue()\n            {\n                revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            }\n            let _1 := allocate_unbounded()\n            codecopy(_1, dataoffset(\"EchoPeer_27_deployed\"), datasize(\"EchoPeer_27_deployed\"))\n            return(_1, datasize(\"EchoPeer_27_deployed\"))\n        }\n        function allocate_unbounded() -> memPtr\n        { memPtr := mload(64) }\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n        { revert(0, 0) }\n    }\n    /// @use-src 0:\"testdata/differential/dynamic_bytes_peer.sol\"\n    object \"EchoPeer_27_deployed\" {\n        code {\n            {\n                /// @src 0:57:847  \"contract EchoPeer {...\"\n                mstore(64, 128)\n                if iszero(lt(calldatasize(), 4))\n                {\n                    let selector := shift_right_unsigned(calldataload(0))\n                    switch selector\n                    case 0x302e678f { external_fun_raw() }\n                    case 0xb2eb8f44 { external_fun_echo() }\n                    default { }\n                }\n                revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            }\n            function shift_right_unsigned(value) -> newValue\n            { newValue := shr(224, value) }\n            function allocate_unbounded() -> memPtr\n            { memPtr := mload(64) }\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            { revert(0, 0) }\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n            { revert(0, 0) }\n            function revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db()\n            { revert(0, 0) }\n            function cleanup_uint256(value) -> cleaned\n            { cleaned := value }\n            function validator_revert_uint256(value)\n            {\n                if iszero(eq(value, cleanup_uint256(value))) { revert(0, 0) }\n            }\n            function abi_decode_uint256(offset, end) -> value\n            {\n                value := calldataload(offset)\n                validator_revert_uint256(value)\n            }\n            function abi_decode_tuple_uint256(headStart, dataEnd) -> value0\n            {\n                if slt(sub(dataEnd, headStart), 32)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n                let offset := 0\n                value0 := abi_decode_uint256(add(headStart, offset), dataEnd)\n            }\n            function array_length_bytes(value) -> length\n            { length := mload(value) }\n            function array_storeLengthForEncoding_bytes(pos, length) -> updated_pos\n            {\n                mstore(pos, length)\n                updated_pos := add(pos, 0x20)\n            }\n            function copy_memory_to_memory_with_cleanup(src, dst, length)\n            {\n                mcopy(dst, src, length)\n                mstore(add(dst, length), 0)\n            }\n            function round_up_to_mul_of(value) -> result\n            {\n                result := and(add(value, 31), not(31))\n            }\n            function abi_encode_bytes_memory_ptr(value, pos) -> end\n            {\n                let length := array_length_bytes(value)\n                pos := array_storeLengthForEncoding_bytes(pos, length)\n                copy_memory_to_memory_with_cleanup(add(value, 0x20), pos, length)\n                end := add(pos, round_up_to_mul_of(length))\n            }\n            function abi_encode_bytes(headStart, value0) -> tail\n            {\n                tail := add(headStart, 32)\n                mstore(add(headStart, 0), sub(tail, headStart))\n                tail := abi_encode_bytes_memory_ptr(value0, tail)\n            }\n            function external_fun_raw()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                let param := abi_decode_tuple_uint256(4, calldatasize())\n                let ret := fun_raw(param)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_bytes(memPos, ret)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d()\n            { revert(0, 0) }\n            function revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490()\n            { revert(0, 0) }\n            function revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef()\n            { revert(0, 0) }\n            function abi_decode_bytes_calldata(offset, end) -> arrayPos, length\n            {\n                if iszero(slt(add(offset, 0x1f), end))\n                {\n                    revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d()\n                }\n                length := calldataload(offset)\n                if gt(length, 0xffffffffffffffff)\n                {\n                    revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490()\n                }\n                arrayPos := add(offset, 0x20)\n                if gt(add(arrayPos, mul(length, 0x01)), end)\n                {\n                    revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef()\n                }\n            }\n            function abi_decode_string_calldata(offset, end) -> arrayPos, length\n            {\n                if iszero(slt(add(offset, 0x1f), end))\n                {\n                    revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d()\n                }\n                length := calldataload(offset)\n                if gt(length, 0xffffffffffffffff)\n                {\n                    revert_error_15abf5612cd996bc235ba1e55a4a30ac60e6bb601ff7ba4ad3f179b6be8d0490()\n                }\n                arrayPos := add(offset, 0x20)\n                if gt(add(arrayPos, mul(length, 0x01)), end)\n                {\n                    revert_error_81385d8c0b31fffe14be1da910c8bd3a80be4cfa248e04f42ec0faea3132a8ef()\n                }\n            }\n            function abi_decode_bytes_calldatat_string_calldata(headStart, dataEnd) -> value0, value1, value2, value3\n            {\n                if slt(sub(dataEnd, headStart), 64)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n                let offset := calldataload(add(headStart, 0))\n                if gt(offset, 0xffffffffffffffff)\n                {\n                    revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db()\n                }\n                value0, value1 := abi_decode_bytes_calldata(add(headStart, offset), dataEnd)\n                let offset_1 := calldataload(add(headStart, 32))\n                if gt(offset_1, 0xffffffffffffffff)\n                {\n                    revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db()\n                }\n                value2, value3 := abi_decode_string_calldata(add(headStart, offset_1), dataEnd)\n            }\n            function array_length_string(value) -> length\n            { length := mload(value) }\n            function array_storeLengthForEncoding_string(pos, length) -> updated_pos\n            {\n                mstore(pos, length)\n                updated_pos := add(pos, 0x20)\n            }\n            function abi_encode_string(value, pos) -> end\n            {\n                let length := array_length_string(value)\n                pos := array_storeLengthForEncoding_string(pos, length)\n                copy_memory_to_memory_with_cleanup(add(value, 0x20), pos, length)\n                end := add(pos, round_up_to_mul_of(length))\n            }\n            function abi_encode_bytes_string(headStart, value0, value1) -> tail\n            {\n                tail := add(headStart, 64)\n                mstore(add(headStart, 0), sub(tail, headStart))\n                tail := abi_encode_bytes_memory_ptr(value0, tail)\n                mstore(add(headStart, 32), sub(tail, headStart))\n                tail := abi_encode_string(value1, tail)\n            }\n            function external_fun_echo()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                let param, param_1, param_2, param_3 := abi_decode_bytes_calldatat_string_calldata(4, calldatasize())\n                let ret, ret_1 := fun_echo(param, param_1, param_2, param_3)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_bytes_string(memPos, ret, ret_1)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            { revert(0, 0) }\n            function zero_value_for_split_bytes() -> ret\n            { ret := 96 }\n            /// @ast-id 10 @src 0:81:694  \"function raw(uint256 mode) external pure returns (bytes memory) {...\"\n            function fun_raw(var_mode) -> var__mpos\n            {\n                /// @src 0:131:143  \"bytes memory\"\n                let zero_bytes_mpos := zero_value_for_split_bytes()\n                var__mpos := zero_bytes_mpos\n                /// @src 0:155:688  \"assembly {...\"\n                mstore(0, 32)\n                switch var_mode\n                case 0 {\n                    mstore(32, 3)\n                    mstore(64, shl(232, 0x616263))\n                    return(0, 67)\n                }\n                case 1 {\n                    mstore(32, 3)\n                    return(0, 64)\n                }\n                case 3 {\n                    mstore(32, 0xffffffffffffff40)\n                    return(0, 64)\n                }\n                default {\n                    mstore(32, 0x10000000000000000)\n                    return(0, 64)\n                }\n            }\n            /// @src 0:57:847  \"contract EchoPeer {...\"\n            function zero_value_for_split_string() -> ret\n            { ret := 96 }\n            function revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae()\n            { revert(0, 0) }\n            function panic_error_0x41()\n            {\n                mstore(0, shl(224, 0x4e487b71))\n                mstore(4, 0x41)\n                revert(0, 0x24)\n            }\n            function finalize_allocation(memPtr, size)\n            {\n                let newFreePtr := add(memPtr, round_up_to_mul_of(size))\n                if or(gt(newFreePtr, 0xffffffffffffffff), lt(newFreePtr, memPtr)) { panic_error_0x41() }\n                mstore(64, newFreePtr)\n            }\n            function allocate_memory(size) -> memPtr\n            {\n                memPtr := allocate_unbounded()\n                finalize_allocation(memPtr, size)\n            }\n            function array_allocation_size_bytes(length) -> size\n            {\n                if gt(length, 0xffffffffffffffff) { panic_error_0x41() }\n                size := round_up_to_mul_of(length)\n                size := add(size, 0x20)\n            }\n            function copy_calldata_to_memory_with_cleanup(src, dst, length)\n            {\n                calldatacopy(dst, src, length)\n                mstore(add(dst, length), 0)\n            }\n            function abi_decode_available_length_bytes(src, length, end) -> array\n            {\n                array := allocate_memory(array_allocation_size_bytes(length))\n                mstore(array, length)\n                let dst := add(array, 0x20)\n                if gt(add(src, length), end)\n                {\n                    revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae()\n                }\n                copy_calldata_to_memory_with_cleanup(src, dst, length)\n            }\n            function convert_array_bytes_calldata_to_bytes(value, length) -> converted\n            {\n                converted := abi_decode_available_length_bytes(value, length, calldatasize())\n            }\n            function array_allocation_size_string(length) -> size\n            {\n                if gt(length, 0xffffffffffffffff) { panic_error_0x41() }\n                size := round_up_to_mul_of(length)\n                size := add(size, 0x20)\n            }\n            function abi_decode_available_length_string(src, length, end) -> array\n            {\n                array := allocate_memory(array_allocation_size_string(length))\n                mstore(array, length)\n                let dst := add(array, 0x20)\n                if gt(add(src, length), end)\n                {\n                    revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae()\n                }\n                copy_calldata_to_memory_with_cleanup(src, dst, length)\n            }\n            function convert_array_string_calldata_to_string(value, length) -> converted\n            {\n                converted := abi_decode_available_length_string(value, length, calldatasize())\n            }\n            /// @ast-id 26 @src 0:700:845  \"function echo(bytes calldata data, string calldata text) external pure returns (bytes memory, string memory) {...\"\n            function fun_echo(var_data_offset, var_data_length, var_text_offset, var_text_length) -> var_17_mpos, var_mpos\n            {\n                /// @src 0:780:792  \"bytes memory\"\n                let zero_bytes_memory_ptr_mpos := zero_value_for_split_bytes()\n                var_17_mpos := zero_bytes_memory_ptr_mpos\n                /// @src 0:794:807  \"string memory\"\n                let zero_string_mpos := zero_value_for_split_string()\n                var_mpos := zero_string_mpos\n                /// @src 0:827:831  \"data\"\n                let _offset := var_data_offset\n                let _length := var_data_length\n                let expr_offset := _offset\n                let expr_length := _length\n                /// @src 0:826:838  \"(data, text)\"\n                let expr_component_offset := expr_offset\n                let expr_23_component_1_length := expr_length\n                /// @src 0:833:837  \"text\"\n                let _5_offset := var_text_offset\n                let _5_length := var_text_length\n                let expr_22_offset := _5_offset\n                let expr_22_length := _5_length\n                /// @src 0:826:838  \"(data, text)\"\n                let expr_23_component_2_offset := expr_22_offset\n                let expr_component_length := expr_22_length\n                /// @src 0:819:838  \"return (data, text)\"\n                var_17_mpos := convert_array_bytes_calldata_to_bytes(expr_component_offset, expr_23_component_1_length)\n                var_mpos := convert_array_string_calldata_to_string(expr_23_component_2_offset, expr_component_length)\n                leave\n            }\n        }\n        data \".metadata\" hex\"\"\n    }\n}\n",
+          "storageLayout": {
+            "storage": [],
+            "types": null
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/dynamic_bytes_peer.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/dynamic_bytes_peer.sol",
+          "exportedSymbols": {
+            "EchoPeer": [
+              27
+            ]
+          },
+          "id": 28,
+          "license": "MIT",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "32:23:0"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "EchoPeer",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 27,
+              "linearizedBaseContracts": [
+                27
+              ],
+              "name": "EchoPeer",
+              "nameLocation": "66:8:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "body": {
+                    "id": 9,
+                    "nodeType": "Block",
+                    "src": "145:549:0",
+                    "statements": [
+                      {
+                        "AST": {
+                          "nativeSrc": "164:524:0",
+                          "nodeType": "YulBlock",
+                          "src": "164:524:0",
+                          "statements": [
+                            {
+                              "expression": {
+                                "arguments": [
+                                  {
+                                    "kind": "number",
+                                    "nativeSrc": "185:1:0",
+                                    "nodeType": "YulLiteral",
+                                    "src": "185:1:0",
+                                    "type": "",
+                                    "value": "0"
+                                  },
+                                  {
+                                    "kind": "number",
+                                    "nativeSrc": "188:2:0",
+                                    "nodeType": "YulLiteral",
+                                    "src": "188:2:0",
+                                    "type": "",
+                                    "value": "32"
+                                  }
+                                ],
+                                "functionName": {
+                                  "name": "mstore",
+                                  "nativeSrc": "178:6:0",
+                                  "nodeType": "YulIdentifier",
+                                  "src": "178:6:0"
+                                },
+                                "nativeSrc": "178:13:0",
+                                "nodeType": "YulFunctionCall",
+                                "src": "178:13:0"
+                              },
+                              "nativeSrc": "178:13:0",
+                              "nodeType": "YulExpressionStatement",
+                              "src": "178:13:0"
+                            },
+                            {
+                              "cases": [
+                                {
+                                  "body": {
+                                    "nativeSrc": "235:122:0",
+                                    "nodeType": "YulBlock",
+                                    "src": "235:122:0",
+                                    "statements": [
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "260:2:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "260:2:0",
+                                              "type": "",
+                                              "value": "32"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "264:1:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "264:1:0",
+                                              "type": "",
+                                              "value": "3"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "mstore",
+                                            "nativeSrc": "253:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "253:6:0"
+                                          },
+                                          "nativeSrc": "253:13:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "253:13:0"
+                                        },
+                                        "nativeSrc": "253:13:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "253:13:0"
+                                      },
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "290:2:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "290:2:0",
+                                              "type": "",
+                                              "value": "64"
+                                            },
+                                            {
+                                              "arguments": [
+                                                {
+                                                  "kind": "number",
+                                                  "nativeSrc": "298:3:0",
+                                                  "nodeType": "YulLiteral",
+                                                  "src": "298:3:0",
+                                                  "type": "",
+                                                  "value": "232"
+                                                },
+                                                {
+                                                  "kind": "number",
+                                                  "nativeSrc": "303:8:0",
+                                                  "nodeType": "YulLiteral",
+                                                  "src": "303:8:0",
+                                                  "type": "",
+                                                  "value": "0x616263"
+                                                }
+                                              ],
+                                              "functionName": {
+                                                "name": "shl",
+                                                "nativeSrc": "294:3:0",
+                                                "nodeType": "YulIdentifier",
+                                                "src": "294:3:0"
+                                              },
+                                              "nativeSrc": "294:18:0",
+                                              "nodeType": "YulFunctionCall",
+                                              "src": "294:18:0"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "mstore",
+                                            "nativeSrc": "283:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "283:6:0"
+                                          },
+                                          "nativeSrc": "283:30:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "283:30:0"
+                                        },
+                                        "nativeSrc": "283:30:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "283:30:0"
+                                      },
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "337:1:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "337:1:0",
+                                              "type": "",
+                                              "value": "0"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "340:2:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "340:2:0",
+                                              "type": "",
+                                              "value": "67"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "return",
+                                            "nativeSrc": "330:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "330:6:0"
+                                          },
+                                          "nativeSrc": "330:13:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "330:13:0"
+                                        },
+                                        "nativeSrc": "330:13:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "330:13:0"
+                                      }
+                                    ]
+                                  },
+                                  "nativeSrc": "228:129:0",
+                                  "nodeType": "YulCase",
+                                  "src": "228:129:0",
+                                  "value": {
+                                    "kind": "number",
+                                    "nativeSrc": "233:1:0",
+                                    "nodeType": "YulLiteral",
+                                    "src": "233:1:0",
+                                    "type": "",
+                                    "value": "0"
+                                  }
+                                },
+                                {
+                                  "body": {
+                                    "nativeSrc": "377:75:0",
+                                    "nodeType": "YulBlock",
+                                    "src": "377:75:0",
+                                    "statements": [
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "402:2:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "402:2:0",
+                                              "type": "",
+                                              "value": "32"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "406:1:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "406:1:0",
+                                              "type": "",
+                                              "value": "3"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "mstore",
+                                            "nativeSrc": "395:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "395:6:0"
+                                          },
+                                          "nativeSrc": "395:13:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "395:13:0"
+                                        },
+                                        "nativeSrc": "395:13:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "395:13:0"
+                                      },
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "432:1:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "432:1:0",
+                                              "type": "",
+                                              "value": "0"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "435:2:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "435:2:0",
+                                              "type": "",
+                                              "value": "64"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "return",
+                                            "nativeSrc": "425:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "425:6:0"
+                                          },
+                                          "nativeSrc": "425:13:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "425:13:0"
+                                        },
+                                        "nativeSrc": "425:13:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "425:13:0"
+                                      }
+                                    ]
+                                  },
+                                  "nativeSrc": "370:82:0",
+                                  "nodeType": "YulCase",
+                                  "src": "370:82:0",
+                                  "value": {
+                                    "kind": "number",
+                                    "nativeSrc": "375:1:0",
+                                    "nodeType": "YulLiteral",
+                                    "src": "375:1:0",
+                                    "type": "",
+                                    "value": "1"
+                                  }
+                                },
+                                {
+                                  "body": {
+                                    "nativeSrc": "472:92:0",
+                                    "nodeType": "YulBlock",
+                                    "src": "472:92:0",
+                                    "statements": [
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "497:2:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "497:2:0",
+                                              "type": "",
+                                              "value": "32"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "501:18:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "501:18:0",
+                                              "type": "",
+                                              "value": "0xffffffffffffff40"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "mstore",
+                                            "nativeSrc": "490:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "490:6:0"
+                                          },
+                                          "nativeSrc": "490:30:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "490:30:0"
+                                        },
+                                        "nativeSrc": "490:30:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "490:30:0"
+                                      },
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "544:1:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "544:1:0",
+                                              "type": "",
+                                              "value": "0"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "547:2:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "547:2:0",
+                                              "type": "",
+                                              "value": "64"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "return",
+                                            "nativeSrc": "537:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "537:6:0"
+                                          },
+                                          "nativeSrc": "537:13:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "537:13:0"
+                                        },
+                                        "nativeSrc": "537:13:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "537:13:0"
+                                      }
+                                    ]
+                                  },
+                                  "nativeSrc": "465:99:0",
+                                  "nodeType": "YulCase",
+                                  "src": "465:99:0",
+                                  "value": {
+                                    "kind": "number",
+                                    "nativeSrc": "470:1:0",
+                                    "nodeType": "YulLiteral",
+                                    "src": "470:1:0",
+                                    "type": "",
+                                    "value": "3"
+                                  }
+                                },
+                                {
+                                  "body": {
+                                    "nativeSrc": "585:93:0",
+                                    "nodeType": "YulBlock",
+                                    "src": "585:93:0",
+                                    "statements": [
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "610:2:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "610:2:0",
+                                              "type": "",
+                                              "value": "32"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "614:19:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "614:19:0",
+                                              "type": "",
+                                              "value": "0x10000000000000000"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "mstore",
+                                            "nativeSrc": "603:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "603:6:0"
+                                          },
+                                          "nativeSrc": "603:31:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "603:31:0"
+                                        },
+                                        "nativeSrc": "603:31:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "603:31:0"
+                                      },
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "658:1:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "658:1:0",
+                                              "type": "",
+                                              "value": "0"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "661:2:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "661:2:0",
+                                              "type": "",
+                                              "value": "64"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "return",
+                                            "nativeSrc": "651:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "651:6:0"
+                                          },
+                                          "nativeSrc": "651:13:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "651:13:0"
+                                        },
+                                        "nativeSrc": "651:13:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "651:13:0"
+                                      }
+                                    ]
+                                  },
+                                  "nativeSrc": "577:101:0",
+                                  "nodeType": "YulCase",
+                                  "src": "577:101:0",
+                                  "value": "default"
+                                }
+                              ],
+                              "expression": {
+                                "name": "mode",
+                                "nativeSrc": "211:4:0",
+                                "nodeType": "YulIdentifier",
+                                "src": "211:4:0"
+                              },
+                              "nativeSrc": "204:474:0",
+                              "nodeType": "YulSwitch",
+                              "src": "204:474:0"
+                            }
+                          ]
+                        },
+                        "evmVersion": "osaka",
+                        "externalReferences": [
+                          {
+                            "declaration": 3,
+                            "isOffset": false,
+                            "isSlot": false,
+                            "src": "211:4:0",
+                            "valueSize": 1
+                          }
+                        ],
+                        "id": 8,
+                        "nodeType": "InlineAssembly",
+                        "src": "155:533:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "302e678f",
+                  "id": 10,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "raw",
+                  "nameLocation": "90:3:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 4,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 3,
+                        "mutability": "mutable",
+                        "name": "mode",
+                        "nameLocation": "102:4:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 10,
+                        "src": "94:12:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 2,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "94:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "93:14:0"
+                  },
+                  "returnParameters": {
+                    "id": 7,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 6,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 10,
+                        "src": "131:12:0",
+                        "stateVariable": false,
+                        "storageLocation": "memory",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bytes_memory_ptr",
+                          "typeString": "bytes"
+                        },
+                        "typeName": {
+                          "id": 5,
+                          "name": "bytes",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "131:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bytes_storage_ptr",
+                            "typeString": "bytes"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "130:14:0"
+                  },
+                  "scope": 27,
+                  "src": "81:613:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 25,
+                    "nodeType": "Block",
+                    "src": "809:36:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "components": [
+                            {
+                              "id": 21,
+                              "name": "data",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 12,
+                              "src": "827:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_bytes_calldata_ptr",
+                                "typeString": "bytes calldata"
+                              }
+                            },
+                            {
+                              "id": 22,
+                              "name": "text",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 14,
+                              "src": "833:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_string_calldata_ptr",
+                                "typeString": "string calldata"
+                              }
+                            }
+                          ],
+                          "id": 23,
+                          "isConstant": false,
+                          "isInlineArray": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "nodeType": "TupleExpression",
+                          "src": "826:12:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$_t_bytes_calldata_ptr_$_t_string_calldata_ptr_$",
+                            "typeString": "tuple(bytes calldata,string calldata)"
+                          }
+                        },
+                        "functionReturnParameters": 20,
+                        "id": 24,
+                        "nodeType": "Return",
+                        "src": "819:19:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "b2eb8f44",
+                  "id": 26,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "echo",
+                  "nameLocation": "709:4:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 15,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 12,
+                        "mutability": "mutable",
+                        "name": "data",
+                        "nameLocation": "729:4:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 26,
+                        "src": "714:19:0",
+                        "stateVariable": false,
+                        "storageLocation": "calldata",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bytes_calldata_ptr",
+                          "typeString": "bytes"
+                        },
+                        "typeName": {
+                          "id": 11,
+                          "name": "bytes",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "714:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bytes_storage_ptr",
+                            "typeString": "bytes"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 14,
+                        "mutability": "mutable",
+                        "name": "text",
+                        "nameLocation": "751:4:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 26,
+                        "src": "735:20:0",
+                        "stateVariable": false,
+                        "storageLocation": "calldata",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_string_calldata_ptr",
+                          "typeString": "string"
+                        },
+                        "typeName": {
+                          "id": 13,
+                          "name": "string",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "735:6:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_string_storage_ptr",
+                            "typeString": "string"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "713:43:0"
+                  },
+                  "returnParameters": {
+                    "id": 20,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 17,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 26,
+                        "src": "780:12:0",
+                        "stateVariable": false,
+                        "storageLocation": "memory",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bytes_memory_ptr",
+                          "typeString": "bytes"
+                        },
+                        "typeName": {
+                          "id": 16,
+                          "name": "bytes",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "780:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bytes_storage_ptr",
+                            "typeString": "bytes"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 19,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 26,
+                        "src": "794:13:0",
+                        "stateVariable": false,
+                        "storageLocation": "memory",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_string_memory_ptr",
+                          "typeString": "string"
+                        },
+                        "typeName": {
+                          "id": 18,
+                          "name": "string",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "794:6:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_string_storage_ptr",
+                            "typeString": "string"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "779:29:0"
+                  },
+                  "scope": 27,
+                  "src": "700:145:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 28,
+              "src": "57:790:0",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "32:816:0"
+        },
+        "id": 0
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}

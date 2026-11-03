@@ -631,7 +631,7 @@
       "source": "testdata/differential/dynamic_bytes.sol",
       "contract": "DynamicBytes",
       "artifact": "testdata/differential/expected/dynamic_bytes.json",
-      "peer": {"source": "testdata/differential/dynamic_bytes.sol", "contract": "EchoPeer", "artifact": "testdata/differential/expected/dynamic_bytes.json"},
+      "peer": {"source": "testdata/differential/dynamic_bytes_peer.sol", "contract": "EchoPeer", "artifact": "testdata/differential/expected/dynamic_bytes_peer.json"},
       "cases": [
         {"name": "echo_empty", "function": "echo", "args": ["0x", "0x"], "expect": {"return": ["0x", "0x"]}},
         {"name": "echo_binary_utf8_nul", "function": "echo", "args": ["0x00ff807f", "0xc3a90078"], "expect": {"return": ["0x00ff807f", "0xc3a90078"]}},
