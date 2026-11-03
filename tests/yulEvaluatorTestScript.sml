@@ -1124,7 +1124,7 @@ Theorem calldatacopy_zero_pads_and_expands_memory:
   (run_yul 20 calldatacopy_code
     (yul_frame_machine with call_data := [0x11w; 0x22w; 0x33w])).completion =
       YulReturn [0w; 0x22w; 0x33w; 0w; 0w; 0w] ∧
-  (run_yul 20 calldatacopy_code
+  (run_yul 20 (TAKE 1 calldatacopy_code)
     (yul_frame_machine with call_data := [0x11w; 0x22w; 0x33w])).machine.memory_size = 64
 Proof
   CONV_TAC cv_eval
@@ -1133,6 +1133,17 @@ QED
 Theorem calldatacopy_empty_range_touches_nothing:
   eval_yul_builtin YCallDataCopy [0xffffw; 0xffffw; 0w]
     yul_frame_machine = EvalValues [] yul_frame_machine
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem calldatacopy_overwrites_padding:
+  yul_memory_read
+    (run_yul 20 (TAKE 1 calldatacopy_code)
+      (yul_frame_machine with <|
+        call_data := [0x11w; 0x22w; 0x33w];
+        memory := FEMPTY |+ (33, 0xffw) |+ (34, 0xffw);
+        memory_size := 64 |>)).machine 31 4 = [0x22w; 0x33w; 0w; 0w]
 Proof
   CONV_TAC cv_eval
 QED
