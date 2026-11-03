@@ -1162,18 +1162,19 @@ Definition define_parameters_def:
   (define_parameters _ _ = [])
 End
 
-(* A modifier invocation's arguments, each evaluated and converted to its
- * parameter's type before the next is evaluated: the compiler binds a
- * modifier's parameters one by one, where an internal call evaluates every
- * argument before converting any.
+(* A modifier invocation's arguments, each evaluated, converted to its
+ * parameter's type and bound to the parameter before the next is evaluated:
+ * the compiler binds a modifier's parameters one by one, where an internal
+ * call evaluates every argument before converting any.
  *)
 Definition elab_modifier_args_def:
-  (elab_modifier_args ctx n [] [] = SOME (([], []), n)) ∧
-  (elab_modifier_args ctx n (ty :: tys) (e :: es) =
+  (elab_modifier_args ctx n [] [] = SOME ([], n)) ∧
+  (elab_modifier_args ctx n ((x, ty) :: ps) (e :: es) =
     case elab_args ctx n [ty] [e] of
       SOME ((ss, as), n1) =>
-        (case elab_modifier_args ctx n1 tys es of
-           SOME ((ss', as'), n2) => SOME ((ss ++ ss', as ++ as'), n2)
+        (case elab_modifier_args ctx n1 ps es of
+           SOME (ss', n2) =>
+             SOME (ss ++ define_parameters [(x, ty)] as ++ ss', n2)
          | NONE => NONE)
     | NONE => NONE) ∧
   (elab_modifier_args ctx n _ _ = NONE)
@@ -1200,8 +1201,8 @@ Definition elab_levels_def:
         case (all_some (MAP variable_binding md.modifier_parameters),
               md.modifier_body) of
           (SOME mps, SrcBlock _ mss) =>
-            (case elab_modifier_args ctx (n + 1) (MAP SND mps) args of
-               SOME ((sa, atoms), n1) =>
+            (case elab_modifier_args ctx (n + 1) mps args of
+               SOME (sa, n1) =>
                  (case elab_stmts (ctx with <| variables := mps;
                                                placeholder := SOME (n, ps) |>)
                          n1 mss of
@@ -1211,8 +1212,7 @@ Definition elab_levels_def:
                            SOME (<| procedure_id := AstId x;
                                     parameters := core_bindings ps;
                                     return_bindings := core_bindings rs;
-                                    body := sa ++ define_parameters mps atoms ++
-                                            code |> :: levels, n3)
+                                    body := sa ++ code |> :: levels, n3)
                        | NONE => NONE)
                   | NONE => NONE)
              | NONE => NONE)

@@ -2,10 +2,10 @@
 pragma solidity 0.8.37;
 
 // Modifiers: invocations in order, arguments over the function's parameters,
-// arguments evaluated when their modifier is reached and each converted
-// before the next is evaluated, placeholders run zero, one or two times with
-// fresh return variables each time, returns in the modifier and in the body,
-// an inherited modifier, and a constructor modifier.
+// arguments evaluated when their modifier is reached and each converted and
+// bound before the next is evaluated, placeholders run zero, one or two times
+// with fresh return variables each time, returns in the modifier and in the
+// body, an inherited modifier, and a constructor modifier.
 
 contract ModifierBase {
     uint256 internal trace;
@@ -69,6 +69,12 @@ contract Modifiers is ModifierBase {
         _;
     }
 
+    // a is bound before the next argument assigns the parameter it reads
+    modifier pair(uint256 a, uint256 b) {
+        total = a * 10 + b;
+        _;
+    }
+
     modifier bumpAfter() {
         _;
         total += 1;
@@ -84,6 +90,10 @@ contract Modifiers is ModifierBase {
     }
 
     function converted() public firstByte(data, change()) returns (uint256) {
+        return total;
+    }
+
+    function rebound(uint256 x) public pair(x, x = 2) returns (uint256) {
         return total;
     }
 
