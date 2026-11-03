@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.37;
 
-// Custom errors: declared at file level, in an interface base and in the
-// contract, reverted with their selector and ABI-encoded arguments.
+// Custom errors: declared at file level and in an interface base, both in an
+// imported file, and in the contract, reverted with their selector and
+// ABI-encoded arguments.
 
-error Unauthorized(address caller);
-
-interface IVaultErrors {
-    error InsufficientBalance(address account, uint256 balance, uint256 needed);
-}
+import {IVaultErrors, Unauthorized} from "./errors_base.sol";
 
 contract Vault is IVaultErrors {
     error Empty();
