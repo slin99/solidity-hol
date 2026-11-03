@@ -38,9 +38,10 @@ sig
 
   (* What the conversion's own rules are still standing on in a term, as
    * (theory, name) constants: the block, the statements and the expressions it
-   * takes apart, the frame and memory operations it declines, FLOOKUP, the
-   * result helpers, and the calls it left folded.  An empty list means the
-   * evaluation of the body is finished and nothing of it is left.
+   * takes apart, the builtin dispatch, the frame and memory operations it
+   * declines, FLOOKUP, the result helpers, and the calls it left folded.  An
+   * empty list means the evaluation of the body is finished and nothing of it
+   * is left.
    *)
   val residues : term -> (string * string) list
 

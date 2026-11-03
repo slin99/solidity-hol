@@ -1133,24 +1133,29 @@ fun scrub_defs cs defs =
   List.foldl (fn (th, cs) => scrub_const cs (head_const_of th)) cs defs
 
 (* The table a caller gave, out of the set: the name itself for a table given
- * as a constant, `yul_env` for one given as a literal term.  That one rule is
- * what keeps the table opaque, which is all this wants -- every constant
- * *inside* a literal table ("K" and the updates of the record it is built with)
- * is what the evaluator's own clauses build their machines out of, and
- * scrubbing those takes the record operations out from under the body's
- * evaluation, leaving a form with the block still standing in it.
+ * as a constant, and `yul_env` for one given as a term -- wherever it occurs
+ * there, not only at the term's head, because `yul_env` is the identity on the
+ * object it wraps and so is what exposes a literal object, whether the term is
+ * that application itself or the caller's own record built around one
+ * (`K (yul_env t) T`).  That one rule is what keeps the table opaque, which is
+ * all this wants -- every constant *inside* a literal table ("K" and the
+ * updates of the record it is built with) is what the evaluator's own clauses
+ * build their machines out of, and scrubbing those takes the record operations
+ * out from under the body's evaluation, leaving a form with the block still
+ * standing in it.
  *
- * Only the table goes, and nothing around it: a table term whose head is some
- * other constant is the caller's own term with the table in it (`K table T`, a
+ * Only the table goes, and nothing else around it: a constant *around* the
+ * table is the caller's own term with the table in it (`K table T`, a
  * conditional table), and taking that constant out of the set stops the body's
  * own evaluation reducing -- the same stranding, from a term the conversion was
- * not asked about.  A term whose head is not a constant has nothing to
- * scrub. *)
+ * not asked about.  A term that holds no `yul_env` and is not itself a constant
+ * has nothing to scrub: nothing in it can unfold the table. *)
 val yul_env_c = prim_mk_const {Thy = "yulAST", Name = "yul_env"}
 
 fun opaque_table cs tm =
   if is_const tm then scrub_const cs tm
-  else if aconv (head_const tm) yul_env_c then scrub_const cs yul_env_c
+  else if Lib.mem (const_key (dest_thy_const yul_env_c)) (consts_in tm) then
+    scrub_const cs yul_env_c
   else cs
 
 (* The definitions the table needs *are* folded, deliberately, in
@@ -1194,15 +1199,18 @@ fun yul_invoke_conv defs tm =
  ---------------------------------------------------------------------------*)
 
 (* Everything the conversion's own rules reach: the block and its clauses, which
- * it splits on, the scope readers and the binding operations, which it unfolds
- * only while their input is a value it has, FLOOKUP itself, which is the way a
- * scope that did not come out is seen, the result and value helpers, and the
- * calls it leaves folded.  A name in this list that is still in a term is a
- * step the conversion either could not take or declined; `residues` is what a
- * caller reads to see which. *)
+ * it splits on, the builtin dispatch, whose clauses are compiled into the set
+ * with the others so an application of it left in a term is the same kind of
+ * residue as a statement, the scope readers and the binding operations, which
+ * it unfolds only while their input is a value it has, FLOOKUP itself, which is
+ * the way a scope that did not come out is seen, the result and value helpers,
+ * and the calls it leaves folded.  A name in this list that is still in a term
+ * is a step the conversion either could not take or declined; `residues` is
+ * what a caller reads to see which. *)
 val conversion_consts =
   List.map (const_key o dest_thy_const)
-    (flookup_tm :: invoke_c :: yul_lookup_c :: yul_lookup_names_c ::
+    (flookup_tm :: invoke_c :: eval_yul_builtin_c :: yul_lookup_c ::
+     yul_lookup_names_c ::
      (clause_heads (evaluator_clauses @ helper_defs @ block_def_clauses) @
       List.map (fn (c, _, _) => c) guarded_helpers))
 

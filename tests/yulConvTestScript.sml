@@ -179,10 +179,14 @@ val () =
  * these lines are a sweep's output over the list, not something the suite
  * checks -- they say how far over the line each one is, and they move when the
  * conversion does, so they are re-measured with the list rather than read as an
- * invariant.  The line itself is checked: the suite fails if a form it does
- * cover is not under 200k nodes, so a change that moves one of these under the
- * line is caught by that name being coverable rather than by its number here.
- * The gap is narrow at the bottom: the largest form below the line is 182k
+ * invariant.  The line is enforced from one side only: the suite fails if a
+ * form it does cover reaches 200k nodes, so a covered function that grew past
+ * the line cannot pass unnoticed, but nothing here converts the 46 named for
+ * their size -- a name whose form has dropped under the line keeps its line
+ * until the list is re-measured, which happens with each change to the
+ * conversion.  Converting them here as well would put the large forms' cost --
+ * seconds each -- on every run of this suite.  The gap is narrow at the bottom:
+ * the largest form below the line is 182k
  * nodes and the smallest above it 200k.  What is left is 86 of the 137, whose
  * slowest form takes about a second (0.8s to 1.6s across runs on this box) and
  * whose largest is 181k.
@@ -357,16 +361,16 @@ exception Out_of_time
 
 fun under_clock secs thunk =
   let
-    val saved = !computeLib.stoppers
     val deadline = Time.+ (Time.now (), Time.fromReal secs)
-    val () =
-      computeLib.stoppers :=
-        SOME (fn _ => if Time.> (Time.now (), deadline) then
-                        raise Out_of_time
-                      else false)
-    val r = SOME (thunk ()) handle Out_of_time => NONE
+    val stopper =
+      SOME (fn _ => if Time.> (Time.now (), deadline) then
+                      raise Out_of_time
+                    else false)
   in
-    (computeLib.stoppers := saved; r)
+    (* `with_flag` puts the hook back however the thunk ends, the errors
+     * `yul_invoke_conv` raises included. *)
+    Lib.with_flag (computeLib.stoppers, stopper)
+      (fn () => (SOME (thunk ()) handle Out_of_time => NONE)) ()
   end
 
 fun convert f =
