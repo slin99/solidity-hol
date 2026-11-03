@@ -35,7 +35,7 @@ Ancestors
   yulAST yulDialect yulState yulEvaluator yulEvaluatorProps cv_string_fmap
   vfmCompute
 Libs
-  wordsLib yulImportLib yulConvLib
+  wordsLib yulImportLib yulConvLib Timeout
 
 (* Read by holbuild's dependency scanner, which stages the fixture. *)
 fun holbuild_extra_deps (_ : string list) = ()
@@ -161,7 +161,7 @@ val () =
           ^ String.concatWith ", " (List.map (fn (nm, _, _) => nm) looping))
 
 (* The functions the bound below is not asked of yet: those whose form comes out
- * at two hundred thousand nodes or more, and the five that produce no form at
+ * at two hundred thousand nodes or more, and the two that produce no form at
  * all.  The number in each line is that function's form as this suite measures
  * it -- every node of the term, which is the `size` this test prints below --
  * and the two reasons are one thing seen twice.  A decision the
@@ -181,21 +181,32 @@ val () =
  * conversion does, so they are re-measured with the list rather than read as an
  * invariant.  The line is enforced from one side only: the suite fails if a
  * form it does cover reaches 200k nodes, so a covered function that grew past
- * the line cannot pass unnoticed, but nothing here converts the 46 named for
+ * the line cannot pass unnoticed, but nothing here converts the 49 named for
  * their size -- a name whose form has dropped under the line keeps its line
  * until the list is re-measured, which happens with each change to the
  * conversion.  Converting them here as well would put the large forms' cost --
- * seconds each -- on every run of this suite.  The gap is narrow at the bottom:
- * the largest form below the line is 182k
- * nodes and the smallest above it 200k.  What is left is 86 of the 137, whose
- * slowest form takes about a second (0.8s to 1.6s across runs on this box) and
- * whose largest is 181k.
+ * seconds each, and tens of millions of nodes at the far end
+ * (`fun_boolLogic`'s) -- on every run of this suite.  The gap is narrow at the
+ * bottom: the largest form below the line is 182k nodes and the smallest above
+ * it 200k.  What is left is 86 of the 137, whose slowest form takes about a
+ * second (0.8s to 1.6s across runs on this box) and whose largest is 181k.
  *
- * The five no-form entries are converted under a clock by the check below, so
+ * The two no-form entries are converted under a clock by the check below, so
  * that the claim on their line is asked of the conversion instead of being
  * taken on trust: the run has to abort, and one that comes back fails the
- * check by name.  Without the clock a body that stopped coming back would sit
- * at the heap cap until the job's own limit rather than fail.
+ * check by name, with the size of its form.  Without the clock a body that
+ * stopped coming back would sit at the heap cap until the job's own limit
+ * rather than fail.
+ *
+ * That makes a no-form line a claim about a clock and not only about the
+ * function: this suite's clock for those entries is twenty seconds, and a
+ * machine fast enough to bring back a form of several million nodes inside it
+ * reports the line as stale -- which is the signal to move it to a size.
+ * Three of the five names that were here did come back under a longer clock
+ * (`checked_exp_unsigned` at 11.7M nodes, `fun_bitwise` at 5.4M, `fun_boolLogic`
+ * at 45M), and the clock that measured the last two numbers was two minutes, so
+ * the two that are left -- `checked_exp_signed`, `fun_signedLess` -- do not come
+ * back in six times the wall clock this suite allows them.
  *
  * So this list is the work list of the next piece, and it should empty: what the
  * suite is asked for is a conversion whose form is linear in the body, one leaf
@@ -206,9 +217,9 @@ val () =
  *)
 val excluded = [
   ("checked_exp_signed", "no form"),
-  ("checked_exp_unsigned", "no form"),
-  ("fun_bitwise", "no form"),
-  ("fun_boolLogic", "no form"),
+  ("checked_exp_unsigned", "form of 11667340 nodes"),
+  ("fun_bitwise", "form of 5408623 nodes"),
+  ("fun_boolLogic", "form of 45246950 nodes"),
   ("fun_signedLess", "no form"),
   ("fun_widen", "form of 5745446 nodes"),
   ("external_fun_bitwise", "form of 3005011 nodes"),
@@ -351,36 +362,21 @@ fun checked_form (nm, body) t th =
 
 (* A conversion that stopped coming back would sit at the heap cap until the
  * job's own limit, so the work a function costs is bounded here rather than
- * after the fact: `computeLib.stoppers` is asked before every reduction
- * attempt, and raising out of it is not something the reduction catches --
- * `No_match` is how a rule declines, and anything else aborts the whole
- * reduction -- so the attempt ends in the `handle` below.  The exception is
- * one of its own, not `Fail`, so a check that fails inside is not mistaken for
- * a timeout.
- *
- * Where the hook is consulted is where the set tries an equation, so what is
- * bounded is the rules' work.  A pass of the library's own that walks the form
- * between its rounds is not interrupted by it, and the abort can come one pass
- * late; those passes are a fixed number of traversals over the form, each of
- * them ending, so the bound holds up to one of them rather than not at all.
+ * after the fact.  `Timeout.apply` runs the whole call under a clock of its
+ * own: an expired one interrupts this thread, and an interrupt is not
+ * something the reduction catches -- `No_match` is how a rule declines, and
+ * anything else aborts the whole reduction -- so the call ends in the
+ * `handle` below wherever in it the conversion was, the library's own passes
+ * over the form between its rounds included.  That is what a hook consulted
+ * only when the set tries an equation cannot reach.  The exception is one of
+ * its own, not `Fail`, so a check that fails inside is not mistaken for a
+ * timeout.
  *
  * The bound is generous: the slowest form this suite covers takes about a
  * second, and a loaded box moves that. *)
-exception Out_of_time
-
 fun under_clock secs thunk =
-  let
-    val deadline = Time.+ (Time.now (), Time.fromReal secs)
-    val stopper =
-      SOME (fn _ => if Time.> (Time.now (), deadline) then
-                      raise Out_of_time
-                    else false)
-  in
-    (* `with_flag` puts the hook back however the thunk ends, the errors
-     * `yul_invoke_conv` raises included. *)
-    Lib.with_flag (computeLib.stoppers, stopper)
-      (fn () => (SOME (thunk ()) handle Out_of_time => NONE)) ()
-  end
+  (SOME (Timeout.apply (Time.fromReal secs) thunk ())
+     handle Timeout.TIMEOUT _ => NONE)
 
 fun convert f =
   let val t = call_term f in
@@ -528,10 +524,12 @@ QED
  * of the form so the owner knows whether it belongs under the bound or on a
  * line of its own.
  *
- * All five nest a call inside another call's arguments.  The sixth of the
- * bodies that used to be here, `wrapping_exp_uint8_uint8`, closes now -- its
+ * Both nest a call inside another call's arguments, and four bodies of that
+ * shape have left this class: `wrapping_exp_uint8_uint8` closes now -- its
  * `exp` call is reached through the builtin dispatch rather than left to the
- * word library -- and is measured with the rest. *)
+ * word library -- and is measured with the rest, and `checked_exp_unsigned`,
+ * `fun_bitwise` and `fun_boolLogic` come back under a clock of two minutes, so
+ * they carry their size like the rest of the list. *)
 val () =
   List.app
     (fn (nm, why) =>
