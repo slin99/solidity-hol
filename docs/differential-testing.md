@@ -20,8 +20,12 @@ the evaluator's high-level calls run it, and any call back into the contract,
 as bytecode in Verifereum. The evaluator runs the same calldata
 through the elaborated program's dispatcher (`solidityEntry`), so selector
 lookup, payability, argument decoding, `receive` and `fallback` are compared
-too. Raw calldata declares no return types, so its `return` expectation is
-`[]`.
+too. An expectation is `{"return": [...]}` for typed results,
+`{"returned": "0x..."}` for exact return bytes, `{"panic": code}`, or
+`{"revert": "0x..."}`. Raw calldata declares no return types; use `returned`
+to check its successful return payload, or `{"return": []}` for empty data.
+Dynamic bytes and strings are supplied as `0x` byte strings, preserving UTF-8,
+NUL bytes and arbitrary binary contents.
 
 A case with `"deploy": true` and the constructor's `args` (or, as
 `calldata`, their raw encoding) is a creation instead: Verifereum runs a creation transaction whose data is the artifact's

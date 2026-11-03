@@ -1,0 +1,592 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.methodIdentifiers",
+            "ir",
+            "irOptimized"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/storage_bytes_aliases.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.37;\n\ncontract StorageBytesAliases {\n    bytes[] private first;\n    bytes[] private second;\n\n    function overlap(uint256 index) external {\n        first[0] = first[index];\n    }\n\n    function sameSlot(uint256 index) external {\n        first[0] = second[index];\n    }\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/storage_bytes_aliases.sol": {
+        "StorageBytesAliases": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "index",
+                  "type": "uint256"
+                }
+              ],
+              "name": "overlap",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "index",
+                  "type": "uint256"
+                }
+              ],
+              "name": "sameSlot",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "608060405234601c57600e6020565b61043f61002b823961043f90f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b6100ff565b61001d5f3561003c565b80638a6771ff146100375763fa158d120361000e576100cc565b610099565b60e01c90565b60405190565b5f80fd5b5f80fd5b90565b61005c81610050565b0361006357565b5f80fd5b9050359061007482610053565b565b9060208282031261008f5761008c915f01610067565b90565b61004c565b5f0190565b346100c7576100b16100ac366004610076565b6103fc565b6100b9610042565b806100c381610094565b0390f35b610048565b346100fa576100e46100df366004610076565b61041e565b6100ec610042565b806100f681610094565b0390f35b610048565b5f80fd5b634e487b7160e01b5f52603260045260245ffd5b5490565b5f5260205f2090565b61012d81610117565b8210156101475761013f60019161011b565b910201905f90565b610103565b634e487b7160e01b5f525f60045260245ffd5b634e487b7160e01b5f52602260045260245ffd5b9060016002830492168015610193575b602083101461018e57565b61015f565b91607f1691610183565b6101a79054610173565b90565b634e487b7160e01b5f52604160045260245ffd5b5f5260205f2090565b601f602091010490565b1b90565b919060086101f09102916101ea5f19846101d1565b926101d1565b9181191691161790565b90565b61021161020c61021692610050565b6101fa565b610050565b90565b90565b919061023261022d61023a936101fd565b610219565b9083546101d5565b9055565b5f90565b6102549161024e61023e565b9161021c565b565b5f5b82811061026457505050565b806102735f6001938501610242565b01610258565b9190601f8111610289575b505050565b818111610296575b610284565b6102ab6102a56102c9946101be565b916101c7565b9160206102b7826101c7565b91106102d1575b809101910390610256565b5f8080610291565b505f6102be565b1c90565b906102ec905f19906008026102d8565b191690565b816102fb916102dc565b906002021790565b908082146103e2576103148161019d565b9067ffffffffffffffff82116103dd57610338826103328554610173565b85610279565b5f90601f831160011461036b5791809161035a935f9261035f575b50506102f1565b90555b565b90915001545f80610353565b9061037a601f198416926101be565b90610384856101be565b925f5b8181106103c5575091600293918560019694106103ab575b5050500201905561035d565b6103bb910154601f8416906102dc565b90555f808061039f565b91936001806020928787015481550195019201610387565b6101aa565b5050565b91906103f7576103f591610303565b565b61014c565b61040a61041c916001610124565b506104165f5f90610124565b906103e6565b565b61042b61043d915f610124565b506104375f5f90610124565b906103e6565b56"
+            },
+            "deployedBytecode": {
+              "object": "60806040526004361015610013575b6100ff565b61001d5f3561003c565b80638a6771ff146100375763fa158d120361000e576100cc565b610099565b60e01c90565b60405190565b5f80fd5b5f80fd5b90565b61005c81610050565b0361006357565b5f80fd5b9050359061007482610053565b565b9060208282031261008f5761008c915f01610067565b90565b61004c565b5f0190565b346100c7576100b16100ac366004610076565b6103fc565b6100b9610042565b806100c381610094565b0390f35b610048565b346100fa576100e46100df366004610076565b61041e565b6100ec610042565b806100f681610094565b0390f35b610048565b5f80fd5b634e487b7160e01b5f52603260045260245ffd5b5490565b5f5260205f2090565b61012d81610117565b8210156101475761013f60019161011b565b910201905f90565b610103565b634e487b7160e01b5f525f60045260245ffd5b634e487b7160e01b5f52602260045260245ffd5b9060016002830492168015610193575b602083101461018e57565b61015f565b91607f1691610183565b6101a79054610173565b90565b634e487b7160e01b5f52604160045260245ffd5b5f5260205f2090565b601f602091010490565b1b90565b919060086101f09102916101ea5f19846101d1565b926101d1565b9181191691161790565b90565b61021161020c61021692610050565b6101fa565b610050565b90565b90565b919061023261022d61023a936101fd565b610219565b9083546101d5565b9055565b5f90565b6102549161024e61023e565b9161021c565b565b5f5b82811061026457505050565b806102735f6001938501610242565b01610258565b9190601f8111610289575b505050565b818111610296575b610284565b6102ab6102a56102c9946101be565b916101c7565b9160206102b7826101c7565b91106102d1575b809101910390610256565b5f8080610291565b505f6102be565b1c90565b906102ec905f19906008026102d8565b191690565b816102fb916102dc565b906002021790565b908082146103e2576103148161019d565b9067ffffffffffffffff82116103dd57610338826103328554610173565b85610279565b5f90601f831160011461036b5791809161035a935f9261035f575b50506102f1565b90555b565b90915001545f80610353565b9061037a601f198416926101be565b90610384856101be565b925f5b8181106103c5575091600293918560019694106103ab575b5050500201905561035d565b6103bb910154601f8416906102dc565b90555f808061039f565b91936001806020928787015481550195019201610387565b6101aa565b5050565b91906103f7576103f591610303565b565b61014c565b61040a61041c916001610124565b506104165f5f90610124565b906103e6565b565b61042b61043d915f610124565b506104375f5f90610124565b906103e6565b56"
+            },
+            "methodIdentifiers": {
+              "overlap(uint256)": "fa158d12",
+              "sameSlot(uint256)": "8a6771ff"
+            }
+          },
+          "ir": "\n/// @use-src 0:\"testdata/differential/storage_bytes_aliases.sol\"\nobject \"StorageBytesAliases_36\" {\n    code {\n        /// @src 0:57:320  \"contract StorageBytesAliases {...\"\n        mstore(64, memoryguard(128))\n        if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n\n        constructor_StorageBytesAliases_36()\n\n        let _1 := allocate_unbounded()\n        codecopy(_1, dataoffset(\"StorageBytesAliases_36_deployed\"), datasize(\"StorageBytesAliases_36_deployed\"))\n\n        return(_1, datasize(\"StorageBytesAliases_36_deployed\"))\n\n        function allocate_unbounded() -> memPtr {\n            memPtr := mload(64)\n        }\n\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n            revert(0, 0)\n        }\n\n        /// @src 0:57:320  \"contract StorageBytesAliases {...\"\n        function constructor_StorageBytesAliases_36() {\n\n            /// @src 0:57:320  \"contract StorageBytesAliases {...\"\n\n        }\n        /// @src 0:57:320  \"contract StorageBytesAliases {...\"\n\n    }\n    /// @use-src 0:\"testdata/differential/storage_bytes_aliases.sol\"\n    object \"StorageBytesAliases_36_deployed\" {\n        code {\n            /// @src 0:57:320  \"contract StorageBytesAliases {...\"\n            mstore(64, memoryguard(128))\n\n            if iszero(lt(calldatasize(), 4))\n            {\n                let selector := shift_right_224_unsigned(calldataload(0))\n                switch selector\n\n                case 0x8a6771ff\n                {\n                    // sameSlot(uint256)\n\n                    external_fun_sameSlot_35()\n                }\n\n                case 0xfa158d12\n                {\n                    // overlap(uint256)\n\n                    external_fun_overlap_21()\n                }\n\n                default {}\n            }\n\n            revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n\n            function shift_right_224_unsigned(value) -> newValue {\n                newValue :=\n\n                shr(224, value)\n\n            }\n\n            function allocate_unbounded() -> memPtr {\n                memPtr := mload(64)\n            }\n\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n                revert(0, 0)\n            }\n\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() {\n                revert(0, 0)\n            }\n\n            function revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() {\n                revert(0, 0)\n            }\n\n            function cleanup_t_uint256(value) -> cleaned {\n                cleaned := value\n            }\n\n            function validator_revert_t_uint256(value) {\n                if iszero(eq(value, cleanup_t_uint256(value))) { revert(0, 0) }\n            }\n\n            function abi_decode_t_uint256(offset, end) -> value {\n                value := calldataload(offset)\n                validator_revert_t_uint256(value)\n            }\n\n            function abi_decode_tuple_t_uint256(headStart, dataEnd) -> value0 {\n                if slt(sub(dataEnd, headStart), 32) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n                {\n\n                    let offset := 0\n\n                    value0 := abi_decode_t_uint256(add(headStart, offset), dataEnd)\n                }\n\n            }\n\n            function abi_encode_tuple__to__fromStack(headStart ) -> tail {\n                tail := add(headStart, 0)\n\n            }\n\n            function external_fun_sameSlot_35() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                let param_0 :=  abi_decode_tuple_t_uint256(4, calldatasize())\n                fun_sameSlot_35(param_0)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple__to__fromStack(memPos  )\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function external_fun_overlap_21() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                let param_0 :=  abi_decode_tuple_t_uint256(4, calldatasize())\n                fun_overlap_21(param_0)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple__to__fromStack(memPos  )\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74() {\n                revert(0, 0)\n            }\n\n            function panic_error_0x32() {\n                mstore(0, 35408467139433450592217433187231851964531694900788300625387963629091585785856)\n                mstore(4, 0x32)\n                revert(0, 0x24)\n            }\n\n            function array_length_t_array$_t_bytes_storage_$dyn_storage(value) -> length {\n\n                length := sload(value)\n\n            }\n\n            function array_dataslot_t_array$_t_bytes_storage_$dyn_storage(ptr) -> data {\n                data := ptr\n\n                mstore(0, ptr)\n                data := keccak256(0, 0x20)\n\n            }\n\n            function array_dataslot_t_bytes_storage_ptr(ptr) -> data {\n                data := ptr\n\n                mstore(0, ptr)\n                data := keccak256(0, 0x20)\n\n            }\n\n            function long_byte_array_index_access_no_checks(array, index) -> slot, offset {\n\n                offset := sub(31, mod(index, 0x20))\n                let dataArea := array_dataslot_t_bytes_storage_ptr(array)\n                slot := add(dataArea, div(index, 0x20))\n\n            }\n\n            function storage_array_index_access_t_array$_t_bytes_storage_$dyn_storage(array, index) -> slot, offset {\n                let arrayLength := array_length_t_array$_t_bytes_storage_$dyn_storage(array)\n                if iszero(lt(index, arrayLength)) { panic_error_0x32() }\n\n                let dataArea := array_dataslot_t_array$_t_bytes_storage_$dyn_storage(array)\n                slot := add(dataArea, mul(index, 1))\n                offset := 0\n\n            }\n\n            function panic_error_0x00() {\n                mstore(0, 35408467139433450592217433187231851964531694900788300625387963629091585785856)\n                mstore(4, 0x00)\n                revert(0, 0x24)\n            }\n\n            function panic_error_0x22() {\n                mstore(0, 35408467139433450592217433187231851964531694900788300625387963629091585785856)\n                mstore(4, 0x22)\n                revert(0, 0x24)\n            }\n\n            function extract_byte_array_length(data) -> length {\n                length := div(data, 2)\n                let outOfPlaceEncoding := and(data, 1)\n                if iszero(outOfPlaceEncoding) {\n                    length := and(length, 0x7f)\n                }\n\n                if eq(outOfPlaceEncoding, lt(length, 32)) {\n                    panic_error_0x22()\n                }\n            }\n\n            function array_length_t_bytes_storage(value) -> length {\n\n                length := sload(value)\n\n                length := extract_byte_array_length(length)\n\n            }\n\n            function panic_error_0x41() {\n                mstore(0, 35408467139433450592217433187231851964531694900788300625387963629091585785856)\n                mstore(4, 0x41)\n                revert(0, 0x24)\n            }\n\n            function array_dataslot_t_bytes_storage(ptr) -> data {\n                data := ptr\n\n                mstore(0, ptr)\n                data := keccak256(0, 0x20)\n\n            }\n\n            function divide_by_32_ceil(value) -> result {\n                result := div(add(value, 31), 32)\n            }\n\n            function shift_left_dynamic(bits, value) -> newValue {\n                newValue :=\n\n                shl(bits, value)\n\n            }\n\n            function update_byte_slice_dynamic32(value, shiftBytes, toInsert) -> result {\n                let shiftBits := mul(shiftBytes, 8)\n                let mask := shift_left_dynamic(shiftBits, 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff)\n                toInsert := shift_left_dynamic(shiftBits, toInsert)\n                value := and(value, not(mask))\n                result := or(value, and(toInsert, mask))\n            }\n\n            function identity(value) -> ret {\n                ret := value\n            }\n\n            function convert_t_uint256_to_t_uint256(value) -> converted {\n                converted := cleanup_t_uint256(identity(cleanup_t_uint256(value)))\n            }\n\n            function prepare_store_t_uint256(value) -> ret {\n                ret := value\n            }\n\n            function update_storage_value_t_uint256_to_t_uint256(slot, offset, value_0) {\n                let convertedValue_0 := convert_t_uint256_to_t_uint256(value_0)\n                sstore(slot, update_byte_slice_dynamic32(sload(slot), offset, prepare_store_t_uint256(convertedValue_0)))\n            }\n\n            function zero_value_for_split_t_uint256() -> ret {\n                ret := 0\n            }\n\n            function storage_set_to_zero_t_uint256(slot, offset) {\n                let zero_0 := zero_value_for_split_t_uint256()\n                update_storage_value_t_uint256_to_t_uint256(slot, offset, zero_0)\n            }\n\n            function clear_storage_range_t_bytes1(startSlot, slotCount) {\n                for { let i := 0 } lt(i, slotCount) { i := add(i, 1) }\n                {\n                    storage_set_to_zero_t_uint256(add(startSlot, i), 0)\n                }\n            }\n\n            function clean_up_bytearray_end_slots_t_bytes_storage(array, len, startIndex) {\n\n                if gt(len, 31) {\n                    if gt(len, startIndex) {\n                        let dataArea := array_dataslot_t_bytes_storage(array)\n                        let oldSlotCount := divide_by_32_ceil(len)\n                        let newSlotCount := divide_by_32_ceil(startIndex)\n                        // If we are clearing array to be short byte array, we want to clear only data starting from array data area.\n                        if lt(startIndex, 32) {\n                            newSlotCount := 0\n                        }\n                        let deleteStart := add(dataArea, newSlotCount)\n                        clear_storage_range_t_bytes1(deleteStart, sub(oldSlotCount, newSlotCount))\n                    }\n                }\n\n            }\n\n            function shift_right_unsigned_dynamic(bits, value) -> newValue {\n                newValue :=\n\n                shr(bits, value)\n\n            }\n\n            function mask_bytes_dynamic(data, bytes) -> result {\n                let mask := not(shift_right_unsigned_dynamic(mul(8, bytes), not(0)))\n                result := and(data, mask)\n            }\n            function extract_used_part_and_set_length_of_short_byte_array(data, len) -> used {\n                // we want to save only elements that are part of the array after resizing\n                // others should be set to zero\n                data := mask_bytes_dynamic(data, len)\n                used := or(data, mul(2, len))\n            }\n            function copy_byte_array_to_storage_from_t_bytes_storage_to_t_bytes_storage(slot, src) {\n                if eq(slot, src) { leave }\n\n                let newLen := array_length_t_bytes_storage(src)\n                // Make sure array length is sane\n                if gt(newLen, 0xffffffffffffffff) { panic_error_0x41() }\n\n                let oldLen := extract_byte_array_length(sload(slot))\n\n                // potentially truncate data\n                clean_up_bytearray_end_slots_t_bytes_storage(slot, oldLen, newLen)\n\n                let srcOffset := 0\n\n                switch gt(newLen, 31)\n                case 1 {\n                    let loopEnd := and(newLen, not(0x1f))\n                    src := array_dataslot_t_bytes_storage(src)\n                    let dstPtr := array_dataslot_t_bytes_storage(slot)\n                    let i := 0\n                    for { } lt(i, loopEnd) { i := add(i, 0x20) } {\n                        sstore(dstPtr, sload(add(src, srcOffset)))\n                        dstPtr := add(dstPtr, 1)\n                        srcOffset := add(srcOffset, 1)\n                    }\n                    if lt(loopEnd, newLen) {\n                        let lastValue := sload(add(src, srcOffset))\n                        sstore(dstPtr, mask_bytes_dynamic(lastValue, and(newLen, 0x1f)))\n                    }\n                    sstore(slot, add(mul(newLen, 2), 1))\n                }\n                default {\n                    let value := 0\n                    if newLen {\n                        value := sload(add(src, srcOffset))\n                    }\n                    sstore(slot, extract_used_part_and_set_length_of_short_byte_array(value, newLen))\n                }\n            }\n\n            function update_storage_value_t_bytes_storage_to_t_bytes_storage(slot, offset, value_0) {\n                if offset { panic_error_0x00() }\n                copy_byte_array_to_storage_from_t_bytes_storage_to_t_bytes_storage(slot, value_0)\n            }\n\n            /// @ast-id 35\n            /// @src 0:235:318  \"function sameSlot(uint256 index) external {...\"\n            function fun_sameSlot_35(var_index_23) {\n\n                /// @src 0:298:304  \"second\"\n                let _1_slot := 0x01\n                let expr_29_slot := _1_slot\n                /// @src 0:305:310  \"index\"\n                let _2 := var_index_23\n                let expr_30 := _2\n                /// @src 0:298:311  \"second[index]\"\n\n                let _3, _4 := storage_array_index_access_t_array$_t_bytes_storage_$dyn_storage(expr_29_slot, expr_30)\n                let _5_slot := _3\n                let expr_31_slot := _5_slot\n                /// @src 0:287:292  \"first\"\n                let _6_slot := 0x00\n                let expr_26_slot := _6_slot\n                /// @src 0:293:294  \"0\"\n                let expr_27 := 0x00\n                /// @src 0:287:295  \"first[0]\"\n\n                let _7, _8 := storage_array_index_access_t_array$_t_bytes_storage_$dyn_storage(expr_26_slot, expr_27)\n                /// @src 0:287:311  \"first[0] = second[index]\"\n                update_storage_value_t_bytes_storage_to_t_bytes_storage(_7, _8, expr_31_slot)\n                let _9_slot := _7\n                let expr_32_slot := _9_slot\n\n            }\n            /// @src 0:57:320  \"contract StorageBytesAliases {...\"\n\n            /// @ast-id 21\n            /// @src 0:148:229  \"function overlap(uint256 index) external {...\"\n            function fun_overlap_21(var_index_9) {\n\n                /// @src 0:210:215  \"first\"\n                let _10_slot := 0x00\n                let expr_15_slot := _10_slot\n                /// @src 0:216:221  \"index\"\n                let _11 := var_index_9\n                let expr_16 := _11\n                /// @src 0:210:222  \"first[index]\"\n\n                let _12, _13 := storage_array_index_access_t_array$_t_bytes_storage_$dyn_storage(expr_15_slot, expr_16)\n                let _14_slot := _12\n                let expr_17_slot := _14_slot\n                /// @src 0:199:204  \"first\"\n                let _15_slot := 0x00\n                let expr_12_slot := _15_slot\n                /// @src 0:205:206  \"0\"\n                let expr_13 := 0x00\n                /// @src 0:199:207  \"first[0]\"\n\n                let _16, _17 := storage_array_index_access_t_array$_t_bytes_storage_$dyn_storage(expr_12_slot, expr_13)\n                /// @src 0:199:222  \"first[0] = first[index]\"\n                update_storage_value_t_bytes_storage_to_t_bytes_storage(_16, _17, expr_17_slot)\n                let _18_slot := _16\n                let expr_18_slot := _18_slot\n\n            }\n            /// @src 0:57:320  \"contract StorageBytesAliases {...\"\n\n        }\n\n        data \".metadata\" hex\"\"\n    }\n\n}\n\n",
+          "irOptimized": "/// @use-src 0:\"testdata/differential/storage_bytes_aliases.sol\"\nobject \"StorageBytesAliases_36\" {\n    code {\n        {\n            /// @src 0:57:320  \"contract StorageBytesAliases {...\"\n            mstore(64, memoryguard(0x80))\n            if callvalue()\n            {\n                revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            }\n            let _1 := allocate_unbounded()\n            codecopy(_1, dataoffset(\"StorageBytesAliases_36_deployed\"), datasize(\"StorageBytesAliases_36_deployed\"))\n            return(_1, datasize(\"StorageBytesAliases_36_deployed\"))\n        }\n        function allocate_unbounded() -> memPtr\n        { memPtr := mload(64) }\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n        { revert(0, 0) }\n    }\n    /// @use-src 0:\"testdata/differential/storage_bytes_aliases.sol\"\n    object \"StorageBytesAliases_36_deployed\" {\n        code {\n            {\n                /// @src 0:57:320  \"contract StorageBytesAliases {...\"\n                mstore(64, memoryguard(0x80))\n                if iszero(lt(calldatasize(), 4))\n                {\n                    let selector := shift_right_unsigned(calldataload(0))\n                    switch selector\n                    case 0x8a6771ff { external_fun_sameSlot() }\n                    case 0xfa158d12 { external_fun_overlap() }\n                    default { }\n                }\n                revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            }\n            function shift_right_unsigned(value) -> newValue\n            { newValue := shr(224, value) }\n            function allocate_unbounded() -> memPtr\n            { memPtr := mload(64) }\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            { revert(0, 0) }\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n            { revert(0, 0) }\n            function cleanup_uint256(value) -> cleaned\n            { cleaned := value }\n            function validator_revert_uint256(value)\n            {\n                if iszero(eq(value, cleanup_uint256(value))) { revert(0, 0) }\n            }\n            function abi_decode_uint256(offset, end) -> value\n            {\n                value := calldataload(offset)\n                validator_revert_uint256(value)\n            }\n            function abi_decode_tuple_uint256(headStart, dataEnd) -> value0\n            {\n                if slt(sub(dataEnd, headStart), 32)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n                let offset := 0\n                value0 := abi_decode_uint256(add(headStart, offset), dataEnd)\n            }\n            function abi_encode_tuple(headStart) -> tail\n            { tail := add(headStart, 0) }\n            function external_fun_sameSlot()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                let param := abi_decode_tuple_uint256(4, calldatasize())\n                fun_sameSlot(param)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple(memPos)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function external_fun_overlap()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                let param := abi_decode_tuple_uint256(4, calldatasize())\n                fun_overlap(param)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple(memPos)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            { revert(0, 0) }\n            function panic_error_0x32()\n            {\n                mstore(0, shl(224, 0x4e487b71))\n                mstore(4, 0x32)\n                revert(0, 0x24)\n            }\n            function array_length_array_bytes_storage_dyn(value) -> length\n            { length := sload(value) }\n            function array_dataslot_array_bytes_storage_dyn(ptr) -> data\n            {\n                data := ptr\n                mstore(0, ptr)\n                data := keccak256(0, 0x20)\n            }\n            function storage_array_index_access_bytes_storage_dyn(array, index) -> slot, offset\n            {\n                let arrayLength := array_length_array_bytes_storage_dyn(array)\n                if iszero(lt(index, arrayLength)) { panic_error_0x32() }\n                let dataArea := array_dataslot_array_bytes_storage_dyn(array)\n                slot := add(dataArea, mul(index, 1))\n                offset := 0\n            }\n            function panic_error_0x00()\n            {\n                mstore(0, shl(224, 0x4e487b71))\n                mstore(4, 0x00)\n                revert(0, 0x24)\n            }\n            function panic_error_0x22()\n            {\n                mstore(0, shl(224, 0x4e487b71))\n                mstore(4, 0x22)\n                revert(0, 0x24)\n            }\n            function extract_byte_array_length(data) -> length\n            {\n                length := div(data, 2)\n                let outOfPlaceEncoding := and(data, 1)\n                if iszero(outOfPlaceEncoding) { length := and(length, 0x7f) }\n                if eq(outOfPlaceEncoding, lt(length, 32)) { panic_error_0x22() }\n            }\n            function array_length_bytes_storage(value) -> length\n            {\n                length := sload(value)\n                length := extract_byte_array_length(length)\n            }\n            function panic_error_0x41()\n            {\n                mstore(0, shl(224, 0x4e487b71))\n                mstore(4, 0x41)\n                revert(0, 0x24)\n            }\n            function array_dataslot_bytes_storage(ptr) -> data\n            {\n                data := ptr\n                mstore(0, ptr)\n                data := keccak256(0, 0x20)\n            }\n            function divide_by_ceil(value) -> result\n            {\n                result := div(add(value, 31), 32)\n            }\n            function shift_left_dynamic(bits, value) -> newValue\n            { newValue := shl(bits, value) }\n            function update_byte_slice_dynamic32(value, shiftBytes, toInsert) -> result\n            {\n                let shiftBits := mul(shiftBytes, 8)\n                let mask := shift_left_dynamic(shiftBits, not(0))\n                toInsert := shift_left_dynamic(shiftBits, toInsert)\n                value := and(value, not(mask))\n                result := or(value, and(toInsert, mask))\n            }\n            function identity(value) -> ret\n            { ret := value }\n            function convert_uint256_to_uint256(value) -> converted\n            {\n                converted := cleanup_uint256(identity(cleanup_uint256(value)))\n            }\n            function prepare_store_uint256(value) -> ret\n            { ret := value }\n            function update_storage_value_uint256_to_uint256(slot, offset, value)\n            {\n                let convertedValue := convert_uint256_to_uint256(value)\n                sstore(slot, update_byte_slice_dynamic32(sload(slot), offset, prepare_store_uint256(convertedValue)))\n            }\n            function zero_value_for_split_uint256() -> ret\n            { ret := 0 }\n            function storage_set_to_zero_uint256(slot, offset)\n            {\n                let zero := zero_value_for_split_uint256()\n                update_storage_value_uint256_to_uint256(slot, offset, zero)\n            }\n            function clear_storage_range_bytes1(startSlot, slotCount)\n            {\n                let i := 0\n                for { } lt(i, slotCount) { i := add(i, 1) }\n                {\n                    storage_set_to_zero_uint256(add(startSlot, i), 0)\n                }\n            }\n            function clean_up_bytearray_end_slots_bytes_storage(array, len, startIndex)\n            {\n                if gt(len, 31)\n                {\n                    if gt(len, startIndex)\n                    {\n                        let dataArea := array_dataslot_bytes_storage(array)\n                        let oldSlotCount := divide_by_ceil(len)\n                        let newSlotCount := divide_by_ceil(startIndex)\n                        if lt(startIndex, 32) { newSlotCount := 0 }\n                        let deleteStart := add(dataArea, newSlotCount)\n                        clear_storage_range_bytes1(deleteStart, sub(oldSlotCount, newSlotCount))\n                    }\n                }\n            }\n            function shift_right_unsigned_dynamic(bits, value) -> newValue\n            { newValue := shr(bits, value) }\n            function mask_bytes_dynamic(data, bytes) -> result\n            {\n                let mask := not(shift_right_unsigned_dynamic(mul(8, bytes), not(0)))\n                result := and(data, mask)\n            }\n            function extract_used_part_and_set_length_of_short_byte_array(data, len) -> used\n            {\n                data := mask_bytes_dynamic(data, len)\n                used := or(data, mul(2, len))\n            }\n            function copy_byte_array_to_storage_from_bytes_storage_to_bytes(slot, src)\n            {\n                if eq(slot, src) { leave }\n                let newLen := array_length_bytes_storage(src)\n                if gt(newLen, 0xffffffffffffffff) { panic_error_0x41() }\n                let oldLen := extract_byte_array_length(sload(slot))\n                clean_up_bytearray_end_slots_bytes_storage(slot, oldLen, newLen)\n                let srcOffset := 0\n                switch gt(newLen, 31)\n                case 1 {\n                    let loopEnd := and(newLen, not(0x1f))\n                    src := array_dataslot_bytes_storage(src)\n                    let dstPtr := array_dataslot_bytes_storage(slot)\n                    let i := 0\n                    for { } lt(i, loopEnd) { i := add(i, 0x20) }\n                    {\n                        sstore(dstPtr, sload(add(src, srcOffset)))\n                        dstPtr := add(dstPtr, 1)\n                        srcOffset := add(srcOffset, 1)\n                    }\n                    if lt(loopEnd, newLen)\n                    {\n                        let lastValue := sload(add(src, srcOffset))\n                        sstore(dstPtr, mask_bytes_dynamic(lastValue, and(newLen, 0x1f)))\n                    }\n                    sstore(slot, add(mul(newLen, 2), 1))\n                }\n                default {\n                    let value := 0\n                    if newLen\n                    {\n                        value := sload(add(src, srcOffset))\n                    }\n                    sstore(slot, extract_used_part_and_set_length_of_short_byte_array(value, newLen))\n                }\n            }\n            function update_storage_value_bytes_storage_to_bytes(slot, offset, value)\n            {\n                if offset { panic_error_0x00() }\n                copy_byte_array_to_storage_from_bytes_storage_to_bytes(slot, value)\n            }\n            /// @ast-id 35 @src 0:235:318  \"function sameSlot(uint256 index) external {...\"\n            function fun_sameSlot(var_index)\n            {\n                /// @src 0:298:304  \"second\"\n                let _1_slot := 0x01\n                let expr_29_slot := _1_slot\n                /// @src 0:305:310  \"index\"\n                let _1 := var_index\n                let expr := _1\n                /// @src 0:298:311  \"second[index]\"\n                let _2, _3 := storage_array_index_access_bytes_storage_dyn(expr_29_slot, expr)\n                let _5_slot := _2\n                let expr_slot := _5_slot\n                /// @src 0:287:292  \"first\"\n                let _6_slot := 0x00\n                let expr_26_slot := _6_slot\n                /// @src 0:293:294  \"0\"\n                let expr_1 := 0x00\n                /// @src 0:287:295  \"first[0]\"\n                let _4, _5 := storage_array_index_access_bytes_storage_dyn(expr_26_slot, expr_1)\n                /// @src 0:287:311  \"first[0] = second[index]\"\n                update_storage_value_bytes_storage_to_bytes(_4, _5, expr_slot)\n            }\n            /// @ast-id 21 @src 0:148:229  \"function overlap(uint256 index) external {...\"\n            function fun_overlap(var_index)\n            {\n                /// @src 0:210:215  \"first\"\n                let _10_slot := 0x00\n                let expr_15_slot := _10_slot\n                /// @src 0:216:221  \"index\"\n                let _1 := var_index\n                let expr := _1\n                /// @src 0:210:222  \"first[index]\"\n                let _2, _3 := storage_array_index_access_bytes_storage_dyn(expr_15_slot, expr)\n                let _slot := _2\n                let expr_17_slot := _slot\n                /// @src 0:199:204  \"first\"\n                let _15_slot := 0x00\n                let expr_12_slot := _15_slot\n                /// @src 0:205:206  \"0\"\n                let expr_1 := 0x00\n                /// @src 0:199:207  \"first[0]\"\n                let _4, _5 := storage_array_index_access_bytes_storage_dyn(expr_12_slot, expr_1)\n                /// @src 0:199:222  \"first[0] = first[index]\"\n                update_storage_value_bytes_storage_to_bytes(_4, _5, expr_17_slot)\n            }\n        }\n        data \".metadata\" hex\"\"\n    }\n}\n",
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 4,
+                "contract": "testdata/differential/storage_bytes_aliases.sol:StorageBytesAliases",
+                "label": "first",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_array(t_bytes_storage)dyn_storage"
+              },
+              {
+                "astId": 7,
+                "contract": "testdata/differential/storage_bytes_aliases.sol:StorageBytesAliases",
+                "label": "second",
+                "offset": 0,
+                "slot": "1",
+                "type": "t_array(t_bytes_storage)dyn_storage"
+              }
+            ],
+            "types": {
+              "t_array(t_bytes_storage)dyn_storage": {
+                "base": "t_bytes_storage",
+                "encoding": "dynamic_array",
+                "label": "bytes[]",
+                "numberOfBytes": "32"
+              },
+              "t_bytes_storage": {
+                "encoding": "bytes",
+                "label": "bytes",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/storage_bytes_aliases.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/storage_bytes_aliases.sol",
+          "exportedSymbols": {
+            "StorageBytesAliases": [
+              36
+            ]
+          },
+          "id": 37,
+          "license": "MIT",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "32:23:0"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "StorageBytesAliases",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 36,
+              "linearizedBaseContracts": [
+                36
+              ],
+              "name": "StorageBytesAliases",
+              "nameLocation": "66:19:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": false,
+                  "id": 4,
+                  "mutability": "mutable",
+                  "name": "first",
+                  "nameLocation": "108:5:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 36,
+                  "src": "92:21:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage",
+                    "typeString": "bytes[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 2,
+                      "name": "bytes",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "92:5:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bytes_storage_ptr",
+                        "typeString": "bytes"
+                      }
+                    },
+                    "id": 3,
+                    "nodeType": "ArrayTypeName",
+                    "src": "92:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage_ptr",
+                      "typeString": "bytes[]"
+                    }
+                  },
+                  "visibility": "private"
+                },
+                {
+                  "constant": false,
+                  "id": 7,
+                  "mutability": "mutable",
+                  "name": "second",
+                  "nameLocation": "135:6:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 36,
+                  "src": "119:22:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage",
+                    "typeString": "bytes[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 5,
+                      "name": "bytes",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "119:5:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bytes_storage_ptr",
+                        "typeString": "bytes"
+                      }
+                    },
+                    "id": 6,
+                    "nodeType": "ArrayTypeName",
+                    "src": "119:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage_ptr",
+                      "typeString": "bytes[]"
+                    }
+                  },
+                  "visibility": "private"
+                },
+                {
+                  "body": {
+                    "id": 20,
+                    "nodeType": "Block",
+                    "src": "189:40:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 18,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "baseExpression": {
+                              "id": 12,
+                              "name": "first",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 4,
+                              "src": "199:5:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage",
+                                "typeString": "bytes storage ref[] storage ref"
+                              }
+                            },
+                            "id": 14,
+                            "indexExpression": {
+                              "hexValue": "30",
+                              "id": 13,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "number",
+                              "lValueRequested": false,
+                              "nodeType": "Literal",
+                              "src": "205:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_rational_0_by_1",
+                                "typeString": "int_const 0"
+                              },
+                              "value": "0"
+                            },
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "nodeType": "IndexAccess",
+                            "src": "199:8:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_bytes_storage",
+                              "typeString": "bytes storage ref"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "baseExpression": {
+                              "id": 15,
+                              "name": "first",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 4,
+                              "src": "210:5:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage",
+                                "typeString": "bytes storage ref[] storage ref"
+                              }
+                            },
+                            "id": 17,
+                            "indexExpression": {
+                              "id": 16,
+                              "name": "index",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 9,
+                              "src": "216:5:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "nodeType": "IndexAccess",
+                            "src": "210:12:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_bytes_storage",
+                              "typeString": "bytes storage ref"
+                            }
+                          },
+                          "src": "199:23:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bytes_storage",
+                            "typeString": "bytes storage ref"
+                          }
+                        },
+                        "id": 19,
+                        "nodeType": "ExpressionStatement",
+                        "src": "199:23:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "fa158d12",
+                  "id": 21,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "overlap",
+                  "nameLocation": "157:7:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 10,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 9,
+                        "mutability": "mutable",
+                        "name": "index",
+                        "nameLocation": "173:5:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 21,
+                        "src": "165:13:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 8,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "165:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "164:15:0"
+                  },
+                  "returnParameters": {
+                    "id": 11,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "189:0:0"
+                  },
+                  "scope": 36,
+                  "src": "148:81:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 34,
+                    "nodeType": "Block",
+                    "src": "277:41:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 32,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "baseExpression": {
+                              "id": 26,
+                              "name": "first",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 4,
+                              "src": "287:5:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage",
+                                "typeString": "bytes storage ref[] storage ref"
+                              }
+                            },
+                            "id": 28,
+                            "indexExpression": {
+                              "hexValue": "30",
+                              "id": 27,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "number",
+                              "lValueRequested": false,
+                              "nodeType": "Literal",
+                              "src": "293:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_rational_0_by_1",
+                                "typeString": "int_const 0"
+                              },
+                              "value": "0"
+                            },
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "nodeType": "IndexAccess",
+                            "src": "287:8:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_bytes_storage",
+                              "typeString": "bytes storage ref"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "baseExpression": {
+                              "id": 29,
+                              "name": "second",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 7,
+                              "src": "298:6:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_array$_t_bytes_storage_$dyn_storage",
+                                "typeString": "bytes storage ref[] storage ref"
+                              }
+                            },
+                            "id": 31,
+                            "indexExpression": {
+                              "id": 30,
+                              "name": "index",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 23,
+                              "src": "305:5:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "nodeType": "IndexAccess",
+                            "src": "298:13:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_bytes_storage",
+                              "typeString": "bytes storage ref"
+                            }
+                          },
+                          "src": "287:24:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bytes_storage",
+                            "typeString": "bytes storage ref"
+                          }
+                        },
+                        "id": 33,
+                        "nodeType": "ExpressionStatement",
+                        "src": "287:24:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "8a6771ff",
+                  "id": 35,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "sameSlot",
+                  "nameLocation": "244:8:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 24,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 23,
+                        "mutability": "mutable",
+                        "name": "index",
+                        "nameLocation": "261:5:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 35,
+                        "src": "253:13:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 22,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "253:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "252:15:0"
+                  },
+                  "returnParameters": {
+                    "id": 25,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "277:0:0"
+                  },
+                  "scope": 36,
+                  "src": "235:83:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 37,
+              "src": "57:263:0",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "32:289:0"
+        },
+        "id": 0
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}

@@ -94,6 +94,154 @@ Definition mapping_slot_def:
     word_of_bytes_be (Keccak_256_w64 (key_bytes ++ num_to_bytes 32 (w2n slot)))
 End
 
+(* Short bytes share the root word with a low-byte length tag; long bytes
+ * start at keccak256(root). Invalid length tags panic before any access. *)
+Definition storage_byte_length_def:
+  storage_byte_length accounts addr slot =
+    let n = w2n (lookup_storage slot (lookup_account addr accounts).storage) in
+    let long = (n MOD 2 = 1) in
+    let length = if long then n DIV 2 else (n DIV 2) MOD 128 in
+    if long = (length < 32) then INR (PanicCompletion 34) else INL length
+End
+
+Definition storage_byte_location_def:
+  storage_byte_location slot (length : num) (i : num) =
+    if length < 32 then (slot, 31 - i)
+    else (mapping_slot [] slot + n2w (i DIV 32), 31 - i MOD 32)
+End
+
+Definition navigate_storage_byte_def:
+  navigate_storage_byte accounts addr slot layout i =
+    case storage_byte_length accounts addr slot of
+      INR c => ValueAbrupt c
+    | INL length =>
+        if i < 0 ∨ &length ≤ i then ValueAbrupt (PanicCompletion 50) else
+        let (data_slot, offset) = storage_byte_location slot length (Num i) in
+        ValueOk (ReferenceValue (StorageReference PersistentStorage addr
+          data_slot offset (FixedBytesT 1) layout))
+End
+
+Definition storage_byte_range_def:
+  (storage_byte_range accounts addr slot length i 0 = []) ∧
+  (storage_byte_range accounts addr slot length i (SUC n) =
+    let (data_slot, offset) = storage_byte_location slot length i in
+    let data = w2n (lookup_storage data_slot (lookup_account addr accounts).storage) in
+    (n2w (data DIV 2 ** (8 * offset)) : byte) ::
+      storage_byte_range accounts addr slot length (i + 1) n)
+End
+
+Definition storage_byte_contents_def:
+  storage_byte_contents accounts r =
+    case r of
+      StorageReference PersistentStorage addr slot 0 ty _ =>
+        if ¬byte_sequence_type ty then INR (InvalidCompletion "not storage bytes")
+        else (case storage_byte_length accounts addr slot of
+          INR c => INR c
+        | INL length =>
+            if 2 ** 64 ≤ length then INR (PanicCompletion 65)
+            else INL (storage_byte_range accounts addr slot length 0 length))
+    | _ => INR (InvalidCompletion "not storage bytes")
+End
+
+Definition set_storage_word_def:
+  set_storage_word accounts addr slot value =
+    let account = lookup_account addr accounts in
+    update_account addr
+      (account with storage := update_storage slot value account.storage) accounts
+End
+
+Definition clear_byte_slots_def:
+  (clear_byte_slots 0 accounts addr slot = accounts) ∧
+  (clear_byte_slots (SUC n) accounts addr slot =
+    clear_byte_slots n (set_storage_word accounts addr slot 0w) addr (slot + 1w))
+End
+
+Definition store_byte_chunks_def:
+  (store_byte_chunks 0 accounts addr slot (bs : byte list) = accounts) ∧
+  (store_byte_chunks (SUC n) accounts addr slot bs =
+    let chunk = TAKE 32 bs in
+    let value = n2w (num_of_be_bytes (chunk ++ REPLICATE (32 - LENGTH chunk) 0w)) in
+    store_byte_chunks n (set_storage_word accounts addr slot value)
+      addr (slot + 1w) (DROP 32 bs))
+End
+
+(* Memory and calldata sources are independent of the destination storage. *)
+Definition store_storage_bytes_def:
+  store_storage_bytes accounts r (bs : byte list) static =
+    case r of
+      StorageReference PersistentStorage addr slot 0 ty _ =>
+        if ¬byte_sequence_type ty then INR (InvalidCompletion "not storage bytes")
+        else if 2 ** 64 ≤ LENGTH bs then INR (PanicCompletion 65)
+        else (case storage_byte_length accounts addr slot of
+          INR c => INR c
+        | INL old_length =>
+            if static then INR (InvalidCompletion "byte copy in static frame") else
+            let length = LENGTH bs in
+            let old_slots = if old_length < 32 then 0 else (old_length + 31) DIV 32 in
+            let new_slots = if length < 32 then 0 else (length + 31) DIV 32 in
+            let data_slot = mapping_slot [] slot in
+            let cleared = clear_byte_slots (old_slots - new_slots) accounts addr
+                            (data_slot + n2w new_slots) in
+            if length < 32 then
+              INL (set_storage_word cleared addr slot
+                (n2w (num_of_be_bytes (bs ++ REPLICATE (31 - length) 0w ++
+                    [n2w (2 * length)]))))
+            else
+              INL (set_storage_word
+                (store_byte_chunks new_slots cleared addr data_slot bs)
+                addr slot (n2w (2 * length + 1))))
+    | _ => INR (InvalidCompletion "not storage bytes")
+End
+
+(* Storage copies read each source word after clearing obsolete destination
+ * slots, and after earlier destination writes. Array indices can alias these
+ * locations without any hash collision. *)
+Definition copy_storage_byte_chunks_def:
+  (copy_storage_byte_chunks 0 remaining accounts src_addr src_slot dst_addr dst_slot = accounts) ∧
+  (copy_storage_byte_chunks (SUC n) remaining accounts src_addr src_slot dst_addr dst_slot =
+    let used = MIN 32 remaining in
+    let shift = 2 ** (8 * (32 - used)) in
+    let value = w2n (lookup_storage src_slot (lookup_account src_addr accounts).storage) in
+    let updated = set_storage_word accounts dst_addr dst_slot (n2w ((value DIV shift) * shift)) in
+    copy_storage_byte_chunks n (remaining - used) updated
+      src_addr (src_slot + 1w) dst_addr (dst_slot + 1w))
+End
+
+Definition copy_storage_bytes_def:
+  copy_storage_bytes accounts src dst static =
+    case (src, dst) of
+      (StorageReference PersistentStorage src_addr src_slot 0 src_ty _,
+       StorageReference PersistentStorage dst_addr dst_slot 0 dst_ty _) =>
+        if ¬byte_sequence_type src_ty ∨ ¬byte_sequence_type dst_ty then
+          INR (InvalidCompletion "not storage bytes")
+        else if src_addr = dst_addr ∧ src_slot = dst_slot then INL accounts
+        else (case storage_byte_length accounts src_addr src_slot of
+          INR c => INR c
+        | INL length =>
+            if 2 ** 64 ≤ length then INR (PanicCompletion 65) else
+            case storage_byte_length accounts dst_addr dst_slot of
+              INR c => INR c
+            | INL old_length =>
+                if static then INR (InvalidCompletion "byte copy in static frame") else
+                let old_slots = if old_length < 32 then 0 else (old_length + 31) DIV 32 in
+                let new_slots = if length < 32 then 0 else (length + 31) DIV 32 in
+                let data_slot = mapping_slot [] dst_slot in
+                let cleared = clear_byte_slots (old_slots - new_slots) accounts dst_addr
+                                (data_slot + n2w new_slots) in
+                if length < 32 then
+                  let value = if length = 0 then 0 else
+                    w2n (lookup_storage src_slot (lookup_account src_addr cleared).storage) in
+                  let shift = 2 ** (8 * (32 - length)) in
+                  INL (set_storage_word cleared dst_addr dst_slot
+                    (n2w ((value DIV shift) * shift + 2 * length)))
+                else
+                  INL (set_storage_word
+                    (copy_storage_byte_chunks new_slots length cleared src_addr
+                      (mapping_slot [] src_slot) dst_addr data_slot)
+                    dst_addr dst_slot (n2w (2 * length + 1))))
+    | _ => INR (InvalidCompletion "not storage bytes")
+End
+
 (* One new index from a captured fixed-array reference. The caller has already
  * evaluated the index; slot arithmetic wraps at the EVM word width. *)
 Definition fixed_array_element_def:
@@ -142,6 +290,10 @@ Definition navigate_storage_def:
              fixed_array_element env addr (mapping_slot [] slot) element
                (w2n (lookup_storage slot (lookup_account addr accounts).storage)) layout i
          | _ => ValueAbrupt (InvalidCompletion "bad array index"))
+    | StorageReference PersistentStorage addr slot 0 BytesT layout =>
+        (case s of
+           IntegerValue i => navigate_storage_byte accounts addr slot layout i
+         | _ => ValueAbrupt (InvalidCompletion "bad byte index"))
     | _ => ValueAbrupt (InvalidCompletion "unsupported storage navigation")
 End
 
@@ -153,6 +305,7 @@ Definition read_storage_reference_def:
     case r of
       StorageReference PersistentStorage addr slot offset rty _ =>
         if rty ≠ ty then ValueAbrupt (InvalidCompletion "bad read type")
+        else if offset = 0 ∧ byte_sequence_type ty then ValueOk (ReferenceValue r)
         else (case read_storage accounts addr slot offset ty of
                 SOME scalar => ValueOk (ScalarValue scalar)
               | NONE => ValueAbrupt (InvalidCompletion "bad storage read"))
@@ -165,6 +318,12 @@ Definition storage_array_length_def:
       StorageReference PersistentStorage addr slot 0 (ArrayT _ NONE) _ =>
         ValueOk (ScalarValue (IntegerValue
           (&(w2n (lookup_storage slot (lookup_account addr accounts).storage)))))
+    | StorageReference PersistentStorage addr slot 0 ty _ =>
+        if ¬byte_sequence_type ty then
+          ValueAbrupt (InvalidCompletion "bad byte sequence length")
+        else (case storage_byte_length accounts addr slot of
+          INL length => ValueOk (ScalarValue (IntegerValue (&length)))
+        | INR c => ValueAbrupt c)
     | _ => ValueAbrupt (InvalidCompletion "bad dynamic array reference")
 End
 
@@ -186,6 +345,17 @@ End
 val () = cv_auto_trans read_storage_def;
 val () = cv_auto_trans write_storage_def;
 val () = cv_auto_trans state_reference_def;
+val () = cv_auto_trans storage_byte_length_def;
+val () = cv_auto_trans storage_byte_location_def;
+val () = cv_auto_trans navigate_storage_byte_def;
+val () = cv_auto_trans storage_byte_range_def;
+val () = cv_auto_trans storage_byte_contents_def;
+val () = cv_auto_trans set_storage_word_def;
+val () = cv_auto_trans clear_byte_slots_def;
+val () = cv_auto_trans store_byte_chunks_def;
+val () = cv_auto_trans store_storage_bytes_def;
+val () = cv_auto_trans copy_storage_byte_chunks_def;
+val () = cv_auto_trans copy_storage_bytes_def;
 val () = cv_auto_trans navigate_storage_def;
 val () = cv_auto_trans read_storage_reference_def;
 val () = cv_auto_trans storage_array_length_def;

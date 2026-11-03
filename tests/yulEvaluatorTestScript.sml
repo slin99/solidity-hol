@@ -1110,6 +1110,40 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* Dynamic byte copying emits BYTE and MSTORE8. *)
+Theorem byte_extraction:
+  eval_yul_builtin YByte [30w; 0x1234w] yul_test_machine =
+    EvalValues [0x12w] yul_test_machine ∧
+  eval_yul_builtin YByte [31w; 0x1234w] yul_test_machine =
+    EvalValues [0x34w] yul_test_machine ∧
+  eval_yul_builtin YByte [32w; 0x1234w] yul_test_machine =
+    EvalValues [0w] yul_test_machine
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem byte_memory_write_preserves_neighbors:
+  case eval_yul_builtin YMStore8 [30w; 0x1AAw]
+         (yul_mstore yul_test_machine 0 (0x11223344w : bytes32)) of
+    EvalValues [] m =>
+      yul_memory_read m 28 4 = [0x11w; 0x22w; 0xAAw; 0x44w] ∧
+      m.memory_size = 32
+  | _ => F
+Proof
+  EVAL_TAC
+QED
+
+Theorem calldata_copy_zero_pads:
+  case eval_yul_builtin YCallDataCopy [1w; 1w; 3w]
+         (yul_test_machine with call_data := [0x11w; 0x22w; 0x33w]) of
+    EvalValues [] m =>
+      yul_memory_read m 0 5 = [0w; 0x22w; 0x33w; 0w; 0w] ∧
+      m.memory_size = 32
+  | _ => F
+Proof
+  EVAL_TAC
+QED
+
 Definition calldatacopy_code_def:
   calldatacopy_code =
     [YulExprStmt (YulBuiltin YCallDataCopy

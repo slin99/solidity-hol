@@ -123,6 +123,11 @@ class CorpusTests(unittest.TestCase):
             with self.assertRaisesRegex(driver.CorpusError, "exactly one"):
                 driver.load_corpus(path)
 
+    def test_raw_return_expectation(self) -> None:
+        driver.check_expectation({"returned": "0x00ff"}, "expect")
+        with self.assertRaisesRegex(driver.CorpusError, "returned must be"):
+            driver.check_expectation({"returned": [0, 255]}, "expect")
+
     def test_rejects_malformed_storage(self) -> None:
         for storage, message in [([1], "object from slot"),
                                  ({"0x1": 1}, "slot '0x1'"),
