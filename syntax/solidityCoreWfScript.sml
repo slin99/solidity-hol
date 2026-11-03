@@ -358,6 +358,23 @@ Definition wf_core_atom_def:
   (wf_core_atom env ctx _ (ConstantAtom _) ⇔ F)
 End
 
+(* ABI serialization consumes bytes from their original location. Literal
+ * bytes are already available and need no heap object for encoding. *)
+Definition wf_abi_atom_def:
+  wf_abi_atom env ctx ty a ⇔
+    case ty of
+      LocatedT _ element =>
+        byte_sequence_type element ∧
+        (case a of
+           ConstantAtom (BytesValue _) => T
+         | BoundAtom x =>
+             (case ALOOKUP ctx.bindings x of
+                SOME (SingleType (LocatedT _ actual)) => element = actual
+              | _ => F)
+         | _ => F)
+    | _ => wf_core_atom env ctx (SingleType ty) a
+End
+
 (* Operations *)
 
 Definition wf_core_atoms_def:
@@ -646,7 +663,7 @@ Definition wf_core_operation_def:
     wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
     wf_core_atom env ctx (SingleType (UintT 256)) value ∧
     (kind = ExternalStaticCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
-    wf_core_atoms env ctx (MAP SingleType params) args ∧
+    LIST_REL (wf_abi_atom env ctx) params args ∧
     annotation = call_result_type rets) ∧
   (wf_core_operation env ctx annotation _ ⇔ F)
 End
@@ -666,7 +683,7 @@ Definition emit_indexed_count_def:
   (emit_indexed_count env ctx [] = SOME (0 : num)) ∧
   (emit_indexed_count env ctx ((ty, indexed, a) :: args) =
     if abi_value_type ty ∧ valid_type_shape ty ∧
-       wf_core_atom env ctx (SingleType ty) a then
+       wf_abi_atom env ctx ty a then
       case emit_indexed_count env ctx args of
         SOME n => SOME (if indexed then n + 1 else n)
       | NONE => NONE
@@ -973,6 +990,7 @@ val () = cv_auto_trans_rec inline_storage_shape_def (
   | INR (env, n, tys) => (cv$c2n n, cv_size tys))’ >> cv_termination_tac
 );
 val () = cv_auto_trans environment_type_def;
+val () = cv_auto_trans wf_abi_atom_def;
 val () = cv_auto_trans (SPEC_ALL wf_core_operation_def);
 val () = cv_auto_trans emit_indexed_count_def;
 val () = cv_auto_trans fresh_core_id_def;
