@@ -54,30 +54,70 @@ Definition encoded_values_def:
     | NONE => NONE
 End
 
-(* Runtime references are read from the current frame and heap before encoding. *)
+(* Keep both the logical value (for indexed hashes) and its encoded body.
+ * Storage encoders copy complete data words, retaining unused dirty bytes. *)
 Definition runtime_abi_value_def:
   runtime_abi_value st ty v =
-    case v of
-      ReferenceValue r =>
-        (case reference_bytes st r of
-           SOME bs => abi_value ty (ScalarValue (BytesValue bs))
-         | NONE => NONE)
-    | _ => abi_value ty v
+    let contents = case v of
+          ReferenceValue r => byte_contents st r
+        | ScalarValue (BytesValue bs) => INL bs
+        | _ => INL [] in
+    case contents of
+      INR c => INR c
+    | INL bs =>
+      case abi_value ty (case v of ReferenceValue _ => ScalarValue (BytesValue bs)
+                                | _ => v) of
+        NONE => INR (InvalidCompletion "bad ABI value")
+      | SOME a =>
+        let encoded = enc (abi_type ty) a in
+        case v of
+          ReferenceValue (StorageReference PersistentStorage addr slot 0 element _) =>
+            if byte_sequence_type element then
+              let length = LENGTH bs in
+              let padded = storage_byte_range st.world.accounts addr slot length 0
+                             (32 * ((length + 31) DIV 32)) in
+              let data = if 0 < length ∧ length < 32 then TAKE 31 padded ++ [0w]
+                         else padded in
+              INL (a, enc (Uint 256) (NumV length) ++ data)
+            else INL (a, encoded)
+        | _ => INL (a, encoded)
+End
+
+(* The tuple head/tail layout, using already encoded component bodies. *)
+Definition encoded_abi_parts_def:
+  (encoded_abi_parts hl tl [] = ([], [])) ∧
+  (encoded_abi_parts hl tl ((ty, encoded_body) :: parts) =
+    let dynamic = is_dynamic ty in
+    let tail = if dynamic then encoded_body else [] in
+    let head = if dynamic then enc (Uint 256) (NumV (hl + tl)) else encoded_body in
+    let (heads, tails) = encoded_abi_parts hl (tl + LENGTH tail) parts in
+    (head ++ heads, tail ++ tails))
+End
+
+Definition encoded_abi_tuple_def:
+  encoded_abi_tuple parts =
+    let (heads, tails) = encoded_abi_parts (head_lengths (MAP FST parts) 0) 0 parts in
+    heads ++ tails
 End
 
 Definition runtime_abi_values_def:
-  (runtime_abi_values st [] [] = SOME []) ∧
+  (runtime_abi_values (st : source_state) [] [] =
+     (INL [] : (contractABI$abi_type # byte list) list + source_completion)) ∧
   (runtime_abi_values st (ty :: tys) (v :: vs) =
-    case (runtime_abi_value st ty v, runtime_abi_values st tys vs) of
-      (SOME a, SOME avs) => SOME (a :: avs)
-    | _ => NONE) ∧
-  (runtime_abi_values _ _ _ = NONE)
+    case runtime_abi_value st ty v of
+      INR c => INR c
+    | INL (a, encoded_body) =>
+      (case runtime_abi_values st tys vs of
+         INL encoded => INL ((abi_type ty, encoded_body) :: encoded)
+       | INR c => INR c)) ∧
+  (runtime_abi_values _ _ _ = INR (InvalidCompletion "bad ABI arguments"))
 End
 
 Definition encoded_runtime_values_def:
   encoded_runtime_values st tys vs =
-    OPTION_MAP (λavs. enc (Tuple (MAP abi_type tys)) (ListV avs))
-      (runtime_abi_values st tys vs)
+    case runtime_abi_values st tys vs of
+      INL parts => INL (encoded_abi_tuple parts)
+    | INR c => INR c
 End
 
 (* Inverse of abi_value on values valid_enc accepts. *)
@@ -181,29 +221,31 @@ End
  * log's data.
  *)
 Definition event_parts_def:
-  (event_parts st [] = SOME ([], [], [])) ∧
+  (event_parts st [] = INL ([], [])) ∧
   (event_parts st ((ty, indexed, v) :: args) =
-    case (runtime_abi_value st ty v, event_parts st args) of
-      (SOME a, SOME (topics, tys, avs)) =>
+    case runtime_abi_value st ty v of
+      INR c => INR c
+    | INL (a, encoded_body) =>
+      (case event_parts st args of
+         INR c => INR c
+       | INL (topics, parts) =>
         if indexed then
-          SOME ((case a of
+          INL ((case a of
                    BytesV bs => if byte_sequence_value_type ty then
                      word_of_bytes_be (Keccak_256_w64 bs)
-                     else word_of_bytes T (0w : bytes32) (enc (abi_type ty) a)
-                 | _ => word_of_bytes T (0w : bytes32) (enc (abi_type ty) a)) :: topics,
-                tys, avs)
-        else SOME (topics, abi_type ty :: tys, a :: avs)
-    | _ => NONE)
+                     else word_of_bytes T (0w : bytes32) encoded_body
+                 | _ => word_of_bytes T (0w : bytes32) encoded_body) :: topics, parts)
+        else INL (topics, (abi_type ty, encoded_body) :: parts)))
 End
 
 Definition event_log_def:
   event_log st logger topic0 args =
     case event_parts st args of
-      SOME (topics, tys, avs) =>
-        SOME <| logger := logger;
-                topics := (case topic0 of SOME t => t :: topics | NONE => topics);
-                data := enc (Tuple tys) (ListV avs) |>
-    | NONE => NONE
+      INL (topics, parts) =>
+        INL <| logger := logger;
+               topics := (case topic0 of SOME t => t :: topics | NONE => topics);
+               data := encoded_abi_tuple parts |>
+    | INR c => INR c
 End
 
 val () = cv_auto_trans abi_type_def;
@@ -213,7 +255,18 @@ val () = cv_auto_trans encoded_values_def;
 val () = cv_auto_trans abi_runtime_value_def;
 val () = cv_auto_trans abi_runtime_values_def;
 val () = cv_auto_trans runtime_abi_value_def;
-val () = cv_auto_trans runtime_abi_values_def;
+val () = cv_auto_trans encoded_abi_parts_def;
+val () = cv_auto_trans encoded_abi_tuple_def;
+val runtime_abi_values_pre_def =
+  cv_auto_trans_pre "runtime_abi_values_pre" runtime_abi_values_def;
+
+Theorem runtime_abi_values_pre[cv_pre,local]:
+  ∀st tys vs. runtime_abi_values_pre st tys vs
+Proof
+  ho_match_mp_tac runtime_abi_values_ind >> rpt strip_tac >>
+  simp[Once runtime_abi_values_pre_def] >> rw[] >> gvs[]
+QED
+
 val () = cv_auto_trans encoded_runtime_values_def;
 val () = cv_auto_trans memory_free_pointer_def;
 val () = cv_auto_trans decode_abi_argument_def;
@@ -229,6 +282,14 @@ Proof
   simp[Once materialize_arguments_pre_def] >> rw[] >> fs[]
 QED
 val () = cv_auto_trans panic_data_def;
-val () = cv_auto_trans
+val event_parts_pre_def = cv_auto_trans_pre "event_parts_pre"
   (REWRITE_RULE [GSYM byteTheory.word_of_bytes_be_def] event_parts_def);
+
+Theorem event_parts_pre[cv_pre,local]:
+  ∀st args. event_parts_pre st args
+Proof
+  ho_match_mp_tac event_parts_ind >> rpt strip_tac >>
+  simp[Once event_parts_pre_def] >> rw[] >> gvs[]
+QED
+
 val () = cv_auto_trans event_log_def;

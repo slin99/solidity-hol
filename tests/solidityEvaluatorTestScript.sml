@@ -405,3 +405,30 @@ Theorem valid_headers_reach_static_copy_guard:
 Proof
   CONV_TAC cv_eval
 QED
+
+(* Encoding a corrupt storage argument panics before LOG's static guard. *)
+Definition static_byte_event_def:
+  static_byte_event header =
+    (emit_event NONE [(LocatedT MemoryLoc BytesT, F, BoundAtom (AstId 1))]
+      (static_state with <|
+        scopes := [FEMPTY |+ (1, <|
+          binding_type := SingleType (LocatedT StorageLoc BytesT);
+          binding_value := ReferenceValue
+            (StorageReference PersistentStorage 0w 0w 0 BytesT (LayoutId 1)) |>)];
+        world := static_state.world with accounts :=
+          set_storage_word empty_accounts 0w 0w header |>) []).completion
+End
+
+val () = cv_auto_trans static_byte_event_def;
+
+Theorem invalid_header_precedes_static_event_guard:
+  static_byte_event 64w = PanicCompletion 34
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem valid_header_reaches_static_event_guard:
+  static_byte_event 0w = InvalidCompletion "emit in static frame"
+Proof
+  CONV_TAC cv_eval
+QED

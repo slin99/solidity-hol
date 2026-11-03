@@ -2,6 +2,7 @@
 pragma solidity 0.8.37;
 
 interface BytePeer {
+    function rawInput(bytes calldata data) external pure returns (bytes memory);
     function afterMutation(bytes calldata data, uint256 ignored) external returns (bytes memory);
     function raw(uint256 mode) external pure returns (bytes memory);
     function echo(bytes calldata data, string calldata text) external returns (bytes memory, string memory);
@@ -13,6 +14,7 @@ contract DynamicBytes {
     event Snapshot(bytes data, uint256 mutation);
     event StringSnapshot(string text, uint256 mutation);
     event One(bytes data);
+    event Stored(bytes indexed data, bytes plain);
     event Values(bytes data, string text, uint256 count);
     event Indexed(bytes indexed data, string indexed text, bytes plain);
 
@@ -73,6 +75,25 @@ contract DynamicBytes {
     }
     function literalEventThenPeerRaw(address target) external returns (bytes memory) {
         emit One(hex"80");
+        return BytePeer(target).raw(4);
+    }
+    function emitStored() external {
+        emit Stored(stored, stored);
+    }
+    function peerUnmutated(address target) external returns (bytes memory) {
+        return BytePeer(target).afterMutation(stored, 0);
+    }
+    function peerInput(address target) external view returns (bytes memory) {
+        return BytePeer(target).rawInput(stored);
+    }
+    function defaultBytesThenPeerRaw(address target) external returns (bytes memory) {
+        bytes memory data;
+        emit One(data);
+        return BytePeer(target).raw(4);
+    }
+    function defaultStringThenPeerRaw(address target) external returns (bytes memory) {
+        string memory text;
+        emit One(bytes(text));
         return BytePeer(target).raw(4);
     }
 }
