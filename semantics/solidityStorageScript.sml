@@ -105,7 +105,7 @@ Definition storage_byte_length_def:
 End
 
 Definition storage_byte_location_def:
-  storage_byte_location slot length i =
+  storage_byte_location slot (length : num) (i : num) =
     if length < 32 then (slot, 31 - i)
     else (mapping_slot [] slot + n2w (i DIV 32), 31 - i MOD 32)
 End
@@ -157,7 +157,7 @@ Definition clear_byte_slots_def:
 End
 
 Definition store_byte_chunks_def:
-  (store_byte_chunks 0 accounts addr slot bs = accounts) ∧
+  (store_byte_chunks 0 accounts addr slot (bs : byte list) = accounts) ∧
   (store_byte_chunks (SUC n) accounts addr slot bs =
     let chunk = TAKE 32 bs in
     let value = n2w (num_of_be_bytes (chunk ++ REPLICATE (32 - LENGTH chunk) 0w)) in
@@ -168,7 +168,7 @@ End
 (* The caller snapshots the source before updating the destination. The
  * compiler clears only the obsolete long-data slots and masks new tails. *)
 Definition store_storage_bytes_def:
-  store_storage_bytes accounts r bs =
+  store_storage_bytes accounts r (bs : byte list) =
     case r of
       StorageReference PersistentStorage addr slot 0 ty _ =>
         if ¬byte_sequence_type ty then INR (InvalidCompletion "not storage bytes")
