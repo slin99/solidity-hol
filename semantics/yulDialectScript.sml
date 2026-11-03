@@ -7,8 +7,9 @@
  *
  * The effect of a builtin is what a caller has to know to reason about it:
  * whether it reads or writes the frame's memory, the executing account's
- * storage, the frame's own fields, or the log, or ends the frame. It is
- * deliberately coarse -- one classification per builtin, not per access.
+ * storage or transient storage, the frame's own fields, or the log, or ends
+ * the frame. It is deliberately coarse -- one classification per builtin,
+ * not per access.
  *)
 Theory yulDialect
 Ancestors
@@ -43,6 +44,8 @@ Definition builtin_name_def:
   builtin_name YMCopy = "mcopy" ∧
   builtin_name YSLoad = "sload" ∧
   builtin_name YSStore = "sstore" ∧
+  builtin_name YTLoad = "tload" ∧
+  builtin_name YTStore = "tstore" ∧
   builtin_name YCallDataLoad = "calldataload" ∧
   builtin_name YCallDataSize = "calldatasize" ∧
   builtin_name YCallDataCopy = "calldatacopy" ∧
@@ -110,6 +113,8 @@ Definition builtin_of_name_def:
     else if name = "mcopy" then SOME YMCopy
     else if name = "sload" then SOME YSLoad
     else if name = "sstore" then SOME YSStore
+    else if name = "tload" then SOME YTLoad
+    else if name = "tstore" then SOME YTStore
     else if name = "calldataload" then SOME YCallDataLoad
     else if name = "calldatasize" then SOME YCallDataSize
     else if name = "calldatacopy" then SOME YCallDataCopy
@@ -155,7 +160,8 @@ Datatype:
                        in the unoptimized IR, and pop, which discards its
                        argument *)
   | EffectMemory    (* reads or writes the frame's memory *)
-  | EffectStorage   (* reads or writes the executing account's storage *)
+  | EffectStorage   (* reads or writes the executing account's storage or
+                       its transient storage *)
   | EffectFrame     (* reads the frame: its call data, its call value, the
                        account it runs for, an immutable the constructor
                        patched into its code, the transaction and block it
@@ -202,6 +208,8 @@ Definition builtin_effect_def:
   builtin_effect YMCopy = EffectMemory ∧
   builtin_effect YSLoad = EffectStorage ∧
   builtin_effect YSStore = EffectStorage ∧
+  builtin_effect YTLoad = EffectStorage ∧
+  builtin_effect YTStore = EffectStorage ∧
   builtin_effect YCallDataLoad = EffectFrame ∧
   builtin_effect YCallDataSize = EffectFrame ∧
   builtin_effect YCallDataCopy = EffectMemory ∧

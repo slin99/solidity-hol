@@ -48,7 +48,8 @@ Libs
  * immutables to load: no corpus suite is compiled with any. The frame's gas
  * limit is that transaction's own -- the number the bytecode run starts with --
  * so a callee of the Yul frame gets the same order of budget as the bytecode
- * run's, and the return data buffer starts empty as a fresh frame's does.
+ * run's, and the return data buffer and transient storage start empty as a
+ * fresh transaction's do.
  *)
 Definition yul_differential_machine_def:
   yul_differential_machine code c data =
@@ -63,6 +64,7 @@ Definition yul_differential_machine_def:
          transfer_value c.case_sender contract_address c.case_value
            (case_accounts code c.case_storage c.case_sender c.case_peer_code
               c.case_peer_storage);
+       transient := empty_transient_storage;
        logs := [];
        self_address := contract_address;
        caller_address := c.case_sender;
