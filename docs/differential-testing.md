@@ -3,7 +3,11 @@
 `tools/run_differential.py` checks the maintained corpus in
 `testdata/differential/corpus.json`. Each suite supplies a compiler artifact,
 source unit and deployed contract; each case is a transaction to the contract
-with initial storage and an expected result, final storage and logs.
+with initial storage and an expected result, final storage and logs. The
+artifact compiles the source together with the files it imports, so its
+contract's bases, interfaces and structs may be declared in any of them; the
+runner checks that each of those files is the one the artifact was compiled
+from.
 
 A case calls either a named function with arguments (`function`, `args`),
 encoded after its selector, or raw `calldata`. Optional `sender` (default

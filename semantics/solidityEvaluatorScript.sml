@@ -570,6 +570,13 @@ Definition simple_stmt_def:
     | ContinueStmt => abrupt_result ContinueCompletion st gas
     | PanicStmt code => abrupt_result (PanicCompletion code) st gas
     | EmitStmt topic args => emit_event topic args st gas
+    | RevertErrorStmt selector params args =>
+        (case eval_atoms st.scopes args of
+           SOME vs =>
+             (case encoded_values params vs of
+                SOME data => abrupt_result (RevertCompletion (selector ++ data)) st gas
+              | NONE => abrupt_result (InvalidCompletion "bad error arguments") st gas)
+         | NONE => abrupt_result (InvalidCompletion "unbound atom") st gas)
     | RevertStmt a =>
         (case eval_atom st.scopes a of
            SOME (ScalarValue (BytesValue data)) =>

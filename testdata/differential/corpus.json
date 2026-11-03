@@ -540,6 +540,55 @@
       ]
     },
     {
+      "name": "imports",
+      "source": "testdata/differential/imports.sol",
+      "contract": "Imports",
+      "artifact": "testdata/differential/expected/imports.json",
+      "cases": [
+        {"name": "imported_base_and_struct_update", "function": "bump", "args": [3], "storage": {"0": 4}, "expect": {"return": [10]}, "final_storage": {"0": 10, "1": 4, "2": 3}, "logs": [{"topics": ["0xc081b7755956fdb9d6a5482bb04a62dbb62ad944141e7ff6ff2adad34bb1efb9"], "data": "0x000000000000000000000000000000000000000000000000000000000000000a"}]},
+        {"name": "imported_struct_reads", "function": "lastSum", "args": [], "storage": {"1": 5, "2": 7}, "expect": {"return": [12]}},
+        {"name": "implements_imported_interface", "function": "count", "args": [], "storage": {"0": 9}, "expect": {"return": [9]}},
+        {"name": "calls_through_imported_interface", "function": "countOf", "args": [4096], "storage": {"0": 9}, "expect": {"return": [9]}},
+        {"name": "imported_interface_call_without_code_reverts", "function": "countOf", "args": [24576], "expect": {"revert": "0x"}},
+        {"name": "imported_base_overflow_panics", "function": "bump", "args": [1], "storage": {"0": "115792089237316195423570985008687907853269984665640564039457584007913129639935"}, "expect": {"panic": "0x11"}}
+      ]
+    },
+    {
+      "name": "errors",
+      "source": "testdata/differential/errors.sol",
+      "contract": "Vault",
+      "artifact": "testdata/differential/expected/errors.json",
+      "cases": [
+        {"name": "withdraw_within_balance", "function": "withdraw", "args": [2], "storage": {"55339514551095541597166361489097532198990872027936225909895186517043906691032": 3}, "expect": {"return": [1]}, "final_storage": {"55339514551095541597166361489097532198990872027936225909895186517043906691032": 1}},
+        {"name": "withdraw_reverts_with_interface_error", "function": "withdraw", "args": [5], "storage": {"55339514551095541597166361489097532198990872027936225909895186517043906691032": 3}, "expect": {"revert": "0xdb42144d000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000005"}},
+        {"name": "guarded_owner_passes", "function": "guarded", "args": [], "storage": {"1": 8192}, "expect": {"return": [true]}},
+        {"name": "guarded_reverts_with_file_level_error", "function": "guarded", "args": [], "storage": {"1": 12288}, "expect": {"revert": "0x8e4a23d60000000000000000000000000000000000000000000000000000000000002000"}},
+        {"name": "nonzero_returns", "function": "nonzero", "args": [4], "expect": {"return": [4]}},
+        {"name": "nonzero_reverts_with_parameterless_error", "function": "nonzero", "args": [0], "expect": {"revert": "0x3db2a12a"}},
+        {"name": "odd_encodes_signed_bool_and_literal", "function": "odd", "args": [-3, true], "expect": {"revert": "0x056ee4fafffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007"}}
+      ]
+    },
+    {
+      "name": "type_bounds",
+      "source": "testdata/differential/type_bounds.sol",
+      "contract": "TypeBounds",
+      "artifact": "testdata/differential/expected/type_bounds.json",
+      "cases": [
+        {"name": "bounds", "function": "bounds", "args": [], "expect": {"return": [0, 255, -128, 127, 115792089237316195423570985008687907853269984665640564039457584007913129639935, -57896044618658097711785492504343953926634992332820282019728792003956564819968, 57896044618658097711785492504343953926634992332820282019728792003956564819967]}},
+        {"name": "spend_infinite_allowance_kept", "function": "spend", "args": [115792089237316195423570985008687907853269984665640564039457584007913129639935, 5], "expect": {"return": [115792089237316195423570985008687907853269984665640564039457584007913129639935]}},
+        {"name": "spend_finite_allowance_decreased", "function": "spend", "args": [10, 3], "expect": {"return": [7]}},
+        {"name": "spend_underflow_panics", "function": "spend", "args": [2, 3], "expect": {"panic": "0x11"}},
+        {"name": "fits_int8_max", "function": "fitsInt8", "args": [127], "expect": {"return": [true]}},
+        {"name": "fits_int8_above_max", "function": "fitsInt8", "args": [128], "expect": {"return": [false]}},
+        {"name": "fits_int8_min", "function": "fitsInt8", "args": [-128], "expect": {"return": [true]}},
+        {"name": "fits_int8_below_min", "function": "fitsInt8", "args": [-129], "expect": {"return": [false]}},
+        {"name": "above_uint16_widens", "function": "aboveUint16", "args": [1], "expect": {"return": [65536]}},
+        {"name": "converted_from_bound_type", "function": "converted", "args": [], "expect": {"return": [255, 57896044618658097711785492504343953926634992332820282019728792003956564819968, -1]}},
+        {"name": "below_int16_min_in_range", "function": "belowInt16Min", "args": [-1], "expect": {"return": [-32767]}},
+        {"name": "below_int16_min_overflow_panics", "function": "belowInt16Min", "args": [1], "expect": {"panic": "0x11"}}
+      ]
+    },
+    {
       "name": "calldata_bytes",
       "source": "testdata/differential/calldata_bytes.sol",
       "contract": "CalldataBytes",

@@ -149,6 +149,9 @@ Datatype:
   | BreakStmt
   | ContinueStmt
   | RevertStmt core_atom
+  (* revert E(args): the error's selector, its parameter types and the
+   * arguments *)
+  | RevertErrorStmt (byte list) (sol_type list) (core_atom list)
   | PanicStmt num
   (* topic0 (NONE for an anonymous event), then each argument with its type
    * and whether it is indexed *)

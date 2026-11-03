@@ -1,0 +1,1836 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.methodIdentifiers",
+            "ir",
+            "irOptimized"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/imports.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.37;\n\nimport {Counter, ICounter, Point} from \"./imports_base.sol\";\n\n// A contract whose base, interface, event and struct come from another file,\n// and which calls through the imported interface.\ncontract Imports is Counter {\n    Point internal last;\n\n    function count() external view returns (uint256) {\n        return n;\n    }\n\n    function bump(uint256 by) public override returns (uint256) {\n        last.x = n;\n        last.y = by;\n        n += 2 * by;\n        emit Bumped(n);\n        return n;\n    }\n\n    function lastSum() external view returns (uint256) {\n        return last.x + last.y;\n    }\n\n    function countOf(address counter) external view returns (uint256) {\n        return ICounter(counter).count();\n    }\n}\n"
+      },
+      "testdata/differential/imports_base.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.37;\n\n// Declarations imports.sol takes from another file: a file-level struct, an\n// interface with an event, and an abstract base contract.\n\nstruct Point {\n    uint256 x;\n    uint256 y;\n}\n\ninterface ICounter {\n    event Bumped(uint256 count);\n\n    function count() external view returns (uint256);\n}\n\nabstract contract Counter is ICounter {\n    uint256 internal n;\n\n    function bump(uint256 by) public virtual returns (uint256) {\n        n += by;\n        emit Bumped(n);\n        return n;\n    }\n}\n\n// Not referred to by imports.sol, so not imported with it.\nstruct Label {\n    string text;\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/imports.sol": {
+        "Imports": {
+          "abi": [
+            {
+              "anonymous": false,
+              "inputs": [
+                {
+                  "indexed": false,
+                  "internalType": "uint256",
+                  "name": "count",
+                  "type": "uint256"
+                }
+              ],
+              "name": "Bumped",
+              "type": "event"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "by",
+                  "type": "uint256"
+                }
+              ],
+              "name": "bump",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "count",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "address",
+                  "name": "counter",
+                  "type": "address"
+                }
+              ],
+              "name": "countOf",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "lastSum",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "608060405234601c57600e6020565b61057c61002b823961057c90f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b610210565b61001d5f3561005b565b80620d02cd1461005657806306661abd14610051578063b20eb4c41461004c5763f8977e960361000e576101db565b61014e565b6100d8565b6100a3565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261007957565b61006b565b90565b61008a9061007e565b9052565b91906100a1905f60208501940190610081565b565b346100d3576100b336600461006f565b6100cf6100be61027a565b6100c6610061565b9182918261008e565b0390f35b610067565b34610108576100e836600461006f565b6101046100f36102a7565b6100fb610061565b9182918261008e565b0390f35b610067565b6101168161007e565b0361011d57565b5f80fd5b9050359061012e8261010d565b565b9060208282031261014957610146915f01610121565b90565b61006b565b3461017e5761017a610169610164366004610130565b61036d565b610171610061565b9182918261008e565b0390f35b610067565b60018060a01b031690565b61019790610183565b90565b6101a38161018e565b036101aa57565b5f80fd5b905035906101bb8261019a565b565b906020828203126101d6576101d3915f016101ae565b90565b61006b565b3461020b576102076101f66101f13660046101bd565b6104ee565b6101fe610061565b9182918261008e565b0390f35b610067565b5f80fd5b5f90565b5f1c90565b90565b61022c61023191610218565b61021d565b90565b61023e9054610220565b90565b634e487b7160e01b5f52601160045260245ffd5b61026461026a9193929361007e565b9261007e565b820180921161027557565b610241565b610282610214565b506102a46102925f600101610234565b61029e60018001610234565b90610255565b90565b6102af610214565b506102b95f610234565b90565b5f1b90565b906102cd5f19916102bc565b9181191691161790565b90565b6102ee6102e96102f39261007e565b6102d7565b61007e565b90565b90565b9061030e610309610315926102da565b6102f6565b82546102c1565b9055565b90565b61033061032b61033592610319565b6102d7565b61007e565b90565b61034761034d9193929361007e565b9261007e565b9161035983820261007e565b92818404149015171561036857565b610241565b6103bf6103b16103c59261037f610214565b5061039561038c5f610234565b5f6001016102f9565b6103a281600180016102f9565b6103ac600261031c565b610338565b6103ba5f610234565b610255565b5f6102f9565b6103ce5f610234565b6104047fc081b7755956fdb9d6a5482bb04a62dbb62ad944141e7ff6ff2adad34bb1efb9916103fb610061565b9182918261008e565b0390a16104105f610234565b90565b61042761042261042c92610183565b6102d7565b610183565b90565b61043890610413565b90565b6104449061042f565b90565b61045090610413565b90565b61045c90610447565b90565b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b906104879061045f565b810190811067ffffffffffffffff8211176104a157604052565b610469565b60e01b90565b905051906104b98261010d565b565b906020828203126104d4576104d1915f016104ac565b90565b61006b565b5f0190565b6104e6610061565b3d5f823e3d90fd5b602061050d61050861052393610502610214565b5061043b565b610453565b6306661abd9061051b610061565b9384926104a6565b82528180610533600482016104d9565b03915afa908115610577575f91610549575b5090565b61056a915060203d8111610570575b610562818361047d565b8101906104bb565b5f610545565b503d610558565b6104de56"
+            },
+            "deployedBytecode": {
+              "object": "60806040526004361015610013575b610210565b61001d5f3561005b565b80620d02cd1461005657806306661abd14610051578063b20eb4c41461004c5763f8977e960361000e576101db565b61014e565b6100d8565b6100a3565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261007957565b61006b565b90565b61008a9061007e565b9052565b91906100a1905f60208501940190610081565b565b346100d3576100b336600461006f565b6100cf6100be61027a565b6100c6610061565b9182918261008e565b0390f35b610067565b34610108576100e836600461006f565b6101046100f36102a7565b6100fb610061565b9182918261008e565b0390f35b610067565b6101168161007e565b0361011d57565b5f80fd5b9050359061012e8261010d565b565b9060208282031261014957610146915f01610121565b90565b61006b565b3461017e5761017a610169610164366004610130565b61036d565b610171610061565b9182918261008e565b0390f35b610067565b60018060a01b031690565b61019790610183565b90565b6101a38161018e565b036101aa57565b5f80fd5b905035906101bb8261019a565b565b906020828203126101d6576101d3915f016101ae565b90565b61006b565b3461020b576102076101f66101f13660046101bd565b6104ee565b6101fe610061565b9182918261008e565b0390f35b610067565b5f80fd5b5f90565b5f1c90565b90565b61022c61023191610218565b61021d565b90565b61023e9054610220565b90565b634e487b7160e01b5f52601160045260245ffd5b61026461026a9193929361007e565b9261007e565b820180921161027557565b610241565b610282610214565b506102a46102925f600101610234565b61029e60018001610234565b90610255565b90565b6102af610214565b506102b95f610234565b90565b5f1b90565b906102cd5f19916102bc565b9181191691161790565b90565b6102ee6102e96102f39261007e565b6102d7565b61007e565b90565b90565b9061030e610309610315926102da565b6102f6565b82546102c1565b9055565b90565b61033061032b61033592610319565b6102d7565b61007e565b90565b61034761034d9193929361007e565b9261007e565b9161035983820261007e565b92818404149015171561036857565b610241565b6103bf6103b16103c59261037f610214565b5061039561038c5f610234565b5f6001016102f9565b6103a281600180016102f9565b6103ac600261031c565b610338565b6103ba5f610234565b610255565b5f6102f9565b6103ce5f610234565b6104047fc081b7755956fdb9d6a5482bb04a62dbb62ad944141e7ff6ff2adad34bb1efb9916103fb610061565b9182918261008e565b0390a16104105f610234565b90565b61042761042261042c92610183565b6102d7565b610183565b90565b61043890610413565b90565b6104449061042f565b90565b61045090610413565b90565b61045c90610447565b90565b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b906104879061045f565b810190811067ffffffffffffffff8211176104a157604052565b610469565b60e01b90565b905051906104b98261010d565b565b906020828203126104d4576104d1915f016104ac565b90565b61006b565b5f0190565b6104e6610061565b3d5f823e3d90fd5b602061050d61050861052393610502610214565b5061043b565b610453565b6306661abd9061051b610061565b9384926104a6565b82528180610533600482016104d9565b03915afa908115610577575f91610549575b5090565b61056a915060203d8111610570575b610562818361047d565b8101906104bb565b5f610545565b503d610558565b6104de56"
+            },
+            "methodIdentifiers": {
+              "bump(uint256)": "b20eb4c4",
+              "count()": "06661abd",
+              "countOf(address)": "f8977e96",
+              "lastSum()": "000d02cd"
+            }
+          },
+          "ir": "\n/// @use-src 0:\"testdata/differential/imports.sol\", 1:\"testdata/differential/imports_base.sol\"\nobject \"Imports_78\" {\n    code {\n        /// @src 0:248:778  \"contract Imports is Counter {...\"\n        mstore(64, memoryguard(128))\n        if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n\n        constructor_Imports_78()\n\n        let _1 := allocate_unbounded()\n        codecopy(_1, dataoffset(\"Imports_78_deployed\"), datasize(\"Imports_78_deployed\"))\n\n        return(_1, datasize(\"Imports_78_deployed\"))\n\n        function allocate_unbounded() -> memPtr {\n            memPtr := mload(64)\n        }\n\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n            revert(0, 0)\n        }\n\n        /// @src 0:248:778  \"contract Imports is Counter {...\"\n        function constructor_Imports_78() {\n\n            /// @src 0:248:778  \"contract Imports is Counter {...\"\n            constructor_Counter_118()\n\n        }\n        /// @src 0:248:778  \"contract Imports is Counter {...\"\n\n        /// @src 1:354:550  \"abstract contract Counter is ICounter {...\"\n        function constructor_Counter_118() {\n\n            /// @src 1:354:550  \"abstract contract Counter is ICounter {...\"\n            constructor_ICounter_95()\n\n        }\n        /// @src 0:248:778  \"contract Imports is Counter {...\"\n\n        /// @src 1:242:352  \"interface ICounter {...\"\n        function constructor_ICounter_95() {\n\n            /// @src 1:242:352  \"interface ICounter {...\"\n\n        }\n        /// @src 0:248:778  \"contract Imports is Counter {...\"\n\n    }\n    /// @use-src 0:\"testdata/differential/imports.sol\"\n    object \"Imports_78_deployed\" {\n        code {\n            /// @src 0:248:778  \"contract Imports is Counter {...\"\n            mstore(64, memoryguard(128))\n\n            if iszero(lt(calldatasize(), 4))\n            {\n                let selector := shift_right_224_unsigned(calldataload(0))\n                switch selector\n\n                case 0x000d02cd\n                {\n                    // lastSum()\n\n                    external_fun_lastSum_63()\n                }\n\n                case 0x06661abd\n                {\n                    // count()\n\n                    external_fun_count_18()\n                }\n\n                case 0xb20eb4c4\n                {\n                    // bump(uint256)\n\n                    external_fun_bump_51()\n                }\n\n                case 0xf8977e96\n                {\n                    // countOf(address)\n\n                    external_fun_countOf_77()\n                }\n\n                default {}\n            }\n\n            revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n\n            function shift_right_224_unsigned(value) -> newValue {\n                newValue :=\n\n                shr(224, value)\n\n            }\n\n            function allocate_unbounded() -> memPtr {\n                memPtr := mload(64)\n            }\n\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n                revert(0, 0)\n            }\n\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() {\n                revert(0, 0)\n            }\n\n            function abi_decode_tuple_(headStart, dataEnd)   {\n                if slt(sub(dataEnd, headStart), 0) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n            }\n\n            function cleanup_t_uint256(value) -> cleaned {\n                cleaned := value\n            }\n\n            function abi_encode_t_uint256_to_t_uint256_fromStack(value, pos) {\n                mstore(pos, cleanup_t_uint256(value))\n            }\n\n            function abi_encode_tuple_t_uint256__to_t_uint256__fromStack(headStart , value0) -> tail {\n                tail := add(headStart, 32)\n\n                abi_encode_t_uint256_to_t_uint256_fromStack(value0,  add(headStart, 0))\n\n            }\n\n            function external_fun_lastSum_63() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                abi_decode_tuple_(4, calldatasize())\n                let ret_0 :=  fun_lastSum_63()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_uint256__to_t_uint256__fromStack(memPos , ret_0)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function external_fun_count_18() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                abi_decode_tuple_(4, calldatasize())\n                let ret_0 :=  fun_count_18()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_uint256__to_t_uint256__fromStack(memPos , ret_0)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() {\n                revert(0, 0)\n            }\n\n            function validator_revert_t_uint256(value) {\n                if iszero(eq(value, cleanup_t_uint256(value))) { revert(0, 0) }\n            }\n\n            function abi_decode_t_uint256(offset, end) -> value {\n                value := calldataload(offset)\n                validator_revert_t_uint256(value)\n            }\n\n            function abi_decode_tuple_t_uint256(headStart, dataEnd) -> value0 {\n                if slt(sub(dataEnd, headStart), 32) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n                {\n\n                    let offset := 0\n\n                    value0 := abi_decode_t_uint256(add(headStart, offset), dataEnd)\n                }\n\n            }\n\n            function external_fun_bump_51() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                let param_0 :=  abi_decode_tuple_t_uint256(4, calldatasize())\n                let ret_0 :=  fun_bump_51(param_0)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_uint256__to_t_uint256__fromStack(memPos , ret_0)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function cleanup_t_uint160(value) -> cleaned {\n                cleaned := and(value, 0xffffffffffffffffffffffffffffffffffffffff)\n            }\n\n            function cleanup_t_address(value) -> cleaned {\n                cleaned := cleanup_t_uint160(value)\n            }\n\n            function validator_revert_t_address(value) {\n                if iszero(eq(value, cleanup_t_address(value))) { revert(0, 0) }\n            }\n\n            function abi_decode_t_address(offset, end) -> value {\n                value := calldataload(offset)\n                validator_revert_t_address(value)\n            }\n\n            function abi_decode_tuple_t_address(headStart, dataEnd) -> value0 {\n                if slt(sub(dataEnd, headStart), 32) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n                {\n\n                    let offset := 0\n\n                    value0 := abi_decode_t_address(add(headStart, offset), dataEnd)\n                }\n\n            }\n\n            function external_fun_countOf_77() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                let param_0 :=  abi_decode_tuple_t_address(4, calldatasize())\n                let ret_0 :=  fun_countOf_77(param_0)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_uint256__to_t_uint256__fromStack(memPos , ret_0)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74() {\n                revert(0, 0)\n            }\n\n            function zero_value_for_split_t_uint256() -> ret {\n                ret := 0\n            }\n\n            function shift_right_0_unsigned(value) -> newValue {\n                newValue :=\n\n                shr(0, value)\n\n            }\n\n            function cleanup_from_storage_t_uint256(value) -> cleaned {\n                cleaned := value\n            }\n\n            function extract_from_storage_value_offset_0_t_uint256(slot_value) -> value {\n                value := cleanup_from_storage_t_uint256(shift_right_0_unsigned(slot_value))\n            }\n\n            function read_from_storage_split_offset_0_t_uint256(slot) -> value {\n                value := extract_from_storage_value_offset_0_t_uint256(sload(slot))\n\n            }\n\n            function panic_error_0x11() {\n                mstore(0, 35408467139433450592217433187231851964531694900788300625387963629091585785856)\n                mstore(4, 0x11)\n                revert(0, 0x24)\n            }\n\n            function checked_add_t_uint256(x, y) -> sum {\n                x := cleanup_t_uint256(x)\n                y := cleanup_t_uint256(y)\n                sum := add(x, y)\n\n                if gt(x, sum) { panic_error_0x11() }\n\n            }\n\n            /// @ast-id 63\n            /// @src 0:565:655  \"function lastSum() external view returns (uint256) {...\"\n            function fun_lastSum_63() -> var__54 {\n                /// @src 0:607:614  \"uint256\"\n                let zero_t_uint256_1 := zero_value_for_split_t_uint256()\n                var__54 := zero_t_uint256_1\n\n                /// @src 0:633:637  \"last\"\n                let _2_slot := 0x01\n                let expr_56_slot := _2_slot\n                /// @src 0:633:639  \"last.x\"\n                let _3 := add(expr_56_slot, 0)\n                let _4 := read_from_storage_split_offset_0_t_uint256(_3)\n                let expr_57 := _4\n                /// @src 0:642:646  \"last\"\n                let _5_slot := 0x01\n                let expr_58_slot := _5_slot\n                /// @src 0:642:648  \"last.y\"\n                let _6 := add(expr_58_slot, 1)\n                let _7 := read_from_storage_split_offset_0_t_uint256(_6)\n                let expr_59 := _7\n                /// @src 0:633:648  \"last.x + last.y\"\n                let expr_60 := checked_add_t_uint256(expr_57, expr_59)\n\n                /// @src 0:626:648  \"return last.x + last.y\"\n                var__54 := expr_60\n                leave\n\n            }\n            /// @src 0:248:778  \"contract Imports is Counter {...\"\n\n            /// @ast-id 18\n            /// @src 0:308:382  \"function count() external view returns (uint256) {...\"\n            function fun_count_18() -> var__13 {\n                /// @src 0:348:355  \"uint256\"\n                let zero_t_uint256_8 := zero_value_for_split_t_uint256()\n                var__13 := zero_t_uint256_8\n\n                /// @src 0:374:375  \"n\"\n                let _9 := read_from_storage_split_offset_0_t_uint256(0x00)\n                let expr_15 := _9\n                /// @src 0:367:375  \"return n\"\n                var__13 := expr_15\n                leave\n\n            }\n            /// @src 0:248:778  \"contract Imports is Counter {...\"\n\n            function shift_left_0(value) -> newValue {\n                newValue :=\n\n                shl(0, value)\n\n            }\n\n            function update_byte_slice_32_shift_0(value, toInsert) -> result {\n                let mask := 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\n                toInsert := shift_left_0(toInsert)\n                value := and(value, not(mask))\n                result := or(value, and(toInsert, mask))\n            }\n\n            function identity(value) -> ret {\n                ret := value\n            }\n\n            function convert_t_uint256_to_t_uint256(value) -> converted {\n                converted := cleanup_t_uint256(identity(cleanup_t_uint256(value)))\n            }\n\n            function prepare_store_t_uint256(value) -> ret {\n                ret := value\n            }\n\n            function update_storage_value_offset_0_t_uint256_to_t_uint256(slot, value_0) {\n                let convertedValue_0 := convert_t_uint256_to_t_uint256(value_0)\n                sstore(slot, update_byte_slice_32_shift_0(sload(slot), prepare_store_t_uint256(convertedValue_0)))\n            }\n\n            function cleanup_t_rational_2_by_1(value) -> cleaned {\n                cleaned := value\n            }\n\n            function convert_t_rational_2_by_1_to_t_uint256(value) -> converted {\n                converted := cleanup_t_uint256(identity(cleanup_t_rational_2_by_1(value)))\n            }\n\n            function checked_mul_t_uint256(x, y) -> product {\n                x := cleanup_t_uint256(x)\n                y := cleanup_t_uint256(y)\n                let product_raw := mul(x, y)\n                product := cleanup_t_uint256(product_raw)\n\n                // overflow, if x != 0 and y != product/x\n                if iszero(\n                    or(\n                        iszero(x),\n                        eq(y, div(product, x))\n                    )\n                ) { panic_error_0x11() }\n\n            }\n\n            /// @ast-id 51\n            /// @src 0:388:559  \"function bump(uint256 by) public override returns (uint256) {...\"\n            function fun_bump_51(var_by_20) -> var__24 {\n                /// @src 0:439:446  \"uint256\"\n                let zero_t_uint256_10 := zero_value_for_split_t_uint256()\n                var__24 := zero_t_uint256_10\n\n                /// @src 0:467:468  \"n\"\n                let _11 := read_from_storage_split_offset_0_t_uint256(0x00)\n                let expr_29 := _11\n                /// @src 0:458:462  \"last\"\n                let _12_slot := 0x01\n                let expr_26_slot := _12_slot\n                /// @src 0:458:464  \"last.x\"\n                let _13 := add(expr_26_slot, 0)\n                /// @src 0:458:468  \"last.x = n\"\n                update_storage_value_offset_0_t_uint256_to_t_uint256(_13, expr_29)\n                let expr_30 := expr_29\n                /// @src 0:487:489  \"by\"\n                let _14 := var_by_20\n                let expr_35 := _14\n                /// @src 0:478:482  \"last\"\n                let _15_slot := 0x01\n                let expr_32_slot := _15_slot\n                /// @src 0:478:484  \"last.y\"\n                let _16 := add(expr_32_slot, 1)\n                /// @src 0:478:489  \"last.y = by\"\n                update_storage_value_offset_0_t_uint256_to_t_uint256(_16, expr_35)\n                let expr_36 := expr_35\n                /// @src 0:504:505  \"2\"\n                let expr_39 := 0x02\n                /// @src 0:508:510  \"by\"\n                let _17 := var_by_20\n                let expr_40 := _17\n                /// @src 0:504:510  \"2 * by\"\n                let expr_41 := checked_mul_t_uint256(convert_t_rational_2_by_1_to_t_uint256(expr_39), expr_40)\n\n                /// @src 0:499:510  \"n += 2 * by\"\n                let _18 := read_from_storage_split_offset_0_t_uint256(0x00)\n                let expr_42 := checked_add_t_uint256(_18, expr_41)\n\n                update_storage_value_offset_0_t_uint256_to_t_uint256(0x00, expr_42)\n                /// @src 0:532:533  \"n\"\n                let _19 := read_from_storage_split_offset_0_t_uint256(0x00)\n                let expr_45 := _19\n                /// @src 0:525:534  \"Bumped(n)\"\n                let _20 := 0xc081b7755956fdb9d6a5482bb04a62dbb62ad944141e7ff6ff2adad34bb1efb9\n                {\n                    let _21 := allocate_unbounded()\n                    let _22 := abi_encode_tuple_t_uint256__to_t_uint256__fromStack(_21 , expr_45)\n                    log1(_21, sub(_22, _21) , _20)\n                }/// @src 0:551:552  \"n\"\n                let _23 := read_from_storage_split_offset_0_t_uint256(0x00)\n                let expr_48 := _23\n                /// @src 0:544:552  \"return n\"\n                var__24 := expr_48\n                leave\n\n            }\n            /// @src 0:248:778  \"contract Imports is Counter {...\"\n\n            function convert_t_uint160_to_t_uint160(value) -> converted {\n                converted := cleanup_t_uint160(identity(cleanup_t_uint160(value)))\n            }\n\n            function convert_t_uint160_to_t_contract$_ICounter_$95(value) -> converted {\n                converted := convert_t_uint160_to_t_uint160(value)\n            }\n\n            function convert_t_address_to_t_contract$_ICounter_$95(value) -> converted {\n                converted := convert_t_uint160_to_t_contract$_ICounter_$95(value)\n            }\n\n            function convert_t_uint160_to_t_address(value) -> converted {\n                converted := convert_t_uint160_to_t_uint160(value)\n            }\n\n            function convert_t_contract$_ICounter_$95_to_t_address(value) -> converted {\n                converted := convert_t_uint160_to_t_address(value)\n            }\n\n            function revert_error_0cc013b6b3b6beabea4e3a74a6d380f0df81852ca99887912475e1f66b2a2c20() {\n                revert(0, 0)\n            }\n\n            function round_up_to_mul_of_32(value) -> result {\n                result := and(add(value, 31), not(31))\n            }\n\n            function panic_error_0x41() {\n                mstore(0, 35408467139433450592217433187231851964531694900788300625387963629091585785856)\n                mstore(4, 0x41)\n                revert(0, 0x24)\n            }\n\n            function finalize_allocation(memPtr, size) {\n                let newFreePtr := add(memPtr, round_up_to_mul_of_32(size))\n                // protect against overflow\n                if or(gt(newFreePtr, 0xffffffffffffffff), lt(newFreePtr, memPtr)) { panic_error_0x41() }\n                mstore(64, newFreePtr)\n            }\n\n            function shift_left_224(value) -> newValue {\n                newValue :=\n\n                shl(224, value)\n\n            }\n\n            function abi_decode_t_uint256_fromMemory(offset, end) -> value {\n                value := mload(offset)\n                validator_revert_t_uint256(value)\n            }\n\n            function abi_decode_tuple_t_uint256_fromMemory(headStart, dataEnd) -> value0 {\n                if slt(sub(dataEnd, headStart), 32) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n                {\n\n                    let offset := 0\n\n                    value0 := abi_decode_t_uint256_fromMemory(add(headStart, offset), dataEnd)\n                }\n\n            }\n\n            function abi_encode_tuple__to__fromStack(headStart ) -> tail {\n                tail := add(headStart, 0)\n\n            }\n\n            function revert_forward_1() {\n                let pos := allocate_unbounded()\n                returndatacopy(pos, 0, returndatasize())\n                revert(pos, returndatasize())\n            }\n\n            /// @ast-id 77\n            /// @src 0:661:776  \"function countOf(address counter) external view returns (uint256) {...\"\n            function fun_countOf_77(var_counter_65) -> var__68 {\n                /// @src 0:718:725  \"uint256\"\n                let zero_t_uint256_24 := zero_value_for_split_t_uint256()\n                var__68 := zero_t_uint256_24\n\n                /// @src 0:753:760  \"counter\"\n                let _25 := var_counter_65\n                let expr_71 := _25\n                /// @src 0:744:761  \"ICounter(counter)\"\n                let expr_72_address := convert_t_address_to_t_contract$_ICounter_$95(expr_71)\n                /// @src 0:744:767  \"ICounter(counter).count\"\n                let expr_73_address := convert_t_contract$_ICounter_$95_to_t_address(expr_72_address)\n                let expr_73_functionSelector := 0x06661abd\n                /// @src 0:744:769  \"ICounter(counter).count()\"\n\n                // storage for arguments and returned data\n                let _26 := allocate_unbounded()\n                mstore(_26, shift_left_224(expr_73_functionSelector))\n                let _27 := abi_encode_tuple__to__fromStack(add(_26, 4) )\n\n                let _28 := staticcall(gas(), expr_73_address,  _26, sub(_27, _26), _26, 32)\n\n                if iszero(_28) { revert_forward_1() }\n\n                let expr_74\n                if _28 {\n\n                    let _29 := 32\n\n                    if gt(_29, returndatasize()) {\n                        _29 := returndatasize()\n                    }\n\n                    // update freeMemoryPointer according to dynamic return size\n                    finalize_allocation(_26, _29)\n\n                    // decode return parameters from external try-call into retVars\n                    expr_74 :=  abi_decode_tuple_t_uint256_fromMemory(_26, add(_26, _29))\n                }\n                /// @src 0:737:769  \"return ICounter(counter).count()\"\n                var__68 := expr_74\n                leave\n\n            }\n            /// @src 0:248:778  \"contract Imports is Counter {...\"\n\n        }\n\n        data \".metadata\" hex\"\"\n    }\n\n}\n\n",
+          "irOptimized": "/// @use-src 0:\"testdata/differential/imports.sol\", 1:\"testdata/differential/imports_base.sol\"\nobject \"Imports_78\" {\n    code {\n        {\n            /// @src 0:248:778  \"contract Imports is Counter {...\"\n            mstore(64, memoryguard(0x80))\n            if callvalue()\n            {\n                revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            }\n            let _1 := allocate_unbounded()\n            codecopy(_1, dataoffset(\"Imports_78_deployed\"), datasize(\"Imports_78_deployed\"))\n            return(_1, datasize(\"Imports_78_deployed\"))\n        }\n        function allocate_unbounded() -> memPtr\n        { memPtr := mload(64) }\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n        { revert(0, 0) }\n    }\n    /// @use-src 0:\"testdata/differential/imports.sol\"\n    object \"Imports_78_deployed\" {\n        code {\n            {\n                /// @src 0:248:778  \"contract Imports is Counter {...\"\n                mstore(64, memoryguard(0x80))\n                if iszero(lt(calldatasize(), 4))\n                {\n                    let selector := shift_right_unsigned(calldataload(0))\n                    switch selector\n                    case 0x000d02cd { external_fun_lastSum() }\n                    case 0x06661abd { external_fun_count() }\n                    case 0xb20eb4c4 { external_fun_bump() }\n                    case 0xf8977e96 { external_fun_countOf() }\n                    default { }\n                }\n                revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            }\n            function shift_right_unsigned(value) -> newValue\n            { newValue := shr(224, value) }\n            function allocate_unbounded() -> memPtr\n            { memPtr := mload(64) }\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            { revert(0, 0) }\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n            { revert(0, 0) }\n            function abi_decode(headStart, dataEnd)\n            {\n                if slt(sub(dataEnd, headStart), 0)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n            }\n            function cleanup_uint256(value) -> cleaned\n            { cleaned := value }\n            function abi_encode_uint256_to_uint256(value, pos)\n            {\n                mstore(pos, cleanup_uint256(value))\n            }\n            function abi_encode_uint256(headStart, value0) -> tail\n            {\n                tail := add(headStart, 32)\n                abi_encode_uint256_to_uint256(value0, add(headStart, 0))\n            }\n            function external_fun_lastSum()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                abi_decode(4, calldatasize())\n                let ret := fun_lastSum()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_uint256(memPos, ret)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function external_fun_count()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                abi_decode(4, calldatasize())\n                let ret := fun_count()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_uint256(memPos, ret)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function validator_revert_uint256(value)\n            {\n                if iszero(eq(value, cleanup_uint256(value))) { revert(0, 0) }\n            }\n            function abi_decode_uint256(offset, end) -> value\n            {\n                value := calldataload(offset)\n                validator_revert_uint256(value)\n            }\n            function abi_decode_tuple_uint256(headStart, dataEnd) -> value0\n            {\n                if slt(sub(dataEnd, headStart), 32)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n                let offset := 0\n                value0 := abi_decode_uint256(add(headStart, offset), dataEnd)\n            }\n            function external_fun_bump()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                let param := abi_decode_tuple_uint256(4, calldatasize())\n                let ret := fun_bump(param)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_uint256(memPos, ret)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function cleanup_uint160(value) -> cleaned\n            {\n                cleaned := and(value, sub(shl(160, 1), 1))\n            }\n            function cleanup_address(value) -> cleaned\n            {\n                cleaned := cleanup_uint160(value)\n            }\n            function validator_revert_address(value)\n            {\n                if iszero(eq(value, cleanup_address(value))) { revert(0, 0) }\n            }\n            function abi_decode_address(offset, end) -> value\n            {\n                value := calldataload(offset)\n                validator_revert_address(value)\n            }\n            function abi_decode_tuple_address(headStart, dataEnd) -> value0\n            {\n                if slt(sub(dataEnd, headStart), 32)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n                let offset := 0\n                value0 := abi_decode_address(add(headStart, offset), dataEnd)\n            }\n            function external_fun_countOf()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                let param := abi_decode_tuple_address(4, calldatasize())\n                let ret := fun_countOf(param)\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_uint256(memPos, ret)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            { revert(0, 0) }\n            function zero_value_for_split_uint256() -> ret\n            { ret := 0 }\n            function shift_right_0_unsigned(value) -> newValue\n            { newValue := shr(0, value) }\n            function cleanup_from_storage_uint256(value) -> cleaned\n            { cleaned := value }\n            function extract_from_storage_value_offset_uint256(slot_value) -> value\n            {\n                value := cleanup_from_storage_uint256(shift_right_0_unsigned(slot_value))\n            }\n            function read_from_storage_split_offset_uint256(slot) -> value\n            {\n                value := extract_from_storage_value_offset_uint256(sload(slot))\n            }\n            function panic_error_0x11()\n            {\n                mstore(0, shl(224, 0x4e487b71))\n                mstore(4, 0x11)\n                revert(0, 0x24)\n            }\n            function checked_add_uint256(x, y) -> sum\n            {\n                x := cleanup_uint256(x)\n                y := cleanup_uint256(y)\n                sum := add(x, y)\n                if gt(x, sum) { panic_error_0x11() }\n            }\n            /// @ast-id 63 @src 0:565:655  \"function lastSum() external view returns (uint256) {...\"\n            function fun_lastSum() -> var\n            {\n                /// @src 0:607:614  \"uint256\"\n                let zero_uint256 := zero_value_for_split_uint256()\n                var := zero_uint256\n                /// @src 0:633:637  \"last\"\n                let _2_slot := 0x01\n                let expr_slot := _2_slot\n                /// @src 0:633:639  \"last.x\"\n                let _1 := add(expr_slot, 0)\n                let _2 := read_from_storage_split_offset_uint256(_1)\n                let expr := _2\n                /// @src 0:642:646  \"last\"\n                let _5_slot := 0x01\n                let expr_58_slot := _5_slot\n                /// @src 0:642:648  \"last.y\"\n                let _3 := add(expr_58_slot, 1)\n                let _4 := read_from_storage_split_offset_uint256(_3)\n                let expr_1 := _4\n                /// @src 0:633:648  \"last.x + last.y\"\n                let expr_2 := checked_add_uint256(expr, expr_1)\n                /// @src 0:626:648  \"return last.x + last.y\"\n                var := expr_2\n                leave\n            }\n            /// @ast-id 18 @src 0:308:382  \"function count() external view returns (uint256) {...\"\n            function fun_count() -> var_\n            {\n                /// @src 0:348:355  \"uint256\"\n                let zero_uint256 := zero_value_for_split_uint256()\n                var_ := zero_uint256\n                /// @src 0:374:375  \"n\"\n                let _1 := read_from_storage_split_offset_uint256(0x00)\n                let expr := _1\n                /// @src 0:367:375  \"return n\"\n                var_ := expr\n                leave\n            }\n            /// @src 0:248:778  \"contract Imports is Counter {...\"\n            function shift_left(value) -> newValue\n            { newValue := shl(0, value) }\n            function update_byte_slice_shift(value, toInsert) -> result\n            {\n                let mask := not(0)\n                toInsert := shift_left(toInsert)\n                value := and(value, not(mask))\n                result := or(value, and(toInsert, mask))\n            }\n            function identity(value) -> ret\n            { ret := value }\n            function convert_uint256_to_uint256(value) -> converted\n            {\n                converted := cleanup_uint256(identity(cleanup_uint256(value)))\n            }\n            function prepare_store_uint256(value) -> ret\n            { ret := value }\n            function update_storage_value_offset_uint256_to_uint256(slot, value)\n            {\n                let convertedValue := convert_uint256_to_uint256(value)\n                sstore(slot, update_byte_slice_shift(sload(slot), prepare_store_uint256(convertedValue)))\n            }\n            function cleanup_rational_by(value) -> cleaned\n            { cleaned := value }\n            function convert_rational_by_to_uint256(value) -> converted\n            {\n                converted := cleanup_uint256(identity(cleanup_rational_by(value)))\n            }\n            function checked_mul_uint256(x, y) -> product\n            {\n                x := cleanup_uint256(x)\n                y := cleanup_uint256(y)\n                let product_raw := mul(x, y)\n                product := cleanup_uint256(product_raw)\n                if iszero(or(iszero(x), eq(y, div(product, x)))) { panic_error_0x11() }\n            }\n            /// @ast-id 51 @src 0:388:559  \"function bump(uint256 by) public override returns (uint256) {...\"\n            function fun_bump(var_by) -> var\n            {\n                /// @src 0:439:446  \"uint256\"\n                let zero_uint256 := zero_value_for_split_uint256()\n                var := zero_uint256\n                /// @src 0:467:468  \"n\"\n                let _1 := read_from_storage_split_offset_uint256(0x00)\n                let expr := _1\n                /// @src 0:458:462  \"last\"\n                let _slot := 0x01\n                let expr_26_slot := _slot\n                /// @src 0:458:464  \"last.x\"\n                let _2 := add(expr_26_slot, 0)\n                /// @src 0:458:468  \"last.x = n\"\n                update_storage_value_offset_uint256_to_uint256(_2, expr)\n                /// @src 0:487:489  \"by\"\n                let _3 := var_by\n                let expr_1 := _3\n                /// @src 0:478:482  \"last\"\n                let _15_slot := 0x01\n                let expr_32_slot := _15_slot\n                /// @src 0:478:484  \"last.y\"\n                let _4 := add(expr_32_slot, 1)\n                /// @src 0:478:489  \"last.y = by\"\n                update_storage_value_offset_uint256_to_uint256(_4, expr_1)\n                /// @src 0:504:505  \"2\"\n                let expr_2 := 0x02\n                /// @src 0:508:510  \"by\"\n                let _5 := var_by\n                let expr_3 := _5\n                /// @src 0:504:510  \"2 * by\"\n                let expr_4 := checked_mul_uint256(convert_rational_by_to_uint256(expr_2), expr_3)\n                /// @src 0:499:510  \"n += 2 * by\"\n                let _6 := read_from_storage_split_offset_uint256(0x00)\n                let expr_5 := checked_add_uint256(_6, expr_4)\n                update_storage_value_offset_uint256_to_uint256(0x00, expr_5)\n                /// @src 0:532:533  \"n\"\n                let _7 := read_from_storage_split_offset_uint256(0x00)\n                let expr_6 := _7\n                /// @src 0:525:534  \"Bumped(n)\"\n                let _8 := 0xc081b7755956fdb9d6a5482bb04a62dbb62ad944141e7ff6ff2adad34bb1efb9\n                let _9 := allocate_unbounded()\n                let _10 := abi_encode_uint256(_9, expr_6)\n                log1(_9, sub(_10, _9), _8)\n                /// @src 0:551:552  \"n\"\n                let _11 := read_from_storage_split_offset_uint256(0x00)\n                let expr_7 := _11\n                /// @src 0:544:552  \"return n\"\n                var := expr_7\n                leave\n            }\n            /// @src 0:248:778  \"contract Imports is Counter {...\"\n            function convert_uint160_to_uint160(value) -> converted\n            {\n                converted := cleanup_uint160(identity(cleanup_uint160(value)))\n            }\n            function convert_uint160_to_contract_ICounter(value) -> converted\n            {\n                converted := convert_uint160_to_uint160(value)\n            }\n            function convert_address_to_contract_ICounter(value) -> converted\n            {\n                converted := convert_uint160_to_contract_ICounter(value)\n            }\n            function convert_uint160_to_address(value) -> converted\n            {\n                converted := convert_uint160_to_uint160(value)\n            }\n            function convert_contract_ICounter_to_address(value) -> converted\n            {\n                converted := convert_uint160_to_address(value)\n            }\n            function round_up_to_mul_of(value) -> result\n            {\n                result := and(add(value, 31), not(31))\n            }\n            function panic_error_0x41()\n            {\n                mstore(0, shl(224, 0x4e487b71))\n                mstore(4, 0x41)\n                revert(0, 0x24)\n            }\n            function finalize_allocation(memPtr, size)\n            {\n                let newFreePtr := add(memPtr, round_up_to_mul_of(size))\n                if or(gt(newFreePtr, 0xffffffffffffffff), lt(newFreePtr, memPtr)) { panic_error_0x41() }\n                mstore(64, newFreePtr)\n            }\n            function shift_left_224(value) -> newValue\n            { newValue := shl(224, value) }\n            function abi_decode_t_uint256_fromMemory(offset, end) -> value\n            {\n                value := mload(offset)\n                validator_revert_uint256(value)\n            }\n            function abi_decode_uint256_fromMemory(headStart, dataEnd) -> value0\n            {\n                if slt(sub(dataEnd, headStart), 32)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n                let offset := 0\n                value0 := abi_decode_t_uint256_fromMemory(add(headStart, offset), dataEnd)\n            }\n            function abi_encode_tuple(headStart) -> tail\n            { tail := add(headStart, 0) }\n            function revert_forward()\n            {\n                let pos := allocate_unbounded()\n                returndatacopy(pos, 0, returndatasize())\n                revert(pos, returndatasize())\n            }\n            /// @ast-id 77 @src 0:661:776  \"function countOf(address counter) external view returns (uint256) {...\"\n            function fun_countOf(var_counter) -> var\n            {\n                /// @src 0:718:725  \"uint256\"\n                let zero_t_uint256 := zero_value_for_split_uint256()\n                var := zero_t_uint256\n                /// @src 0:753:760  \"counter\"\n                let _1 := var_counter\n                let expr := _1\n                /// @src 0:744:761  \"ICounter(counter)\"\n                let expr_address := convert_address_to_contract_ICounter(expr)\n                /// @src 0:744:767  \"ICounter(counter).count\"\n                let expr_73_address := convert_contract_ICounter_to_address(expr_address)\n                let expr_functionSelector := 0x06661abd\n                /// @src 0:744:769  \"ICounter(counter).count()\"\n                let _2 := allocate_unbounded()\n                mstore(_2, shift_left_224(expr_functionSelector))\n                let _3 := abi_encode_tuple(add(_2, 4))\n                let _4 := staticcall(gas(), expr_73_address, _2, sub(_3, _2), _2, 32)\n                if iszero(_4) { revert_forward() }\n                let expr_1\n                if _4\n                {\n                    let _5 := 32\n                    if gt(_5, returndatasize()) { _5 := returndatasize() }\n                    finalize_allocation(_2, _5)\n                    expr_1 := abi_decode_uint256_fromMemory(_2, add(_2, _5))\n                }\n                /// @src 0:737:769  \"return ICounter(counter).count()\"\n                var := expr_1\n                leave\n            }\n        }\n        data \".metadata\" hex\"\"\n    }\n}\n",
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 99,
+                "contract": "testdata/differential/imports.sol:Imports",
+                "label": "n",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_uint256"
+              },
+              {
+                "astId": 10,
+                "contract": "testdata/differential/imports.sol:Imports",
+                "label": "last",
+                "offset": 0,
+                "slot": "1",
+                "type": "t_struct(Point)85_storage"
+              }
+            ],
+            "types": {
+              "t_struct(Point)85_storage": {
+                "encoding": "inplace",
+                "label": "struct Point",
+                "members": [
+                  {
+                    "astId": 82,
+                    "contract": "testdata/differential/imports.sol:Imports",
+                    "label": "x",
+                    "offset": 0,
+                    "slot": "0",
+                    "type": "t_uint256"
+                  },
+                  {
+                    "astId": 84,
+                    "contract": "testdata/differential/imports.sol:Imports",
+                    "label": "y",
+                    "offset": 0,
+                    "slot": "1",
+                    "type": "t_uint256"
+                  }
+                ],
+                "numberOfBytes": "64"
+              },
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      },
+      "testdata/differential/imports_base.sol": {
+        "Counter": {
+          "abi": [
+            {
+              "anonymous": false,
+              "inputs": [
+                {
+                  "indexed": false,
+                  "internalType": "uint256",
+                  "name": "count",
+                  "type": "uint256"
+                }
+              ],
+              "name": "Bumped",
+              "type": "event"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "by",
+                  "type": "uint256"
+                }
+              ],
+              "name": "bump",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "count",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": ""
+            },
+            "deployedBytecode": {
+              "object": ""
+            },
+            "methodIdentifiers": {
+              "bump(uint256)": "b20eb4c4",
+              "count()": "06661abd"
+            }
+          },
+          "ir": "",
+          "irOptimized": "",
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 99,
+                "contract": "testdata/differential/imports_base.sol:Counter",
+                "label": "n",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_uint256"
+              }
+            ],
+            "types": {
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        },
+        "ICounter": {
+          "abi": [
+            {
+              "anonymous": false,
+              "inputs": [
+                {
+                  "indexed": false,
+                  "internalType": "uint256",
+                  "name": "count",
+                  "type": "uint256"
+                }
+              ],
+              "name": "Bumped",
+              "type": "event"
+            },
+            {
+              "inputs": [],
+              "name": "count",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": ""
+            },
+            "deployedBytecode": {
+              "object": ""
+            },
+            "methodIdentifiers": {
+              "count()": "06661abd"
+            }
+          },
+          "ir": "",
+          "irOptimized": "",
+          "storageLayout": {
+            "storage": [],
+            "types": null
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/imports.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/imports.sol",
+          "exportedSymbols": {
+            "Counter": [
+              118
+            ],
+            "ICounter": [
+              95
+            ],
+            "Imports": [
+              78
+            ],
+            "Point": [
+              85
+            ]
+          },
+          "id": 79,
+          "license": "MIT",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "32:23:0"
+            },
+            {
+              "absolutePath": "testdata/differential/imports_base.sol",
+              "file": "./imports_base.sol",
+              "id": 5,
+              "nameLocation": "-1:-1:-1",
+              "nodeType": "ImportDirective",
+              "scope": 79,
+              "sourceUnit": 122,
+              "src": "57:60:0",
+              "symbolAliases": [
+                {
+                  "foreign": {
+                    "id": 2,
+                    "name": "Counter",
+                    "nodeType": "Identifier",
+                    "overloadedDeclarations": [],
+                    "referencedDeclaration": 118,
+                    "src": "65:7:0",
+                    "typeDescriptions": {}
+                  },
+                  "nameLocation": "-1:-1:-1"
+                },
+                {
+                  "foreign": {
+                    "id": 3,
+                    "name": "ICounter",
+                    "nodeType": "Identifier",
+                    "overloadedDeclarations": [],
+                    "referencedDeclaration": 95,
+                    "src": "74:8:0",
+                    "typeDescriptions": {}
+                  },
+                  "nameLocation": "-1:-1:-1"
+                },
+                {
+                  "foreign": {
+                    "id": 4,
+                    "name": "Point",
+                    "nodeType": "Identifier",
+                    "overloadedDeclarations": [],
+                    "referencedDeclaration": 85,
+                    "src": "84:5:0",
+                    "typeDescriptions": {}
+                  },
+                  "nameLocation": "-1:-1:-1"
+                }
+              ],
+              "unitAlias": ""
+            },
+            {
+              "abstract": false,
+              "baseContracts": [
+                {
+                  "baseName": {
+                    "id": 6,
+                    "name": "Counter",
+                    "nameLocations": [
+                      "268:7:0"
+                    ],
+                    "nodeType": "IdentifierPath",
+                    "referencedDeclaration": 118,
+                    "src": "268:7:0"
+                  },
+                  "id": 7,
+                  "nodeType": "InheritanceSpecifier",
+                  "src": "268:7:0"
+                }
+              ],
+              "canonicalName": "Imports",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 78,
+              "linearizedBaseContracts": [
+                78,
+                118,
+                95
+              ],
+              "name": "Imports",
+              "nameLocation": "257:7:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": false,
+                  "id": 10,
+                  "mutability": "mutable",
+                  "name": "last",
+                  "nameLocation": "297:4:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 78,
+                  "src": "282:19:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_Point_$85_storage",
+                    "typeString": "struct Point"
+                  },
+                  "typeName": {
+                    "id": 9,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 8,
+                      "name": "Point",
+                      "nameLocations": [
+                        "282:5:0"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 85,
+                      "src": "282:5:0"
+                    },
+                    "referencedDeclaration": 85,
+                    "src": "282:5:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_Point_$85_storage_ptr",
+                      "typeString": "struct Point"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "baseFunctions": [
+                    94
+                  ],
+                  "body": {
+                    "id": 17,
+                    "nodeType": "Block",
+                    "src": "357:25:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 15,
+                          "name": "n",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 99,
+                          "src": "374:1:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 14,
+                        "id": 16,
+                        "nodeType": "Return",
+                        "src": "367:8:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "06661abd",
+                  "id": 18,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "count",
+                  "nameLocation": "317:5:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 11,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "322:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 14,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 13,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 18,
+                        "src": "348:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 12,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "348:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "347:9:0"
+                  },
+                  "scope": 78,
+                  "src": "308:74:0",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "baseFunctions": [
+                    117
+                  ],
+                  "body": {
+                    "id": 50,
+                    "nodeType": "Block",
+                    "src": "448:111:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 30,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "id": 26,
+                              "name": "last",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 10,
+                              "src": "458:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Point_$85_storage",
+                                "typeString": "struct Point storage ref"
+                              }
+                            },
+                            "id": 28,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "463:1:0",
+                            "memberName": "x",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 82,
+                            "src": "458:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 29,
+                            "name": "n",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 99,
+                            "src": "467:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "458:10:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 31,
+                        "nodeType": "ExpressionStatement",
+                        "src": "458:10:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 36,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "id": 32,
+                              "name": "last",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 10,
+                              "src": "478:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Point_$85_storage",
+                                "typeString": "struct Point storage ref"
+                              }
+                            },
+                            "id": 34,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "483:1:0",
+                            "memberName": "y",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 84,
+                            "src": "478:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 35,
+                            "name": "by",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 20,
+                            "src": "487:2:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "478:11:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 37,
+                        "nodeType": "ExpressionStatement",
+                        "src": "478:11:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 42,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 38,
+                            "name": "n",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 99,
+                            "src": "499:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "+=",
+                          "rightHandSide": {
+                            "commonType": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            },
+                            "id": 41,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "leftExpression": {
+                              "hexValue": "32",
+                              "id": 39,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "number",
+                              "lValueRequested": false,
+                              "nodeType": "Literal",
+                              "src": "504:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_rational_2_by_1",
+                                "typeString": "int_const 2"
+                              },
+                              "value": "2"
+                            },
+                            "nodeType": "BinaryOperation",
+                            "operator": "*",
+                            "rightExpression": {
+                              "id": 40,
+                              "name": "by",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 20,
+                              "src": "508:2:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            "src": "504:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "499:11:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 43,
+                        "nodeType": "ExpressionStatement",
+                        "src": "499:11:0"
+                      },
+                      {
+                        "eventCall": {
+                          "arguments": [
+                            {
+                              "id": 45,
+                              "name": "n",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 99,
+                              "src": "532:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            }
+                          ],
+                          "expression": {
+                            "argumentTypes": [
+                              {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            ],
+                            "id": 44,
+                            "name": "Bumped",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 89,
+                            "src": "525:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_event_nonpayable$_t_uint256_$returns$__$",
+                              "typeString": "function (uint256)"
+                            }
+                          },
+                          "id": 46,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "525:9:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$__$",
+                            "typeString": "tuple()"
+                          }
+                        },
+                        "id": 47,
+                        "nodeType": "EmitStatement",
+                        "src": "520:14:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 48,
+                          "name": "n",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 99,
+                          "src": "551:1:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 25,
+                        "id": 49,
+                        "nodeType": "Return",
+                        "src": "544:8:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "b20eb4c4",
+                  "id": 51,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "bump",
+                  "nameLocation": "397:4:0",
+                  "nodeType": "FunctionDefinition",
+                  "overrides": {
+                    "id": 22,
+                    "nodeType": "OverrideSpecifier",
+                    "overrides": [],
+                    "src": "421:8:0"
+                  },
+                  "parameters": {
+                    "id": 21,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 20,
+                        "mutability": "mutable",
+                        "name": "by",
+                        "nameLocation": "410:2:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 51,
+                        "src": "402:10:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 19,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "402:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "401:12:0"
+                  },
+                  "returnParameters": {
+                    "id": 25,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 24,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 51,
+                        "src": "439:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 23,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "439:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "438:9:0"
+                  },
+                  "scope": 78,
+                  "src": "388:171:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 62,
+                    "nodeType": "Block",
+                    "src": "616:39:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "commonType": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          },
+                          "id": 60,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftExpression": {
+                            "expression": {
+                              "id": 56,
+                              "name": "last",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 10,
+                              "src": "633:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Point_$85_storage",
+                                "typeString": "struct Point storage ref"
+                              }
+                            },
+                            "id": 57,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "638:1:0",
+                            "memberName": "x",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 82,
+                            "src": "633:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "BinaryOperation",
+                          "operator": "+",
+                          "rightExpression": {
+                            "expression": {
+                              "id": 58,
+                              "name": "last",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 10,
+                              "src": "642:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Point_$85_storage",
+                                "typeString": "struct Point storage ref"
+                              }
+                            },
+                            "id": 59,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "647:1:0",
+                            "memberName": "y",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 84,
+                            "src": "642:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "633:15:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 55,
+                        "id": 61,
+                        "nodeType": "Return",
+                        "src": "626:22:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "000d02cd",
+                  "id": 63,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "lastSum",
+                  "nameLocation": "574:7:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 52,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "581:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 55,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 54,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 63,
+                        "src": "607:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 53,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "607:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "606:9:0"
+                  },
+                  "scope": 78,
+                  "src": "565:90:0",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 76,
+                    "nodeType": "Block",
+                    "src": "727:49:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "arguments": [],
+                          "expression": {
+                            "argumentTypes": [],
+                            "expression": {
+                              "arguments": [
+                                {
+                                  "id": 71,
+                                  "name": "counter",
+                                  "nodeType": "Identifier",
+                                  "overloadedDeclarations": [],
+                                  "referencedDeclaration": 65,
+                                  "src": "753:7:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_address",
+                                    "typeString": "address"
+                                  }
+                                }
+                              ],
+                              "expression": {
+                                "argumentTypes": [
+                                  {
+                                    "typeIdentifier": "t_address",
+                                    "typeString": "address"
+                                  }
+                                ],
+                                "id": 70,
+                                "name": "ICounter",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 95,
+                                "src": "744:8:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_type$_t_contract$_ICounter_$95_$",
+                                  "typeString": "type(contract ICounter)"
+                                }
+                              },
+                              "id": 72,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "kind": "typeConversion",
+                              "lValueRequested": false,
+                              "nameLocations": [],
+                              "names": [],
+                              "nodeType": "FunctionCall",
+                              "src": "744:17:0",
+                              "tryCall": false,
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_contract$_ICounter_$95",
+                                "typeString": "contract ICounter"
+                              }
+                            },
+                            "id": 73,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "762:5:0",
+                            "memberName": "count",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 94,
+                            "src": "744:23:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_external_view$__$returns$_t_uint256_$",
+                              "typeString": "function () view external returns (uint256)"
+                            }
+                          },
+                          "id": 74,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "744:25:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 69,
+                        "id": 75,
+                        "nodeType": "Return",
+                        "src": "737:32:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "f8977e96",
+                  "id": 77,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "countOf",
+                  "nameLocation": "670:7:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 66,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 65,
+                        "mutability": "mutable",
+                        "name": "counter",
+                        "nameLocation": "686:7:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 77,
+                        "src": "678:15:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_address",
+                          "typeString": "address"
+                        },
+                        "typeName": {
+                          "id": 64,
+                          "name": "address",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "678:7:0",
+                          "stateMutability": "nonpayable",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_address",
+                            "typeString": "address"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "677:17:0"
+                  },
+                  "returnParameters": {
+                    "id": 69,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 68,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 77,
+                        "src": "718:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 67,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "718:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "717:9:0"
+                  },
+                  "scope": 78,
+                  "src": "661:115:0",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 79,
+              "src": "248:530:0",
+              "usedErrors": [],
+              "usedEvents": [
+                89
+              ]
+            }
+          ],
+          "src": "32:747:0"
+        },
+        "id": 0
+      },
+      "testdata/differential/imports_base.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/imports_base.sol",
+          "exportedSymbols": {
+            "Counter": [
+              118
+            ],
+            "ICounter": [
+              95
+            ],
+            "Label": [
+              121
+            ],
+            "Point": [
+              85
+            ]
+          },
+          "id": 122,
+          "license": "MIT",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 80,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "32:23:1"
+            },
+            {
+              "canonicalName": "Point",
+              "id": 85,
+              "members": [
+                {
+                  "constant": false,
+                  "id": 82,
+                  "mutability": "mutable",
+                  "name": "x",
+                  "nameLocation": "221:1:1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 85,
+                  "src": "213:9:1",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 81,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "213:7:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 84,
+                  "mutability": "mutable",
+                  "name": "y",
+                  "nameLocation": "236:1:1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 85,
+                  "src": "228:9:1",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 83,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "228:7:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "name": "Point",
+              "nameLocation": "201:5:1",
+              "nodeType": "StructDefinition",
+              "scope": 122,
+              "src": "194:46:1",
+              "visibility": "public"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "ICounter",
+              "contractDependencies": [],
+              "contractKind": "interface",
+              "fullyImplemented": false,
+              "id": 95,
+              "linearizedBaseContracts": [
+                95
+              ],
+              "name": "ICounter",
+              "nameLocation": "252:8:1",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "anonymous": false,
+                  "eventSelector": "c081b7755956fdb9d6a5482bb04a62dbb62ad944141e7ff6ff2adad34bb1efb9",
+                  "id": 89,
+                  "name": "Bumped",
+                  "nameLocation": "273:6:1",
+                  "nodeType": "EventDefinition",
+                  "parameters": {
+                    "id": 88,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 87,
+                        "indexed": false,
+                        "mutability": "mutable",
+                        "name": "count",
+                        "nameLocation": "288:5:1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 89,
+                        "src": "280:13:1",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 86,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "280:7:1",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "279:15:1"
+                  },
+                  "src": "267:28:1"
+                },
+                {
+                  "functionSelector": "06661abd",
+                  "id": 94,
+                  "implemented": false,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "count",
+                  "nameLocation": "310:5:1",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 90,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "315:2:1"
+                  },
+                  "returnParameters": {
+                    "id": 93,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 92,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 94,
+                        "src": "341:7:1",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 91,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "341:7:1",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "340:9:1"
+                  },
+                  "scope": 95,
+                  "src": "301:49:1",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 122,
+              "src": "242:110:1",
+              "usedErrors": [],
+              "usedEvents": [
+                89
+              ]
+            },
+            {
+              "abstract": true,
+              "baseContracts": [
+                {
+                  "baseName": {
+                    "id": 96,
+                    "name": "ICounter",
+                    "nameLocations": [
+                      "383:8:1"
+                    ],
+                    "nodeType": "IdentifierPath",
+                    "referencedDeclaration": 95,
+                    "src": "383:8:1"
+                  },
+                  "id": 97,
+                  "nodeType": "InheritanceSpecifier",
+                  "src": "383:8:1"
+                }
+              ],
+              "canonicalName": "Counter",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": false,
+              "id": 118,
+              "linearizedBaseContracts": [
+                118,
+                95
+              ],
+              "name": "Counter",
+              "nameLocation": "372:7:1",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": false,
+                  "id": 99,
+                  "mutability": "mutable",
+                  "name": "n",
+                  "nameLocation": "415:1:1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 118,
+                  "src": "398:18:1",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 98,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "398:7:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "body": {
+                    "id": 116,
+                    "nodeType": "Block",
+                    "src": "482:66:1",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 108,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 106,
+                            "name": "n",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 99,
+                            "src": "492:1:1",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "+=",
+                          "rightHandSide": {
+                            "id": 107,
+                            "name": "by",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 101,
+                            "src": "497:2:1",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "492:7:1",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 109,
+                        "nodeType": "ExpressionStatement",
+                        "src": "492:7:1"
+                      },
+                      {
+                        "eventCall": {
+                          "arguments": [
+                            {
+                              "id": 111,
+                              "name": "n",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 99,
+                              "src": "521:1:1",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            }
+                          ],
+                          "expression": {
+                            "argumentTypes": [
+                              {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            ],
+                            "id": 110,
+                            "name": "Bumped",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 89,
+                            "src": "514:6:1",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_event_nonpayable$_t_uint256_$returns$__$",
+                              "typeString": "function (uint256)"
+                            }
+                          },
+                          "id": 112,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "514:9:1",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$__$",
+                            "typeString": "tuple()"
+                          }
+                        },
+                        "id": 113,
+                        "nodeType": "EmitStatement",
+                        "src": "509:14:1"
+                      },
+                      {
+                        "expression": {
+                          "id": 114,
+                          "name": "n",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 99,
+                          "src": "540:1:1",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 105,
+                        "id": 115,
+                        "nodeType": "Return",
+                        "src": "533:8:1"
+                      }
+                    ]
+                  },
+                  "functionSelector": "b20eb4c4",
+                  "id": 117,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "bump",
+                  "nameLocation": "432:4:1",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 102,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 101,
+                        "mutability": "mutable",
+                        "name": "by",
+                        "nameLocation": "445:2:1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 117,
+                        "src": "437:10:1",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 100,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "437:7:1",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "436:12:1"
+                  },
+                  "returnParameters": {
+                    "id": 105,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 104,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 117,
+                        "src": "473:7:1",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 103,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "473:7:1",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "472:9:1"
+                  },
+                  "scope": 118,
+                  "src": "423:125:1",
+                  "stateMutability": "nonpayable",
+                  "virtual": true,
+                  "visibility": "public"
+                }
+              ],
+              "scope": 122,
+              "src": "354:196:1",
+              "usedErrors": [],
+              "usedEvents": [
+                89
+              ]
+            },
+            {
+              "canonicalName": "Label",
+              "id": 121,
+              "members": [
+                {
+                  "constant": false,
+                  "id": 120,
+                  "mutability": "mutable",
+                  "name": "text",
+                  "nameLocation": "638:4:1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 121,
+                  "src": "631:11:1",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_string_storage_ptr",
+                    "typeString": "string"
+                  },
+                  "typeName": {
+                    "id": 119,
+                    "name": "string",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "631:6:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_string_storage_ptr",
+                      "typeString": "string"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "name": "Label",
+              "nameLocation": "619:5:1",
+              "nodeType": "StructDefinition",
+              "scope": 122,
+              "src": "612:33:1",
+              "visibility": "public"
+            }
+          ],
+          "src": "32:614:1"
+        },
+        "id": 1
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}
