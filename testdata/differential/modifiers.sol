@@ -88,7 +88,7 @@ contract Modifiers is ModifierBase {
     }
 
     function change() internal returns (uint256) {
-        data[0] = 0x42;
+        data = "B";
         return 0;
     }
 
