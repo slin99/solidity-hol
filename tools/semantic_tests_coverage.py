@@ -371,13 +371,18 @@ def signatures(node: dict[str, Any], by_id: dict[int, dict[str, Any]]
                ) -> list[tuple[dict[str, Any], dict[str, Any]]]:
     """The parameter lists the importer reads at a node, with their
     declarations: those of the error a revert names, and those of an
-    external function a member access calls."""
+    external function a call calls through a member access."""
     if node["nodeType"] == "RevertStatement":
         error = by_id.get(node["errorCall"]["expression"].get("referencedDeclaration"))
         return [] if error is None else [(error, error["parameters"])]
-    target = by_id.get(node.get("referencedDeclaration"))
+    if node["nodeType"] != "FunctionCall":
+        return []
+    callee = node["expression"]
+    if callee["nodeType"] == "FunctionCallOptions":
+        callee = callee["expression"]
+    target = by_id.get(callee.get("referencedDeclaration"))
     if (target is not None and target["nodeType"] == "FunctionDefinition"
-            and node["nodeType"] == "MemberAccess" and is_external(node)):
+            and callee["nodeType"] == "MemberAccess" and is_external(callee)):
         return [(target, target["parameters"]), (target, target["returnParameters"])]
     return []
 
@@ -731,7 +736,7 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
             name = name["expression"]
         callee = by_id.get(name.get("referencedDeclaration"), {})
         if callee.get("nodeType") == "FunctionDefinition":
-            expected.extend(zip(node["arguments"], callee["parameters"]["parameters"]))
+            expected.extend(arguments(node, callee["parameters"]["parameters"]))
         member = node["expression"]
         if (member.get("nodeType") == "MemberAccess" and member["memberName"] == "push"
                 and len(node["arguments"]) == 1):
@@ -745,11 +750,11 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
     elif kind == "EmitStatement":
         event = by_id.get(node["eventCall"]["expression"].get("referencedDeclaration"), {})
         if event.get("nodeType") == "EventDefinition":
-            expected.extend(zip(node["eventCall"]["arguments"], event["parameters"]["parameters"]))
+            expected.extend(arguments(node["eventCall"], event["parameters"]["parameters"]))
     elif kind == "RevertStatement":
         error = by_id.get(node["errorCall"]["expression"].get("referencedDeclaration"), {})
         if error.get("nodeType") == "ErrorDefinition":
-            expected.extend(zip(node["errorCall"]["arguments"], error["parameters"]["parameters"]))
+            expected.extend(arguments(node["errorCall"], error["parameters"]["parameters"]))
     found: list[str] = []
     for value, target in expected:
         value = unwrap(value)
@@ -763,6 +768,16 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
         if value_type.startswith("t_stringliteral_"):
             found.append("string literals as fixed-size bytes")
     return [Blocker(kind, feature, "elaboration") for feature in dict.fromkeys(found)]
+
+
+def arguments(call: dict[str, Any], parameters: list[dict[str, Any]]
+              ) -> list[tuple[dict[str, Any], dict[str, Any] | None]]:
+    """A call's arguments with the parameters they are given to, by name for
+    named arguments."""
+    if not call.get("names"):
+        return list(zip(call["arguments"], parameters))
+    named = {p["name"]: p for p in parameters}
+    return [(a, named.get(n)) for a, n in zip(call["arguments"], call["names"])]
 
 
 def unwrap(value: dict[str, Any] | None) -> dict[str, Any] | None:

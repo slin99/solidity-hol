@@ -68,14 +68,14 @@ The scan disagrees with the HOL run on 0 tests.
 | user-defined value types | `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `UserDefinedValueTypeDefinition`, `VariableDeclaration` | 52 | 5 | 33 |
 | constants | `VariableDeclaration` | 47 | 6 | 30 |
 | inline arrays | `TupleExpression` | 47 | 0 | 21 |
-| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `RevertStatement`, `VariableDeclaration`, `VariableDeclarationStatement` | 41 | 10 | 0 |
 | transient storage | `VariableDeclaration` | 41 | 7 | 0 |
 | conditional expressions | `Conditional` | 40 | 11 | 22 |
 | modifiers | `ModifierDefinition`, `ModifierInvocation`, `PlaceholderStatement` | 39 | 13 | 35 |
 | mappings | `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 39 | 3 | 0 |
+| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 10 | 0 |
 | aggregate array mutation | `MemberAccess` | 37 | 3 | 0 |
-| literals of non-integer types | `Assignment`, `BinaryOperation`, `FunctionCall`, `Literal`, `Return`, `RevertStatement`, `VariableDeclaration`, `VariableDeclarationStatement` | 33 | 2 | 0 |
-| named arguments | `FunctionCall` | 32 | 3 | 17 |
+| named arguments | `FunctionCall` | 32 | 4 | 17 |
+| literals of non-integer types | `Assignment`, `BinaryOperation`, `FunctionCall`, `Literal`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 32 | 2 | 0 |
 | bytes.concat and string.concat | `MemberAccess`, `TupleExpression` | 30 | 0 | 13 |
 | enums | `EnumDefinition`, `EnumValue`, `FunctionCall`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 29 | 3 | 25 |
 | tuples of literals | `TupleExpression` | 28 | 4 | 0 |

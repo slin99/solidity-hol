@@ -318,6 +318,53 @@ class ClassifyTests(unittest.TestCase):
             del derived["baseFunctions"]
             self.assertIn(32, coverage.scan({"t.sol": ast}))
 
+    def test_external_calls_in_overridden_functions_leave_signatures_unchecked(self) -> None:
+        parameter = dict(variable(83, type_identifier="t_array$_t_uint256_$dyn_calldata_ptr"),
+                         storageLocation="calldata")
+        target = dict(function(81, []), implemented=False, visibility="external",
+                      parameters={"nodeType": "ParameterList", "id": 82, "parameters": [parameter]},
+                      returnParameters={"nodeType": "ParameterList", "id": 84, "parameters": []})
+        target.pop("body")
+        interface = {"nodeType": "ContractDefinition", "id": 80, "contractKind": "interface",
+                     "abstract": False, "baseContracts": [], "linearizedBaseContracts": [80],
+                     "nodes": [target]}
+        member = {"nodeType": "MemberAccess", "id": 42, "memberName": "g", "referencedDeclaration": 81,
+                  "expression": {"nodeType": "Identifier", "id": 43, "name": "i",
+                                 "typeDescriptions": {"typeIdentifier": "t_contract$_I_$80"}},
+                  "typeDescriptions": {"typeIdentifier": "t_function_external_nonpayable$__$returns$__$"}}
+        call = {"nodeType": "ExpressionStatement", "id": 40, "expression": {
+            "nodeType": "FunctionCall", "id": 41, "kind": "functionCall", "names": [], "arguments": [],
+            "tryCall": False, "expression": member, "typeDescriptions": {"typeIdentifier": "t_tuple$__$"}}}
+        self.assertEqual(coverage.signatures(member, {81: target}), [])
+        base = {"nodeType": "ContractDefinition", "id": 50, "contractKind": "contract",
+                "abstract": False, "baseContracts": [], "linearizedBaseContracts": [50],
+                "nodes": [dict(function(60, [call]), virtual=True)]}
+        derived = dict(function(70, []), baseFunctions=[60])
+        ast = unit([derived])
+        ast["nodes"][0]["linearizedBaseContracts"] = [2, 50]
+        ast["nodes"][:0] = [interface, base]
+        self.assertNotIn(83, coverage.scan({"t.sol": ast}))
+        del derived["baseFunctions"]
+        self.assertIn(83, coverage.scan({"t.sol": ast}))
+
+    def test_named_arguments_are_paired_by_name(self) -> None:
+        def string(node_id):
+            return {"nodeType": "Literal", "id": node_id, "kind": "string", "value": "abcd",
+                    "typeDescriptions": {"typeIdentifier": "t_stringliteral_abcd"}}
+
+        def named(node_id, name, type_identifier):
+            return dict(variable(node_id, type_identifier=type_identifier), name=name)
+
+        error = {"nodeType": "ErrorDefinition", "id": 30, "name": "E",
+                 "parameters": {"nodeType": "ParameterList", "id": 31,
+                                "parameters": [named(32, "a", "t_bytes4"), named(33, "b", "t_string_memory_ptr")]}}
+        statement = revert(40, 30, [string(45)])
+        statement["errorCall"]["names"] = ["b"]
+        self.assertEqual(coverage.coerced_literals(statement, {30: error}), [])
+        statement["errorCall"]["names"] = ["a"]
+        self.assertEqual(coverage.coerced_literals(statement, {30: error}), [coverage.Blocker(
+            "RevertStatement", "string literals as fixed-size bytes", "elaboration")])
+
     def test_mapping_keys_parentheses_and_tuples_are_coerced(self) -> None:
         def string(node_id):
             return {"nodeType": "Literal", "id": node_id, "kind": "string", "value": "abcd",

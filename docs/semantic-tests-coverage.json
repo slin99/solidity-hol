@@ -291,22 +291,6 @@
       "tests": 47
     },
     {
-      "feature": "string literals as fixed-size bytes",
-      "first_rejection": 0,
-      "node_types": [
-        "Assignment",
-        "BinaryOperation",
-        "EmitStatement",
-        "FunctionCall",
-        "Return",
-        "RevertStatement",
-        "VariableDeclaration",
-        "VariableDeclarationStatement"
-      ],
-      "only_blocker": 10,
-      "tests": 41
-    },
-    {
       "feature": "transient storage",
       "first_rejection": 0,
       "node_types": [
@@ -348,6 +332,21 @@
       "tests": 39
     },
     {
+      "feature": "string literals as fixed-size bytes",
+      "first_rejection": 0,
+      "node_types": [
+        "Assignment",
+        "BinaryOperation",
+        "EmitStatement",
+        "FunctionCall",
+        "Return",
+        "VariableDeclaration",
+        "VariableDeclarationStatement"
+      ],
+      "only_blocker": 10,
+      "tests": 38
+    },
+    {
       "feature": "aggregate array mutation",
       "first_rejection": 0,
       "node_types": [
@@ -355,6 +354,15 @@
       ],
       "only_blocker": 3,
       "tests": 37
+    },
+    {
+      "feature": "named arguments",
+      "first_rejection": 17,
+      "node_types": [
+        "FunctionCall"
+      ],
+      "only_blocker": 4,
+      "tests": 32
     },
     {
       "feature": "literals of non-integer types",
@@ -365,20 +373,10 @@
         "FunctionCall",
         "Literal",
         "Return",
-        "RevertStatement",
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
       "only_blocker": 2,
-      "tests": 33
-    },
-    {
-      "feature": "named arguments",
-      "first_rejection": 17,
-      "node_types": [
-        "FunctionCall"
-      ],
-      "only_blocker": 3,
       "tests": 32
     },
     {
@@ -7106,8 +7104,7 @@
       "category": "import-rejected",
       "features": [
         "custom errors with reference parameters",
-        "named arguments",
-        "string literals as fixed-size bytes"
+        "named arguments"
       ],
       "first": "named arguments",
       "reason": "errors/revert_error_named_parameters.sol: FunctionCall 30: named arguments are not supported",
@@ -7129,9 +7126,7 @@
       "category": "import-rejected",
       "features": [
         "custom errors with reference parameters",
-        "literals of non-integer types",
-        "named arguments",
-        "string literals as fixed-size bytes"
+        "named arguments"
       ],
       "first": "named arguments",
       "reason": "errors/revert_error_named_parameters_literal_conversions.sol: FunctionCall 54: named arguments are not supported",
@@ -7449,8 +7444,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "named arguments",
-        "string literals as fixed-size bytes"
+        "named arguments"
       ],
       "first": "named arguments",
       "reason": "events/event_emit_with_named_parameters.sol: FunctionCall 21: named arguments are not supported",
