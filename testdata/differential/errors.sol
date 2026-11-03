@@ -2,8 +2,8 @@
 pragma solidity 0.8.37;
 
 // Custom errors: declared at file level and in an interface base, both in an
-// imported file, and in the contract, reverted with their selector and
-// ABI-encoded arguments.
+// imported file, and in the contract, named bare or qualified by the
+// interface, and reverted with their selector and ABI-encoded arguments.
 
 import {IVaultErrors, Unauthorized} from "./errors_base.sol";
 
@@ -17,7 +17,7 @@ contract Vault is IVaultErrors {
     function withdraw(uint256 amount) external returns (uint256) {
         uint256 balance = balances[msg.sender];
         if (balance < amount) {
-            revert InsufficientBalance(msg.sender, balance, amount);
+            revert IVaultErrors.InsufficientBalance(msg.sender, balance, amount);
         }
         balances[msg.sender] = balance - amount;
         return balances[msg.sender];

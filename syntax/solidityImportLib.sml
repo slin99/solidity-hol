@@ -505,7 +505,11 @@ fun stmt v = within v (fn v =>
         within call (fn call =>
           (require call (null (JSONUtil.arrayMap I (field call "names")))
              "named arguments are not supported";
-           within (field call "expression") (fn e => expect e "Identifier");
+           (* E, or a qualified I.E, which names a declaration only *)
+           within (field call "expression") (fn e =>
+             require e (node_type e = "Identifier" orelse
+                        node_type e = "MemberAccess")
+               "unsupported error name");
            con "SrcRevertError"
              [info v,
               error_declaration call
