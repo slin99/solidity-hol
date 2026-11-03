@@ -43,7 +43,8 @@
  *    environment reads with their member's type; type(T).max and .min an
  *    integer type T, with T's type; emits name an event of the
  *    contract with as many arguments as it has parameters, and reverts with
- *    an error carry as many arguments as the error has parameters;
+ *    an error carry as many arguments as the error has parameters, which
+ *    are of elementary types;
  *  - declaration statements list exactly their declarations' ids as
  *    assignments, returns name the enclosing function's return list, break and
  *    continue occur in loop bodies, conditions are boolean;
@@ -1020,7 +1021,9 @@ Definition check_stmts_def:
   (check_stmt env (SrcRevertError _ err args) ⇔
     LENGTH err.error_selector = 4 ∧
     case all_some (MAP variable_type err.error_parameters) of
-      SOME params => LENGTH args = LENGTH params ∧ check_exprs env args
+      SOME params =>
+        EVERY is_elementary_type params ∧ LENGTH args = LENGTH params ∧
+        check_exprs env args
     | NONE => F)
 Termination
   WF_REL_TAC ‘measure (λx. case x of

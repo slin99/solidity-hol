@@ -738,8 +738,8 @@ val () = import_error_with Unsupported
   (artifact_part imports_fixture ["sources", imports_source, "ast"])
 
 (* Custom errors: each revert carries the selector and parameters of the
- * error it names, wherever that is declared: at file level, in an interface
- * base or in the contract. *)
+ * error it names, wherever that is declared: at file level or in an
+ * interface base, both in errors_base.sol, or in the contract. *)
 
 val errors_fixture = "../testdata/differential/expected/errors.json"
 val errors_source = "testdata/differential/errors.sol"
