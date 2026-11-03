@@ -2,6 +2,8 @@
 pragma solidity 0.8.37;
 
 interface BytePeer {
+    function putBytes(bytes calldata data) external;
+    function putString(string calldata text) external;
     function rawInput(bytes calldata data) external pure returns (bytes memory);
     function afterMutation(bytes calldata data, uint256 ignored) external returns (bytes memory);
     function raw(uint256 mode) external pure returns (bytes memory);
@@ -95,5 +97,11 @@ contract DynamicBytes {
         string memory text;
         emit One(bytes(text));
         return BytePeer(target).raw(4);
+    }
+    function peerVoidBytes(address target) external {
+        BytePeer(target).putBytes(stored);
+    }
+    function peerVoidString(address target) external {
+        BytePeer(target).putString(title);
     }
 }
