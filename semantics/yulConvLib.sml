@@ -59,6 +59,8 @@ val (flookup_tm, mk_flookup, dest_flookup, is_flookup) =
 
 val invoke_c = prim_mk_const {Thy = "yulEvaluator", Name = "invoke_yul"}
 val eval_yul_block_c = prim_mk_const {Thy = "yulEvaluator", Name = "eval_yul_block"}
+val eval_yul_builtin_c =
+  prim_mk_const {Thy = "yulEvaluator", Name = "eval_yul_builtin"}
 (* The scope readers.  They are definitions of their own, outside the recursive
  * group `eval_yul_block_def` holds, so their clauses are not among the ones the
  * conversion is built from -- but the base set carries them, and a read of a
@@ -995,18 +997,23 @@ fun block_conv tm =
 val eval_compset =
   let
     val base =
-      computeLib.add_conv (flookup_tm, 2, flookup_conv)
-        (computeLib.add_conv (word_exp_c, 2, word_exp_conv)
-           (computeLib.scrub_const
-              (computeLib.scrub_const
-                 (wordsLib.add_words_compset true
-                    (computeLib.scrub_const
-                       (computeLib.scrub_const
-                          (computeLib.copy (computeLib.the_compset ()))
-                          eval_yul_block_c)
-                       invoke_c))
-                 word_exp_c)
-              word_exp_tailrec_c))
+      let
+        val cs0 =
+          computeLib.scrub_const
+            (computeLib.scrub_const
+               (computeLib.copy (computeLib.the_compset ()))
+               eval_yul_block_c)
+            invoke_c
+        val cs1 = computeLib.scrub_const cs0 eval_yul_builtin_c
+        val cs2 = wordsLib.add_words_compset true cs1
+        val cs3 =
+          computeLib.scrub_const
+            (computeLib.scrub_const cs2 word_exp_c)
+            word_exp_tailrec_c
+        val cs4 = computeLib.add_conv (word_exp_c, 2, word_exp_conv) cs3
+      in
+        computeLib.add_conv (flookup_tm, 2, flookup_conv) cs4
+      end
     (* A guarded operation has no equation in the set at all -- the set's own
      * clause would run before any conversion and take the copy -- so its
      * clauses go on as this one rule, which declines on a term holding a call. *)
@@ -1015,7 +1022,7 @@ val eval_compset =
         (computeLib.scrub_const cs c)
   in
     computeLib.add_conv (eval_yul_block_c, 4, block_conv)
-      (computeLib.add_thms (evaluator_clauses @ helper_defs)
+      (computeLib.add_thms (eval_yul_builtin_def :: evaluator_clauses @ helper_defs)
          (List.foldl guard base guarded_helpers))
   end
 
@@ -1125,18 +1132,26 @@ val scrub_const = computeLib.scrub_const
 fun scrub_defs cs defs =
   List.foldl (fn (th, cs) => scrub_const cs (head_const_of th)) cs defs
 
-(* The head the table term is written with, out of the set: the name itself for
- * a table given as a constant, `yul_env` for one given as a literal term.  That
- * one rule is what keeps the table opaque, which is all this wants -- every
- * constant *inside* a literal table ("K" and the updates of the record it is
- * built with) is what the evaluator's own clauses build their machines out of,
- * and scrubbing those takes the record operations out from under the body's
- * evaluation, leaving a form with the block still standing in it.  A term whose
- * head is not a constant has nothing to scrub: nothing in it can unfold. *)
+(* The table a caller gave, out of the set: the name itself for a table given
+ * as a constant, `yul_env` for one given as a literal term.  That one rule is
+ * what keeps the table opaque, which is all this wants -- every constant
+ * *inside* a literal table ("K" and the updates of the record it is built with)
+ * is what the evaluator's own clauses build their machines out of, and
+ * scrubbing those takes the record operations out from under the body's
+ * evaluation, leaving a form with the block still standing in it.
+ *
+ * Only the table goes, and nothing around it: a table term whose head is some
+ * other constant is the caller's own term with the table in it (`K table T`, a
+ * conditional table), and taking that constant out of the set stops the body's
+ * own evaluation reducing -- the same stranding, from a term the conversion was
+ * not asked about.  A term whose head is not a constant has nothing to
+ * scrub. *)
+val yul_env_c = prim_mk_const {Thy = "yulAST", Name = "yul_env"}
+
 fun opaque_table cs tm =
-  let val h = head_const tm in
-    if is_const h then scrub_const cs h else cs
-  end
+  if is_const tm then scrub_const cs tm
+  else if aconv (head_const tm) yul_env_c then scrub_const cs yul_env_c
+  else cs
 
 (* The definitions the table needs *are* folded, deliberately, in
  * `table_compset`; this is the set the body's evaluation runs on. *)
