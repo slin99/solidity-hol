@@ -678,6 +678,36 @@ fun split_conv tm =
     Thm.TRANS split (Thm.TRANS betad (Thm.TRANS pruned out))
   end
 
+(* `(λr. CONT r) v` where `v` is the record the clause reads its fields off:
+ * the fields are taken out first, which leaves the machine once (see
+ * `result_conv` above).  Not every statement's result is a record, though.  A
+ * clause that ends in a test its own evaluation cannot decide -- `if NULL v
+ * then <a binding into empty scopes> else <…>`, because the machine is a
+ * variable a branch of the body handed it -- answers with a *decision*, and no
+ * field is there to read: the binding is left to be copied at each of its
+ * three uses, and the block in it is copied with the machine the body has not
+ * resolved.  So the continuation goes inside the decision instead -- the same
+ * push the split makes, over `COND_RAND` rather than the case's -- and each
+ * branch is then handed a record to read, which is the shape the split's own
+ * branches are in.  What neither rule recognises is left to the beta
+ * reduction, as before; a decline from either has to end there rather than
+ * escaping, since `block_conv` is a compute rule and a conv that raises is
+ * read as one that does not apply. *)
+fun value_conv v redex =
+  result_conv v redex
+  handle Conv.UNCHANGED =>
+    (let
+       val pushed = distribute_conv redex
+       val recd = Conv.QCONV
+                    (Conv.DEPTH_CONV (Conv.EVERY_CONV binding_convs))
+                    (rhs (concl pushed))
+       val out = expose_all_conv (rhs (concl recd))
+     in
+       Thm.TRANS pushed (Thm.TRANS recd out)
+     end
+     handle Conv.UNCHANGED => Conv.QCONV (Conv.DEPTH_CONV beta_conv) redex)
+  | HOL_ERR _ => Conv.QCONV (Conv.DEPTH_CONV beta_conv) redex
+
 (*---------------------------------------------------------------------------
    The compute rule for `eval_yul_block`.
 
@@ -702,7 +732,7 @@ val block_cons_clause =
 
 (* The statement rule, run as a compute rule (`add_conv` below): the clause is
  * instantiated, the statement is reduced with the compute set, and what the
- * statement reduced to is taken apart as `split_conv` or `result_conv` says. *)
+ * statement reduced to is taken apart as `split_conv` or `value_conv` says. *)
 fun block_conv tm =
   let
     val (_, tms) = strip_comb tm
@@ -732,18 +762,12 @@ fun block_conv tm =
                 val redex' = rhs (concl taken)
               in
                 (* A case at the top is the split; anything else is the
-                 * statement's own result, and the binding is taken with its
-                 * fields in hand (see `result_conv` above).  A shape neither
-                 * rule recognises is left to the beta reduction, which is what
-                 * the conversion did before those two. *)
+                 * statement's own result, and the binding is taken with
+                 * whatever the result is (see `value_conv` above). *)
                 let val ev_form = rhs (concl ev) in
                 if is_yul_case ev_form
                 then Thm.TRANS taken (split_conv redex')
-                else
-                  Thm.TRANS taken
-                    (result_conv ev_form redex'
-                       handle HOL_ERR _ =>
-                         Conv.QCONV (Conv.DEPTH_CONV beta_conv) redex')
+                else Thm.TRANS taken (value_conv ev_form redex')
                 end
               end
           end
