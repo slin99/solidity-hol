@@ -185,26 +185,29 @@ fun convert f =
 
 (* Timed one at a time: what the conversion is asked for is seconds per
  * function, so the number the test bounds is the slowest of them, and the
- * total is printed to say what the suite costs. *)
+ * total is printed to say what the suite costs.  Only the name and the time
+ * are kept: a form runs to a million constants, and holding all 137 of them
+ * holds tens of gigabytes of heap, which is more than the per-process limit a
+ * build runs a theory under.  The two forms stated below are converted again
+ * for that, which costs a couple of seconds. *)
 fun timed f =
   let
     val t0 = Timer.startRealTimer ()
-    val r = convert f
+    val _ = convert f
   in
-    (#1 f, r, Time.toReal (Timer.checkRealTimer t0))
+    (#1 f, Time.toReal (Timer.checkRealTimer t0))
   end
 
-val timed_conversions = List.map timed loop_free
-val conversions = List.map (fn (_, r, _) => r) timed_conversions
+val timings = List.map timed loop_free
 
 val elapsed = Time.toReal (Timer.checkRealTimer started)
 val slowest =
-  List.foldl (fn ((nm, _, t), (bnm, bt)) => if t > bt then (nm, t) else (bnm, bt))
-             (#1 (hd loop_free), 0.0) timed_conversions
+  List.foldl (fn ((nm, t), (bnm, bt)) => if t > bt then (nm, t) else (bnm, bt))
+             (#1 (hd loop_free), 0.0) timings
 val calling = List.length (List.filter (fn (_, _, body) => has_call body)
                                        loop_free)
 
-val () = print ("yulConvTest: " ^ Int.toString (List.length conversions)
+val () = print ("yulConvTest: " ^ Int.toString (List.length timings)
                 ^ " forms in " ^ Real.toString elapsed ^ "s; slowest "
                 ^ #1 slowest ^ " at " ^ Real.toString (#2 slowest) ^ "s; "
                 ^ Int.toString calling ^ " of the bodies call\n")
