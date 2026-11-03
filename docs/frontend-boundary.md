@@ -122,10 +122,11 @@ selectors. Contract definitions record inheritance-related and used-event/error
 metadata. Inheritance needs two of these annotations (the differential fixture
 `inheritance.sol`): the importer flattens a contract along its
 `linearizedBaseContracts`, and `call_table` resolves overrides through each
-function's `baseFunctions`. The only modifiers admitted are base-constructor
-specifiers on constructors (`constructors.sol`), resolved through their
-`referencedDeclaration`; other modifiers and `super` calls are rejected, and
-their resolution requirements remain to be established.
+function's `baseFunctions`. Base-constructor specifiers on constructors
+(`constructors.sol`) and invocations of non-virtual modifiers
+(`modifiers.sol`) are resolved through their `referencedDeclaration`; virtual
+and overriding modifiers and `super` calls are rejected, and their resolution
+requirements remain to be established.
 
 ## Storage layout
 

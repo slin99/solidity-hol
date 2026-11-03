@@ -22,12 +22,12 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 | outcome | tests |
 | --- | ---: |
-| admitted | 279 |
+| admitted | 296 |
 | elaboration-rejected | 20 |
-| import-rejected | 1004 |
+| import-rejected | 981 |
 | compile-failure | 0 |
 | malformed-input | 0 |
-| source-rejected | 267 |
+| source-rejected | 273 |
 | invalid-core | 0 |
 | skipped | 100 |
 | total | 1670 |
@@ -40,10 +40,10 @@ The scan disagrees with the HOL run on 0 tests.
 
 | feature | AST nodes | tests | only blocker | first |
 | --- | --- | ---: | ---: | ---: |
-| arrays | `ArrayTypeName`, `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 322 | 6 | 2 |
-| inline assembly | `InlineAssembly` | 266 | 95 | 192 |
+| arrays | `ArrayTypeName`, `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 322 | 7 | 2 |
+| inline assembly | `InlineAssembly` | 266 | 97 | 194 |
 | array values | `Identifier`, `IndexAccess`, `MemberAccess` | 261 | 9 | 0 |
-| external calls and contract members | `FunctionCall`, `Identifier`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 226 | 1 | 79 |
+| external calls and contract members | `FunctionCall`, `Identifier`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 226 | 1 | 81 |
 | local reference bindings | `VariableDeclaration` | 215 | 0 | 0 |
 | structs | `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 165 | 5 | 15 |
 | this | `Identifier` | 140 | 0 | 4 |
@@ -65,12 +65,11 @@ The scan disagrees with the HOL run on 0 tests.
 | functions as values | `Identifier` | 55 | 1 | 0 |
 | type names as values | `ElementaryTypeNameExpression` | 55 | 0 | 6 |
 | user-defined value types | `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `UserDefinedValueTypeDefinition`, `VariableDeclaration` | 52 | 5 | 42 |
-| constants | `VariableDeclaration` | 47 | 8 | 34 |
+| constants | `VariableDeclaration` | 47 | 8 | 35 |
 | inline arrays | `TupleExpression` | 47 | 0 | 25 |
 | public state variables | `VariableDeclaration` | 46 | 4 | 0 |
-| transient storage | `VariableDeclaration` | 41 | 7 | 0 |
-| conditional expressions | `Conditional` | 40 | 11 | 22 |
-| modifiers | `ModifierDefinition`, `ModifierInvocation`, `PlaceholderStatement` | 39 | 24 | 35 |
+| transient storage | `VariableDeclaration` | 41 | 8 | 0 |
+| conditional expressions | `Conditional` | 40 | 12 | 23 |
 | mappings | `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 39 | 3 | 0 |
 | string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 11 | 0 |
 | aggregate array mutation | `MemberAccess` | 37 | 3 | 0 |
@@ -81,7 +80,7 @@ The scan disagrees with the HOL run on 0 tests.
 | enums | `EnumDefinition`, `EnumValue`, `FunctionCall`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 29 | 3 | 25 |
 | tuples of literals | `TupleExpression` | 28 | 4 | 0 |
 | conversions to non-elementary types | `Identifier`, `IndexAccess`, `MemberAccess` | 26 | 0 | 1 |
-| immutables | `VariableDeclaration` | 24 | 9 | 20 |
+| immutables | `VariableDeclaration` | 24 | 9 | 21 |
 | members of elementary type names | `IndexAccess`, `TupleExpression` | 24 | 0 | 0 |
 | bytes push and pop | `MemberAccess` | 23 | 10 | 0 |
 | call options ({value: …, gas: …}) | `FunctionCallOptions`, `IndexAccess`, `MemberAccess`, `NewExpression`, `TupleExpression` | 22 | 0 | 4 |
@@ -100,12 +99,14 @@ The scan disagrees with the HOL run on 0 tests.
 | events named through a contract or library | `MemberAccess` | 8 | 3 | 5 |
 | imports | `MemberAccess`, `TupleExpression` | 8 | 0 | 0 |
 | msg/block/tx globals | `MemberAccess` | 6 | 5 | 6 |
+| virtual modifiers | `ModifierDefinition` | 6 | 5 | 5 |
 | array type expressions | `IndexAccess` | 6 | 0 | 3 |
 | tuples with empty components | `TupleExpression` | 6 | 0 | 0 |
 | file-level events | `EventDefinition` | 5 | 2 | 3 |
 | messages that are not literals | `FunctionCall` | 4 | 3 | 0 |
 | built-in blobhash | `Identifier` | 3 | 2 | 3 |
 | built-in blockhash | `Identifier` | 3 | 2 | 3 |
+| return variables in modifier arguments | `Identifier` | 3 | 2 | 0 |
 | array members as values | `MemberAccess` | 3 | 1 | 0 |
 | overriding state variables | `VariableDeclaration` | 3 | 1 | 3 |
 | built-in selfdestruct | `Identifier` | 3 | 0 | 0 |
@@ -123,26 +124,26 @@ Supporting the features in this order admits the most rejected tests at each ste
 
 | step | feature | admitted |
 | ---: | --- | ---: |
-| 1 | inline assembly | 95 |
-| 2 | modifiers | 121 |
-| 3 | constant expressions over literals | 145 |
-| 4 | address members (balance, call, transfer, …) | 160 |
-| 5 | transient storage | 175 |
-| 6 | operator delete | 189 |
-| 7 | array values | 204 |
-| 8 | arrays | 234 |
-| 9 | local reference bindings | 281 |
-| 10 | memory arrays (new T[](n)) | 312 |
-| 11 | structs | 341 |
-| 12 | struct values and copying | 385 |
-| 13 | aggregate array mutation | 414 |
-| 14 | inline arrays | 439 |
-| 15 | abi.* functions | 461 |
-| 16 | hash and signature built-ins | 479 |
-| 17 | bytes push and pop | 498 |
-| 18 | string literals as fixed-size bytes | 516 |
-| 19 | constants | 532 |
-| 20 | literals of non-integer types | 552 |
+| 1 | inline assembly | 97 |
+| 2 | constant expressions over literals | 121 |
+| 3 | address members (balance, call, transfer, …) | 136 |
+| 4 | transient storage | 151 |
+| 5 | operator delete | 165 |
+| 6 | array values | 180 |
+| 7 | arrays | 210 |
+| 8 | local reference bindings | 257 |
+| 9 | memory arrays (new T[](n)) | 288 |
+| 10 | structs | 317 |
+| 11 | struct values and copying | 361 |
+| 12 | aggregate array mutation | 390 |
+| 13 | inline arrays | 415 |
+| 14 | abi.* functions | 437 |
+| 15 | hash and signature built-ins | 455 |
+| 16 | bytes push and pop | 474 |
+| 17 | string literals as fixed-size bytes | 491 |
+| 18 | constants | 507 |
+| 19 | literals of non-integer types | 527 |
+| 20 | public state variables | 542 |
 
 ## Skipped and compile failures
 
@@ -172,6 +173,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `arithmetics/block_inside_unchecked.sol`
 - `arithmetics/checked_add_v2.sol`
 - `arithmetics/checked_called_by_unchecked.sol`
+- `arithmetics/checked_modifier_called_by_unchecked.sol`
 - `arithmetics/divisiod_by_zero.sol`
 - `arithmetics/exp_associativity.sol`
 - `arithmetics/unchecked_called_by_checked.sol`
@@ -301,6 +303,20 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `isoltestTesting/storage/storage_nonempty.sol`
 - `literals/denominations_in_array_sizes.sol`
 - `literals/hex_string_with_underscore.sol`
+- `modifiers/access_through_module_name.sol`
+- `modifiers/break_in_modifier.sol`
+- `modifiers/continue_in_modifier.sol`
+- `modifiers/function_modifier.sol`
+- `modifiers/function_modifier_local_variables.sol`
+- `modifiers/function_modifier_loop_viair.sol`
+- `modifiers/function_modifier_multi_invocation_viair.sol`
+- `modifiers/function_modifier_multiple_times.sol`
+- `modifiers/function_modifier_multiple_times_local_vars.sol`
+- `modifiers/modifier_in_constructor_ice.sol`
+- `modifiers/modifiers_in_construction_context.sol`
+- `modifiers/return_does_not_skip_modifier.sol`
+- `modifiers/return_in_modifier.sol`
+- `modifiers/stacked_return_with_modifiers.sol`
 - `multiSource/import.sol`
 - `operators/compound_assign.sol`
 - `operators/shifts/shift_cleanup.sol`
@@ -326,6 +342,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `operators/shifts/shift_right_uint32.sol`
 - `operators/shifts/shift_right_uint8.sol`
 - `operators/shifts/shift_underflow_negative_rvalue.sol`
+- `payable/no_nonpayable_circumvention_by_modifier.sol`
 - `receive/empty_calldata_calls_receive.sol`
 - `receive/ether_and_data.sol`
 - `receive/inherited.sol`
@@ -398,6 +415,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `various/gasleft_shadow_resolution.sol`
 - `various/inline_member_init.sol`
 - `various/inline_member_init_inheritence.sol`
+- `various/multi_modifiers.sol`
 - `various/multi_variable_declaration.sol`
 - `various/positive_integers_to_signed.sol`
 - `various/single_copy_with_multiple_inheritance.sol`
@@ -623,6 +641,12 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `integer/int.sol`: integer/int.sol: valid_src_unit failed (source validation/subset restriction)
 - `integer/uint.sol`: integer/uint.sol: valid_src_unit failed (source validation/subset restriction)
 - `memoryManagement/memory_types_initialisation.sol`: memoryManagement/memory_types_initialisation.sol: valid_src_unit failed (source validation/subset restriction)
+- `modifiers/evaluation_order.sol`: modifiers/evaluation_order.sol: valid_src_unit failed (source validation/subset restriction)
+- `modifiers/function_modifier_return_reference.sol`: modifiers/function_modifier_return_reference.sol: valid_src_unit failed (source validation/subset restriction)
+- `modifiers/function_return_parameter.sol`: modifiers/function_return_parameter.sol: valid_src_unit failed (source validation/subset restriction)
+- `modifiers/function_return_parameter_complex.sol`: modifiers/function_return_parameter_complex.sol: valid_src_unit failed (source validation/subset restriction)
+- `modifiers/modifier_init_return.sol`: modifiers/modifier_init_return.sol: valid_src_unit failed (source validation/subset restriction)
+- `modifiers/transient_state_variable_value_type.sol`: modifiers/transient_state_variable_value_type.sol: valid_src_unit failed (source validation/subset restriction)
 - `operators/compound_assign_transient_storage.sol`: operators/compound_assign_transient_storage.sol: valid_src_unit failed (source validation/subset restriction)
 - `operators/shifts/shift_constant_left.sol`: operators/shifts/shift_constant_left.sol: valid_src_unit failed (source validation/subset restriction)
 - `operators/shifts/shift_constant_right.sol`: operators/shifts/shift_constant_right.sol: valid_src_unit failed (source validation/subset restriction)

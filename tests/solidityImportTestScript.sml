@@ -180,10 +180,10 @@ val () = malformed_input "missing common type"
 val () = malformed_input "function as state variable"
   (edit_first "FunctionDefinition"
      (set_field "nodeType" (JSON.STRING "VariableDeclaration")) ast)
-val () = import_error "modifier"
+val () = import_error "modifier invocation of unknown kind"
   (edit_first "FunctionDefinition"
      (set_field "modifiers"
-        (JSON.ARRAY [JSON.OBJECT [("kind", JSON.STRING "modifierInvocation")]]))
+        (JSON.ARRAY [JSON.OBJECT [("kind", JSON.STRING "unknownInvocation")]]))
      ast)
 val () = import_error "named arguments"
   (edit_first "FunctionCall"
