@@ -308,6 +308,18 @@ val helper_defs = [
  * block's split decide which one of them the body is in; that is worth the
  * copies of the map it reads, and without it every statement after a call
  * branches on a variable and the rest of the body stays in both branches.
+ *
+ * One of these clauses does not cover what the evaluator asks of it:
+ * `yul_memory_read`'s are `0` and `SUC k`, and the length is the literal 32
+ * `yul_mload` reads with, which no clause matches, so a memory read is a step
+ * the conversion leaves standing.  `Definition` proves a `yul_memory_read_compute`
+ * beside it for exactly this (HOL4's `Defn.add_defs_to_EVAL`, through
+ * `SUC_TO_NUMERAL_DEFN_CONV`), and the scrub above is what takes it out of the
+ * body's set.  Reading it is not free: the read then unfolds one byte at a time,
+ * so `yul_memory_read … 32` becomes 32 reads -- all of them `0w` over a memory
+ * the conversion has, and 32 stuck lookups over one it does not -- which is a
+ * change to what a form says about the memory path, and to the sizes a form is
+ * judged by, rather than one more clause here.
  *)
 val guarded_helper_defs = [
   yul_pop_result_def, yul_pop_scope_def, yul_push_scope_def, yul_push_frame_def,
@@ -1129,8 +1141,13 @@ fun binding_thm defs fns name =
 
 val scrub_const = computeLib.scrub_const
 
+(* By the clauses' own heads, not by the definition's: `Definition` gives a
+ * function with a base case beside a recursive one as a conjunction, and
+ * `head_const_of` reads a single equation's left-hand side.  Every clause of a
+ * definition is about the same constant, so this is the same set of constants
+ * as before for the single-equation definitions a caller usually passes. *)
 fun scrub_defs cs defs =
-  List.foldl (fn (th, cs) => scrub_const cs (head_const_of th)) cs defs
+  List.foldl (fn (c, cs) => scrub_const cs c) cs (clause_heads defs)
 
 (* The table a caller gave, out of the set: the name itself for a table given
  * as a constant, and `yul_env` for one given as a term -- wherever it occurs

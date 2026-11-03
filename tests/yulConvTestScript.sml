@@ -280,8 +280,11 @@ val measured = List.filter (fn (nm, _, _) => not (Lib.mem nm excluded_names))
  * may not be waiting on a call. *)
 val call_residues = yulConvLib.permitted_residues
 
-(* The one residue a body that calls nothing may have: a read of the memory at
- * an address that is an argument, which is a value nobody has. *)
+(* The one residue a body that calls nothing may have: a memory read, which the
+ * guarded rule cannot take -- `yul_memory_read`'s clauses are `0` and `SUC k`,
+ * and the length the evaluator reads with is a numeral (`yul_mload` reads 32),
+ * so the read stands even where the machine is one the conversion has in hand.
+ * `yulConvLib.permitted_residues` says the same. *)
 val memory_read_residue = ("yulEvaluator", "yul_memory_read")
 
 fun show_residues res =
@@ -323,7 +326,7 @@ fun checked_form (nm, body) t th =
      * gives concretely, so every scope and frame operation of the evaluator's
      * resolves: those are permitted residues only because a folded call leaves
      * the map symbolic, which is not a position a call-free body is in.  The
-     * one residue left to it is a memory read of an argument. *)
+     * one residue left to it is a memory read, for the reason above. *)
     else if not (has_call body) andalso
             not (List.all (fn k => k = memory_read_residue) res) then
       fail ("the body of " ^ nm ^ " calls nothing, yet its form is left on "
@@ -354,6 +357,12 @@ fun checked_form (nm, body) t th =
  * reduction -- so the attempt ends in the `handle` below.  The exception is
  * one of its own, not `Fail`, so a check that fails inside is not mistaken for
  * a timeout.
+ *
+ * Where the hook is consulted is where the set tries an equation, so what is
+ * bounded is the rules' work.  A pass of the library's own that walks the form
+ * between its rounds is not interrupted by it, and the abort can come one pass
+ * late; those passes are a fixed number of traversals over the form, each of
+ * them ending, so the bound holds up to one of them rather than not at all.
  *
  * The bound is generous: the slowest form this suite covers takes about a
  * second, and a loaded box moves that. *)
@@ -474,7 +483,9 @@ val scalars_cleanup_uint8_over_table_term =
       | SOME th => th
     val form = rhs (concl th)
   in
-    if not (yulConvLib.is_closed_form form) then
+    if not (aconv (lhs (concl th)) t) then
+      fail "the theorem about the table term's call is about some other call"
+    else if not (yulConvLib.is_closed_form form) then
       fail ("the table term itself is left standing in a form: "
             ^ show_residues (yulConvLib.residues form))
     else if not (yulConvLib.is_fixed_point table_defs form) then

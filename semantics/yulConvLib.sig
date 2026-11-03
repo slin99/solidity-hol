@@ -51,10 +51,14 @@ sig
    * scope readers, which the conversion always unfolds but which have nothing
    * to unfold to over a scope a callee has not returned; and the result and
    * value helpers, which build a record out of a completion that is not a
-   * literal.  A form with anything else in it -- a block, a statement or an
-   * expression of the evaluator -- is one whose body evaluation stopped early,
-   * which is what a test asks by requiring every residue of a form to be one of
-   * these.
+   * literal.  A memory read is one of these whatever its machine: its clauses
+   * are `yul_memory_read m offset 0` and `… m offset (SUC k)`, and the length
+   * the evaluator reads with is a numeral (`yul_mload` reads 32), so the
+   * guarded rule has no clause that matches it and the read is left standing
+   * even where the machine is one the conversion has in hand.  A form with
+   * anything else in it -- a block, a statement or an expression of the
+   * evaluator -- is one whose body evaluation stopped early, which is what a
+   * test asks by requiring every residue of a form to be one of these.
    *)
   val permitted_residues : (string * string) list
 
