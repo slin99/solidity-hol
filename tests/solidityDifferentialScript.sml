@@ -338,7 +338,8 @@ End
 
 Definition differential_world_def:
   differential_world accounts =
-    <| accounts := accounts; transient := empty_transient_storage; logs := [] |>
+    (<| accounts := accounts; transient := empty_transient_storage; logs := [] |>
+       : source_world)
 End
 
 (* The outcome, complete committed contract storage and logs of a run. *)

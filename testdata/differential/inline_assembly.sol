@@ -45,6 +45,19 @@ contract InlineAssembly {
         }
     }
 
+    // bytesN(0) and a hex literal of N bytes, over words assembly writes.
+    function literalBytes() public pure returns (bool zero, bytes32 wide) {
+        bytes32 x = bytes32(uint256(1));
+        assembly {
+            x := iszero(x)
+        }
+        zero = x == bytes32(0);
+        bytes1 n = bytes1(bytes16(0x31313131313131313131313131313131));
+        assembly {
+            wide := n
+        }
+    }
+
     function addressBits(address a) public pure returns (uint256 w, address back) {
         assembly {
             w := a
@@ -89,7 +102,7 @@ contract InlineAssembly {
     }
 
     function freePointerAfterAllocation() public pure returns (uint256 p, uint256 n) {
-        bytes memory b = new bytes(10);
+        bytes memory b = "0123456789";
         n = b.length;
         assembly {
             p := mload(0x40)

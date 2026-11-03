@@ -5,7 +5,20 @@
  *)
 Theory solidityEvaluatorProps
 Ancestors
-  solidityEvaluator
+  solidityEvaluator yulEvaluatorProps
+
+(* An inline assembly block runs the Yul evaluator with the same fuel. *)
+Theorem eval_assembly_fuel_stable[local]:
+  (eval_assembly n env code refs st gas).completion ≠ FuelExhausted ∧ n ≤ m ⇒
+  eval_assembly m env code refs st gas = eval_assembly n env code refs st gas
+Proof
+  simp[eval_assembly_def] >> rw[] >> BasicProvers.TOP_CASE_TAC >> gvs[] >>
+  qmatch_goalsub_abbrev_tac ‘run_yul m code m0’ >>
+  Cases_on ‘(run_yul n code m0).completion = YulOutOfFuel’
+  >- gvs[assembly_result_def, abrupt_result_def] >>
+  ‘run_yul m code m0 = run_yul n code m0’ by metis_tac[run_yul_fuel_stable] >>
+  simp[]
+QED
 
 Theorem eval_fuel_stable[local]:
   (∀n env ss st gas m.
@@ -29,6 +42,7 @@ Proof
   once_rewrite_tac[eval_block_def] >>
   (* statements without nested evaluation, and the empty block *)
   TRY (strip_tac >> REFL_TAC >> NO_TAC)
+  >~ [‘eval_assembly’] >- metis_tac[eval_assembly_fuel_stable]
   >~ [‘eval_stmt _ _ _ _ _’] >-
    (strip_tac >> first_x_assum (qspec_then ‘m’ assume_tac) >>
     rename1 ‘eval_stmt _ _ s _ _’ >>

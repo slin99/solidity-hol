@@ -59,8 +59,19 @@ def revert(node_id: int, error: int, arguments: list) -> dict:
                        "typeDescriptions": {"typeIdentifier": "t_function_error_pure$__$returns$__$"}}}}
 
 
-ASSEMBLY = {"nodeType": "InlineAssembly", "id": 20,
-            "AST": {"nodeType": "YulBlock", "statements": []}}
+def yul_call(name: str, *arguments) -> dict:
+    return {"nodeType": "YulFunctionCall", "arguments": list(arguments),
+            "functionName": {"nodeType": "YulIdentifier", "name": name}}
+
+
+def assembly(statements: list, references: list = ()) -> dict:
+    return {"nodeType": "InlineAssembly", "id": 20, "externalReferences": list(references),
+            "AST": {"nodeType": "YulBlock", "statements": statements}}
+
+
+# A block the importer rejects: balance is not a builtin of the dialect.
+ASSEMBLY = assembly([{"nodeType": "YulExpressionStatement",
+                      "expression": yul_call("pop", yul_call("balance", yul_call("caller")))}])
 
 
 class BuiltinCoverageTests(unittest.TestCase):
@@ -236,6 +247,33 @@ class ClassifyTests(unittest.TestCase):
         found = coverage.scan({"t.sol": unit([error, function(4, [revert(40, 30, [])])])})
         self.assertEqual(found[32], [coverage.Blocker(
             "VariableDeclaration", "custom errors with reference parameters", "elaboration")])
+
+    def test_inline_assembly_by_slice(self) -> None:
+        def statement(expression):
+            return {"nodeType": "YulExpressionStatement", "expression": expression}
+
+        local = variable(5, type_identifier="t_uint256")
+        memory = dict(variable(6, type_identifier="t_bytes_memory_ptr"), storageLocation="memory")
+        state = variable(7, state=True)
+        by_id = {5: local, 6: memory, 7: state}
+        value = assembly([statement(yul_call("sstore", yul_call("calldataload", {"nodeType": "YulLiteral", "kind": "number", "value": "0"}),
+                                                yul_call("add", {"nodeType": "YulIdentifier", "name": "x"})))],
+                         [{"declaration": 5}, {"declaration": 7, "suffix": "slot"}])
+        self.assertEqual(coverage.assembly_blockers(value, by_id), [])
+        self.assertEqual(coverage.assembly_blockers(ASSEMBLY, by_id),
+                         [coverage.Blocker("InlineAssembly", "inline assembly", "import")])
+        calls = assembly([statement(yul_call("pop", yul_call("gas")))], [{"declaration": 6}])
+        self.assertEqual(coverage.assembly_blockers(calls, by_id), [
+            coverage.Blocker("InlineAssembly", "inline assembly calls, gas and return data", "elaboration"),
+            coverage.Blocker("InlineAssembly", "inline assembly memory references", "elaboration")])
+        own = assembly([{"nodeType": "YulFunctionDefinition", "name": "gas", "body": {
+                            "nodeType": "YulBlock", "statements": [{
+                                "nodeType": "YulFunctionDefinition", "name": "inner",
+                                "body": {"nodeType": "YulBlock", "statements": []}}]}},
+                        statement(yul_call("gas"))],
+                       [{"declaration": 5, "suffix": "length"}])
+        self.assertEqual(coverage.assembly_blockers(own, by_id),
+                         [coverage.Blocker("InlineAssembly", "inline assembly", "import")])
 
     def test_overridden_functions_are_only_imported(self) -> None:
         coerced = {"nodeType": "VariableDeclarationStatement", "id": 6,

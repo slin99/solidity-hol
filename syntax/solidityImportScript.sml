@@ -813,6 +813,7 @@ Datatype:
     events : (num # src_event) list;
     variables : (num # sol_type) list;
     state : (num # sol_type) list;
+    locations : (num # sol_type) list;
     scope : num;
     returns_id : num;
     in_loop : bool
@@ -1076,15 +1077,15 @@ End
 (* Statement lists return the environment after their declarations. *)
 (* A local is checked for its type by the core program's check; here only
  * that each name resolves: a value to a local, a location to a state
- * variable.
+ * variable, which a pure function can also name.
  *)
 Definition check_assembly_reference_def:
   (check_assembly_reference env (SrcAssemblyValue x) ⇔
     IS_SOME (ALOOKUP env.variables x)) ∧
   (check_assembly_reference env (SrcAssemblySlot x) ⇔
-    IS_SOME (ALOOKUP env.state x)) ∧
+    IS_SOME (ALOOKUP env.locations x)) ∧
   (check_assembly_reference env (SrcAssemblyOffset x) ⇔
-    IS_SOME (ALOOKUP env.state x))
+    IS_SOME (ALOOKUP env.locations x))
 End
 
 Definition check_stmts_def:
@@ -1226,7 +1227,7 @@ Definition check_function_def:
           <| functions := functions; structs := structs; events := events;
              variables := variables;
              state := if f.fn_mutability = "pure" then [] else state;
-             scope := info.node_id; returns_id := f.fn_returns_id;
+             locations := state; scope := info.node_id; returns_id := f.fn_returns_id;
              in_loop := F |> ss)
     | _ => F
 End
@@ -1273,7 +1274,8 @@ Definition initializer_env_def:
     <| functions := call_table c.contract_functions;
        structs := c.contract_structs;
        events := MAP (λe. (e.event_info.node_id, e)) c.contract_events;
-       variables := []; state := state; scope := c.contract_info.node_id;
+       variables := []; state := state; locations := state;
+       scope := c.contract_info.node_id;
        returns_id := c.contract_info.node_id; in_loop := F |>
 End
 

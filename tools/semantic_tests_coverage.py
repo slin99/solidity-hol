@@ -183,7 +183,7 @@ EXPRESSIONS = {
 STATEMENTS = {
     "Block", "UncheckedBlock", "ExpressionStatement", "VariableDeclarationStatement",
     "IfStatement", "WhileStatement", "DoWhileStatement", "ForStatement", "Break",
-    "Continue", "Return", "EmitStatement", "RevertStatement",
+    "Continue", "Return", "EmitStatement", "RevertStatement", "InlineAssembly",
 }
 # Nodes the importer reads only in a fixed position, checked there, and nodes
 # it never reaches because it rejects their parents (IdentifierPath) or never
@@ -202,7 +202,6 @@ FEATURES = {
     "EnumValue": "enums",
     "FunctionTypeName": "function types",
     "IndexRangeAccess": "array slices",
-    "InlineAssembly": "inline assembly",
     "ModifierDefinition": "modifiers",
     "PlaceholderStatement": "modifiers",
     "TryCatchClause": "try/catch",
@@ -686,6 +685,73 @@ def callee_blockers(node: dict[str, Any], callees: set[int],
 INTEGER_TYPE = re.compile(r"t_u?int[0-9]+")
 
 
+# The builtins of the Yul dialect (yulDialect's builtin_name), and those an
+# inline assembly block may not use (assembly_unsupported).
+YUL_BUILTINS = {
+    "add", "sub", "mul", "div", "sdiv", "mod", "smod", "exp", "signextend", "lt", "gt",
+    "slt", "sgt", "eq", "iszero", "and", "or", "xor", "not", "shl", "shr", "sar", "byte",
+    "keccak256", "mload", "mstore", "mstore8", "mcopy", "sload", "sstore", "tload", "tstore",
+    "calldataload", "calldatasize", "calldatacopy", "callvalue", "memoryguard", "caller",
+    "loadimmutable", "log0", "log1", "log2", "log3", "log4", "address", "origin", "chainid",
+    "number", "timestamp", "coinbase", "gasprice", "basefee", "gaslimit", "stop", "call",
+    "staticcall", "extcodesize", "returndatasize", "returndatacopy", "gas", "pop", "return",
+    "revert", "codesize", "codecopy", "datasize", "dataoffset",
+}
+YUL_UNSUPPORTED = {"gas", "call", "staticcall", "returndatasize", "returndatacopy"}
+
+
+def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[Blocker]:
+    """What the importer and the elaborator reject in an inline assembly
+    block: Yul the importer does not read (functions other than the block's
+    own, builtins outside the dialect, boolean literals, references other
+    than slot and offset), then builtins the source state cannot run (gas,
+    calls, return data) and references to anything but value-type locals and
+    state variable locations."""
+    if node["nodeType"] != "InlineAssembly":
+        return []
+    found: list[Blocker] = []
+
+    def blocker(feature: str, stage: str) -> None:
+        if Blocker("InlineAssembly", feature, stage) not in found:
+            found.append(Blocker("InlineAssembly", feature, stage))
+
+    statements = node["AST"].get("statements", [])
+    defined = {s["name"] for s in statements if s["nodeType"] == "YulFunctionDefinition"}
+
+    def walk(value: Any, top: bool) -> None:
+        if isinstance(value, list):
+            for v in value:
+                walk(v, top)
+        elif isinstance(value, dict):
+            kind = value.get("nodeType")
+            if kind == "YulFunctionDefinition" and not top:
+                blocker("inline assembly", "import")
+            elif kind == "YulLiteral" and value.get("kind") not in ("number", "string"):
+                blocker("inline assembly", "import")
+            elif kind == "YulFunctionCall":
+                name = value["functionName"]["name"]
+                if name not in defined and name not in YUL_BUILTINS:
+                    blocker("inline assembly", "import")
+                elif name not in defined and name in YUL_UNSUPPORTED:
+                    blocker("inline assembly calls, gas and return data", "elaboration")
+            for k, v in value.items():
+                if k != "functionName":
+                    walk(v, top and kind == "YulBlock" and value is node["AST"])
+
+    walk(statements, True)
+    for reference in node.get("externalReferences", []):
+        suffix = reference.get("suffix")
+        declaration = by_id.get(reference["declaration"], {})
+        if suffix not in (None, "slot", "offset"):
+            blocker("inline assembly", "import")
+        elif suffix is None and (declaration.get("stateVariable", True) or not VALUE_TYPE.fullmatch(
+                declaration.get("typeDescriptions", {}).get("typeIdentifier") or "")):
+            blocker("inline assembly memory references", "elaboration")
+        elif suffix is not None and not declaration.get("stateVariable", False):
+            blocker("inline assembly memory references", "elaboration")
+    return sorted(found, key=lambda b: b.stage != "import")
+
+
 def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[Blocker]:
     """Integer literals used where a value of another type is expected, which
     elaborate_unit converts only to integer types, and string literals used
@@ -905,7 +971,8 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                     + callee_blockers(node, callees, conversions)
                     + elaboration_blockers(node, storage_field=node["id"] in fields,
                                            error_parameter=node["id"] in error_parameters)
-                    + coerced_literals(node, by_id))
+                    + coerced_literals(node, by_id)
+                    + assembly_blockers(node, by_id))
         if node["nodeType"] == "EventDefinition" and node["id"] in file_level:
             blockers.append(Blocker("EventDefinition", "file-level events", "import"))
         if node["id"] in builtin_callees:

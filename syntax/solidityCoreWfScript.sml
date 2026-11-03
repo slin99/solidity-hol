@@ -717,45 +717,55 @@ Definition assembly_value_type_def[simp]:
   (assembly_value_type _ ⇔ F)
 End
 
-(* The builtins an inline assembly block may use. The source state keeps no
- * remaining gas and no return data buffer, so gas, calls and return data are
- * left out. *)
-Definition assembly_builtin_ok_def:
-  assembly_builtin_ok b ⇔
-    ¬MEM b [YGas; YCall; YStaticCall; YReturnDataSize; YReturnDataCopy]
+(* The builtins an inline assembly block may not use. The source state keeps
+ * no remaining gas and no return data buffer, so gas, calls and return data
+ * are left out. *)
+Definition assembly_unsupported_def:
+  assembly_unsupported =
+    [YGas; YCall; YStaticCall; YReturnDataSize; YReturnDataCopy]
 End
 
+(* The builtins that change the world, which a static frame forbids. *)
+Definition assembly_state_writes_def:
+  assembly_state_writes = [YSStore; YTStore; YLog0; YLog1; YLog2; YLog3; YLog4]
+End
+
+(* Whether a block's code calls none of the builtins in bad. *)
 Definition assembly_expr_ok_def:
-  (assembly_expr_ok (YulLit _) ⇔ T) ∧
-  (assembly_expr_ok (YulName _) ⇔ T) ∧
-  (assembly_expr_ok (YulBuiltin b es) ⇔
-    assembly_builtin_ok b ∧ assembly_exprs_ok es) ∧
-  (assembly_expr_ok (YulApply _ es) ⇔ assembly_exprs_ok es) ∧
-  (assembly_exprs_ok [] ⇔ T) ∧
-  (assembly_exprs_ok (e :: es) ⇔ assembly_expr_ok e ∧ assembly_exprs_ok es)
+  (assembly_expr_ok bad (YulLit _) ⇔ T) ∧
+  (assembly_expr_ok bad (YulName _) ⇔ T) ∧
+  (assembly_expr_ok bad (YulBuiltin b es) ⇔
+    ¬MEM b bad ∧ assembly_exprs_ok bad es) ∧
+  (assembly_expr_ok bad (YulApply _ es) ⇔ assembly_exprs_ok bad es) ∧
+  (assembly_exprs_ok bad [] ⇔ T) ∧
+  (assembly_exprs_ok bad (e :: es) ⇔
+    assembly_expr_ok bad e ∧ assembly_exprs_ok bad es)
 End
 
 Definition assembly_stmt_ok_def:
-  (assembly_stmt_ok (YulBlock ss) ⇔ assembly_stmts_ok ss) ∧
-  (assembly_stmt_ok (YulFunction _ _ _ body) ⇔ assembly_stmts_ok body) ∧
-  (assembly_stmt_ok (YulLet _ NONE) ⇔ T) ∧
-  (assembly_stmt_ok (YulLet _ (SOME e)) ⇔ assembly_expr_ok e) ∧
-  (assembly_stmt_ok (YulAssign _ e) ⇔ assembly_expr_ok e) ∧
-  (assembly_stmt_ok (YulIf e body) ⇔ assembly_expr_ok e ∧ assembly_stmts_ok body) ∧
-  (assembly_stmt_ok (YulSwitch e cases default) ⇔
-    assembly_expr_ok e ∧ assembly_cases_ok cases ∧ assembly_stmts_ok default) ∧
-  (assembly_stmt_ok (YulFor pre c post body) ⇔
-    assembly_stmts_ok pre ∧ assembly_expr_ok c ∧ assembly_stmts_ok post ∧
-    assembly_stmts_ok body) ∧
-  (assembly_stmt_ok YulBreak ⇔ T) ∧
-  (assembly_stmt_ok YulContinue ⇔ T) ∧
-  (assembly_stmt_ok YulLeave ⇔ T) ∧
-  (assembly_stmt_ok (YulExprStmt e) ⇔ assembly_expr_ok e) ∧
-  (assembly_stmts_ok [] ⇔ T) ∧
-  (assembly_stmts_ok (s :: ss) ⇔ assembly_stmt_ok s ∧ assembly_stmts_ok ss) ∧
-  (assembly_cases_ok [] ⇔ T) ∧
-  (assembly_cases_ok ((_, body) :: cases) ⇔
-    assembly_stmts_ok body ∧ assembly_cases_ok cases)
+  (assembly_stmt_ok bad (YulBlock ss) ⇔ assembly_stmts_ok bad ss) ∧
+  (assembly_stmt_ok bad (YulFunction _ _ _ body) ⇔ assembly_stmts_ok bad body) ∧
+  (assembly_stmt_ok bad (YulLet _ NONE) ⇔ T) ∧
+  (assembly_stmt_ok bad (YulLet _ (SOME e)) ⇔ assembly_expr_ok bad e) ∧
+  (assembly_stmt_ok bad (YulAssign _ e) ⇔ assembly_expr_ok bad e) ∧
+  (assembly_stmt_ok bad (YulIf e body) ⇔
+    assembly_expr_ok bad e ∧ assembly_stmts_ok bad body) ∧
+  (assembly_stmt_ok bad (YulSwitch e cases default) ⇔
+    assembly_expr_ok bad e ∧ assembly_cases_ok bad cases ∧
+    assembly_stmts_ok bad default) ∧
+  (assembly_stmt_ok bad (YulFor pre c post body) ⇔
+    assembly_stmts_ok bad pre ∧ assembly_expr_ok bad c ∧
+    assembly_stmts_ok bad post ∧ assembly_stmts_ok bad body) ∧
+  (assembly_stmt_ok bad YulBreak ⇔ T) ∧
+  (assembly_stmt_ok bad YulContinue ⇔ T) ∧
+  (assembly_stmt_ok bad YulLeave ⇔ T) ∧
+  (assembly_stmt_ok bad (YulExprStmt e) ⇔ assembly_expr_ok bad e) ∧
+  (assembly_stmts_ok bad [] ⇔ T) ∧
+  (assembly_stmts_ok bad (s :: ss) ⇔
+    assembly_stmt_ok bad s ∧ assembly_stmts_ok bad ss) ∧
+  (assembly_cases_ok bad [] ⇔ T) ∧
+  (assembly_cases_ok bad ((_, body) :: cases) ⇔
+    assembly_stmts_ok bad body ∧ assembly_cases_ok bad cases)
 End
 
 Definition assembly_reference_ok_def:
@@ -850,7 +860,7 @@ Definition check_core_stmts_def:
         then check_core_stmts env ctx ss else NONE
     | NONE => NONE) ∧
   (check_core_stmts env ctx (AssemblyStmt code refs :: ss) =
-    if assembly_stmts_ok code ∧ ALL_DISTINCT (MAP FST refs) ∧
+    if assembly_stmts_ok assembly_unsupported code ∧ ALL_DISTINCT (MAP FST refs) ∧
        EVERY (assembly_reference_ok env ctx) (MAP SND refs)
     then check_core_stmts env ctx ss else NONE) ∧
   (check_core_stmts env ctx (_ :: _) = NONE)
@@ -1076,7 +1086,8 @@ val () = cv_auto_trans environment_type_def;
 val () = cv_auto_trans wf_abi_atom_def;
 val () = cv_auto_trans (SPEC_ALL wf_core_operation_def);
 val () = cv_auto_trans emit_indexed_count_def;
-val () = cv_auto_trans assembly_builtin_ok_def;
+val () = cv_auto_trans assembly_unsupported_def;
+val () = cv_auto_trans assembly_state_writes_def;
 val () = cv_auto_trans assembly_expr_ok_def;
 val () = cv_auto_trans assembly_stmt_ok_def;
 val () = cv_auto_trans assembly_value_type_def;

@@ -736,6 +736,15 @@ Definition elab_expr_def:
                   SOME ((ss, ConstantAtom (AddressValue (n2w (Num i))),
                          ElabType ty), n1)
                 else NONE
+              | (ElabLiteral, FixedBytesT k, ConstantAtom (IntegerValue i)) =>
+                (* bytesN(0) or a hex literal of N bytes: the literal is the
+                   bytes, as in solc; bound like the min/max members above *)
+                if 0 ≤ i ∧ i < 2 ** (8 * k) then
+                  let (cs, v) = bind_value n1 ty
+                        (ConvertOperation ty
+                           (ConstantAtom (BytesValue (num_to_bytes k (Num i))))) in
+                  SOME ((ss ++ cs, v, ElabType ty), n1 + 1)
+                else NONE
               | _ =>
                 let (cs, v) = bind_value n1 ty (ConvertOperation ty a) in
                 SOME ((ss ++ cs, v, ElabType ty), n1 + 1))
@@ -958,13 +967,14 @@ End
  * blocks are spliced into the enclosing list: ids are unique, so the core
  * scopes need not mirror the source blocks.
  *)
-(* A local keeps its declared type, which the core program's check limits to
- * the value types the block can read and write.
+(* A local keeps its declared type, one of the value types the block can read
+ * and write as a word.
  *)
 Definition elab_assembly_reference_def:
   (elab_assembly_reference ctx (SrcAssemblyValue x) =
     case ALOOKUP ctx.variables x of
-      SOME ty => SOME (AssemblyLocal (AstId x) ty)
+      SOME ty =>
+        if assembly_value_type ty then SOME (AssemblyLocal (AstId x) ty) else NONE
     | NONE => NONE) ∧
   (elab_assembly_reference ctx (SrcAssemblySlot x) =
     if IS_SOME (ALOOKUP ctx.state x) then SOME (AssemblySlot (AstId x))
@@ -1125,6 +1135,7 @@ Definition elab_stmts_def:
             SOME ((ss ++ [RevertErrorStmt err.error_selector params as], ctx), n1)
         | NONE => NONE) ∧
   (elab_stmt ctx n (SrcInlineAssembly _ code refs) =
+    if ¬assembly_stmts_ok assembly_unsupported code then NONE else
     case elab_assembly_references ctx refs of
       SOME rs => SOME (([AssemblyStmt code rs], ctx), n)
     | NONE => NONE) ∧

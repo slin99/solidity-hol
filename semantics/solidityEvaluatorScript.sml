@@ -611,8 +611,8 @@ End
  * free memory pointer. On normal exit the referenced locals are written back,
  * cleaned per type as the compiler cleans a value on every Solidity read;
  * writes to memory outside the scratch space [0, 0x40) fail closed, since the
- * source heap has no byte image. In a static frame, a block that changes the
- * world fails closed.
+ * source heap has no byte image. In a static frame, a block that names a
+ * builtin changing the world fails closed, whether or not it would run it.
  *)
 
 (* A value-type scalar as the stack word the compiler keeps it in: integers
@@ -713,10 +713,6 @@ End
 Definition assembly_result_def:
   assembly_result refs (st : source_state) m0 (r : yul_result) gas =
     let world = assembly_world r.machine in
-    if st.frame.static_context ∧ world ≠ st.world then
-      abrupt_result (InvalidCompletion "assembly changed state in a static frame")
-        st gas
-    else
     case r.completion of
       YulNormal =>
         if without_scratch r.machine.memory ≠ without_scratch m0.memory then
@@ -742,7 +738,10 @@ End
 
 Definition eval_assembly_def:
   eval_assembly n env code refs (st : source_state) gas =
-    if ¬assembly_stmts_ok code then
+    let bad = if st.frame.static_context
+              then assembly_unsupported ++ assembly_state_writes
+              else assembly_unsupported in
+    if ¬assembly_stmts_ok bad code then
       abrupt_result (InvalidCompletion "unsupported assembly builtin") st gas
     else
     case assembly_scope env st refs of

@@ -857,6 +857,7 @@
         {"name": "signed_negative_sign_extended", "function": "signed", "args": [-1], "expect": {"return": [-1, -1]}},
         {"name": "signed_positive", "function": "signed", "args": [5], "expect": {"return": [5, 5]}},
         {"name": "fixed_bytes_high_order", "function": "fixedBytes", "args": ["0x12345678"], "expect": {"return": [8234104107246695022420661102507966550300666591269321702959126607540084801536, "0xdeadbeef"]}},
+        {"name": "fixed_bytes_literals", "function": "literalBytes", "args": [], "expect": {"return": [true, "0x3100000000000000000000000000000000000000000000000000000000000000"]}},
         {"name": "address_low_order", "function": "addressBits", "args": [48879], "expect": {"return": [48879, 1461501637330902918203684832716283019655932542975]}},
         {"name": "slot_and_offset", "function": "locations", "args": [], "expect": {"return": [1, 8, 0, 0]}},
         {"name": "store_through_slot", "function": "store", "args": [7], "expect": {"return": []}, "final_storage": {"0": 7}},
