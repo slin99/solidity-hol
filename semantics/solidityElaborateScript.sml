@@ -152,16 +152,54 @@ Definition variable_destination_def:
          | NONE => NONE)
 End
 
+Definition read_value_type_def:
+  read_value_type ty = if byte_sequence_type ty then LocatedT StorageLoc ty else ty
+End
+
 Definition read_destination_def:
   (read_destination n (LocalDestination x ty) = (([], BoundAtom (AstId x)), n)) ∧
   (read_destination n (ReferenceDestination ref ty) =
-    (bind_value n ty (ReadOperation ty ref), n + 1))
+    (bind_value n (read_value_type ty) (ReadOperation ty ref), n + 1))
 End
 
 Definition write_destination_def:
   (write_destination t (LocalDestination x ty) a = assign_local t x ty a) ∧
   (write_destination (t : num) (ReferenceDestination ref ty) a =
     [CaptureValueStmt (AstId t) ref; WriteScalarStmt (AstId t) ty a])
+End
+
+(* Assigning a storage object copies contents; binding a local storage pointer
+ * continues to use the ordinary alias-preserving local assignment. *)
+Definition plain_assignment_def:
+  plain_assignment n target a vt =
+    case target of
+      ReferenceDestination ref ty =>
+        if byte_sequence_type ty then
+          let source =
+            case vt of
+              ElabBytesLiteral => coerce n (LocatedT MemoryLoc ty) a vt
+            | ElabType (LocatedT loc element) =>
+                if element = ty then SOME (([], a), n) else NONE
+            | _ => NONE in
+          (case source of
+             NONE => NONE
+           | SOME ((cs, src), n1) =>
+               let source_ty = case vt of
+                 ElabType src_ty => src_ty
+               | _ => LocatedT MemoryLoc ty in
+               let dst_ty = LocatedT StorageLoc ty in
+               let (ds, dst) = bind_value n1 dst_ty (ReadOperation ty ref) in
+               SOME ((cs ++ ds ++ [CopyContentsStmt source_ty dst_ty src dst],
+                      dst, dst_ty), n1 + 1))
+        else (case coerce n ty a vt of
+           SOME ((cs, value), n1) =>
+             SOME ((cs ++ write_destination n1 target value, value, ty), n1 + 1)
+         | NONE => NONE)
+    | LocalDestination _ ty =>
+        (case coerce n ty a vt of
+           SOME ((cs, value), n1) =>
+             SOME ((cs ++ write_destination n1 target value, value, ty), n1 + 1)
+         | NONE => NONE)
 End
 
 (* Operators *)
@@ -305,9 +343,8 @@ Definition tuple_writes_def:
       SOME (ws, n1) =>
         (case variable_destination ctx n1 x of
            SOME ((ls, target), n2) =>
-             (case coerce n2 (destination_type target) a vt of
-                SOME ((ss, a'), n3) =>
-                  SOME (ws ++ ls ++ ss ++ write_destination n3 target a', n3 + 1)
+             (case plain_assignment n2 target a vt of
+                SOME ((ss, _, _), n3) => SOME (ws ++ ls ++ ss, n3)
               | NONE => NONE)
          | NONE => NONE)
     | NONE => NONE) ∧
@@ -354,10 +391,10 @@ Definition elab_expr_def:
         (case variable_destination ctx n x of
            SOME ((ls, target), n1) =>
              let ty = destination_type target in
-             if ¬(is_elementary_type ty ∨ byte_sequence_value_type ty) then NONE else
+             if ¬(is_elementary_type ty ∨ byte_sequence_type ty ∨ byte_sequence_value_type ty) then NONE else
              let (read, n2) = read_destination n1 target in
              let (ss, a) = read in
-             SOME ((ls ++ ss, a, ElabType ty), n2)
+             SOME ((ls ++ ss, a, ElabType (read_value_type ty)), n2)
          | NONE => NONE)
     | SrcArrayLength _ root_expr _ =>
         (case elab_expr ctx n root_expr of
@@ -387,9 +424,9 @@ Definition elab_expr_def:
     | SrcMemberAccess _ _ _ _ =>
         (case elab_location ctx n expression of
            SOME ((ss, ref, ty), n1) =>
-             if is_elementary_type ty then
-               let (rs, a) = bind_value n1 ty (ReadOperation ty ref) in
-               SOME ((ss ++ rs, a, ElabType ty), n1 + 1)
+             if is_elementary_type ty ∨ byte_sequence_type ty then
+               let (rs, a) = bind_value n1 (read_value_type ty) (ReadOperation ty ref) in
+               SOME ((ss ++ rs, a, ElabType (read_value_type ty)), n1 + 1)
              else NONE
          | NONE => NONE)
     | SrcIndexAccess info root_expr index tid =>
@@ -407,9 +444,9 @@ Definition elab_expr_def:
          | _ =>
            case elab_location ctx n expression of
              SOME ((ss, ref, ty), n1) =>
-               if is_elementary_type ty then
-                 let (rs, a) = bind_value n1 ty (ReadOperation ty ref) in
-                 SOME ((ss ++ rs, a, ElabType ty), n1 + 1)
+               if is_elementary_type ty ∨ byte_sequence_type ty then
+                 let (rs, a) = bind_value n1 (read_value_type ty) (ReadOperation ty ref) in
+                 SOME ((ss ++ rs, a, ElabType (read_value_type ty)), n1 + 1)
                else NONE
            | NONE => NONE)
     | SrcUnaryOperation _ op prefix e tid =>
@@ -520,11 +557,9 @@ Definition elab_expr_def:
                      SOME ((ls, target), n3) =>
                        let ty = destination_type target in
                        if op = "=" then
-                         (case coerce n3 ty ar' vr of
-                            SOME ((cr, a), n4) =>
-                              SOME ((sr ++ sc ++ ls ++ cr ++
-                                       write_destination n4 target a,
-                                     a, ElabType ty), n4 + 1)
+                         (case plain_assignment n3 target ar' vr of
+                            SOME ((cr, a, value_ty), n4) =>
+                              SOME ((sr ++ sc ++ ls ++ cr, a, ElabType value_ty), n4)
                           | NONE => NONE)
                        else
                          (case compound_operator op of
@@ -722,8 +757,9 @@ Definition elab_expr_def:
          | _ => NONE)
     | SrcIndexAccess _ root_expr index _ =>
         (case elab_expr ctx n root_expr of
-           SOME ((ss, ref, ElabType (LocatedT MemoryLoc BytesT)), n1) =>
-             (case elab_expr ctx n1 index of
+           SOME ((ss, ref, ElabType (LocatedT loc BytesT)), n1) =>
+             (if loc = CalldataLoc then NONE else
+              case elab_expr ctx n1 index of
                 SOME ((si, a, vt), n2) =>
                   (case coerce n2 (UintT 256) a vt of
                      SOME ((cs, a'), n3) =>
@@ -1232,7 +1268,7 @@ Definition elaborate_unit_def:
     case u.unit_contracts of
       [c] =>
         let fs = live_functions c.contract_functions in
-        (case all_some (MAP variable_binding c.contract_state_variables) of
+        (case all_some (MAP (state_variable c.contract_bases) c.contract_state_variables) of
            NONE => NONE
          | SOME state =>
              case (elab_type_declarations c.contract_structs,
@@ -1280,8 +1316,10 @@ val () = cv_auto_trans snapshot_def;
 val () = cv_auto_trans assign_local_def;
 val () = cv_auto_trans variable_destination_def;
 val () = cv_auto_trans destination_type_def;
+val () = cv_auto_trans read_value_type_def;
 val () = cv_auto_trans read_destination_def;
 val () = cv_auto_trans write_destination_def;
+val () = cv_auto_trans plain_assignment_def;
 val () = cv_auto_trans arithmetic_operator_def;
 val () = cv_auto_trans right_operand_type_def;
 val () = cv_auto_trans compound_operator_def;
