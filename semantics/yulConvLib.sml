@@ -188,14 +188,6 @@ val helper_defs = [
   eval_yul_builtin_call_def
 ]
 
-(* The base is EVAL's own compute set rather than the boolean one: an
- * evaluator clause is full of `case` over the Yul datatypes, and a datatype's
- * case equations are put where its definition registered them, not into the
- * boolean set.  The word library's own rules go on top of it, because the
- * evaluator reaches its memory through `w2n` of an address and EVAL's set
- * alone leaves `w2n 0w` standing, which is enough to strand every memory
- * operation -- the byte it would read never becomes a list to recurse on.
- *)
 (*---------------------------------------------------------------------------
    Splitting a body on its statements' outcomes.
 
@@ -364,6 +356,14 @@ in
     end
 end
 
+(* The base is EVAL's own compute set rather than the boolean one: an
+ * evaluator clause is full of `case` over the Yul datatypes, and a datatype's
+ * case equations are put where its definition registered them, not into the
+ * boolean set.  The word library's own rules go on top of it, because the
+ * evaluator reaches its memory through `w2n` of an address and EVAL's set
+ * alone leaves `w2n 0w` standing, which is enough to strand every memory
+ * operation -- the byte it would read never becomes a list to recurse on.
+ *)
 val eval_compset =
   computeLib.add_conv (eval_yul_block_c, 4, block_conv)
     (computeLib.add_thms (evaluator_clauses @ helper_defs)
