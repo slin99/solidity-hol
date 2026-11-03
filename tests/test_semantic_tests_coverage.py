@@ -175,6 +175,15 @@ class GetterTests(unittest.TestCase):
         statement = {"nodeType": "ExpressionStatement", "id": 25, "expression": call}
         found = coverage.scan({"t.sol": unit([state, function(4, [statement])])})
         self.assertIn(coverage.Blocker("MemberAccess", "external calls to getters", "import"), found[23])
+        # The same call to the getter of an abstract contract A that is neither
+        # deployed nor a base, so the importer reads none of A.
+        ast = unit([function(4, [statement])])
+        ast["nodes"].insert(0, {
+            "nodeType": "ContractDefinition", "id": 50, "contractKind": "contract",
+            "abstract": True, "baseContracts": [], "linearizedBaseContracts": [50],
+            "nodes": [state]})
+        found = coverage.scan({"t.sol": ast})
+        self.assertIn(coverage.Blocker("MemberAccess", "external calls to getters", "import"), found[23])
 
 
 class ClassifyTests(unittest.TestCase):

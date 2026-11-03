@@ -807,19 +807,22 @@ def unwrap(value: dict[str, Any] | None) -> dict[str, Any] | None:
     return value
 
 
-def special_forms(by_id: dict[int, dict[str, Any]]) -> tuple[set[int], dict[int, list[Blocker]]]:
+def special_forms(reached: dict[int, dict[str, Any]],
+                  by_id: dict[int, dict[str, Any]]) -> tuple[set[int], dict[int, list[Blocker]]]:
     """The nodes the importer reads as part of a larger form rather than as
     expressions of their own, and what it and the checker reject in those
     forms: event and error names, the members and contract conversions of
     external calls, address(this), type(T), the members of msg, block and tx,
-    and the messages of require and revert."""
+    and the messages of require and revert. Only the reached nodes are
+    scanned; by_id indexes the whole compilation, where a call's target may
+    be declared."""
     unread: set[int] = set()
     found: dict[int, list[Blocker]] = {}
 
     def block(node: dict[str, Any], feature: str, stage: str) -> None:
         found.setdefault(node["id"], []).append(Blocker(node["nodeType"], feature, stage))
 
-    for node in by_id.values():
+    for node in reached.values():
         kind = node["nodeType"]
         if kind == "EmitStatement":
             callee = node["eventCall"]["expression"]
@@ -913,7 +916,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     builtin_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
                        and n["expression"]["nodeType"] == "Identifier"
                        and n["expression"].get("referencedDeclaration") in {REQUIRE, ASSERT, REVERT}}
-    unread, found = special_forms(reached)
+    unread, found = special_forms(reached, by_id)
     file_level = {m["id"] for ast in asts.values() for m in ast["nodes"]}
     storage_bases = {n["baseExpression"]["id"] for n in reached.values()
                      if n["nodeType"] == "IndexAccess"}
