@@ -41,7 +41,7 @@ family:
 | Field | What the call family reads it for |
 | --- | --- |
 | `self_address` | the caller of every message call the frame makes |
-| `accounts`, `logs` | the world a call starts from and the world it leaves |
+| `accounts`, `transient`, `logs` | the world a call starts from and the world it leaves |
 | `call_value`, `call_data` | the callee sees them only through its own frame; the caller's are untouched by a call |
 | `memory`, `memory_size` | the call's input region, and its output region |
 | `transaction_parameters` | inherited by the callee's frame, so `origin`, `chainid` and the block builtins agree |
@@ -59,7 +59,7 @@ the call to `run_external_call`:
 
 ```
 run_external_call m.self_address callee calldata value static
-  (min gas m.gas_limit) m.accounts empty_transient_storage
+  (min gas m.gas_limit) m.accounts m.transient
   m.transaction_parameters
 ```
 
@@ -76,7 +76,7 @@ world it left.
 
 The caller's world follows the same rule the EVM's does:
 
-| Outcome | Accounts and logs | Yul's first return value | `return_data` |
+| Outcome | Accounts, transient storage and logs | Yul's first return value | `return_data` |
 | --- | --- | --- | --- |
 | the callee stopped or returned | the callee's, with its logs after the caller's | 1 | the callee's output |
 | the callee reverted | the caller's, unchanged | 0 | the revert data |
@@ -156,11 +156,8 @@ until something does.
   what the callee runs with. Since the
   callee runs as bytecode, *its* gas is accounted for by Verifereum, and a
   callee that needs more than the budget fails here as it would on chain.
-- **Transient storage is not carried.** A Yul frame has none, so every callee
-  starts with an empty one and what it leaves is dropped. Nothing in the
-  pinned subset touches it.
 - **A Yul frame is never entered by a static call.** The frame's own
   static-ness is not a field, so a `staticcall` *into* the top-level Yul frame
-  would let it write storage. The callee's static-ness is Verifereum's and is
-  right. No corpus case needs the top-level frame to be static; giving the
+  would let it write storage and transient storage. The callee's static-ness
+  is Verifereum's and is right. No corpus case needs the top-level frame to be static; giving the
   frame a static flag is a small change if one does.
