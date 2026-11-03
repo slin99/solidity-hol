@@ -14,14 +14,17 @@
  *
  * A unit holds its deployable contracts: those neither abstract, nor an
  * interface, nor a base of another contract of the unit. Each is flattened
- * along its linearization (src_contract); its bases must be in the same unit.
+ * along its linearization (src_contract); its bases, the functions it calls
+ * and the structs it uses may come from any source unit of the compilation
+ * (unit_sources), since the AST refers to declarations by id across files.
  *
  * Types are normalized from elementary, array and mapping type-name nodes; value
  * types are decoded from typeIdentifiers. Both yield only valid shapes (normalize_type_name_valid,
  * decode_type_identifier_valid). Literals keep their exact rational type.
  *
  * valid_src_unit then establishes, for an imported unit:
- *  - all node ids are distinct;
+ *  - all node ids are distinct, and the unit is among its compilation's
+ *    source units;
  *  - every parameter, return, local and state variable has a normalized
  *    elementary, array or mapping type, the default data location, and a
  *    type identifier agreeing with that type, and the enclosing function,
@@ -44,7 +47,8 @@
  *  - functions, receive and fallback are pure, view, nonpayable or payable,
  *    and only non-pure ones refer to state variables; functions a more
  *    derived one overrides are not checked, since nothing reaches them;
- *    contracts are scoped by the unit, functions by a base of their contract;
+ *    contracts are scoped by the unit, functions by a base of their contract,
+ *    structs by a base or a source unit of the compilation;
  *  - operators belong to the admitted set and every other expression
  *    annotation decodes to an elementary, rational literal or tuple type.
  *
@@ -253,6 +257,7 @@ Datatype:
   src_unit = <|
     unit_info : node_info;
     unit_path : string;
+    unit_sources : num list;
     unit_contracts : src_contract list
   |>
 End
@@ -1076,8 +1081,8 @@ Definition storage_layout_ok_def:
 End
 
 Definition check_struct_def:
-  check_struct unit_id bases (s : src_struct) ⇔
-    (MEM s.struct_scope bases ∨ s.struct_scope = unit_id) ∧
+  check_struct sources bases (s : src_struct) ⇔
+    (MEM s.struct_scope bases ∨ MEM s.struct_scope sources) ∧
     s.struct_members ≠ [] ∧
     EVERY (λv. v.var_scope = s.struct_info.node_id ∧ IS_SOME (field_variable_type v))
       s.struct_members ∧
@@ -1108,11 +1113,11 @@ Definition initializer_env_def:
 End
 
 Definition check_contract_def:
-  check_contract unit_id (c : src_contract) ⇔
+  check_contract unit_id sources (c : src_contract) ⇔
     c.contract_scope = unit_id ∧
     (case c.contract_bases of x :: _ => x = c.contract_info.node_id | [] => F) ∧
     ALL_DISTINCT c.contract_bases ∧
-    EVERY (check_struct unit_id c.contract_bases) c.contract_structs ∧
+    EVERY (check_struct sources c.contract_bases) c.contract_structs ∧
     EVERY check_event c.contract_events ∧
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
     case all_some (MAP (state_variable c.contract_bases)
@@ -1137,8 +1142,8 @@ End
 
 Definition valid_src_unit_def:
   valid_src_unit (u : src_unit) ⇔
-    ALL_DISTINCT (unit_ids u) ∧
-    EVERY (check_contract u.unit_info.node_id) u.unit_contracts
+    ALL_DISTINCT (unit_ids u) ∧ MEM u.unit_info.node_id u.unit_sources ∧
+    EVERY (check_contract u.unit_info.node_id u.unit_sources) u.unit_contracts
 End
 
 (* cv translation, so that imported units are checked by cv_eval. The

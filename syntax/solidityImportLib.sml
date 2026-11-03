@@ -14,6 +14,8 @@ val field = JSONUtil.lookupField
 fun string_field v k = JSONUtil.asString (field v k)
 fun bool_field v k = JSONUtil.asBool (field v k)
 fun int_field v k = JSONUtil.asIntInf (field v k)
+fun object (JSON.OBJECT fields) = fields
+  | object v = raise JSONUtil.JSONError (JSONUtil.NotObject, v)
 
 (* An optional field: absent or null. *)
 fun optional_field v k =
@@ -214,14 +216,14 @@ fun parameter_list v = within v (fn v =>
     listSyntax.mk_list
       (JSONUtil.arrayMap variable (field v "parameters"), variable_ty))))
 
-(* The function declarations of the unit being imported, by id: the targets
+(* The function declarations of the compilation, by id: the targets
  * of high-level calls. *)
 val function_declarations : (IntInf.int * JSON.value) list ref = ref []
 
 fun function_declaration v id =
   case List.find (fn (i, _) => i = id) (!function_declarations) of
     SOME (_, d) => d
-  | NONE => fail (describe v ^ ": calls only functions declared in this unit")
+  | NONE => fail (describe v ^ ": calls only functions declared in the compilation")
 
 (* A call of an external function of a contract or interface value. *)
 fun is_external_call callee =
@@ -577,13 +579,21 @@ fun struct_declaration types v = within v (fn v =>
          layout)]
   end)
 
+(* The declarations the nodes of v refer to. *)
+fun references (JSON.OBJECT fields) =
+      List.concat
+        (map (fn ("referencedDeclaration", JSON.INT i) => [i]
+               | (_, w) => references w) fields)
+  | references (JSON.ARRAY vs) = List.concat (map references vs)
+  | references _ = []
+
 (* A deployable contract, flattened along its linearization (most derived
  * first), whose contracts declared lists by id: the implemented functions of
  * its bases, most derived first, their events and structs, their state
  * variables base first, the order of the storage layout, with their
  * initializers, and the base constructor arguments each base gives, most
- * derived base first. The layout also describes file-level struct types
- * referenced by its state variables.
+ * derived base first. The file-level structs it refers to come first, and
+ * the layout also describes those referenced by its state variables.
  *)
 fun contract external_structs contracts declared v = within v (fn v =>
   let
@@ -600,12 +610,22 @@ fun contract external_structs contracts declared v = within v (fn v =>
              case List.find (fn (i, _) => i = id) declared of
                SOME (_, c) => c
              | NONE => fail (describe v ^ ": base contract " ^
-                             IntInf.toString id ^ " is not in this unit"))
+                             IntInf.toString id ^ " is not in the compilation"))
         linearization
     fun nodes c = JSONUtil.arrayMap I (field c "nodes")
     fun members_of ty cs =
       List.concat
         (map (fn c => List.filter (fn m => node_type m = ty) (nodes c)) cs)
+    (* The file-level structs the bases refer to, also through other structs. *)
+    fun used picked =
+      let
+        val ids = List.concat (map references (bases @ picked))
+        val picked' =
+          List.filter (fn s => List.exists (fn i => i = int_field s "id") ids)
+            external_structs
+      in
+        if length picked' = length picked then picked else used picked'
+      end
     val () =
       List.app (fn c => within c (fn c =>
         (require c (string_field c "contractKind" = "contract" orelse
@@ -681,7 +701,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
           (JSONUtil.arrayMap storage_entry (field layout "storage"), storage_entry_ty)),
        ("contract_structs", listSyntax.mk_list
           (map (struct_declaration (field layout "types"))
-             (external_structs @ members_of "StructDefinition" (rev bases)),
+             (used [] @ members_of "StructDefinition" (rev bases)),
            struct_ty)),
        ("contract_events", listSyntax.mk_list
           (map event (members_of "EventDefinition" bases), event_ty)),
@@ -693,17 +713,23 @@ fun contract external_structs contracts declared v = within v (fn v =>
            function_ty))]
   end)
 
-(* File-level structs accompany each contract that can refer to them;
- * pragmas carry no semantics for the pinned profile. Interfaces, abstract
- * contracts and the bases of other contracts are imported only as bases.
+(* File-level structs, of any source unit of the compilation, accompany each
+ * contract that refers to them; pragmas and import directives carry no
+ * semantics for the pinned profile, since declarations are referred to by id.
+ * Interfaces, abstract contracts and the bases of other contracts of the unit
+ * are imported only as bases, which may come from any unit.
  *)
-fun import_source_unit v contracts = within v (fn v =>
+fun import_source_unit units v contracts = within v (fn v =>
   let
+    val units = v :: List.filter (fn u => int_field u "id" <> int_field v "id") units
     val members = JSONUtil.arrayMap I (field v "nodes")
-    val structs = List.filter (fn m => node_type m = "StructDefinition") members
+    fun all_members ty =
+      List.concat
+        (map (fn u => List.filter (fn m => node_type m = ty)
+                        (JSONUtil.arrayMap I (field u "nodes"))) units)
+    val structs = all_members "StructDefinition"
     val declared =
-      map (fn c => (int_field c "id", c))
-        (List.filter (fn m => node_type m = "ContractDefinition") members)
+      map (fn c => (int_field c "id", c)) (all_members "ContractDefinition")
     val () =
       function_declarations :=
         List.concat
@@ -715,15 +741,16 @@ fun import_source_unit v contracts = within v (fn v =>
              declared)
     val inherited =
       List.concat
-        (map (fn (_, c) =>
+        (map (fn c =>
                 case JSONUtil.arrayMap JSONUtil.asIntInf
                        (field c "linearizedBaseContracts") of
                   _ :: bases => bases
                 | [] => [])
-           declared)
+           (List.filter (fn m => node_type m = "ContractDefinition") members))
     fun member m acc =
       case node_type m of
         "PragmaDirective" => acc
+      | "ImportDirective" => acc
       | "StructDefinition" => acc
       | "ContractDefinition" =>
           if string_field m "contractKind" = "interface" then acc
@@ -743,6 +770,8 @@ fun import_source_unit v contracts = within v (fn v =>
     record "src_unit"
       [("unit_info", info v),
        ("unit_path", mk_str (string_field v "absolutePath")),
+       ("unit_sources", listSyntax.mk_list
+          (map (fn u => mk_num (int_field u "id")) units, numSyntax.num)),
        ("unit_contracts", listSyntax.mk_list (contracts, contract_ty))]
   end)
 
@@ -776,7 +805,9 @@ fun import_artifact path source =
       handle e => fail (path ^ ": no " ^ what ^ " for " ^ source ^ ": " ^
                         JSONUtil.exnMessage e)
   in
-    import_source_unit (get ["output", "sources", source, "ast"] "AST")
+    import_source_unit
+      (map (fn (_, s) => field s "ast") (object (get ["output", "sources"] "sources")))
+      (get ["output", "sources", source, "ast"] "AST")
       (get ["output", "contracts", source] "contracts")
   end
 
