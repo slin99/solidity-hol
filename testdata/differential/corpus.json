@@ -803,7 +803,9 @@
         {"name": "mutated_storage_event_preserves_padding", "function": "eventAfterMutation", "args": ["0xff"], "storage": {"1": 752676849595591724402484735316483287742508140069013676159804241750656024578}, "final_storage": {"1": 115640140389745254371226821423624016860908821050509260809059125874601964339202}, "expect": {"return": []}, "logs": [{"topics": ["0xa649e008659b9808305caaccc041baebda2d529882ff885034a706ecc4123778"], "data": "0x000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001ffaa000000000000000000000000000000000000000000000000000000000000"}]},
         {"name": "external_storage_argument_preserves_padding", "function": "peerInput", "args": [20480], "storage": {"1": 752676849595591724402484735316483287742508140069013676159804241750656024578}, "expect": {"return": ["0x57d68eb50000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000101aa000000000000000000000000000000000000000000000000000000000000"]}},
         {"name": "default_bytes_local_does_not_allocate", "function": "defaultBytesThenPeerRaw", "args": [20480], "expect": {"revert": "0x"}},
-        {"name": "default_string_local_does_not_allocate", "function": "defaultStringThenPeerRaw", "args": [20480], "expect": {"revert": "0x"}}
+        {"name": "default_string_local_does_not_allocate", "function": "defaultStringThenPeerRaw", "args": [20480], "expect": {"revert": "0x"}},
+        {"name": "void_bytes_call_to_eoa_rejects_before_encoding", "function": "peerVoidBytes", "args": [24576], "storage": {"1": 64}, "expect": {"revert": "0x"}},
+        {"name": "void_string_call_to_eoa_rejects_before_encoding", "function": "peerVoidString", "args": [24576], "storage": {"0": 1}, "expect": {"revert": "0x"}}
       ]
     }
   ]

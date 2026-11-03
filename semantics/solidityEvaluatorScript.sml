@@ -495,13 +495,13 @@ Definition call_external_def:
           eval_atoms st.scopes args) of
       (SOME (ScalarValue (AddressValue callee)),
        SOME (ScalarValue (IntegerValue v)), SOME vs) =>
-        (case encoded_runtime_values st params vs of
+        if rets = [] ∧ (lookup_account callee st.world.accounts).code = []
+        then abrupt_result (RevertCompletion []) st gas
+        else (case encoded_runtime_values st params vs of
            INR c => abrupt_result c st gas
          | INL data =>
            let static = (kind = ExternalStaticCall ∨ st.frame.static_context) in
-           if rets = [] ∧ (lookup_account callee st.world.accounts).code = []
-           then abrupt_result (RevertCompletion []) st gas
-           else if static ∧ v ≠ 0 then
+           if static ∧ v ≠ 0 then
              abrupt_result (InvalidCompletion "value in static frame") st gas
            else
              case run_external_call st.frame.self_address callee
