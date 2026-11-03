@@ -52,7 +52,11 @@ End
 Definition reference_bytes_def:
   reference_bytes (st : source_state) r =
     case r of
-      MemoryReference id 0 ty => memory_bytes st id ty
+      StorageReference PersistentStorage _ _ _ _ _ =>
+        (case storage_byte_contents st.world.accounts r of
+           INL bs => SOME bs
+         | INR _ => NONE)
+    | MemoryReference id 0 ty => memory_bytes st id ty
     | CalldataReference offset length ty =>
         if byte_sequence_type ty ∧ offset + length ≤ LENGTH st.frame.call_data then
           SOME (TAKE length (DROP offset st.frame.call_data))
@@ -119,6 +123,37 @@ Definition copy_memory_bytes_def:
     | _ => NONE
 End
 
+(* Byte access and copies propagate malformed storage-header panics. *)
+Definition byte_contents_def:
+  byte_contents st r =
+    case r of
+      StorageReference _ _ _ _ _ _ => storage_byte_contents st.world.accounts r
+    | _ => case reference_bytes st r of
+        SOME bs => INL bs
+      | NONE => INR (InvalidCompletion "bad byte sequence reference")
+End
+
+Definition copy_byte_contents_def:
+  copy_byte_contents src dst st =
+    case dst of
+      StorageReference PersistentStorage _ _ _ _ _ =>
+        (case src of
+           StorageReference PersistentStorage _ _ _ _ _ =>
+             (case copy_storage_bytes st.world.accounts src dst st.frame.static_context of
+                INL accounts => INL (st with world := st.world with accounts := accounts)
+              | INR c => INR c)
+         | _ => case byte_contents st src of
+             INR c => INR c
+           | INL bs => case store_storage_bytes st.world.accounts dst bs st.frame.static_context of
+               INL accounts => INL (st with world := st.world with accounts := accounts)
+             | INR c => INR c)
+    | _ => (case byte_contents st src of
+        INR c => INR c
+      | INL bs => case copy_memory_bytes src dst st of
+          SOME st' => INL st'
+        | NONE => INR (InvalidCompletion "bad memory byte copy"))
+End
+
 (* Reference conversion preserves identity and location; copying is a statement. *)
 Definition convert_byte_reference_def:
   convert_byte_reference src dst r =
@@ -130,6 +165,12 @@ Definition convert_byte_reference_def:
     | (LocatedT CalldataLoc a, LocatedT CalldataLoc b, CalldataReference off len c) =>
         if a = c ∧ byte_sequence_type a ∧ byte_sequence_type b then
           ValueOk (ReferenceValue (CalldataReference off len b))
+        else ValueAbrupt (InvalidCompletion "bad byte reference conversion")
+    | (LocatedT StorageLoc a, LocatedT StorageLoc b,
+       StorageReference PersistentStorage addr slot 0 c layout) =>
+        if a = c ∧ byte_sequence_type a ∧ byte_sequence_type b then
+          ValueOk (ReferenceValue
+            (StorageReference PersistentStorage addr slot 0 b layout))
         else ValueAbrupt (InvalidCompletion "bad byte reference conversion")
     | _ => ValueAbrupt (InvalidCompletion "bad byte reference conversion")
 End
@@ -145,4 +186,6 @@ val () = cv_auto_trans navigate_memory_byte_def;
 val () = cv_auto_trans write_memory_byte_def;
 val () = cv_auto_trans copy_memory_bytes_def;
 
+val () = cv_auto_trans byte_contents_def;
+val () = cv_auto_trans copy_byte_contents_def;
 val () = cv_auto_trans convert_byte_reference_def;

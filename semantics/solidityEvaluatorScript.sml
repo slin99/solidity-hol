@@ -219,13 +219,20 @@ Definition eval_operation_def:
     | ByteIndexOperation a index =>
         (case (eval_atom st.scopes a, eval_atom st.scopes index) of
            (SOME (ReferenceValue r), SOME (ScalarValue (IntegerValue i))) =>
-             (case reference_bytes st r of
-                SOME bs =>
+             (case r of
+                StorageReference _ _ _ _ _ _ =>
+                  (case navigate_storage env st.world.accounts r (IntegerValue i) of
+                     ValueOk (ReferenceValue element) =>
+                       read_storage_reference st.world.accounts (FixedBytesT 1) element
+                   | ValueAbrupt c => ValueAbrupt c
+                   | _ => ValueAbrupt (InvalidCompletion "bad storage byte reference"))
+              | _ => case byte_contents st r of
+                INL bs =>
                   if i < 0 ∨ &(LENGTH bs) ≤ i then ValueAbrupt (PanicCompletion 50)
                   else (case oEL (Num i) bs of
                           SOME b => ValueOk (ScalarValue (BytesValue [b]))
                         | NONE => ValueAbrupt (InvalidCompletion "bad byte index"))
-              | NONE => ValueAbrupt (InvalidCompletion "bad byte sequence reference"))
+              | INR c => ValueAbrupt c)
          | _ => ValueAbrupt (InvalidCompletion "bad byte index operands"))
     | ArrayLengthOperation a =>
         (case eval_atom st.scopes a of
@@ -300,6 +307,11 @@ Definition default_runtime_value_def:
     | LocatedT CalldataLoc element =>
         if byte_sequence_type element then
           SOME (ReferenceValue (CalldataReference 0 0 element))
+        else NONE
+    | LocatedT StorageLoc element =>
+        if byte_sequence_type element then
+          SOME (ReferenceValue
+            (StorageReference PersistentStorage 0w 0w 0 element (LayoutId 0)))
         else NONE
     | _ => OPTION_MAP ScalarValue (default_scalar env ty)
 End
@@ -554,9 +566,9 @@ Definition simple_stmt_def:
     | CopyContentsStmt _ _ a b =>
         (case (eval_atom st.scopes a, eval_atom st.scopes b) of
            (SOME (ReferenceValue src), SOME (ReferenceValue dst)) =>
-             (case copy_memory_bytes src dst st of
-                SOME st' => normal_result st' gas
-              | NONE => abrupt_result (InvalidCompletion "bad byte sequence copy") st gas)
+             (case copy_byte_contents src dst st of
+                INL st' => normal_result st' gas
+              | INR c => abrupt_result c st gas)
          | _ => abrupt_result (InvalidCompletion "bad byte sequence copy") st gas)
     | WriteScalarStmt t ty a =>
         (case write_target t a st of

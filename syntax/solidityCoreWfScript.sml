@@ -186,6 +186,8 @@ Definition fixed_storage_slots_def:
              SOME ((n + per_slot - 1) DIV per_slot)
          | NONE => OPTION_MAP (λslots. n * slots)
                      (fixed_storage_slots env element))
+    | BytesT => SOME 1
+    | StringT => SOME 1
     | ArrayT _ NONE => SOME 1
     | MappingT _ _ => SOME 1
     | StructT id => OPTION_MAP (λs. s.struct_slots) (lookup_struct_layout env id)
@@ -202,6 +204,8 @@ Definition storage_type_ok_def:
     elementary_storage_type_ok key ∧ storage_type_ok env value) ∧
   (storage_type_ok env (ArrayT element NONE) ⇔ storage_type_ok env element) ∧
   (storage_type_ok env (StructT id) ⇔ IS_SOME (lookup_struct_layout env id)) ∧
+  (storage_type_ok env BytesT ⇔ T) ∧
+  (storage_type_ok env StringT ⇔ T) ∧
   (storage_type_ok env ty ⇔ elementary_storage_type_ok ty)
 End
 
@@ -213,8 +217,7 @@ End
 Definition byte_sequence_value_type_def:
   byte_sequence_value_type ty ⇔
     case ty of
-      LocatedT loc element =>
-        (loc = MemoryLoc ∨ loc = CalldataLoc) ∧ byte_sequence_type element
+      LocatedT loc element => byte_sequence_type element
     | _ => F
 End
 
@@ -301,6 +304,9 @@ Definition value_has_type_def:
     ty = rty ∧ byte_sequence_type ty) ∧
   (value_has_type env (SingleType (LocatedT MemoryLoc ty))
      (ReferenceValue (MemoryReference _ 0 rty)) ⇔
+    ty = rty ∧ byte_sequence_type ty) ∧
+  (value_has_type env (SingleType (LocatedT StorageLoc ty))
+     (ReferenceValue (StorageReference PersistentStorage _ _ 0 rty _)) ⇔
     ty = rty ∧ byte_sequence_type ty) ∧
   (value_has_type env (ProductType tys) (TupleValue vs) ⇔
     values_have_types env tys vs) ∧
@@ -542,8 +548,11 @@ Definition wf_core_operation_def:
       SOME v => annotation = ReferenceType v.state_type
     | NONE => F) ∧
   (wf_core_operation env ctx annotation (ReadOperation ty a) ⇔
-    annotation = SingleType ty ∧ core_scalar_type env ty ∧
-    IS_SOME (storage_bytes ty) ∧ wf_core_atom env ctx (ReferenceType ty) a) ∧
+    (if byte_sequence_type ty then
+       annotation = SingleType (LocatedT StorageLoc ty)
+     else annotation = SingleType ty ∧ core_scalar_type env ty ∧
+          IS_SOME (storage_bytes ty)) ∧
+    wf_core_atom env ctx (ReferenceType ty) a) ∧
   (wf_core_operation env ctx annotation
      (NavigateOperation ty base (FieldNavigation field)) ⇔
     annotation = ReferenceType ty ∧
@@ -564,8 +573,8 @@ Definition wf_core_operation_def:
         (case ALOOKUP ctx.bindings x of
            SOME (ReferenceType (MappingT key value)) =>
              value = ty ∧ wf_core_atom env ctx (SingleType key) index
-         | SOME (SingleType (LocatedT MemoryLoc BytesT)) =>
-             ty = FixedBytesT 1 ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
+         | SOME (SingleType (LocatedT loc BytesT)) =>
+             loc ≠ CalldataLoc ∧ ty = FixedBytesT 1 ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
          | SOME (ReferenceType (ArrayT element _)) =>
              element = ty ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
          | _ => F)
@@ -580,7 +589,8 @@ Definition wf_core_operation_def:
   (wf_core_operation env ctx annotation (ByteIndexOperation a index) ⇔
     annotation = SingleType (FixedBytesT 1) ∧
     (wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a ∨
-     wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a) ∧
+     wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a ∨
+     wf_core_atom env ctx (SingleType (LocatedT StorageLoc BytesT)) a) ∧
     wf_core_atom env ctx (SingleType (UintT 256)) index) ∧
   (wf_core_operation env ctx annotation (ArrayLengthOperation a) ⇔
     annotation = SingleType (UintT 256) ∧
@@ -588,7 +598,7 @@ Definition wf_core_operation_def:
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
            SOME (SingleType (LocatedT loc ty)) =>
-             byte_sequence_type ty ∧ (loc = MemoryLoc ∨ loc = CalldataLoc)
+             byte_sequence_type ty
          | SOME (ReferenceType (ArrayT _ NONE)) => T
          | _ => F)
     | _ => F) ∧
@@ -696,7 +706,7 @@ Definition check_core_stmts_def:
   (check_core_stmts env ctx (CopyContentsStmt src dst a b :: ss) =
     if byte_sequence_value_type src ∧
        (case (src, dst) of
-          (LocatedT _ ty, LocatedT MemoryLoc ty') => ty = ty'
+          (LocatedT _ ty, LocatedT loc ty') => loc ≠ CalldataLoc ∧ ty = ty'
         | _ => F) ∧
        wf_core_atom env ctx (SingleType src) a ∧
        wf_core_atom env ctx (SingleType dst) b

@@ -374,3 +374,33 @@ Theorem calldata_identity_conversion:
 Proof
   CONV_TAC cv_eval
 QED
+
+(* The compiler inspects both length tags before its first storage write. *)
+Definition static_byte_copy_def:
+  static_byte_copy bad_src bad_dst =
+    copy_byte_contents
+      (StorageReference PersistentStorage 0w 0w 0 BytesT (LayoutId 1))
+      (StorageReference PersistentStorage 0w 1w 0 BytesT (LayoutId 2))
+      (static_state with world := static_state.world with accounts :=
+        set_storage_word (set_storage_word empty_accounts 0w 0w bad_src) 0w 1w bad_dst)
+End
+
+val () = cv_auto_trans static_byte_copy_def;
+
+Theorem invalid_source_header_precedes_static_copy_guard:
+  static_byte_copy 64w 0w = INR (PanicCompletion 34)
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem invalid_destination_header_precedes_static_copy_guard:
+  static_byte_copy 0w 64w = INR (PanicCompletion 34)
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem valid_headers_reach_static_copy_guard:
+  static_byte_copy 0w 0w = INR (InvalidCompletion "byte copy in static frame")
+Proof
+  CONV_TAC cv_eval
+QED
