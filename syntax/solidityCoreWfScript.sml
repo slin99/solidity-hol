@@ -783,16 +783,22 @@ Definition yul_lit_def:
   (yul_lit _ = NONE)
 End
 
-Definition memory_covered_def:
-  memory_covered ws a n ⇔
-    n ≤ 32 * LENGTH ws ∧
-    EVERY (λi. EXISTS (λw. w ≤ a + i ∧ a + i < w + 32) ws) (COUNT_LIST n)
+Definition byte_covered_def:
+  (byte_covered [] a ⇔ F) ∧
+  (byte_covered (w :: ws) a ⇔ (w ≤ a ∧ a < w + 32n) ∨ byte_covered ws a)
 End
 
+Definition memory_covered_def:
+  (memory_covered ws a 0 ⇔ T) ∧
+  (memory_covered ws a (SUC n) ⇔
+    byte_covered ws a ∧ memory_covered ws (a + 1) n)
+End
+
+(* The bound keeps the check linear in the block's size. *)
 Definition memory_read_ok_def:
   memory_read_ok ws p l ⇔
     case (yul_lit p, yul_lit l) of
-      (SOME a, SOME n) => memory_covered ws a n
+      (SOME a, SOME n) => n ≤ 32n * LENGTH ws ∧ memory_covered ws a n
     | _ => F
 End
 
@@ -800,7 +806,7 @@ Definition memory_write_ok_def:
   memory_write_ok halts p l ⇔
     halts ∨
     case (yul_lit p, l) of
-      (SOME a, SOME n) => a + n ≤ 64
+      (SOME a, SOME n) => a + n ≤ 64n
     | _ => F
 End
 
@@ -1218,6 +1224,17 @@ val () = cv_auto_trans assembly_unsupported_def;
 val () = cv_auto_trans assembly_state_writes_def;
 val () = cv_auto_trans assembly_expr_ok_def;
 val () = cv_auto_trans assembly_stmt_ok_def;
+val () = cv_auto_trans yul_lit_def;
+val () = cv_auto_trans byte_covered_def;
+val () = cv_auto_trans memory_covered_def;
+val () = cv_auto_trans memory_read_ok_def;
+val () = cv_auto_trans memory_write_ok_def;
+val () = cv_auto_trans builtin_memory_ok_def;
+val () = cv_auto_trans memory_expr_ok_def;
+val () = cv_auto_trans memory_store_def;
+val () = cv_auto_trans memory_stmt_ok_def;
+val () = cv_auto_trans block_halts_def;
+val () = cv_auto_trans assembly_memory_ok_def;
 val () = cv_auto_trans assembly_value_type_def;
 val () = cv_auto_trans assembly_reference_ok_def;
 val () = cv_auto_trans fresh_core_id_def;
