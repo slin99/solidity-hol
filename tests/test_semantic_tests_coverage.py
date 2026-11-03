@@ -131,6 +131,31 @@ class ReadTestTests(unittest.TestCase):
         self.assertIn("revertStrings: debug", reason("// revertStrings: debug\n"))
 
 
+class GetterTests(unittest.TestCase):
+    def test_public_state_variables_need_a_getter_shape(self) -> None:
+        def elementary(node_id, type_identifier):
+            return {"nodeType": "ElementaryTypeName", "id": node_id,
+                    "typeDescriptions": {"typeIdentifier": type_identifier}}
+
+        def mapping(node_id, key, value):
+            return {"nodeType": "Mapping", "id": node_id, "keyType": key, "valueType": value,
+                    "typeDescriptions": {"typeIdentifier": "t_mapping"}}
+
+        nested = mapping(10, elementary(11, "t_address"),
+                         {"nodeType": "ArrayTypeName", "id": 12, "baseType": elementary(13, "t_string_storage_ptr"),
+                          "typeDescriptions": {"typeIdentifier": "t_array"}})
+        self.assertTrue(coverage.has_getter(nested))
+        self.assertFalse(coverage.has_getter(mapping(20, elementary(21, "t_string_memory_ptr"),
+                                                     elementary(22, "t_uint256"))))
+        self.assertFalse(coverage.has_getter({"nodeType": "UserDefinedTypeName", "id": 30,
+                                              "typeDescriptions": {"typeIdentifier": "t_struct$_S_$1_storage_ptr"}}))
+        state = dict(variable(3, state=True, visibility="public"), typeName=elementary(103, "t_uint256"))
+        self.assertEqual(coverage.scan({"t.sol": unit([state, function(4, [])])}), {})
+        overriding = dict(state, overrides={"nodeType": "OverrideSpecifier", "id": 104, "overrides": []})
+        self.assertEqual({b.feature for b in coverage.scan({"t.sol": unit([overriding, function(4, [])])})[3]},
+                         {"overriding state variables"})
+
+
 class ClassifyTests(unittest.TestCase):
     def test_preparation_failures_are_not_unsupported_features(self) -> None:
         for status in (coverage.MALFORMED_INPUT, coverage.INVALID_CORE):
@@ -141,16 +166,16 @@ class ClassifyTests(unittest.TestCase):
                 self.assertIsNone(result.first)
 
     def test_import_rejection_records_first_and_all_blockers(self) -> None:
-        ast = unit([variable(3, state=True, visibility="public"), function(4, [ASSEMBLY])])
+        ast = unit([dict(variable(3, state=True), constant=True), function(4, [ASSEMBLY])])
         result = coverage.classify(
             "t.sol", coverage.scan({"t.sol": ast}),
             {"status": "import-rejected",
-             "message": "VariableDeclaration 3: public state variables are not supported"})
+             "message": "VariableDeclaration 3: constants are not supported"})
         self.assertEqual(result.category, coverage.IMPORT_REJECTED)
         self.assertEqual(result.first, coverage.Blocker(
-            "VariableDeclaration", "public state variables", "import"))
+            "VariableDeclaration", "constants", "import"))
         self.assertEqual({b.feature for b in result.blockers},
-                         {"public state variables", "inline assembly"})
+                         {"constants", "inline assembly"})
         self.assertTrue(result.scan_agrees)
 
     def test_scan_must_explain_the_importer(self) -> None:
@@ -168,11 +193,11 @@ class ClassifyTests(unittest.TestCase):
         self.assertFalse(rejected.scan_agrees)
 
     def test_import_rejection_names_its_source(self) -> None:
-        ast = unit([variable(3, state=True, visibility="public")])
+        ast = unit([dict(variable(3, state=True), constant=True)])
         named = coverage.classify("t.sol", coverage.scan({"t.sol": ast}), {
             "status": "import-rejected",
-            "message": "a.sol: VariableDeclaration 3: public state variables are not supported"})
-        self.assertEqual(named.first.feature, "public state variables")
+            "message": "a.sol: VariableDeclaration 3: constants are not supported"})
+        self.assertEqual(named.first.feature, "constants")
         self.assertTrue(named.scan_agrees)
 
     def test_elaboration_rejection_and_admission(self) -> None:
@@ -515,18 +540,18 @@ class ClassifyTests(unittest.TestCase):
             return coverage.classify(
                 name, coverage.scan({name: unit(members)}),
                 {"status": "import-rejected",
-                 "message": "VariableDeclaration 3: public state variables are not supported"})
+                 "message": "VariableDeclaration 3: constants are not supported"})
 
         report = coverage.Report("pin", "profile", [
-            rejected("a.sol", [variable(3, state=True, visibility="public"), function(4, [])]),
-            rejected("b.sol", [variable(3, state=True, visibility="public"), function(4, [ASSEMBLY])]),
+            rejected("a.sol", [dict(variable(3, state=True), constant=True), function(4, [])]),
+            rejected("b.sol", [dict(variable(3, state=True), constant=True), function(4, [ASSEMBLY])]),
         ])
         ranking = {f["feature"]: f for f in report.feature_ranking()}
-        self.assertEqual(ranking["public state variables"]["tests"], 2)
-        self.assertEqual(ranking["public state variables"]["only_blocker"], 1)
-        self.assertEqual(ranking["public state variables"]["first_rejection"], 2)
+        self.assertEqual(ranking["constants"]["tests"], 2)
+        self.assertEqual(ranking["constants"]["only_blocker"], 1)
+        self.assertEqual(ranking["constants"]["first_rejection"], 2)
         self.assertEqual(ranking["inline assembly"]["only_blocker"], 0)
-        self.assertEqual(report.greedy_order(5), [("public state variables", 1), ("inline assembly", 2)])
+        self.assertEqual(report.greedy_order(5), [("constants", 1), ("inline assembly", 2)])
 
 
 if __name__ == "__main__":

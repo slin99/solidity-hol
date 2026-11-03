@@ -325,8 +325,9 @@ val storage_ast =
 val storage_contracts =
   artifact_part storage_fixture ["contracts", storage_source]
 
-(* The first variable declaration is the state variable total. *)
-val () = import_error_with Unsupported storage_contracts "public state variable"
+(* The first variable declaration is the state variable total. A public
+ * one needs its getter's selector. *)
+val () = import_error_with Malformed storage_contracts "public state variable without a selector"
   (edit_first "VariableDeclaration"
      (set_field "visibility" (JSON.STRING "public")) storage_ast)
 val () = import_error_with Unsupported storage_contracts "constant state variable"

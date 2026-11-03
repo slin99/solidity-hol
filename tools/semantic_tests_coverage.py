@@ -496,8 +496,8 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
         if node.get("kind") != "baseConstructorSpecifier":
             found.append("modifiers")
     elif kind == "VariableDeclaration":
-        if node["stateVariable"] and node.get("visibility") == "public":
-            found.append("public state variables")
+        if node.get("overrides"):
+            found.append("overriding state variables")
         if node["constant"]:
             found.append("constants")
         if node["mutability"] == "immutable":
@@ -593,6 +593,22 @@ UNARY_OPERATORS = {"++", "--", "-", "!", "~"}
 BYTES = re.compile(r"t_bytes_(storage|(memory|calldata|storage)_ptr)")
 
 
+def has_getter(type_name: dict[str, Any]) -> bool:
+    """Whether getter_shape admits a public state variable's type: mappings
+    with elementary keys and arrays, down to an elementary type or a byte
+    sequence."""
+    kind = type_name["nodeType"]
+    if kind == "Mapping":
+        key = type_name["keyType"]["typeDescriptions"].get("typeIdentifier") or ""
+        return VALUE_TYPE.fullmatch(key) is not None and has_getter(type_name["valueType"])
+    if kind == "ArrayTypeName":
+        return has_getter(type_name["baseType"])
+    type_identifier = type_name["typeDescriptions"].get("typeIdentifier") or ""
+    return (kind == "ElementaryTypeName"
+            and (VALUE_TYPE.fullmatch(type_identifier) is not None
+                 or type_identifier in ("t_bytes_storage_ptr", "t_string_storage_ptr")))
+
+
 def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
                          error_parameter: bool = False) -> list[Blocker]:
     """What valid_src_unit or elaborate_unit rejects at a node the importer
@@ -619,6 +635,9 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
                 found.append("local reference bindings")
             if error_parameter and not VALUE_TYPE.fullmatch(type_identifier):
                 found.append("custom errors with reference parameters")
+            if (node["stateVariable"] and node.get("visibility") == "public"
+                    and not has_getter(node["typeName"])):
+                found.append("public state variables")
     elif (kind == "TupleExpression" and not node["isInlineArray"]
           and not decodes(node["typeDescriptions"]["typeIdentifier"])):
         type_identifier = node["typeDescriptions"]["typeIdentifier"]
