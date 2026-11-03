@@ -117,6 +117,7 @@ Datatype:
   | ReadOperation sol_type core_atom
   | StateReferenceOperation ast_id
   | NavigateOperation sol_type core_atom navigation
+  | DefaultBytesOperation sol_type
   | BytesLiteralOperation sol_type (byte list)
   | AllocateBytesOperation sol_type core_atom
   | ByteIndexOperation core_atom core_atom
@@ -148,6 +149,9 @@ Datatype:
   | BreakStmt
   | ContinueStmt
   | RevertStmt core_atom
+  (* revert E(args): the error's selector, its parameter types and the
+   * arguments *)
+  | RevertErrorStmt (byte list) (sol_type list) (core_atom list)
   | PanicStmt num
   (* topic0 (NONE for an anonymous event), then each argument with its type
    * and whether it is indexed *)

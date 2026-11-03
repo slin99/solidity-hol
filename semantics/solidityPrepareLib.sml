@@ -157,6 +157,7 @@ fun import_unit artifact source =
                       NONE => JSON.OBJECT [] | SOME contracts => contracts)
     in
       solidityImportLib.import_source_unit
+        (map (fn (_, s) => field s "ast") (object (field output "sources")))
         (JSONUtil.get (output, map JSONUtil.SEL ["sources", source, "ast"])) contracts
     end)
     handle solidityImportLib.ImportError message => reject UnsupportedImport message

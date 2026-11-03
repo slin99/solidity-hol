@@ -202,7 +202,11 @@ End
 Definition eval_operation_def:
   eval_operation env (st : source_state) op =
     case op of
-      StateReferenceOperation x =>
+      DefaultBytesOperation element =>
+        if byte_sequence_type element then
+          ValueOk (ReferenceValue (MemoryReference (HeapId 0) 0 element))
+        else ValueAbrupt (InvalidCompletion "bad default byte type")
+    | StateReferenceOperation x =>
         (case state_reference env st.frame.self_address x of
            SOME r => ValueOk (ReferenceValue r)
          | _ => ValueAbrupt (InvalidCompletion "bad state reference"))
@@ -578,6 +582,13 @@ Definition simple_stmt_def:
     | ContinueStmt => abrupt_result ContinueCompletion st gas
     | PanicStmt code => abrupt_result (PanicCompletion code) st gas
     | EmitStmt topic args => emit_event topic args st gas
+    | RevertErrorStmt selector params args =>
+        (case eval_atoms st.scopes args of
+           SOME vs =>
+             (case encoded_values params vs of
+                SOME data => abrupt_result (RevertCompletion (selector ++ data)) st gas
+              | NONE => abrupt_result (InvalidCompletion "bad error arguments") st gas)
+         | NONE => abrupt_result (InvalidCompletion "unbound atom") st gas)
     | RevertStmt a =>
         (case eval_atom st.scopes a of
            SOME (ScalarValue (BytesValue data)) =>

@@ -330,17 +330,21 @@ def check_artifacts(root: Path, corpus: dict[str, Any]) -> list[dict[str, str]]:
             continue
         source = suite["source"]
         subject = f"{path}:{source}"
-        recorded = artifact.get("input", {}).get("sources", {}).get(source, {}).get("content")
-        try:
-            current = (root / source).read_text(encoding="utf-8")
-        except OSError as error:
-            checks.append(check("source-fresh", subject, str(error)))
+        recorded_sources = artifact.get("input", {}).get("sources", {})
+        if source not in recorded_sources:
+            checks.append(check("source-fresh", subject, "the artifact was not compiled from this source"))
             continue
-        checks.append(check(
-            "source-fresh", subject,
-            None if recorded == current
-            else "the artifact was not compiled from the current source; regenerate it",
-        ))
+        for name, recorded in sorted(recorded_sources.items()):
+            try:
+                current = (root / name).read_text(encoding="utf-8")
+            except OSError as error:
+                checks.append(check("source-fresh", f"{path}:{name}", str(error)))
+                continue
+            checks.append(check(
+                "source-fresh", f"{path}:{name}",
+                None if recorded.get("content") == current
+                else "the artifact was not compiled from the current source; regenerate it",
+            ))
         bytecode = (
             artifact.get("output", {}).get("contracts", {}).get(source, {})
             .get(suite["contract"], {}).get("evm", {}).get("deployedBytecode", {}).get("object")

@@ -75,4 +75,17 @@ contract MemoryBytes {
         data[(data = hex"bbcc").length - 2] = replacement;
         return (original[0], data[0]);
     }
+    function parenthesizedLiteral() external pure returns (bytes1) {
+        bytes memory data = (hex"aa");
+        return data[0];
+    }
+
+    function literalPair() private pure returns (bytes memory, string memory) {
+        return (hex"bb", "x");
+    }
+
+    function multipleLiteralReturns() external pure returns (bytes1, bytes1) {
+        (bytes memory data, string memory text) = literalPair();
+        return (data[0], bytes(text)[0]);
+    }
 }

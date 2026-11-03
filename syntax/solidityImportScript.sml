@@ -5,7 +5,8 @@
  * closed: an unknown nodeType, a missing required field, or a feature outside
  * the subset (public, constant, immutable or initialised state variables,
  * modifiers, super, named or try calls, built-ins other than
- * require, assert, revert, members of msg, tx and block and address(this), literal subdenominations,
+ * require, assert, revert, members of msg, tx and block, address(this) and
+ * type(T).max and .min for integer types T, literal subdenominations,
  * inline arrays, type names other than elementary types, arrays and mappings, ...)
  * raises ImportError. Semantic nodes keep their compiler id and source range;
  * declarations are referred to by id, and names are diagnostic only. Type
@@ -14,14 +15,17 @@
  *
  * A unit holds its deployable contracts: those neither abstract, nor an
  * interface, nor a base of another contract of the unit. Each is flattened
- * along its linearization (src_contract); its bases must be in the same unit.
+ * along its linearization (src_contract); its bases, the functions it calls
+ * and the structs it uses may come from any source unit of the compilation
+ * (unit_sources), since the AST refers to declarations by id across files.
  *
  * Types are normalized from elementary, array and mapping type-name nodes; value
  * types are decoded from typeIdentifiers. Both yield only valid shapes (normalize_type_name_valid,
  * decode_type_identifier_valid). Literals keep their exact rational type.
  *
  * valid_src_unit then establishes, for an imported unit:
- *  - all node ids are distinct;
+ *  - all node ids are distinct, and the unit is among its compilation's
+ *    source units;
  *  - every parameter, return, local and state variable has a normalized
  *    elementary, array or mapping type, the default data location, and a
  *    type identifier agreeing with that type, and the enclosing function,
@@ -36,15 +40,19 @@
  *    contract, the most derived override of the one it names (call_table);
  *    calls have matching arity and are annotated with the callee's
  *    return types; conversions are annotated with their normalized target type;
- *    environment reads with their member's type; emits name an event of the
- *    contract with as many arguments as it has parameters;
+ *    environment reads with their member's type; type(T).max and .min an
+ *    integer type T, with T's type; emits name an event of the
+ *    contract with as many arguments as it has parameters, and reverts with
+ *    an error carry as many arguments as the error has parameters, which
+ *    are of elementary types;
  *  - declaration statements list exactly their declarations' ids as
  *    assignments, returns name the enclosing function's return list, break and
  *    continue occur in loop bodies, conditions are boolean;
  *  - functions, receive and fallback are pure, view, nonpayable or payable,
  *    and only non-pure ones refer to state variables; functions a more
  *    derived one overrides are not checked, since nothing reaches them;
- *    contracts are scoped by the unit, functions by a base of their contract;
+ *    contracts are scoped by the unit, functions by a base of their contract,
+ *    structs by a base or a source unit of the compilation;
  *  - operators belong to the admitted set and every other expression
  *    annotation decodes to an elementary, rational literal or tuple type.
  *
@@ -125,6 +133,14 @@ Datatype:
   |>
 End
 
+(* The error a revert statement names: its selector and parameters. *)
+Datatype:
+  src_error = <|
+    error_selector : byte list;
+    error_parameters : src_variable list
+  |>
+End
+
 Datatype:
   src_expr
   = SrcIdentifier node_info string num string
@@ -143,11 +159,13 @@ Datatype:
   | SrcTypeConversion node_info src_type_name src_expr string
   | SrcEnvironment node_info environment_field string
   | SrcExternalCall node_info src_external bool (src_expr list) string
+  | SrcTypeMember node_info string src_type_name string
 End
 
 (* VariableDeclarationStatement: assignments, declarations (NONE for a hole),
  * initial value. ForStatement: initialization, condition, loop expression,
  * body. Return: functionReturnParameters, expression. Emit: the event's id,
+ * positional arguments. RevertError: revert E(args), the error and the
  * positional arguments.
  *)
 Datatype:
@@ -166,6 +184,7 @@ Datatype:
   | SrcContinue node_info
   | SrcReturn node_info num (src_expr option)
   | SrcEmit node_info num (src_expr list)
+  | SrcRevertError node_info src_error (src_expr list)
 End
 
 (* Parameter lists are represented by their ids and declarations. The kind is
@@ -253,6 +272,7 @@ Datatype:
   src_unit = <|
     unit_info : node_info;
     unit_path : string;
+    unit_sources : num list;
     unit_contracts : src_contract list
   |>
 End
@@ -384,17 +404,22 @@ Proof
   Cases_on ‘OPT_MMAP I xs’ >> simp[]
 QED
 
-(* A tuple component "_c_", from "t_tuple$_c1_$_c2_$...$". *)
+(* A tuple component "_c_", from "t_tuple$_c1_$_c2_$...$". Literal
+ * byte sequences retain their source string kind here; elaboration supplies
+ * the destination's bytes/string type and location when coercing the value. *)
 Definition tuple_component_def:
   tuple_component p =
     if 2 ≤ LENGTH p ∧ isPREFIX "_" p ∧ isPREFIX "_" (REVERSE p) then
-      decode_elementary_identifier (TAKE (LENGTH p - 2) (DROP 1 p))
+      let tid = TAKE (LENGTH p - 2) (DROP 1 p) in
+      if isPREFIX "t_stringliteral_" tid then SOME StringT
+      else decode_elementary_identifier tid
     else NONE
 End
 
 Definition decode_type_identifier_def:
   decode_type_identifier s =
     if isPREFIX "t_rational_" s then decode_rational (DROP 11 s)
+    else if isPREFIX "t_stringliteral_" s then SOME SrcByteLiteral
     else if s = "t_tuple$__$" then SOME (SrcTupleType [])
     else if isPREFIX "t_tuple$" s then
       case REVERSE (separated_fields #"$" "" (DROP 8 s)) of
@@ -453,6 +478,13 @@ Proof
       is_reference_type_def, contains_mapping_def]
 QED
 
+Theorem tuple_component_valid[local]:
+  tuple_component p = SOME ty ⇒ valid_type_shape ty
+Proof
+  rw[tuple_component_def] >> gvs[valid_type_shape_def] >>
+  metis_tac[decode_elementary_identifier_valid]
+QED
+
 Theorem decode_type_identifier_valid:
   (decode_type_identifier s = SOME (SrcType ty) ⇒ valid_type_shape ty) ∧
   (decode_type_identifier s = SOME (SrcTupleType tys) ⇒
@@ -461,8 +493,7 @@ Proof
   ‘∀ps tys. all_some (MAP tuple_component ps) = SOME tys ⇒
             EVERY valid_type_shape tys’
     by (Induct >> rw[all_some_def, AllCaseEqs()] >>
-        gvs[tuple_component_def] >>
-        metis_tac[decode_elementary_identifier_valid]) >>
+        gvs[] >> metis_tac[tuple_component_valid]) >>
   rw[decode_type_identifier_def, decode_rational_def, rational_type_def,
      AllCaseEqs()] >>
   gvs[] >> metis_tac[decode_elementary_identifier_valid]
@@ -642,6 +673,7 @@ Definition expr_ids_def:
   (expr_ids (SrcTypeConversion info tn e _) =
     info.node_id :: type_name_ids tn ++ expr_ids e) ∧
   (expr_ids (SrcEnvironment info _ _) = [info.node_id]) ∧
+  (expr_ids (SrcTypeMember info _ tn _) = info.node_id :: type_name_ids tn) ∧
   (expr_ids (SrcExternalCall info _ _ operands _) =
     info.node_id :: exprs_ids operands) ∧
   (component_ids [] = []) ∧
@@ -681,6 +713,7 @@ Definition stmt_ids_def:
   (stmt_ids (SrcContinue info) = [info.node_id]) ∧
   (stmt_ids (SrcReturn info _ e) = info.node_id :: option_expr_ids e) ∧
   (stmt_ids (SrcEmit info _ args) = info.node_id :: exprs_ids args) ∧
+  (stmt_ids (SrcRevertError info _ args) = info.node_id :: exprs_ids args) ∧
   (option_stmt_ids NONE = []) ∧
   (option_stmt_ids (SOME s) = stmt_ids s) ∧
   (stmts_ids [] = []) ∧
@@ -779,6 +812,19 @@ Definition builtin_shape_def:
   (builtin_shape RevertBuiltin condition message ⇔
     condition = NONE ∧
     (case message of NONE => T | SOME m => IS_SOME (literal_message m)))
+End
+
+(* type(T).max and type(T).min of an integer type T. *)
+Definition type_bound_def:
+  type_bound member ty =
+    case ty of
+      UintT n =>
+        if member = "max" then SOME (&(2 ** n) - 1 : int)
+        else if member = "min" then SOME 0 else NONE
+    | IntT n =>
+        if member = "max" then SOME (&(2 ** (n - 1)) - 1)
+        else if member = "min" then SOME (-&(2 ** (n - 1))) else NONE
+    | _ => NONE
 End
 
 (* The decoded type of a checked expression. *)
@@ -904,6 +950,12 @@ Definition check_expr_def:
   (check_expr env (SrcEnvironment _ f tid) =
     if source_type_matches (environment_type f) tid
     then SOME (SrcType (environment_type f)) else NONE) ∧
+  (check_expr env (SrcTypeMember _ member tn tid) =
+    case normalize_type_name tn of
+      SOME ty =>
+        if IS_SOME (type_bound member ty) ∧ source_type_matches ty tid
+        then SOME (SrcType ty) else NONE
+    | NONE => NONE) ∧
   (* Value only for a payable callee, as the compiler requires; elaboration
      converts the target to an address. *)
   (check_expr env (SrcExternalCall _ callee with_value operands tid) =
@@ -1026,6 +1078,13 @@ Definition check_stmts_def:
   (check_stmt env (SrcEmit _ ev args) ⇔
     case ALOOKUP env.events ev of
       SOME e => LENGTH args = LENGTH e.event_parameters ∧ check_exprs env args
+    | NONE => F) ∧
+  (check_stmt env (SrcRevertError _ err args) ⇔
+    LENGTH err.error_selector = 4 ∧
+    case all_some (MAP variable_type err.error_parameters) of
+      SOME params =>
+        EVERY is_elementary_type params ∧ LENGTH args = LENGTH params ∧
+        check_exprs env args
     | NONE => F)
 Termination
   WF_REL_TAC ‘measure (λx. case x of
@@ -1134,8 +1193,8 @@ Definition storage_layout_ok_def:
 End
 
 Definition check_struct_def:
-  check_struct unit_id bases (s : src_struct) ⇔
-    (MEM s.struct_scope bases ∨ s.struct_scope = unit_id) ∧
+  check_struct sources bases (s : src_struct) ⇔
+    (MEM s.struct_scope bases ∨ MEM s.struct_scope sources) ∧
     s.struct_members ≠ [] ∧
     EVERY (λv. v.var_scope = s.struct_info.node_id ∧ IS_SOME (field_variable_type v))
       s.struct_members ∧
@@ -1166,11 +1225,11 @@ Definition initializer_env_def:
 End
 
 Definition check_contract_def:
-  check_contract unit_id (c : src_contract) ⇔
+  check_contract unit_id sources (c : src_contract) ⇔
     c.contract_scope = unit_id ∧
     (case c.contract_bases of x :: _ => x = c.contract_info.node_id | [] => F) ∧
     ALL_DISTINCT c.contract_bases ∧
-    EVERY (check_struct unit_id c.contract_bases) c.contract_structs ∧
+    EVERY (check_struct sources c.contract_bases) c.contract_structs ∧
     EVERY check_event c.contract_events ∧
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
     case all_some (MAP (state_variable c.contract_bases)
@@ -1195,8 +1254,8 @@ End
 
 Definition valid_src_unit_def:
   valid_src_unit (u : src_unit) ⇔
-    ALL_DISTINCT (unit_ids u) ∧
-    EVERY (check_contract u.unit_info.node_id) u.unit_contracts
+    ALL_DISTINCT (unit_ids u) ∧ MEM u.unit_info.node_id u.unit_sources ∧
+    EVERY (check_contract u.unit_info.node_id u.unit_sources) u.unit_contracts
 End
 
 (* cv translation, so that imported units are checked by cv_eval. The
@@ -1254,6 +1313,7 @@ val () = cv_auto_trans unit_ids_def;
 val () = cv_auto_trans source_struct_field_def;
 val () = cv_auto_trans literal_message_def;
 val () = cv_auto_trans builtin_shape_def;
+val () = cv_auto_trans type_bound_def;
 
 val check_expr_pre_def = cv_auto_trans_pre_rec
   "check_expr_pre check_components_pre check_exprs_pre" check_expr_def (
