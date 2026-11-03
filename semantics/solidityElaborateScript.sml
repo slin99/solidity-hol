@@ -1326,6 +1326,35 @@ val elab_expr_pre_def = cv_auto_trans_pre_rec
   cv_termination_tac
 );
 
+Theorem elab_pre_bounded[local]:
+  !b.
+  (!ctx n e. 3 * src_expr_size e + 2 < b ==> elab_expr_pre ctx n e) /\
+  (!ctx n tys es. 3 * list_size src_expr_size es < b ==>
+     elab_args_pre ctx n tys es) /\
+  (!ctx n e. 3 * src_expr_size e + 3 < b ==> elab_values_pre ctx n e) /\
+  (!ctx n cs. 3 * list_size (option_size src_expr_size) cs < b ==>
+     elab_components_pre ctx n cs) /\
+  (!ctx n e. 3 * src_expr_size e + 1 < b ==> elab_location_pre ctx n e) /\
+  (!ctx n e. 3 * src_expr_size e + 2 < b ==> elab_destination_pre ctx n e)
+Proof
+  completeInduct_on ‘b’ >> rpt conj_tac >> rpt gen_tac >> disch_tac >>
+  qpat_x_assum ‘!m. m < b ==> _’ (drule_then strip_assume_tac)
+  >~ [‘elab_expr_pre ctx n e’] >-
+    (Cases_on ‘e’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
+     simp[src_expr_distinct, src_expr_11, solidityImportTheory.src_expr_size_def])
+  >~ [‘elab_location_pre ctx n e’] >-
+    (Cases_on ‘e’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
+     simp[src_expr_distinct, src_expr_11, solidityImportTheory.src_expr_size_def])
+  >~ [‘elab_args_pre ctx n tys es’] >-
+    (Cases_on ‘es’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
+     simp[listTheory.list_size_def])
+  >~ [‘elab_components_pre ctx n cs’] >-
+    (Cases_on ‘cs’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
+     simp[listTheory.list_size_def, basicSizeTheory.option_size_def]) >>
+  simp_tac std_ss [Once elab_expr_pre_def] >>
+  simp[solidityImportTheory.src_expr_size_def]
+QED
+
 Theorem elab_expr_pre[cv_pre,local]:
   (∀ctx n v. elab_expr_pre ctx n v) ∧
   (∀ctx n tys es. elab_args_pre ctx n tys es) ∧
@@ -1334,13 +1363,23 @@ Theorem elab_expr_pre[cv_pre,local]:
   (∀ctx n e. elab_location_pre ctx n e) ∧
   (∀ctx n e. elab_destination_pre ctx n e)
 Proof
-  ho_match_mp_tac elab_expr_ind >> rpt strip_tac
-  >~ [‘elab_expr_pre ctx n expression’] >-
-    (Cases_on ‘expression’ >>
-     rule_assum_tac (SIMP_RULE (srw_ss()) []) >>
-     simp_tac std_ss [Once elab_expr_pre_def] >>
-     rw[] >> fs[]) >>
-  simp_tac std_ss [Once elab_expr_pre_def] >> rw[] >> fs[]
+  conj_tac >-
+    (rpt gen_tac >> irule (cj 1 elab_pre_bounded) >>
+     qexists_tac ‘3 * src_expr_size v + 3’ >> simp[]) >>
+  conj_tac >-
+    (rpt gen_tac >> irule (cj 2 elab_pre_bounded) >>
+     qexists_tac ‘3 * list_size src_expr_size es + 1’ >> simp[]) >>
+  conj_tac >-
+    (rpt gen_tac >> irule (cj 3 elab_pre_bounded) >>
+     qexists_tac ‘3 * src_expr_size e + 4’ >> simp[]) >>
+  conj_tac >-
+    (rpt gen_tac >> irule (cj 4 elab_pre_bounded) >>
+     qexists_tac ‘3 * list_size (option_size src_expr_size) cs + 1’ >> simp[]) >>
+  conj_tac >-
+    (rpt gen_tac >> irule (cj 5 elab_pre_bounded) >>
+     qexists_tac ‘3 * src_expr_size e + 2’ >> simp[]) >>
+  rpt gen_tac >> irule (cj 6 elab_pre_bounded) >>
+  qexists_tac ‘3 * src_expr_size e + 3’ >> simp[]
 QED
 
 val () = cv_auto_trans elab_condition_def;
