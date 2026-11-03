@@ -414,6 +414,32 @@ Proof
   >> MATCH_ACCEPT_TAC yul_fuel_invoke
 QED
 
+(* One call's own form of the same fact, which is the shape a per-function
+ * theorem's Yul side has: the run at a fuel large enough for it is the run at
+ * any larger fuel.  A caller that has evaluated the body at a numeral fuel
+ * has nothing left to say about the bound it chose. *)
+Theorem invoke_yul_fuel_stable:
+  ∀n fns name args m k. yul_running (invoke_yul n fns name args m) ∧ n ≤ k ⇒
+  invoke_yul k fns name args m = invoke_yul n fns name args m
+Proof
+  MATCH_ACCEPT_TAC (List.last (CONJUNCTS eval_yul_fuel_stable))
+QED
+
+(* What a statement's result is handed on as: a block tests the result of one
+ * statement and runs the rest of the body on it, and an expression's result is
+ * what a statement branches on.  A body that has to be built once per outcome
+ * rather than once per use of a bound name pushes the function it is being
+ * handed to inside the case, which this says is the same term.  Stated on the
+ * lifted case (`yul_expr_result_CASE`), because that is the form the
+ * evaluator's own clauses leave behind. *)
+Theorem yul_expr_result_RAND:
+  ∀f b1 b2 x.
+    f (yul_expr_result_CASE x b1 b2) =
+    yul_expr_result_CASE x (λvs m. f (b1 vs m)) (λc m. f (b2 c m))
+Proof
+  rw [] >> Cases_on `x` >> simp [yul_expr_result_case_def]
+QED
+
 Theorem run_yul_fuel_stable:
   run_yul n code m = r ∧ r.completion ≠ YulOutOfFuel ∧ n ≤ k ⇒
   run_yul k code m = r
