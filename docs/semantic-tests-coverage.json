@@ -390,6 +390,15 @@
       "tests": 30
     },
     {
+      "feature": "external calls to getters",
+      "first_rejection": 0,
+      "node_types": [
+        "MemberAccess"
+      ],
+      "only_blocker": 0,
+      "tests": 30
+    },
+    {
       "feature": "enums",
       "first_rejection": 25,
       "node_types": [
@@ -1944,6 +1953,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
         "structs",
@@ -2533,6 +2543,7 @@
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "contract creation (new C)",
@@ -3729,6 +3740,7 @@
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "operator delete",
         "source units without exactly one contract"
       ],
@@ -5069,6 +5081,7 @@
         "abi.* functions",
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "hash and signature built-ins",
         "source units without exactly one contract",
         "this"
@@ -6088,6 +6101,7 @@
         "arrays",
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -6108,6 +6122,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -6171,6 +6186,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
         "source units without exactly one contract",
@@ -8123,6 +8139,7 @@
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "operator delete",
         "source units without exactly one contract"
       ],
@@ -8287,6 +8304,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "free functions",
         "source units without exactly one contract"
       ],
@@ -8670,6 +8688,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -8682,6 +8701,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -8695,6 +8715,7 @@
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -9461,6 +9482,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
         "this"
@@ -9675,6 +9697,7 @@
       "features": [
         "constant expressions over literals",
         "external calls and contract members",
+        "external calls to getters",
         "this",
         "transient storage"
       ],
@@ -9688,6 +9711,7 @@
       "features": [
         "constant expressions over literals",
         "external calls and contract members",
+        "external calls to getters",
         "this",
         "transient storage"
       ],
@@ -9762,6 +9786,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "immutables",
         "source units without exactly one contract",
         "this",
@@ -12031,6 +12056,7 @@
         "conditional expressions",
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "function members (selector, address, \u2026)",
         "libraries",
         "library calls and contract-name members",
@@ -14071,6 +14097,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "source units without exactly one contract",
         "string literals as fixed-size bytes"
       ],
@@ -15042,6 +15069,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -15112,6 +15140,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "immutables",
         "source units without exactly one contract"
       ],
@@ -15186,6 +15215,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -15880,6 +15910,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
         "structs",
@@ -16767,6 +16798,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "external calls to getters",
         "mappings",
         "public state variables",
         "this"
@@ -16804,6 +16836,7 @@
       "features": [
         "enums",
         "external calls and contract members",
+        "external calls to getters",
         "mappings",
         "public state variables",
         "this"
@@ -17872,6 +17905,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "hash and signature built-ins",
         "inline assembly",
         "source units without exactly one contract",
@@ -18064,6 +18098,7 @@
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "source units without exactly one contract",
         "transient storage"
       ],
@@ -18094,6 +18129,7 @@
         "contract creation (new C)",
         "conversions to non-elementary types",
         "external calls and contract members",
+        "external calls to getters",
         "public state variables",
         "source units without exactly one contract",
         "this"
@@ -18373,6 +18409,7 @@
       "features": [
         "array values",
         "external calls and contract members",
+        "external calls to getters",
         "inline arrays",
         "public state variables",
         "this"
@@ -18551,6 +18588,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external calls to getters",
         "source units without exactly one contract",
         "this"
       ],
@@ -18763,6 +18801,7 @@
       "features": [
         "aggregate array mutation",
         "external calls and contract members",
+        "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
         "struct values and copying",

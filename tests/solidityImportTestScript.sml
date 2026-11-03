@@ -332,9 +332,13 @@ val () = import_error_with Malformed storage_contracts "public state variable wi
      (set_field "visibility" (JSON.STRING "public")) storage_ast)
 val () = import_error_with Unsupported storage_contracts "overriding state variable"
   (edit_first "VariableDeclaration"
-     (set_field "overrides"
-        (JSON.OBJECT [("nodeType", JSON.STRING "OverrideSpecifier"),
-                      ("id", JSON.INT 100000), ("overrides", JSON.ARRAY [])]))
+     (fn v => case drop_field "overrides" v of
+                JSON.OBJECT kvs =>
+                  JSON.OBJECT (("overrides",
+                    JSON.OBJECT [("nodeType", JSON.STRING "OverrideSpecifier"),
+                                 ("id", JSON.INT 100000),
+                                 ("overrides", JSON.ARRAY [])]) :: kvs)
+              | v' => v')
      storage_ast)
 val () = import_error_with Unsupported storage_contracts "constant state variable"
   (edit_first "VariableDeclaration" (set_field "constant" (JSON.BOOL true))
