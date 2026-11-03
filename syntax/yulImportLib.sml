@@ -300,6 +300,19 @@ fun is_function v =
      SOME (JSON.STRING s) => s = "YulFunctionDefinition"
    | _ => false)
 
+(* A code block: its top-level function definitions, which the evaluator
+ * collects, and its statements. *)
+fun import_code block = within block (fn block =>
+  (expect block "YulBlock";
+   let
+     val statements = array_field block "statements"
+     val defined = map (fn v => string_field v "name")
+                     (List.filter is_function statements)
+   in
+     stmt_list (map (fn v => if is_function v then import_function defined v
+                             else import_statement defined v) statements)
+   end))
+
 fun import_runtime output source contract stage =
   within (runtime_ast output source contract stage) (fn ast =>
     (expect ast "YulObject";
@@ -321,15 +334,12 @@ fun import_runtime output source contract stage =
        val code = field runtime "code"
        val () = within code (fn code => expect code "YulCode")
        val block = field code "block"
-       val statements = within block (fn block =>
-         (expect block "YulBlock"; array_field block "statements"))
-       val () = require block (not (null statements))
-                  "the runtime object's code block is empty"
-       val defined = map (fn v => string_field v "name")
-                       (List.filter is_function statements)
+       val () = within block (fn block =>
+         (expect block "YulBlock";
+          require block (not (null (array_field block "statements")))
+            "the runtime object's code block is empty"))
      in
-       stmt_list (map (fn v => if is_function v then import_function defined v
-                               else import_statement defined v) statements)
+       import_code block
      end))
 
 fun import_runtime_artifact path source contract stage =

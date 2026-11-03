@@ -31,6 +31,8 @@
 Theory yulAST
 Ancestors
   vfmTypes
+Libs
+  cv_typeLib
 
 Datatype:
   yul_builtin
@@ -133,3 +135,8 @@ Theorem yul_expr_size_pos:
 Proof
   Cases_on `e` >> simp[fetch "-" "yul_expr_size_def"]
 QED
+
+(* The cv encoding of the tree, here so that every descendant shares one:
+ * the Yul evaluator runs it, and the Solidity core embeds inline assembly
+ * in its statements. *)
+val _ = cv_typeLib.from_to_thm_for “:yul_stmt”;

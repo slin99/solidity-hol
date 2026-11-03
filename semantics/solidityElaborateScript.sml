@@ -958,6 +958,30 @@ End
  * blocks are spliced into the enclosing list: ids are unique, so the core
  * scopes need not mirror the source blocks.
  *)
+(* A local keeps its declared type, which the core program's check limits to
+ * the value types the block can read and write.
+ *)
+Definition elab_assembly_reference_def:
+  (elab_assembly_reference ctx (SrcAssemblyValue x) =
+    case ALOOKUP ctx.variables x of
+      SOME ty => SOME (AssemblyLocal (AstId x) ty)
+    | NONE => NONE) ∧
+  (elab_assembly_reference ctx (SrcAssemblySlot x) =
+    if IS_SOME (ALOOKUP ctx.state x) then SOME (AssemblySlot (AstId x))
+    else NONE) ∧
+  (elab_assembly_reference ctx (SrcAssemblyOffset x) =
+    if IS_SOME (ALOOKUP ctx.state x) then SOME (AssemblyOffset (AstId x))
+    else NONE)
+End
+
+Definition elab_assembly_references_def:
+  (elab_assembly_references ctx [] = SOME []) ∧
+  (elab_assembly_references ctx ((name, r) :: refs) =
+    case (elab_assembly_reference ctx r, elab_assembly_references ctx refs) of
+      (SOME r', SOME rs) => SOME ((name, r') :: rs)
+    | _ => NONE)
+End
+
 Definition elab_stmts_def:
   (elab_stmts ctx n [] = SOME (([], ctx), n)) ∧
   (elab_stmts ctx n (st :: ss) =
@@ -1100,6 +1124,10 @@ Definition elab_stmts_def:
           SOME ((ss, as), n1) =>
             SOME ((ss ++ [RevertErrorStmt err.error_selector params as], ctx), n1)
         | NONE => NONE) ∧
+  (elab_stmt ctx n (SrcInlineAssembly _ code refs) =
+    case elab_assembly_references ctx refs of
+      SOME rs => SOME (([AssemblyStmt code rs], ctx), n)
+    | NONE => NONE) ∧
   (* An optional for initialization or loop expression. *)
   (elab_for_init ctx n NONE = SOME (([], ctx), n)) ∧
   (elab_for_init ctx n (SOME st) = elab_stmt ctx n st)
@@ -1530,6 +1558,8 @@ Proof
 QED
 
 val () = cv_auto_trans return_atoms_def;
+val () = cv_auto_trans elab_assembly_reference_def;
+val () = cv_auto_trans elab_assembly_references_def;
 val () = cv_auto_trans flag_def;
 val () = cv_auto_trans set_flag_def;
 

@@ -108,6 +108,7 @@ Datatype:
   frame_observation
   = FrameSuccess (runtime_value list) source_world
   | FrameRevert (byte list) source_world
+  | FrameHalt (byte list) source_world
   | FramePanic num source_world
   | FrameInvalid string
   | FrameResourceLimit
@@ -119,6 +120,7 @@ Definition finish_source_frame_def:
       NormalCompletion => FrameSuccess [] final
     | ReturnCompletion values => FrameSuccess values final
     | RevertCompletion data => FrameRevert data initial
+    | HaltCompletion data => FrameHalt data final
     | PanicCompletion code => FramePanic code initial
     | FuelExhausted => FrameResourceLimit
     | InvalidCompletion reason => FrameInvalid reason

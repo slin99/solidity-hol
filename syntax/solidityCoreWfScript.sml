@@ -704,6 +704,69 @@ End
  * and temporaries included. Break/continue are only legal in a loop body (a
  * prelude is not one), and in_loop does not cross procedure boundaries.
  *)
+(* The value types an inline assembly block reads and writes back as one
+ * word. Enums and user-defined value types are left out: solc does not clean
+ * a word written to one, so an out-of-range value would have no source
+ * value. *)
+Definition assembly_value_type_def[simp]:
+  (assembly_value_type BoolT ⇔ T) ∧
+  (assembly_value_type (UintT _) ⇔ T) ∧
+  (assembly_value_type (IntT _) ⇔ T) ∧
+  (assembly_value_type (AddressT _) ⇔ T) ∧
+  (assembly_value_type (FixedBytesT _) ⇔ T) ∧
+  (assembly_value_type _ ⇔ F)
+End
+
+(* The builtins an inline assembly block may use. The source state keeps no
+ * remaining gas and no return data buffer, so gas, calls and return data are
+ * left out. *)
+Definition assembly_builtin_ok_def:
+  assembly_builtin_ok b ⇔
+    ¬MEM b [YGas; YCall; YStaticCall; YReturnDataSize; YReturnDataCopy]
+End
+
+Definition assembly_expr_ok_def:
+  (assembly_expr_ok (YulLit _) ⇔ T) ∧
+  (assembly_expr_ok (YulName _) ⇔ T) ∧
+  (assembly_expr_ok (YulBuiltin b es) ⇔
+    assembly_builtin_ok b ∧ assembly_exprs_ok es) ∧
+  (assembly_expr_ok (YulApply _ es) ⇔ assembly_exprs_ok es) ∧
+  (assembly_exprs_ok [] ⇔ T) ∧
+  (assembly_exprs_ok (e :: es) ⇔ assembly_expr_ok e ∧ assembly_exprs_ok es)
+End
+
+Definition assembly_stmt_ok_def:
+  (assembly_stmt_ok (YulBlock ss) ⇔ assembly_stmts_ok ss) ∧
+  (assembly_stmt_ok (YulFunction _ _ _ body) ⇔ assembly_stmts_ok body) ∧
+  (assembly_stmt_ok (YulLet _ NONE) ⇔ T) ∧
+  (assembly_stmt_ok (YulLet _ (SOME e)) ⇔ assembly_expr_ok e) ∧
+  (assembly_stmt_ok (YulAssign _ e) ⇔ assembly_expr_ok e) ∧
+  (assembly_stmt_ok (YulIf e body) ⇔ assembly_expr_ok e ∧ assembly_stmts_ok body) ∧
+  (assembly_stmt_ok (YulSwitch e cases default) ⇔
+    assembly_expr_ok e ∧ assembly_cases_ok cases ∧ assembly_stmts_ok default) ∧
+  (assembly_stmt_ok (YulFor pre c post body) ⇔
+    assembly_stmts_ok pre ∧ assembly_expr_ok c ∧ assembly_stmts_ok post ∧
+    assembly_stmts_ok body) ∧
+  (assembly_stmt_ok YulBreak ⇔ T) ∧
+  (assembly_stmt_ok YulContinue ⇔ T) ∧
+  (assembly_stmt_ok YulLeave ⇔ T) ∧
+  (assembly_stmt_ok (YulExprStmt e) ⇔ assembly_expr_ok e) ∧
+  (assembly_stmts_ok [] ⇔ T) ∧
+  (assembly_stmts_ok (s :: ss) ⇔ assembly_stmt_ok s ∧ assembly_stmts_ok ss) ∧
+  (assembly_cases_ok [] ⇔ T) ∧
+  (assembly_cases_ok ((_, body) :: cases) ⇔
+    assembly_stmts_ok body ∧ assembly_cases_ok cases)
+End
+
+Definition assembly_reference_ok_def:
+  assembly_reference_ok env ctx r ⇔
+    case r of
+      AssemblyLocal x ty =>
+        ALOOKUP ctx.bindings x = SOME (SingleType ty) ∧ assembly_value_type ty
+    | AssemblySlot x => IS_SOME (lookup_state_variable env x)
+    | AssemblyOffset x => IS_SOME (lookup_state_variable env x)
+End
+
 Definition check_core_stmts_def:
   (check_core_stmts env ctx [] = SOME ctx) ∧
   (check_core_stmts env ctx (DefineStmt x ty op :: ss) =
@@ -786,6 +849,10 @@ Definition check_core_stmts_def:
         if n + (if IS_SOME topic then 1 else 0) ≤ 4
         then check_core_stmts env ctx ss else NONE
     | NONE => NONE) ∧
+  (check_core_stmts env ctx (AssemblyStmt code refs :: ss) =
+    if assembly_stmts_ok code ∧ ALL_DISTINCT (MAP FST refs) ∧
+       EVERY (assembly_reference_ok env ctx) (MAP SND refs)
+    then check_core_stmts env ctx ss else NONE) ∧
   (check_core_stmts env ctx (_ :: _) = NONE)
 Termination
   WF_REL_TAC ‘measure (λ(env, ctx, ss). list_size core_stmt_size ss)’ >>
@@ -1009,6 +1076,11 @@ val () = cv_auto_trans environment_type_def;
 val () = cv_auto_trans wf_abi_atom_def;
 val () = cv_auto_trans (SPEC_ALL wf_core_operation_def);
 val () = cv_auto_trans emit_indexed_count_def;
+val () = cv_auto_trans assembly_builtin_ok_def;
+val () = cv_auto_trans assembly_expr_ok_def;
+val () = cv_auto_trans assembly_stmt_ok_def;
+val () = cv_auto_trans assembly_value_type_def;
+val () = cv_auto_trans assembly_reference_ok_def;
 val () = cv_auto_trans fresh_core_id_def;
 val () = cv_auto_trans bind_core_id_def;
 val () = cv_auto_trans capture_core_target_def;

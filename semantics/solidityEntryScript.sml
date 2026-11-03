@@ -73,9 +73,14 @@ Definition dispatch_def:
         | _ => DispatchRevert
 End
 
-(* One frame running procedure p on its arguments. *)
+(* One frame running procedure p on its arguments. An inline assembly halt
+ * returns its bytes as the frame's data; in a creation frame those bytes
+ * would be the deployed code, which the source does not model, so a halt
+ * there fails closed.
+ *)
 Definition run_entry_def:
-  run_entry fuel env p args (fr : source_frame) (w : source_world) reserved =
+  run_entry fuel env p args (fr : source_frame) (w : source_world) reserved
+            creating =
     let st = <| world := w; frame := fr; scopes := []; heap := FEMPTY;
                 next_heap_id := 0; memory_allocated := reserved; targets := FEMPTY |> in
     let r = case materialize_arguments (MAP SND p.parameters) args st of
@@ -88,6 +93,9 @@ Definition run_entry_def:
          | INR (PanicCompletion code) => ContractReverted (panic_data code) w
          | INR _ => ContractInvalid "unencodable return values")
     | FrameRevert data w' => ContractReverted data w'
+    | FrameHalt data w' =>
+        if creating then ContractInvalid "assembly halt in a creation frame"
+        else ContractReturned data w'
     | FramePanic code w' => ContractReverted (panic_data code) w'
     | FrameInvalid reason => ContractInvalid reason
     | FrameResourceLimit => ContractOutOfFuel
@@ -101,7 +109,7 @@ Definition call_contract_def:
       DispatchRevert => ContractReverted [] w
     | DispatchPanic n => ContractReverted (panic_data n) w
     | DispatchInvalid reason => ContractInvalid reason
-    | DispatchCall p args => run_entry fuel env p args fr w 0
+    | DispatchCall p args => run_entry fuel env p args fr w 0 F
 End
 
 (* The creation transaction's frame of a contract, from a world in which its
@@ -129,7 +137,7 @@ Definition deploy_contract_def:
               INR (PanicCompletion n) => ContractReverted (panic_data n) w
             | INR _ => ContractReverted [] w
             | INL args => run_entry fuel env p args (fr with call_data := []) w
-                (32 * ((LENGTH fr.call_data + 31) DIV 32))
+                (32 * ((LENGTH fr.call_data + 31) DIV 32)) T
 End
 
 Theorem call_contract_revert_restores_world:
