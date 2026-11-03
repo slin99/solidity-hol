@@ -36,24 +36,30 @@ sig
    *)
   val yul_invoke_conv : thm list -> conv
 
-  (* What the conversion did not get out of a form, as (theory, name)
-   * constants: the steps of the evaluation that are still standing, of the
-   * block, the statements and the expressions that the conversion takes, and
-   * of the evaluator's own frame and memory operations that it does not.
+  (* What the conversion's own rules are still standing on in a term, as
+   * (theory, name) constants: the block, the statements and the expressions it
+   * takes apart, the frame and memory operations it declines, FLOOKUP, the
+   * result helpers, and the calls it left folded.  An empty list means the
+   * evaluation of the body is finished and nothing of it is left.
    *)
   val residues : term -> (string * string) list
 
-  (* The residues a form may have: the call it left folded, and the
-   * evaluator's frame and memory operations.  A form with anything else in it
-   * -- a block, a statement or an expression of the evaluator -- is one whose
-   * body evaluation stopped early, which is what a test asks by requiring
-   * every residue of a form to be one of these.
+  (* The residues a form may have: the call it left folded; the operations
+   * whose input is a value nobody has -- the evaluator's own frame and memory
+   * operations, and FLOOKUP of a scope that came out of a callee's frame; and
+   * the result and value helpers, which build a record out of a completion
+   * that is not a literal.  A form with anything else in it -- a block, a
+   * statement or an expression of the evaluator -- is one whose body
+   * evaluation stopped early, which is what a test asks by requiring every
+   * residue of a form to be one of these.
    *)
   val permitted_residues : (string * string) list
 
-  (* Whether a form the conversion produced is closed: no residue in it, so
-   * every part of it is a term over the arguments and the entry machine, the
-   * guards the body branched on, and the calls it made.
+  (* Whether a form the conversion produced is closed: every residue in it is
+   * one a form may have, so nothing in it is a step of the evaluation that is
+   * still standing.  What is left is a term over the arguments and the entry
+   * machine, the guards the body branched on, the calls it made, and the
+   * operations that wait on a value nobody has.
    *)
   val is_closed_form : term -> bool
 

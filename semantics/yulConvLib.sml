@@ -1020,16 +1020,26 @@ fun table_compset defs =
 
 local
   (* A list, not a table: there is one table term per suite, and the whole
-   * point of the memo is that the fold happens once. *)
-  val chains : (term * thm) list ref = ref []
+   * point of the memo is that the fold happens once.
+   *
+   * Keyed by the definitions as well as by the term.  A fold is only as
+   * complete as the definitions it was given: `CBV_CONV` leaves what it cannot
+   * reach standing rather than failing, so a chain folded without them is a
+   * partial fold, and a later call that gives them would take that chain from
+   * here and never fold the rest. *)
+  val chains : ((string * string) list * term * thm) list ref = ref []
+  fun chain_key defs =
+    List.map (fn th => const_key (dest_thy_const (head_const_of th))) defs
 in
   fun table_chain defs fns =
-    case List.find (fn (t, _) => aconv t fns) (!chains) of
-      SOME (_, th) => th
-    | NONE =>
-        let val th = computeLib.CBV_CONV (table_compset defs) fns in
-          chains := (fns, th) :: !chains; th
-        end
+    let val key = chain_key defs in
+      case List.find (fn (k, t, _) => k = key andalso aconv t fns) (!chains) of
+        SOME (_, _, th) => th
+      | NONE =>
+          let val th = computeLib.CBV_CONV (table_compset defs) fns in
+            chains := (key, fns, th) :: !chains; th
+          end
+    end
 end
 
 (* `|- FLOOKUP fns name = SOME fd`, off the folded chain.  The chain is applied
@@ -1090,22 +1100,23 @@ val scrub_const = computeLib.scrub_const
 fun scrub_defs cs defs =
   List.foldl (fn (th, cs) => scrub_const cs (head_const_of th)) cs defs
 
-fun const_terms tm =
-  case dest_term tm of
-    Term.VAR _ => []
-  | Term.CONST _ => [tm]
-  | Term.LAMB (_, b) => const_terms b
-  | Term.COMB (a, b) => const_terms a @ const_terms b
-
-fun uniq_terms [] = []
-  | uniq_terms (t :: ts) =
-      t :: uniq_terms (List.filter (fn u => not (aconv t u)) ts)
+(* The head the table term is written with, out of the set: the name itself for
+ * a table given as a constant, `yul_env` for one given as a literal term.  That
+ * one rule is what keeps the table opaque, which is all this wants -- every
+ * constant *inside* a literal table ("K" and the updates of the record it is
+ * built with) is what the evaluator's own clauses build their machines out of,
+ * and scrubbing those takes the record operations out from under the body's
+ * evaluation, leaving a form with the block still standing in it.  A term whose
+ * head is not a constant has nothing to scrub: nothing in it can unfold. *)
+fun opaque_table cs tm =
+  let val h = head_const tm in
+    if is_const h then scrub_const cs h else cs
+  end
 
 (* The definitions the table needs *are* folded, deliberately, in
  * `table_compset`; this is the set the body's evaluation runs on. *)
 fun body_set base defs table =
-  List.foldl (fn (c, cs) => scrub_const cs c) (scrub_defs base defs)
-    (uniq_terms (const_terms table))
+  opaque_table (scrub_defs base defs) table
 
 (*---------------------------------------------------------------------------
    The conversion.
@@ -1142,38 +1153,43 @@ fun yul_invoke_conv defs tm =
    Is a form the conversion produced closed?
  ---------------------------------------------------------------------------*)
 
-(* What the conversion is meant to have removed: the equations it runs, the
- * scope and binding operations, and FLOOKUP itself, which is the way a scope
- * that did not come out is seen -- a lookup left standing means some name was
- * not read, which the caller would take for a form over its arguments.
- * invoke_yul is not among them -- a call the body made is exactly what the
- * form is allowed to carry. *)
-val eliminated =
+(* Everything the conversion's own rules reach: the block and its clauses, which
+ * it splits on, the scope and binding operations, which it unfolds only while
+ * their input is a value it has, FLOOKUP itself, which is the way a scope that
+ * did not come out is seen, the result and value helpers, and the calls it
+ * leaves folded.  A name in this list that is still in a term is a step the
+ * conversion either could not take or declined; `residues` is what a caller
+ * reads to see which. *)
+val conversion_consts =
   List.map (const_key o dest_thy_const)
-    (flookup_tm :: clause_heads (evaluator_clauses @ helper_defs @ block_def_clauses))
+    (flookup_tm :: invoke_c ::
+     (clause_heads (evaluator_clauses @ helper_defs @ block_def_clauses) @
+      List.map (fn (c, _, _) => c) guarded_helpers))
 
 fun residues tm =
-  Lib.mk_set (List.filter (fn k => Lib.mem k eliminated) (consts_in tm))
+  Lib.mk_set (List.filter (fn k => Lib.mem k conversion_consts) (consts_in tm))
 
-(* What a form may still contain: the call it left folded, and the evaluator's
- * own operations on a frame or on memory -- the ones under `helper_defs`.
- * What is *not* in here is the evaluation itself, the block, the statements
- * and the expressions, so a form with one of those in it is a form whose body
- * evaluation stopped early, which a test can say by asking a residue to be one
- * of these.
+(* What a form may still be standing on: the call it left folded, and the
+ * operations whose input is a value nobody has -- the frame and memory
+ * operations of `guarded_helper_defs` (a binding over a machine that holds a
+ * call, an `FLOOKUP` of a scope that came out of the callee's frame), and the
+ * result helpers, which build a record out of a completion that is not a
+ * literal.  None of those is a step the conversion could have taken.
  *
- * A helper is in a form because its input is a value nobody has: after a call
- * the frame is the callee's; memory is a map to words, so a read of a word
- * written from a symbolic value is decided only when that value is; a scope
- * whose map came out of such a word is the same.  None of that is a step the
- * conversion could have taken.
- *)
+ * What is *not* in here is the evaluation itself: the block, the statements and
+ * the expressions.  A form with one of those in it is one whose body evaluation
+ * stopped early, which a test says by requiring every residue of a form to be
+ * one of these. *)
 val permitted_residues =
   ("yulEvaluator", "invoke_yul")
   :: List.map (const_key o dest_thy_const)
-       (flookup_tm :: clause_heads helper_defs)
+       (flookup_tm :: (clause_heads helper_defs @
+                       List.map (fn (c, _, _) => c) guarded_helpers))
 
-fun is_closed_form tm = null (residues tm)
+(* A form is closed when nothing in it is standing that a form may not stand
+ * on, which is the same question the test asks of every residue. *)
+fun is_closed_form tm =
+  List.all (fn k => Lib.mem k permitted_residues) (residues tm)
 
 (* The other half of what "closed" means, and the stronger half: the
  * conversion's own rules make no progress on the form, so nothing in it is a
@@ -1182,7 +1198,38 @@ fun is_closed_form tm = null (residues tm)
  * catches a residue whose map or argument the conversion did not reach as
  * well as one it did.  The table reader is not in the set, so the function a
  * form names is not read again here. *)
+(* The table a form carries: the `fns` argument of a call it left folded.  A
+ * form with no call in it names no table, and then there is nothing in it that
+ * could unfold one. *)
+fun table_in tm =
+  case dest_term tm of
+    Term.COMB _ =>
+      let val (f, args) = strip_comb tm in
+        if is_invoke f andalso List.length args = 5 then
+          SOME (List.nth (args, 1))
+        else
+          let val (x, y) = dest_comb tm in
+            case table_in x of
+              SOME t => SOME t
+            | NONE => table_in y
+          end
+      end
+  | Term.LAMB (_, b) => table_in b
+  | _ => NONE
+
 fun is_fixed_point defs tm =
-  aconv tm (rhs (concl (computeLib.CBV_CONV (scrub_defs eval_compset defs) tm)))
+  let
+    (* The same two things the body's own evaluation has taken out of its set:
+     * the definitions the table is read from, and the head the table term is
+     * written with.  Without the second, a form over a literal table has that
+     * table folded beneath it here and a real form reads as not a fixed
+     * point. *)
+    val cs = scrub_defs eval_compset defs
+    val cs = case table_in tm of
+               SOME t => opaque_table cs t
+             | NONE => cs
+  in
+    aconv tm (rhs (concl (computeLib.CBV_CONV cs tm)))
+  end
 
 end

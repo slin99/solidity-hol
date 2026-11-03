@@ -172,8 +172,8 @@ val () =
  * The line is drawn at a size rather than at a measured time because a time
  * moves with the machine the build runs on and a size does not, and it sits in
  * a gap: the largest form below it is 182k nodes and the smallest above it
- * 352k.  What is left is 85 of the 137, whose slowest form takes 0.9s -- five
- * times under the bound below -- and whose largest is 181k.
+ * 352k.  What is left is 85 of the 137, whose slowest form takes about a second
+ * -- the slowest seen is 1.3s -- and whose largest is 181k.
  *
  * So this list is the work list of the next piece, and it should empty: what the
  * suite is asked for is a conversion whose form is linear in the body, one leaf
@@ -288,6 +288,16 @@ fun convert f =
             Lib.mem ("yulEvaluator", "invoke_yul") res then
       fail ("the body of " ^ nm ^ " calls nothing, but its form is left "
             ^ "waiting on a call")
+    (* The other direction, and the one that says the conversion did anything
+     * at all: a call the body makes is what the form carries in place of the
+     * callee's body, so a form that names no call is one whose callees were
+     * unfolded instead of left folded.  Without this the checks above are
+     * satisfied by a conversion that hands its input back -- an `invoke_yul`
+     * application has no residue, and the call's own equation is not in the
+     * set, so it is a fixed point too. *)
+    else if has_call (#3 f) andalso
+            not (Lib.mem ("yulEvaluator", "invoke_yul") (consts_in form)) then
+      fail ("the body of " ^ nm ^ " calls, but its form keeps no call")
     else (nm, th)
   end
 
@@ -348,6 +358,36 @@ val scalars_checked_sub_uint8 = save_thm ("scalars_checked_sub_uint8",
   yulConvLib.yul_invoke_conv table_defs
     (call_term (valOf (List.find (fn (nm, _, _) => nm = "checked_sub_uint8")
                                  functions))))
+
+(* One function converted over the table *term* rather than over the constant it
+ * is bound to.  A caller may give either, `defs` being what that term is folded
+ * from; what keeps the table out of the body's own set has to hold for both.  A
+ * literal table is a `yul_env` application, whose head is the one constant worth
+ * taking out of the set -- everything *inside* it (the `K`s and updates of the
+ * record the object is built with) is what the evaluator's own clauses build
+ * their machines out of, and scrubbing those strands the body's evaluation.
+ *)
+val literal_table = rhs (concl scalars_function_table_def)
+
+val scalars_cleanup_uint8_over_table_term =
+  let
+    val f = valOf (List.find (fn (nm, _, _) => nm = "cleanup_uint8") functions)
+    val (nm, arity, _) = f
+    val args = listSyntax.mk_list (List.take (arg_names, arity), bytes32_ty)
+    val t = list_mk_comb
+              (invoke_c,
+               [``20n``, literal_table, stringSyntax.fromMLstring nm, args,
+                yul_conv_machine_term])
+    val th = yulConvLib.yul_invoke_conv table_defs t
+    val form = rhs (concl th)
+  in
+    if not (yulConvLib.is_closed_form form) then
+      fail ("the table term itself is left standing in a form: "
+            ^ show_residues (yulConvLib.residues form))
+    else if not (yulConvLib.is_fixed_point table_defs form) then
+      fail "a form over the table term itself is not a fixed point"
+    else th
+  end
 
 (* The form is stated at a numeral fuel, and that costs nothing: fuel is only
  * ever tested for zero, so a run that completed at the numeral is the run at
