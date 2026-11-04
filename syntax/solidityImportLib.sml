@@ -468,7 +468,8 @@ val assembly_reference_ty = import_type "src_assembly_reference"
  * the 0x80 the evaluator gives it. *)
 fun memory_safe v =
   (case optional_field v "flags" of
-     SOME (JSON.ARRAY fs) => List.exists (fn f => f = JSON.STRING "memory-safe") fs
+     SOME (JSON.ARRAY fs) =>
+       List.exists (fn JSON.STRING "memory-safe" => true | _ => false) fs
    | _ => false) orelse
   (case optional_field v "documentation" of
      SOME (JSON.STRING d) => String.isSubstring "@solidity memory-safe-assembly" d
