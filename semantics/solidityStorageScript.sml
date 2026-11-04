@@ -368,7 +368,11 @@ Termination
 End
 
 (* Writes the value of a src array into cleared storage of type dst, each
- * scalar converted as an implicit conversion does. *)
+ * scalar converted as an implicit conversion does. Past the cleared length,
+ * slots may hold stale data, which the compiler's copy overwrites: the slots
+ * of scalar elements are zeroed first, as the compiler writes each packed
+ * slot as a whole word built from zero, and each nested array or byte
+ * sequence is first cleared, as resizing it does. *)
 Definition store_storage_value_def:
   (store_storage_value env accounts addr slot src dst v =
     if byte_sequence_type dst then
@@ -391,7 +395,13 @@ Definition store_storage_value_def:
                           set_storage_word accounts addr slot (n2w (LENGTH vs))
                         else accounts in
         let data = if l = NONE then mapping_slot [] slot else slot in
-        store_storage_elements env accounts1 addr data e e' 0 vs
+        let accounts2 =
+          if is_elementary_type e' then
+            (case fixed_storage_slots env (ArrayT e' (SOME (LENGTH vs))) of
+               SOME slots => clear_byte_slots slots accounts1 addr data
+             | NONE => accounts1)
+          else accounts1 in
+        store_storage_elements env accounts2 addr data e e' 0 vs
     | _ => INR (InvalidCompletion "bad stored array")) ∧
   (store_storage_elements env accounts addr data src dst i [] = INL accounts) ∧
   (store_storage_elements env accounts addr data src dst i (v :: vs) =
@@ -409,7 +419,10 @@ Definition store_storage_value_def:
                        | NONE => INR (InvalidCompletion "bad storage write"))
                   | _ => INR (InvalidCompletion "bad element conversion"))
              | _ => INR (InvalidCompletion "bad stored element"))
-          else store_storage_value env accounts addr s src dst v in
+          else
+            (case clear_storage_value env accounts addr s dst of
+               INR c => INR c
+             | INL cleared => store_storage_value env cleared addr s src dst v) in
         case stored of
           INR c => INR c
         | INL accounts' =>

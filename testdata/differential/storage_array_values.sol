@@ -4,6 +4,7 @@ pragma solidity 0.8.37;
 interface IArrayPeer {
     function rev(uint256[] calldata a) external pure returns (uint256[] memory);
     function count(uint256[][] calldata a) external pure returns (uint256);
+    function firstWord(bytes[] calldata a) external pure returns (uint256);
 }
 
 contract StorageArrayValues {
@@ -204,5 +205,69 @@ contract StorageArrayValues {
     function countViaPeer(address peer) public returns (uint256) {
         setNested();
         return IArrayPeer(peer).count(nested);
+    }
+    function selfAssignKeepsDirtyTail() public returns (uint256) {
+        small.push(1);
+        assembly {
+            mstore(0, small.slot)
+            let data := keccak256(0, 0x20)
+            sstore(data, or(sload(data), shl(248, 0xab)))
+        }
+        small = small;
+        uint256 word;
+        assembly {
+            mstore(0, small.slot)
+            word := sload(keccak256(0, 0x20))
+        }
+        return word;
+    }
+
+    function nestedFromCalldata(uint256[][] calldata a) external returns (uint256, uint256) {
+        nested = a;
+        return (nested.length, nested[0][0]);
+    }
+    function dirtyBlobViaPeer(address peer) public returns (uint256) {
+        blobs = new bytes[](1);
+        assembly {
+            mstore(0, blobs.slot)
+            sstore(keccak256(0, 0x20), or(shl(240, 0x61ff), 2))
+        }
+        return IArrayPeer(peer).firstWord(blobs);
+    }
+
+    function growOverStale(uint256 which) public returns (uint256) {
+        uint256 word;
+        if (which == 0) {
+            assembly {
+                mstore(0, small.slot)
+                sstore(keccak256(0, 0x20), 0x100)
+            }
+            small = new uint8[](1);
+            assembly {
+                mstore(0, small.slot)
+                word := sload(keccak256(0, 0x20))
+            }
+        } else if (which == 1) {
+            assembly {
+                mstore(0, nested.slot)
+                let row := keccak256(0, 0x20)
+                sstore(row, 1)
+                mstore(0, row)
+                sstore(keccak256(0, 0x20), 42)
+            }
+            nested = new uint256[][](1);
+            assembly {
+                mstore(0, nested.slot)
+                mstore(0, keccak256(0, 0x20))
+                word := sload(keccak256(0, 0x20))
+            }
+        } else {
+            assembly {
+                mstore(0, blobs.slot)
+                sstore(keccak256(0, 0x20), 1)
+            }
+            blobs = new bytes[](1);
+        }
+        return word;
     }
 }

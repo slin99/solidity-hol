@@ -638,6 +638,14 @@ Definition simple_stmt_def:
            (SOME (ReferenceValue src), SOME (ReferenceValue dst)) =>
              (case src_ty of
                 LocatedT _ (ArrayT element length) =>
+                  (* The compiler's storage-to-storage copy returns at once
+                   * when the source is the destination. *)
+                  if (case (src, dst) of
+                        (StorageReference PersistentStorage src_addr src_slot 0 _ _,
+                         StorageReference PersistentStorage dst_addr dst_slot 0 _ _) =>
+                          src_addr = dst_addr ∧ src_slot = dst_slot
+                      | _ => F)
+                  then normal_result st gas else
                   (case array_copy_value env st (ArrayT element length) src of
                      INL v =>
                        (case copy_to_storage env st.world.accounts (ArrayT element length) v
