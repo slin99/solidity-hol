@@ -163,11 +163,11 @@ val () =
           ^ Int.toString (List.length loop_free) ^ " loop-free, looping: "
           ^ String.concatWith ", " (List.map (fn (nm, _, _) => nm) looping))
 
-(* The functions the bound below is not asked of yet, and why each one is
- * there: what a line carries is either that function's form as this suite
- * measures it -- every node of the term, which is the `size` this test prints
- * below -- or, where the form is inside the line and the clock is not, its
- * conversion time.  Every line here names a body that calls.
+(* The functions the bound below is not asked of yet.  A line carries one of
+ * three things about why it is there: the form this suite measures -- every node
+ * of the term, which is the `size` this test prints below; a claim that no form
+ * comes back inside a clock; or the conversion times that keep it out although
+ * its form is inside the bound.  Every line here names a body that calls.
  *
  * A call's answer is what leaves a decision standing -- the arity the callee
  * answered with, and the frame it came back on -- and a decision the conversion
