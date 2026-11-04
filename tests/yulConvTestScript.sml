@@ -166,8 +166,8 @@ val () =
  * at two hundred thousand nodes or more.  The number in each line is that
  * function's form as this suite measures it -- every node of the term, which is
  * the `size` this test prints below -- and every line here names a body that
- * calls: the ABI decoders and the external wrappers above all, and the four
- * forms in the millions at the top of the list.
+ * calls: the external wrappers above all, and the four forms in the millions
+ * at the top of the list.
  *
  * A call's answer is what leaves a decision standing -- the arity the callee
  * answered with, and the frame it came back on -- and a decision the conversion

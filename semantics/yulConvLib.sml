@@ -661,14 +661,24 @@ fun remember_block tm th = blocks := Termtab.update (tm, th) (!blocks)
 
 local
   val cs_ref : compset option ref = ref NONE
+  val fallback_ref : compset option ref = ref NONE
 in
   fun cs () =
     case !cs_ref of
       SOME c => c
     | NONE => raise ERR "yulConvLib" "the compute set is not set yet"
 
-  fun set_block_compset c =
-    (cs_ref := SOME c; blocks := Termtab.empty; clear_answers ())
+  (* The same set with the clause constants' own clauses in place of the
+   * conversion, for a term the conversion's clause does not match (see
+   * `eval_conv_raw`): the set it runs on would hand such a term back to it. *)
+  fun fallback_cs () =
+    case !fallback_ref of
+      SOME c => c
+    | NONE => raise ERR "yulConvLib" "the compute set is not set yet"
+
+  fun set_block_compset c fb =
+    (cs_ref := SOME c; fallback_ref := SOME fb;
+     blocks := Termtab.empty; clear_answers ())
 end
 (* A field, read off a record: `sel v` for a term whose selector is one of the
  * datatype's fields.  Anything else is left alone, which is what keeps this
@@ -904,9 +914,7 @@ fun expose_all_conv tm =
  * anything left to do.  The order matters: a case that has just been pushed
  * out from inside a scrutinee is at the top and may be a call's, which the
  * prune is what drops -- and a branch the prune drops may leave a case that
- * has just become reducible behind it.  Doing all the taking apart first and
- * the pruning after leaves every call case the push surfaced unpruned, and a
- * body of k calls at 2^k times the size.
+ * has just become reducible behind it.
  *
  * Pruning after the taking apart would reach every call case the push surfaced
  * as well -- `_cond` is the lemma for the shape the taking apart's field read
@@ -916,11 +924,16 @@ fun expose_all_conv tm =
  *
  * The prune is not run before the taking apart here.  It was, while the only
  * lemmas that dropped a call's dead branch were stated on the branch written as
- * the record, which the taking apart's own field read rewrites -- `_cond` is
+ * the record, which the taking apart's own field read rewrites; `_cond` is
  * stated on the completion variable that read leaves, so the shape is reachable
- * after it as well, and the earlier prune was measured to make no difference:
- * without it the acceptance suite's line is identical, 105 of the 137 functions
- * inside the bound with the largest form `fun_shifts` at 176 309 nodes. *)
+ * after it as well, and the earlier prune was measured to make no difference.
+ * That measurement is the acceptance suite's own line at the head it was taken
+ * on (`0f8e1cb`): the same count and the same largest form `fun_shifts` at
+ * 176 309 nodes with the prune and without it.  The line reports a count, the
+ * slowest form and the largest, so it would not show a change confined to one
+ * covered form; what backs the deletion is that the prune rewrites nothing the
+ * expose below does not, since the expose runs `step_conv` at every node and
+ * that rule drops a call's dead branch like this one. *)
 fun settle_conv tm =
   let
     fun go acc 0 = acc
@@ -1036,6 +1049,19 @@ fun is_eval_clause th =
 
 val eval_clauses = List.filter is_eval_clause clauses
 
+(* The set `eval_conv_raw` falls back to: the one it is running on, with the
+ * four constants' own clauses back in place of the conversion registered for
+ * them.  The entry is deleted rather than added beside, so a term the clauses
+ * do not match is left standing there rather than reaching the conversion
+ * again, and the clauses are compiled the way they were before the
+ * registration took them out.  A value, not a copy of the set: only these four
+ * entries are touched, and the rest of the set is shared with the caller. *)
+fun clause_set cs =
+  List.foldl
+    (fn (th, cs) =>
+       computeLib.add_thms [th] (computeLib.scrub_const cs (head_const_of th)))
+    cs eval_clauses
+
 (* The scrutinee of the case a clause builds: the case constant's first
  * argument.  A clause that builds no case -- a literal's value, an empty
  * argument list -- is left to the compute set. *)
@@ -1069,8 +1095,14 @@ fun eval_conv_raw tm =
   in
     Thm.TRANS clause (Thm.TRANS settled red)
   end
-  handle Conv.UNCHANGED => computeLib.CBV_CONV (cs ()) tm
-       | HOL_ERR _ => computeLib.CBV_CONV (cs ()) tm
+  (* A term whose clause does not match is reduced by the clauses in the set
+   * (`clause_set` puts them back for these four constants).  It cannot be the
+   * set the rule itself runs on: that one has this conversion registered for
+   * them, and matching raises `UNCHANGED` exactly when the argument is not a
+   * constructor application -- a body the caller's table writes over a
+   * variable -- so the term would come back here without end. *)
+  handle Conv.UNCHANGED => computeLib.CBV_CONV (fallback_cs ()) tm
+       | HOL_ERR _ => computeLib.CBV_CONV (fallback_cs ()) tm
 
 (* The statement rule, run as a compute rule (`add_conv` below): the clause is
  * instantiated, the statement is evaluated by `eval_conv_raw`, what is left of
@@ -1209,8 +1241,10 @@ val eval_compset =
 
 (* The rule above reduces a statement with this compute set; it has to be the
  * one it is part of, or a block nested in a statement would be taken the old
- * way. *)
-val () = set_block_compset eval_compset
+ * way.  With it goes the set the rule falls back to, which has to be made from
+ * the same set: the same rules, with the clause constants' own clauses in place
+ * of the conversion. *)
+val () = set_block_compset eval_compset (clause_set eval_compset)
 
 (* The same with the table reader added: only reading the function out of the
  * object uses it, so the body's own evaluation never folds the object. *)
@@ -1373,8 +1407,9 @@ fun yul_invoke_conv defs tm =
                (body_set (computeLib.copy eval_compset) defs fns)
     (* The statement rule reduces the statement on the set the conversion is
      * running on, not on the one made at load time: same rules, with the
-     * client's table scrubbed out of it. *)
-    val () = set_block_compset cs
+     * client's table scrubbed out of it.  Its fallback set is made from that
+     * one, for the same reason. *)
+    val () = set_block_compset cs (clause_set cs)
     val res = computeLib.CBV_CONV cs (rhs (concl step))
   in
     Thm.TRANS step res
