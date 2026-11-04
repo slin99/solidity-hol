@@ -656,6 +656,12 @@ Definition storage_type_identifier_def:
       (if ty = BytesT then "t_bytes" else "t_string") ++
       (case loc of MemoryLoc => "_memory_ptr" | CalldataLoc => "_calldata_ptr"
                  | StorageLoc => "_storage_ptr")
+    else if loc = StorageLoc then
+      (* A storage pointer: the storage type's identifier with "_ptr", except
+       * that a mapping's identifier names no location. *)
+      (case ty of
+         MappingT _ _ => storage_type_identifier ty
+       | _ => storage_type_identifier ty ++ "_ptr")
     else "") ∧
   (storage_type_identifier BytesT = "t_bytes_storage") ∧
   (storage_type_identifier StringT = "t_string_storage") ∧
@@ -734,21 +740,23 @@ Definition source_type_matches_def:
 End
 
 (* A parameter, return or local variable: an elementary value type in the
- * default location, a byte sequence in any location or a memory array,
- * agreeing with its typeIdentifier.
+ * default location, a byte sequence in any location, a memory or calldata
+ * array, or a storage pointer to an array, mapping or struct, agreeing with
+ * its typeIdentifier.
  *)
 Definition variable_type_def:
   variable_type (v : src_variable) =
     case normalize_type_name v.var_type_name of
       SOME ty =>
         if byte_sequence_type ty ∨
-           (v.var_location ≠ "default" ∧ case ty of ArrayT _ _ => T | _ => F) then
+           (v.var_location ≠ "default" ∧ case ty of ArrayT _ _ => T | _ => F) ∨
+           (v.var_location = "storage" ∧
+            case ty of MappingT _ _ => T | StructT _ => T | _ => F) then
           case (if v.var_location = "memory" then SOME MemoryLoc
                 else if v.var_location = "calldata" then SOME CalldataLoc
                 else if v.var_location = "storage" then SOME StorageLoc else NONE) of
             SOME loc =>
               if located_value_type (LocatedT loc ty) ∧
-                 (loc = StorageLoc ⇒ byte_sequence_type ty) ∧
                  source_type_matches (LocatedT loc ty) v.var_type_id then
                 SOME (LocatedT loc ty) else NONE
           | NONE => NONE
@@ -1009,6 +1017,26 @@ Definition type_bound_def:
     | _ => NONE
 End
 
+(* A storage pointer to an array, mapping or struct is accessed as the storage
+ * object it points to. *)
+Definition storage_view_def:
+  storage_view vt =
+    case vt of
+      SOME (SrcType (LocatedT StorageLoc ty)) =>
+        if byte_sequence_type ty then vt else SOME (SrcType ty)
+    | _ => vt
+End
+
+(* An assignment's or a call's value: a decoded identifier, or a storage
+ * pointer, whose identifier names its storage type. *)
+Definition value_type_matches_def:
+  value_type_matches vt tid ⇔
+    decode_type_identifier tid = SOME vt ∨
+    case vt of
+      SrcType (LocatedT StorageLoc ty) => source_type_matches (LocatedT StorageLoc ty) tid
+    | _ => F
+End
+
 (* The decoded type of a checked expression. *)
 Definition check_expr_def:
   (check_expr (env : import_env) (SrcIdentifier _ _ x tid) =
@@ -1018,14 +1046,14 @@ Definition check_expr_def:
         else NONE
     | NONE => NONE) ∧
   (check_expr env (SrcMemberAccess _ root_expr field tid) =
-    case check_expr env root_expr of
+    case storage_view (check_expr env root_expr) of
       SOME (SrcType (StructT (AstId id))) =>
         (case source_struct_field env.structs id field of
            SOME ty => if source_type_matches ty tid then SOME (SrcType ty) else NONE
          | NONE => NONE)
     | _ => NONE) ∧
   (check_expr env (SrcIndexAccess _ root_expr index tid) =
-    case (check_expr env root_expr, check_expr env index) of
+    case (storage_view (check_expr env root_expr), check_expr env index) of
       (SOME (SrcType (MappingT key value)), SOME _) =>
         if source_type_matches value tid then SOME (SrcType value) else NONE
     | (SOME (SrcType BytesT), SOME index_type) =>
@@ -1055,7 +1083,7 @@ Definition check_expr_def:
         then SOME (SrcType element) else NONE
     | _ => NONE) ∧
   (check_expr env (SrcArrayLength _ root_expr tid) =
-    case check_expr env root_expr of
+    case storage_view (check_expr env root_expr) of
       SOME (SrcType BytesT) =>
         if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
     | SOME (SrcType (LocatedT loc BytesT)) =>
@@ -1092,14 +1120,19 @@ Definition check_expr_def:
       | _ => NONE
     else NONE) ∧
   (check_expr env (SrcAssignment _ op l r tid) =
-    if assignment_operator_ok op ∧ IS_SOME (check_expr env l) ∧
-       IS_SOME (check_expr env r)
-    then decode_type_identifier tid
+    if assignment_operator_ok op ∧ IS_SOME (check_expr env r) then
+      case check_expr env l of
+        SOME (SrcType (LocatedT StorageLoc ty)) =>
+          if op = "=" ∧ value_type_matches (SrcType (LocatedT StorageLoc ty)) tid
+          then SOME (SrcType (LocatedT StorageLoc ty))
+          else decode_type_identifier tid
+      | SOME _ => decode_type_identifier tid
+      | NONE => NONE
     else NONE) ∧
   (check_expr env (SrcTupleExpression _ cs tid) =
     if check_components env cs then decode_type_identifier tid else NONE) ∧
   (check_expr env (SrcFunctionCall _ (SrcArrayMember _ member root_expr _) args tid) =
-    case check_expr env root_expr of
+    case storage_view (check_expr env root_expr) of
       SOME (SrcType (ArrayT element NONE)) =>
         if ¬elementary_storage_type_ok element then NONE else
         if member = "push" ∧ args = [] ∧ source_type_matches element tid then
@@ -1112,14 +1145,13 @@ Definition check_expr_def:
   (check_expr env (SrcFunctionCall _ (SrcIdentifier _ _ f _) args tid) =
     case ALOOKUP env.functions f of
       SOME callee =>
-        (case (all_some (MAP variable_type callee.fn_returns),
-               decode_type_identifier tid) of
-           (SOME tys, SOME vt) =>
+        (case all_some (MAP variable_type callee.fn_returns) of
+           SOME tys =>
              if LENGTH args = LENGTH callee.fn_parameters ∧
                 callee.fn_visibility ≠ "external" ∧ check_exprs env args ∧
-                vt = call_value_type tys
-             then SOME vt else NONE
-         | _ => NONE)
+                value_type_matches (call_value_type tys) tid
+             then SOME (call_value_type tys) else NONE
+         | NONE => NONE)
     | NONE => NONE) ∧
   (check_expr env (SrcFunctionCall _ _ _ _) = NONE) ∧
   (check_expr env (SrcBuiltinCall _ _ builtin condition message tid) =

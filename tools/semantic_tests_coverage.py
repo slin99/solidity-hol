@@ -677,6 +677,48 @@ def has_getter(type_name: dict[str, Any]) -> bool:
                  or type_identifier in ("t_bytes_storage_ptr", "t_string_storage_ptr")))
 
 
+def storage_object(type_identifier: str) -> str:
+    """A storage pointer's type identifier as that of the storage it points
+    to, which the importer accesses alike (storage_view)."""
+    return re.sub(r"_storage_ptr$", "_storage", type_identifier)
+
+
+def storage_pointer(declaration: dict[str, Any]) -> bool:
+    """Whether a declaration is a storage pointer: a local, parameter or return
+    variable in storage."""
+    return (declaration.get("nodeType") == "VariableDeclaration"
+            and declaration.get("storageLocation") == "storage"
+            and not declaration.get("stateVariable"))
+
+
+def storage_pointer_sources(reached: dict[int, dict[str, Any]],
+                            by_id: dict[int, dict[str, Any]]) -> set[int]:
+    """The expressions bound to a storage pointer, which are references rather
+    than values: an initializer, both sides of a rebinding, an argument and a
+    returned value."""
+    found: set[int] = set()
+    for node in reached.values():
+        kind = node["nodeType"]
+        if (kind == "VariableDeclarationStatement" and node.get("initialValue") is not None
+                and len(node["declarations"]) == 1 and node["declarations"][0] is not None
+                and storage_pointer(node["declarations"][0])):
+            found.add(unwrap(node["initialValue"])["id"])
+        elif (kind == "Assignment" and node["operator"] == "="
+              and storage_pointer(by_id.get(unwrap(node["leftHandSide"]).get("referencedDeclaration"), {}))):
+            found.update({unwrap(node["leftHandSide"])["id"], unwrap(node["rightHandSide"])["id"]})
+        elif (kind == "FunctionCall" and node["kind"] == "functionCall" and not node.get("names")
+              and node["expression"]["nodeType"] == "Identifier"):
+            callee = by_id.get(node["expression"].get("referencedDeclaration"), {})
+            if callee.get("nodeType") == "FunctionDefinition":
+                found.update(unwrap(a)["id"] for p, a in zip(callee["parameters"]["parameters"], node["arguments"])
+                             if storage_pointer(p))
+        elif kind == "Return" and node.get("expression") is not None:
+            returns = by_id[node["functionReturnParameters"]]["parameters"]
+            if len(returns) == 1 and storage_pointer(returns[0]):
+                found.add(unwrap(node["expression"])["id"])
+    return found
+
+
 def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
                          error_parameter: bool = False) -> list[Blocker]:
     """What valid_src_unit or elaborate_unit rejects at a node the importer
@@ -690,9 +732,10 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
             or (kind == "FunctionCall" and node["kind"] == "typeConversion")
             or (kind == "Literal" and node["kind"] not in ("number", "bool"))):
         type_identifier = node["typeDescriptions"].get("typeIdentifier") or ""
-        admitted_storage = (kind == "VariableDeclaration" and (node["stateVariable"] or storage_field)
+        pointer = kind == "VariableDeclaration" and storage_pointer(node)
+        admitted_storage = (kind == "VariableDeclaration" and (node["stateVariable"] or storage_field or pointer)
                             and storage_type_supported(type_identifier.removesuffix("_ptr")
-                                                       if storage_field else type_identifier))
+                                                       if storage_field or pointer else type_identifier))
         if not decodes(type_identifier) and not admitted_storage:
             found.append(type_feature(type_identifier))
         if kind == "VariableDeclaration":
@@ -700,7 +743,8 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
             if location == "transient":
                 found.append("transient storage")
             elif (location not in ("default", "memory") and not BYTE_SEQUENCE.fullmatch(type_identifier)
-                  and not (location == "calldata" and located_array(type_identifier))):
+                  and not (location == "calldata" and located_array(type_identifier))
+                  and not (pointer and storage_type_supported(type_identifier.removesuffix("_ptr")))):
                 found.append("local reference bindings")
             elif location == "default" and located_array(type_identifier):
                 found.append("event array parameters")
@@ -732,13 +776,13 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
             node["typeDescriptions"].get("typeIdentifier") or ""):
         found.append("literals of non-integer types")
     elif kind == "IndexAccess":
-        base_type = node["baseExpression"]["typeDescriptions"].get("typeIdentifier") or ""
+        base_type = storage_object(node["baseExpression"]["typeDescriptions"].get("typeIdentifier") or "")
         if not (BYTES.fullmatch(base_type) or located_array(base_type)
                 or (base_type.startswith(("t_mapping$_", "t_array$_"))
                     and storage_type_supported(base_type))):
             found.append(type_feature(base_type))
     elif kind == "MemberAccess":
-        base_type = node["expression"]["typeDescriptions"].get("typeIdentifier") or ""
+        base_type = storage_object(node["expression"]["typeDescriptions"].get("typeIdentifier") or "")
         if node.get("referencedDeclaration") is not None:
             if not base_type.startswith("t_struct$_") or not storage_type_supported(base_type):
                 found.append(type_feature(base_type))
@@ -1186,6 +1230,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                      if n["nodeType"] == "IndexAccess"}
     storage_bases.update(n["expression"]["id"] for n in reached.values()
                          if n["nodeType"] == "MemberAccess")
+    storage_bases.update(storage_pointer_sources(reached, by_id))
     for node in reached.values():
         if node["id"] in unread:
             continue

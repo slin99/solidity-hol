@@ -231,6 +231,17 @@ Definition memory_object_type_def:
   (memory_object_type ty ⇔ byte_sequence_type ty)
 End
 
+(* What a storage pointer denotes: a byte sequence, an array, a mapping or a
+ * struct. Its shape is checked against the environment by storage_type_ok. *)
+Definition storage_object_type_def:
+  storage_object_type ty ⇔
+    case ty of
+      ArrayT _ _ => T
+    | MappingT _ _ => T
+    | StructT _ => T
+    | _ => byte_sequence_type ty
+End
+
 (* Whether an encoding of the type has a fixed size, with no offsets. *)
 Definition static_object_type_def:
   (static_object_type (ArrayT element (SOME n)) ⇔ static_object_type element) ∧
@@ -250,14 +261,14 @@ Definition calldata_object_type_def:
   (calldata_object_type ty ⇔ byte_sequence_type ty)
 End
 
-(* Located values: byte sequences in any location, and memory, calldata and
- * storage arrays. A storage array has the shapes of a memory one. *)
+(* Located values: byte sequences in any location, memory and calldata arrays,
+ * and storage pointers. *)
 Definition located_value_type_def:
   located_value_type ty ⇔
     case ty of
       LocatedT MemoryLoc element => memory_object_type element
     | LocatedT CalldataLoc element => calldata_object_type element
-    | LocatedT StorageLoc element => memory_object_type element
+    | LocatedT StorageLoc element => storage_object_type element
     | LocatedT loc element => byte_sequence_type element
     | _ => F
 End
@@ -279,7 +290,20 @@ Definition abi_value_type_def:
 End
 
 Definition core_binding_type_def:
-  core_binding_type env ty ⇔ core_scalar_type env ty ∨ located_value_type ty
+  core_binding_type env ty ⇔
+    core_scalar_type env ty ∨
+    (located_value_type ty ∧
+     case ty of LocatedT StorageLoc element => storage_type_ok env element | _ => T)
+End
+
+(* The storage type a binding can be navigated through: a captured lvalue or a
+ * storage pointer. *)
+Definition storage_base_def:
+  storage_base binding =
+    case binding of
+      SOME (ReferenceType ty) => SOME ty
+    | SOME (SingleType (LocatedT StorageLoc ty)) => SOME ty
+    | _ => NONE
 End
 
 (* ProductType is reserved for tuples and multiple returns: never singleton. *)
@@ -364,7 +388,7 @@ Definition value_has_type_def:
     ty = rty ∧ memory_object_type ty) ∧
   (value_has_type env (SingleType (LocatedT StorageLoc ty))
      (ReferenceValue (StorageReference PersistentStorage _ _ 0 rty _)) ⇔
-    ty = rty ∧ byte_sequence_type ty) ∧
+    ty = rty ∧ storage_object_type ty ∧ storage_type_ok env ty) ∧
   (value_has_type env (ProductType tys) (TupleValue vs) ⇔
     values_have_types env tys vs) ∧
   (value_has_type env _ _ ⇔ F) ∧
@@ -650,7 +674,7 @@ Definition wf_core_operation_def:
       SOME v => annotation = ReferenceType v.state_type
     | NONE => F) ∧
   (wf_core_operation env ctx annotation (ReadOperation ty a) ⇔
-    (if memory_object_type ty then
+    (if storage_object_type ty then
        annotation = SingleType (LocatedT StorageLoc ty)
      else annotation = SingleType ty ∧ core_scalar_type env ty ∧
           IS_SOME (storage_bytes ty)) ∧
@@ -660,8 +684,8 @@ Definition wf_core_operation_def:
     annotation = ReferenceType ty ∧
     case base of
       BoundAtom x =>
-        (case ALOOKUP ctx.bindings x of
-           SOME (ReferenceType (StructT id)) =>
+        (case storage_base (ALOOKUP ctx.bindings x) of
+           SOME (StructT id) =>
              (case lookup_struct env id of
                 SOME fields => ALOOKUP fields field = SOME ty
               | NONE => F)
@@ -673,13 +697,15 @@ Definition wf_core_operation_def:
     case base of
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
-           SOME (ReferenceType (MappingT key value)) =>
-             value = ty ∧ wf_core_atom env ctx (SingleType key) index
-         | SOME (SingleType (LocatedT loc BytesT)) =>
+           SOME (SingleType (LocatedT loc BytesT)) =>
              loc ≠ CalldataLoc ∧ ty = FixedBytesT 1 ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
-         | SOME (ReferenceType (ArrayT element _)) =>
-             element = ty ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
-         | _ => F)
+         | b =>
+           case storage_base b of
+             SOME (MappingT key value) =>
+               value = ty ∧ wf_core_atom env ctx (SingleType key) index
+           | SOME (ArrayT element _) =>
+               element = ty ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
+           | _ => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (DefaultMemoryOperation ty) ⇔
     memory_object_type ty ∧ annotation = SingleType (LocatedT MemoryLoc ty)) ∧
@@ -726,8 +752,8 @@ Definition wf_core_operation_def:
   (wf_core_operation env ctx annotation (ArrayPushOperation a value) ⇔
     case a of
       BoundAtom x =>
-        (case ALOOKUP ctx.bindings x of
-           SOME (ReferenceType (ArrayT element NONE)) =>
+        (case storage_base (ALOOKUP ctx.bindings x) of
+           SOME (ArrayT element NONE) =>
              elementary_storage_type_ok element ∧
              annotation = ReferenceType element ∧
              (case value of
@@ -739,8 +765,8 @@ Definition wf_core_operation_def:
     annotation = ProductType [] ∧
     case a of
       BoundAtom x =>
-        (case ALOOKUP ctx.bindings x of
-           SOME (ReferenceType (ArrayT element NONE)) => elementary_storage_type_ok element
+        (case storage_base (ALOOKUP ctx.bindings x) of
+           SOME (ArrayT element NONE) => elementary_storage_type_ok element
          | _ => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (InternalCallOperation f args) ⇔
@@ -1055,6 +1081,7 @@ Definition check_core_stmts_def:
               byte_sequence_value_type src ∧ loc ≠ CalldataLoc ∧ ty = ty'
             else
               located_value_type src ∧ located_value_type dst ∧
+              memory_object_type ty ∧ memory_object_type ty' ∧
               loc = StorageLoc ∧ storage_copy_type ty ty'
         | _ => F) ∧
        wf_core_atom env ctx (SingleType src) a ∧

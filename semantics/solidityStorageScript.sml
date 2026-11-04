@@ -474,7 +474,7 @@ Definition read_storage_reference_def:
     case r of
       StorageReference PersistentStorage addr slot offset rty _ =>
         if rty ≠ ty then ValueAbrupt (InvalidCompletion "bad read type")
-        else if offset = 0 ∧ memory_object_type ty then ValueOk (ReferenceValue r)
+        else if offset = 0 ∧ storage_object_type ty then ValueOk (ReferenceValue r)
         else (case read_storage accounts addr slot offset ty of
                 SOME scalar => ValueOk (ScalarValue scalar)
               | NONE => ValueAbrupt (InvalidCompletion "bad storage read"))

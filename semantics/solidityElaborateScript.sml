@@ -168,9 +168,10 @@ Definition variable_destination_def:
          | NONE => NONE)
 End
 
-(* Reading a storage byte sequence or array yields a reference to it. *)
+(* Reading a storage byte sequence, array, mapping or struct yields a reference
+ * to it. *)
 Definition read_value_type_def:
-  read_value_type ty = if memory_object_type ty then LocatedT StorageLoc ty else ty
+  read_value_type ty = if storage_object_type ty then LocatedT StorageLoc ty else ty
 End
 
 Definition read_destination_def:
@@ -451,7 +452,7 @@ Definition elab_expr_def:
         (case variable_destination ctx n x of
            SOME ((ls, target), n1) =>
              let ty = destination_type target in
-             if ¬(is_elementary_type ty ∨ memory_object_type ty ∨ located_value_type ty) then NONE else
+             if ¬(is_elementary_type ty ∨ storage_object_type ty ∨ located_value_type ty) then NONE else
              let (read, n2) = read_destination n1 target in
              let (ss, a) = read in
              SOME ((ls ++ ss, a, ElabType (read_value_type ty)), n2)
@@ -489,7 +490,7 @@ Definition elab_expr_def:
     | SrcMemberAccess _ _ _ _ =>
         (case elab_location ctx n expression of
            SOME ((ss, ref, ty), n1) =>
-             if is_elementary_type ty ∨ memory_object_type ty then
+             if is_elementary_type ty ∨ storage_object_type ty then
                let (rs, a) = bind_value n1 (read_value_type ty) (ReadOperation ty ref) in
                SOME ((ss ++ rs, a, ElabType (read_value_type ty)), n1 + 1)
              else NONE
@@ -524,7 +525,7 @@ Definition elab_expr_def:
          | _ =>
            case elab_location ctx n expression of
              SOME ((ss, ref, ty), n1) =>
-               if is_elementary_type ty ∨ memory_object_type ty then
+               if is_elementary_type ty ∨ storage_object_type ty then
                  let (rs, a) = bind_value n1 (read_value_type ty) (ReadOperation ty ref) in
                  SOME ((ss ++ rs, a, ElabType (read_value_type ty)), n1 + 1)
                else NONE
@@ -842,12 +843,18 @@ Definition elab_expr_def:
   (elab_location ctx n e =
     case e of
       SrcIdentifier _ _ x _ =>
-        (case ALOOKUP ctx.state x of
-           SOME ty =>
-             SOME (([DefineStmt (AstId n) (ReferenceType ty)
-                       (StateReferenceOperation (AstId x))],
-                    BoundAtom (AstId n), ty), n + 1)
-         | NONE => NONE)
+        (case ALOOKUP ctx.variables x of
+           SOME (LocatedT StorageLoc ty) =>
+             (* A storage pointer local holds the reference itself. *)
+             SOME (([], BoundAtom (AstId x), ty), n)
+         | SOME _ => NONE
+         | NONE =>
+           case ALOOKUP ctx.state x of
+             SOME ty =>
+               SOME (([DefineStmt (AstId n) (ReferenceType ty)
+                         (StateReferenceOperation (AstId x))],
+                      BoundAtom (AstId n), ty), n + 1)
+           | NONE => NONE)
     | SrcMemberAccess _ root_expr member_id _ =>
         (case elab_location ctx n root_expr of
            SOME ((ss, ref, StructT (AstId id)), n1) =>

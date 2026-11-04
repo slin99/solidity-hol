@@ -686,7 +686,8 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(coverage.elaboration_blockers(v), [])
         v["stateVariable"] = False
         v["storageLocation"] = "storage"
-        self.assertIn("local reference bindings", {b.feature for b in coverage.elaboration_blockers(v)})
+        self.assertEqual(coverage.elaboration_blockers(v), [])
+        self.assertEqual(coverage.storage_object("t_struct$_S_$4_storage_ptr"), "t_struct$_S_$4_storage")
 
     def test_mapping_and_storage_array_indexing_are_admitted(self) -> None:
         base = {"nodeType": "Identifier", "id": 5, "name": "m", "referencedDeclaration": 3,
