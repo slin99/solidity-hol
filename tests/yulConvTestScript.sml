@@ -163,11 +163,11 @@ val () =
           ^ Int.toString (List.length loop_free) ^ " loop-free, looping: "
           ^ String.concatWith ", " (List.map (fn (nm, _, _) => nm) looping))
 
-(* The functions the bound below is not asked of yet: those whose form comes out
- * at two hundred thousand nodes or more.  The number in each line is that
- * function's form as this suite measures it -- every node of the term, which is
- * the `size` this test prints below -- and every line here names a body that
- * calls.
+(* The functions the bound below is not asked of yet, and why each one is
+ * there: what a line carries is either that function's form as this suite
+ * measures it -- every node of the term, which is the `size` this test prints
+ * below -- or, where the form is inside the line and the clock is not, its
+ * conversion time.  Every line here names a body that calls.
  *
  * A call's answer is what leaves a decision standing -- the arity the callee
  * answered with, and the frame it came back on -- and a decision the conversion
@@ -201,18 +201,19 @@ val () =
  * now.  Four are over the line: `fun_signedLess` (1 083 107) and
  * `fun_boolLogic` (1 008 029) at about a million nodes, `checked_exp_unsigned`
  * at 230 276, and `checked_exp_signed`, which does not come back inside the
- * clock below.  Two more are under the line and over the clock: of the
- * twenty-one the sweep had named for their time, nineteen come out between
- * 20 719 and 129 739 nodes inside a second and are measured with the rest,
- * while `fun_bitwise`'s conversion takes 7.2s on the build machine against 2.4s
- * on the box these numbers were measured on -- past the five-second bound
- * below, and the first CI run on this change is what said so -- and
- * `fun_widen`, next behind it at 1.1s here, is left out with it.  The build
- * machine runs these conversions about three times slower than the box they
- * were timed on (91.3s against 32.5s for the same set), so the bound below is
- * worth holding to forms whose time there is well inside it.  What is left is
- * 131 of the 137, whose largest form is 129 739 nodes and whose slowest the
- * check below bounds at five seconds.
+ * clock below.  Two more are under the line and inside the clock here, and are
+ * left out for the margin the build machine needs: of the twenty-one the sweep
+ * had named for their time, nineteen come out between 20 719 and 129 739 nodes
+ * inside a second and are measured with the rest, while `fun_bitwise`'s
+ * conversion takes 7.2s there against 2.4s on the box these numbers were
+ * measured on -- past the five-second bound, and the first CI run on this
+ * change is what said so -- and `fun_widen`, next behind it at 1.1s here, is
+ * left out with it rather than run near a bound the machine it runs on cannot
+ * hold to.  That machine runs these conversions about three times slower than
+ * the box they were timed on (91.3s against 32.5s for the same set), so the
+ * bound below is worth keeping to forms whose time there is well inside it.
+ * What is left is 131 of the 137, whose largest form is 129 739 nodes and whose
+ * slowest the check below bounds at five seconds.
  *
  * One line says `no_form`: `checked_exp_signed` is the body a sweep of the
  * corpus did not see come back inside a clock of a minute, and it is the form
@@ -508,10 +509,10 @@ QED
  * The shapes that have left this class as the conversion has improved all nest
  * a call inside another call's arguments: `wrapping_exp_uint8_uint8` closes now
  * -- its `exp` call is reached through the builtin dispatch rather than left to
- * the word library -- `fun_bitwise` comes back inside this suite's own clock,
- * and the ones that carry a size above come back under a longer one; all of
- * them are measured with the rest.  The list is empty of them now, and the
- * check stays for the next body that stops coming back. *)
+ * the word library -- and the ones that carry a size above come back under a
+ * longer one; all of them are measured with the rest, except the two the list
+ * above names for what they take on the build machine.  The list is empty of
+ * them now, and the check stays for the next body that stops coming back. *)
 val () =
   List.app
     (fn (nm, why) =>
