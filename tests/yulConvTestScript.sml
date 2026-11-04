@@ -167,8 +167,7 @@ val () =
  * at two hundred thousand nodes or more.  The number in each line is that
  * function's form as this suite measures it -- every node of the term, which is
  * the `size` this test prints below -- and every line here names a body that
- * calls: the external wrappers above all, and the four forms in the millions
- * at the top of the list.
+ * calls.
  *
  * A call's answer is what leaves a decision standing -- the arity the callee
  * answered with, and the frame it came back on -- and a decision the conversion
@@ -192,23 +191,27 @@ val () =
  * conversion does, so they are re-measured with the list rather than read as an
  * invariant.  The line is enforced from one side only: the suite fails if a
  * form it does cover reaches 200k nodes, so a covered function that grew past
- * the line cannot pass unnoticed, but nothing here converts the 25 named for
+ * the line cannot pass unnoticed, but nothing here converts the four named for
  * their size -- a name whose form has dropped under the line keeps its line
  * until the list is re-measured, which happens with each change to the
  * conversion.  Converting them here as well would put the large forms' cost --
- * seconds each, and tens of millions of nodes at the far end
- * (`checked_exp_signed`'s) -- on every run of this suite.  The gap is no longer
- * narrow: twenty-one of the twenty-five now come out under the line, between
- * 20 719 and 169 905 nodes, and are named for their time -- the four still over
- * it are `fun_signedLess` and `fun_boolLogic` at about a million nodes,
- * `checked_exp_unsigned` at 230 276, and `checked_exp_signed`, which does not
- * come back inside the sweep's clock.  What is left is 112 of the 137, whose
- * largest form is 79 639 nodes and whose slowest the check below bounds at five
- * seconds.
+ * seconds each, and 64 540 998 nodes at the far end (`checked_exp_signed`'s) --
+ * on every run of this suite.  The list was re-measured against this
+ * conversion -- the twenty-one the sweep had named for their time come out
+ * between 20 719 and 169 905 nodes, seconds at most -- so those are measured
+ * with the rest now, against the bound below, and the gap is four wide: the
+ * four still over the line are `fun_signedLess` (1 083 107) and `fun_boolLogic`
+ * (1 008 029) at about a million nodes, `checked_exp_unsigned` at 230 276, and
+ * `checked_exp_signed`, which does not come back inside the clock below.  What
+ * is left is 133 of the 137, whose largest form is 169 905 nodes and whose
+ * slowest the check below bounds at five seconds.
  *
  * One line says `no_form`: `checked_exp_signed` is the body a sweep of the
  * corpus did not see come back inside a clock of a minute, and it is the form
- * at the top of the list -- the one this suite had never seen.  A line that
+ * at the top of the list -- the one this suite had never seen.  It is not a
+ * body that never returns: given a clock of a minute and a half it comes back
+ * with 64 540 998 nodes in about 74s, which is the far end of the line the four
+ * are over rather than a conversion that has stopped.  A line that
  * claims no form is converted under a clock by the check below, so that the
  * claim is asked of the conversion rather than taken on trust: the run has to
  * abort, and one that comes back fails the check by name, with the size of its
@@ -234,27 +237,6 @@ val excluded = [
   ("fun_boolLogic", "form of 1008029 nodes"),
   ("checked_exp_unsigned", "form of 230276 nodes"),
   ("fun_signedLess", "form of 1083107 nodes"),
-  ("fun_bitwise", "form of 169905 nodes"),
-  ("checked_div_int8", "form of 129739 nodes"),
-  ("external_fun_bitwise", "form of 29559 nodes"),
-  ("fun_widen", "form of 146873 nodes"),
-  ("external_fun_widen", "form of 26489 nodes"),
-  ("external_fun_signedLess", "form of 26459 nodes"),
-  ("external_fun_boolLogic", "form of 26379 nodes"),
-  ("external_fun_truncate", "form of 24189 nodes"),
-  ("external_fun_reinterpret", "form of 23949 nodes"),
-  ("external_fun_shifts", "form of 23829 nodes"),
-  ("external_fun_wrappingMultiply", "form of 22119 nodes"),
-  ("external_fun_wrappingDivide", "form of 21919 nodes"),
-  ("external_fun_signedShift", "form of 21899 nodes"),
-  ("external_fun_signedPower", "form of 21719 nodes"),
-  ("external_fun_remainder", "form of 21419 nodes"),
-  ("external_fun_wrappingSubtract", "form of 21819 nodes"),
-  ("external_fun_multiply", "form of 21319 nodes"),
-  ("external_fun_divide", "form of 21119 nodes"),
-  ("external_fun_wrappingPower", "form of 21519 nodes"),
-  ("external_fun_subtract", "form of 21019 nodes"),
-  ("external_fun_power", "form of 20719 nodes"),
 ]
 
 val excluded_names = List.map #1 excluded
