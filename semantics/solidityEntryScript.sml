@@ -88,7 +88,7 @@ Definition run_entry_def:
     | NONE => abrupt_result (InvalidCompletion "bad entry arguments") st [] in
     case finish_source_frame w r.state.world r.completion of
       FrameSuccess vs w' =>
-        (case encoded_runtime_values r.state (MAP SND p.return_bindings) vs of
+        (case encoded_runtime_values env r.state (MAP SND p.return_bindings) vs of
            INL data => ContractReturned data w'
          | INR (PanicCompletion code) => ContractReverted (panic_data code) w
          | INR (RevertCompletion data) => ContractReverted data w

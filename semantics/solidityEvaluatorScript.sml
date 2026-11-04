@@ -241,9 +241,17 @@ Definition eval_operation_def:
                 INL v => ValueOk v
               | INR c => ValueAbrupt c)
          | (SOME (ReferenceValue r), SOME (ScalarValue (IntegerValue i))) =>
-             (case memory_array_element st r i of
-                INL (_, _, _, v) => ValueOk v
-              | INR c => ValueAbrupt c)
+             (case r of
+                StorageReference _ _ _ _ (ArrayT element _) _ =>
+                  (case navigate_storage env st.world.accounts r (IntegerValue i) of
+                     ValueOk (ReferenceValue r') =>
+                       read_storage_reference st.world.accounts element r'
+                   | ValueOk _ => ValueAbrupt (InvalidCompletion "bad storage array element")
+                   | ValueAbrupt c => ValueAbrupt c)
+              | _ =>
+                case memory_array_element st r i of
+                  INL (_, _, _, v) => ValueOk v
+                | INR c => ValueAbrupt c)
          | _ => ValueAbrupt (InvalidCompletion "bad array index operands"))
     | ArrayLengthOperation a =>
         (case eval_atom st.scopes a of
@@ -474,11 +482,11 @@ End
  * writes, an emit in a static frame fails.
  *)
 Definition emit_event_def:
-  emit_event topic args (st : source_state) gas =
+  emit_event env topic args (st : source_state) gas =
     case eval_event_args st.scopes args of
       NONE => abrupt_result (InvalidCompletion "unbound atom") st gas
     | SOME vs =>
-        case event_log st st.frame.self_address topic vs of
+        case event_log env st st.frame.self_address topic vs of
           INL e =>
             if st.frame.static_context then
               abrupt_result (InvalidCompletion "emit in static frame") st gas
@@ -501,7 +509,7 @@ End
  * world the callee left, with its logs after the caller's.
  *)
 Definition call_external_def:
-  call_external x ty kind selector params rets target value args
+  call_external env x ty kind selector params rets target value args
                 (st : source_state) gas =
     case (eval_atom st.scopes target, eval_atom st.scopes value,
           eval_atoms st.scopes args) of
@@ -509,7 +517,7 @@ Definition call_external_def:
        SOME (ScalarValue (IntegerValue v)), SOME vs) =>
         if rets = [] ∧ (lookup_account callee st.world.accounts).code = []
         then abrupt_result (RevertCompletion []) st gas
-        else (case encoded_runtime_values st params vs of
+        else (case encoded_runtime_values env st params vs of
            INR c => abrupt_result c st gas
          | INL data =>
            let static = (kind = ExternalStaticCall ∨ st.frame.static_context) in
@@ -581,14 +589,24 @@ Definition simple_stmt_def:
                      SOME (v', st') => normal_result (define_binding x ty v' st') gas
                    | NONE => abrupt_result (InvalidCompletion "bad calldata array copy") st gas)
               | INR c => abrupt_result c st gas)
-         | _ => abrupt_result (InvalidCompletion "bad calldata array copy") st gas)
+         | SOME (ReferenceValue (StorageReference PersistentStorage addr slot 0 rty _)) =>
+             (case storage_array_value env st.world.accounts addr slot rty of
+                INL v =>
+                  if 2 ** 64 ≤ memory_free_pointer st + memory_value_size rty v then
+                    abrupt_result (PanicCompletion 65) st gas
+                  else
+                    (case materialize_value rty v st of
+                       SOME (v', st') => normal_result (define_binding x ty v' st') gas
+                     | NONE => abrupt_result (InvalidCompletion "bad storage array copy") st gas)
+              | INR c => abrupt_result c st gas)
+         | _ => abrupt_result (InvalidCompletion "bad array copy") st gas)
     | DefineStmt x ty (ArrayPushOperation a value) =>
         push_storage_array env x ty a value st gas
     | DefineStmt x ty (ArrayPopOperation a) =>
         pop_storage_array env x ty a st gas
     | DefineStmt x ty (ExternalCallOperation kind selector params rets target
                          value args) =>
-        call_external x ty kind selector params rets target value args st gas
+        call_external env x ty kind selector params rets target value args st gas
     | DefineStmt x ty op =>
         (case eval_operation env st op of
            ValueOk v => normal_result (define_binding x ty v st) gas
@@ -615,12 +633,31 @@ Definition simple_stmt_def:
         (case write_target t a st of
            SOME st' => normal_result st' gas
          | NONE => abrupt_result (InvalidCompletion "bad reference binding") st gas)
-    | CopyContentsStmt _ _ a b =>
+    | CopyContentsStmt src_ty _ a b =>
         (case (eval_atom st.scopes a, eval_atom st.scopes b) of
            (SOME (ReferenceValue src), SOME (ReferenceValue dst)) =>
-             (case copy_byte_contents src dst st of
-                INL st' => normal_result st' gas
-              | INR c => abrupt_result c st gas)
+             (case src_ty of
+                LocatedT _ (ArrayT element length) =>
+                  (* The compiler's storage-to-storage copy returns at once
+                   * when the source is the destination. *)
+                  if (case (src, dst) of
+                        (StorageReference PersistentStorage src_addr src_slot 0 _ _,
+                         StorageReference PersistentStorage dst_addr dst_slot 0 _ _) =>
+                          src_addr = dst_addr ∧ src_slot = dst_slot
+                      | _ => F)
+                  then normal_result st gas else
+                  (case array_copy_value env st (ArrayT element length) src of
+                     INL v =>
+                       (case copy_to_storage env st.world.accounts (ArrayT element length) v
+                               dst st.frame.static_context of
+                          INL accounts =>
+                            normal_result (st with world := st.world with accounts := accounts) gas
+                        | INR c => abrupt_result c st gas)
+                   | INR c => abrupt_result c st gas)
+              | _ =>
+                case copy_byte_contents src dst st of
+                  INL st' => normal_result st' gas
+                | INR c => abrupt_result c st gas)
          | _ => abrupt_result (InvalidCompletion "bad byte sequence copy") st gas)
     | WriteScalarStmt t ty a =>
         (case write_target t a st of
@@ -633,7 +670,7 @@ Definition simple_stmt_def:
     | BreakStmt => abrupt_result BreakCompletion st gas
     | ContinueStmt => abrupt_result ContinueCompletion st gas
     | PanicStmt code => abrupt_result (PanicCompletion code) st gas
-    | EmitStmt topic args => emit_event topic args st gas
+    | EmitStmt topic args => emit_event env topic args st gas
     | RevertErrorStmt selector params args =>
         (case eval_atoms st.scopes args of
            SOME vs =>

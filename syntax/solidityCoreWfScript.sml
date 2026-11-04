@@ -250,13 +250,14 @@ Definition calldata_object_type_def:
   (calldata_object_type ty ⇔ byte_sequence_type ty)
 End
 
-(* Located values: byte sequences in any location, and memory and calldata
- * arrays. *)
+(* Located values: byte sequences in any location, and memory, calldata and
+ * storage arrays. A storage array has the shapes of a memory one. *)
 Definition located_value_type_def:
   located_value_type ty ⇔
     case ty of
       LocatedT MemoryLoc element => memory_object_type element
     | LocatedT CalldataLoc element => calldata_object_type element
+    | LocatedT StorageLoc element => memory_object_type element
     | LocatedT loc element => byte_sequence_type element
     | _ => F
 End
@@ -363,7 +364,7 @@ Definition value_has_type_def:
     ty = rty ∧ memory_object_type ty) ∧
   (value_has_type env (SingleType (LocatedT StorageLoc ty))
      (ReferenceValue (StorageReference PersistentStorage _ _ 0 rty _)) ⇔
-    ty = rty ∧ byte_sequence_type ty) ∧
+    ty = rty ∧ memory_object_type ty) ∧
   (value_has_type env (ProductType tys) (TupleValue vs) ⇔
     values_have_types env tys vs) ∧
   (value_has_type env _ _ ⇔ F) ∧
@@ -416,7 +417,6 @@ Definition wf_abi_atom_def:
            BoundAtom x =>
              (case ALOOKUP ctx.bindings x of
                 SOME (SingleType (LocatedT loc actual)) =>
-                  (loc = MemoryLoc ∨ loc = CalldataLoc) ∧
                   actual = ArrayT element length ∧ located_value_type (LocatedT loc actual)
               | _ => F)
          | _ => F)
@@ -562,6 +562,25 @@ Definition implicitly_convertible_def:
     | _ => F
 End
 
+(* The arrays an assignment copies into a storage array of type dst: the
+ * same shape, a fixed-size dimension also into a dynamic one or a longer
+ * fixed-size one, with leaves implicitly convertible. *)
+Definition storage_copy_type_def:
+  storage_copy_type src dst ⇔
+    case (src, dst) of
+      (ArrayT e l, ArrayT e' l') =>
+        (case (l, l') of
+           (_, NONE) => T
+         | (SOME n, SOME m) => n ≤ m
+         | _ => F) ∧ storage_copy_type e e'
+    | (ArrayT _ _, _) => F
+    | (_, ArrayT _ _) => F
+    | _ => implicitly_convertible src dst
+Termination
+  WF_REL_TAC ‘measure (sol_type_size o FST)’ >>
+  rw[solidityASTTheory.sol_type_size_def]
+End
+
 Theorem implicitly_convertible_explicit:
   implicitly_convertible src dst ⇒ core_convertible env src dst
 Proof
@@ -634,7 +653,7 @@ Definition wf_core_operation_def:
       SOME v => annotation = ReferenceType v.state_type
     | NONE => F) ∧
   (wf_core_operation env ctx annotation (ReadOperation ty a) ⇔
-    (if byte_sequence_type ty then
+    (if memory_object_type ty then
        annotation = SingleType (LocatedT StorageLoc ty)
      else annotation = SingleType ty ∧ core_scalar_type env ty ∧
           IS_SOME (storage_bytes ty)) ∧
@@ -693,8 +712,9 @@ Definition wf_core_operation_def:
   (wf_core_operation env ctx annotation (CopyToMemoryOperation a) ⇔
     case (a, annotation) of
       (BoundAtom x, SingleType (LocatedT MemoryLoc ty)) =>
-        ALOOKUP ctx.bindings x = SOME (SingleType (LocatedT CalldataLoc ty)) ∧
-        calldata_object_type ty ∧ (case ty of ArrayT _ _ => T | _ => F)
+        (ALOOKUP ctx.bindings x = SOME (SingleType (LocatedT CalldataLoc ty)) ∨
+         ALOOKUP ctx.bindings x = SOME (SingleType (LocatedT StorageLoc ty))) ∧
+        located_value_type (LocatedT MemoryLoc ty) ∧ (case ty of ArrayT _ _ => T | _ => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (ArrayLengthOperation a) ⇔
     annotation = SingleType (UintT 256) ∧
@@ -702,8 +722,7 @@ Definition wf_core_operation_def:
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
            SOME (SingleType (LocatedT loc ty)) =>
-             byte_sequence_type ty ∨
-             (loc ≠ StorageLoc ∧ case ty of ArrayT _ _ => T | _ => F)
+             byte_sequence_type ty ∨ (case ty of ArrayT _ _ => T | _ => F)
          | SOME (ReferenceType (ArrayT _ NONE)) => T
          | _ => F)
     | _ => F) ∧
@@ -1033,9 +1052,13 @@ Definition check_core_stmts_def:
        wf_core_atom env ctx (SingleType ty) a
     then check_core_stmts env ctx ss else NONE) ∧
   (check_core_stmts env ctx (CopyContentsStmt src dst a b :: ss) =
-    if byte_sequence_value_type src ∧
-       (case (src, dst) of
-          (LocatedT _ ty, LocatedT loc ty') => loc ≠ CalldataLoc ∧ ty = ty'
+    if (case (src, dst) of
+          (LocatedT _ ty, LocatedT loc ty') =>
+            if byte_sequence_type ty then
+              byte_sequence_value_type src ∧ loc ≠ CalldataLoc ∧ ty = ty'
+            else
+              located_value_type src ∧ located_value_type dst ∧
+              loc = StorageLoc ∧ storage_copy_type ty ty'
         | _ => F) ∧
        wf_core_atom env ctx (SingleType src) a ∧
        wf_core_atom env ctx (SingleType dst) b

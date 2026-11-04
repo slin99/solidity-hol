@@ -396,7 +396,10 @@ End
 
 (* The pointer suffix of a memory or calldata type identifier. *)
 Definition location_suffix_def:
-  location_suffix loc = if loc = CalldataLoc then "_calldata_ptr" else "_memory_ptr"
+  location_suffix loc =
+    if loc = CalldataLoc then "_calldata_ptr"
+    else if loc = StorageLoc then "_storage"
+    else "_memory_ptr"
 End
 
 Definition array_dimensions_def:
@@ -428,7 +431,7 @@ Definition array_base_def:
     else NONE
 End
 
-(* A memory or calldata array type identifier, nested to any depth. *)
+(* A memory, calldata or storage array type identifier, nested to any depth. *)
 Definition decode_located_array_def:
   decode_located_array loc s =
     case separated_fields #"$" "" s of
@@ -455,9 +458,15 @@ End
 Definition decode_elementary_identifier_def:
   decode_elementary_identifier s =
     if isPREFIX "t_array$_" s then
-      (case decode_located_array MemoryLoc s of
-         SOME ty => SOME ty
-       | NONE => decode_located_array CalldataLoc s)
+      (* The outer dimension's suffix names the location. A storage array
+       * value is unlocated, as t_bytes_storage is. *)
+      (if isPREFIX (REVERSE (location_suffix StorageLoc)) (REVERSE s) then
+         case decode_located_array StorageLoc s of
+           SOME (LocatedT _ ty) => SOME ty
+         | _ => NONE
+       else if isPREFIX (REVERSE (location_suffix CalldataLoc)) (REVERSE s) then
+         decode_located_array CalldataLoc s
+       else decode_located_array MemoryLoc s)
     else if s = "t_bytes_storage" then SOME BytesT
     else if s = "t_string_storage" then SOME StringT
     else if s = "t_bytes_memory_ptr" then SOME (LocatedT MemoryLoc BytesT)
@@ -523,7 +532,7 @@ End
 (* The components of a tuple identifier from its `$`-separated fields,
  * rejoining an array's fields: "_t_array" opens an array and a dimension,
  * the one field without a leading "_", closes one. *)
-Definition tuple_components_def:
+Definition tuple_identifier_components_def:
   (tuple_identifier_components (depth : num) acc [] =
     if depth = 0 ∧ acc = "" then SOME [] else NONE) ∧
   (tuple_identifier_components depth acc (f :: fs) =
@@ -739,6 +748,7 @@ Definition variable_type_def:
                 else if v.var_location = "storage" then SOME StorageLoc else NONE) of
             SOME loc =>
               if located_value_type (LocatedT loc ty) ∧
+                 (loc = StorageLoc ⇒ byte_sequence_type ty) ∧
                  source_type_matches (LocatedT loc ty) v.var_type_id then
                 SOME (LocatedT loc ty) else NONE
           | NONE => NONE

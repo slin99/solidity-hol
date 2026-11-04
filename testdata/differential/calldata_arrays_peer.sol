@@ -14,4 +14,11 @@ contract ArrayPeer {
             n += a[i].length;
         }
     }
+
+    function firstWord(bytes[] calldata a) external pure returns (uint256 w) {
+        bytes calldata e = a[0];
+        assembly {
+            w := calldataload(e.offset)
+        }
+    }
 }

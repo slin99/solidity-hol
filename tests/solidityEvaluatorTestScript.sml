@@ -409,7 +409,7 @@ QED
 (* Encoding a corrupt storage argument panics before LOG's static guard. *)
 Definition static_byte_event_def:
   static_byte_event header =
-    (emit_event NONE [(LocatedT MemoryLoc BytesT, F, BoundAtom (AstId 1))]
+    (emit_event test_env NONE [(LocatedT MemoryLoc BytesT, F, BoundAtom (AstId 1))]
       (static_state with <|
         scopes := [FEMPTY |+ (1, <|
           binding_type := SingleType (LocatedT StorageLoc BytesT);

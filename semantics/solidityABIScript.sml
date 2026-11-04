@@ -48,6 +48,27 @@ Definition abi_values_def:
   (abi_values _ _ = NONE)
 End
 
+(* The ABI value of an array value read element by element: elements in
+ * order, each array a list. *)
+Definition value_abi_value_def:
+  (value_abi_value ty v =
+    case (ty, v) of
+      (ArrayT element _, TupleValue vs) =>
+        OPTION_MAP ListV (values_abi_value element vs)
+    | (ArrayT _ _, _) => NONE
+    | _ => abi_value ty v) ∧
+  (values_abi_value element [] = SOME []) ∧
+  (values_abi_value element (v :: vs) =
+    case (value_abi_value element v, values_abi_value element vs) of
+      (SOME a, SOME as) => SOME (a :: as)
+    | _ => NONE)
+Termination
+  WF_REL_TAC ‘measure (λx. case x of
+    INL (ty, v) => runtime_value_size v
+  | INR (element, vs) => list_size runtime_value_size vs)’ >>
+  rw[solidityCoreTheory.runtime_value_size_def, listTheory.list_size_def]
+End
+
 (* The encoding of values as a tuple of their types: return data. *)
 Definition encoded_values_def:
   encoded_values tys vs =
@@ -163,22 +184,21 @@ Definition calldata_element_def:
       | INR c => INR c
 End
 
-(* The ABI value of a calldata array or byte sequence of the given length at
- * data, read element by element as the pinned encoder does, so an invalid
- * element or offset reverts. *)
-Definition calldata_abi_value_def:
-  (calldata_abi_value cd ty data length =
+(* The value of a calldata array or byte sequence of the given length at
+ * data, read element by element through the pinned compiler's calldata
+ * accessors, so an invalid element or offset reverts: an array as the tuple
+ * of its elements, a byte sequence as its bytes. The encoder and a copy to
+ * storage both read calldata this way. *)
+Definition calldata_value_def:
+  (calldata_value cd ty data length =
     case ty of
       ArrayT element _ =>
-        (case calldata_abi_elements cd element data 0 length of
-           INL vs => INL (ListV vs)
+        (case calldata_values cd element data 0 length of
+           INL vs => INL (TupleValue vs)
          | INR c => INR c)
-    | _ =>
-      case abi_value ty (ScalarValue (BytesValue
-             (TAKE length (DROP data cd ++ REPLICATE length 0w)))) of
-        SOME a => INL a
-      | NONE => INR (InvalidCompletion "bad calldata ABI value")) ∧
-  (calldata_abi_elements cd element data i n =
+    | _ => INL (ScalarValue (BytesValue
+             (TAKE length (DROP data cd ++ REPLICATE length 0w))))) ∧
+  (calldata_values cd element data i n =
     if n = 0 then INL [] else
     case calldata_element cd element data i of
       INR c => INR c
@@ -186,15 +206,13 @@ Definition calldata_abi_value_def:
       let value =
         case v of
           ReferenceValue (CalldataReference pos length _) =>
-            calldata_abi_value cd element pos length
-        | _ => case abi_value element v of
-                 SOME a => INL a
-               | NONE => INR (InvalidCompletion "bad calldata ABI value") in
+            calldata_value cd element pos length
+        | _ => INL v in
       case value of
         INR c => INR c
-      | INL a =>
-        case calldata_abi_elements cd element data (i + 1) (n - 1) of
-          INL as => INL (a :: as)
+      | INL v' =>
+        case calldata_values cd element data (i + 1) (n - 1) of
+          INL vs => INL (v' :: vs)
         | INR c => INR c)
 Termination
   WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
@@ -203,18 +221,98 @@ Termination
   rw[solidityASTTheory.sol_type_size_def]
 End
 
+(* The tuple head/tail layout, using already encoded component bodies. *)
+Definition encoded_abi_parts_def:
+  (encoded_abi_parts hl tl [] = ([], [])) ∧
+  (encoded_abi_parts hl tl ((ty, encoded_body) :: parts) =
+    let dynamic = is_dynamic ty in
+    let tail = if dynamic then encoded_body else [] in
+    let head = if dynamic then enc (Uint 256) (NumV (hl + tl)) else encoded_body in
+    let (heads, tails) = encoded_abi_parts hl (tl + LENGTH tail) parts in
+    (head ++ heads, tail ++ tails))
+End
+
+Definition encoded_abi_tuple_def:
+  encoded_abi_tuple parts =
+    let (heads, tails) = encoded_abi_parts (head_lengths (MAP FST parts) 0) 0 parts in
+    heads ++ tails
+End
+
+(* A storage array or byte sequence encoded in place, as the pinned encoder
+ * does: its ABI value and its encoding. Scalar elements are read cleaned; a
+ * byte sequence copies whole data words, keeping unused dirty bytes, except
+ * the length byte of a short one. A length of 2^64 or more panics with 0x41,
+ * as the memory for the encoding cannot be allocated. *)
+Definition storage_abi_value_def:
+  (storage_abi_value env accounts addr slot ty =
+    if byte_sequence_type ty then
+      (case storage_byte_length accounts addr slot of
+         INR c => INR c
+       | INL length =>
+         let padded = storage_byte_range accounts addr slot length 0
+                        (32 * ((length + 31) DIV 32)) in
+         let data = if 0 < length ∧ length < 32 then TAKE 31 padded ++ [0w]
+                    else padded in
+         case abi_value ty (ScalarValue (BytesValue (TAKE length padded))) of
+           SOME a => INL (a, enc (Uint 256) (NumV length) ++ data)
+         | NONE => INR (InvalidCompletion "bad ABI value"))
+    else case ty of
+      ArrayT element l =>
+        (case storage_array_data accounts addr slot ty of
+           (length, data) =>
+             if 2 ** 64 ≤ length then INR (PanicCompletion 65) else
+             case storage_abi_elements env accounts addr data element 0 length of
+               INL parts =>
+                 INL (ListV (MAP FST parts),
+                      (if l = NONE then enc (Uint 256) (NumV length) else []) ++
+                      encoded_abi_tuple (MAP (λp. (abi_type element, SND p)) parts))
+             | INR c => INR c)
+    | _ => INR (InvalidCompletion "bad storage array type")) ∧
+  (storage_abi_elements env accounts addr data element i n =
+    if n = 0 then INL [] else
+    case storage_element_location env data element i of
+      NONE => INR (InvalidCompletion "bad array element type")
+    | SOME (s, offset) =>
+        let value =
+          if is_elementary_type element then
+            (case read_storage accounts addr s offset element of
+               SOME v =>
+                 (case abi_value element (ScalarValue v) of
+                    SOME a => INL (a, enc (abi_type element) a)
+                  | NONE => INR (InvalidCompletion "bad ABI value"))
+             | NONE => INR (InvalidCompletion "bad storage read"))
+          else storage_abi_value env accounts addr s element in
+        case value of
+          INR c => INR c
+        | INL entry =>
+            case storage_abi_elements env accounts addr data element (i + 1) (n - 1) of
+              INL entries => INL (entry :: entries)
+            | INR c => INR c)
+Termination
+  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
+    INL (env, accounts, addr, slot, ty) => (sol_type_size ty, 0)
+  | INR (env, accounts, addr, data, element, i, n) => (sol_type_size element, n + 1))’ >>
+  rw[solidityASTTheory.sol_type_size_def]
+End
+
 (* Keep both the logical value (for indexed hashes) and its encoded body.
  * Storage encoders copy complete data words, retaining unused dirty bytes. *)
 Definition runtime_abi_value_def:
-  runtime_abi_value st ty v =
+  runtime_abi_value env st ty v =
     case ty of
       LocatedT _ (ArrayT element length) =>
         (case v of
            ReferenceValue (CalldataReference data n rty) =>
              if rty ≠ ArrayT element length then INR (InvalidCompletion "bad ABI value")
-             else (case calldata_abi_value st.frame.call_data rty data n of
-                     INL a => INL (a, enc (abi_type ty) a)
-                   | INR c => INR c)
+             else (case calldata_value st.frame.call_data rty data n of
+                     INR c => INR c
+                   | INL tree =>
+                     case value_abi_value rty tree of
+                       SOME a => INL (a, enc (abi_type ty) a)
+                     | NONE => INR (InvalidCompletion "bad ABI value"))
+         | ReferenceValue (StorageReference PersistentStorage addr slot 0 rty _) =>
+             if rty ≠ ArrayT element length then INR (InvalidCompletion "bad ABI value")
+             else storage_abi_value env st.world.accounts addr slot rty
          | _ =>
            case memory_abi_value st (ArrayT element length) v of
              SOME a => INL (a, enc (abi_type ty) a)
@@ -245,39 +343,22 @@ Definition runtime_abi_value_def:
         | _ => INL (a, encoded)
 End
 
-(* The tuple head/tail layout, using already encoded component bodies. *)
-Definition encoded_abi_parts_def:
-  (encoded_abi_parts hl tl [] = ([], [])) ∧
-  (encoded_abi_parts hl tl ((ty, encoded_body) :: parts) =
-    let dynamic = is_dynamic ty in
-    let tail = if dynamic then encoded_body else [] in
-    let head = if dynamic then enc (Uint 256) (NumV (hl + tl)) else encoded_body in
-    let (heads, tails) = encoded_abi_parts hl (tl + LENGTH tail) parts in
-    (head ++ heads, tail ++ tails))
-End
-
-Definition encoded_abi_tuple_def:
-  encoded_abi_tuple parts =
-    let (heads, tails) = encoded_abi_parts (head_lengths (MAP FST parts) 0) 0 parts in
-    heads ++ tails
-End
-
 Definition runtime_abi_values_def:
-  (runtime_abi_values (st : source_state) [] [] =
+  (runtime_abi_values env (st : source_state) [] [] =
      (INL [] : (contractABI$abi_type # byte list) list + source_completion)) ∧
-  (runtime_abi_values st (ty :: tys) (v :: vs) =
-    case runtime_abi_value st ty v of
+  (runtime_abi_values env st (ty :: tys) (v :: vs) =
+    case runtime_abi_value env st ty v of
       INR c => INR c
     | INL (a, encoded_body) =>
-      (case runtime_abi_values st tys vs of
+      (case runtime_abi_values env st tys vs of
          INL encoded => INL ((abi_type ty, encoded_body) :: encoded)
        | INR c => INR c)) ∧
-  (runtime_abi_values _ _ _ = INR (InvalidCompletion "bad ABI arguments"))
+  (runtime_abi_values _ _ _ _ = INR (InvalidCompletion "bad ABI arguments"))
 End
 
 Definition encoded_runtime_values_def:
-  encoded_runtime_values st tys vs =
-    case runtime_abi_values st tys vs of
+  encoded_runtime_values env st tys vs =
+    case runtime_abi_values env st tys vs of
       INL parts => INL (encoded_abi_tuple parts)
     | INR c => INR c
 End
@@ -372,6 +453,43 @@ Definition copy_calldata_array_def:
                 INL (vs, _) => INL (TupleValue vs)
               | INR c => INR c)
     | _ => INR (InvalidCompletion "bad calldata array copy")
+End
+
+(* The memory a value of type ty takes once materialized: each array's
+ * elements and length word, and each byte sequence's length and data. *)
+Definition memory_value_size_def:
+  (memory_value_size ty v =
+    case (ty, v) of
+      (ArrayT element length, TupleValue vs) =>
+        (if length = NONE then 32 else 0) + 32 * LENGTH vs +
+        memory_values_size element vs
+    | (_, ScalarValue (BytesValue bs)) =>
+        if byte_sequence_type ty then 32 + 32 * ((LENGTH bs + 31) DIV 32) else 0
+    | _ => 0) ∧
+  (memory_values_size element [] = 0) ∧
+  (memory_values_size element (v :: vs) =
+    memory_value_size element v + memory_values_size element vs)
+Termination
+  WF_REL_TAC ‘measure (λx. case x of
+    INL (ty, v) => runtime_value_size v
+  | INR (element, vs) => list_size runtime_value_size vs)’ >>
+  rw[solidityCoreTheory.runtime_value_size_def, listTheory.list_size_def]
+End
+
+(* The value of a memory, calldata or storage array of type ty, as a copy to
+ * storage reads it. A calldata array is read through the calldata accessors;
+ * its own data span was checked when it was decoded. *)
+Definition array_copy_value_def:
+  array_copy_value env (st : source_state) ty r =
+    case r of
+      MemoryReference _ _ _ => memory_array_value st ty (ReferenceValue r)
+    | CalldataReference data n rty =>
+        if rty ≠ ty then INR (InvalidCompletion "bad calldata array reference")
+        else calldata_value st.frame.call_data ty data n
+    | StorageReference PersistentStorage addr slot 0 rty _ =>
+        if rty ≠ ty then INR (InvalidCompletion "bad storage array reference")
+        else storage_array_value env st.world.accounts addr slot ty
+    | _ => INR (InvalidCompletion "bad array reference")
 End
 
 (* An argument at head: a scalar or static array in place, any other value at
@@ -479,12 +597,12 @@ End
  * log's data.
  *)
 Definition event_parts_def:
-  (event_parts st [] = INL ([], [])) ∧
-  (event_parts st ((ty, indexed, v) :: args) =
-    case runtime_abi_value st ty v of
+  (event_parts env st [] = INL ([], [])) ∧
+  (event_parts env st ((ty, indexed, v) :: args) =
+    case runtime_abi_value env st ty v of
       INR c => INR c
     | INL (a, encoded_body) =>
-      (case event_parts st args of
+      (case event_parts env st args of
          INR c => INR c
        | INL (topics, parts) =>
         if indexed then
@@ -497,8 +615,8 @@ Definition event_parts_def:
 End
 
 Definition event_log_def:
-  event_log st logger topic0 args =
-    case event_parts st args of
+  event_log env st logger topic0 args =
+    case event_parts env st args of
       INL (topics, parts) =>
         INL <| logger := logger;
                topics := (case topic0 of SOME t => t :: topics | NONE => topics);
@@ -509,6 +627,21 @@ End
 val () = cv_auto_trans abi_type_def;
 val () = cv_auto_trans abi_value_def;
 val () = cv_auto_trans abi_values_def;
+val value_abi_value_pre_def = cv_auto_trans_pre_rec
+  "value_abi_value_pre values_abi_value_pre" value_abi_value_def (
+  WF_REL_TAC ‘measure (λx. case x of
+    INL (ty, v) => cv_size v
+  | INR (element, vs) => cv_size vs)’ >>
+  cv_termination_tac
+);
+
+Theorem value_abi_value_pre[cv_pre]:
+  (∀ty v. value_abi_value_pre ty v) ∧
+  (∀element vs. values_abi_value_pre element vs)
+Proof
+  ho_match_mp_tac value_abi_value_ind >> rpt strip_tac >>
+  simp[Once value_abi_value_pre_def] >> rw[] >> gvs[]
+QED
 val () = cv_auto_trans encoded_values_def;
 val () = cv_auto_trans abi_runtime_value_def;
 val () = cv_auto_trans abi_runtime_values_def;
@@ -531,28 +664,44 @@ val () = cv_auto_trans abi_stride_def;
 val () = cv_auto_trans calldata_word_def;
 val () = cv_auto_trans calldata_tail_def;
 val () = cv_auto_trans calldata_element_def;
-val calldata_abi_value_pre_def = cv_auto_trans_pre_rec "calldata_abi_value_pre calldata_abi_elements_pre" calldata_abi_value_def (
+val calldata_value_pre_def = cv_auto_trans_pre_rec "calldata_value_pre calldata_values_pre" calldata_value_def (
   WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
     INL (cd, ty, data, length) => (cv_size ty, 0)
   | INR (cd, element, data, i, n) => (cv_size element, cv$c2n n + 1))’ >>
   cv_termination_tac
 );
 
-Theorem calldata_abi_value_pre[cv_pre]:
-  (∀cd ty data length. calldata_abi_value_pre cd ty data length) ∧
-  (∀cd element data i n. calldata_abi_elements_pre cd element data i n)
+Theorem calldata_value_pre[cv_pre]:
+  (∀cd ty data length. calldata_value_pre cd ty data length) ∧
+  (∀cd element data i n. calldata_values_pre cd element data i n)
 Proof
-  ho_match_mp_tac calldata_abi_value_ind >> rpt strip_tac >>
-  simp[Once calldata_abi_value_pre_def] >> rw[] >> gvs[]
+  ho_match_mp_tac calldata_value_ind >> rpt strip_tac >>
+  simp[Once calldata_value_pre_def] >> rw[] >> gvs[]
 QED
-val () = cv_auto_trans runtime_abi_value_def;
 val () = cv_auto_trans encoded_abi_parts_def;
 val () = cv_auto_trans encoded_abi_tuple_def;
+val storage_abi_value_pre_def = cv_auto_trans_pre_rec
+  "storage_abi_value_pre storage_abi_elements_pre" storage_abi_value_def (
+  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
+    INL (env, accounts, addr, slot, ty) => (cv_size ty, 0)
+  | INR (env, accounts, addr, data, element, i, n) => (cv_size element, cv$c2n n + 1))’ >>
+  cv_termination_tac
+);
+
+Theorem storage_abi_value_pre[cv_pre]:
+  (∀env accounts addr slot ty. storage_abi_value_pre env accounts addr slot ty) ∧
+  (∀env accounts addr data element i n.
+     storage_abi_elements_pre env accounts addr data element i n)
+Proof
+  ho_match_mp_tac storage_abi_value_ind >> rpt strip_tac >>
+  simp[Once storage_abi_value_pre_def] >> rw[] >> gvs[]
+QED
+val () = cv_auto_trans runtime_abi_value_def;
 val runtime_abi_values_pre_def =
   cv_auto_trans_pre "runtime_abi_values_pre" runtime_abi_values_def;
 
 Theorem runtime_abi_values_pre[cv_pre,local]:
-  ∀st tys vs. runtime_abi_values_pre st tys vs
+  ∀env st tys vs. runtime_abi_values_pre env st tys vs
 Proof
   ho_match_mp_tac runtime_abi_values_ind >> rpt strip_tac >>
   simp[Once runtime_abi_values_pre_def] >> rw[] >> gvs[]
@@ -575,6 +724,23 @@ Proof
   simp[Once decode_memory_value_pre_def] >> rw[] >> gvs[]
 QED
 val () = cv_auto_trans copy_calldata_array_def;
+val memory_value_size_pre_def = cv_auto_trans_pre_rec
+  "memory_value_size_pre memory_values_size_pre" memory_value_size_def (
+  WF_REL_TAC ‘measure (λx. case x of
+    INL (ty, v) => cv_size v
+  | INR (element, vs) => cv_size vs)’ >>
+  cv_termination_tac
+);
+
+Theorem memory_value_size_pre[cv_pre]:
+  (∀ty v. memory_value_size_pre ty v) ∧
+  (∀element vs. memory_values_size_pre element vs)
+Proof
+  ho_match_mp_tac memory_value_size_ind >> rpt strip_tac >>
+  simp[Once memory_value_size_pre_def] >> rw[] >> gvs[]
+QED
+
+val () = cv_auto_trans array_copy_value_def;
 val () = cv_auto_trans decode_abi_argument_def;
 val () = cv_auto_trans decode_abi_arguments_def;
 val () = cv_auto_trans decode_arguments_def;
@@ -609,7 +775,7 @@ val event_parts_pre_def = cv_auto_trans_pre "event_parts_pre"
   (REWRITE_RULE [GSYM byteTheory.word_of_bytes_be_def] event_parts_def);
 
 Theorem event_parts_pre[cv_pre,local]:
-  ∀st args. event_parts_pre st args
+  ∀env st args. event_parts_pre env st args
 Proof
   ho_match_mp_tac event_parts_ind >> rpt strip_tac >>
   simp[Once event_parts_pre_def] >> rw[] >> gvs[]
