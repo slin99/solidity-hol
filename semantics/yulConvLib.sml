@@ -765,6 +765,12 @@ val distribute_lemmas = [boolTheory.COND_RAND,
                          option_RAND,
                          list_RAND]
 
+(* The first of a list of equations or lemmas that rewrites the term: the same
+ * rule, offered each in turn, with `UNCHANGED` once the list runs out. *)
+fun matching [] tm = raise Conv.UNCHANGED
+  | matching (eq :: rest) tm =
+      Conv.REWR_CONV eq tm handle HOL_ERR _ => matching rest tm
+
 fun is_binding tm =
   is_comb tm andalso
   (is_abs (rator tm) orelse is_const_named "bool" "LET" (fst (strip_comb tm)))
@@ -772,13 +778,7 @@ fun is_binding tm =
 fun distribute_conv tm =
   if not (is_binding tm) then raise Conv.UNCHANGED
   else
-    let
-      fun first [] = raise Conv.UNCHANGED
-        | first (lem :: rest) =
-            Conv.REWR_CONV lem tm handle HOL_ERR _ => first rest
-    in
-      first distribute_lemmas
-    end
+    matching distribute_lemmas tm
 
 (* A `yul_pop_result` over a decision, pushed in: the pop goes inside the
  * decision's branches, so the block's continuation meets a branch that already
@@ -786,14 +786,7 @@ fun distribute_conv tm =
  * rules are the ones a binding's continuation is pushed with -- here
  * `yul_pop_result` is the function -- and only a `yul_pop_result` node is
  * offered them, since a push at every application would copy the function. *)
-fun pop_result_conv tm =
-  let
-    fun first [] = raise Conv.UNCHANGED
-      | first (lem :: rest) =
-          Conv.REWR_CONV lem tm handle HOL_ERR _ => first rest
-  in
-    first distribute_lemmas
-  end
+fun pop_result_conv tm = matching distribute_lemmas tm
 
 (* The case equations of the types the evaluator's clauses case on: a
  * statement's result, and the `option` a value is looked up into and the
@@ -804,10 +797,6 @@ val case_equations =
   CONJUNCTS yul_expr_result_case_def @
   CONJUNCTS optionTheory.option_case_def @
   CONJUNCTS listTheory.list_case_def
-
-fun matching [] tm = raise Conv.UNCHANGED
-  | matching (eq :: rest) tm =
-      Conv.REWR_CONV eq tm handle HOL_ERR _ => matching rest tm
 
 fun case_conv tm = matching case_equations tm
 
@@ -1057,10 +1046,16 @@ val eval_clauses = List.filter is_eval_clause clauses
  * registration took them out.  A value, not a copy of the set: only these four
  * entries are touched, and the rest of the set is shared with the caller. *)
 fun clause_set cs =
-  List.foldl
-    (fn (th, cs) =>
-       computeLib.add_thms [th] (computeLib.scrub_const cs (head_const_of th)))
-    cs eval_clauses
+  let
+    (* Every entry goes before any clause is put back: the entry carries all of
+     * a constant's clauses, so a scrub after one of them is in takes that one
+     * out again and leaves the constant with the last of them alone. *)
+    val scrubbed =
+      List.foldl (fn (th, cs) => computeLib.scrub_const cs (head_const_of th))
+        cs eval_clauses
+  in
+    computeLib.add_thms eval_clauses scrubbed
+  end
 
 (* The scrutinee of the case a clause builds: the case constant's first
  * argument.  A clause that builds no case -- a literal's value, an empty
@@ -1500,6 +1495,13 @@ fun is_fixed_point defs tm =
     val cs = case table_in tm of
                SOME t => opaque_table cs t
              | NONE => cs
+    (* The set the reduction runs on is installed, as `yul_invoke_conv` installs
+     * its own: the conversion is registered in it for the four clause
+     * constants, and the rule reduces a statement on the installed set.  Left
+     * uninstalled, this set's four entries would run their clause on whatever
+     * set the last conversion left behind -- with the client's definitions
+     * folded back in, which is the other thing this set exists to keep out. *)
+    val () = set_block_compset cs (clause_set cs)
   in
     aconv tm (rhs (concl (computeLib.CBV_CONV cs tm)))
   end
