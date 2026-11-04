@@ -815,9 +815,9 @@ def assembly_memory_ok(statements: list[dict[str, Any]]) -> bool:
 
 def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[Blocker]:
     """What the importer and the elaborator reject in an inline assembly
-    block: Yul the importer does not read (functions other than the block's
-    own, builtins outside the dialect, boolean literals, references other
-    than slot and offset), then builtins the source state cannot run (gas,
+    block: blocks marked memory-safe, Yul the importer does not read
+    (functions other than the block's own, builtins outside the dialect,
+    boolean literals, references other than slot and offset), then builtins the source state cannot run (gas,
     calls, return data, code), memory use outside assembly_memory_ok, and
     references to anything but value-type locals and state variable
     locations."""
@@ -853,6 +853,9 @@ def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) ->
                     walk(v, top and kind == "YulBlock" and value is node["AST"])
 
     walk(statements, True)
+    if "memory-safe" in (node.get("flags") or []) or "@solidity memory-safe-assembly" in (
+            node.get("documentation") or ""):
+        blocker("memory-safe inline assembly", "import")
     if not assembly_memory_ok(statements):
         blocker("inline assembly memory outside the scratch space", "elaboration")
     for reference in node.get("externalReferences", []):
@@ -860,7 +863,8 @@ def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) ->
         declaration = by_id.get(reference["declaration"], {})
         if suffix not in (None, "slot", "offset"):
             blocker("inline assembly", "import")
-        elif suffix is None and (declaration.get("stateVariable", True) or not VALUE_TYPE.fullmatch(
+        elif suffix is None and (declaration.get("stateVariable", True) or declaration.get("constant", False)
+                                 or not VALUE_TYPE.fullmatch(
                 declaration.get("typeDescriptions", {}).get("typeIdentifier") or "")):
             blocker("inline assembly memory references", "elaboration")
         elif suffix is not None and not declaration.get("stateVariable", False):

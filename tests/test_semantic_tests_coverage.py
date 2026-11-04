@@ -360,6 +360,13 @@ class ClassifyTests(unittest.TestCase):
                        [{"declaration": 5, "suffix": "length"}])
         self.assertEqual(coverage.assembly_blockers(own, by_id),
                          [coverage.Blocker("InlineAssembly", "inline assembly", "import")])
+        constant = dict(variable(8, type_identifier="t_uint256"), constant=True)
+        self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 8}]), {8: constant}),
+                         [coverage.Blocker("InlineAssembly", "inline assembly memory references", "elaboration")])
+        for marked in (dict(assembly([]), flags=["memory-safe"]),
+                       dict(assembly([]), documentation="@solidity memory-safe-assembly")):
+            self.assertEqual(coverage.assembly_blockers(marked, by_id),
+                             [coverage.Blocker("InlineAssembly", "memory-safe inline assembly", "import")])
 
     def test_overridden_functions_are_only_imported(self) -> None:
         coerced = {"nodeType": "VariableDeclarationStatement", "id": 6,

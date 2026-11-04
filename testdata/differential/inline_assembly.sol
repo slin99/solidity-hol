@@ -4,7 +4,8 @@ pragma solidity 0.8.37;
 // Inline assembly over value-type locals and state variable locations: reads
 // and writes of locals (cleaned on the way back), slot and offset, storage,
 // scratch memory, the free memory pointer, control flow, functions, logs,
-// and the block ending the call with return, stop or revert.
+// the block ending the call with return, stop or revert, and blocks in and
+// under modifiers.
 contract InlineAssembly {
     uint256 total;
     uint64 packedLow;
@@ -172,6 +173,40 @@ contract InlineAssembly {
         assembly {
             mstore(0, v)
             revert(0, 0x20)
+        }
+    }
+
+    // A block writing a modifier parameter.
+    modifier scaled(uint256 k) {
+        assembly {
+            k := mul(k, 2)
+        }
+        total = k;
+        _;
+    }
+
+    // A stop in a modifier skips the body and the rest of the modifier.
+    modifier haltIf(uint256 c) {
+        assembly {
+            if iszero(c) { stop() }
+        }
+        _;
+        total = 99;
+    }
+
+    function withModifier(uint256 k) public scaled(k) returns (uint256) {
+        return total;
+    }
+
+    function haltInModifier(uint256 c) public haltIf(c) {
+        total = 7;
+    }
+
+    // A return in the body passes out through the modifier's placeholder.
+    function haltUnderModifier(uint256 v) public scaled(v) returns (uint256) {
+        assembly {
+            mstore(0x80, v)
+            return(0x80, 0x20)
         }
     }
 }

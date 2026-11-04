@@ -937,7 +937,11 @@
         {"name": "caller_from_assembly", "function": "sender", "args": [], "expect": {"return": [4660]}, "sender": 4660},
         {"name": "return_halts_call", "function": "returnFromAssembly", "args": [77], "expect": {"returned": "0x000000000000000000000000000000000000000000000000000000000000004d"}},
         {"name": "stop_halts_call", "function": "stopEarly", "args": [3], "expect": {"returned": "0x"}, "final_storage": {"0": 1}},
-        {"name": "revert_discards_writes", "function": "revertFromAssembly", "args": [6], "expect": {"revert": "0x0000000000000000000000000000000000000000000000000000000000000006"}, "storage": {"0": 2}, "final_storage": {"0": 2}}
+        {"name": "revert_discards_writes", "function": "revertFromAssembly", "args": [6], "expect": {"revert": "0x0000000000000000000000000000000000000000000000000000000000000006"}, "storage": {"0": 2}, "final_storage": {"0": 2}},
+        {"name": "modifier_block_writes_parameter", "function": "withModifier", "args": [5], "expect": {"return": [10]}, "final_storage": {"0": 10}},
+        {"name": "modifier_block_stop_skips_body", "function": "haltInModifier", "args": [0], "expect": {"returned": "0x"}},
+        {"name": "modifier_block_runs_body", "function": "haltInModifier", "args": [1], "expect": {"return": []}, "final_storage": {"0": 99}},
+        {"name": "return_under_modifier_halts_call", "function": "haltUnderModifier", "args": [3], "expect": {"returned": "0x0000000000000000000000000000000000000000000000000000000000000003"}, "final_storage": {"0": 6}}
       ]
     }
   ]
