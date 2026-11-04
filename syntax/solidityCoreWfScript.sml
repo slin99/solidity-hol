@@ -364,7 +364,7 @@ Definition value_has_type_def:
     ty = rty ∧ memory_object_type ty) ∧
   (value_has_type env (SingleType (LocatedT StorageLoc ty))
      (ReferenceValue (StorageReference PersistentStorage _ _ 0 rty _)) ⇔
-    ty = rty ∧ byte_sequence_type ty) ∧
+    ty = rty ∧ memory_object_type ty) ∧
   (value_has_type env (ProductType tys) (TupleValue vs) ⇔
     values_have_types env tys vs) ∧
   (value_has_type env _ _ ⇔ F) ∧
