@@ -908,6 +908,12 @@ fun expose_all_conv tm =
  * the pruning after leaves every call case the push surfaced unpruned, and a
  * body of k calls at 2^k times the size.
  *
+ * Pruning after the taking apart would reach every call case the push surfaced
+ * as well -- `_cond` is the lemma for the shape the taking apart's field read
+ * leaves -- but it would do so having carried the branch the case sits in
+ * through that taking apart first, so `expose_all_conv` prunes between its push
+ * and its own pass.
+ *
  * The prune is not run before the taking apart here.  It was, while the only
  * lemmas that dropped a call's dead branch were stated on the branch written as
  * the record, which the taking apart's own field read rewrites -- `_cond` is
@@ -936,8 +942,9 @@ fun settle_conv tm =
  * (`yul_expr_result_RAND`), a call's own abrupt branch is dropped, and what
  * the case exposed is taken.  The branches' own bindings are taken here, before
  * the prune rather than after it: the prune is stated on the conditional the
- * clause wrote, and the field extraction below would have replaced its test
- * with the variable it is on. *)
+ * clause wrote, and the field extraction below replaces its test with the
+ * variable it is on -- the shape `_cond` is stated on, which the prune after
+ * this pass reaches, but only once the bindings around it have been pushed. *)
 fun split_conv tm =
   let
     val split = Conv.REWR_CONV yul_expr_result_RAND tm
