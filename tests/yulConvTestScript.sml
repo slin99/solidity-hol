@@ -191,20 +191,28 @@ val () =
  * conversion does, so they are re-measured with the list rather than read as an
  * invariant.  The line is enforced from one side only: the suite fails if a
  * form it does cover reaches 200k nodes, so a covered function that grew past
- * the line cannot pass unnoticed, but nothing here converts the four named for
- * their size -- a name whose form has dropped under the line keeps its line
- * until the list is re-measured, which happens with each change to the
- * conversion.  Converting them here as well would put the large forms' cost --
- * seconds each, and 64 540 998 nodes at the far end (`checked_exp_signed`'s) --
- * on every run of this suite.  The list was re-measured against this
- * conversion -- the twenty-one the sweep had named for their time come out
- * between 20 719 and 169 905 nodes, seconds at most -- so those are measured
- * with the rest now, against the bound below, and the gap is four wide: the
- * four still over the line are `fun_signedLess` (1 083 107) and `fun_boolLogic`
- * (1 008 029) at about a million nodes, `checked_exp_unsigned` at 230 276, and
- * `checked_exp_signed`, which does not come back inside the clock below.  What
- * is left is 133 of the 137, whose largest form is 169 905 nodes and whose
- * slowest the check below bounds at five seconds.
+ * the line cannot pass unnoticed, but nothing here converts the six named here
+ * -- a name whose form has dropped under the line keeps its line until the list
+ * is re-measured, which happens with each change to the conversion.  Converting
+ * them here as well would put their cost -- seconds each, and 64 540 998 nodes
+ * at the far end (`checked_exp_signed`'s) -- on every run of this suite.
+ *
+ * The list was re-measured against this conversion, and it names two reasons
+ * now.  Four are over the line: `fun_signedLess` (1 083 107) and
+ * `fun_boolLogic` (1 008 029) at about a million nodes, `checked_exp_unsigned`
+ * at 230 276, and `checked_exp_signed`, which does not come back inside the
+ * clock below.  Two more are under the line and over the clock: of the
+ * twenty-one the sweep had named for their time, nineteen come out between
+ * 20 719 and 129 739 nodes inside a second and are measured with the rest,
+ * while `fun_bitwise`'s conversion takes 7.2s on the build machine against 2.4s
+ * on the box these numbers were measured on -- past the five-second bound
+ * below, and the first CI run on this change is what said so -- and
+ * `fun_widen`, next behind it at 1.1s here, is left out with it.  The build
+ * machine runs these conversions about three times slower than the box they
+ * were timed on (91.3s against 32.5s for the same set), so the bound below is
+ * worth holding to forms whose time there is well inside it.  What is left is
+ * 131 of the 137, whose largest form is 129 739 nodes and whose slowest the
+ * check below bounds at five seconds.
  *
  * One line says `no_form`: `checked_exp_signed` is the body a sweep of the
  * corpus did not see come back inside a clock of a minute, and it is the form
@@ -237,6 +245,8 @@ val excluded = [
   ("fun_boolLogic", "form of 1008029 nodes"),
   ("checked_exp_unsigned", "form of 230276 nodes"),
   ("fun_signedLess", "form of 1083107 nodes"),
+  ("fun_bitwise", "conversion of 7.2s on the build machine"),
+  ("fun_widen", "conversion of 1.1s here, three times that on the build machine"),
 ]
 
 val excluded_names = List.map #1 excluded
