@@ -818,6 +818,26 @@ fun distribute_conv tm =
  * offered them, since a push at every application would copy the function. *)
 fun pop_result_conv tm = matching distribute_lemmas tm
 
+(* A `yul_pop_result` whose argument is one of the decisions the push above
+ * goes inside: what a clause's own evaluation can leave at the top of its
+ * result, and what its caller routes on rather than taking apart. *)
+val pop_result_c = prim_mk_const {Thy = "yulEvaluator", Name = "yul_pop_result"}
+
+fun pop_over_decision tm =
+  let
+    val (h, args) = strip_comb tm
+  in
+    same_const h pop_result_c andalso
+    (case args of
+       [a] => let val c = head_const a in
+                is_const_named "yulEvaluator" "yul_expr_result_CASE" c orelse
+                is_const_named "option" "option_CASE" c orelse
+                is_const_named "list" "list_CASE" c orelse
+                is_const_named "bool" "COND" c
+              end
+     | _ => false)
+  end
+
 (* The case equations of the types the evaluator's clauses case on: a
  * statement's result, and the `option` a value is looked up into and the
  * `list` its arguments are scanned from.  `CONJUNCTS` takes the two clauses of
@@ -1117,8 +1137,23 @@ fun eval_conv_raw tm =
           end
     val settled = go (Thm.REFL body) 4
     val red = computeLib.CBV_CONV (cs ()) (rhs (concl settled))
+    (* What the set unfolded above can leave at the top something the settling
+     * never saw: a `yul_pop_result` over the case a block came out as, which is
+     * the shape of a block statement's own clause.  The statement rule its
+     * caller runs tests the result for a case and takes anything else as a
+     * value, so the pop, and every read behind it, would be left outside every
+     * decision the case carries.  One more round when that is what came out,
+     * rather than on every clause. *)
+    val out =
+      if pop_over_decision (rhs (concl red))
+      then let
+             val settled2 = settle_conv (rhs (concl red))
+             val red2 = computeLib.CBV_CONV (cs ()) (rhs (concl settled2))
+           in Thm.TRANS red (Thm.TRANS settled2 red2) end
+           handle HOL_ERR _ => Thm.REFL (rhs (concl red))
+      else Thm.REFL (rhs (concl red))
   in
-    Thm.TRANS clause (Thm.TRANS settled red)
+    Thm.TRANS clause (Thm.TRANS settled (Thm.TRANS red out))
   end
   (* A term whose clause does not match is reduced by the clauses in the set
    * (`clause_set` puts them back for these four constants).  It cannot be the
