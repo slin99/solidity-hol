@@ -221,17 +221,42 @@ Definition byte_sequence_value_type_def:
     | _ => F
 End
 
-(* ABI values contain scalars or byte sequences in memory/calldata;
- * storage pointers never cross an ABI boundary. *)
+(* What a memory reference denotes: a byte sequence, or an array whose
+ * elements are elementary values or, as pointers, other memory objects. *)
+Definition memory_object_type_def:
+  (memory_object_type (ArrayT element length) ⇔
+    valid_array_length length ∧
+    ((is_elementary_type element ∧ valid_type_shape element) ∨
+     memory_object_type element)) ∧
+  (memory_object_type ty ⇔ byte_sequence_type ty)
+End
+
+(* Located values: byte sequences in any location, and memory arrays. *)
+Definition located_value_type_def:
+  located_value_type ty ⇔
+    case ty of
+      LocatedT MemoryLoc element => memory_object_type element
+    | LocatedT loc element => byte_sequence_type element
+    | _ => F
+End
+
+(* The type of an element of a memory array: a value, or a memory pointer. *)
+Definition memory_element_type_def:
+  memory_element_type element =
+    if is_elementary_type element then element else LocatedT MemoryLoc element
+End
+
+(* ABI values contain scalars, byte sequences in memory/calldata and memory
+ * arrays; storage pointers never cross an ABI boundary. *)
 Definition abi_value_type_def:
   abi_value_type ty ⇔
     is_elementary_type ty ∨
-    (byte_sequence_value_type ty ∧
+    (located_value_type ty ∧
      case ty of LocatedT StorageLoc _ => F | _ => T)
 End
 
 Definition core_binding_type_def:
-  core_binding_type env ty ⇔ core_scalar_type env ty ∨ byte_sequence_value_type ty
+  core_binding_type env ty ⇔ core_scalar_type env ty ∨ located_value_type ty
 End
 
 (* ProductType is reserved for tuples and multiple returns: never singleton. *)
@@ -313,7 +338,7 @@ Definition value_has_type_def:
     ty = rty ∧ byte_sequence_type ty) ∧
   (value_has_type env (SingleType (LocatedT MemoryLoc ty))
      (ReferenceValue (MemoryReference _ 0 rty)) ⇔
-    ty = rty ∧ byte_sequence_type ty) ∧
+    ty = rty ∧ memory_object_type ty) ∧
   (value_has_type env (SingleType (LocatedT StorageLoc ty))
      (ReferenceValue (StorageReference PersistentStorage _ _ 0 rty _)) ⇔
     ty = rty ∧ byte_sequence_type ty) ∧
@@ -359,11 +384,13 @@ Definition wf_core_atom_def:
 End
 
 (* ABI serialization consumes bytes from their original location. Literal
- * bytes are already available and need no heap object for encoding. *)
+ * bytes are already available and need no heap object for encoding. A memory
+ * array is encoded from its heap object. *)
 Definition wf_abi_atom_def:
   wf_abi_atom env ctx ty a ⇔
     case ty of
-      LocatedT _ element =>
+      LocatedT MemoryLoc (ArrayT _ _) => wf_core_atom env ctx (SingleType ty) a
+    | LocatedT _ element =>
         byte_sequence_type element ∧
         (case a of
            ConstantAtom (BytesValue _) => T
@@ -531,11 +558,14 @@ Definition environment_type_def:
     | _ => UintT 256
 End
 
+(* Between bytes and string in one location, or the identity on a located
+ * value: a reference keeps its object. *)
 Definition reference_convertible_def:
   reference_convertible src dst ⇔
+    (src = dst ∧ located_value_type src) ∨
     case (src, dst) of
       (LocatedT loc a, LocatedT loc' b) =>
-        loc = loc' ∧ byte_sequence_value_type src ∧ byte_sequence_value_type dst
+        loc = loc' ∧ byte_sequence_type a ∧ byte_sequence_type b
     | _ => F
 End
 
@@ -605,12 +635,14 @@ Definition wf_core_operation_def:
              element = ty ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
          | _ => F)
     | _ => F) ∧
-  (wf_core_operation env ctx annotation (DefaultBytesOperation ty) ⇔
-    byte_sequence_type ty ∧ annotation = SingleType (LocatedT MemoryLoc ty)) ∧
+  (wf_core_operation env ctx annotation (DefaultMemoryOperation ty) ⇔
+    memory_object_type ty ∧ annotation = SingleType (LocatedT MemoryLoc ty)) ∧
   (wf_core_operation env ctx annotation (BytesLiteralOperation ty _) ⇔
     annotation = SingleType (LocatedT MemoryLoc ty) ∧ byte_sequence_type ty) ∧
-  (wf_core_operation env ctx annotation (AllocateBytesOperation ty length) ⇔
-    annotation = SingleType (LocatedT MemoryLoc ty) ∧ byte_sequence_type ty ∧
+  (wf_core_operation env ctx annotation (AllocateMemoryOperation ty length) ⇔
+    annotation = SingleType (LocatedT MemoryLoc ty) ∧
+    (byte_sequence_type ty ∨
+     (memory_object_type ty ∧ case ty of ArrayT _ NONE => T | _ => F)) ∧
     wf_core_atom env ctx (SingleType (UintT 256)) length) ∧
   (wf_core_operation env ctx annotation (ByteIndexOperation a index) ⇔
     annotation = SingleType (FixedBytesT 1) ∧
@@ -618,13 +650,24 @@ Definition wf_core_operation_def:
      wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a ∨
      wf_core_atom env ctx (SingleType (LocatedT StorageLoc BytesT)) a) ∧
     wf_core_atom env ctx (SingleType (UintT 256)) index) ∧
+  (wf_core_operation env ctx annotation (ArrayIndexOperation a index) ⇔
+    wf_core_atom env ctx (SingleType (UintT 256)) index ∧
+    case a of
+      BoundAtom x =>
+        (case ALOOKUP ctx.bindings x of
+           SOME (SingleType (LocatedT MemoryLoc (ArrayT element length))) =>
+             memory_object_type (ArrayT element length) ∧
+             annotation = SingleType (memory_element_type element)
+         | _ => F)
+    | _ => F) ∧
   (wf_core_operation env ctx annotation (ArrayLengthOperation a) ⇔
     annotation = SingleType (UintT 256) ∧
     case a of
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
            SOME (SingleType (LocatedT loc ty)) =>
-             byte_sequence_type ty
+             byte_sequence_type ty ∨
+             (loc = MemoryLoc ∧ case ty of ArrayT _ _ => T | _ => F)
          | SOME (ReferenceType (ArrayT _ NONE)) => T
          | _ => F)
     | _ => F) ∧
@@ -664,8 +707,7 @@ Definition wf_core_operation_def:
     EVERY (λty. abi_value_type ty ∧ valid_type_shape ty) (params ++ rets) ∧
     (* Returndata belongs to the caller's memory, never its calldata. *)
     EVERY (λty. is_elementary_type ty ∨
-                ty = LocatedT MemoryLoc BytesT ∨
-                ty = LocatedT MemoryLoc StringT) rets ∧
+                case ty of LocatedT MemoryLoc _ => T | _ => F) rets ∧
     wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
     wf_core_atom env ctx (SingleType (UintT 256)) value ∧
     (kind = ExternalStaticCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
@@ -682,13 +724,14 @@ Definition provisional_revert_payload_def:
   (provisional_revert_payload _ ⇔ F)
 End
 
-(* Event arguments are elementary; the count of indexed ones, which with
- * topic0 must fit the four topics of a log.
+(* Event arguments are ABI values, and an indexed one is no array; the count
+ * of indexed ones, which with topic0 must fit the four topics of a log.
  *)
 Definition emit_indexed_count_def:
   (emit_indexed_count env ctx [] = SOME (0 : num)) ∧
   (emit_indexed_count env ctx ((ty, indexed, a) :: args) =
     if abi_value_type ty ∧ valid_type_shape ty ∧
+       (indexed ⇒ ¬located_value_type ty ∨ byte_sequence_value_type ty) ∧
        wf_abi_atom env ctx ty a then
       case emit_indexed_count env ctx args of
         SOME n => SOME (if indexed then n + 1 else n)
@@ -936,8 +979,21 @@ Definition check_core_stmts_def:
              else NONE
          | _ => NONE)
     | _ => NONE) ∧
+  (check_core_stmts env ctx (CaptureReferenceFieldStmt t a (IndexNavigation i) :: ss) =
+    case a of
+      BoundAtom x =>
+        (case ALOOKUP ctx.bindings x of
+           SOME (SingleType (LocatedT MemoryLoc (ArrayT element length))) =>
+             if fresh_core_id ctx t ∧
+                memory_object_type (ArrayT element length) ∧
+                wf_core_atom env ctx (SingleType (UintT 256)) i
+             then check_core_stmts env
+                    (capture_core_target t (memory_element_type element) ctx) ss
+             else NONE
+         | _ => NONE)
+    | _ => NONE) ∧
   (check_core_stmts env ctx (BindReferenceStmt t ty a :: ss) =
-    if ALOOKUP ctx.targets t = SOME ty ∧ byte_sequence_value_type ty ∧
+    if ALOOKUP ctx.targets t = SOME ty ∧ located_value_type ty ∧
        wf_core_atom env ctx (SingleType ty) a
     then check_core_stmts env ctx ss else NONE) ∧
   (check_core_stmts env ctx (CopyContentsStmt src dst a b :: ss) =
@@ -1134,8 +1190,7 @@ Definition wf_core_dispatch_def:
          (case lookup_procedure env f of
             SOME p => p.return_bindings = [] ∧
               EVERY (λ(_, ty). is_elementary_type ty ∨
-                       ty = LocatedT MemoryLoc BytesT ∨
-                       ty = LocatedT MemoryLoc StringT) p.parameters
+                       case ty of LocatedT MemoryLoc _ => T | _ => F) p.parameters
           | NONE => F)
      | NONE => T)
 End

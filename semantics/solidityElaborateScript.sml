@@ -100,7 +100,7 @@ Definition coerce_def:
           (LocatedT loc element, LocatedT MemoryLoc element') =>
             if loc = MemoryLoc ∨ element ≠ element' ∨ ¬byte_sequence_type element then NONE
             else let (ls, len) = bind_value n (UintT 256) (ArrayLengthOperation a) in
-                 let (ds, dst) = bind_value (n + 1) ty (AllocateBytesOperation element len) in
+                 let (ds, dst) = bind_value (n + 1) ty (AllocateMemoryOperation element len) in
                  SOME ((ls ++ ds ++ [CopyContentsStmt src ty a dst], dst), n + 2)
         | _ => SOME (bind_value n ty (ConvertOperation ty a), n + 1))
     | ElabBytesLiteral =>
@@ -125,23 +125,32 @@ Definition snapshot_def:
     | _ => (([], a), n)
 End
 
-Definition assign_local_def:
-  assign_local (t : num) x ty a =
-    [CaptureBindingStmt (AstId t) (AstId x);
-     if byte_sequence_value_type ty then BindReferenceStmt (AstId t) ty a
-     else WriteScalarStmt (AstId t) ty a]
+(* A write to a captured target: a located value rebinds the reference. *)
+Definition store_target_def:
+  store_target (t : num) ty a =
+    if located_value_type ty then BindReferenceStmt (AstId t) ty a
+    else WriteScalarStmt (AstId t) ty a
 End
 
-(* A destination is a local binding or an already evaluated concrete reference.
- * Its prelude captures the location; reads and writes share this representation.
+Definition assign_local_def:
+  assign_local (t : num) x ty a =
+    [CaptureBindingStmt (AstId t) (AstId x); store_target t ty a]
+End
+
+(* A destination is a local binding, an already evaluated concrete reference,
+ * or an element of a memory array (the array, its index and the element's
+ * type), captured when written. Its prelude evaluates the location; reads and
+ * writes share this representation.
  *)
 Datatype:
   destination = LocalDestination num sol_type | ReferenceDestination core_atom sol_type
+              | ElementDestination core_atom core_atom sol_type
 End
 
 Definition destination_type_def:
   (destination_type (LocalDestination _ ty) = ty) ∧
-  (destination_type (ReferenceDestination _ ty) = ty)
+  (destination_type (ReferenceDestination _ ty) = ty) ∧
+  (destination_type (ElementDestination _ _ ty) = ty)
 End
 
 Definition variable_destination_def:
@@ -163,11 +172,16 @@ End
 Definition read_destination_def:
   (read_destination n (LocalDestination x ty) = (([], BoundAtom (AstId x)), n)) ∧
   (read_destination n (ReferenceDestination ref ty) =
-    (bind_value n (read_value_type ty) (ReadOperation ty ref), n + 1))
+    (bind_value n (read_value_type ty) (ReadOperation ty ref), n + 1)) ∧
+  (read_destination n (ElementDestination array index ty) =
+    (bind_value n ty (ArrayIndexOperation array index), n + 1))
 End
 
 Definition write_destination_def:
   (write_destination t (LocalDestination x ty) a = assign_local t x ty a) ∧
+  (write_destination t (ElementDestination array index ty) a =
+    [CaptureReferenceFieldStmt (AstId t) array (IndexNavigation index);
+     store_target t ty a]) ∧
   (write_destination (t : num) (ReferenceDestination ref ty) a =
     [CaptureValueStmt (AstId t) ref; WriteScalarStmt (AstId t) ty a])
 End
@@ -199,7 +213,8 @@ Definition plain_assignment_def:
            SOME ((cs, value), n1) =>
              SOME ((cs ++ write_destination n1 target value, value, ty), n1 + 1)
          | NONE => NONE)
-    | LocalDestination _ ty =>
+    | _ =>
+        let ty = destination_type target in
         (case coerce n ty a vt of
            SOME ((cs, value), n1) =>
              SOME ((cs ++ write_destination n1 target value, value, ty), n1 + 1)
@@ -293,6 +308,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcArrayLength _ root_expr _) ⇔ expr_assigns root_expr) ∧
   (expr_assigns (SrcTypeConversion _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcExternalCall _ _ _ operands _) ⇔ exprs_assign operands) ∧
+  (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns _ ⇔ F) ∧
   (components_assign [] ⇔ F) ∧
   (components_assign (NONE :: cs) ⇔ components_assign cs) ∧
@@ -408,7 +424,8 @@ Definition coerce_abi_values_def:
   (coerce_abi_values n (ty :: tys) ((a, vt) :: vs) =
     let converted = case (ty, vt) of
       (LocatedT _ element, ElabType (LocatedT _ actual)) =>
-        if byte_sequence_type element ∧ element = actual then SOME (([], a), n)
+        if element = actual ∧ (byte_sequence_type element ∨ vt = ElabType ty)
+        then SOME (([], a), n)
         else NONE
     | (LocatedT _ element, ElabBytesLiteral) =>
         if byte_sequence_type element then SOME (([], a), n) else NONE
@@ -429,7 +446,7 @@ Definition elab_expr_def:
         (case variable_destination ctx n x of
            SOME ((ls, target), n1) =>
              let ty = destination_type target in
-             if ¬(is_elementary_type ty ∨ byte_sequence_type ty ∨ byte_sequence_value_type ty) then NONE else
+             if ¬(is_elementary_type ty ∨ byte_sequence_type ty ∨ located_value_type ty) then NONE else
              let (read, n2) = read_destination n1 target in
              let (ss, a) = read in
              SOME ((ls ++ ss, a, ElabType (read_value_type ty)), n2)
@@ -437,6 +454,11 @@ Definition elab_expr_def:
     | SrcArrayLength _ root_expr _ =>
         (case elab_expr ctx n root_expr of
            SOME ((ss, ref, ElabType (LocatedT loc BytesT)), n1) =>
+             let (rs, a) = bind_value n1 (UintT 256) (ArrayLengthOperation ref) in
+             SOME ((ss ++ rs, a, ElabType (UintT 256)), n1 + 1)
+         | SOME ((ss, ref, ElabType (LocatedT MemoryLoc (ArrayT _ (SOME length)))), n1) =>
+             SOME ((ss, ConstantAtom (IntegerValue (&length)), ElabType (UintT 256)), n1)
+         | SOME ((ss, ref, ElabType (LocatedT MemoryLoc (ArrayT _ NONE))), n1) =>
              let (rs, a) = bind_value n1 (UintT 256) (ArrayLengthOperation ref) in
              SOME ((ss ++ rs, a, ElabType (UintT 256)), n1 + 1)
          | _ =>
@@ -479,6 +501,19 @@ Definition elab_expr_def:
                        let (rs, a) = bind_value n3 (FixedBytesT 1)
                                        (ByteIndexOperation ref' i') in
                        SOME ((ss ++ saved ++ si ++ cs ++ rs, a, ElabType (FixedBytesT 1)), n3 + 1)
+                   | NONE => NONE)
+              | NONE => NONE)
+         | SOME ((ss, ref, ElabType (LocatedT MemoryLoc (ArrayT element length))), n1) =>
+             let ty = LocatedT MemoryLoc (ArrayT element length) in
+             let (captured, next) = snapshot n1 ref (ElabType ty) in
+             let (saved, ref') = captured in
+             (case elab_expr ctx next index of
+                SOME ((si, i, vt), n2) =>
+                  (case coerce n2 (UintT 256) i vt of
+                     SOME ((cs, i'), n3) =>
+                       let ety = memory_element_type element in
+                       let (rs, a) = bind_value n3 ety (ArrayIndexOperation ref' i') in
+                       SOME ((ss ++ saved ++ si ++ cs ++ rs, a, ElabType ety), n3 + 1)
                    | NONE => NONE)
               | NONE => NONE)
          | _ =>
@@ -708,6 +743,16 @@ Definition elab_expr_def:
                    | _ => NONE)
               | NONE => NONE)
          | _ => NONE)
+    | SrcNew _ tn e tid =>
+        (case (normalize_type_name tn, elab_expr ctx n e) of
+           (SOME ty, SOME ((ss, a, vt), n1)) =>
+             (case coerce n1 (UintT 256) a vt of
+                SOME ((cs, a'), n2) =>
+                  let (rs, v) = bind_value n2 (LocatedT MemoryLoc ty)
+                                  (AllocateMemoryOperation ty a') in
+                  SOME ((ss ++ cs ++ rs, v, ElabType (LocatedT MemoryLoc ty)), n2 + 1)
+              | NONE => NONE)
+         | _ => NONE)
     | SrcEnvironment _ f _ =>
         let (ss, a) = bind_value n (environment_type f) (EnvironmentOperation f) in
         SOME ((ss, a, ElabType (environment_type f)), n + 1)
@@ -861,6 +906,25 @@ Definition elab_expr_def:
   (elab_destination ctx n e =
     case e of
       SrcIdentifier _ _ x _ => variable_destination ctx n x
+    | SrcIndexAccess _ root_expr index _ =>
+          (case elab_expr ctx n root_expr of
+             SOME ((ss, ref, ElabType (LocatedT MemoryLoc (ArrayT element length))), n1) =>
+               let (captured, next) =
+                 snapshot n1 ref (ElabType (LocatedT MemoryLoc (ArrayT element length))) in
+               let (saved, ref') = captured in
+               (case elab_expr ctx next index of
+                  SOME ((si, i, vt), n2) =>
+                    (case coerce n2 (UintT 256) i vt of
+                       SOME ((cs, i'), n3) =>
+                         SOME ((ss ++ saved ++ si ++ cs,
+                                ElementDestination ref' i' (memory_element_type element)), n3)
+                     | NONE => NONE)
+                | NONE => NONE)
+           | _ =>
+             case elab_location ctx n e of
+               SOME ((ss, ref, ty), n1) =>
+                 SOME ((ss, ReferenceDestination ref ty), n1)
+             | NONE => NONE)
     | _ =>
         case elab_location ctx n e of
           SOME ((ss, ref, ty), n1) =>
@@ -1039,11 +1103,11 @@ Definition elab_stmts_def:
   (elab_stmt ctx n (SrcVariableDeclarationStatement _ _ [SOME v] NONE) =
     case variable_type v of
       SOME ty =>
-        if byte_sequence_value_type ty then
+        if located_value_type ty then
           (case ty of
              LocatedT MemoryLoc element =>
                SOME (([DefineStmt (AstId v.var_info.node_id) (SingleType ty)
-                         (DefaultBytesOperation element)],
+                         (DefaultMemoryOperation element)],
                       ctx with variables := (v.var_info.node_id, ty) :: ctx.variables), n)
            | _ => NONE)
         else (case default_elementary ty of
@@ -1224,6 +1288,21 @@ Definition elab_modifier_args_def:
   (elab_modifier_args ctx n _ _ = NONE)
 End
 
+(* A static memory array return variable starts as a zeroed array, allocated
+ * on entry. The compiler allocates it once per call and passes it through the
+ * modifiers; here each procedure of a modified function allocates its own. *)
+Definition return_defaults_def:
+  (return_defaults n [] = ([], n)) ∧
+  (return_defaults n ((x, ty) :: rs) =
+    case ty of
+      LocatedT MemoryLoc (ArrayT element (SOME k)) =>
+        let (ss, n1) = return_defaults (n + 2) rs in
+          (DefineStmt (AstId n) (SingleType ty)
+             (DefaultMemoryOperation (ArrayT element (SOME k))) ::
+           assign_local (n + 1) x ty (BoundAtom (AstId n)) ++ ss, n1)
+    | _ => return_defaults n rs)
+End
+
 (* The procedures of a function with modifiers: one per modifier invocation,
  * the first with the function's id, then one for the body. Each takes the
  * function's parameters and has its return variables; the invocation's
@@ -1233,10 +1312,11 @@ End
  *)
 Definition elab_levels_def:
   (elab_levels ctx modifiers ps rs x n [] ss =
-    case elab_stmts ctx n ss of
+    let (ds, n0) = return_defaults n rs in
+    case elab_stmts ctx n0 ss of
       SOME ((code, _), n1) =>
         SOME ([<| procedure_id := AstId x; parameters := core_bindings ps;
-                  return_bindings := core_bindings rs; body := code |>], n1)
+                  return_bindings := core_bindings rs; body := ds ++ code |>], n1)
     | NONE => NONE) ∧
   (elab_levels ctx modifiers ps rs x n ((m, args) :: ms) ss =
     case ALOOKUP modifiers m of
@@ -1245,7 +1325,8 @@ Definition elab_levels_def:
         case (all_some (MAP variable_binding md.modifier_parameters),
               md.modifier_body) of
           (SOME mps, SrcBlock _ mss) =>
-            (case elab_modifier_args ctx (n + 1) mps args of
+            let (ds, n0) = return_defaults (n + 1) rs in
+            (case elab_modifier_args ctx n0 mps args of
                SOME (sa, n1) =>
                  (case elab_stmts (ctx with <| variables := mps;
                                                placeholder := SOME (n, ps) |>)
@@ -1256,7 +1337,7 @@ Definition elab_levels_def:
                            SOME (<| procedure_id := AstId x;
                                     parameters := core_bindings ps;
                                     return_bindings := core_bindings rs;
-                                    body := sa ++ code |> :: levels, n3)
+                                    body := ds ++ sa ++ code |> :: levels, n3)
                        | NONE => NONE)
                   | NONE => NONE)
              | NONE => NONE)
@@ -1590,6 +1671,7 @@ End
 val () = cv_auto_trans bind_value_def;
 val () = cv_auto_trans coerce_def;
 val () = cv_auto_trans snapshot_def;
+val () = cv_auto_trans store_target_def;
 val () = cv_auto_trans assign_local_def;
 val () = cv_auto_trans variable_destination_def;
 val () = cv_auto_trans destination_type_def;
@@ -1752,6 +1834,7 @@ val () = cv_auto_trans elab_assembly_reference_def;
 val () = cv_auto_trans elab_assembly_references_def;
 val () = cv_auto_trans return_writes_def;
 val () = cv_auto_trans placeholder_call_def;
+val () = cv_auto_trans return_defaults_def;
 val () = cv_auto_trans flag_def;
 val () = cv_auto_trans set_flag_def;
 

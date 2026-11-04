@@ -166,8 +166,20 @@ pop panics with `0x31`; both push forms follow the pinned compiler's resource
 panic `0x41` at length >= `2^64`. Length reads and indexing retain the full
 256-bit range. `pop()` clears only the removed scalar bytes; `push()` preserves
 existing bytes at the appended position, as the pinned compiler does. Dynamic
-array mutation of aggregates, memory/calldata references, local reference
-bindings and aggregate copies remain coverage work.
+array mutation of aggregates, calldata arrays, local reference bindings and
+aggregate copies remain coverage work.
+
+Memory arrays of elementary leaves or byte sequences, nested to any depth, are
+implemented: locals, parameters and returns, `new T[](n)`, `new bytes(n)` and
+`new string(n)`, indexing, `.length`, and ABI decoding and encoding, with the
+pinned compiler's layout (a length word before dynamic arrays' elements, none
+for static ones) and checks: panic `0x41` for a length >= `2^64` or an
+allocation past the memory limit, `0x32` for an index out of range, and the
+decoder's order of revert and panic checks. A dynamic memory array's default
+value is the shared empty array; a static one is allocated zeroed, with its
+static rows allocated eagerly. A static memory return variable is allocated on
+entry to each procedure of a modified function, where the compiler allocates it
+once and passes it through the modifiers.
 
 Struct declarations may be file-level or contract members. User-defined type
 names and field accesses retain declaration IDs; field ownership and expression

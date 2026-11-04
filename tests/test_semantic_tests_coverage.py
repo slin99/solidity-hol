@@ -244,7 +244,7 @@ class ClassifyTests(unittest.TestCase):
     def test_elaboration_rejection_and_admission(self) -> None:
         arrays = unit([function(4, [{
             "nodeType": "VariableDeclarationStatement", "id": 5,
-            "declarations": [variable(6, type_identifier="t_array$_t_uint256_$dyn_memory_ptr")],
+            "declarations": [variable(6, type_identifier="t_array$_t_uint256_$dyn_calldata_ptr")],
         }])])
         rejected = coverage.classify(
             "s.sol", coverage.scan({"s.sol": arrays}),
@@ -607,6 +607,13 @@ class ClassifyTests(unittest.TestCase):
         ast["nodes"].insert(0, struct)
         by_id = {n["id"]: n for n in coverage.nodes(ast)}
         self.assertIn(struct, coverage.imported({"t.sol": ast}, by_id))
+
+    def test_memory_arrays_of_elementary_leaves_decode(self) -> None:
+        self.assertTrue(coverage.decodes("t_array$_t_uint8_$dyn_memory_ptr"))
+        self.assertTrue(coverage.decodes("t_array$_t_array$_t_bytes_memory_ptr_$2_memory_ptr_$dyn_memory_ptr"))
+        self.assertFalse(coverage.decodes("t_array$_t_uint8_$0_memory_ptr"))
+        self.assertFalse(coverage.decodes("t_array$_t_uint8_$dyn_calldata_ptr"))
+        self.assertFalse(coverage.decodes("t_array$_t_struct$_S_$3_memory_ptr_$dyn_memory_ptr"))
 
     def test_tuples_are_classified_by_a_component(self) -> None:
         self.assertTrue(coverage.decodes("t_tuple$_t_bool_$_t_bytes4_$"))

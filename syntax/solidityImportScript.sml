@@ -115,6 +115,7 @@ End
  * FunctionCall (kind functionCall): callee, positional arguments.
  * FunctionCall (kind typeConversion): target type name, argument.
  * Environment: a member of msg, tx or block, or address(this).
+ * New (new T(n)): the type name of T, the length.
  * ExternalCall (I(target).f{value: v}(args)): the declaration of f, whether
  * a value is given, and the operands in evaluation order: the target, the
  * value if given, the positional arguments.
@@ -162,6 +163,7 @@ Datatype:
   | SrcEnvironment node_info environment_field string
   | SrcExternalCall node_info src_external bool (src_expr list) string
   | SrcTypeMember node_info string src_type_name string
+  | SrcNew node_info src_type_name src_expr string
 End
 
 (* VariableDeclarationStatement: assignments, declarations (NONE for a hole),
@@ -371,9 +373,81 @@ Datatype:
   | SrcTupleType (sol_type list)
 End
 
+(* The fields of a string between occurrences of a separator: FIELDS for a
+ * single separator character, by structural recursion so that it has a cv
+ * translation (FIELDS' does not terminate under cv_auto_trans).
+ *)
+Definition separated_fields_def:
+  (separated_fields sep acc [] = [REVERSE acc]) ∧
+  (separated_fields sep acc (c :: cs) =
+    if c = sep then REVERSE acc :: separated_fields sep "" cs
+    else separated_fields sep (c :: acc) cs)
+End
+
+(* A memory array "t_array$_" ^ k, its base, then each dimension innermost
+ * first: "_$dyn_memory_ptr" or "_$N_memory_ptr". Split at "$", the k + 1
+ * prefixes are "t_array" and then "_t_array", the base is "_" b "_", and
+ * each dimension but the last ends with "_". *)
+Definition array_prefix_fields_def:
+  (array_prefix_fields [] = 0n) ∧
+  (array_prefix_fields (f :: fs) =
+    if f = "_t_array" then array_prefix_fields fs + 1 else 0)
+End
+
+Definition memory_array_dimensions_def:
+  (memory_array_dimensions ty [] = SOME ty) ∧
+  (memory_array_dimensions ty (l :: ls) =
+    let suffix = if ls = [] then "_memory_ptr" else "_memory_ptr_" in
+    if ¬isPREFIX (REVERSE suffix) (REVERSE l) then NONE else
+    let digits = TAKE (LENGTH l - LENGTH suffix) l in
+    let length =
+      if digits = "dyn" then SOME NONE
+      else case fromDecString digits of
+             SOME n => if 0 < n then SOME (SOME n) else NONE
+           | NONE => NONE in
+    case length of
+      SOME length => memory_array_dimensions (ArrayT ty length) ls
+    | NONE => NONE)
+End
+
+Definition memory_array_base_def:
+  memory_array_base name =
+    if name = "t_bytes_memory_ptr" then SOME BytesT
+    else if name = "t_string_memory_ptr" then SOME StringT
+    else if name = "t_address_payable" then SOME (AddressT PayableAddress)
+    else if isPREFIX "t_" name ∧ name ≠ "t_uint" ∧ name ≠ "t_int" then
+      case elementary_type (DROP 2 name) of
+        SOME ty => if is_elementary_type ty then SOME ty else NONE
+      | NONE => NONE
+    else NONE
+End
+
+Definition decode_memory_array_def:
+  decode_memory_array s =
+    case separated_fields #"$" "" s of
+      f :: fs =>
+        if f ≠ "t_array" then NONE else
+        let k = array_prefix_fields fs in
+        (case DROP k fs of
+           b :: dimensions =>
+             if LENGTH dimensions ≠ k + 1 ∨ LENGTH b < 2 ∨ ¬isPREFIX "_" b ∨
+                ¬isPREFIX "_" (REVERSE b) then NONE else
+             (case memory_array_base (TAKE (LENGTH b - 2) (DROP 1 b)) of
+                SOME element =>
+                  (case memory_array_dimensions element dimensions of
+                     SOME ty =>
+                       if memory_object_type ty ∧ valid_type_shape (LocatedT MemoryLoc ty)
+                       then SOME (LocatedT MemoryLoc ty) else NONE
+                   | NONE => NONE)
+              | NONE => NONE)
+         | [] => NONE)
+    | [] => NONE
+End
+
 Definition decode_elementary_identifier_def:
   decode_elementary_identifier s =
-    if s = "t_bytes_storage" then SOME BytesT
+    if isPREFIX "t_array$_" s then decode_memory_array s
+    else if s = "t_bytes_storage" then SOME BytesT
     else if s = "t_string_storage" then SOME StringT
     else if s = "t_bytes_memory_ptr" then SOME (LocatedT MemoryLoc BytesT)
     else if s = "t_string_memory_ptr" then SOME (LocatedT MemoryLoc StringT)
@@ -387,16 +461,6 @@ Definition decode_elementary_identifier_def:
     else NONE
 End
 
-(* The fields of a string between occurrences of a separator: FIELDS for a
- * single separator character, by structural recursion so that it has a cv
- * translation (FIELDS' does not terminate under cv_auto_trans).
- *)
-Definition separated_fields_def:
-  (separated_fields sep acc [] = [REVERSE acc]) ∧
-  (separated_fields sep acc (c :: cs) =
-    if c = sep then REVERSE acc :: separated_fields sep "" cs
-    else separated_fields sep (c :: acc) cs)
-End
 
 Definition rational_type_def:
   rational_type negative a b =
@@ -501,7 +565,7 @@ QED
 Theorem decode_elementary_identifier_valid:
   decode_elementary_identifier s = SOME ty ⇒ valid_type_shape ty
 Proof
-  rw[decode_elementary_identifier_def] >>
+  rw[decode_elementary_identifier_def, decode_memory_array_def, AllCaseEqs()] >>
   imp_res_tac elementary_type_valid >>
   gvs[valid_type_shape_def, outer_location_free_def, location_shape_ok_def,
       is_reference_type_def, contains_mapping_def]
@@ -611,24 +675,40 @@ Definition canonical_storage_identifier_def:
     else c :: canonical_storage_identifier 0 0 cs)
 End
 
+(* Memory types: an array's elements are values or memory pointers. *)
+Definition memory_type_identifier_def:
+  (memory_type_identifier (ArrayT element length) =
+    "t_array$_" ++ memory_type_identifier element ++ "_$" ++
+    (case length of SOME n => toString n | NONE => "dyn") ++ "_memory_ptr") ∧
+  (memory_type_identifier BytesT = "t_bytes_memory_ptr") ∧
+  (memory_type_identifier StringT = "t_string_memory_ptr") ∧
+  (memory_type_identifier ty = storage_type_identifier ty)
+End
+
 Definition source_type_matches_def:
   source_type_matches ty tid ⇔
-    canonical_storage_identifier 0 0 tid = storage_type_identifier ty
+    canonical_storage_identifier 0 0 tid =
+      case ty of
+        LocatedT MemoryLoc element => memory_type_identifier element
+      | _ => storage_type_identifier ty
 End
 
 (* A parameter, return or local variable: an elementary value type in the
- * default location, agreeing with its typeIdentifier.
+ * default location, a byte sequence in any location or a memory array,
+ * agreeing with its typeIdentifier.
  *)
 Definition variable_type_def:
   variable_type (v : src_variable) =
     case normalize_type_name v.var_type_name of
       SOME ty =>
-        if byte_sequence_type ty then
+        if byte_sequence_type ty ∨
+           (v.var_location ≠ "default" ∧ case ty of ArrayT _ _ => T | _ => F) then
           case (if v.var_location = "memory" then SOME MemoryLoc
                 else if v.var_location = "calldata" then SOME CalldataLoc
                 else if v.var_location = "storage" then SOME StorageLoc else NONE) of
             SOME loc =>
-              if source_type_matches (LocatedT loc ty) v.var_type_id then
+              if (byte_sequence_type ty ∨ (loc = MemoryLoc ∧ memory_object_type ty)) ∧
+                 source_type_matches (LocatedT loc ty) v.var_type_id then
                 SOME (LocatedT loc ty) else NONE
           | NONE => NONE
         else if v.var_location = "default" ∧ source_type_matches ty v.var_type_id
@@ -728,6 +808,8 @@ Definition expr_ids_def:
   (expr_ids (SrcTypeMember info _ tn _) = info.node_id :: type_name_ids tn) ∧
   (expr_ids (SrcExternalCall info _ _ operands _) =
     info.node_id :: exprs_ids operands) ∧
+  (expr_ids (SrcNew info tn e _) =
+    info.node_id :: type_name_ids tn ++ expr_ids e) ∧
   (component_ids [] = []) ∧
   (component_ids (NONE :: cs) = component_ids cs) ∧
   (component_ids (SOME e :: cs) = expr_ids e ++ component_ids cs) ∧
@@ -916,6 +998,13 @@ Definition check_expr_def:
             | SrcRational i d => 0 ≤ i ∧ d = 1
             | _ => F)
         then SOME (SrcType (FixedBytesT 1)) else NONE
+    | (SOME (SrcType (LocatedT MemoryLoc (ArrayT element _))), SOME index_type) =>
+        if source_type_matches (memory_element_type element) tid ∧
+           (case index_type of
+              SrcType (UintT _) => T
+            | SrcRational i d => 0 ≤ i ∧ d = 1
+            | _ => F)
+        then SOME (SrcType (memory_element_type element)) else NONE
     | (SOME (SrcType (ArrayT element _)), SOME index_type) =>
         if source_type_matches element tid ∧
            (case index_type of
@@ -931,6 +1020,8 @@ Definition check_expr_def:
     | SOME (SrcType (LocatedT loc BytesT)) =>
         if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
     | SOME (SrcType (ArrayT _ _)) =>
+        if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
+    | SOME (SrcType (LocatedT MemoryLoc (ArrayT _ _))) =>
         if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
     | _ => NONE) ∧
   (check_expr env (SrcArrayMember _ _ _ _) = NONE) ∧
@@ -1027,6 +1118,19 @@ Definition check_expr_def:
            LENGTH operands = LENGTH params + (if with_value then 2 else 1) ∧
            check_exprs env operands ∧ vt = call_value_type rets
         then SOME vt else NONE
+    | _ => NONE) ∧
+  (* new T(n) of a byte sequence or dynamic memory array type. *)
+  (check_expr env (SrcNew _ tn e tid) =
+    case (normalize_type_name tn, check_expr env e) of
+      (SOME ty, SOME length_type) =>
+        if (byte_sequence_type ty ∨
+            (memory_object_type ty ∧ case ty of ArrayT _ NONE => T | _ => F)) ∧
+           (case length_type of
+              SrcType (UintT _) => T
+            | SrcRational i d => 0 ≤ i ∧ d = 1
+            | _ => F) ∧
+           source_type_matches (LocatedT MemoryLoc ty) tid
+        then SOME (SrcType (LocatedT MemoryLoc ty)) else NONE
     | _ => NONE) ∧
   (check_components env [] ⇔ T) ∧
   (check_components env (NONE :: cs) ⇔ check_components env cs) ∧
@@ -1405,6 +1509,7 @@ QED
 val () = cv_auto_trans normalize_type_name_def;
 val () = cv_auto_trans storage_type_identifier_def;
 val () = cv_auto_trans canonical_storage_identifier_def;
+val () = cv_auto_trans memory_type_identifier_def;
 val () = cv_auto_trans source_type_matches_def;
 val () = cv_auto_trans storage_layout_identifier_def;
 val () = cv_auto_trans variable_type_def;

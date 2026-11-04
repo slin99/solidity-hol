@@ -80,7 +80,8 @@ Datatype:
 End
 
 (* BindTarget includes local variables and temporaries. ReferenceFieldTarget
- * supports rebinding a reference-valued memory member, not storage copying.
+ * is an element of a memory array (its heap object, index and element type):
+ * a write stores a scalar or rebinds a reference, never copies contents.
  *)
 Datatype:
   captured_target
@@ -104,7 +105,11 @@ Datatype:
   | BlockBaseFee | BlockGasLimit
 End
 
-(* ExternalCallOperation kind selector parameter_types return_types target
+(* DefaultMemoryOperation ty: the default value of a memory variable of type
+ * ty. AllocateMemoryOperation ty n: new ty(n), a zeroed byte sequence or
+ * dynamic array of length n. ArrayIndexOperation a i: element i of the memory
+ * array a.
+ * ExternalCallOperation kind selector parameter_types return_types target
  * value arguments: a high-level call I(target).f{value: value}(arguments) of
  * the function with that selector and those ABI types.
  *)
@@ -117,10 +122,11 @@ Datatype:
   | ReadOperation sol_type core_atom
   | StateReferenceOperation ast_id
   | NavigateOperation sol_type core_atom navigation
-  | DefaultBytesOperation sol_type
+  | DefaultMemoryOperation sol_type
   | BytesLiteralOperation sol_type (byte list)
-  | AllocateBytesOperation sol_type core_atom
+  | AllocateMemoryOperation sol_type core_atom
   | ByteIndexOperation core_atom core_atom
+  | ArrayIndexOperation core_atom core_atom
   | ArrayLengthOperation core_atom
   | ArrayPushOperation core_atom (core_atom option)
   | ArrayPopOperation core_atom
