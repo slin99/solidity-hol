@@ -206,7 +206,7 @@ val () =
  * largest form is 79 639 nodes and whose slowest the check below bounds at five
  * seconds.
  *
- * One line says "no form": `checked_exp_signed` is the body a sweep of the
+ * One line says `no_form`: `checked_exp_signed` is the body a sweep of the
  * corpus did not see come back inside a clock of a minute, and it is the form
  * at the top of the list -- the one this suite had never seen.  A line that
  * claims no form is converted under a clock by the check below, so that the
@@ -222,8 +222,15 @@ val () =
  * function of the object, so a list left behind by a fixture change cannot pass
  * unnoticed.
  *)
+val no_form = "no form within the clock"
+
+(* The tag above is what the check on those lines matches, so it is one name
+ * rather than a sentence written twice: the reason a line is on the list and
+ * the check that asks the conversion for it have to say the same thing, and a
+ * re-worded line that the check no longer recognises is a line whose claim
+ * nobody asks about. *)
 val excluded = [
-  ("checked_exp_signed", "no form within the clock"),
+  ("checked_exp_signed", no_form),
   ("fun_boolLogic", "form of 1008029 nodes"),
   ("checked_exp_unsigned", "form of 230276 nodes"),
   ("fun_signedLess", "form of 1083107 nodes"),
@@ -516,7 +523,7 @@ QED
 val () =
   List.app
     (fn (nm, why) =>
-       if why <> "no form" then () else
+       if why <> no_form then () else
          let
            val f = valOf (List.find (fn (n, _, _) => n = nm) functions)
            val t = call_term f
