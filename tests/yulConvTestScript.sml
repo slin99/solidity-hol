@@ -171,9 +171,10 @@ val () =
  * branch of a `case` or a conditional whose test it cannot decide, so an
  * evaluator clause that binds a statement's result and tests it carries the
  * rest of the body into both branches.  Every line here names a body that
- * calls -- the three forms in the millions at the top of the list, then the ABI
- * decoders and the external wrappers -- and a call is what leaves a decision
- * standing: the arity the callee answered with, and the frame it came back on.
+ * calls -- most of them the ABI decoders and the external wrappers, and the
+ * three forms in the millions at the top of the list -- and a call is what
+ * leaves a decision standing: the arity the callee answered with, and the frame
+ * it came back on.
  * Each such decision takes a copy of the rest of the body per branch, and the
  * copies multiply, so a body's form is linear in its statements only while
  * what its calls answer is not read.  A body that nests a call inside another
@@ -199,7 +200,7 @@ val () =
  * and whose slowest the check below bounds at five seconds.
  *
  * The one no-form entry is converted under a clock by the check below, so
- * that the claim on their line is asked of the conversion instead of being
+ * that the claim on its line is asked of the conversion instead of being
  * taken on trust: the run has to abort, and one that comes back fails the
  * check by name, with the size of its form.  Without the clock a body that
  * stopped coming back would sit at the heap cap until the job's own limit
