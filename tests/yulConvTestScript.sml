@@ -14,21 +14,23 @@
  * any of them does not close, or closes with the evaluator's own functions
  * still in it.  A form is a case tree over the body's guards and over the
  * calls it makes, so a function that calls nothing has nothing of its own
- * frame left -- only, where it reads memory at an address it was given, the
- * read itself -- and one that calls is left waiting on the frame a callee
- * returned and nothing else (see semantics/yulConvLib.sml).  The number the
- * test asserts is the slowest of them, so that a conversion that regressed to
- * the simplifier's cost fails the build on the clock alone; the total is
- * printed to say what the suite costs, and every conversion runs under a
- * clock, so one that stops coming back fails the build instead of leaving it
- * at the heap cap.
+ * frame left -- only the memory read itself, whose own clauses want a length
+ * that is a successor while the evaluator reads with a numeral, so it does not
+ * reduce even where the machine is one the conversion has in hand (the note on
+ * `memory_read_residue` below) -- and one that calls is left waiting on the
+ * frame a callee returned and nothing else (see semantics/yulConvLib.sml).
+ * The number the test asserts is the slowest of them, so that a conversion
+ * that regressed to the simplifier's cost fails the build on the clock alone;
+ * the total is printed to say what the suite costs, and every conversion runs
+ * under a clock, so one that stops coming back fails the build instead of
+ * leaving it at the heap cap.
  *
  * A few functions are not covered by that bound yet: each is named in
  * `excluded` below with the reason it is there, every name has to be a function
- * of the object, and the list empties as the conversion stops expanding a
- * decision it has already decided (see the comment on the list).  The ones
- * whose line says they produce no form are converted under that clock too, and
- * their line fails the build as soon as one of them comes back.
+ * of the object, and the list empties as the conversion stops copying the rest
+ * of a body into a branch of a decision (see the comment on the list).  The one
+ * whose line says it produces no form is converted under that clock too, and
+ * its line fails the build as soon as it comes back.
  *)
 Theory yulConvTest
 Ancestors
@@ -161,18 +163,24 @@ val () =
           ^ String.concatWith ", " (List.map (fn (nm, _, _) => nm) looping))
 
 (* The functions the bound below is not asked of yet: those whose form comes out
- * at two hundred thousand nodes or more, and the two that produce no form at
+ * at two hundred thousand nodes or more, and the one that produces no form at
  * all.  The number in each line is that function's form as this suite measures
  * it -- every node of the term, which is the `size` this test prints below --
  * and the two reasons are one thing seen twice.  A decision the
- * conversion has already decided is still expanded: `CBV_CONV` reduces every
+ * conversion cannot decide is still expanded: `CBV_CONV` reduces every
  * branch of a `case` or a conditional whose test it cannot decide, so an
  * evaluator clause that binds a statement's result and tests it carries the
- * rest of the body into both branches.  A body whose calls stand in statements
- * of their own comes out at a few thousand constants and hundredths of a
- * second; a body that nests a call inside another call's arguments
- * (`cleanup_uint8(exp(base, exponent))`, `CALL(CALL …, CALL …)`) is the one that
- * pays, and at the extreme does not come back at all.
+ * rest of the body into both branches.  Every line here names a body that
+ * calls -- most of them the ABI decoders and the external wrappers, and the
+ * three forms in the millions at the top of the list -- and a call is what
+ * leaves a decision standing: the arity the callee answered with, and the frame
+ * it came back on.
+ * Each such decision takes a copy of the rest of the body per branch, and the
+ * copies multiply, so a body's form is linear in its statements only while
+ * what its calls answer is not read.  A body that nests a call inside another
+ * call's arguments (`cleanup_uint8(exp(base, exponent))`, `CALL(CALL …, CALL
+ * …)`) is the one that pays most, and at the extreme does not come back at
+ * all.
  *
  * The line is drawn at a size rather than at a measured time because a time
  * moves with the machine the build runs on and a size does not.  The sizes on
@@ -181,18 +189,18 @@ val () =
  * conversion does, so they are re-measured with the list rather than read as an
  * invariant.  The line is enforced from one side only: the suite fails if a
  * form it does cover reaches 200k nodes, so a covered function that grew past
- * the line cannot pass unnoticed, but nothing here converts the 49 named for
+ * the line cannot pass unnoticed, but nothing here converts the 33 named for
  * their size -- a name whose form has dropped under the line keeps its line
  * until the list is re-measured, which happens with each change to the
  * conversion.  Converting them here as well would put the large forms' cost --
  * seconds each, and tens of millions of nodes at the far end
- * (`fun_boolLogic`'s) -- on every run of this suite.  The gap is narrow at the
- * bottom: the largest form below the line is 182k nodes and the smallest above
- * it 200k.  What is left is 86 of the 137, whose slowest form takes about a
- * second (0.8s to 1.6s across runs on this box) and whose largest is 181k.
+ * (`fun_signedLess`'s) -- on every run of this suite.  The gap is narrow at the
+ * bottom: the largest form below the line is 199k nodes and the smallest above
+ * it 215k.  What is left is 103 of the 137, whose largest form is 199k nodes
+ * and whose slowest the check below bounds at five seconds.
  *
- * The two no-form entries are converted under a clock by the check below, so
- * that the claim on their line is asked of the conversion instead of being
+ * The one no-form entry is converted under a clock by the check below, so
+ * that the claim on its line is asked of the conversion instead of being
  * taken on trust: the run has to abort, and one that comes back fails the
  * check by name, with the size of its form.  Without the clock a body that
  * stopped coming back would sit at the heap cap until the job's own limit
@@ -201,12 +209,14 @@ val () =
  * That makes a no-form line a claim about a clock and not only about the
  * function: this suite's clock for those entries is twenty seconds, and a
  * machine fast enough to bring back a form of several million nodes inside it
- * reports the line as stale -- which is the signal to move it to a size.
- * Three of the five names that were here did come back under a longer clock
- * (`checked_exp_unsigned` at 11.7M nodes, `fun_bitwise` at 5.4M, `fun_boolLogic`
- * at 45M), and the clock that measured the last two numbers was two minutes, so
- * the two that are left -- `checked_exp_signed`, `fun_signedLess` -- do not come
- * back in six times the wall clock this suite allows them.
+ * reports the line as stale -- which is the signal to move it to a size.  Three
+ * of the four that were here have moved that way, their forms measured under a
+ * clock of two and a half minutes: `fun_boolLogic` at 5 725 520 nodes in 23s,
+ * `checked_exp_unsigned` at 9 337 236 in 81s and `fun_signedLess` at 18 085 913
+ * in 58s, so each carries its size like the rest of the list -- which is also
+ * what a line at 23s of a 20-second clock wants, whatever it claims.  What is
+ * left is `checked_exp_signed`, and it does not come back inside that clock or
+ * any longer one.
  *
  * So this list is the work list of the next piece, and it should empty: what the
  * suite is asked for is a conversion whose form is linear in the body, one leaf
@@ -217,56 +227,39 @@ val () =
  *)
 val excluded = [
   ("checked_exp_signed", "no form"),
-  ("checked_exp_unsigned", "form of 11667340 nodes"),
-  ("fun_bitwise", "form of 5408623 nodes"),
-  ("fun_boolLogic", "form of 45246950 nodes"),
-  ("fun_signedLess", "no form"),
-  ("fun_widen", "form of 5745446 nodes"),
-  ("external_fun_bitwise", "form of 3005011 nodes"),
-  ("external_fun_widen", "form of 2511131 nodes"),
-  ("external_fun_signedLess", "form of 2506871 nodes"),
-  ("external_fun_boolLogic", "form of 2506691 nodes"),
-  ("checked_div_int8", "form of 3169372 nodes"),
-  ("external_fun_truncate", "form of 2014671 nodes"),
-  ("external_fun_shifts", "form of 2013231 nodes"),
-  ("external_fun_reinterpret", "form of 2012751 nodes"),
-  ("checked_mul_uint16", "form of 1488358 nodes"),
-  ("checked_mul_int8", "form of 1484368 nodes"),
-  ("external_fun_wrappingMultiply", "form of 1526211 nodes"),
-  ("external_fun_wrappingDivide", "form of 1525811 nodes"),
-  ("external_fun_signedShift", "form of 1525491 nodes"),
-  ("external_fun_signedPower", "form of 1525311 nodes"),
-  ("external_fun_remainder", "form of 1524811 nodes"),
-  ("external_fun_multiply", "form of 1524611 nodes"),
-  ("external_fun_divide", "form of 1524211 nodes"),
-  ("external_fun_wrappingSubtract", "form of 1520411 nodes"),
-  ("external_fun_wrappingPower", "form of 1519811 nodes"),
-  ("external_fun_subtract", "form of 1518811 nodes"),
-  ("external_fun_power", "form of 1518211 nodes"),
-  ("fun_shifts", "form of 1215573 nodes"),
-  ("fun_reinterpret", "form of 1091669 nodes"),
-  ("fun_truncate", "form of 1030517 nodes"),
-  ("external_fun_signedNot", "form of 1009301 nodes"),
-  ("external_fun_signedToUnsigned", "form of 1008921 nodes"),
-  ("external_fun_implicitWidening", "form of 1008841 nodes"),
-  ("external_fun_increment", "form of 1007621 nodes"),
-  ("abi_decode_int8t_uint256", "form of 496395 nodes"),
-  ("abi_decode_uint8t_uint256", "form of 496075 nodes"),
-  ("abi_decode_uint256t_int256", "form of 495851 nodes"),
-  ("abi_decode_int8t_int8", "form of 495755 nodes"),
-  ("abi_decode_int8t_uint8", "form of 494955 nodes"),
-  ("abi_decode_uint8t_uint8", "form of 494635 nodes"),
-  ("abi_decode_boolt_bool", "form of 493627 nodes"),
-  ("checked_add_uint256", "form of 553260 nodes"),
-  ("mod_int8", "form of 492544 nodes"),
-  ("wrapping_div_int8", "form of 492432 nodes"),
-  ("fun_implicitWidening", "form of 464892 nodes"),
-  ("abi_encode_uint8_uint8_uint8_uint8", "form of 464345 nodes"),
-  ("checked_sub_uint8", "form of 262780 nodes"),
-  ("abi_decode_tuple_uint256", "form of 200560 nodes"),
-  ("abi_decode_int8", "form of 200336 nodes"),
-  ("abi_decode_tuple_int256", "form of 200280 nodes"),
-  ("abi_decode_tuple_uint8", "form of 200056 nodes"),
+  ("fun_signedLess", "form of 18085913 nodes"),
+  ("checked_exp_unsigned", "form of 9337236 nodes"),
+  ("fun_boolLogic", "form of 5725520 nodes"),
+  ("checked_div_int8", "form of 800908 nodes"),
+  ("external_fun_bitwise", "form of 464211 nodes"),
+  ("abi_decode_int8t_uint256", "form of 390939 nodes"),
+  ("abi_decode_uint256t_int256", "form of 390715 nodes"),
+  ("abi_decode_uint8t_uint256", "form of 390619 nodes"),
+  ("abi_decode_int8t_int8", "form of 390555 nodes"),
+  ("abi_decode_int8t_uint8", "form of 390075 nodes"),
+  ("fun_bitwise", "form of 389843 nodes"),
+  ("abi_decode_uint8t_uint8", "form of 389755 nodes"),
+  ("abi_decode_boolt_bool", "form of 389035 nodes"),
+  ("external_fun_widen", "form of 381341 nodes"),
+  ("external_fun_signedLess", "form of 380881 nodes"),
+  ("external_fun_boolLogic", "form of 380801 nodes"),
+  ("external_fun_truncate", "form of 298561 nodes"),
+  ("external_fun_reinterpret", "form of 298141 nodes"),
+  ("external_fun_shifts", "form of 298121 nodes"),
+  ("fun_widen", "form of 255275 nodes"),
+  ("checked_mul_uint16", "form of 232460 nodes"),
+  ("checked_mul_int8", "form of 231130 nodes"),
+  ("external_fun_wrappingMultiply", "form of 217071 nodes"),
+  ("external_fun_wrappingDivide", "form of 216871 nodes"),
+  ("external_fun_signedShift", "form of 216851 nodes"),
+  ("external_fun_signedPower", "form of 216671 nodes"),
+  ("external_fun_remainder", "form of 216371 nodes"),
+  ("external_fun_wrappingSubtract", "form of 216271 nodes"),
+  ("external_fun_multiply", "form of 216271 nodes"),
+  ("external_fun_divide", "form of 216071 nodes"),
+  ("external_fun_wrappingPower", "form of 215971 nodes"),
+  ("external_fun_subtract", "form of 215471 nodes"),
+  ("external_fun_power", "form of 215171 nodes"),
 ]
 
 val excluded_names = List.map #1 excluded
@@ -445,9 +438,10 @@ val () =
 (* Two of the forms, stated: one that calls nothing else, and one whose body
  * is calls and arithmetic.  These are the theorems a reader can look at, and
  * the terms the matching step of the translation-validation driver will be
- * given.  They are held to the checks above like every other conversion --
- * `checked_sub_uint8` is one of the excluded functions, so its theorem is the
- * only form whose checks would otherwise be nobody's. *)
+ * given.  They are held to the checks above like every other conversion, and
+ * both are among the forms this suite measures, so nothing here is converted a
+ * second time for the checks' sake -- what these two add is a term a reader can
+ * read and the driver's matching step can be handed. *)
 val scalars_cleanup_uint8 = save_thm ("scalars_cleanup_uint8",
   stated_form "cleanup_uint8")
 
@@ -524,12 +518,13 @@ QED
  * of the form so the owner knows whether it belongs under the bound or on a
  * line of its own.
  *
- * Both nest a call inside another call's arguments, and four bodies of that
- * shape have left this class: `wrapping_exp_uint8_uint8` closes now -- its
- * `exp` call is reached through the builtin dispatch rather than left to the
- * word library -- and is measured with the rest, and `checked_exp_unsigned`,
- * `fun_bitwise` and `fun_boolLogic` come back under a clock of two minutes, so
- * they carry their size like the rest of the list. *)
+ * The shapes that have left this class as the conversion has improved all nest
+ * a call inside another call's arguments: `wrapping_exp_uint8_uint8` closes now
+ * -- its `exp` call is reached through the builtin dispatch rather than left to
+ * the word library -- `fun_bitwise` comes back inside this suite's own clock,
+ * and the three that carry a size above come back under a longer one; all of
+ * them are measured with the rest.  The one left is the only function of the
+ * object whose form this suite, on any clock, has not seen. *)
 val () =
   List.app
     (fn (nm, why) =>
