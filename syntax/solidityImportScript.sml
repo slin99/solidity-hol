@@ -70,6 +70,8 @@ Ancestors
   (* for the scalar layer's cv encodings of the AST types, so that every
    * descendant sees one encoding *)
   solidityScalar
+  (* an inline assembly block's code *)
+  yulAST
 Libs
   cv_transLib
 
@@ -166,8 +168,16 @@ End
  * initial value. ForStatement: initialization, condition, loop expression,
  * body. Return: functionReturnParameters, expression. Emit: the event's id,
  * positional arguments. RevertError: revert E(args), the error and the
- * positional arguments.
+ * positional arguments. InlineAssembly: the block's code, and each Solidity
+ * variable it names, keyed by the name the code uses (x, or x.slot and
+ * x.offset for a state variable's location).
  *)
+Datatype:
+  src_assembly_reference = SrcAssemblyValue num
+                         | SrcAssemblySlot num
+                         | SrcAssemblyOffset num
+End
+
 Datatype:
   src_stmt
   = SrcBlock node_info (src_stmt list)
@@ -185,6 +195,8 @@ Datatype:
   | SrcReturn node_info num (src_expr option)
   | SrcEmit node_info num (src_expr list)
   | SrcRevertError node_info src_error (src_expr list)
+  | SrcInlineAssembly node_info (yul_stmt list)
+      ((string # src_assembly_reference) list)
   | SrcPlaceholder node_info
 End
 
@@ -754,6 +766,7 @@ Definition stmt_ids_def:
   (stmt_ids (SrcReturn info _ e) = info.node_id :: option_expr_ids e) ∧
   (stmt_ids (SrcEmit info _ args) = info.node_id :: exprs_ids args) ∧
   (stmt_ids (SrcRevertError info _ args) = info.node_id :: exprs_ids args) ∧
+  (stmt_ids (SrcInlineAssembly info _ _) = [info.node_id]) ∧
   (stmt_ids (SrcPlaceholder info) = [info.node_id]) ∧
   (option_stmt_ids NONE = []) ∧
   (option_stmt_ids (SOME s) = stmt_ids s) ∧
@@ -821,6 +834,7 @@ Datatype:
     events : (num # src_event) list;
     variables : (num # sol_type) list;
     state : (num # sol_type) list;
+    locations : (num # sol_type) list;
     scope : num;
     returns_id : num;
     in_loop : bool;
@@ -1083,6 +1097,19 @@ Definition declaration_env_def:
 End
 
 (* Statement lists return the environment after their declarations. *)
+(* A local is checked for its type by the core program's check; here only
+ * that each name resolves: a value to a local, a location to a state
+ * variable, which a pure function can also name.
+ *)
+Definition check_assembly_reference_def:
+  (check_assembly_reference env (SrcAssemblyValue x) ⇔
+    IS_SOME (ALOOKUP env.variables x)) ∧
+  (check_assembly_reference env (SrcAssemblySlot x) ⇔
+    IS_SOME (ALOOKUP env.locations x)) ∧
+  (check_assembly_reference env (SrcAssemblyOffset x) ⇔
+    IS_SOME (ALOOKUP env.locations x))
+End
+
 Definition check_stmts_def:
   (check_stmts env [] = SOME env) ∧
   (check_stmts env (s :: ss) =
@@ -1131,7 +1158,10 @@ Definition check_stmts_def:
       SOME params =>
         EVERY is_elementary_type params ∧ LENGTH args = LENGTH params ∧
         check_exprs env args
-    | NONE => F)
+    | NONE => F) ∧
+  (check_stmt env (SrcInlineAssembly _ _ refs) ⇔
+    ALL_DISTINCT (MAP FST refs) ∧
+    EVERY (check_assembly_reference env) (MAP SND refs))
 Termination
   WF_REL_TAC ‘measure (λx. case x of
                  INL (env, ss) => list_size src_stmt_size ss
@@ -1257,6 +1287,7 @@ Definition check_function_def:
         let env = <| functions := functions; structs := structs; events := events;
                      variables := ps ++ rs;
                      state := if f.fn_mutability = "pure" then [] else state;
+                     locations := state;
                      scope := info.node_id; returns_id := f.fn_returns_id;
                      in_loop := F; in_modifier := F |> in
         EVERY (check_modifier modifiers (env with variables := ps))
@@ -1307,7 +1338,7 @@ Definition initializer_env_def:
     <| functions := call_table c.contract_functions;
        structs := c.contract_structs;
        events := MAP (λe. (e.event_info.node_id, e)) c.contract_events;
-       variables := []; state := state; scope := c.contract_info.node_id;
+       variables := []; state := state; locations := state; scope := c.contract_info.node_id;
        returns_id := c.contract_info.node_id; in_loop := F;
        in_modifier := F |>
 End
@@ -1436,6 +1467,7 @@ val () = cv_auto_trans check_declaration_def;
 val () = cv_auto_trans check_for_init_def;
 val () = cv_auto_trans declaration_env_def;
 val () = cv_auto_trans check_condition_def;
+val () = cv_auto_trans check_assembly_reference_def;
 
 val check_stmts_pre_def = cv_auto_trans_pre_rec
   "check_stmts_pre check_stmt_pre" check_stmts_def (

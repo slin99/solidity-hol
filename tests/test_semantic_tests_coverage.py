@@ -59,8 +59,19 @@ def revert(node_id: int, error: int, arguments: list) -> dict:
                        "typeDescriptions": {"typeIdentifier": "t_function_error_pure$__$returns$__$"}}}}
 
 
-ASSEMBLY = {"nodeType": "InlineAssembly", "id": 20,
-            "AST": {"nodeType": "YulBlock", "statements": []}}
+def yul_call(name: str, *arguments) -> dict:
+    return {"nodeType": "YulFunctionCall", "arguments": list(arguments),
+            "functionName": {"nodeType": "YulIdentifier", "name": name}}
+
+
+def assembly(statements: list, references: list = ()) -> dict:
+    return {"nodeType": "InlineAssembly", "id": 20, "externalReferences": list(references),
+            "AST": {"nodeType": "YulBlock", "statements": statements}}
+
+
+# A block the importer rejects: balance is not a builtin of the dialect.
+ASSEMBLY = assembly([{"nodeType": "YulExpressionStatement",
+                      "expression": yul_call("pop", yul_call("balance", yul_call("caller")))}])
 
 
 class BuiltinCoverageTests(unittest.TestCase):
@@ -291,6 +302,87 @@ class ClassifyTests(unittest.TestCase):
         found = coverage.scan({"t.sol": unit([error, function(4, [revert(40, 30, [])])])})
         self.assertEqual(found[32], [coverage.Blocker(
             "VariableDeclaration", "custom errors with reference parameters", "elaboration")])
+
+    def test_inline_assembly_memory(self) -> None:
+        def lit(n):
+            return {"nodeType": "YulLiteral", "kind": "number", "value": hex(n)}
+
+        def call(name, *args):
+            return {"nodeType": "YulExpressionStatement", "expression": yul_call(name, *args)}
+
+        x = {"nodeType": "YulIdentifier", "name": "x"}
+        ok = coverage.assembly_memory_ok
+        # scratch written then read in the same block
+        self.assertTrue(ok([call("mstore", lit(0), x), call("mstore", lit(0x20), x),
+                            call("pop", yul_call("keccak256", lit(0), lit(0x40)))]))
+        # scratch read the block did not write, or only partly wrote; the free
+        # memory pointer, which the compiler may raise
+        self.assertFalse(ok([call("pop", yul_call("mload", lit(0)))]))
+        self.assertFalse(ok([call("pop", yul_call("mload", lit(0x40)))]))
+        self.assertFalse(ok([call("mstore", lit(1), x), call("log0", lit(0), lit(0x40))]))
+        # a write in a nested list covers nothing after it
+        self.assertFalse(ok([{"nodeType": "YulIf", "condition": x, "body": {
+                                 "nodeType": "YulBlock", "statements": [call("mstore", lit(0), x)]}},
+                             call("pop", yul_call("mload", lit(0)))]))
+        # writes outside the scratch space only in a block that halts
+        self.assertFalse(ok([call("mstore", lit(0x40), x)]))
+        self.assertFalse(ok([call("mstore", yul_call("mload", lit(0x40)), x)]))
+        self.assertTrue(ok([call("mstore", lit(0x80), x), call("return", lit(0x80), lit(0x20))]))
+        found = coverage.assembly_blockers(assembly([call("mstore", lit(0x40), x)]), {})
+        self.assertEqual(found, [coverage.Blocker(
+            "InlineAssembly", "inline assembly memory outside the scratch space", "elaboration")])
+
+    def test_inline_assembly_by_slice(self) -> None:
+        def statement(expression):
+            return {"nodeType": "YulExpressionStatement", "expression": expression}
+
+        local = variable(5, type_identifier="t_uint256")
+        memory = dict(variable(6, type_identifier="t_bytes_memory_ptr"), storageLocation="memory")
+        state = variable(7, state=True)
+        by_id = {5: local, 6: memory, 7: state}
+        value = assembly([statement(yul_call("sstore", yul_call("calldataload", {"nodeType": "YulLiteral", "kind": "number", "value": "0"}),
+                                                yul_call("add", {"nodeType": "YulIdentifier", "name": "x"})))],
+                         [{"declaration": 5}, {"declaration": 7, "suffix": "slot"}])
+        self.assertEqual(coverage.assembly_blockers(value, by_id), [])
+        self.assertEqual(coverage.assembly_blockers(ASSEMBLY, by_id),
+                         [coverage.Blocker("InlineAssembly", "inline assembly", "import")])
+        calls = assembly([statement(yul_call("pop", yul_call("gas")))], [{"declaration": 6}])
+        self.assertEqual(coverage.assembly_blockers(calls, by_id), [
+            coverage.Blocker("InlineAssembly", "inline assembly calls, gas, return data and code", "elaboration"),
+            coverage.Blocker("InlineAssembly", "inline assembly memory references", "elaboration")])
+        code = assembly([statement(yul_call("pop", yul_call("codesize")))], [])
+        self.assertEqual(coverage.assembly_blockers(code, by_id), [
+            coverage.Blocker("InlineAssembly", "inline assembly calls, gas, return data and code", "elaboration")])
+        own = assembly([{"nodeType": "YulFunctionDefinition", "name": "gas", "body": {
+                            "nodeType": "YulBlock", "statements": [{
+                                "nodeType": "YulFunctionDefinition", "name": "inner",
+                                "body": {"nodeType": "YulBlock", "statements": []}}]}},
+                        statement(yul_call("gas"))],
+                       [{"declaration": 5, "suffix": "length"}])
+        self.assertEqual(coverage.assembly_blockers(own, by_id),
+                         [coverage.Blocker("InlineAssembly", "inline assembly", "import")])
+        constant = dict(variable(8, type_identifier="t_uint256"), constant=True)
+        self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 8}]), {8: constant}),
+                         [coverage.Blocker("InlineAssembly", "inline assembly memory references", "elaboration")])
+
+    def test_inline_assembly_halts_in_constructors(self) -> None:
+        stop = assembly([{"nodeType": "YulExpressionStatement", "expression": yul_call("stop")}])
+        halts = [coverage.Blocker("InlineAssembly", "inline assembly halts in a constructor", "elaboration")]
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [stop])])}), {})
+        constructor = dict(function(4, [stop]), kind="constructor", stateMutability="nonpayable")
+        self.assertEqual(coverage.scan({"t.sol": unit([constructor])}), {20: halts})
+        # in a modifier only where a constructor runs it
+        modifier = {"nodeType": "ModifierDefinition", "id": 60, "name": "m", "virtual": False,
+                    "parameters": {"nodeType": "ParameterList", "id": 61, "parameters": []},
+                    "body": {"nodeType": "Block", "id": 63, "statements": [
+                        stop, {"nodeType": "PlaceholderStatement", "id": 64}]}}
+        invocation = {"nodeType": "ModifierInvocation", "id": 70, "kind": "modifierInvocation",
+                      "arguments": [], "modifierName": {"nodeType": "IdentifierPath", "id": 72,
+                                                        "name": "m", "referencedDeclaration": 60}}
+        self.assertEqual(coverage.scan({"t.sol": unit([modifier, dict(function(4, []), modifiers=[invocation])])}), {})
+        constructor = dict(function(4, []), kind="constructor", stateMutability="nonpayable",
+                           modifiers=[invocation])
+        self.assertEqual(coverage.scan({"t.sol": unit([modifier, constructor])}), {20: halts})
 
     def test_overridden_functions_are_only_imported(self) -> None:
         coerced = {"nodeType": "VariableDeclarationStatement", "id": 6,

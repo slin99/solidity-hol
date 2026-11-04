@@ -69,7 +69,8 @@ Datatype:
     state : (num # sol_type) list;
     returns : (num # sol_type) list;
     placeholder : (num # (num # sol_type) list) option;
-    mode : arithmetic_mode
+    mode : arithmetic_mode;
+    creation : bool
   |>
 End
 
@@ -737,6 +738,15 @@ Definition elab_expr_def:
                   SOME ((ss, ConstantAtom (AddressValue (n2w (Num i))),
                          ElabType ty), n1)
                 else NONE
+              | (ElabLiteral, FixedBytesT k, ConstantAtom (IntegerValue i)) =>
+                (* bytesN(0) or a hex literal of N bytes: the literal is the
+                   bytes, as in solc; bound like the min/max members above *)
+                if 0 ≤ i ∧ i < 2 ** (8 * k) then
+                  let (cs, v) = bind_value n1 ty
+                        (ConvertOperation ty
+                           (ConstantAtom (BytesValue (num_to_bytes k (Num i))))) in
+                  SOME ((ss ++ cs, v, ElabType ty), n1 + 1)
+                else NONE
               | _ =>
                 let (cs, v) = bind_value n1 ty (ConvertOperation ty a) in
                 SOME ((ss ++ cs, v, ElabType ty), n1 + 1))
@@ -980,6 +990,31 @@ End
  * blocks are spliced into the enclosing list: ids are unique, so the core
  * scopes need not mirror the source blocks.
  *)
+(* A local keeps its declared type, one of the value types the block can read
+ * and write as a word.
+ *)
+Definition elab_assembly_reference_def:
+  (elab_assembly_reference ctx (SrcAssemblyValue x) =
+    case ALOOKUP ctx.variables x of
+      SOME ty =>
+        if assembly_value_type ty then SOME (AssemblyLocal (AstId x) ty) else NONE
+    | NONE => NONE) ∧
+  (elab_assembly_reference ctx (SrcAssemblySlot x) =
+    if IS_SOME (ALOOKUP ctx.state x) then SOME (AssemblySlot (AstId x))
+    else NONE) ∧
+  (elab_assembly_reference ctx (SrcAssemblyOffset x) =
+    if IS_SOME (ALOOKUP ctx.state x) then SOME (AssemblyOffset (AstId x))
+    else NONE)
+End
+
+Definition elab_assembly_references_def:
+  (elab_assembly_references ctx [] = SOME []) ∧
+  (elab_assembly_references ctx ((name, r) :: refs) =
+    case (elab_assembly_reference ctx r, elab_assembly_references ctx refs) of
+      (SOME r', SOME rs) => SOME ((name, r') :: rs)
+    | _ => NONE)
+End
+
 Definition elab_stmts_def:
   (elab_stmts ctx n [] = SOME (([], ctx), n)) ∧
   (elab_stmts ctx n (st :: ss) =
@@ -1128,6 +1163,15 @@ Definition elab_stmts_def:
           SOME ((ss, as), n1) =>
             SOME ((ss ++ [RevertErrorStmt err.error_selector params as], ctx), n1)
         | NONE => NONE) ∧
+  (* A constructor, and the modifiers it runs, may not halt from assembly:
+   * the source installs no runtime code from the returned bytes. *)
+  (elab_stmt ctx n (SrcInlineAssembly _ code refs) =
+    if ¬assembly_stmts_ok (if ctx.creation then YReturn :: YStop :: assembly_unsupported
+                           else assembly_unsupported) code ∨
+       ¬assembly_memory_ok code then NONE else
+    case elab_assembly_references ctx refs of
+      SOME rs => SOME (([AssemblyStmt code rs], ctx), n)
+    | NONE => NONE) ∧
   (* An optional for initialization or loop expression. *)
   (elab_for_init ctx n NONE = SOME (([], ctx), n)) ∧
   (elab_for_init ctx n (SOME st) = elab_stmt ctx n st)
@@ -1230,7 +1274,8 @@ Definition elab_function_def:
         elab_levels <| functions := functions; structs := structs;
                        events := events; variables := ps ++ rs;
                        state := state; returns := rs; placeholder := NONE;
-                       mode := CheckedArithmetic |>
+                       mode := CheckedArithmetic;
+                       creation := (f.fn_kind = "constructor") |>
           modifiers ps rs f.fn_info.node_id n f.fn_modifiers ss
     | _ => NONE
 End
@@ -1512,7 +1557,8 @@ Definition elaborate_unit_def:
                             events := MAP (λe. (e.event_info.node_id, e))
                                         c.contract_events;
                             variables := []; state := state; returns := [];
-                            placeholder := NONE; mode := CheckedArithmetic |> c n of
+                            placeholder := NONE; mode := CheckedArithmetic;
+                            creation := T |> c n of
                     NONE => NONE
                   | SOME (creation, _) =>
                  SOME <| procedures := ps ++ [creation]; state_variables := cvs;
@@ -1702,6 +1748,8 @@ Proof
 QED
 
 val () = cv_auto_trans return_atoms_def;
+val () = cv_auto_trans elab_assembly_reference_def;
+val () = cv_auto_trans elab_assembly_references_def;
 val () = cv_auto_trans return_writes_def;
 val () = cv_auto_trans placeholder_call_def;
 val () = cv_auto_trans flag_def;

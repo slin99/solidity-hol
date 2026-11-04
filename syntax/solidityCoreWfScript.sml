@@ -704,6 +704,213 @@ End
  * and temporaries included. Break/continue are only legal in a loop body (a
  * prelude is not one), and in_loop does not cross procedure boundaries.
  *)
+(* The value types an inline assembly block reads and writes back as one
+ * word. Enums and user-defined value types are left out: solc does not clean
+ * a word written to one, so an out-of-range value would have no source
+ * value. *)
+Definition assembly_value_type_def[simp]:
+  (assembly_value_type BoolT ⇔ T) ∧
+  (assembly_value_type (UintT _) ⇔ T) ∧
+  (assembly_value_type (IntT _) ⇔ T) ∧
+  (assembly_value_type (AddressT _) ⇔ T) ∧
+  (assembly_value_type (FixedBytesT _) ⇔ T) ∧
+  (assembly_value_type _ ⇔ F)
+End
+
+(* The builtins an inline assembly block may not use. The source state keeps
+ * no remaining gas, no return data buffer and no code, so gas, calls, return
+ * data and the code and data builtins are left out. *)
+Definition assembly_unsupported_def:
+  assembly_unsupported =
+    [YGas; YCall; YStaticCall; YReturnDataSize; YReturnDataCopy;
+     YCodeSize; YCodeCopy; YDataSize; YDataOffset]
+End
+
+(* The builtins that change the world, which a static frame forbids. *)
+Definition assembly_state_writes_def:
+  assembly_state_writes = [YSStore; YTStore; YLog0; YLog1; YLog2; YLog3; YLog4]
+End
+
+(* Whether a block's code calls none of the builtins in bad. *)
+Definition assembly_expr_ok_def:
+  (assembly_expr_ok bad (YulLit _) ⇔ T) ∧
+  (assembly_expr_ok bad (YulName _) ⇔ T) ∧
+  (assembly_expr_ok bad (YulBuiltin b es) ⇔
+    ¬MEM b bad ∧ assembly_exprs_ok bad es) ∧
+  (assembly_expr_ok bad (YulApply _ es) ⇔ assembly_exprs_ok bad es) ∧
+  (assembly_exprs_ok bad [] ⇔ T) ∧
+  (assembly_exprs_ok bad (e :: es) ⇔
+    assembly_expr_ok bad e ∧ assembly_exprs_ok bad es)
+End
+
+Definition assembly_stmt_ok_def:
+  (assembly_stmt_ok bad (YulBlock ss) ⇔ assembly_stmts_ok bad ss) ∧
+  (assembly_stmt_ok bad (YulFunction _ _ _ body) ⇔ assembly_stmts_ok bad body) ∧
+  (assembly_stmt_ok bad (YulLet _ NONE) ⇔ T) ∧
+  (assembly_stmt_ok bad (YulLet _ (SOME e)) ⇔ assembly_expr_ok bad e) ∧
+  (assembly_stmt_ok bad (YulAssign _ e) ⇔ assembly_expr_ok bad e) ∧
+  (assembly_stmt_ok bad (YulIf e body) ⇔
+    assembly_expr_ok bad e ∧ assembly_stmts_ok bad body) ∧
+  (assembly_stmt_ok bad (YulSwitch e cases default) ⇔
+    assembly_expr_ok bad e ∧ assembly_cases_ok bad cases ∧
+    assembly_stmts_ok bad default) ∧
+  (assembly_stmt_ok bad (YulFor pre c post body) ⇔
+    assembly_stmts_ok bad pre ∧ assembly_expr_ok bad c ∧
+    assembly_stmts_ok bad post ∧ assembly_stmts_ok bad body) ∧
+  (assembly_stmt_ok bad YulBreak ⇔ T) ∧
+  (assembly_stmt_ok bad YulContinue ⇔ T) ∧
+  (assembly_stmt_ok bad YulLeave ⇔ T) ∧
+  (assembly_stmt_ok bad (YulExprStmt e) ⇔ assembly_expr_ok bad e) ∧
+  (assembly_stmts_ok bad [] ⇔ T) ∧
+  (assembly_stmts_ok bad (s :: ss) ⇔
+    assembly_stmt_ok bad s ∧ assembly_stmts_ok bad ss) ∧
+  (assembly_cases_ok bad [] ⇔ T) ∧
+  (assembly_cases_ok bad ((_, body) :: cases) ⇔
+    assembly_stmts_ok bad body ∧ assembly_cases_ok bad cases)
+End
+
+(* The memory a block may touch. A block starts from a memory holding only
+ * the free memory pointer, so it may read only what it wrote itself earlier
+ * on the same path (not the free memory pointer, whose initial value the
+ * compiler may raise to keep variables in memory); and a block that can exit
+ * normally may write only the scratch space [0, 0x40), the one part of memory
+ * the source keeps no contents for. Addresses and lengths are literals. A
+ * read is covered by the mstore statements with literal addresses that come
+ * before it in its statement list or an enclosing one; a block halts when its
+ * last statement is return, revert or stop.
+ *)
+Definition yul_lit_def:
+  (yul_lit (YulLit (LitNumber w)) = SOME (w2n (w : bytes32))) ∧
+  (yul_lit _ = NONE)
+End
+
+Definition byte_covered_def:
+  (byte_covered [] a ⇔ F) ∧
+  (byte_covered (w :: ws) a ⇔ (w ≤ a ∧ a < w + 32n) ∨ byte_covered ws a)
+End
+
+Definition memory_covered_def:
+  (memory_covered ws a 0 ⇔ T) ∧
+  (memory_covered ws a (SUC n) ⇔
+    byte_covered ws a ∧ memory_covered ws (a + 1) n)
+End
+
+(* The bound keeps the check linear in the block's size. *)
+Definition memory_read_ok_def:
+  memory_read_ok ws p l ⇔
+    case (yul_lit p, yul_lit l) of
+      (SOME a, SOME n) => n ≤ 32n * LENGTH ws ∧ memory_covered ws a n
+    | _ => F
+End
+
+Definition memory_write_ok_def:
+  memory_write_ok halts p l ⇔
+    halts ∨
+    case (yul_lit p, l) of
+      (SOME a, SOME n) => a + n ≤ 64n
+    | _ => F
+End
+
+Definition builtin_memory_ok_def:
+  builtin_memory_ok halts ws b es ⇔
+    case (b, es) of
+      (YMLoad, [p]) =>
+        memory_read_ok ws p (YulLit (LitNumber 32w))
+    | (YMStore, [p; _]) => memory_write_ok halts p (SOME 32)
+    | (YMStore8, [p; _]) => memory_write_ok halts p (SOME 1)
+    | (YMCopy, [d; p; l]) =>
+        memory_write_ok halts d (yul_lit l) ∧ memory_read_ok ws p l
+    | (YCallDataCopy, [d; _; l]) => memory_write_ok halts d (yul_lit l)
+    | (YKeccak256, [p; l]) => memory_read_ok ws p l
+    | (YReturn, [p; l]) => memory_read_ok ws p l
+    | (YRevert, [p; l]) => memory_read_ok ws p l
+    | (YLog0, [p; l]) => memory_read_ok ws p l
+    | (YLog1, p :: l :: _) => memory_read_ok ws p l
+    | (YLog2, p :: l :: _) => memory_read_ok ws p l
+    | (YLog3, p :: l :: _) => memory_read_ok ws p l
+    | (YLog4, p :: l :: _) => memory_read_ok ws p l
+    | (YMLoad, _) => F
+    | (YMStore, _) => F
+    | (YMStore8, _) => F
+    | (YMCopy, _) => F
+    | (YCallDataCopy, _) => F
+    | (YKeccak256, _) => F
+    | (YReturn, _) => F
+    | (YRevert, _) => F
+    | (YLog0, _) => F
+    | (YLog1, _) => F
+    | (YLog2, _) => F
+    | (YLog3, _) => F
+    | (YLog4, _) => F
+    | _ => T
+End
+
+(* The address a statement mstores to, when it is a literal. *)
+Definition memory_store_def:
+  (memory_store (YulExprStmt (YulBuiltin YMStore [p; _])) = yul_lit p) ∧
+  (memory_store _ = NONE)
+End
+
+Definition memory_expr_ok_def:
+  (memory_expr_ok h ws (YulBuiltin b es) ⇔
+    builtin_memory_ok h ws b es ∧ memory_exprs_ok h ws es) ∧
+  (memory_expr_ok h ws (YulApply _ es) ⇔ memory_exprs_ok h ws es) ∧
+  (memory_expr_ok h ws (YulLit _) ⇔ T) ∧
+  (memory_expr_ok h ws (YulName _) ⇔ T) ∧
+  (memory_exprs_ok h ws [] ⇔ T) ∧
+  (memory_exprs_ok h ws (e :: es) ⇔
+    memory_expr_ok h ws e ∧ memory_exprs_ok h ws es)
+End
+
+Definition memory_stmt_ok_def:
+  (memory_stmt_ok h ws (YulBlock ss) ⇔ memory_stmts_ok h ws ss) ∧
+  (memory_stmt_ok h ws (YulFunction _ _ _ body) ⇔ memory_stmts_ok h [] body) ∧
+  (memory_stmt_ok h ws (YulLet _ NONE) ⇔ T) ∧
+  (memory_stmt_ok h ws (YulLet _ (SOME e)) ⇔ memory_expr_ok h ws e) ∧
+  (memory_stmt_ok h ws (YulAssign _ e) ⇔ memory_expr_ok h ws e) ∧
+  (memory_stmt_ok h ws (YulIf e body) ⇔
+    memory_expr_ok h ws e ∧ memory_stmts_ok h ws body) ∧
+  (memory_stmt_ok h ws (YulSwitch e cases default) ⇔
+    memory_expr_ok h ws e ∧ memory_cases_ok h ws cases ∧
+    memory_stmts_ok h ws default) ∧
+  (memory_stmt_ok h ws (YulFor pre c post body) ⇔
+    memory_stmts_ok h ws pre ∧ memory_expr_ok h ws c ∧
+    memory_stmts_ok h ws post ∧ memory_stmts_ok h ws body) ∧
+  (memory_stmt_ok h ws YulBreak ⇔ T) ∧
+  (memory_stmt_ok h ws YulContinue ⇔ T) ∧
+  (memory_stmt_ok h ws YulLeave ⇔ T) ∧
+  (memory_stmt_ok h ws (YulExprStmt e) ⇔ memory_expr_ok h ws e) ∧
+  (memory_stmts_ok h ws [] ⇔ T) ∧
+  (memory_stmts_ok h ws (s :: ss) ⇔
+    memory_stmt_ok h ws s ∧
+    memory_stmts_ok h (case memory_store s of
+                         SOME a => a :: ws
+                       | NONE => ws) ss) ∧
+  (memory_cases_ok h ws [] ⇔ T) ∧
+  (memory_cases_ok h ws ((_, body) :: cases) ⇔
+    memory_stmts_ok h ws body ∧ memory_cases_ok h ws cases)
+End
+
+Definition block_halts_def:
+  (block_halts [] ⇔ F) ∧
+  (block_halts [YulExprStmt (YulBuiltin b _)] ⇔ MEM b [YReturn; YRevert; YStop]) ∧
+  (block_halts [_] ⇔ F) ∧
+  (block_halts (_ :: s :: ss) ⇔ block_halts (s :: ss))
+End
+
+Definition assembly_memory_ok_def:
+  assembly_memory_ok code ⇔ memory_stmts_ok (block_halts code) [] code
+End
+
+Definition assembly_reference_ok_def:
+  assembly_reference_ok env ctx r ⇔
+    case r of
+      AssemblyLocal x ty =>
+        ALOOKUP ctx.bindings x = SOME (SingleType ty) ∧ assembly_value_type ty
+    | AssemblySlot x => IS_SOME (lookup_state_variable env x)
+    | AssemblyOffset x => IS_SOME (lookup_state_variable env x)
+End
+
 Definition check_core_stmts_def:
   (check_core_stmts env ctx [] = SOME ctx) ∧
   (check_core_stmts env ctx (DefineStmt x ty op :: ss) =
@@ -786,6 +993,11 @@ Definition check_core_stmts_def:
         if n + (if IS_SOME topic then 1 else 0) ≤ 4
         then check_core_stmts env ctx ss else NONE
     | NONE => NONE) ∧
+  (check_core_stmts env ctx (AssemblyStmt code refs :: ss) =
+    if assembly_stmts_ok assembly_unsupported code ∧ assembly_memory_ok code ∧
+       ALL_DISTINCT (MAP FST refs) ∧
+       EVERY (assembly_reference_ok env ctx) (MAP SND refs)
+    then check_core_stmts env ctx ss else NONE) ∧
   (check_core_stmts env ctx (_ :: _) = NONE)
 Termination
   WF_REL_TAC ‘measure (λ(env, ctx, ss). list_size core_stmt_size ss)’ >>
@@ -1009,6 +1221,23 @@ val () = cv_auto_trans environment_type_def;
 val () = cv_auto_trans wf_abi_atom_def;
 val () = cv_auto_trans (SPEC_ALL wf_core_operation_def);
 val () = cv_auto_trans emit_indexed_count_def;
+val () = cv_auto_trans assembly_unsupported_def;
+val () = cv_auto_trans assembly_state_writes_def;
+val () = cv_auto_trans assembly_expr_ok_def;
+val () = cv_auto_trans assembly_stmt_ok_def;
+val () = cv_auto_trans yul_lit_def;
+val () = cv_auto_trans byte_covered_def;
+val () = cv_auto_trans memory_covered_def;
+val () = cv_auto_trans memory_read_ok_def;
+val () = cv_auto_trans memory_write_ok_def;
+val () = cv_auto_trans builtin_memory_ok_def;
+val () = cv_auto_trans memory_expr_ok_def;
+val () = cv_auto_trans memory_store_def;
+val () = cv_auto_trans memory_stmt_ok_def;
+val () = cv_auto_trans block_halts_def;
+val () = cv_auto_trans assembly_memory_ok_def;
+val () = cv_auto_trans assembly_value_type_def;
+val () = cv_auto_trans assembly_reference_ok_def;
 val () = cv_auto_trans fresh_core_id_def;
 val () = cv_auto_trans bind_core_id_def;
 val () = cv_auto_trans capture_core_target_def;

@@ -3,7 +3,7 @@
  *)
 Theory solidityCore
 Ancestors
-  solidityAST vfmContext
+  solidityAST vfmContext yulAST
 
 Datatype:
   layout_id = LayoutId num
@@ -130,6 +130,17 @@ Datatype:
   | EnvironmentOperation environment_field
 End
 
+(* What an inline assembly block's Yul variable stands for: a local of value
+ * type (read on entry, written back on exit), or the storage slot or byte
+ * offset of a state variable (x.slot, x.offset; read-only).
+ *)
+Datatype:
+  assembly_reference
+  = AssemblyLocal ast_id sol_type
+  | AssemblySlot ast_id
+  | AssemblyOffset ast_id
+End
+
 (* Explicitly separate scalar writes, reference binding, and content copying.
  * Copy traversal is independently terminating, not fuel-indexed.
  * While/internal recursion need depth fuel; finite syntax/list traversal does not.
@@ -156,6 +167,9 @@ Datatype:
   (* topic0 (NONE for an anonymous event), then each argument with its type
    * and whether it is indexed *)
   | EmitStmt (bytes32 option) ((sol_type # bool # core_atom) list)
+  (* assembly { code }, with the Yul names of the source declarations the
+   * code refers to *)
+  | AssemblyStmt (yul_stmt list) ((string # assembly_reference) list)
 End
 
 Datatype:
@@ -234,6 +248,9 @@ Datatype:
   | BreakCompletion
   | ContinueCompletion
   | RevertCompletion (byte list)
+  (* an inline assembly return(p, s) or stop(): the frame ends with these
+   * bytes as its return data *)
+  | HaltCompletion (byte list)
   | PanicCompletion num
   | InvalidCompletion string
   | FuelExhausted

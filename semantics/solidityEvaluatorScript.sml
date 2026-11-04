@@ -26,7 +26,7 @@
  *)
 Theory solidityEvaluator
 Ancestors
-  solidityMemory solidityABI externalCall
+  solidityMemory solidityABI externalCall yulEvaluator
 Libs
   cv_transLib wordsLib intLib
 
@@ -605,6 +605,157 @@ Definition simple_stmt_def:
     | _ => abrupt_result (InvalidCompletion "unsupported statement") st gas
 End
 
+(* Inline assembly. A block runs in the Yul evaluator on a machine built from
+ * the source state: the world, the frame, a scope binding each referenced
+ * declaration's Yul name to its word, and a fresh memory holding only the
+ * free memory pointer. On normal exit the referenced locals are written back,
+ * cleaned per type as the compiler cleans a value on every Solidity read;
+ * writes to memory outside the scratch space [0, 0x40) fail closed, since the
+ * source heap has no byte image. In a static frame, a block that names a
+ * builtin changing the world fails closed, whether or not it would run it.
+ *
+ * Known gap: source values carry no dirty bits, so a block reading a local
+ * sees its clean word. The compiler's word for a bool local can be dirty: a
+ * bool read from a storage byte holding 2, or one an earlier block wrote 2
+ * to, is 2 on the stack, where the block here sees 1.
+ *)
+
+(* A value-type scalar as the stack word the compiler keeps it in: integers
+ * in two's complement, fixed bytes left-aligned. *)
+Definition assembly_word_def:
+  assembly_word ty s =
+    case ty of
+      FixedBytesT k =>
+        OPTION_MAP (λn. n * 2 ** (8 * (32 - k))) (stored_number k s)
+    | _ => stored_number 32 s
+End
+
+(* The value of type ty a word written to a local stands for. *)
+Definition assembly_value_def:
+  assembly_value ty (w : num) =
+    case ty of
+      BoolT => SOME (BoolValue (w ≠ 0))
+    | FixedBytesT k => stored_value ty (w DIV 2 ** (8 * (32 - k)))
+    | _ =>
+        case storage_bytes ty of
+          SOME b => stored_value ty (w MOD 2 ** (8 * b))
+        | NONE => NONE
+End
+
+Definition assembly_reference_word_def:
+  assembly_reference_word env (st : source_state) r =
+    case r of
+      AssemblyLocal x ty =>
+        (case lookup_binding x st.scopes of
+           SOME b =>
+             (case b.binding_value of
+                ScalarValue s => assembly_word ty s
+              | _ => NONE)
+         | NONE => NONE)
+    | AssemblySlot x =>
+        OPTION_MAP (λv. w2n v.state_slot) (lookup_state_variable env x)
+    | AssemblyOffset x =>
+        OPTION_MAP (λv. v.state_offset) (lookup_state_variable env x)
+End
+
+Definition assembly_scope_def:
+  (assembly_scope env st [] = SOME (FEMPTY : string |-> bytes32)) ∧
+  (assembly_scope env st ((name, r) :: refs) =
+    case (assembly_reference_word env st r, assembly_scope env st refs) of
+      (SOME w, SOME scope) => SOME (scope |+ (name, n2w w))
+    | _ => NONE)
+End
+
+Definition assembly_machine_def:
+  assembly_machine (st : source_state) scope =
+    yul_mstore
+      <| accounts := st.world.accounts; transient := st.world.transient;
+         logs := st.world.logs; self_address := st.frame.self_address;
+         caller_address := st.frame.sender_address;
+         call_value := n2w st.frame.call_value;
+         call_data := st.frame.call_data; return_data := [];
+         immutables := FEMPTY; memory := FEMPTY; memory_size := 0;
+         gas_limit := 0; scopes := [scope];
+         transaction_parameters := st.frame.tx_params |>
+      0x40 (n2w (0x80 + st.memory_allocated) : bytes32)
+End
+
+(* Memory with the scratch space [0, 0x40) removed. *)
+Definition without_scratch_def:
+  without_scratch (mem : num |-> word8) =
+    FOLDR (λa mem. mem \\ a) mem (COUNT_LIST 64)
+End
+
+Definition assembly_world_def:
+  assembly_world (m : yul_machine) =
+    (<| accounts := m.accounts; transient := m.transient; logs := m.logs |>
+       : source_world)
+End
+
+(* Writes a referenced local back from the block's final scopes; a location
+ * reference has nothing to write. *)
+Definition assembly_write_one_def:
+  assembly_write_one (name, r) scopes (yscopes : (string |-> bytes32) list) =
+    case r of
+      AssemblyLocal x ty =>
+        (case yul_lookup name yscopes of
+           NONE => NONE
+         | SOME w =>
+             case assembly_value ty (w2n w) of
+               NONE => NONE
+             | SOME s => update_binding x (ScalarValue s) scopes)
+    | _ => SOME scopes
+End
+
+Definition assembly_write_back_def:
+  (assembly_write_back [] scopes yscopes = SOME scopes) ∧
+  (assembly_write_back (r :: refs) scopes yscopes =
+    case assembly_write_one r scopes yscopes of
+      NONE => NONE
+    | SOME scopes' => assembly_write_back refs scopes' yscopes)
+End
+
+Definition assembly_result_def:
+  assembly_result refs (st : source_state) m0 (r : yul_result) gas =
+    let world = assembly_world r.machine in
+    case r.completion of
+      YulNormal =>
+        if without_scratch r.machine.memory ≠ without_scratch m0.memory then
+          abrupt_result
+            (InvalidCompletion "assembly wrote memory outside the scratch space")
+            st gas
+        else
+          (case assembly_write_back refs st.scopes r.machine.scopes of
+             SOME scopes =>
+               normal_result (st with <| world := world; scopes := scopes |>) gas
+           | NONE =>
+               abrupt_result (InvalidCompletion "assembly write-back failed")
+                 st gas)
+    | YulReturn data =>
+        abrupt_result (HaltCompletion data) (st with world := world) gas
+    | YulRevert data => abrupt_result (RevertCompletion data) st gas
+    | YulInvalid reason => abrupt_result (InvalidCompletion reason) st gas
+    | YulOutOfFuel => abrupt_result FuelExhausted st gas
+    | _ =>
+        abrupt_result (InvalidCompletion "assembly control escaped its block")
+          st gas
+End
+
+Definition eval_assembly_def:
+  eval_assembly n env code refs (st : source_state) gas =
+    let bad = if st.frame.static_context
+              then assembly_unsupported ++ assembly_state_writes
+              else assembly_unsupported in
+    if ¬assembly_stmts_ok bad code then
+      abrupt_result (InvalidCompletion "unsupported assembly builtin") st gas
+    else
+    case assembly_scope env st refs of
+      NONE => abrupt_result (InvalidCompletion "bad assembly reference") st gas
+    | SOME scope =>
+        let m0 = assembly_machine st scope in
+        assembly_result refs st m0 (run_yul n code m0) gas
+End
+
 (* Pieces of the recursive cases *)
 
 Definition branch_of_def:
@@ -686,6 +837,8 @@ Definition eval_block_def:
         abrupt_result (InvalidCompletion "non-boolean condition") st gas) ∧
   (eval_stmt n env (WhileStmt prelude c body) st gas =
     eval_loop n env prelude c body st gas) ∧
+  (eval_stmt n env (AssemblyStmt code refs) st gas =
+    eval_assembly n env code refs st gas) ∧
   (eval_stmt n env s st gas = simple_stmt env s st gas) ∧
   (* One iteration in a pushed scope; fuel is spent on the back edge. *)
   (eval_loop n env prelude c body st gas =
@@ -741,6 +894,17 @@ End
  *)
 
 val () = cv_auto_trans simple_stmt_def;
+val () = cv_auto_trans assembly_word_def;
+val () = cv_auto_trans assembly_value_def;
+val () = cv_auto_trans assembly_reference_word_def;
+val () = cv_auto_trans assembly_scope_def;
+val () = cv_auto_trans assembly_machine_def;
+val () = cv_auto_trans without_scratch_def;
+val () = cv_auto_trans assembly_world_def;
+val () = cv_auto_trans assembly_write_one_def;
+val () = cv_auto_trans assembly_write_back_def;
+val () = cv_auto_trans assembly_result_def;
+val () = cv_auto_trans eval_assembly_def;
 val () = cv_auto_trans bind_call_result_def;
 val () = cv_auto_trans procedure_completion_def;
 

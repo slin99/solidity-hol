@@ -183,7 +183,8 @@ EXPRESSIONS = {
 STATEMENTS = {
     "Block", "UncheckedBlock", "ExpressionStatement", "VariableDeclarationStatement",
     "IfStatement", "WhileStatement", "DoWhileStatement", "ForStatement", "Break",
-    "Continue", "Return", "EmitStatement", "RevertStatement", "PlaceholderStatement",
+    "Continue", "Return", "EmitStatement", "RevertStatement", "InlineAssembly",
+    "PlaceholderStatement",
 }
 # Nodes the importer reads only in a fixed position, checked there, and nodes
 # it never reaches because it rejects their parents (IdentifierPath) or never
@@ -202,7 +203,6 @@ FEATURES = {
     "EnumValue": "enums",
     "FunctionTypeName": "function types",
     "IndexRangeAccess": "array slices",
-    "InlineAssembly": "inline assembly",
     "TryCatchClause": "try/catch",
     "TryStatement": "try/catch",
     "UserDefinedValueTypeDefinition": "user-defined value types",
@@ -706,6 +706,173 @@ def callee_blockers(node: dict[str, Any], callees: set[int],
 INTEGER_TYPE = re.compile(r"t_u?int[0-9]+")
 
 
+# The builtins of the Yul dialect (yulDialect's builtin_name), and those an
+# inline assembly block may not use (assembly_unsupported).
+YUL_BUILTINS = {
+    "add", "sub", "mul", "div", "sdiv", "mod", "smod", "exp", "signextend", "lt", "gt",
+    "slt", "sgt", "eq", "iszero", "and", "or", "xor", "not", "shl", "shr", "sar", "byte",
+    "keccak256", "mload", "mstore", "mstore8", "mcopy", "sload", "sstore", "tload", "tstore",
+    "calldataload", "calldatasize", "calldatacopy", "callvalue", "memoryguard", "caller",
+    "loadimmutable", "log0", "log1", "log2", "log3", "log4", "address", "origin", "chainid",
+    "number", "timestamp", "coinbase", "gasprice", "basefee", "gaslimit", "stop", "call",
+    "staticcall", "extcodesize", "returndatasize", "returndatacopy", "gas", "pop", "return",
+    "revert", "codesize", "codecopy", "datasize", "dataoffset",
+}
+YUL_UNSUPPORTED = {
+    "gas", "call", "staticcall", "returndatasize", "returndatacopy",
+    "codesize", "codecopy", "datasize", "dataoffset",
+}
+
+
+def yul_literal(value: dict[str, Any]) -> int | None:
+    """A number literal's value (yul_lit)."""
+    if value.get("nodeType") != "YulLiteral" or value.get("kind") != "number":
+        return None
+    text = value["value"]
+    return int(text, 16) if text.startswith("0x") else int(text)
+
+
+def assembly_memory_ok(statements: list[dict[str, Any]]) -> bool:
+    """assembly_memory_ok: memory reads at literal ranges covered by earlier
+    literal mstores on the same path, and, unless the block's
+    last statement halts, memory writes only at literal ranges inside the
+    scratch space [0, 0x40)."""
+    last = statements[-1] if statements else {}
+    halts = (last.get("nodeType") == "YulExpressionStatement"
+             and last["expression"].get("nodeType") == "YulFunctionCall"
+             and last["expression"]["functionName"]["name"] in ("return", "revert", "stop"))
+
+    def covered(ws: list[int], a: int, n: int) -> bool:
+        return n <= 32 * len(ws) and all(any(w <= a + i < w + 32 for w in ws) for i in range(n))
+
+    def read_ok(ws: list[int], p: dict[str, Any], length: dict[str, Any]) -> bool:
+        a, n = yul_literal(p), yul_literal(length)
+        return a is not None and n is not None and covered(ws, a, n)
+
+    def write_ok(p: dict[str, Any], n: int | None) -> bool:
+        a = yul_literal(p)
+        return halts or (a is not None and n is not None and a + n <= 64)
+
+    def builtin_ok(ws: list[int], name: str, args: list[dict[str, Any]]) -> bool:
+        if name == "mload":
+            return len(args) == 1 and read_ok(
+                ws, args[0], {"nodeType": "YulLiteral", "kind": "number", "value": "32"})
+        if name == "mstore":
+            return len(args) == 2 and write_ok(args[0], 32)
+        if name == "mstore8":
+            return len(args) == 2 and write_ok(args[0], 1)
+        if name == "mcopy":
+            return len(args) == 3 and write_ok(args[0], yul_literal(args[2])) and read_ok(ws, args[1], args[2])
+        if name == "calldatacopy":
+            return len(args) == 3 and write_ok(args[0], yul_literal(args[2]))
+        if name in ("keccak256", "return", "revert", "log0"):
+            return len(args) == 2 and read_ok(ws, args[0], args[1])
+        if name in ("log1", "log2", "log3", "log4"):
+            return len(args) >= 2 and read_ok(ws, args[0], args[1])
+        return True
+
+    def expr_ok(ws: list[int], e: dict[str, Any] | None) -> bool:
+        if e is None or e.get("nodeType") != "YulFunctionCall":
+            return True
+        args = e.get("arguments", [])
+        return builtin_ok(ws, e["functionName"]["name"], args) and all(expr_ok(ws, a) for a in args)
+
+    def stmts_ok(ws: list[int], ss: list[dict[str, Any]]) -> bool:
+        for st in ss:
+            if not stmt_ok(ws, st):
+                return False
+            if (st["nodeType"] == "YulExpressionStatement"
+                    and st["expression"].get("nodeType") == "YulFunctionCall"
+                    and st["expression"]["functionName"]["name"] == "mstore"
+                    and len(st["expression"].get("arguments", [])) == 2):
+                a = yul_literal(st["expression"]["arguments"][0])
+                if a is not None:
+                    ws = [a] + ws
+        return True
+
+    def stmt_ok(ws: list[int], st: dict[str, Any]) -> bool:
+        kind = st["nodeType"]
+        if kind == "YulBlock":
+            return stmts_ok(ws, st["statements"])
+        if kind == "YulFunctionDefinition":
+            return stmts_ok([], st["body"]["statements"])
+        if kind in ("YulVariableDeclaration", "YulAssignment"):
+            return expr_ok(ws, st.get("value"))
+        if kind == "YulIf":
+            return expr_ok(ws, st["condition"]) and stmts_ok(ws, st["body"]["statements"])
+        if kind == "YulSwitch":
+            return expr_ok(ws, st["expression"]) and all(
+                stmts_ok(ws, c["body"]["statements"]) for c in st["cases"])
+        if kind == "YulForLoop":
+            return (stmts_ok(ws, st["pre"]["statements"]) and expr_ok(ws, st["condition"])
+                    and stmts_ok(ws, st["post"]["statements"]) and stmts_ok(ws, st["body"]["statements"]))
+        if kind == "YulExpressionStatement":
+            return expr_ok(ws, st["expression"])
+        return True
+
+    return stmts_ok([], statements)
+
+
+def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]],
+                      creation: bool = False) -> list[Blocker]:
+    """What the importer and the elaborator reject in an inline assembly
+    block: Yul the importer does not read (functions other than the block's
+    own, builtins outside the dialect, boolean literals, references other
+    than slot and offset), then builtins the source state cannot run (gas,
+    calls, return data, code), `return` and `stop` in a block a constructor
+    runs (creation), memory use outside assembly_memory_ok, and
+    references to anything but value-type locals and state variable
+    locations."""
+    if node["nodeType"] != "InlineAssembly":
+        return []
+    found: list[Blocker] = []
+
+    def blocker(feature: str, stage: str) -> None:
+        if Blocker("InlineAssembly", feature, stage) not in found:
+            found.append(Blocker("InlineAssembly", feature, stage))
+
+    statements = node["AST"].get("statements", [])
+    defined = {s["name"] for s in statements if s["nodeType"] == "YulFunctionDefinition"}
+
+    def walk(value: Any, top: bool) -> None:
+        if isinstance(value, list):
+            for v in value:
+                walk(v, top)
+        elif isinstance(value, dict):
+            kind = value.get("nodeType")
+            if kind == "YulFunctionDefinition" and not top:
+                blocker("inline assembly", "import")
+            elif kind == "YulLiteral" and value.get("kind") not in ("number", "string"):
+                blocker("inline assembly", "import")
+            elif kind == "YulFunctionCall":
+                name = value["functionName"]["name"]
+                if name not in defined and name not in YUL_BUILTINS:
+                    blocker("inline assembly", "import")
+                elif name not in defined and name in YUL_UNSUPPORTED:
+                    blocker("inline assembly calls, gas, return data and code", "elaboration")
+                elif name not in defined and creation and name in ("return", "stop"):
+                    blocker("inline assembly halts in a constructor", "elaboration")
+            for k, v in value.items():
+                if k != "functionName":
+                    walk(v, top and kind == "YulBlock" and value is node["AST"])
+
+    walk(statements, True)
+    if not assembly_memory_ok(statements):
+        blocker("inline assembly memory outside the scratch space", "elaboration")
+    for reference in node.get("externalReferences", []):
+        suffix = reference.get("suffix")
+        declaration = by_id.get(reference["declaration"], {})
+        if suffix not in (None, "slot", "offset"):
+            blocker("inline assembly", "import")
+        elif suffix is None and (declaration.get("stateVariable", True) or declaration.get("constant", False)
+                                 or not VALUE_TYPE.fullmatch(
+                declaration.get("typeDescriptions", {}).get("typeIdentifier") or "")):
+            blocker("inline assembly memory references", "elaboration")
+        elif suffix is not None and not declaration.get("stateVariable", False):
+            blocker("inline assembly memory references", "elaboration")
+    return sorted(found, key=lambda b: b.stage != "import")
+
+
 def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[Blocker]:
     """Integer literals used where a value of another type is expected, which
     elaborate_unit converts only to integer types, and string literals used
@@ -913,6 +1080,14 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     dead.update(n["id"] for m in reached.values()
                 if m["nodeType"] == "ModifierDefinition" and m["id"] not in invoked
                 for n in nodes(m))
+    # The assembly a constructor runs, in its body or its modifiers'.
+    creation: set[int] = set()
+    for f in live:
+        if by_id[f]["kind"] == "constructor":
+            used = [by_id.get(m["modifierName"].get("referencedDeclaration"), {})
+                    for m in by_id[f].get("modifiers", [])]
+            for root in [by_id[f]] + [m for m in used if m.get("nodeType") == "ModifierDefinition"]:
+                creation.update(n["id"] for n in nodes(root) if n["nodeType"] == "InlineAssembly")
     # The signatures read only at nodes of overridden functions, unless they
     # belong to a function of an imported contract, which is read as such.
     read_at: dict[int, bool] = {}
@@ -940,7 +1115,8 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                     + callee_blockers(node, callees, conversions)
                     + elaboration_blockers(node, storage_field=node["id"] in fields,
                                            error_parameter=node["id"] in error_parameters)
-                    + coerced_literals(node, by_id))
+                    + coerced_literals(node, by_id)
+                    + assembly_blockers(node, by_id, creation=node["id"] in creation))
         if node["nodeType"] == "EventDefinition" and node["id"] in file_level:
             blockers.append(Blocker("EventDefinition", "file-level events", "import"))
         if node["id"] in builtin_callees:

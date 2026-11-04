@@ -903,6 +903,44 @@
         {"name": "argument_bound_before_next_argument_assigns", "function": "rebound", "args": [1], "expect": {"return": [12]}, "final_storage": {"2": 12}},
         {"name": "unmodified_view", "function": "state", "args": [], "storage": {"0": 5, "2": 6}, "expect": {"return": [5, 6]}}
       ]
+    },
+    {
+      "name": "inline_assembly",
+      "source": "testdata/differential/inline_assembly.sol",
+      "contract": "InlineAssembly",
+      "artifact": "testdata/differential/expected/inline_assembly.json",
+      "cases": [
+        {"name": "add_returns", "function": "add", "args": [2, 3], "expect": {"return": [5]}},
+        {"name": "add_wraps", "function": "add", "args": [115792089237316195423570985008687907853269984665640564039457584007913129639935, 2], "expect": {"return": [1]}},
+        {"name": "dirty_uint8_cleaned", "function": "dirtyUint8", "args": [300], "expect": {"return": [44]}},
+        {"name": "dirty_bool_true", "function": "dirtyBool", "args": [2], "expect": {"return": [true]}},
+        {"name": "dirty_bool_false", "function": "dirtyBool", "args": [0], "expect": {"return": [false]}},
+        {"name": "signed_negative_sign_extended", "function": "signed", "args": [-1], "expect": {"return": [-1, -1]}},
+        {"name": "signed_positive", "function": "signed", "args": [5], "expect": {"return": [5, 5]}},
+        {"name": "fixed_bytes_high_order", "function": "fixedBytes", "args": ["0x12345678"], "expect": {"return": [8234104107246695022420661102507966550300666591269321702959126607540084801536, "0xdeadbeef"]}},
+        {"name": "fixed_bytes_literals", "function": "literalBytes", "args": [], "expect": {"return": [true, "0x3100000000000000000000000000000000000000000000000000000000000000"]}},
+        {"name": "address_low_order", "function": "addressBits", "args": [48879], "expect": {"return": [48879, 1461501637330902918203684832716283019655932542975]}},
+        {"name": "slot_and_offset", "function": "locations", "args": [], "expect": {"return": [1, 8, 0, 0]}},
+        {"name": "store_through_slot", "function": "store", "args": [7], "expect": {"return": []}, "final_storage": {"0": 7}},
+        {"name": "load_through_slot", "function": "load", "args": [], "expect": {"return": [42]}, "storage": {"0": 42}},
+        {"name": "mapping_slot_hashed_in_scratch", "function": "balanceOf", "args": [5], "expect": {"return": [99]}, "storage": {"83924299613623144815152306351111586190008510169577290076514507543974912713604": 99}},
+        {"name": "loop_break_continue_function", "function": "loops", "args": [10], "expect": {"return": [27]}},
+        {"name": "loop_ends_by_condition", "function": "loops", "args": [4], "expect": {"return": [12]}},
+        {"name": "switch_case", "function": "classify", "args": [1], "expect": {"return": [20]}},
+        {"name": "switch_default", "function": "classify", "args": [9], "expect": {"return": [30]}},
+        {"name": "write_back_then_checked_add", "function": "blockThenSolidity", "args": [253], "expect": {"return": [255]}},
+        {"name": "write_back_cleans_before_checked_add", "function": "blockThenSolidity", "args": [255], "expect": {"return": [1]}},
+        {"name": "write_back_then_overflow_panics", "function": "blockThenSolidity", "args": [254], "expect": {"panic": "0x11"}},
+        {"name": "log_from_assembly", "function": "emitLog", "args": [9], "expect": {"return": []}, "logs": [{"topics": [4660], "data": "0x0000000000000000000000000000000000000000000000000000000000000009"}]},
+        {"name": "caller_from_assembly", "function": "sender", "args": [], "expect": {"return": [4660]}, "sender": 4660},
+        {"name": "return_halts_call", "function": "returnFromAssembly", "args": [77], "expect": {"returned": "0x000000000000000000000000000000000000000000000000000000000000004d"}},
+        {"name": "stop_halts_call", "function": "stopEarly", "args": [3], "expect": {"returned": "0x"}, "final_storage": {"0": 1}},
+        {"name": "revert_discards_writes", "function": "revertFromAssembly", "args": [6], "expect": {"revert": "0x0000000000000000000000000000000000000000000000000000000000000006"}, "storage": {"0": 2}, "final_storage": {"0": 2}},
+        {"name": "modifier_block_writes_parameter", "function": "withModifier", "args": [5], "expect": {"return": [10]}, "final_storage": {"0": 10}},
+        {"name": "modifier_block_stop_skips_body", "function": "haltInModifier", "args": [0], "expect": {"returned": "0x"}},
+        {"name": "modifier_block_runs_body", "function": "haltInModifier", "args": [1], "expect": {"return": []}, "final_storage": {"0": 99}},
+        {"name": "return_under_modifier_halts_call", "function": "haltUnderModifier", "args": [3], "expect": {"returned": "0x0000000000000000000000000000000000000000000000000000000000000003"}, "final_storage": {"0": 6}}
+      ]
     }
   ]
 }

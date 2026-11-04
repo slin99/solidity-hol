@@ -21,6 +21,12 @@ sig
    *)
   val import_runtime : JSON.value -> string -> string -> stage -> term
 
+  (* A YulBlock as a yul_stmt list term: an inline assembly block's AST, or
+   * an object's code block. Function definitions are read at its top level
+   * only.
+   *)
+  val import_code : JSON.value -> term
+
   (* The same, from an artifact file written by tools/export_solc_artifacts.py.
    *)
   val import_runtime_artifact : string -> string -> string -> stage -> term

@@ -1,13 +1,13 @@
 {
   "counts": {
-    "admitted": 296,
+    "admitted": 367,
     "compile-failure": 0,
-    "elaboration-rejected": 20,
-    "import-rejected": 981,
+    "elaboration-rejected": 34,
+    "import-rejected": 849,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 273
+    "source-rejected": 320
   },
   "features": [
     {
@@ -25,15 +25,6 @@
       "tests": 322
     },
     {
-      "feature": "inline assembly",
-      "first_rejection": 194,
-      "node_types": [
-        "InlineAssembly"
-      ],
-      "only_blocker": 97,
-      "tests": 266
-    },
-    {
       "feature": "array values",
       "first_rejection": 0,
       "node_types": [
@@ -46,7 +37,7 @@
     },
     {
       "feature": "external calls and contract members",
-      "first_rejection": 81,
+      "first_rejection": 89,
       "node_types": [
         "FunctionCall",
         "Identifier",
@@ -70,7 +61,7 @@
     },
     {
       "feature": "structs",
-      "first_rejection": 15,
+      "first_rejection": 16,
       "node_types": [
         "FunctionCall",
         "IndexAccess",
@@ -101,7 +92,7 @@
     },
     {
       "feature": "function members (selector, address, \u2026)",
-      "first_rejection": 16,
+      "first_rejection": 20,
       "node_types": [
         "MemberAccess",
         "TupleExpression",
@@ -112,7 +103,7 @@
     },
     {
       "feature": "libraries",
-      "first_rejection": 37,
+      "first_rejection": 39,
       "node_types": [
         "ContractDefinition"
       ],
@@ -151,7 +142,7 @@
     },
     {
       "feature": "abi.* functions",
-      "first_rejection": 52,
+      "first_rejection": 54,
       "node_types": [
         "MemberAccess"
       ],
@@ -160,7 +151,7 @@
     },
     {
       "feature": "function types",
-      "first_rejection": 74,
+      "first_rejection": 76,
       "node_types": [
         "FunctionTypeName"
       ],
@@ -168,8 +159,17 @@
       "tests": 96
     },
     {
+      "feature": "inline assembly memory references",
+      "first_rejection": 0,
+      "node_types": [
+        "InlineAssembly"
+      ],
+      "only_blocker": 0,
+      "tests": 91
+    },
+    {
       "feature": "using for",
-      "first_rejection": 46,
+      "first_rejection": 47,
       "node_types": [
         "MemberAccess",
         "UsingForDirective"
@@ -197,7 +197,7 @@
     },
     {
       "feature": "free functions",
-      "first_rejection": 35,
+      "first_rejection": 37,
       "node_types": [
         "FunctionDefinition"
       ],
@@ -206,7 +206,7 @@
     },
     {
       "feature": "hash and signature built-ins",
-      "first_rejection": 13,
+      "first_rejection": 14,
       "node_types": [
         "Identifier"
       ],
@@ -215,7 +215,7 @@
     },
     {
       "feature": "address members (balance, call, transfer, \u2026)",
-      "first_rejection": 18,
+      "first_rejection": 19,
       "node_types": [
         "MemberAccess"
       ],
@@ -229,7 +229,7 @@
         "BinaryOperation",
         "UnaryOperation"
       ],
-      "only_blocker": 19,
+      "only_blocker": 24,
       "tests": 57
     },
     {
@@ -243,7 +243,7 @@
     },
     {
       "feature": "type names as values",
-      "first_rejection": 6,
+      "first_rejection": 8,
       "node_types": [
         "ElementaryTypeNameExpression"
       ],
@@ -260,12 +260,21 @@
         "UserDefinedValueTypeDefinition",
         "VariableDeclaration"
       ],
-      "only_blocker": 5,
+      "only_blocker": 6,
       "tests": 52
     },
     {
+      "feature": "inline assembly memory outside the scratch space",
+      "first_rejection": 0,
+      "node_types": [
+        "InlineAssembly"
+      ],
+      "only_blocker": 4,
+      "tests": 50
+    },
+    {
       "feature": "constants",
-      "first_rejection": 35,
+      "first_rejection": 36,
       "node_types": [
         "VariableDeclaration"
       ],
@@ -274,7 +283,7 @@
     },
     {
       "feature": "inline arrays",
-      "first_rejection": 25,
+      "first_rejection": 29,
       "node_types": [
         "TupleExpression"
       ],
@@ -296,7 +305,7 @@
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 8,
+      "only_blocker": 13,
       "tests": 41
     },
     {
@@ -317,7 +326,7 @@
         "TupleExpression",
         "VariableDeclaration"
       ],
-      "only_blocker": 3,
+      "only_blocker": 4,
       "tests": 39
     },
     {
@@ -332,7 +341,7 @@
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
-      "only_blocker": 11,
+      "only_blocker": 12,
       "tests": 38
     },
     {
@@ -345,12 +354,12 @@
       "tests": 37
     },
     {
-      "feature": "named arguments",
+      "feature": "inline assembly",
       "first_rejection": 19,
       "node_types": [
-        "FunctionCall"
+        "InlineAssembly"
       ],
-      "only_blocker": 4,
+      "only_blocker": 11,
       "tests": 32
     },
     {
@@ -365,7 +374,16 @@
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
-      "only_blocker": 3,
+      "only_blocker": 6,
+      "tests": 32
+    },
+    {
+      "feature": "named arguments",
+      "first_rejection": 22,
+      "node_types": [
+        "FunctionCall"
+      ],
+      "only_blocker": 4,
       "tests": 32
     },
     {
@@ -399,7 +417,7 @@
         "UserDefinedTypeName",
         "VariableDeclaration"
       ],
-      "only_blocker": 3,
+      "only_blocker": 4,
       "tests": 29
     },
     {
@@ -447,7 +465,7 @@
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 10,
+      "only_blocker": 12,
       "tests": 23
     },
     {
@@ -465,7 +483,7 @@
     },
     {
       "feature": "new bytes and string",
-      "first_rejection": 11,
+      "first_rejection": 12,
       "node_types": [
         "NewExpression"
       ],
@@ -474,7 +492,7 @@
     },
     {
       "feature": "try/catch",
-      "first_rejection": 11,
+      "first_rejection": 17,
       "node_types": [
         "FunctionCall",
         "TryCatchClause",
@@ -485,7 +503,7 @@
     },
     {
       "feature": "array slices",
-      "first_rejection": 13,
+      "first_rejection": 15,
       "node_types": [
         "IndexRangeAccess"
       ],
@@ -498,7 +516,7 @@
       "node_types": [
         "FunctionCall"
       ],
-      "only_blocker": 10,
+      "only_blocker": 11,
       "tests": 18
     },
     {
@@ -559,6 +577,15 @@
       ],
       "only_blocker": 1,
       "tests": 11
+    },
+    {
+      "feature": "inline assembly calls, gas, return data and code",
+      "first_rejection": 0,
+      "node_types": [
+        "InlineAssembly"
+      ],
+      "only_blocker": 3,
+      "tests": 10
     },
     {
       "feature": "bytes and string",
@@ -743,6 +770,15 @@
       "tests": 2
     },
     {
+      "feature": "inline assembly halts in a constructor",
+      "first_rejection": 0,
+      "node_types": [
+        "InlineAssembly"
+      ],
+      "only_blocker": 0,
+      "tests": 2
+    },
+    {
       "feature": "nested tuples",
       "first_rejection": 0,
       "node_types": [
@@ -773,84 +809,84 @@
   "format": "solidity-hol-semantic-tests-coverage-v1",
   "greedy_order": [
     {
-      "admitted": 97,
-      "feature": "inline assembly"
-    },
-    {
-      "admitted": 121,
+      "admitted": 24,
       "feature": "constant expressions over literals"
     },
     {
-      "admitted": 136,
+      "admitted": 38,
       "feature": "address members (balance, call, transfer, \u2026)"
     },
     {
-      "admitted": 151,
+      "admitted": 53,
       "feature": "transient storage"
     },
     {
-      "admitted": 165,
+      "admitted": 67,
       "feature": "operator delete"
     },
     {
-      "admitted": 180,
+      "admitted": 82,
       "feature": "array values"
     },
     {
-      "admitted": 210,
+      "admitted": 106,
       "feature": "arrays"
     },
     {
-      "admitted": 257,
+      "admitted": 145,
       "feature": "local reference bindings"
     },
     {
-      "admitted": 288,
+      "admitted": 174,
       "feature": "memory arrays (new T[](n))"
     },
     {
-      "admitted": 317,
+      "admitted": 200,
       "feature": "structs"
     },
     {
-      "admitted": 361,
+      "admitted": 242,
       "feature": "struct values and copying"
     },
     {
-      "admitted": 390,
+      "admitted": 269,
       "feature": "aggregate array mutation"
     },
     {
-      "admitted": 415,
-      "feature": "inline arrays"
-    },
-    {
-      "admitted": 437,
+      "admitted": 291,
       "feature": "abi.* functions"
     },
     {
-      "admitted": 455,
+      "admitted": 312,
+      "feature": "inline arrays"
+    },
+    {
+      "admitted": 329,
       "feature": "hash and signature built-ins"
     },
     {
-      "admitted": 474,
+      "admitted": 347,
       "feature": "bytes push and pop"
     },
     {
-      "admitted": 491,
+      "admitted": 364,
       "feature": "string literals as fixed-size bytes"
     },
     {
-      "admitted": 507,
+      "admitted": 380,
+      "feature": "inline assembly memory references"
+    },
+    {
+      "admitted": 400,
+      "feature": "inline assembly memory outside the scratch space"
+    },
+    {
+      "admitted": 417,
+      "feature": "inline assembly"
+    },
+    {
+      "admitted": 433,
       "feature": "constants"
-    },
-    {
-      "admitted": 527,
-      "feature": "literals of non-integer types"
-    },
-    {
-      "admitted": 542,
-      "feature": "public state variables"
     }
   ],
   "profile": "solc-0.8.37-via-ir-osaka",
@@ -966,7 +1002,7 @@
         "abi.* functions",
         "array type expressions",
         "arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "members of elementary type names",
         "type names as values"
       ],
@@ -2118,11 +2154,10 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "inline assembly",
         "this"
       ],
-      "first": "inline assembly",
-      "reason": "abicoder/cleanup/address_v2.sol: InlineAssembly 8: unsupported statement InlineAssembly",
+      "first": "external calls and contract members",
+      "reason": "abicoder/cleanup/address_v2.sol: Identifier 21: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "abicoder/cleanup/address_v2.sol"
     },
@@ -2146,11 +2181,10 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "inline assembly",
         "this"
       ],
-      "first": "inline assembly",
-      "reason": "abicoder/cleanup/bool_with_sanity_check_v2.sol: InlineAssembly 22: unsupported statement InlineAssembly",
+      "first": "external calls and contract members",
+      "reason": "abicoder/cleanup/bool_with_sanity_check_v2.sol: Identifier 23: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "abicoder/cleanup/bool_with_sanity_check_v2.sol"
     },
@@ -2158,11 +2192,10 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "inline assembly",
         "this"
       ],
-      "first": "inline assembly",
-      "reason": "abicoder/cleanup/bytesx_v2.sol: InlineAssembly 21: unsupported statement InlineAssembly",
+      "first": "external calls and contract members",
+      "reason": "abicoder/cleanup/bytesx_v2.sol: Identifier 22: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "abicoder/cleanup/bytesx_v2.sol"
     },
@@ -2175,12 +2208,10 @@
       "test": "abicoder/cleanup/cleanup_v1.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "abicoder/cleanup/cleanup_v2.sol: InlineAssembly 24: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/cleanup/cleanup_v2.sol"
     },
@@ -2190,7 +2221,8 @@
         "array values",
         "arrays",
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "local reference bindings",
         "memory arrays (new T[](n))",
         "this"
@@ -2212,7 +2244,7 @@
       "category": "import-rejected",
       "features": [
         "enums",
-        "inline assembly"
+        "inline assembly memory references"
       ],
       "first": "enums",
       "reason": "abicoder/cleanup/enum_v2.sol: EnumDefinition 4: unsupported contract member",
@@ -2225,7 +2257,8 @@
         "external calls and contract members",
         "function members (selector, address, \u2026)",
         "function types",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "local reference bindings",
         "struct values and copying",
         "structs",
@@ -2240,11 +2273,10 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "inline assembly",
         "this"
       ],
-      "first": "inline assembly",
-      "reason": "abicoder/cleanup/intx_v2.sol: InlineAssembly 62: unsupported statement InlineAssembly",
+      "first": "external calls and contract members",
+      "reason": "abicoder/cleanup/intx_v2.sol: Identifier 63: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "abicoder/cleanup/intx_v2.sol"
     },
@@ -2253,11 +2285,12 @@
       "features": [
         "abi.* functions",
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "this"
       ],
-      "first": "inline assembly",
-      "reason": "abicoder/cleanup/reencoded_calldata_string.sol: InlineAssembly 10: unsupported statement InlineAssembly",
+      "first": "abi.* functions",
+      "reason": "abicoder/cleanup/reencoded_calldata_string.sol: MemberAccess 13: unsupported built-in member encode",
       "scan_agrees": true,
       "test": "abicoder/cleanup/reencoded_calldata_string.sol"
     },
@@ -2268,7 +2301,8 @@
         "arrays",
         "external calls and contract members",
         "inline arrays",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "local reference bindings",
         "this"
       ],
@@ -2278,14 +2312,13 @@
       "test": "abicoder/cleanup/static_array_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
         "local reference bindings",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "abicoder/cleanup/struct2_v2.sol: InlineAssembly 26: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "abicoder/cleanup/struct2_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/cleanup/struct2_v2.sol"
     },
@@ -2293,7 +2326,8 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "local reference bindings",
         "struct values and copying",
         "structs",
@@ -2308,11 +2342,10 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "inline assembly",
         "this"
       ],
-      "first": "inline assembly",
-      "reason": "abicoder/cleanup/uintx_v2.sol: InlineAssembly 62: unsupported statement InlineAssembly",
+      "first": "external calls and contract members",
+      "reason": "abicoder/cleanup/uintx_v2.sol: Identifier 63: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "abicoder/cleanup/uintx_v2.sol"
     },
@@ -2393,11 +2426,11 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
         "this"
       ],
-      "first": "inline assembly",
-      "reason": "abicoder/return_dynamic_types_cross_call_out_of_range_post_homestead.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "first": "external calls and contract members",
+      "reason": "abicoder/return_dynamic_types_cross_call_out_of_range_post_homestead.sol: Identifier 16: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "abicoder/return_dynamic_types_cross_call_out_of_range_post_homestead.sol"
     },
@@ -2818,12 +2851,10 @@
       "test": "array/array_storage_index_boundary_test.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "array/array_storage_index_zeroed_test.sol: InlineAssembly 80: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/array_storage_index_zeroed_test.sol"
     },
@@ -2879,13 +2910,12 @@
       "test": "array/arrays_complex_from_and_to_storage.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "bytes push and pop",
-        "inline assembly"
+        "bytes push and pop"
       ],
-      "first": "inline assembly",
-      "reason": "array/byte_array_storage_layout.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "array/byte_array_storage_layout.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/byte_array_storage_layout.sol"
     },
@@ -2911,10 +2941,11 @@
       "category": "import-rejected",
       "features": [
         "array slices",
-        "inline assembly"
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references"
       ],
-      "first": "inline assembly",
-      "reason": "array/bytes_to_fixed_bytes_cleanup.sol: InlineAssembly 10: unsupported statement InlineAssembly",
+      "first": "array slices",
+      "reason": "array/bytes_to_fixed_bytes_cleanup.sol: IndexRangeAccess 53: unsupported expression IndexRangeAccess",
       "scan_agrees": true,
       "test": "array/bytes_to_fixed_bytes_cleanup.sol"
     },
@@ -3053,7 +3084,6 @@
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
         "memory arrays (new T[](n))"
       ],
       "first": "memory arrays (new T[](n))",
@@ -3066,7 +3096,6 @@
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
         "memory arrays (new T[](n))"
       ],
       "first": "memory arrays (new T[](n))",
@@ -3079,7 +3108,6 @@
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
         "memory arrays (new T[](n))"
       ],
       "first": "memory arrays (new T[](n))",
@@ -3092,7 +3120,6 @@
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
         "memory arrays (new T[](n))"
       ],
       "first": "memory arrays (new T[](n))",
@@ -3696,8 +3723,7 @@
       "features": [
         "abi.* functions",
         "free functions",
-        "hash and signature built-ins",
-        "inline assembly"
+        "hash and signature built-ins"
       ],
       "first": "free functions",
       "reason": "array/copying/copy_byte_array_to_storage.sol: FunctionDefinition 44: unsupported source unit member FunctionDefinition",
@@ -3762,12 +3788,13 @@
       "test": "array/copying/dirty_memory_bytes_to_storage_copy.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references"
       ],
-      "first": "inline assembly",
-      "reason": "array/copying/dirty_memory_bytes_to_storage_copy_ir.sol: InlineAssembly 11: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "array/copying/dirty_memory_bytes_to_storage_copy_ir.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "array/copying/dirty_memory_bytes_to_storage_copy_ir.sol"
     },
@@ -3797,14 +3824,13 @@
       "test": "array/copying/elements_of_nested_array_of_structs_memory_to_storage.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "arrays",
-        "bytes push and pop",
-        "inline assembly"
+        "bytes push and pop"
       ],
-      "first": "inline assembly",
-      "reason": "array/copying/empty_bytes_copy.sol: InlineAssembly 69: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "array/copying/empty_bytes_copy.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/copying/empty_bytes_copy.sol"
     },
@@ -4241,14 +4267,13 @@
       "test": "array/delete/bytes_delete_element.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "bytes push and pop",
-        "inline assembly",
         "operator delete"
       ],
-      "first": "inline assembly",
-      "reason": "array/delete/delete_bytes_array.sol: InlineAssembly 22: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "array/delete/delete_bytes_array.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/delete/delete_bytes_array.sol"
     },
@@ -4257,7 +4282,8 @@
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "memory arrays (new T[](n))",
         "operator delete"
       ],
@@ -4292,26 +4318,24 @@
       "test": "array/delete/delete_removes_bytes_data.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
-        "inline assembly",
         "operator delete"
       ],
-      "first": "inline assembly",
-      "reason": "array/delete/delete_storage_array.sol: InlineAssembly 23: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "array/delete/delete_storage_array.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/delete/delete_storage_array.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
-        "inline assembly",
         "operator delete"
       ],
-      "first": "inline assembly",
-      "reason": "array/delete/delete_storage_array_packed.sol: InlineAssembly 33: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "array/delete/delete_storage_array_packed.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/delete/delete_storage_array_packed.sol"
     },
@@ -4706,25 +4730,24 @@
       "features": [
         "abi.* functions",
         "bytes push and pop",
-        "inline assembly",
         "operator delete"
       ],
-      "first": "inline assembly",
-      "reason": "array/invalid_encoding_for_storage_byte_array.sol: InlineAssembly 8: unsupported statement InlineAssembly",
+      "first": "abi.* functions",
+      "reason": "array/invalid_encoding_for_storage_byte_array.sol: MemberAccess 35: unsupported built-in member encodePacked",
       "scan_agrees": true,
       "test": "array/invalid_encoding_for_storage_byte_array.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "bytes push and pop",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "operator delete",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "array/long_byte_array_cleanup_after_delete.sol: InlineAssembly 11: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "array/long_byte_array_cleanup_after_delete.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/long_byte_array_cleanup_after_delete.sol"
     },
@@ -4732,13 +4755,13 @@
       "category": "import-rejected",
       "features": [
         "bytes push and pop",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "new bytes and string",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "array/long_byte_array_cleanup_after_overwrite_with_long.sol: InlineAssembly 11: unsupported statement InlineAssembly",
+      "first": "new bytes and string",
+      "reason": "array/long_byte_array_cleanup_after_overwrite_with_long.sol: NewExpression 71: unsupported expression NewExpression",
       "scan_agrees": true,
       "test": "array/long_byte_array_cleanup_after_overwrite_with_long.sol"
     },
@@ -4882,13 +4905,12 @@
       "test": "array/pop/byte_array_pop_long_storage_empty.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "bytes push and pop",
-        "inline assembly"
+        "bytes push and pop"
       ],
-      "first": "inline assembly",
-      "reason": "array/pop/byte_array_pop_long_storage_empty_garbage_ref.sol: InlineAssembly 36: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "array/pop/byte_array_pop_long_storage_empty_garbage_ref.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/pop/byte_array_pop_long_storage_empty_garbage_ref.sol"
     },
@@ -5318,11 +5340,10 @@
         "bytes.concat and string.concat",
         "free functions",
         "hash and signature built-ins",
-        "inline assembly",
         "type names as values"
       ],
-      "first": "inline assembly",
-      "reason": "builtinFunctions/erc7201_layout_specifier_slot_match_comptime.sol: InlineAssembly 55: unsupported statement InlineAssembly",
+      "first": "free functions",
+      "reason": "builtinFunctions/erc7201_layout_specifier_slot_match_comptime.sol: FunctionDefinition 41: unsupported source unit member FunctionDefinition",
       "scan_agrees": true,
       "test": "builtinFunctions/erc7201_layout_specifier_slot_match_comptime.sol"
     },
@@ -5718,7 +5739,8 @@
         "array values",
         "arrays",
         "bytes push and pop",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "memory arrays (new T[](n))",
         "new bytes and string"
       ],
@@ -5728,13 +5750,12 @@
       "test": "cleanup/byte_array_to_storage_cleanup.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
         "literals of non-integer types"
       ],
-      "first": "inline assembly",
-      "reason": "cleanup/cleanup_address_types_shortening.sol: InlineAssembly 12: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "cleanup/cleanup_address_types_shortening.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "cleanup/cleanup_address_types_shortening.sol"
     },
@@ -5765,13 +5786,12 @@
       "test": "cleanup/cleanup_bytes_types_shortening_OldCodeGen.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly",
         "literals of non-integer types"
       ],
-      "first": "inline assembly",
-      "reason": "cleanup/cleanup_bytes_types_shortening_newCodeGen.sol: InlineAssembly 16: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "cleanup/cleanup_bytes_types_shortening_newCodeGen.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "cleanup/cleanup_bytes_types_shortening_newCodeGen.sol"
     },
@@ -5803,25 +5823,23 @@
       "test": "cleanup/cleanup_in_compound_assign.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "constant expressions over literals",
-        "inline assembly"
+        "constant expressions over literals"
       ],
-      "first": "inline assembly",
-      "reason": "cleanup/dirty_calldata_bytes.sol: InlineAssembly 16: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "cleanup/dirty_calldata_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "cleanup/dirty_calldata_bytes.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "arrays",
-        "inline assembly",
         "local reference bindings"
       ],
-      "first": "inline assembly",
-      "reason": "cleanup/dirty_calldata_dynamic_array.sol: InlineAssembly 23: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "cleanup/dirty_calldata_dynamic_array.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "cleanup/dirty_calldata_dynamic_array.sol"
     },
@@ -5858,22 +5876,18 @@
       "test": "cleanup/exp_cleanup_smaller_base.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "cleanup/indexed_log_topic_during_explicit_downcast.sol: InlineAssembly 15: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "cleanup/indexed_log_topic_during_explicit_downcast.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "cleanup/indexed_log_topic_during_explicit_downcast_during_emissions.sol: InlineAssembly 24: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "cleanup/indexed_log_topic_during_explicit_downcast_during_emissions.sol"
     },
@@ -5902,7 +5916,7 @@
       "category": "import-rejected",
       "features": [
         "constants",
-        "inline assembly",
+        "inline assembly memory references",
         "literals of non-integer types"
       ],
       "first": "constants",
@@ -5914,11 +5928,11 @@
       "category": "import-rejected",
       "features": [
         "constants",
-        "inline assembly",
+        "inline assembly memory references",
         "literals of non-integer types"
       ],
-      "first": "inline assembly",
-      "reason": "constants/asm_constant_file_level.sol: InlineAssembly 8: unsupported statement InlineAssembly",
+      "first": "constants",
+      "reason": "constants/asm_constant_file_level.sol: VariableDeclaration 3: unsupported source unit member VariableDeclaration",
       "scan_agrees": true,
       "test": "constants/asm_constant_file_level.sol"
     },
@@ -6146,11 +6160,13 @@
       "category": "import-rejected",
       "features": [
         "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
       "first": "inline assembly",
-      "reason": "constructor/callvalue_check.sol: InlineAssembly 35: unsupported statement InlineAssembly",
+      "reason": "constructor/callvalue_check.sol: InlineAssembly 35: YulFunctionCall: call to create, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "constructor/callvalue_check.sol"
     },
@@ -6413,24 +6429,24 @@
       "category": "import-rejected",
       "features": [
         "free functions",
-        "inline assembly",
+        "inline assembly calls, gas, return data and code",
         "structs",
         "using for"
       ],
-      "first": "inline assembly",
-      "reason": "deployedCodeExclusion/bound_function.sol: InlineAssembly 42: unsupported statement InlineAssembly",
+      "first": "using for",
+      "reason": "deployedCodeExclusion/bound_function.sol: UsingForDirective 18: unsupported source unit member UsingForDirective",
       "scan_agrees": true,
       "test": "deployedCodeExclusion/bound_function.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
+        "inline assembly calls, gas, return data and code",
         "libraries",
         "library calls and contract-name members"
       ],
-      "first": "inline assembly",
-      "reason": "deployedCodeExclusion/library_function.sol: InlineAssembly 29: unsupported statement InlineAssembly",
+      "first": "libraries",
+      "reason": "deployedCodeExclusion/library_function.sol: ContractDefinition 9: unsupported contract kind library",
       "scan_agrees": true,
       "test": "deployedCodeExclusion/library_function.sol"
     },
@@ -6454,11 +6470,11 @@
       "features": [
         "free functions",
         "imports",
-        "inline assembly",
+        "inline assembly calls, gas, return data and code",
         "source units without exactly one contract"
       ],
-      "first": "inline assembly",
-      "reason": "main.sol: InlineAssembly 21: unsupported statement InlineAssembly",
+      "first": "free functions",
+      "reason": "mod.sol: FunctionDefinition 38: unsupported source unit member FunctionDefinition",
       "scan_agrees": true,
       "test": "deployedCodeExclusion/module_function.sol"
     },
@@ -6479,13 +6495,13 @@
       "test": "deployedCodeExclusion/module_function_deployed.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
+        "inline assembly calls, gas, return data and code",
         "library calls and contract-name members"
       ],
-      "first": "inline assembly",
-      "reason": "deployedCodeExclusion/static_base_function.sol: InlineAssembly 31: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "deployedCodeExclusion/static_base_function.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "deployedCodeExclusion/static_base_function.sol"
     },
@@ -6508,7 +6524,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly calls, gas, return data and code",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
@@ -6520,7 +6536,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
+        "inline assembly calls, gas, return data and code",
         "super calls"
       ],
       "first": "super calls",
@@ -6543,12 +6559,12 @@
       "test": "deployedCodeExclusion/super_function_deployed.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly calls, gas, return data and code"
       ],
-      "first": "inline assembly",
-      "reason": "deployedCodeExclusion/virtual_function.sol: InlineAssembly 39: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "deployedCodeExclusion/virtual_function.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "deployedCodeExclusion/virtual_function.sol"
     },
@@ -6600,10 +6616,10 @@
       "category": "import-rejected",
       "features": [
         "hash and signature built-ins",
-        "inline assembly"
+        "inline assembly memory outside the scratch space"
       ],
-      "first": "inline assembly",
-      "reason": "ecrecover/failing_ecrecover_invalid_input_asm.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "first": "hash and signature built-ins",
+      "reason": "ecrecover/failing_ecrecover_invalid_input_asm.sol: Identifier 6: unsupported built-in declaration ~6",
       "scan_agrees": true,
       "test": "ecrecover/failing_ecrecover_invalid_input_asm.sol"
     },
@@ -6677,7 +6693,7 @@
       "category": "import-rejected",
       "features": [
         "enums",
-        "inline assembly"
+        "inline assembly memory references"
       ],
       "first": "enums",
       "reason": "enums/invalid_enum_logged.sol: EnumDefinition 3: unsupported contract member",
@@ -6901,13 +6917,12 @@
       "test": "errors/require_error_condition_evaluated_only_once_revert_strings_strip.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
         "require with a custom error"
       ],
-      "first": "inline assembly",
-      "reason": "errors/require_error_evaluation_order_1.sol: InlineAssembly 9: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "errors/require_error_evaluation_order_1.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "errors/require_error_evaluation_order_1.sol"
     },
@@ -7215,13 +7230,12 @@
       "test": "events/emit_two_identical_events.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly",
         "literals of non-integer types"
       ],
-      "first": "inline assembly",
-      "reason": "events/event.sol: InlineAssembly 30: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "events/event.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "events/event.sol"
     },
@@ -7677,33 +7691,28 @@
       "test": "exponentiation/literal_base.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "constant expressions over literals",
-        "inline assembly"
+        "constant expressions over literals"
       ],
-      "first": "inline assembly",
-      "reason": "exponentiation/signed_base.sol: InlineAssembly 18: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "exponentiation/signed_base.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "exponentiation/signed_base.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "exponentiation/small_exp.sol: InlineAssembly 11: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "exponentiation/small_exp.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "expressions/bit_operators.sol: InlineAssembly 19: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "expressions/bit_operators.sol"
     },
@@ -7920,7 +7929,8 @@
       "features": [
         "conditional expressions",
         "constants",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "libraries",
         "library calls and contract-name members",
         "literals of non-integer types",
@@ -7957,6 +7967,7 @@
         "constant expressions over literals",
         "constants",
         "inline assembly",
+        "inline assembly memory references",
         "libraries",
         "library calls and contract-name members",
         "source units without exactly one contract",
@@ -7974,6 +7985,7 @@
         "constant expressions over literals",
         "constants",
         "inline assembly",
+        "inline assembly memory references",
         "libraries",
         "library calls and contract-name members",
         "source units without exactly one contract",
@@ -7992,6 +8004,7 @@
         "constants",
         "free functions",
         "inline assembly",
+        "inline assembly memory references",
         "libraries",
         "library calls and contract-name members",
         "source units without exactly one contract",
@@ -8010,7 +8023,8 @@
         "array values",
         "arrays",
         "inline arrays",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "libraries",
         "library calls and contract-name members",
         "members of elementary type names",
@@ -8035,7 +8049,8 @@
         "conditional expressions",
         "constant expressions over literals",
         "fixed-size bytes members and indexing",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "libraries",
         "literals of non-integer types",
         "memory arrays (new T[](n))",
@@ -8654,8 +8669,7 @@
       "category": "import-rejected",
       "features": [
         "function members (selector, address, \u2026)",
-        "function types",
-        "inline assembly"
+        "function types"
       ],
       "first": "function types",
       "reason": "functionCall/calling_uninitialized_function_in_detail.sol: FunctionTypeName 5: unsupported type name FunctionTypeName",
@@ -8666,11 +8680,10 @@
       "category": "import-rejected",
       "features": [
         "arrays",
-        "function types",
-        "inline assembly"
+        "function types"
       ],
-      "first": "inline assembly",
-      "reason": "functionCall/calling_uninitialized_function_through_array.sol: InlineAssembly 10: unsupported statement InlineAssembly",
+      "first": "function types",
+      "reason": "functionCall/calling_uninitialized_function_through_array.sol: FunctionTypeName 21: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "functionCall/calling_uninitialized_function_through_array.sol"
     },
@@ -9071,7 +9084,7 @@
         "arrays",
         "contract creation (new C)",
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -9093,7 +9106,7 @@
         "arrays",
         "contract creation (new C)",
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -9808,7 +9821,6 @@
         "function types",
         "functions as values",
         "immutables",
-        "inline assembly",
         "string literals as fixed-size bytes"
       ],
       "first": "immutables",
@@ -9820,7 +9832,7 @@
       "category": "import-rejected",
       "features": [
         "immutables",
-        "inline assembly"
+        "inline assembly memory outside the scratch space"
       ],
       "first": "immutables",
       "reason": "immutable/immutable_tag_too_large_bug.sol: VariableDeclaration 3: immutable variables are not supported",
@@ -10359,7 +10371,7 @@
         "inline assembly"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/blobhash.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/blobhash.sol: InlineAssembly 5: YulFunctionCall: call to blobhash, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "inlineAssembly/blobhash.sol"
     },
@@ -10369,7 +10381,7 @@
         "inline assembly"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/blobhash_index_exceeding_blob_count.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/blobhash_index_exceeding_blob_count.sol: InlineAssembly 5: YulFunctionCall: call to blobhash, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "inlineAssembly/blobhash_index_exceeding_blob_count.sol"
     },
@@ -10387,23 +10399,24 @@
         "array values",
         "arrays",
         "inline assembly",
+        "inline assembly memory references",
         "local reference bindings"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/calldata_array_assign_dynamic.sol: InlineAssembly 13: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/calldata_array_assign_dynamic.sol: InlineAssembly 13: unsupported reference x.length",
       "scan_agrees": true,
       "test": "inlineAssembly/calldata_array_assign_dynamic.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/calldata_array_assign_static.sol: InlineAssembly 15: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "inlineAssembly/calldata_array_assign_static.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "inlineAssembly/calldata_array_assign_static.sol"
     },
@@ -10413,30 +10426,33 @@
         "array values",
         "arrays",
         "inline assembly",
+        "inline assembly memory references",
         "local reference bindings"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/calldata_array_read.sol: InlineAssembly 14: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/calldata_array_read.sol: InlineAssembly 14: unsupported reference x.length",
       "scan_agrees": true,
       "test": "inlineAssembly/calldata_array_read.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly",
+        "inline assembly memory references"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/calldata_assign.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/calldata_assign.sol: InlineAssembly 7: unsupported reference x.length",
       "scan_agrees": true,
       "test": "inlineAssembly/calldata_assign.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly",
+        "inline assembly memory references"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/calldata_assign_from_nowhere.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/calldata_assign_from_nowhere.sol: InlineAssembly 5: unsupported reference x.length",
       "scan_agrees": true,
       "test": "inlineAssembly/calldata_assign_from_nowhere.sol"
     },
@@ -10446,39 +10462,41 @@
         "inline assembly"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/calldata_length_read.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/calldata_length_read.sol: InlineAssembly 7: unsupported reference x.length",
       "scan_agrees": true,
       "test": "inlineAssembly/calldata_length_read.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly",
+        "inline assembly memory references"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/calldata_offset_read.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/calldata_offset_read.sol: InlineAssembly 22: unsupported reference x.length",
       "scan_agrees": true,
       "test": "inlineAssembly/calldata_offset_read.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly",
+        "inline assembly memory references"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/calldata_offset_read_write.sol: InlineAssembly 13: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/calldata_offset_read_write.sol: InlineAssembly 13: unsupported reference x.length",
       "scan_agrees": true,
       "test": "inlineAssembly/calldata_offset_read_write.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/calldata_struct_assign.sol: InlineAssembly 22: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "inlineAssembly/calldata_struct_assign.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "inlineAssembly/calldata_struct_assign.sol"
     },
@@ -10487,22 +10505,20 @@
       "features": [
         "abi.* functions",
         "array slices",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/calldata_struct_assign_and_return.sol: InlineAssembly 12: unsupported statement InlineAssembly",
+      "first": "array slices",
+      "reason": "inlineAssembly/calldata_struct_assign_and_return.sol: IndexRangeAccess 56: unsupported expression IndexRangeAccess",
       "scan_agrees": true,
       "test": "inlineAssembly/calldata_struct_assign_and_return.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/chainid.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/chainid.sol"
     },
@@ -10512,7 +10528,7 @@
         "inline assembly"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/clz.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/clz.sol: InlineAssembly 5: YulFunctionCall: call to clz, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "inlineAssembly/clz.sol"
     },
@@ -10528,7 +10544,7 @@
       "category": "import-rejected",
       "features": [
         "constants",
-        "inline assembly",
+        "inline assembly memory references",
         "literals of non-integer types",
         "string literals as fixed-size bytes"
       ],
@@ -10541,7 +10557,7 @@
       "category": "import-rejected",
       "features": [
         "constants",
-        "inline assembly",
+        "inline assembly memory references",
         "literals of non-integer types",
         "string literals as fixed-size bytes"
       ],
@@ -10616,52 +10632,42 @@
       "test": "inlineAssembly/external_function_pointer_selector_assignment.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/external_identifier_access_shadowing.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/external_identifier_access_shadowing.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/for_loop_break.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/for_loop_break.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/for_loop_continue.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/for_loop_continue.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/for_loop_nested.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/for_loop_nested.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/function_name_clash.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/function_name_clash.sol"
     },
@@ -10671,84 +10677,71 @@
         "inline assembly"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_embedded_function_call.sol: InlineAssembly 3: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/inline_assembly_embedded_function_call.sol: InlineAssembly 3: YulFunctionCall: call to g, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_embedded_function_call.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_for.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_for.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_for2.sol: InlineAssembly 17: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_for2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_function_call.sol: InlineAssembly 3: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_function_call.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_function_call2.sol: InlineAssembly 3: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_function_call2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_function_call_assignment.sol: InlineAssembly 3: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_function_call_assignment.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_if.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_if.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_in_modifiers.sol: InlineAssembly 6: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_in_modifiers.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "new bytes and string"
       ],
       "first": "new bytes and string",
@@ -10757,190 +10750,165 @@
       "test": "inlineAssembly/inline_assembly_memory_access.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_read_and_write_stack.sol: InlineAssembly 15: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_read_and_write_stack.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_recursion.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_recursion.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_storage_access.sol: InlineAssembly 17: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_storage_access.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_storage_access_inside_function.sol: InlineAssembly 17: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_storage_access_inside_function.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_storage_access_local_var.sol: InlineAssembly 18: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "inlineAssembly/inline_assembly_storage_access_local_var.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_storage_access_local_var.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "public state variables",
         "struct values and copying",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_storage_access_via_pointer.sol: InlineAssembly 23: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "inlineAssembly/inline_assembly_storage_access_via_pointer.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_storage_access_via_pointer.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_switch.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_switch.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
         "transient storage"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_transient_storage_access_inside_function.sol: InlineAssembly 14: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "inlineAssembly/inline_assembly_transient_storage_access_inside_function.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_transient_storage_access_inside_function.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inline_assembly_write_to_stack.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_write_to_stack.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/inlineasm_empty_let.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/inlineasm_empty_let.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/keccak256_assembly.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/keccak256_assembly.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/keccak256_optimization.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/keccak256_optimization.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/keccak256_optimizer_bug_different_memory_location.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/keccak256_optimizer_bug_different_memory_location.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/keccak256_optimizer_cache_bug.sol: InlineAssembly 8: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/keccak256_optimizer_cache_bug.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/keccak_optimization_bug_string.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "inlineAssembly/keccak_optimization_bug_string.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "inlineAssembly/keccak_optimization_bug_string.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/keccak_yul_optimization.sol: InlineAssembly 13: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/keccak_yul_optimization.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/leave.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/leave.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/mcopy.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "inlineAssembly/mcopy.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "inlineAssembly/mcopy.sol"
     },
@@ -10953,12 +10921,13 @@
       "test": "inlineAssembly/mcopy_as_identifier_pre_cancun.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/mcopy_empty.sol: InlineAssembly 11: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "inlineAssembly/mcopy_empty.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "inlineAssembly/mcopy_empty.sol"
     },
@@ -10966,7 +10935,8 @@
       "category": "import-rejected",
       "features": [
         "free functions",
-        "inline assembly"
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references"
       ],
       "first": "free functions",
       "reason": "inlineAssembly/mcopy_overlap.sol: FunctionDefinition 17: unsupported source unit member FunctionDefinition",
@@ -10974,22 +10944,22 @@
       "test": "inlineAssembly/mcopy_overlap.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly memory outside the scratch space"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/optimize_memory_store_multi_block.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "inlineAssembly/optimize_memory_store_multi_block.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "inlineAssembly/optimize_memory_store_multi_block.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly memory outside the scratch space"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/optimize_memory_store_multi_block_bugreport.sol: InlineAssembly 21: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "inlineAssembly/optimize_memory_store_multi_block_bugreport.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "inlineAssembly/optimize_memory_store_multi_block_bugreport.sol"
     },
@@ -10999,17 +10969,17 @@
         "inline assembly"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/prevrandao.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/prevrandao.sol: InlineAssembly 5: YulFunctionCall: call to prevrandao, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "inlineAssembly/prevrandao.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly calls, gas, return data and code"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/returndatacopy_using_stale_returndatasize.sol: InlineAssembly 15: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "inlineAssembly/returndatacopy_using_stale_returndatasize.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "inlineAssembly/returndatacopy_using_stale_returndatasize.sol"
     },
@@ -11019,17 +10989,15 @@
         "inline assembly"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/selfbalance.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/selfbalance.sol: InlineAssembly 5: YulFunctionCall: call to selfbalance, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "inlineAssembly/selfbalance.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/shadowing_local_function_opcode.sol: InlineAssembly 26: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/shadowing_local_function_opcode.sol"
     },
@@ -11038,7 +11006,7 @@
       "features": [
         "abi.* functions",
         "hash and signature built-ins",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "public state variables",
         "struct values and copying",
@@ -11050,25 +11018,23 @@
       "test": "inlineAssembly/slot_access.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "mapping values",
         "mappings"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/slot_access_via_mapping_pointer.sol: InlineAssembly 39: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "inlineAssembly/slot_access_via_mapping_pointer.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "inlineAssembly/slot_access_via_mapping_pointer.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/slotnum_pre_amsterdam_function.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/slotnum_pre_amsterdam_function.sol"
     },
@@ -11081,12 +11047,10 @@
       "test": "inlineAssembly/tload_tstore_not_reserved_before_cancun.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/transient_storage_creation.sol: InlineAssembly 6: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/transient_storage_creation.sol"
     },
@@ -11098,14 +11062,13 @@
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
         "external calls and contract members",
-        "inline assembly",
         "members of elementary type names",
         "source units without exactly one contract",
         "this",
         "type names as values"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/transient_storage_low_level_calls.sol: InlineAssembly 18: unsupported statement InlineAssembly",
+      "first": "external calls and contract members",
+      "reason": "inlineAssembly/transient_storage_low_level_calls.sol: Identifier 32: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "inlineAssembly/transient_storage_low_level_calls.sol"
     },
@@ -11113,41 +11076,36 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "inline assembly",
         "this"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/transient_storage_multiple_calls_different_transactions.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "first": "external calls and contract members",
+      "reason": "inlineAssembly/transient_storage_multiple_calls_different_transactions.sol: Identifier 22: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "inlineAssembly/transient_storage_multiple_calls_different_transactions.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/transient_storage_multiple_transactions.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/transient_storage_multiple_transactions.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/transient_storage_reset_between_creation_runtime.sol: InlineAssembly 6: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/transient_storage_reset_between_creation_runtime.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly memory outside the scratch space"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/transient_storage_sanity_checks.sol: InlineAssembly 3: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "inlineAssembly/transient_storage_sanity_checks.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "inlineAssembly/transient_storage_sanity_checks.sol"
     },
@@ -11157,7 +11115,6 @@
         "built-in selfdestruct",
         "contract creation (new C)",
         "external calls and contract members",
-        "inline assembly",
         "public state variables",
         "source units without exactly one contract"
       ],
@@ -11167,12 +11124,10 @@
       "test": "inlineAssembly/transient_storage_selfdestruct.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/transient_storage_simple_reentrancy_lock.sol: InlineAssembly 2: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/transient_storage_simple_reentrancy_lock.sol"
     },
@@ -11182,7 +11137,7 @@
         "inline assembly"
       ],
       "first": "inline assembly",
-      "reason": "inlineAssembly/truefalse.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "reason": "inlineAssembly/truefalse.sol: InlineAssembly 7: YulLiteral: unsupported literal kind bool",
       "scan_agrees": true,
       "test": "inlineAssembly/truefalse.sol"
     },
@@ -11193,11 +11148,11 @@
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
-        "inline assembly",
+        "inline assembly memory references",
         "this"
       ],
-      "first": "inline assembly",
-      "reason": "inlineAssembly/tstore_hidden_staticcall.sol: InlineAssembly 3: unsupported statement InlineAssembly",
+      "first": "function types",
+      "reason": "inlineAssembly/tstore_hidden_staticcall.sol: FunctionTypeName 10: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "inlineAssembly/tstore_hidden_staticcall.sol"
     },
@@ -11994,15 +11949,14 @@
         "arrays",
         "conditional expressions",
         "function members (selector, address, \u2026)",
-        "inline assembly",
         "libraries",
         "library calls and contract-name members",
         "local reference bindings",
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "inline assembly",
-      "reason": "libraries/library_delegatecall_guard_pure.sol: InlineAssembly 48: unsupported statement InlineAssembly",
+      "first": "function members (selector, address, \u2026)",
+      "reason": "libraries/library_delegatecall_guard_pure.sol: MemberAccess 62: unsupported built-in member",
       "scan_agrees": true,
       "test": "libraries/library_delegatecall_guard_pure.sol"
     },
@@ -12015,15 +11969,14 @@
         "arrays",
         "conditional expressions",
         "function members (selector, address, \u2026)",
-        "inline assembly",
         "libraries",
         "library calls and contract-name members",
         "local reference bindings",
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "inline assembly",
-      "reason": "libraries/library_delegatecall_guard_view_needed.sol: InlineAssembly 49: unsupported statement InlineAssembly",
+      "first": "function members (selector, address, \u2026)",
+      "reason": "libraries/library_delegatecall_guard_view_needed.sol: MemberAccess 63: unsupported built-in member",
       "scan_agrees": true,
       "test": "libraries/library_delegatecall_guard_view_needed.sol"
     },
@@ -12036,15 +11989,14 @@
         "arrays",
         "conditional expressions",
         "function members (selector, address, \u2026)",
-        "inline assembly",
         "libraries",
         "library calls and contract-name members",
         "local reference bindings",
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "inline assembly",
-      "reason": "libraries/library_delegatecall_guard_view_not_needed.sol: InlineAssembly 46: unsupported statement InlineAssembly",
+      "first": "function members (selector, address, \u2026)",
+      "reason": "libraries/library_delegatecall_guard_view_not_needed.sol: MemberAccess 60: unsupported built-in member",
       "scan_agrees": true,
       "test": "libraries/library_delegatecall_guard_view_not_needed.sol"
     },
@@ -12101,7 +12053,6 @@
         "arrays",
         "function members (selector, address, \u2026)",
         "hash and signature built-ins",
-        "inline assembly",
         "libraries",
         "library calls and contract-name members",
         "local reference bindings",
@@ -12121,7 +12072,6 @@
         "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "hash and signature built-ins",
-        "inline assembly",
         "libraries",
         "library calls and contract-name members",
         "local reference bindings",
@@ -12129,8 +12079,8 @@
         "structs",
         "type names as values"
       ],
-      "first": "inline assembly",
-      "reason": "libraries/library_function_selectors_struct.sol: InlineAssembly 54: unsupported statement InlineAssembly",
+      "first": "function members (selector, address, \u2026)",
+      "reason": "libraries/library_function_selectors_struct.sol: MemberAccess 68: unsupported built-in member",
       "scan_agrees": true,
       "test": "libraries/library_function_selectors_struct.sol"
     },
@@ -12151,14 +12101,14 @@
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
+        "inline assembly memory references",
         "libraries",
         "library calls and contract-name members",
         "local reference bindings",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "libraries/library_return_struct_with_mapping.sol: InlineAssembly 29: unsupported statement InlineAssembly",
+      "first": "libraries",
+      "reason": "libraries/library_return_struct_with_mapping.sol: ContractDefinition 15: unsupported contract kind library",
       "scan_agrees": true,
       "test": "libraries/library_return_struct_with_mapping.sol"
     },
@@ -12445,12 +12395,10 @@
       "test": "literals/gwei.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "literals/hex_string_with_non_printable_characters.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "literals/hex_string_with_non_printable_characters.sol"
     },
@@ -12495,13 +12443,13 @@
       "test": "literals/wei.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "arrays",
-        "inline assembly"
+        "inline assembly memory references"
       ],
-      "first": "inline assembly",
-      "reason": "memoryManagement/assembly_access.sol: InlineAssembly 12: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "memoryManagement/assembly_access.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "memoryManagement/assembly_access.sol"
     },
@@ -12516,38 +12464,38 @@
       "test": "memoryManagement/memory_types_initialisation.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "inline assembly"
+        "inline assembly memory outside the scratch space"
       ],
-      "first": "inline assembly",
-      "reason": "memoryManagement/return_variable.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "memoryManagement/return_variable.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "memoryManagement/return_variable.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "inline assembly"
+        "inline assembly memory outside the scratch space"
       ],
-      "first": "inline assembly",
-      "reason": "memoryManagement/static_memory_array_allocation.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "memoryManagement/static_memory_array_allocation.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "memoryManagement/static_memory_array_allocation.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
         "struct values and copying",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "memoryManagement/struct_allocation.sol: InlineAssembly 12: unsupported statement InlineAssembly",
+      "first": "structs",
+      "reason": "memoryManagement/struct_allocation.sol: FunctionCall 26: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "memoryManagement/struct_allocation.sol"
     },
@@ -13027,32 +12975,26 @@
       "test": "operators/compound_assign_transient_storage.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "operators/shifts/bitwise_shifting_constantinople.sol: InlineAssembly 9: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "operators/shifts/bitwise_shifting_constantinople.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "operators/shifts/bitwise_shifting_constantinople_combined.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "operators/shifts/bitwise_shifting_constantinople_combined.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "operators/shifts/bitwise_shifting_constants_constantinople.sol: InlineAssembly 8: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "operators/shifts/bitwise_shifting_constants_constantinople.sol"
     },
@@ -13065,12 +13007,10 @@
       "test": "operators/shifts/shift_bytes_cleanup.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "operators/shifts/shift_bytes_cleanup_viaYul.sol: InlineAssembly 10: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "operators/shifts/shift_bytes_cleanup_viaYul.sol"
     },
@@ -13083,12 +13023,10 @@
       "test": "operators/shifts/shift_cleanup.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "operators/shifts/shift_cleanup_garbled.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "operators/shifts/shift_cleanup_garbled.sol"
     },
@@ -13229,12 +13167,10 @@
       "test": "operators/shifts/shift_right_garbled_signed_v1.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "operators/shifts/shift_right_garbled_signed_v2.sol: InlineAssembly 10: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "operators/shifts/shift_right_garbled_signed_v2.sol"
     },
@@ -13247,12 +13183,10 @@
       "test": "operators/shifts/shift_right_garbled_v1.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "operators/shifts/shift_right_garbled_v2.sol: InlineAssembly 10: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "operators/shifts/shift_right_garbled_v2.sol"
     },
@@ -13379,12 +13313,10 @@
       "test": "operators/shifts/shift_underflow_negative_rvalue.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "operators/shifts/shifts.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "operators/shifts/shifts.sol"
     },
@@ -13531,7 +13463,8 @@
         "contract creation (new C)",
         "external calls and contract members",
         "free functions",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "source units without exactly one contract",
         "user-defined value types",
         "using for"
@@ -13548,7 +13481,8 @@
         "contract creation (new C)",
         "external calls and contract members",
         "free functions",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "source units without exactly one contract",
         "user-defined value types",
         "using for"
@@ -13562,7 +13496,7 @@
       "category": "import-rejected",
       "features": [
         "free functions",
-        "inline assembly",
+        "inline assembly memory references",
         "user-defined value types",
         "using for"
       ],
@@ -13575,7 +13509,7 @@
       "category": "import-rejected",
       "features": [
         "free functions",
-        "inline assembly",
+        "inline assembly memory references",
         "user-defined value types",
         "using for"
       ],
@@ -13602,7 +13536,7 @@
       "category": "import-rejected",
       "features": [
         "free functions",
-        "inline assembly",
+        "inline assembly memory references",
         "user-defined value types",
         "using for"
       ],
@@ -13636,23 +13570,20 @@
       "test": "operators/userDefined/unchecked_operators.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "constant expressions over literals",
-        "inline assembly"
+        "constant expressions over literals"
       ],
-      "first": "inline assembly",
-      "reason": "optimizer/shift_bytes.sol: InlineAssembly 20: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "optimizer/shift_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "optimizer/shift_bytes.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "optimizer/unused_store_storage_removal_bug.sol: InlineAssembly 27: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "optimizer/unused_store_storage_removal_bug.sol"
     },
@@ -13901,7 +13832,7 @@
       "features": [
         "enums",
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory references",
         "this"
       ],
       "first": "enums",
@@ -13913,7 +13844,7 @@
       "category": "import-rejected",
       "features": [
         "enums",
-        "inline assembly"
+        "inline assembly memory references"
       ],
       "first": "enums",
       "reason": "reverts/invalid_enum_as_external_ret.sol: EnumDefinition 3: unsupported contract member",
@@ -13924,7 +13855,7 @@
       "category": "import-rejected",
       "features": [
         "enums",
-        "inline assembly"
+        "inline assembly memory references"
       ],
       "first": "enums",
       "reason": "reverts/invalid_enum_compared.sol: EnumDefinition 3: unsupported contract member",
@@ -13935,7 +13866,7 @@
       "category": "import-rejected",
       "features": [
         "enums",
-        "inline assembly",
+        "inline assembly memory references",
         "public state variables"
       ],
       "first": "enums",
@@ -13949,27 +13880,25 @@
         "inline assembly"
       ],
       "first": "inline assembly",
-      "reason": "reverts/invalid_instruction.sol: InlineAssembly 3: unsupported statement InlineAssembly",
+      "reason": "reverts/invalid_instruction.sol: InlineAssembly 3: YulFunctionCall: call to invalid, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "reverts/invalid_instruction.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "reverts/revert.sol: InlineAssembly 21: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "reverts/revert.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly calls, gas, return data and code"
       ],
-      "first": "inline assembly",
-      "reason": "reverts/revert_return_area.sol: InlineAssembly 22: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "reverts/revert_return_area.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "reverts/revert_return_area.sol"
     },
@@ -14040,7 +13969,7 @@
         "contract creation (new C)",
         "external calls and contract members",
         "immutables",
-        "inline assembly",
+        "inline assembly halts in a constructor",
         "source units without exactly one contract"
       ],
       "first": "immutables",
@@ -14200,12 +14129,10 @@
       "test": "state/blobhash.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "state/block_basefee.sol: InlineAssembly 14: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "state/block_basefee.sol"
     },
@@ -14482,14 +14409,13 @@
       "test": "storage/delete_overlapping_transient_after_storage_array_delete_different_base_type.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
         "operator delete",
         "transient storage"
       ],
-      "first": "inline assembly",
-      "reason": "storage/delete_overlapping_transient_after_storage_array_pop_same_base_type.sol: InlineAssembly 42: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "storage/delete_overlapping_transient_after_storage_array_pop_same_base_type.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storage/delete_overlapping_transient_after_storage_array_pop_same_base_type.sol"
     },
@@ -14754,25 +14680,25 @@
         "array values",
         "arrays",
         "inline arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "operator delete"
       ],
-      "first": "inline assembly",
-      "reason": "storage/storage_boundary_array_and_partial_assignment_with_layout.sol: InlineAssembly 17: unsupported statement InlineAssembly",
+      "first": "inline arrays",
+      "reason": "storage/storage_boundary_array_and_partial_assignment_with_layout.sol: TupleExpression 73: inline arrays are not supported",
       "scan_agrees": true,
       "test": "storage/storage_boundary_array_and_partial_assignment_with_layout.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings"
       ],
-      "first": "inline assembly",
-      "reason": "storage/storage_boundary_array_assignment.sol: InlineAssembly 9: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "storage/storage_boundary_array_assignment.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storage/storage_boundary_array_assignment.sol"
     },
@@ -14782,7 +14708,7 @@
         "array values",
         "arrays",
         "inline arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "operator delete"
       ],
@@ -14792,30 +14718,30 @@
       "test": "storage/storage_boundary_array_copy.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "operator delete"
       ],
-      "first": "inline assembly",
-      "reason": "storage/storage_boundary_array_delete.sol: InlineAssembly 9: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "storage/storage_boundary_array_delete.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storage/storage_boundary_array_delete.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "operator delete"
       ],
-      "first": "inline assembly",
-      "reason": "storage/storage_boundary_array_delete_overlapping_variable.sol: InlineAssembly 12: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "storage/storage_boundary_array_delete_overlapping_variable.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storage/storage_boundary_array_delete_overlapping_variable.sol"
     },
@@ -14825,13 +14751,13 @@
         "array values",
         "arrays",
         "inline arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "operator delete",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "storage/storage_boundary_array_packing_not_overlapping_variable.sol: InlineAssembly 32: unsupported statement InlineAssembly",
+      "first": "inline arrays",
+      "reason": "storage/storage_boundary_array_packing_not_overlapping_variable.sol: TupleExpression 101: inline arrays are not supported",
       "scan_agrees": true,
       "test": "storage/storage_boundary_array_packing_not_overlapping_variable.sol"
     },
@@ -14841,11 +14767,11 @@
         "array values",
         "arrays",
         "inline arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings"
       ],
-      "first": "inline assembly",
-      "reason": "storage/storage_boundary_array_partial_assignment.sol: InlineAssembly 9: unsupported statement InlineAssembly",
+      "first": "inline arrays",
+      "reason": "storage/storage_boundary_array_partial_assignment.sol: TupleExpression 78: inline arrays are not supported",
       "scan_agrees": true,
       "test": "storage/storage_boundary_array_partial_assignment.sol"
     },
@@ -14855,27 +14781,27 @@
         "array values",
         "arrays",
         "inline arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "mappings",
         "operator delete"
       ],
-      "first": "inline assembly",
-      "reason": "storage/storage_boundary_delete_overflow_bug.sol: InlineAssembly 32: unsupported statement InlineAssembly",
+      "first": "inline arrays",
+      "reason": "storage/storage_boundary_delete_overflow_bug.sol: TupleExpression 179: inline arrays are not supported",
       "scan_agrees": true,
       "test": "storage/storage_boundary_delete_overflow_bug.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "operator delete"
       ],
-      "first": "inline assembly",
-      "reason": "storage/storage_boundary_packed_array.sol: InlineAssembly 9: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "storage/storage_boundary_packed_array.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storage/storage_boundary_packed_array.sol"
     },
@@ -14884,15 +14810,15 @@
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "named arguments",
         "operator delete",
         "struct values and copying",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "storage/storage_boundary_struct_array_mixed_types.sol: InlineAssembly 25: unsupported statement InlineAssembly",
+      "first": "named arguments",
+      "reason": "storage/storage_boundary_struct_array_mixed_types.sol: FunctionCall 130: named arguments are not supported",
       "scan_agrees": true,
       "test": "storage/storage_boundary_struct_array_mixed_types.sol"
     },
@@ -14901,15 +14827,15 @@
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "named arguments",
         "operator delete",
         "struct values and copying",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "storage/storage_boundary_struct_array_multislot.sol: InlineAssembly 21: unsupported statement InlineAssembly",
+      "first": "named arguments",
+      "reason": "storage/storage_boundary_struct_array_multislot.sol: FunctionCall 108: named arguments are not supported",
       "scan_agrees": true,
       "test": "storage/storage_boundary_struct_array_multislot.sol"
     },
@@ -14918,15 +14844,15 @@
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "named arguments",
         "operator delete",
         "struct values and copying",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "storage/storage_boundary_struct_array_packed.sol: InlineAssembly 23: unsupported statement InlineAssembly",
+      "first": "named arguments",
+      "reason": "storage/storage_boundary_struct_array_packed.sol: FunctionCall 127: named arguments are not supported",
       "scan_agrees": true,
       "test": "storage/storage_boundary_struct_array_packed.sol"
     },
@@ -15061,12 +14987,12 @@
         "bytes.concat and string.concat",
         "contract creation (new C)",
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory references",
         "source units without exactly one contract",
         "type names as values"
       ],
-      "first": "inline assembly",
-      "reason": "storageLayoutSpecifier/inheritance_fallback_calling_revert.sol: InlineAssembly 60: unsupported statement InlineAssembly",
+      "first": "type names as values",
+      "reason": "storageLayoutSpecifier/inheritance_fallback_calling_revert.sol: ElementaryTypeNameExpression 65: unsupported expression ElementaryTypeNameExpression",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_fallback_calling_revert.sol"
     },
@@ -15091,7 +15017,6 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
-        "inline assembly",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -15147,12 +15072,12 @@
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory references",
         "source units without exactly one contract",
         "type names as values"
       ],
-      "first": "inline assembly",
-      "reason": "storageLayoutSpecifier/inheritance_receive_calling_revert.sol: InlineAssembly 60: unsupported statement InlineAssembly",
+      "first": "type names as values",
+      "reason": "storageLayoutSpecifier/inheritance_receive_calling_revert.sol: ElementaryTypeNameExpression 65: unsupported expression ElementaryTypeNameExpression",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_receive_calling_revert.sol"
     },
@@ -15165,12 +15090,10 @@
       "test": "storageLayoutSpecifier/inheritance_simple.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "storageLayoutSpecifier/inheritance_state_variable_slot_offset.sol: InlineAssembly 20: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_state_variable_slot_offset.sol"
     },
@@ -15188,22 +15111,18 @@
       "test": "storageLayoutSpecifier/inheritance_storage_vars_initialization.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "storageLayoutSpecifier/inline_assembly_direct_load.sol: InlineAssembly 13: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inline_assembly_direct_load.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "storageLayoutSpecifier/inline_assembly_direct_store.sol: InlineAssembly 9: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inline_assembly_direct_store.sol"
     },
@@ -15232,12 +15151,10 @@
       "test": "storageLayoutSpecifier/multiple_inheritance.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "storageLayoutSpecifier/multiple_inheritance_state_var_slots.sol: InlineAssembly 30: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/multiple_inheritance_state_var_slots.sol"
     },
@@ -15274,8 +15191,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "enums",
-        "inline assembly"
+        "enums"
       ],
       "first": "enums",
       "reason": "storageLayoutSpecifier/state_variable_enum.sol: UserDefinedTypeName 8: only struct user-defined types are supported",
@@ -15291,24 +15207,21 @@
       "test": "storageLayoutSpecifier/state_variable_mapping.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
         "public state variables",
         "transient storage"
       ],
-      "first": "inline assembly",
-      "reason": "storageLayoutSpecifier/state_variable_reference_types_slot_offset.sol: InlineAssembly 42: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "storageLayoutSpecifier/state_variable_reference_types_slot_offset.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/state_variable_reference_types_slot_offset.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "storageLayoutSpecifier/state_variable_slot_offset.sol: InlineAssembly 15: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/state_variable_slot_offset.sol"
     },
@@ -15375,13 +15288,12 @@
       "test": "storageLayoutSpecifier/storage_reference_library_function.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
         "transient storage"
       ],
-      "first": "inline assembly",
-      "reason": "storageLayoutSpecifier/transient_state_variable_slot_offset.sol: InlineAssembly 17: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "storageLayoutSpecifier/transient_state_variable_slot_offset.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/transient_state_variable_slot_offset.sol"
     },
@@ -15396,13 +15308,12 @@
       "test": "storageLayoutSpecifier/variable_cleanup.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly",
         "string literals as fixed-size bytes"
       ],
-      "first": "inline assembly",
-      "reason": "storageLayoutSpecifier/variable_cleanup_sstore.sol: InlineAssembly 39: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "storageLayoutSpecifier/variable_cleanup_sstore.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/variable_cleanup_sstore.sol"
     },
@@ -15907,17 +15818,17 @@
       "test": "structs/packed_storage_structs_delete.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "aggregate array mutation",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "operator delete",
         "struct values and copying",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "structs/recursive_struct_2.sol: InlineAssembly 116: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "structs/recursive_struct_2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "structs/recursive_struct_2.sol"
     },
@@ -16117,56 +16028,54 @@
       "test": "structs/struct_delete_storage.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "aggregate array mutation",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "operator delete",
         "struct values and copying",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "structs/struct_delete_storage_nested_small.sol: InlineAssembly 19: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "structs/struct_delete_storage_nested_small.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "structs/struct_delete_storage_nested_small.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
         "operator delete",
         "struct values and copying"
       ],
-      "first": "inline assembly",
-      "reason": "structs/struct_delete_storage_small.sol: InlineAssembly 13: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "structs/struct_delete_storage_small.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "structs/struct_delete_storage_small.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "local reference bindings",
         "operator delete",
         "struct values and copying"
       ],
-      "first": "inline assembly",
-      "reason": "structs/struct_delete_storage_with_array.sol: InlineAssembly 67: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "structs/struct_delete_storage_with_array.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "structs/struct_delete_storage_with_array.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
         "operator delete",
         "struct values and copying"
       ],
-      "first": "inline assembly",
-      "reason": "structs/struct_delete_storage_with_arrays_small.sol: InlineAssembly 18: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "structs/struct_delete_storage_with_arrays_small.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "structs/struct_delete_storage_with_arrays_small.sol"
     },
@@ -16351,13 +16260,14 @@
       "features": [
         "abi.* functions",
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "string literals as fixed-size bytes",
         "this",
         "try/catch"
       ],
-      "first": "inline assembly",
-      "reason": "tryCatch/invalid_error_encoding.sol: InlineAssembly 9: unsupported statement InlineAssembly",
+      "first": "try/catch",
+      "reason": "tryCatch/invalid_error_encoding.sol: TryStatement 58: unsupported statement TryStatement",
       "scan_agrees": true,
       "test": "tryCatch/invalid_error_encoding.sol"
     },
@@ -16378,12 +16288,12 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
         "this",
         "try/catch"
       ],
-      "first": "inline assembly",
-      "reason": "tryCatch/malformed_error.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "first": "try/catch",
+      "reason": "tryCatch/malformed_error.sol: TryStatement 46: unsupported statement TryStatement",
       "scan_agrees": true,
       "test": "tryCatch/malformed_error.sol"
     },
@@ -16391,12 +16301,12 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
         "this",
         "try/catch"
       ],
-      "first": "inline assembly",
-      "reason": "tryCatch/malformed_panic.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "first": "try/catch",
+      "reason": "tryCatch/malformed_panic.sol: TryStatement 37: unsupported statement TryStatement",
       "scan_agrees": true,
       "test": "tryCatch/malformed_panic.sol"
     },
@@ -16404,12 +16314,12 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
         "this",
         "try/catch"
       ],
-      "first": "inline assembly",
-      "reason": "tryCatch/malformed_panic_2.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "first": "try/catch",
+      "reason": "tryCatch/malformed_panic_2.sol: TryStatement 31: unsupported statement TryStatement",
       "scan_agrees": true,
       "test": "tryCatch/malformed_panic_2.sol"
     },
@@ -16417,12 +16327,12 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
         "this",
         "try/catch"
       ],
-      "first": "inline assembly",
-      "reason": "tryCatch/malformed_panic_3.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "first": "try/catch",
+      "reason": "tryCatch/malformed_panic_3.sol: TryStatement 40: unsupported statement TryStatement",
       "scan_agrees": true,
       "test": "tryCatch/malformed_panic_3.sol"
     },
@@ -16430,12 +16340,12 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
         "this",
         "try/catch"
       ],
-      "first": "inline assembly",
-      "reason": "tryCatch/malformed_panic_4.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "first": "try/catch",
+      "reason": "tryCatch/malformed_panic_4.sol: TryStatement 46: unsupported statement TryStatement",
       "scan_agrees": true,
       "test": "tryCatch/malformed_panic_4.sol"
     },
@@ -17005,7 +16915,7 @@
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
-        "inline assembly"
+        "inline assembly memory references"
       ],
       "first": "function types",
       "reason": "uninitializedFunctionPointer/uninitialized_internal_storage_function_via_yul.sol: FunctionTypeName 3: unsupported type name FunctionTypeName",
@@ -17041,7 +16951,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
+        "inline assembly memory references",
         "user-defined value types"
       ],
       "first": "user-defined value types",
@@ -17090,7 +17000,8 @@
         "array values",
         "arrays",
         "free functions",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "memory arrays (new T[](n))",
         "user-defined value types"
       ],
@@ -17141,7 +17052,6 @@
       "category": "import-rejected",
       "features": [
         "fixed-size bytes members and indexing",
-        "inline assembly",
         "public state variables",
         "user-defined value types"
       ],
@@ -17154,7 +17064,7 @@
       "category": "import-rejected",
       "features": [
         "constant expressions over literals",
-        "inline assembly",
+        "inline assembly memory references",
         "public state variables",
         "user-defined value types"
       ],
@@ -17198,7 +17108,7 @@
         "function types",
         "functions as values",
         "immutables",
-        "inline assembly",
+        "inline assembly memory references",
         "user-defined value types"
       ],
       "first": "immutables",
@@ -17281,7 +17191,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
+        "inline assembly memory references",
         "user-defined value types"
       ],
       "first": "user-defined value types",
@@ -17302,7 +17212,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
         "user-defined value types"
       ],
       "first": "user-defined value types",
@@ -17314,7 +17223,8 @@
       "category": "import-rejected",
       "features": [
         "constant expressions over literals",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "public state variables",
         "struct values and copying",
         "structs",
@@ -17331,7 +17241,7 @@
         "arrays",
         "constant expressions over literals",
         "inline arrays",
-        "inline assembly",
+        "inline assembly memory references",
         "public state variables",
         "string literals as fixed-size bytes",
         "user-defined value types"
@@ -17682,12 +17592,10 @@
       "test": "variables/public_state_overridding_mapping_to_dynamic_struct.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "variables/storing_invalid_boolean.sol: InlineAssembly 14: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "variables/storing_invalid_boolean.sol"
     },
@@ -17742,35 +17650,32 @@
       "test": "variables/transient_state_variable.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
         "transient storage"
       ],
-      "first": "inline assembly",
-      "reason": "variables/transient_state_variable_cleanup_assignment.sol: InlineAssembly 10: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "variables/transient_state_variable_cleanup_assignment.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "variables/transient_state_variable_cleanup_assignment.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
         "transient storage"
       ],
-      "first": "inline assembly",
-      "reason": "variables/transient_state_variable_cleanup_tstore.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "variables/transient_state_variable_cleanup_tstore.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "variables/transient_state_variable_cleanup_tstore.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
         "transient storage"
       ],
-      "first": "inline assembly",
-      "reason": "variables/transient_state_variable_slot_inline_assembly.sol: InlineAssembly 17: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "variables/transient_state_variable_slot_inline_assembly.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "variables/transient_state_variable_slot_inline_assembly.sol"
     },
@@ -17824,7 +17729,7 @@
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
         "external calls and contract members",
-        "inline assembly",
+        "inline assembly halts in a constructor",
         "source units without exactly one contract"
       ],
       "first": "address members (balance, call, transfer, \u2026)",
@@ -17854,12 +17759,10 @@
       "test": "various/balance.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "various/byte_optimization_bug.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "various/byte_optimization_bug.sol"
     },
@@ -17871,6 +17774,9 @@
         "external calls to getters",
         "hash and signature built-ins",
         "inline assembly",
+        "inline assembly calls, gas, return data and code",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
@@ -17884,6 +17790,8 @@
       "features": [
         "external calls and contract members",
         "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
@@ -17895,7 +17803,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "inline assembly",
+        "inline assembly memory references",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
@@ -17911,6 +17819,7 @@
         "external calls and contract members",
         "hash and signature built-ins",
         "inline assembly",
+        "inline assembly memory references",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
@@ -17923,10 +17832,10 @@
       "category": "import-rejected",
       "features": [
         "address members (balance, call, transfer, \u2026)",
-        "inline assembly"
+        "inline assembly memory outside the scratch space"
       ],
-      "first": "inline assembly",
-      "reason": "various/code_length.sol: InlineAssembly 13: unsupported statement InlineAssembly",
+      "first": "address members (balance, call, transfer, \u2026)",
+      "reason": "various/code_length.sol: MemberAccess 19: unsupported built-in member",
       "scan_agrees": true,
       "test": "various/code_length.sol"
     },
@@ -17947,7 +17856,7 @@
         "inline assembly"
       ],
       "first": "inline assembly",
-      "reason": "various/codebalance_assembly.sol: InlineAssembly 9: unsupported statement InlineAssembly",
+      "reason": "various/codebalance_assembly.sol: InlineAssembly 9: YulFunctionCall: call to balance, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "various/codebalance_assembly.sol"
     },
@@ -17968,7 +17877,7 @@
         "inline assembly"
       ],
       "first": "inline assembly",
-      "reason": "various/codehash_assembly.sol: InlineAssembly 5: unsupported statement InlineAssembly",
+      "reason": "various/codehash_assembly.sol: InlineAssembly 5: YulFunctionCall: call to extcodehash, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "various/codehash_assembly.sol"
     },
@@ -18015,7 +17924,7 @@
         "type names as values"
       ],
       "first": "inline assembly",
-      "reason": "various/create_random.sol: InlineAssembly 18: unsupported statement InlineAssembly",
+      "reason": "various/create_random.sol: InlineAssembly 18: YulFunctionCall: call to create, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "various/create_random.sol"
     },
@@ -18159,12 +18068,10 @@
       "test": "various/inline_tuple_with_rational_numbers.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "various/iszero_bnot_correct.sol: InlineAssembly 15: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "various/iszero_bnot_correct.sol"
     },
@@ -18280,6 +18187,8 @@
         "external calls and contract members",
         "hash and signature built-ins",
         "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "literal subdenominations (ether, days, \u2026)",
         "public state variables",
         "source units without exactly one contract",
@@ -18585,22 +18494,18 @@
       "test": "viaYul/assign_tuple_from_function_call.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "viaYul/cleanup/checked_arithmetic.sol: InlineAssembly 14: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/cleanup/checked_arithmetic.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "viaYul/cleanup/comparison.sol: InlineAssembly 12: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/cleanup/comparison.sol"
     },
@@ -18727,32 +18632,26 @@
       "test": "viaYul/conversion/function_cast.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "viaYul/conversion/implicit_cast_assignment.sol: InlineAssembly 8: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/conversion/implicit_cast_assignment.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "viaYul/conversion/implicit_cast_function_call.sol: InlineAssembly 20: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/conversion/implicit_cast_function_call.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "viaYul/conversion/implicit_cast_local_assignment.sol: InlineAssembly 8: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/conversion/implicit_cast_local_assignment.sol"
     },
@@ -18869,15 +18768,14 @@
       "test": "viaYul/detect_sub_overflow_signed.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "arrays",
-        "inline assembly",
         "local reference bindings",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "viaYul/dirty_calldata_struct.sol: InlineAssembly 29: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "viaYul/dirty_calldata_struct.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "viaYul/dirty_calldata_struct.sol"
     },
@@ -18885,7 +18783,8 @@
       "category": "import-rejected",
       "features": [
         "arrays",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "memory arrays (new T[](n))"
       ],
       "first": "memory arrays (new T[](n))",
@@ -18894,25 +18793,27 @@
       "test": "viaYul/dirty_memory_dynamic_array.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "arrays",
         "constant expressions over literals",
-        "inline assembly"
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references"
       ],
-      "first": "inline assembly",
-      "reason": "viaYul/dirty_memory_int32.sol: InlineAssembly 12: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "viaYul/dirty_memory_int32.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "viaYul/dirty_memory_int32.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "arrays",
-        "inline assembly"
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references"
       ],
-      "first": "inline assembly",
-      "reason": "viaYul/dirty_memory_static_array.sol: InlineAssembly 12: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "viaYul/dirty_memory_static_array.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "viaYul/dirty_memory_static_array.sol"
     },
@@ -18921,7 +18822,8 @@
       "features": [
         "array values",
         "arrays",
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references",
         "memory arrays (new T[](n))",
         "structs"
       ],
@@ -18931,23 +18833,24 @@
       "test": "viaYul/dirty_memory_struct.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "arrays",
-        "inline assembly"
+        "inline assembly memory outside the scratch space",
+        "inline assembly memory references"
       ],
-      "first": "inline assembly",
-      "reason": "viaYul/dirty_memory_uint32.sol: InlineAssembly 12: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "viaYul/dirty_memory_uint32.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "viaYul/dirty_memory_uint32.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly"
+        "inline assembly memory outside the scratch space"
       ],
-      "first": "inline assembly",
-      "reason": "viaYul/empty_return_corrupted_free_memory_pointer.sol: InlineAssembly 3: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "viaYul/empty_return_corrupted_free_memory_pointer.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "viaYul/empty_return_corrupted_free_memory_pointer.sol"
     },
@@ -19184,23 +19087,21 @@
       "test": "viaYul/mapping_string_key.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
+        "inline assembly memory outside the scratch space",
         "structs"
       ],
-      "first": "inline assembly",
-      "reason": "viaYul/memory_struct_allow.sol: InlineAssembly 12: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "viaYul/memory_struct_allow.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "viaYul/memory_struct_allow.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "viaYul/msg_sender.sol: InlineAssembly 8: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/msg_sender.sol"
     },
@@ -19231,12 +19132,10 @@
       "test": "viaYul/return.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "viaYul/return_and_convert.sol: InlineAssembly 8: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/return_and_convert.sol"
     },
@@ -19269,12 +19168,10 @@
       "test": "viaYul/simple_assignment.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "viaYul/simple_inline_asm.sol: InlineAssembly 14: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/simple_inline_asm.sol"
     },
@@ -19297,65 +19194,56 @@
       "test": "viaYul/stack_limit_evader_mutual_recursion.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "constant expressions over literals",
-        "inline assembly"
+        "constant expressions over literals"
       ],
-      "first": "inline assembly",
-      "reason": "viaYul/storage/dirty_storage_bytes.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "viaYul/storage/dirty_storage_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "viaYul/storage/dirty_storage_bytes.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "constant expressions over literals",
-        "inline assembly"
+        "constant expressions over literals"
       ],
-      "first": "inline assembly",
-      "reason": "viaYul/storage/dirty_storage_bytes_long.sol: InlineAssembly 7: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "viaYul/storage/dirty_storage_bytes_long.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "viaYul/storage/dirty_storage_bytes_long.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "viaYul/storage/dirty_storage_dynamic_array.sol: InlineAssembly 13: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/storage/dirty_storage_dynamic_array.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "viaYul/storage/dirty_storage_static_array.sol: InlineAssembly 9: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/storage/dirty_storage_static_array.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "viaYul/storage/dirty_storage_struct.sol: InlineAssembly 19: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/storage/dirty_storage_struct.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "inline assembly",
         "mappings"
       ],
-      "first": "inline assembly",
-      "reason": "viaYul/storage/mappings.sol: InlineAssembly 90: unsupported statement InlineAssembly",
+      "first": null,
+      "reason": "viaYul/storage/mappings.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "viaYul/storage/mappings.sol"
     },
@@ -19428,22 +19316,18 @@
       "test": "viaYul/unary_fixedbytes.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "viaYul/unary_operations.sol: InlineAssembly 214: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/unary_operations.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "inline assembly"
-      ],
-      "first": "inline assembly",
-      "reason": "viaYul/various_inline_asm.sol: InlineAssembly 14: unsupported statement InlineAssembly",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/various_inline_asm.sol"
     },

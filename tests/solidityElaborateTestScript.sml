@@ -240,3 +240,21 @@ Proof
   simp_tac std_ss [cv_eval “elaborate_unit missing_struct_layout_unit”] >>
   CONV_TAC cv_eval
 QED
+
+(* A block a constructor runs may not halt, since the source installs no
+ * runtime code from the returned bytes; elsewhere it may. *)
+Theorem asm_halt_rejected_in_constructor:
+  ∀info.
+    IS_SOME (elab_stmt
+      <| functions := []; structs := []; events := []; variables := [];
+         state := []; returns := []; placeholder := NONE;
+         mode := CheckedArithmetic; creation := F |> 0
+      (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] [])) ∧
+    elab_stmt
+      <| functions := []; structs := []; events := []; variables := [];
+         state := []; returns := []; placeholder := NONE;
+         mode := CheckedArithmetic; creation := T |> 0
+      (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] []) = NONE
+Proof
+  gen_tac >> EVAL_TAC
+QED

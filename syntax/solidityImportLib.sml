@@ -445,6 +445,65 @@ fun optional_expr v k =
 
 (* Statements *)
 
+(* An inline assembly block's code, and the Solidity variables it names. The
+ * compiler lists each use of one in externalReferences, by the source range
+ * of the identifier naming it, so the name comes from the identifier at that
+ * range. A suffix other than slot and offset (length, address, selector) is
+ * a reference this semantics does not read.
+ *)
+fun yul_identifiers v =
+  case v of
+    JSON.OBJECT fields =>
+      (if node_type v = "YulIdentifier" handle _ => false then
+         [(string_field v "src", string_field v "name")]
+       else []) @ List.concat (map (yul_identifiers o #2) fields)
+  | JSON.ARRAY vs => List.concat (map yul_identifiers vs)
+  | _ => []
+
+val assembly_reference_ty = import_type "src_assembly_reference"
+
+fun inline_assembly v =
+  let
+    val ast = field v "AST"
+    val code = yulImportLib.import_code ast
+      handle yulImportLib.ImportError msg => fail (describe v ^ ": " ^ msg)
+           | yulImportLib.MalformedInput msg =>
+               raise MalformedInput (describe v ^ ": " ^ msg)
+    val names = yul_identifiers ast
+    fun reference r =
+      let
+        val decl = mk_num (int_field r "declaration")
+        val src = string_field r "src"
+        val name =
+          case List.find (fn (s, _) => s = src) names of
+            SOME (_, n) => n
+          | NONE => fail (describe v ^ ": no identifier at " ^ src)
+        val kind =
+          case optional_field r "suffix" of
+            NONE => "SrcAssemblyValue"
+          | SOME (JSON.STRING "slot") => "SrcAssemblySlot"
+          | SOME (JSON.STRING "offset") => "SrcAssemblyOffset"
+          | SOME _ => fail (describe v ^ ": unsupported reference " ^ name)
+      in
+        (name, con kind [decl])
+      end
+    (* one entry per name, however often the code uses it *)
+    fun add (name, r) refs =
+      case List.find (fn (n, _) => n = name) refs of
+        NONE => refs @ [(name, r)]
+      | SOME (_, r') =>
+          if aconv r r' then refs
+          else fail (describe v ^ ": " ^ name ^ " names two declarations")
+    val refs = foldl (fn (r, refs) => add (reference r) refs) []
+                 (JSONUtil.arrayMap I (field v "externalReferences"))
+  in
+    con "SrcInlineAssembly"
+      [info v, code,
+       listSyntax.mk_list
+         (map (fn (n, r) => pairSyntax.mk_pair (mk_str n, r)) refs,
+          pairSyntax.mk_prod (stringSyntax.string_ty, assembly_reference_ty))]
+  end
+
 fun stmt v = within v (fn v =>
   case node_type v of
     "Block" => con "SrcBlock" [info v, stmts (field v "statements")]
@@ -483,6 +542,7 @@ fun stmt v = within v (fn v =>
         [info v, optional_stmt v "initializationExpression",
          optional_expr v "condition", optional_stmt v "loopExpression",
          stmt (field v "body")]
+  | "InlineAssembly" => inline_assembly v
   | "Break" => con "SrcBreak" [info v]
   | "Continue" => con "SrcContinue" [info v]
   | "Return" =>
