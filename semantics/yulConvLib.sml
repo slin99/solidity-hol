@@ -1149,8 +1149,13 @@ fun eval_conv_raw tm =
       then let
              val settled2 = settle_conv (rhs (concl red))
              val red2 = computeLib.CBV_CONV (cs ()) (rhs (concl settled2))
-           in Thm.TRANS red (Thm.TRANS settled2 red2) end
-           handle HOL_ERR _ => Thm.REFL (rhs (concl red))
+           in
+             (* What the outer composition wants here is the piece from the
+              * set's own result on: `red` is already in it, and a theorem that
+              * starts from the term before `red` does not join with the
+              * `Thm.TRANS red …` around it. *)
+             Thm.TRANS settled2 red2
+           end
       else Thm.REFL (rhs (concl red))
   in
     Thm.TRANS clause (Thm.TRANS settled (Thm.TRANS red out))
