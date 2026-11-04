@@ -30,7 +30,8 @@
  * of the object, and the list empties as the conversion stops copying the rest
  * of a body into a branch of a decision (see the comment on the list).  A line
  * that says a function produces no form is converted under that clock too, and
- * fails the build as soon as it comes back; no line says that now.
+ * fails the build as soon as it comes back; one line says it, and the clock is
+ * what makes the claim honest rather than taken on trust.
  *)
 Theory yulConvTest
 Ancestors
