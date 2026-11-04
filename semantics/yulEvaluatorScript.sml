@@ -132,14 +132,19 @@ End
  * written out at the call, because a mutual recursion translated through a
  * pre-relation is compared on its arguments as terms: a constant application
  * is the same term on both sides, an inlined record update is not.
+ *
+ * The frame is the callee's *whole* scope stack, not the caller's with one more
+ * scope on top: Yul functions cannot access variables defined outside the
+ * function, so the caller's scopes are not the callee's to read, and a body that
+ * looks one up is rejected rather than answered.  `invoke_yul` gives the caller
+ * its own scopes back, which is what keeps the frame the callee's alone.
  *)
 Definition yul_push_frame_def:
   yul_push_frame params args results m =
     m with scopes :=
-      yul_bind_scope (FEMPTY : string |-> bytes32)
-        (ZIP (params, args) ++
-         ZIP (results, REPLICATE (LENGTH results) 0w)) ::
-      m.scopes
+      [yul_bind_scope (FEMPTY : string |-> bytes32)
+         (ZIP (params, args) ++
+          ZIP (results, REPLICATE (LENGTH results) 0w))]
 End
 
 (* Binds names in the innermost scope.  Written as a case on the scope stack
@@ -716,7 +721,11 @@ Definition eval_yul_block_def:
          else eval_yul_cases n fns v rest default m) ∧
 
   (* a call: parameters in a scope of their own, results read out of it, then
-   * leave, or falling off the end, returns them *)
+   * leave, or falling off the end, returns them.  The frame is the callee's
+   * alone (`yul_push_frame`), so what the caller gets back is the caller's own
+   * scope stack -- not the callee's popped, which would be the same list only
+   * while the callee left the caller's scopes alone, which is exactly what a
+   * frame of its own makes sure of. *)
   (invoke_yul n fns name args m =
      if n = 0 then EvalAbrupt YulOutOfFuel m
      else
@@ -729,7 +738,7 @@ Definition eval_yul_block_def:
              let m1 = yul_push_frame fd.function_params args
                         fd.function_results m in
              let r = eval_yul_block (n - 1) fns fd.function_body m1 in
-             let m2 = yul_pop_scope r.machine in
+             let m2 = r.machine with scopes := m.scopes in
                if r.completion = YulNormal ∨ r.completion = YulLeave then
                  (* the frame scope yul_push_frame made is still on top, so
                   * every result is bound and this lookup cannot fail; the

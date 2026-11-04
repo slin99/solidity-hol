@@ -68,6 +68,11 @@ val eval_yul_builtin_c =
 val yul_lookup_c = prim_mk_const {Thy = "yulEvaluator", Name = "yul_lookup"}
 val yul_lookup_names_c =
   prim_mk_const {Thy = "yulEvaluator", Name = "yul_lookup_names"}
+(* The shaping function the frame rule below hands a callee's result names to,
+ * and the marker that says a case has already been settled with it. *)
+val yul_take_shape_c =
+  prim_mk_const {Thy = "yulEvaluatorProps", Name = "yul_take_shape"}
+
 
 (* The constants are recognised by theory and name, reading the record
  * `dest_term` leaves rather than making one to compare against. *)
@@ -286,6 +291,14 @@ val helper_defs = [
   yul_literal_value_def, yul_sign_extend_def
 ]
 
+(* The shaping the frame rule builds with, unfolded unconditionally: it is a
+ * plain recursion over the result names, and unfolding it is what puts the
+ * spine -- `HD vals`, `HD (TL vals)`, ... -- in the branch, where the arity the
+ * clause tests and the binding the block writes can read it.  `helper_defs` is
+ * the list a form's residues are read against, and this is not one of them: it
+ * is this conversion's own construction and never part of an evaluator clause. *)
+val shape_defs = [yul_take_shape_def]
+
 (* The operations that read or build a machine, a scope, memory or storage, and
  * the builtin dispatch that reaches them.  `yul_bind` is the shape of them all:
  * it tests `m.scopes`, writes a scope back into `m` and hands `m` on, so
@@ -497,8 +510,17 @@ fun push_all_conv tm =
  * takes cannot be the body's continuation at all -- a call that ends abruptly
  * never ends `YulNormal`, so the continuation's test `c = YulNormal` is false
  * there and the branch is the result itself.  That is what keeps the rest of
- * the body out of that branch, and a body of k calls at 2^k times the size. *)
-val prune_lemmas = [yul_expr_result_CASE_invoke_abrupt_lit,
+ * the body out of that branch, and a body of k calls at 2^k times the size.
+ *
+ * Three shapes, one per form the test takes when the rule reaches it:
+ * `_record`, where the branch is the result record with the machine a function
+ * of the case's own variables; `_cond`, where the field read has already taken
+ * the record apart and the test is the completion variable alone; and
+ * `_abrupt`, where the branch is `yul_abrupt`.  `_lit` is `_record` with the
+ * machine the branch's own, and is not listed: `_record` matches that shape
+ * too, through the higher-order match below. *)
+val prune_lemmas = [yul_expr_result_CASE_invoke_abrupt_record,
+                    yul_expr_result_CASE_invoke_abrupt_cond,
                     yul_expr_result_CASE_invoke_abrupt]
 
 (* The rule's continuation is a function of the case's own variable and
@@ -510,8 +532,8 @@ val prune_lemmas = [yul_expr_result_CASE_invoke_abrupt_lit,
  * to bound variables to whatever the body is, so it takes the rule's
  * `T` to be an abstraction and beta-reduces what it puts back. *)
 fun prune_call_conv tm =
-  (* Both lemmas are stated on a case whose scrutinee is the call itself, and
-   * neither matches anything else, so the shape is checked here rather than
+  (* Every lemma above is stated on a case whose scrutinee is the call itself,
+   * and none matches anything else, so the shape is checked here rather than
    * left to the rewrite match: the prune is run at every node below, and
    * almost every node of a form is not a case at all. *)
   if not (is_yul_case tm) then raise Conv.UNCHANGED
@@ -533,11 +555,31 @@ fun prune_call_conv tm =
 
 (* The prune at every node, not only at the top.  A call's case is surfaced by
  * the taking apart into a branch or a test as often as to the top, and the same
- * pass reads fields (`reduce_field`), which rewrites the conditional both
- * lemmas are stated on -- the test `(<|completion := c; …|>).completion =
- * YulNormal` becomes `c = YulNormal` -- so a prune that reaches a node after
- * the field read has nothing left to match. *)
-fun prune_deep_conv tm = Conv.QCONV (Conv.DEPTH_CONV prune_call_conv) tm
+ * pass reads fields (`reduce_field`), which rewrites the conditional
+ * `_record`/`_lit` are stated on -- the test `(<|completion := c; …|>).completion
+ * = YulNormal` becomes `c = YulNormal` -- into the one `_cond` is stated on.
+ * `prune_lemmas` carries a lemma per shape the test can be in, so a case is
+ * dropped wherever the taking apart has left it; the pass below is what reaches
+ * it there, and this one, between the push and the taking apart, is what drops
+ * it before the taking apart has carried the branch it sits in any further. *)
+local
+  val frame_ref : (term -> thm) ref = ref (fn _ => raise Conv.UNCHANGED)
+in
+  (* The frame rule below settles a folded call's values branch -- the values it
+   * answered with, and the machine it came back on -- and it needs the table
+   * reader to know what the callee declared, which is defined further down.  The
+   * passes that run it reach it through this reference. *)
+  fun frame_conv tm = !frame_ref tm
+  fun set_frame_conv f = frame_ref := f
+end
+
+(* A call's case with its values branch settled if the frame rule takes it, and
+ * otherwise the prune.  One or the other: both rewrite the same case, and the
+ * frame rule's own guard is what stops it firing on the term it produced. *)
+fun call_case_conv tm =
+  frame_conv tm handle Conv.UNCHANGED => prune_call_conv tm
+
+fun prune_deep_conv tm = Conv.QCONV (Conv.DEPTH_CONV call_case_conv) tm
 
 fun prune_all_conv tm =
   let
@@ -649,14 +691,24 @@ fun remember_block tm th = blocks := Termtab.update (tm, th) (!blocks)
 
 local
   val cs_ref : compset option ref = ref NONE
+  val fallback_ref : compset option ref = ref NONE
 in
   fun cs () =
     case !cs_ref of
       SOME c => c
     | NONE => raise ERR "yulConvLib" "the compute set is not set yet"
 
-  fun set_block_compset c =
-    (cs_ref := SOME c; blocks := Termtab.empty; clear_answers ())
+  (* The same set with the clause constants' own clauses in place of the
+   * conversion, for a term the conversion's clause does not match (see
+   * `eval_conv_raw`): the set it runs on would hand such a term back to it. *)
+  fun fallback_cs () =
+    case !fallback_ref of
+      SOME c => c
+    | NONE => raise ERR "yulConvLib" "the compute set is not set yet"
+
+  fun set_block_compset c fb =
+    (cs_ref := SOME c; fallback_ref := SOME fb;
+     blocks := Termtab.empty; clear_answers ())
 end
 (* A field, read off a record: `sel v` for a term whose selector is one of the
  * datatype's fields.  Anything else is left alone, which is what keeps this
@@ -714,7 +766,7 @@ fun result_conv v tm =
  *
  * Neither reduction is one of the evaluator's own clauses: the branches'
  * scrutinees are the case's bound variables, so no compute rule reaches them,
- * and they are what the two `_invoke_abrupt` lemmas do for a call by hand. *)
+ * and they are what the `_invoke_abrupt` lemmas do for a call by hand. *)
 
 (* The function the block's clause hands on is the rest of the body, and an
  * applied function moves inside a decision its argument makes: `f (if g then a
@@ -736,10 +788,18 @@ fun result_conv v tm =
  * branches of a decision the block's own clause does not branch on. *)
 val yul_expr_result_RAND = TypeBase.case_rand_of ``:yul_expr_result``
 val option_RAND = TypeBase.case_rand_of ``:'a option``
+val list_RAND = TypeBase.case_rand_of ``:'a list``
 
 val distribute_lemmas = [boolTheory.COND_RAND,
                          yul_expr_result_RAND,
-                         option_RAND]
+                         option_RAND,
+                         list_RAND]
+
+(* The first of a list of equations or lemmas that rewrites the term: the same
+ * rule, offered each in turn, with `UNCHANGED` once the list runs out. *)
+fun matching [] tm = raise Conv.UNCHANGED
+  | matching (eq :: rest) tm =
+      Conv.REWR_CONV eq tm handle HOL_ERR _ => matching rest tm
 
 fun is_binding tm =
   is_comb tm andalso
@@ -748,13 +808,35 @@ fun is_binding tm =
 fun distribute_conv tm =
   if not (is_binding tm) then raise Conv.UNCHANGED
   else
-    let
-      fun first [] = raise Conv.UNCHANGED
-        | first (lem :: rest) =
-            Conv.REWR_CONV lem tm handle HOL_ERR _ => first rest
-    in
-      first distribute_lemmas
-    end
+    matching distribute_lemmas tm
+
+(* A `yul_pop_result` over a decision, pushed in: the pop goes inside the
+ * decision's branches, so the block's continuation meets a branch that already
+ * carries it rather than the whole pop term copied into every branch.  The
+ * rules are the ones a binding's continuation is pushed with -- here
+ * `yul_pop_result` is the function -- and only a `yul_pop_result` node is
+ * offered them, since a push at every application would copy the function. *)
+fun pop_result_conv tm = matching distribute_lemmas tm
+
+(* A `yul_pop_result` whose argument is one of the decisions the push above
+ * goes inside: what a clause's own evaluation can leave at the top of its
+ * result, and what its caller routes on rather than taking apart. *)
+val pop_result_c = prim_mk_const {Thy = "yulEvaluator", Name = "yul_pop_result"}
+
+fun pop_over_decision tm =
+  let
+    val (h, args) = strip_comb tm
+  in
+    same_const h pop_result_c andalso
+    (case args of
+       [a] => let val c = head_const a in
+                is_const_named "yulEvaluator" "yul_expr_result_CASE" c orelse
+                is_const_named "option" "option_CASE" c orelse
+                is_const_named "list" "list_CASE" c orelse
+                is_const_named "bool" "COND" c
+              end
+     | _ => false)
+  end
 
 (* The case equations of the types the evaluator's clauses case on: a
  * statement's result, and the `option` a value is looked up into and the
@@ -765,10 +847,6 @@ val case_equations =
   CONJUNCTS yul_expr_result_case_def @
   CONJUNCTS optionTheory.option_case_def @
   CONJUNCTS listTheory.list_case_def
-
-fun matching [] tm = raise Conv.UNCHANGED
-  | matching (eq :: rest) tm =
-      Conv.REWR_CONV eq tm handle HOL_ERR _ => matching rest tm
 
 fun case_conv tm = matching case_equations tm
 
@@ -822,10 +900,16 @@ fun step_conv tm =
       if is_const_named "yulEvaluator" "yul_expr_result_CASE" c orelse
          is_const_named "option" "option_CASE" c orelse
          is_const_named "list" "list_CASE" c
-      then after_binding (case_conv tm)
+      then (after_binding (case_conv tm) handle Conv.UNCHANGED =>
+              prune_call_conv tm)
       else if is_beta orelse is_const_named "bool" "LET" c
       then binding_step_conv tm
-      else if is_const_named "bool" "COND" c then after_binding (decide_conv tm)
+      else if is_const_named "bool" "COND" c
+      then (after_binding (decide_conv tm) handle Conv.UNCHANGED =>
+              after_binding (Conv.REWR_CONV yul_expr_result_CASE_cond tm
+                               handle HOL_ERR _ => raise Conv.UNCHANGED))
+      else if is_const_named "yulEvaluator" "yul_pop_result" c
+      then pop_result_conv tm
       else reduce_field tm
     end
 
@@ -848,9 +932,11 @@ fun expose_all_conv tm =
           let
             val pushed = push_all_conv (rhs (concl acc))
             (* The prune sits between the push and the taking apart: the push
-             * is what surfaces a call's case into a branch or a test, and the
-             * taking apart reads fields (`reduce_field`), which rewrites the
-             * conditional the prune's lemmas are stated on. *)
+             * is what surfaces a call's case into a branch or a test, and it is
+             * dropped there, before the taking apart reads the fields around it
+             * (`reduce_field`) and carries the branch it sits in any further.
+             * The shapes are all in `prune_lemmas`, so a case the field read
+             * rewrites is still reached by the pass after this one. *)
             val pruned = prune_deep_conv (rhs (concl pushed))
             val red = expose_conv (rhs (concl pruned))
             val next =
@@ -867,24 +953,35 @@ fun expose_all_conv tm =
  * anything left to do.  The order matters: a case that has just been pushed
  * out from inside a scrutinee is at the top and may be a call's, which the
  * prune is what drops -- and a branch the prune drops may leave a case that
- * has just become reducible behind it.  Doing all the taking apart first and
- * the pruning after leaves every call case the push surfaced unpruned, and a
- * body of k calls at 2^k times the size. *)
+ * has just become reducible behind it.
+ *
+ * Pruning after the taking apart would reach every call case the push surfaced
+ * as well -- `_cond` is the lemma for the shape the taking apart's field read
+ * leaves -- but it would do so having carried the branch the case sits in
+ * through that taking apart first, so `expose_all_conv` prunes between its push
+ * and its own pass.
+ *
+ * The prune is not run before the taking apart here.  It was, while the only
+ * lemmas that dropped a call's dead branch were stated on the branch written as
+ * the record, which the taking apart's own field read rewrites; `_cond` is
+ * stated on the completion variable that read leaves, so the shape is reachable
+ * after it as well, and the earlier prune was measured to make no difference.
+ * That measurement is the acceptance suite's own line at the head it was taken
+ * on (`0f8e1cb`): the same count and the same largest form `fun_shifts` at
+ * 176 309 nodes with the prune and without it.  The line reports a count, the
+ * slowest form and the largest, so it would not show a change confined to one
+ * covered form; what backs the deletion is that the prune rewrites nothing the
+ * expose below does not, since the expose runs `step_conv` at every node and
+ * that rule drops a call's dead branch like this one. *)
 fun settle_conv tm =
   let
     fun go acc 0 = acc
       | go acc k =
           let
-            (* The prune is tried before the taking apart as well as after it:
-             * taking the form apart reads the fields of the result the clause
-             * left (`reduce_field` below), which rewrites the conditional the
-             * prune's own lemmas are stated on -- its test becomes the
-             * variable it is on -- and neither lemma matches afterwards. *)
-            val pruned0 = prune_all_conv (rhs (concl acc))
-            val exposed = expose_all_conv (rhs (concl pruned0))
+            val exposed = expose_all_conv (rhs (concl acc))
             val pruned = prune_all_conv (rhs (concl exposed))
             val next =
-              Thm.TRANS acc (Thm.TRANS pruned0 (Thm.TRANS exposed pruned))
+              Thm.TRANS acc (Thm.TRANS exposed pruned)
           in
             if aconv (rhs (concl next)) (rhs (concl acc)) then next
             else go next (k - 1)
@@ -897,8 +994,9 @@ fun settle_conv tm =
  * (`yul_expr_result_RAND`), a call's own abrupt branch is dropped, and what
  * the case exposed is taken.  The branches' own bindings are taken here, before
  * the prune rather than after it: the prune is stated on the conditional the
- * clause wrote, and the field extraction below would have replaced its test
- * with the variable it is on. *)
+ * clause wrote, and the field extraction below replaces its test with the
+ * variable it is on -- the shape `_cond` is stated on, which the prune after
+ * this pass reaches, but only once the bindings around it have been pushed. *)
 fun split_conv tm =
   let
     val split = Conv.REWR_CONV yul_expr_result_RAND tm
@@ -962,9 +1060,119 @@ val block_nil_clause = valOf (List.find clause_is_nil block_def_clauses)
 val block_cons_clause =
   valOf (List.find (fn th => not (clause_is_nil th)) block_def_clauses)
 
+(* A clause of the evaluator, evaluated the way the block is: the sub-result the
+ * clause tests is evaluated first and taken apart, so the clause's own function
+ * meets the values and the machine a leaf holds rather than the case's bound
+ * variables.
+ *
+ * Reducing the whole clause with the compute set instead leaves every step
+ * inside it that reads those variables undecided -- the arity guard
+ * `LENGTH names <> LENGTH vs`, the scope update behind it, the builtin's own
+ * argument scan -- and the block's split then hands the rest of the body to
+ * each branch of that undecided test, which is a copy per branch per step.  The
+ * recursion is what keeps that from happening one level down as well: the
+ * scrutinee is evaluated by this same rule rather than by the compute set, so
+ * the argument list and the call inside it are taken apart the same way. *)
+(* Whether a clause is one of the four the rule below takes: a statement's, an
+ * expression's, an argument list's, or a switch's cases.  These are also the
+ * constants the compute set runs this same rule for (see `eval_compset`), so a
+ * clause nested inside another -- the tail of an argument list, a call among a
+ * call's arguments -- is taken here rather than handed to the set whole. *)
+fun is_eval_clause th =
+  let val c = head_const_of th in
+    is_const_named "yulEvaluator" "eval_yul_stmt" c orelse
+    is_const_named "yulEvaluator" "eval_yul_expr" c orelse
+    is_const_named "yulEvaluator" "eval_yul_args" c orelse
+    is_const_named "yulEvaluator" "eval_yul_cases" c
+  end
+
+val eval_clauses = List.filter is_eval_clause clauses
+
+(* The set `eval_conv_raw` falls back to: the one it is running on, with the
+ * four constants' own clauses back in place of the conversion registered for
+ * them.  The entry is deleted rather than added beside, so a term the clauses
+ * do not match is left standing there rather than reaching the conversion
+ * again, and the clauses are compiled the way they were before the
+ * registration took them out.  A value, not a copy of the set: only these four
+ * entries are touched, and the rest of the set is shared with the caller. *)
+fun clause_set cs =
+  let
+    (* Every entry goes before any clause is put back: the entry carries all of
+     * a constant's clauses, so a scrub after one of them is in takes that one
+     * out again and leaves the constant with the last of them alone. *)
+    val scrubbed =
+      List.foldl (fn (th, cs) => computeLib.scrub_const cs (head_const_of th))
+        cs eval_clauses
+  in
+    computeLib.add_thms eval_clauses scrubbed
+  end
+
+(* The scrutinee of the case a clause builds: the case constant's first
+ * argument.  A clause that builds no case -- a literal's value, an empty
+ * argument list -- is left to the compute set. *)
+fun scrutinee_conv c tm =
+  if is_yul_case tm orelse
+     is_const_named "option" "option_CASE" (head_const tm)
+  then Conv.RATOR_CONV (Conv.RATOR_CONV (Conv.RAND_CONV c)) tm
+  else raise Conv.UNCHANGED
+
+fun eval_conv_raw tm =
+  let
+    val clause = matching eval_clauses tm
+    val body = rhs (concl clause)
+    (* Repeated, since a clause can build a case on a case -- a `let` whose
+     * value is an option the clause itself tests, and the expression behind it
+     * -- and the second scrutinee is only at the top once the first is taken
+     * apart. *)
+    fun go acc 0 = acc
+      | go acc k =
+          let
+            val cur = rhs (concl acc)
+            val ev = scrutinee_conv eval_conv_raw cur
+                       handle Conv.UNCHANGED => Thm.REFL cur
+            val settled = settle_conv (rhs (concl ev))
+            val next = Thm.TRANS acc (Thm.TRANS ev settled)
+          in
+            if aconv (rhs (concl next)) cur then next else go next (k - 1)
+          end
+    val settled = go (Thm.REFL body) 4
+    val red = computeLib.CBV_CONV (cs ()) (rhs (concl settled))
+    (* What the set unfolded above can leave at the top something the settling
+     * never saw: a `yul_pop_result` over the case a block came out as, which is
+     * the shape of a block statement's own clause.  The statement rule its
+     * caller runs tests the result for a case and takes anything else as a
+     * value, so the pop, and every read behind it, would be left outside every
+     * decision the case carries.  One more round when that is what came out,
+     * rather than on every clause. *)
+    val out =
+      if pop_over_decision (rhs (concl red))
+      then let
+             val settled2 = settle_conv (rhs (concl red))
+             val red2 = computeLib.CBV_CONV (cs ()) (rhs (concl settled2))
+           in
+             (* What the outer composition wants here is the piece from the
+              * set's own result on: `red` is already in it, and a theorem that
+              * starts from the term before `red` does not join with the
+              * `Thm.TRANS red …` around it. *)
+             Thm.TRANS settled2 red2
+           end
+      else Thm.REFL (rhs (concl red))
+  in
+    Thm.TRANS clause (Thm.TRANS settled (Thm.TRANS red out))
+  end
+  (* A term whose clause does not match is reduced by the clauses in the set
+   * (`clause_set` puts them back for these four constants).  It cannot be the
+   * set the rule itself runs on: that one has this conversion registered for
+   * them, and matching raises `UNCHANGED` exactly when the argument is not a
+   * constructor application -- a body the caller's table writes over a
+   * variable -- so the term would come back here without end. *)
+  handle Conv.UNCHANGED => computeLib.CBV_CONV (fallback_cs ()) tm
+       | HOL_ERR _ => computeLib.CBV_CONV (fallback_cs ()) tm
+
 (* The statement rule, run as a compute rule (`add_conv` below): the clause is
- * instantiated, the statement is reduced with the compute set, and what the
- * statement reduced to is taken apart as `split_conv` or `value_conv` says. *)
+ * instantiated, the statement is evaluated by `eval_conv_raw`, what is left of
+ * it is reduced with the compute set, and what that reduced to is taken apart
+ * as `split_conv` or `value_conv` says. *)
 fun block_conv_raw tm =
   let
     val (_, tms) = strip_comb tm
@@ -988,7 +1196,7 @@ fun block_conv_raw tm =
               let
                 val redex = rhs (concl clause)
                 val (_, stmt) = dest_comb redex
-                val ev = computeLib.CBV_CONV (cs ()) stmt
+                val ev = eval_conv_raw stmt
                 val ev_form = rhs (concl ev)
                 val taken = Thm.TRANS clause
                               (Conv.RAND_CONV (fn _ => ev) redex)
@@ -1067,16 +1275,42 @@ val eval_compset =
     fun guard ((c, nhyp, eqs), cs) =
       computeLib.add_conv (c, nhyp, guarded_unfold eqs)
         (computeLib.scrub_const cs c)
+    (* The four constants the conversion itself is written for: their clauses
+     * are not compiled into the set, and the conversion goes in their place.
+     * A clause nested inside another -- the tail of an argument list, a call
+     * among a call's arguments -- is then taken the way the block's own
+     * statements are, instead of being handed to the set whole, which is the
+     * treatment this rule exists to remove.  The arity comes off the clause:
+     * `eval_yul_stmt n fns s m` and its three siblings take four arguments,
+     * `eval_yul_cases n fns v cases default m` takes six. *)
+    fun register (th, cs) =
+      let val (c, args) = strip_comb (lhs (concl (SPEC_ALL th)))
+      in
+        computeLib.add_conv (c, List.length args, eval_conv_raw)
+          (computeLib.scrub_const cs c)
+      end
+    (* These go on before the clauses below, as the guards do above and for the
+     * same reason: a rule reaches the constants of its right-hand side through
+     * the entries that were there when it was compiled, and the clauses that
+     * reach `eval_yul_args` or `eval_yul_expr` are exactly the ones these
+     * entries are for. *)
+    val body_clauses =
+      List.filter (fn th => not (is_eval_clause th)) evaluator_clauses
+    val with_guards = List.foldl guard base guarded_helpers
+    val with_convs = List.foldl register with_guards eval_clauses
   in
     computeLib.add_conv (eval_yul_block_c, 4, block_conv)
-      (computeLib.add_thms (eval_yul_builtin_def :: evaluator_clauses @ helper_defs)
-         (List.foldl guard base guarded_helpers))
+      (computeLib.add_thms
+         (eval_yul_builtin_def :: body_clauses @ helper_defs @ shape_defs)
+         with_convs)
   end
 
 (* The rule above reduces a statement with this compute set; it has to be the
  * one it is part of, or a block nested in a statement would be taken the old
- * way. *)
-val () = set_block_compset eval_compset
+ * way.  With it goes the set the rule falls back to, which has to be made from
+ * the same set: the same rules, with the clause constants' own clauses in place
+ * of the conversion. *)
+val () = set_block_compset eval_compset (clause_set eval_compset)
 
 (* The same with the table reader added: only reading the function out of the
  * object uses it, so the body's own evaluation never folds the object. *)
@@ -1142,6 +1376,120 @@ fun binding_thm defs fns name =
     else raise ERR "yulConvLib.binding_thm"
                  ("the function table does not bind " ^ term_to_string name)
   end
+
+(*---------------------------------------------------------------------------
+   Settling a folded call's frame.
+
+   A statement whose expression is a call is a case on `invoke_yul`, whose
+   values branch is the rest of the body.  The call is folded, so the body's
+   first use of its answer -- `yul_bind names vals m'`, `yul_assign`, a test on
+   `m'` -- reads two things the conversion cannot resolve: the length of `vals`
+   (against the names it is bound to) and the scope stack of `m'`.  Both are
+   decided by the call itself, and neither needs the callee's body:
+
+     - `vals` is as long as the callee declares results, so the spine the
+       callee's own result names give is the spine `vals` has, and `ZIP` and
+       `list_CASE` -- which match on `::` and `[]`, not on a length -- fire on
+       it;
+     - `m'` has the caller's own scope stack, because the frame is the callee's
+       alone and `invoke_yul` hands the caller its scopes back.
+
+   `yulEvaluatorProps.yul_expr_result_CASE_invoke_frame` states both on the
+   case, so a single rewrite settles the branch; what is left in it is the
+   caller's own machinery, which the conversion then resolves as it would for
+   any other statement.  The callee's declaration comes from the table, read
+   the way the entry call's is (`binding_thm`), and the arity the clause itself
+   tests is decided on the term.
+
+   Without this, every statement after a call carries a decision per read of
+   the call's answer, so a body of k call statements comes out at about 2^k
+   times the size -- which is where the corpus's remaining forms are.
+ ---------------------------------------------------------------------------*)
+
+(* The definitions the table is read from, for the callee lookup below: set by
+ * the conversion that is running, like the compute set itself. *)
+local
+  val defs_ref : thm list ref = ref []
+  (* The callee's declaration, one per name: a body's calls name the same
+   * callees over and over -- the same statement is taken apart by every pass
+   * over it -- and reading it off the table is a walk of the folded table
+   * (138 entries for the corpus object) each time.  Cleared with the set of
+   * definitions it is read from, which is what a conversion installs. *)
+  val bindings : (term * thm) list ref = ref []
+in
+  fun set_frame_defs ds = (defs_ref := ds; bindings := [])
+  fun frame_defs () = !defs_ref
+  fun binding_memo defs fns name =
+    case List.find (fn (n, _) => aconv n name) (!bindings) of
+      SOME (_, th) => th
+    | NONE =>
+        let val th = binding_thm defs fns name in
+          bindings := (name, th) :: !bindings; th
+        end
+end
+
+(* The rule's own antecedent, decided on the term.  Its arity half is about the
+ * table's declaration and the argument list, both literals by the time a case
+ * is on the call, so the test set either answers it or the rule declines -- a
+ * call the table's arity contradicts is one the clause itself answers abruptly,
+ * and there is nothing to settle in its values branch. *)
+fun arity_thm tm =
+  let val th = eval_test tm in
+    if aconv (rhs (concl th)) boolSyntax.T then EQT_ELIM th
+    else raise Conv.UNCHANGED
+  end
+
+(* The rule's own output, recognised so that it is not rewritten again.  The
+ * branch it builds applies `yul_take_shape` to the callee's result names and to
+ * the branch's *own* values variable, and one of those in the branch means this
+ * case is settled.  Sought in the branch alone, not in the whole node: a case
+ * nested in the continuation -- settled earlier in the same bottom-up pass --
+ * carries one of its own, over a variable of its own, and must not stop this
+ * one. *)
+fun shape_call (v : term) (tm : term) =
+  (is_comb tm andalso is_comb (rator tm) andalso
+   same_const yul_take_shape_c (fst (dest_comb (rator tm))) andalso
+   aconv (rand tm) v)
+  orelse
+  (case dest_term tm of
+     Term.LAMB (_, b) => shape_call v b
+   | Term.COMB (x, y) => shape_call v x orelse shape_call v y
+   | _ => false)
+
+fun frame_conv_raw tm =
+  if not (is_yul_case tm) then raise Conv.UNCHANGED else
+  let
+    val cargs = snd (strip_comb tm)
+    val _ = if List.length cargs = 3 then () else raise Conv.UNCHANGED
+    val inv = List.nth (cargs, 0)
+    val b1 = List.nth (cargs, 1)
+    val b2 = List.nth (cargs, 2)
+    val _ = if is_invoke (head_const inv) andalso is_abs b1
+            then () else raise Conv.UNCHANGED
+    val (vals_v, rest) = dest_abs b1
+    val (mach_v, body) = dest_abs rest
+    val _ = if shape_call vals_v body then raise Conv.UNCHANGED else ()
+    val itms = snd (strip_comb inv)
+    val _ = if List.length itms = 5 then () else raise Conv.UNCHANGED
+    val n_tm = List.nth (itms, 0)
+    val fns_tm = List.nth (itms, 1)
+    val name_tm = List.nth (itms, 2)
+    val args_tm = List.nth (itms, 3)
+    val mach_tm = List.nth (itms, 4)
+    val bind = binding_memo (frame_defs ()) fns_tm name_tm
+    val fd = rand (rhs (concl bind))
+    val inst = ISPECL
+      [n_tm, fns_tm, name_tm, args_tm, mach_tm, b1, b2, fd]
+      yul_expr_result_CASE_invoke_frame
+    val (ant, _) = dest_imp (concl inst)
+    val (_, arity) = dest_conj ant
+  in
+    Thm.MP inst (Thm.CONJ bind (arity_thm arity))
+  end
+
+val () =
+  set_frame_conv
+    (fn tm => frame_conv_raw tm handle HOL_ERR _ => raise Conv.UNCHANGED)
 
 (*---------------------------------------------------------------------------
    Keeping the client's table out of the set the conversion runs on.
@@ -1239,8 +1587,10 @@ fun yul_invoke_conv defs tm =
                (body_set (computeLib.copy eval_compset) defs fns)
     (* The statement rule reduces the statement on the set the conversion is
      * running on, not on the one made at load time: same rules, with the
-     * client's table scrubbed out of it. *)
-    val () = set_block_compset cs
+     * client's table scrubbed out of it.  Its fallback set is made from that
+     * one, for the same reason. *)
+    val () = set_block_compset cs (clause_set cs)
+    val () = set_frame_defs defs
     val res = computeLib.CBV_CONV cs (rhs (concl step))
   in
     Thm.TRANS step res
@@ -1331,6 +1681,14 @@ fun is_fixed_point defs tm =
     val cs = case table_in tm of
                SOME t => opaque_table cs t
              | NONE => cs
+    (* The set the reduction runs on is installed, as `yul_invoke_conv` installs
+     * its own: the conversion is registered in it for the four clause
+     * constants, and the rule reduces a statement on the installed set.  Left
+     * uninstalled, this set's four entries would run their clause on whatever
+     * set the last conversion left behind -- with the client's definitions
+     * folded back in, which is the other thing this set exists to keep out. *)
+    val () = set_block_compset cs (clause_set cs)
+    val () = set_frame_defs defs
   in
     aconv tm (rhs (concl (computeLib.CBV_CONV cs tm)))
   end
