@@ -179,9 +179,7 @@ decoder's order of revert and panic checks. A dynamic memory array's default
 value is the shared empty array; a static one is allocated zeroed, with its
 static rows allocated eagerly. Functions with modifiers and a static memory
 array return are rejected: the compiler allocates that array once and passes it
-through the modifiers, which the per-level procedures do not model. Tuple types
-with array components (`return (a, n)`, multi-value internal calls) do not
-decode yet.
+through the modifiers, which the per-level procedures do not model.
 
 Struct declarations may be file-level or contract members. User-defined type
 names and field accesses retain declaration IDs; field ownership and expression

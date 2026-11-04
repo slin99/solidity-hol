@@ -633,8 +633,11 @@ class ClassifyTests(unittest.TestCase):
     def test_tuples_are_classified_by_a_component(self) -> None:
         self.assertTrue(coverage.decodes("t_tuple$_t_bool_$_t_bytes4_$"))
         self.assertTrue(coverage.decodes("t_tuple$_t_bool_$_t_bytes_memory_ptr_$"))
-        self.assertFalse(coverage.decodes("t_tuple$_t_bool_$_t_array$_t_uint8_$dyn_memory_ptr_$"))
-        self.assertEqual(coverage.type_feature("t_tuple$_t_bool_$_t_array$_t_uint8_$dyn_memory_ptr_$"),
+        self.assertTrue(coverage.decodes("t_tuple$_t_bool_$_t_array$_t_uint8_$dyn_memory_ptr_$"))
+        self.assertTrue(coverage.decodes(
+            "t_tuple$_t_array$_t_array$_t_uint8_$2_memory_ptr_$dyn_memory_ptr_$_t_uint256_$"))
+        self.assertFalse(coverage.decodes("t_tuple$_t_bool_$_t_array$_t_uint8_$dyn_storage_ptr_$"))
+        self.assertEqual(coverage.type_feature("t_tuple$_t_bool_$_t_array$_t_uint8_$dyn_storage_ptr_$"),
                          "arrays")
         self.assertEqual(coverage.type_feature("t_bytes32"),
                          "fixed-size bytes members and indexing")

@@ -116,4 +116,32 @@ contract MemoryArrays {
         r[0] = new bytes(1);
         r[0][0] = v;
     }
+
+    function pair() private pure returns (uint256[] memory a, uint256 n) {
+        a = new uint256[](1);
+        a[0] = 7;
+        n = 2;
+    }
+
+    function tupleCall() external pure returns (uint256) {
+        (uint256[] memory a, uint256 n) = pair();
+        return a[0] + n;
+    }
+
+    function tupleReturn(uint256 v) external pure returns (uint256[] memory, uint256) {
+        uint256[] memory a = new uint256[](1);
+        a[0] = v;
+        return (a, v + 1);
+    }
+
+    function fresh() private pure returns (uint256[2] memory r) {
+        r[0] += 1;
+    }
+
+    function freshEachCall() external pure returns (uint256, uint256) {
+        uint256[2] memory x = fresh();
+        uint256[2] memory y = fresh();
+        x[1] = 5;
+        return (x[0] + y[0], y[1]);
+    }
 }
