@@ -51,6 +51,8 @@ Definition memory_bytes_def:
     | NONE => NONE
 End
 
+(* A calldata byte sequence reads zeros past the end of the calldata, as
+ * calldatacopy does; its offset and length were checked when decoded. *)
 Definition reference_bytes_def:
   reference_bytes (st : source_state) r =
     case r of
@@ -60,8 +62,8 @@ Definition reference_bytes_def:
          | INR _ => NONE)
     | MemoryReference id 0 ty => memory_bytes st id ty
     | CalldataReference offset length ty =>
-        if byte_sequence_type ty ∧ offset + length ≤ LENGTH st.frame.call_data then
-          SOME (TAKE length (DROP offset st.frame.call_data))
+        if byte_sequence_type ty then
+          SOME (TAKE length (DROP offset st.frame.call_data ++ REPLICATE length 0w))
         else NONE
     | _ => NONE
 End
@@ -262,7 +264,15 @@ Definition copy_byte_contents_def:
            | INL bs => case store_storage_bytes st.world.accounts dst bs st.frame.static_context of
                INL accounts => INL (st with world := st.world with accounts := accounts)
              | INR c => INR c)
-    | _ => (case byte_contents st src of
+    | _ =>
+      (* The compiler's calldata-to-memory conversion reverts when the data,
+       * added as a word, ends past the calldata; its other readers pad. *)
+      if (case src of
+            CalldataReference offset length _ =>
+              LENGTH st.frame.call_data < (offset + length) MOD 2 ** 256
+          | _ => F)
+      then INR (RevertCompletion []) else
+      (case byte_contents st src of
         INR c => INR c
       | INL bs => case copy_memory_bytes src dst st of
           SOME st' => INL st'

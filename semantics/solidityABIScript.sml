@@ -94,15 +94,131 @@ Termination
   rw[solidityASTTheory.sol_type_size_def]
 End
 
+(* Inverse of abi_value on values valid_enc accepts. *)
+Definition abi_runtime_value_def:
+  (abi_runtime_value (UintT _) (NumV n) = SOME (ScalarValue (IntegerValue (&n)))) ∧
+  (abi_runtime_value (IntT _) (IntV i) = SOME (ScalarValue (IntegerValue i))) ∧
+  (abi_runtime_value BoolT (NumV n) = SOME (ScalarValue (BoolValue (n = 1)))) ∧
+  (abi_runtime_value (AddressT _) (NumV n) =
+    SOME (ScalarValue (AddressValue (n2w n)))) ∧
+  (abi_runtime_value (FixedBytesT _) (BytesV bs) =
+    SOME (ScalarValue (BytesValue bs))) ∧
+  (abi_runtime_value _ _ = NONE)
+End
+
+Definition abi_word_def:
+  abi_word bs pos = num_of_be_bytes (TAKE 32 (DROP pos bs))
+End
+
+(* The bytes an element takes in its array's encoding. *)
+Definition abi_stride_def:
+  abi_stride ty =
+    if is_dynamic (abi_type ty) then 32 else static_length (abi_type ty)
+End
+
+(* The calldata word at pos, zero past the end, as CALLDATALOAD reads it. *)
+Definition calldata_word_def:
+  calldata_word (cd : byte list) pos =
+    num_of_be_bytes (TAKE 32 (DROP pos cd ++ REPLICATE 32 0w))
+End
+
+(* A dynamic element in calldata, reached as the pinned compiler does: the
+ * offset at ptr, relative to base, is a signed word below the calldata left
+ * after base; the length there is below 2^64; and its data of stride bytes per
+ * element ends within the calldata, compared as signed words. Addresses wrap
+ * at 2^256. The data's position and the length. *)
+Definition calldata_tail_def:
+  calldata_tail cd base ptr stride =
+    let size : 256 word = n2w (LENGTH cd) in
+    let rel : 256 word = n2w (calldata_word cd ptr) in
+    if ¬(rel < size - n2w base - 31w) then INR (RevertCompletion []) else
+    let addr = n2w base + rel in
+    let length = calldata_word cd (w2n addr) in
+    if 2 ** 64 ≤ length then INR (RevertCompletion []) else
+    let data = addr + 32w in
+    if size - n2w (length * stride) < data then INR (RevertCompletion [])
+    else INL (w2n data, length)
+End
+
+(* Element i of a calldata array whose data starts at data: a scalar read and
+ * validated in place, a static array in place, and a byte sequence or a
+ * dynamic array through its offset. *)
+Definition calldata_element_def:
+  calldata_element cd element data i =
+    if is_elementary_type element then
+      let word = TAKE 32 (DROP (data + 32 * i) cd ++ REPLICATE 32 0w) in
+      if ¬valid_enc (abi_type element) word then INR (RevertCompletion []) else
+      (case abi_runtime_value element (dec (abi_type element) word) of
+         SOME v => INL v
+       | NONE => INR (InvalidCompletion "bad calldata element type"))
+    else case element of
+      ArrayT _ (SOME n) =>
+        INL (ReferenceValue (CalldataReference
+          (data + i * static_length (abi_type element)) n element))
+    | _ =>
+      let stride = case element of ArrayT inner NONE => abi_stride inner | _ => 1 in
+      case calldata_tail cd data (data + 32 * i) stride of
+        INL (pos, length) =>
+          INL (ReferenceValue (CalldataReference pos length element))
+      | INR c => INR c
+End
+
+(* The ABI value of a calldata array or byte sequence of the given length at
+ * data, read element by element as the pinned encoder does, so an invalid
+ * element or offset reverts. *)
+Definition calldata_abi_value_def:
+  (calldata_abi_value cd ty data length =
+    case ty of
+      ArrayT element _ =>
+        (case calldata_abi_elements cd element data 0 length of
+           INL vs => INL (ListV vs)
+         | INR c => INR c)
+    | _ =>
+      case abi_value ty (ScalarValue (BytesValue
+             (TAKE length (DROP data cd ++ REPLICATE length 0w)))) of
+        SOME a => INL a
+      | NONE => INR (InvalidCompletion "bad calldata ABI value")) ∧
+  (calldata_abi_elements cd element data i n =
+    if n = 0 then INL [] else
+    case calldata_element cd element data i of
+      INR c => INR c
+    | INL v =>
+      let value =
+        case v of
+          ReferenceValue (CalldataReference pos length _) =>
+            calldata_abi_value cd element pos length
+        | _ => case abi_value element v of
+                 SOME a => INL a
+               | NONE => INR (InvalidCompletion "bad calldata ABI value") in
+      case value of
+        INR c => INR c
+      | INL a =>
+        case calldata_abi_elements cd element data (i + 1) (n - 1) of
+          INL as => INL (a :: as)
+        | INR c => INR c)
+Termination
+  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
+    INL (cd, ty, data, length) => (sol_type_size ty, 0)
+  | INR (cd, element, data, i, n) => (sol_type_size element, n + 1))’ >>
+  rw[solidityASTTheory.sol_type_size_def]
+End
+
 (* Keep both the logical value (for indexed hashes) and its encoded body.
  * Storage encoders copy complete data words, retaining unused dirty bytes. *)
 Definition runtime_abi_value_def:
   runtime_abi_value st ty v =
     case ty of
-      LocatedT MemoryLoc (ArrayT element length) =>
-        (case memory_abi_value st (ArrayT element length) v of
-           SOME a => INL (a, enc (abi_type ty) a)
-         | NONE => INR (InvalidCompletion "bad ABI value"))
+      LocatedT _ (ArrayT element length) =>
+        (case v of
+           ReferenceValue (CalldataReference data n rty) =>
+             if rty ≠ ArrayT element length then INR (InvalidCompletion "bad ABI value")
+             else (case calldata_abi_value st.frame.call_data rty data n of
+                     INL a => INL (a, enc (abi_type ty) a)
+                   | INR c => INR c)
+         | _ =>
+           case memory_abi_value st (ArrayT element length) v of
+             SOME a => INL (a, enc (abi_type ty) a)
+           | NONE => INR (InvalidCompletion "bad ABI value"))
     | _ =>
     let contents = case v of
           ReferenceValue r => byte_contents st r
@@ -166,18 +282,6 @@ Definition encoded_runtime_values_def:
     | INR c => INR c
 End
 
-(* Inverse of abi_value on values valid_enc accepts. *)
-Definition abi_runtime_value_def:
-  (abi_runtime_value (UintT _) (NumV n) = SOME (ScalarValue (IntegerValue (&n)))) ∧
-  (abi_runtime_value (IntT _) (IntV i) = SOME (ScalarValue (IntegerValue i))) ∧
-  (abi_runtime_value BoolT (NumV n) = SOME (ScalarValue (BoolValue (n = 1)))) ∧
-  (abi_runtime_value (AddressT _) (NumV n) =
-    SOME (ScalarValue (AddressValue (n2w n)))) ∧
-  (abi_runtime_value (FixedBytesT _) (BytesV bs) =
-    SOME (ScalarValue (BytesValue bs))) ∧
-  (abi_runtime_value _ _ = NONE)
-End
-
 Definition abi_runtime_values_def:
   (abi_runtime_values [] [] = SOME []) ∧
   (abi_runtime_values (ty :: tys) (a :: as) =
@@ -191,16 +295,6 @@ End
  * returndata buffer before decoding dynamic return values. *)
 Definition memory_free_pointer_def:
   memory_free_pointer st = 128 + st.memory_allocated
-End
-
-Definition abi_word_def:
-  abi_word bs pos = num_of_be_bytes (TAKE 32 (DROP pos bs))
-End
-
-(* The bytes an element takes in its array's encoding. *)
-Definition abi_stride_def:
-  abi_stride ty =
-    if is_dynamic (abi_type ty) then 32 else static_length (abi_type ty)
 End
 
 (* A memory value decoded at pos, as the pinned decoder does: a scalar
@@ -263,22 +357,40 @@ Termination
   rw[solidityASTTheory.sol_type_size_def]
 End
 
+(* A memory copy of a calldata array whose data starts at data, as the pinned
+ * compiler converts one: allocated, its data span checked, then decoded as an
+ * ABI argument is. *)
+Definition copy_calldata_array_def:
+  copy_calldata_array cd ty data length free =
+    case ty of
+      ArrayT element l =>
+        let size = (if l = NONE then 32 else 0) + 32 * length in
+        if 2 ** 64 ≤ free + size then INR (PanicCompletion 65)
+        else if data + length * abi_stride element > LENGTH cd then
+          INR (RevertCompletion [])
+        else (case decode_memory_elements element cd data 0 length (free + size) of
+                INL (vs, _) => INL (TupleValue vs)
+              | INR c => INR c)
+    | _ => INR (InvalidCompletion "bad calldata array copy")
+End
+
 (* An argument at head: a scalar or static array in place, any other value at
  * the offset the head holds. A calldata byte sequence stays in the calldata. *)
 Definition decode_abi_argument_def:
   decode_abi_argument ty bs head base free =
     if head + 32 > LENGTH bs then INR (RevertCompletion []) else
     case ty of
-      LocatedT CalldataLoc element =>
+      LocatedT CalldataLoc (ArrayT element (SOME n)) =>
+        INL (ReferenceValue (CalldataReference (base + head) n (ArrayT element (SOME n))), free)
+    | LocatedT CalldataLoc element =>
         let offset = abi_word bs head in
         if 2 ** 64 ≤ offset ∨ offset + 32 > LENGTH bs then
           INR (RevertCompletion []) else
         let length = abi_word bs offset in
-        if 2 ** 64 ≤ length ∨ offset + 32 + length > LENGTH bs then
+        let stride = case element of ArrayT inner NONE => abi_stride inner | _ => 1 in
+        if 2 ** 64 ≤ length ∨ offset + 32 + length * stride > LENGTH bs then
           INR (RevertCompletion [])
-        else if byte_sequence_type element then
-          INL (ReferenceValue (CalldataReference (base + offset + 32) length element), free)
-        else INR (InvalidCompletion "bad ABI calldata type")
+        else INL (ReferenceValue (CalldataReference (base + offset + 32) length element), free)
     | LocatedT MemoryLoc element =>
         if is_dynamic (abi_type element) then
           let offset = abi_word bs head in
@@ -414,6 +526,25 @@ Proof
   ho_match_mp_tac memory_abi_value_ind >> rpt strip_tac >>
   simp[Once memory_abi_value_pre_def] >> rw[] >> gvs[]
 QED
+val () = cv_auto_trans abi_word_def;
+val () = cv_auto_trans abi_stride_def;
+val () = cv_auto_trans calldata_word_def;
+val () = cv_auto_trans calldata_tail_def;
+val () = cv_auto_trans calldata_element_def;
+val calldata_abi_value_pre_def = cv_auto_trans_pre_rec "calldata_abi_value_pre calldata_abi_elements_pre" calldata_abi_value_def (
+  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
+    INL (cd, ty, data, length) => (cv_size ty, 0)
+  | INR (cd, element, data, i, n) => (cv_size element, cv$c2n n + 1))’ >>
+  cv_termination_tac
+);
+
+Theorem calldata_abi_value_pre[cv_pre]:
+  (∀cd ty data length. calldata_abi_value_pre cd ty data length) ∧
+  (∀cd element data i n. calldata_abi_elements_pre cd element data i n)
+Proof
+  ho_match_mp_tac calldata_abi_value_ind >> rpt strip_tac >>
+  simp[Once calldata_abi_value_pre_def] >> rw[] >> gvs[]
+QED
 val () = cv_auto_trans runtime_abi_value_def;
 val () = cv_auto_trans encoded_abi_parts_def;
 val () = cv_auto_trans encoded_abi_tuple_def;
@@ -429,8 +560,6 @@ QED
 
 val () = cv_auto_trans encoded_runtime_values_def;
 val () = cv_auto_trans memory_free_pointer_def;
-val () = cv_auto_trans abi_word_def;
-val () = cv_auto_trans abi_stride_def;
 val decode_memory_value_pre_def = cv_auto_trans_pre_rec "decode_memory_value_pre decode_memory_elements_pre" decode_memory_value_def (
   WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
     INL (ty, bs, pos, free) => (cv_size ty, 0)
@@ -445,6 +574,7 @@ Proof
   ho_match_mp_tac decode_memory_value_ind >> rpt strip_tac >>
   simp[Once decode_memory_value_pre_def] >> rw[] >> gvs[]
 QED
+val () = cv_auto_trans copy_calldata_array_def;
 val () = cv_auto_trans decode_abi_argument_def;
 val () = cv_auto_trans decode_abi_arguments_def;
 val () = cv_auto_trans decode_arguments_def;

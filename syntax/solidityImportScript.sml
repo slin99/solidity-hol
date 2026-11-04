@@ -394,10 +394,16 @@ Definition array_prefix_fields_def:
     if f = "_t_array" then array_prefix_fields fs + 1 else 0)
 End
 
-Definition memory_array_dimensions_def:
-  (memory_array_dimensions ty [] = SOME ty) ∧
-  (memory_array_dimensions ty (l :: ls) =
-    let suffix = if ls = [] then "_memory_ptr" else "_memory_ptr_" in
+(* The pointer suffix of a memory or calldata type identifier. *)
+Definition location_suffix_def:
+  location_suffix loc = if loc = CalldataLoc then "_calldata_ptr" else "_memory_ptr"
+End
+
+Definition array_dimensions_def:
+  (array_dimensions loc ty [] = SOME ty) ∧
+  (array_dimensions loc ty (l :: ls) =
+    let suffix = if ls = [] then location_suffix loc
+                 else location_suffix loc ++ "_" in
     if ¬isPREFIX (REVERSE suffix) (REVERSE l) then NONE else
     let digits = TAKE (LENGTH l - LENGTH suffix) l in
     let length =
@@ -406,14 +412,14 @@ Definition memory_array_dimensions_def:
              SOME n => if 0 < n then SOME (SOME n) else NONE
            | NONE => NONE in
     case length of
-      SOME length => memory_array_dimensions (ArrayT ty length) ls
+      SOME length => array_dimensions loc (ArrayT ty length) ls
     | NONE => NONE)
 End
 
-Definition memory_array_base_def:
-  memory_array_base name =
-    if name = "t_bytes_memory_ptr" then SOME BytesT
-    else if name = "t_string_memory_ptr" then SOME StringT
+Definition array_base_def:
+  array_base loc name =
+    if name = "t_bytes" ++ location_suffix loc then SOME BytesT
+    else if name = "t_string" ++ location_suffix loc then SOME StringT
     else if name = "t_address_payable" then SOME (AddressT PayableAddress)
     else if isPREFIX "t_" name ∧ name ≠ "t_uint" ∧ name ≠ "t_int" then
       case elementary_type (DROP 2 name) of
@@ -422,8 +428,9 @@ Definition memory_array_base_def:
     else NONE
 End
 
-Definition decode_memory_array_def:
-  decode_memory_array s =
+(* A memory or calldata array type identifier, nested to any depth. *)
+Definition decode_located_array_def:
+  decode_located_array loc s =
     case separated_fields #"$" "" s of
       f :: fs =>
         if f ≠ "t_array" then NONE else
@@ -432,12 +439,13 @@ Definition decode_memory_array_def:
            b :: dimensions =>
              if LENGTH dimensions ≠ k + 1 ∨ LENGTH b < 2 ∨ ¬isPREFIX "_" b ∨
                 ¬isPREFIX "_" (REVERSE b) then NONE else
-             (case memory_array_base (TAKE (LENGTH b - 2) (DROP 1 b)) of
+             (case array_base loc (TAKE (LENGTH b - 2) (DROP 1 b)) of
                 SOME element =>
-                  (case memory_array_dimensions element dimensions of
+                  (case array_dimensions loc element dimensions of
                      SOME ty =>
-                       if memory_object_type ty ∧ valid_type_shape (LocatedT MemoryLoc ty)
-                       then SOME (LocatedT MemoryLoc ty) else NONE
+                       if located_value_type (LocatedT loc ty) ∧
+                          valid_type_shape (LocatedT loc ty)
+                       then SOME (LocatedT loc ty) else NONE
                    | NONE => NONE)
               | NONE => NONE)
          | [] => NONE)
@@ -446,7 +454,10 @@ End
 
 Definition decode_elementary_identifier_def:
   decode_elementary_identifier s =
-    if isPREFIX "t_array$_" s then decode_memory_array s
+    if isPREFIX "t_array$_" s then
+      (case decode_located_array MemoryLoc s of
+         SOME ty => SOME ty
+       | NONE => decode_located_array CalldataLoc s)
     else if s = "t_bytes_storage" then SOME BytesT
     else if s = "t_string_storage" then SOME StringT
     else if s = "t_bytes_memory_ptr" then SOME (LocatedT MemoryLoc BytesT)
@@ -513,17 +524,17 @@ End
  * rejoining an array's fields: "_t_array" opens an array and a dimension,
  * the one field without a leading "_", closes one. *)
 Definition tuple_components_def:
-  (tuple_components (depth : num) acc [] =
+  (tuple_identifier_components (depth : num) acc [] =
     if depth = 0 ∧ acc = "" then SOME [] else NONE) ∧
-  (tuple_components depth acc (f :: fs) =
+  (tuple_identifier_components depth acc (f :: fs) =
     let component = if acc = "" then f else acc ++ "$" ++ f in
     let depth' = if f = "_t_array" then depth + 1
                  else if isPREFIX "_" f then depth else depth - 1 in
     if depth' = 0 then
-      case tuple_components 0 "" fs of
+      case tuple_identifier_components 0 "" fs of
         SOME cs => SOME (component :: cs)
       | NONE => NONE
-    else tuple_components depth' component fs)
+    else tuple_identifier_components depth' component fs)
 End
 
 Definition decode_type_identifier_def:
@@ -534,7 +545,7 @@ Definition decode_type_identifier_def:
     else if isPREFIX "t_tuple$" s then
       case REVERSE (separated_fields #"$" "" (DROP 8 s)) of
         [] :: pieces =>
-          (case tuple_components 0 "" (REVERSE pieces) of
+          (case tuple_identifier_components 0 "" (REVERSE pieces) of
              SOME cs => OPTION_MAP SrcTupleType (all_some (MAP tuple_component cs))
            | NONE => NONE)
       | _ => NONE
@@ -583,7 +594,7 @@ QED
 Theorem decode_elementary_identifier_valid:
   decode_elementary_identifier s = SOME ty ⇒ valid_type_shape ty
 Proof
-  rw[decode_elementary_identifier_def, decode_memory_array_def, AllCaseEqs()] >>
+  rw[decode_elementary_identifier_def, decode_located_array_def, AllCaseEqs()] >>
   imp_res_tac elementary_type_valid >>
   gvs[valid_type_shape_def, outer_location_free_def, location_shape_ok_def,
       is_reference_type_def, contains_mapping_def]
@@ -693,21 +704,23 @@ Definition canonical_storage_identifier_def:
     else c :: canonical_storage_identifier 0 0 cs)
 End
 
-(* Memory types: an array's elements are values or memory pointers. *)
-Definition memory_type_identifier_def:
-  (memory_type_identifier (ArrayT element length) =
-    "t_array$_" ++ memory_type_identifier element ++ "_$" ++
-    (case length of SOME n => toString n | NONE => "dyn") ++ "_memory_ptr") ∧
-  (memory_type_identifier BytesT = "t_bytes_memory_ptr") ∧
-  (memory_type_identifier StringT = "t_string_memory_ptr") ∧
-  (memory_type_identifier ty = storage_type_identifier ty)
+(* Memory and calldata types: an array's elements are values or pointers in
+ * the same location. *)
+Definition located_type_identifier_def:
+  (located_type_identifier loc (ArrayT element length) =
+    "t_array$_" ++ located_type_identifier loc element ++ "_$" ++
+    (case length of SOME n => toString n | NONE => "dyn") ++ location_suffix loc) ∧
+  (located_type_identifier loc BytesT = "t_bytes" ++ location_suffix loc) ∧
+  (located_type_identifier loc StringT = "t_string" ++ location_suffix loc) ∧
+  (located_type_identifier loc ty = storage_type_identifier ty)
 End
 
 Definition source_type_matches_def:
   source_type_matches ty tid ⇔
     canonical_storage_identifier 0 0 tid =
       case ty of
-        LocatedT MemoryLoc element => memory_type_identifier element
+        LocatedT MemoryLoc element => located_type_identifier MemoryLoc element
+      | LocatedT CalldataLoc element => located_type_identifier CalldataLoc element
       | _ => storage_type_identifier ty
 End
 
@@ -725,7 +738,7 @@ Definition variable_type_def:
                 else if v.var_location = "calldata" then SOME CalldataLoc
                 else if v.var_location = "storage" then SOME StorageLoc else NONE) of
             SOME loc =>
-              if (byte_sequence_type ty ∨ (loc = MemoryLoc ∧ memory_object_type ty)) ∧
+              if located_value_type (LocatedT loc ty) ∧
                  source_type_matches (LocatedT loc ty) v.var_type_id then
                 SOME (LocatedT loc ty) else NONE
           | NONE => NONE
@@ -1016,13 +1029,13 @@ Definition check_expr_def:
             | SrcRational i d => 0 ≤ i ∧ d = 1
             | _ => F)
         then SOME (SrcType (FixedBytesT 1)) else NONE
-    | (SOME (SrcType (LocatedT MemoryLoc (ArrayT element _))), SOME index_type) =>
-        if source_type_matches (memory_element_type element) tid ∧
+    | (SOME (SrcType (LocatedT loc (ArrayT element _))), SOME index_type) =>
+        if loc ≠ StorageLoc ∧ source_type_matches (element_type loc element) tid ∧
            (case index_type of
               SrcType (UintT _) => T
             | SrcRational i d => 0 ≤ i ∧ d = 1
             | _ => F)
-        then SOME (SrcType (memory_element_type element)) else NONE
+        then SOME (SrcType (element_type loc element)) else NONE
     | (SOME (SrcType (ArrayT element _)), SOME index_type) =>
         if source_type_matches element tid ∧
            (case index_type of
@@ -1039,8 +1052,8 @@ Definition check_expr_def:
         if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
     | SOME (SrcType (ArrayT _ _)) =>
         if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
-    | SOME (SrcType (LocatedT MemoryLoc (ArrayT _ _))) =>
-        if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
+    | SOME (SrcType (LocatedT loc (ArrayT _ _))) =>
+        if loc ≠ StorageLoc ∧ tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
     | _ => NONE) ∧
   (check_expr env (SrcArrayMember _ _ _ _) = NONE) ∧
   (check_expr env (SrcLiteral _ kind value tid) =
@@ -1527,7 +1540,7 @@ QED
 val () = cv_auto_trans normalize_type_name_def;
 val () = cv_auto_trans storage_type_identifier_def;
 val () = cv_auto_trans canonical_storage_identifier_def;
-val () = cv_auto_trans memory_type_identifier_def;
+val () = cv_auto_trans located_type_identifier_def;
 val () = cv_auto_trans source_type_matches_def;
 val () = cv_auto_trans storage_layout_identifier_def;
 val () = cv_auto_trans variable_type_def;

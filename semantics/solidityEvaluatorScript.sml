@@ -234,7 +234,13 @@ Definition eval_operation_def:
          | _ => ValueAbrupt (InvalidCompletion "bad byte index operands"))
     | ArrayIndexOperation a index =>
         (case (eval_atom st.scopes a, eval_atom st.scopes index) of
-           (SOME (ReferenceValue r), SOME (ScalarValue (IntegerValue i))) =>
+           (SOME (ReferenceValue (CalldataReference data n (ArrayT element _))),
+            SOME (ScalarValue (IntegerValue i))) =>
+             if i < 0 ∨ &n ≤ i then ValueAbrupt (PanicCompletion 50) else
+             (case calldata_element st.frame.call_data element data (Num i) of
+                INL v => ValueOk v
+              | INR c => ValueAbrupt c)
+         | (SOME (ReferenceValue r), SOME (ScalarValue (IntegerValue i))) =>
              (case memory_array_element st r i of
                 INL (_, _, _, v) => ValueOk v
               | INR c => ValueAbrupt c)
@@ -248,6 +254,7 @@ Definition eval_operation_def:
                   (case memory_array_length st r of
                      SOME n => ValueOk (ScalarValue (IntegerValue (&n)))
                    | NONE => ValueAbrupt (InvalidCompletion "bad memory array reference"))
+              | CalldataReference _ n _ => ValueOk (ScalarValue (IntegerValue (&n)))
               | _ => case reference_bytes st r of
                        SOME bs => ValueOk (ScalarValue (IntegerValue (&(LENGTH bs))))
                      | NONE => ValueAbrupt (InvalidCompletion "bad byte sequence reference"))
@@ -296,7 +303,9 @@ Definition bind_parameters_def:
 End
 
 (* A static memory array return binding starts at object zero too; the
- * elaborated body allocates its zero value before running. *)
+ * elaborated body allocates its zero value before running. The compiler
+ * rejects reading a calldata return binding before it is assigned, so its
+ * default is never observed. *)
 Definition default_runtime_value_def:
   default_runtime_value env ty =
     case ty of
@@ -305,8 +314,9 @@ Definition default_runtime_value_def:
           SOME (ReferenceValue (MemoryReference (HeapId 0) 0 element))
         else NONE
     | LocatedT CalldataLoc element =>
-        if byte_sequence_type element then
-          SOME (ReferenceValue (CalldataReference 0 0 element))
+        if calldata_object_type element then
+          SOME (ReferenceValue (CalldataReference 0
+            (case element of ArrayT _ (SOME n) => n | _ => 0) element))
         else NONE
     | LocatedT StorageLoc element =>
         if byte_sequence_type element then
@@ -561,6 +571,17 @@ Definition simple_stmt_def:
                   INL (v, st') => normal_result (define_binding x ty v st') gas
                 | INR c => abrupt_result c st gas)
          | _ => abrupt_result (InvalidCompletion "bad allocation length") st gas)
+    | DefineStmt x ty (CopyToMemoryOperation a) =>
+        (case eval_atom st.scopes a of
+           SOME (ReferenceValue (CalldataReference data n rty)) =>
+             (case copy_calldata_array st.frame.call_data rty data n
+                     (memory_free_pointer st) of
+                INL v =>
+                  (case materialize_value rty v st of
+                     SOME (v', st') => normal_result (define_binding x ty v' st') gas
+                   | NONE => abrupt_result (InvalidCompletion "bad calldata array copy") st gas)
+              | INR c => abrupt_result c st gas)
+         | _ => abrupt_result (InvalidCompletion "bad calldata array copy") st gas)
     | DefineStmt x ty (ArrayPushOperation a value) =>
         push_storage_array env x ty a value st gas
     | DefineStmt x ty (ArrayPopOperation a) =>

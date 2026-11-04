@@ -166,8 +166,8 @@ pop panics with `0x31`; both push forms follow the pinned compiler's resource
 panic `0x41` at length >= `2^64`. Length reads and indexing retain the full
 256-bit range. `pop()` clears only the removed scalar bytes; `push()` preserves
 existing bytes at the appended position, as the pinned compiler does. Dynamic
-array mutation of aggregates, calldata arrays, local reference bindings and
-aggregate copies remain coverage work.
+array mutation of aggregates, local reference bindings and aggregate copies
+remain coverage work.
 
 Memory arrays of elementary leaves or byte sequences, nested to any depth, are
 implemented: locals, parameters and returns, `new T[](n)`, `new bytes(n)` and
@@ -180,6 +180,15 @@ value is the shared empty array; a static one is allocated zeroed, with its
 static rows allocated eagerly. Functions with modifiers and a static memory
 array return are rejected: the compiler allocates that array once and passes it
 through the modifiers, which the per-level procedures do not model.
+
+Calldata arrays of the same element types, except fixed-size dimensions of
+dynamic elements (`string[2]`, `uint256[][2]`), which import rejects, are
+implemented as references into the frame's calldata: parameters, `T[] calldata` locals, indexing, `.length`,
+copies to memory, and ABI encoding as return values and external call
+arguments. Static arrays are read in place; dynamic elements are reached
+through their offsets with the pinned compiler's checks, which revert, and an
+index out of range panics with `0x32`. Elementary elements are validated when
+read, so a dirty element reverts when it is indexed, copied or re-encoded.
 
 Struct declarations may be file-level or contract members. User-defined type
 names and field accesses retain declaration IDs; field ownership and expression

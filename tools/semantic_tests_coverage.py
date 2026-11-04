@@ -471,7 +471,7 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
         result = (node["typeDescriptions"].get("typeIdentifier") or "").partition("$returns$_")[2]
         if created["nodeType"] == "UserDefinedTypeName":
             found.append("contract creation (new C)")
-        elif created["nodeType"] == "ArrayTypeName" and not memory_array(result.removesuffix("_$")):
+        elif created["nodeType"] == "ArrayTypeName" and not located_array(result.removesuffix("_$")):
             found.append("memory arrays (new T[](n))")
     elif kind == "UserDefinedTypeName":
         if not node["typeDescriptions"].get("typeIdentifier", "").startswith("t_struct$_"):
@@ -528,10 +528,11 @@ RATIONAL = re.compile(r"t_rational_(minus_)?[0-9]+_by_[0-9]+")
 BYTE_SEQUENCE = re.compile(r"t_(bytes|string)_(storage|(memory|calldata|storage)_ptr)")
 
 
-def memory_array(type_identifier: str) -> bool:
-    """Whether decode_memory_array admits a type identifier: a memory array,
-    possibly nested, of elementary value types or byte sequences, each
-    dimension dynamic or of a positive length."""
+def located_array(type_identifier: str) -> bool:
+    """Whether decode_located_array admits a type identifier: a memory or
+    calldata array, possibly nested, of elementary value types or byte
+    sequences, each dimension dynamic or of a positive length; in calldata, a
+    fixed-size dimension holds only static elements."""
     fields = type_identifier.split("$")
     if fields[0] != "t_array":
         return False
@@ -541,16 +542,22 @@ def memory_array(type_identifier: str) -> bool:
     base, *dimensions = fields[1 + k:] or [""]
     if len(dimensions) != k + 1 or len(base) < 2 or base[0] != "_" or base[-1] != "_":
         return False
+    location = "calldata" if dimensions[-1].endswith("_calldata_ptr") else "memory"
     element = base[1:-1]
-    if not (element in ("t_bytes_memory_ptr", "t_string_memory_ptr")
-            or VALUE_TYPE.fullmatch(element)):
+    sequence = element in (f"t_bytes_{location}_ptr", f"t_string_{location}_ptr")
+    if not (sequence or VALUE_TYPE.fullmatch(element)):
         return False
+    static = not sequence
     for i, dimension in enumerate(dimensions):
-        suffix = "_memory_ptr" if i == k else "_memory_ptr_"
+        suffix = f"_{location}_ptr" if i == k else f"_{location}_ptr_"
         if not dimension.endswith(suffix):
             return False
         digits = dimension[:-len(suffix)]
-        if digits != "dyn" and not (digits.isdigit() and int(digits) > 0):
+        if digits == "dyn":
+            static = False
+        elif not (digits.isdigit() and int(digits) > 0):
+            return False
+        elif location == "calldata" and not static:
             return False
     return True
 
@@ -559,7 +566,7 @@ def decodes_component(type_identifier: str) -> bool:
     """Whether tuple_component admits a component's type identifier."""
     return (VALUE_TYPE.fullmatch(type_identifier) is not None
             or BYTE_SEQUENCE.fullmatch(type_identifier) is not None
-            or memory_array(type_identifier)
+            or located_array(type_identifier)
             or type_identifier.startswith("t_stringliteral_"))
 
 
@@ -567,7 +574,7 @@ def decodes(type_identifier: str) -> bool:
     """Whether decode_type_identifier admits a type identifier: an elementary
     value type or byte sequence, a literal type, or a tuple of those."""
     if (VALUE_TYPE.fullmatch(type_identifier) or RATIONAL.fullmatch(type_identifier)
-            or BYTE_SEQUENCE.fullmatch(type_identifier) or memory_array(type_identifier)
+            or BYTE_SEQUENCE.fullmatch(type_identifier) or located_array(type_identifier)
             or type_identifier.startswith("t_stringliteral_")):
         return True
     if type_identifier == "t_tuple$__$":
@@ -575,15 +582,15 @@ def decodes(type_identifier: str) -> bool:
     if not type_identifier.startswith("t_tuple$"):
         return False
     *fields, last = type_identifier[len("t_tuple$"):].split("$")
-    components = tuple_components(fields)
+    components = tuple_identifier_components(fields)
     return last == "" and components is not None and all(
         len(c) >= 2 and c[0] == c[-1] == "_" and decodes_component(c[1:-1])
         for c in components
     )
 
 
-def tuple_components(fields: list[str]) -> list[str] | None:
-    """tuple_components: rejoin an array's `$`-separated fields, where
+def tuple_identifier_components(fields: list[str]) -> list[str] | None:
+    """tuple_identifier_components: rejoin an array's `$`-separated fields, where
     "_t_array" opens an array and a field without a leading "_" closes one."""
     components, depth, current = [], 0, None
     for field in fields:
@@ -676,9 +683,10 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
             location = node["storageLocation"]
             if location == "transient":
                 found.append("transient storage")
-            elif location not in ("default", "memory") and not BYTE_SEQUENCE.fullmatch(type_identifier):
+            elif (location not in ("default", "memory") and not BYTE_SEQUENCE.fullmatch(type_identifier)
+                  and not (location == "calldata" and located_array(type_identifier))):
                 found.append("local reference bindings")
-            elif location == "default" and memory_array(type_identifier):
+            elif location == "default" and located_array(type_identifier):
                 found.append("event array parameters")
             if error_parameter and not VALUE_TYPE.fullmatch(type_identifier):
                 found.append("custom errors with reference parameters")
@@ -690,6 +698,14 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
         type_identifier = node["typeDescriptions"]["typeIdentifier"]
         found.append("tuples of literals" if "t_rational" in type_identifier
                      else type_feature(type_identifier))
+    elif (kind == "Assignment" and unwrap(node["leftHandSide"])["nodeType"] == "TupleExpression"
+          and any(c is not None and unwrap(c)["nodeType"] != "Identifier"
+                  for c in unwrap(node["leftHandSide"])["components"])):
+        found.append("tuple assignments to element or member targets")
+    elif (kind == "VariableDeclarationStatement" and node.get("initialValue") is None
+          and any(d is not None and d["storageLocation"] == "calldata"
+                  for d in node["declarations"])):
+        found.append("calldata locals without an initializer")
     elif kind == "UnaryOperation" and node["operator"] not in UNARY_OPERATORS:
         found.append(f"operator {node['operator']}")
     elif ((kind == "UnaryOperation" and RATIONAL.fullmatch(node["typeDescriptions"]["typeIdentifier"]))
@@ -701,7 +717,7 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
         found.append("literals of non-integer types")
     elif kind == "IndexAccess":
         base_type = node["baseExpression"]["typeDescriptions"].get("typeIdentifier") or ""
-        if not (BYTES.fullmatch(base_type) or memory_array(base_type)
+        if not (BYTES.fullmatch(base_type) or located_array(base_type)
                 or (base_type.startswith(("t_mapping$_", "t_array$_"))
                     and storage_type_supported(base_type))):
             found.append(type_feature(base_type))
@@ -711,7 +727,7 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
             if not base_type.startswith("t_struct$_") or not storage_type_supported(base_type):
                 found.append(type_feature(base_type))
         elif node["memberName"] == "length":
-            if not BYTES.fullmatch(base_type) and not memory_array(base_type) and not (
+            if not BYTES.fullmatch(base_type) and not located_array(base_type) and not (
                     base_type.startswith("t_array$_") and storage_type_supported(base_type)):
                 found.append(type_feature(base_type))
         elif node["memberName"] in {"push", "pop"}:
@@ -1173,7 +1189,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
         if (node["nodeType"] in {"Identifier", "IndexAccess", "MemberAccess"}
                 and node.get("typeDescriptions", {}).get("typeIdentifier", "").startswith(("t_mapping$_", "t_array$_", "t_struct$_"))
                 and node["id"] not in storage_bases
-                and not memory_array(node["typeDescriptions"]["typeIdentifier"])):
+                and not located_array(node["typeDescriptions"]["typeIdentifier"])):
             tid = node["typeDescriptions"]["typeIdentifier"]
             feature = ("array values" if tid.startswith("t_array$_")
                        else "mapping values" if tid.startswith("t_mapping$_")
@@ -1194,7 +1210,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
         if any(m.get("kind") == "modifierInvocation" for m in by_id[f].get("modifiers", [])):
             for v in by_id[f].get("returnParameters", {}).get("parameters", []):
                 tid = v["typeDescriptions"].get("typeIdentifier") or ""
-                if memory_array(tid) and not tid.endswith("$dyn_memory_ptr"):
+                if located_array(tid) and tid.endswith("_memory_ptr") and not tid.endswith("$dyn_memory_ptr"):
                     found.setdefault(v["id"], []).append(Blocker(
                         "VariableDeclaration", "static memory array returns under modifiers",
                         "elaboration"))

@@ -248,6 +248,512 @@
     {
       "contracts": [
         {
+          "contract": "CalldataArrays",
+          "objects": [
+            {
+              "builtins": {
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "CalldataArrays_357",
+              "nodeKinds": {
+                "assignment": 1,
+                "block": 5,
+                "expressionStatement": 6,
+                "functionCall": 13,
+                "functionDefinition": 3,
+                "identifier": 2,
+                "if": 1,
+                "literal:number": 5,
+                "literal:string": 3,
+                "variableDeclaration": 1
+              },
+              "role": "creation",
+              "stage": "ir",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 155,
+                "and": 3,
+                "calldatacopy": 3,
+                "calldataload": 29,
+                "calldatasize": 25,
+                "callvalue": 13,
+                "eq": 3,
+                "gas": 3,
+                "gt": 41,
+                "iszero": 27,
+                "lt": 20,
+                "mcopy": 1,
+                "memoryguard": 1,
+                "mload": 12,
+                "mstore": 43,
+                "mul": 29,
+                "not": 1,
+                "or": 1,
+                "return": 13,
+                "returndatacopy": 3,
+                "returndatasize": 6,
+                "revert": 23,
+                "sgt": 3,
+                "shl": 1,
+                "shr": 1,
+                "slt": 24,
+                "staticcall": 3,
+                "sub": 50
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "CalldataArrays_357_deployed",
+              "nodeKinds": {
+                "assignment": 265,
+                "block": 361,
+                "break": 1,
+                "case": 13,
+                "default": 1,
+                "expressionStatement": 216,
+                "for": 10,
+                "functionCall": 944,
+                "functionDefinition": 196,
+                "identifier": 1094,
+                "if": 100,
+                "leave": 13,
+                "literal:number": 322,
+                "switch": 1,
+                "variableDeclaration": 377
+              },
+              "role": "runtime",
+              "stage": "ir",
+              "subobjects": 0
+            },
+            {
+              "builtins": {
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "CalldataArrays_357",
+              "nodeKinds": {
+                "assignment": 1,
+                "block": 5,
+                "expressionStatement": 5,
+                "functionCall": 12,
+                "functionDefinition": 2,
+                "identifier": 2,
+                "if": 1,
+                "literal:number": 5,
+                "literal:string": 3,
+                "variableDeclaration": 1
+              },
+              "role": "creation",
+              "stage": "ir-optimized-off",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 155,
+                "and": 3,
+                "calldatacopy": 3,
+                "calldataload": 29,
+                "calldatasize": 25,
+                "callvalue": 13,
+                "eq": 3,
+                "gas": 3,
+                "gt": 41,
+                "iszero": 27,
+                "lt": 20,
+                "mcopy": 1,
+                "memoryguard": 1,
+                "mload": 12,
+                "mstore": 43,
+                "mul": 29,
+                "not": 1,
+                "or": 1,
+                "return": 13,
+                "returndatacopy": 3,
+                "returndatasize": 6,
+                "revert": 22,
+                "sgt": 3,
+                "shl": 7,
+                "shr": 1,
+                "slt": 24,
+                "staticcall": 3,
+                "sub": 53
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "CalldataArrays_357_deployed",
+              "nodeKinds": {
+                "assignment": 265,
+                "block": 341,
+                "break": 1,
+                "case": 13,
+                "default": 1,
+                "expressionStatement": 215,
+                "for": 10,
+                "functionCall": 952,
+                "functionDefinition": 195,
+                "identifier": 1090,
+                "if": 100,
+                "leave": 13,
+                "literal:number": 328,
+                "switch": 1,
+                "variableDeclaration": 372
+              },
+              "role": "runtime",
+              "stage": "ir-optimized-off",
+              "subobjects": 0
+            },
+            {
+              "builtins": {
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 1,
+                "memoryguard": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "CalldataArrays_357",
+              "nodeKinds": {
+                "block": 3,
+                "expressionStatement": 4,
+                "functionCall": 8,
+                "identifier": 5,
+                "if": 1,
+                "literal:number": 4,
+                "literal:string": 2,
+                "variableDeclaration": 2
+              },
+              "role": "creation",
+              "stage": "ir-optimized-on",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 134,
+                "and": 11,
+                "calldatacopy": 3,
+                "calldataload": 35,
+                "calldatasize": 34,
+                "callvalue": 13,
+                "eq": 4,
+                "gas": 3,
+                "gt": 29,
+                "iszero": 22,
+                "lt": 17,
+                "mcopy": 1,
+                "memoryguard": 1,
+                "mload": 40,
+                "mstore": 75,
+                "not": 19,
+                "or": 1,
+                "return": 13,
+                "returndatacopy": 5,
+                "returndatasize": 10,
+                "revert": 78,
+                "sgt": 3,
+                "shl": 35,
+                "shr": 1,
+                "slt": 19,
+                "staticcall": 3,
+                "sub": 22
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "CalldataArrays_357_deployed",
+              "nodeKinds": {
+                "assignment": 66,
+                "block": 141,
+                "case": 13,
+                "expressionStatement": 184,
+                "for": 10,
+                "functionCall": 678,
+                "functionDefinition": 14,
+                "identifier": 456,
+                "if": 82,
+                "literal:number": 499,
+                "switch": 1,
+                "variableDeclaration": 143
+              },
+              "role": "runtime",
+              "stage": "ir-optimized-on",
+              "subobjects": 0
+            }
+          ]
+        }
+      ],
+      "sha256": "7d1aee22867092bd88821fcb38122f2a8f27b524b4b85aae54fb0b430bc1fe60",
+      "source": "testdata/differential/calldata_arrays.sol"
+    },
+    {
+      "contracts": [
+        {
+          "contract": "ArrayPeer",
+          "objects": [
+            {
+              "builtins": {
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "ArrayPeer_77",
+              "nodeKinds": {
+                "assignment": 1,
+                "block": 5,
+                "expressionStatement": 6,
+                "functionCall": 13,
+                "functionDefinition": 3,
+                "identifier": 2,
+                "if": 1,
+                "literal:number": 5,
+                "literal:string": 3,
+                "variableDeclaration": 1
+              },
+              "role": "creation",
+              "stage": "ir",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 31,
+                "and": 1,
+                "calldatacopy": 1,
+                "calldataload": 8,
+                "calldatasize": 6,
+                "callvalue": 2,
+                "eq": 1,
+                "gt": 11,
+                "iszero": 10,
+                "lt": 8,
+                "memoryguard": 1,
+                "mload": 3,
+                "mstore": 14,
+                "mul": 7,
+                "not": 1,
+                "or": 1,
+                "return": 2,
+                "revert": 14,
+                "sgt": 1,
+                "shr": 1,
+                "slt": 5,
+                "sub": 11
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "ArrayPeer_77_deployed",
+              "nodeKinds": {
+                "assignment": 62,
+                "block": 101,
+                "break": 2,
+                "case": 2,
+                "default": 1,
+                "expressionStatement": 62,
+                "for": 3,
+                "functionCall": 235,
+                "functionDefinition": 60,
+                "identifier": 248,
+                "if": 26,
+                "literal:number": 100,
+                "switch": 1,
+                "variableDeclaration": 90
+              },
+              "role": "runtime",
+              "stage": "ir",
+              "subobjects": 0
+            },
+            {
+              "builtins": {
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "ArrayPeer_77",
+              "nodeKinds": {
+                "assignment": 1,
+                "block": 5,
+                "expressionStatement": 5,
+                "functionCall": 12,
+                "functionDefinition": 2,
+                "identifier": 2,
+                "if": 1,
+                "literal:number": 5,
+                "literal:string": 3,
+                "variableDeclaration": 1
+              },
+              "role": "creation",
+              "stage": "ir-optimized-off",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 31,
+                "and": 1,
+                "calldatacopy": 1,
+                "calldataload": 8,
+                "calldatasize": 6,
+                "callvalue": 2,
+                "eq": 1,
+                "gt": 11,
+                "iszero": 10,
+                "lt": 8,
+                "memoryguard": 1,
+                "mload": 3,
+                "mstore": 14,
+                "mul": 7,
+                "not": 1,
+                "or": 1,
+                "return": 2,
+                "revert": 14,
+                "sgt": 1,
+                "shl": 3,
+                "shr": 1,
+                "slt": 5,
+                "sub": 11
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "ArrayPeer_77_deployed",
+              "nodeKinds": {
+                "assignment": 62,
+                "block": 100,
+                "break": 2,
+                "case": 2,
+                "default": 1,
+                "expressionStatement": 62,
+                "for": 3,
+                "functionCall": 238,
+                "functionDefinition": 60,
+                "identifier": 243,
+                "if": 26,
+                "literal:number": 103,
+                "switch": 1,
+                "variableDeclaration": 85
+              },
+              "role": "runtime",
+              "stage": "ir-optimized-off",
+              "subobjects": 0
+            },
+            {
+              "builtins": {
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 1,
+                "memoryguard": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "ArrayPeer_77",
+              "nodeKinds": {
+                "block": 3,
+                "expressionStatement": 4,
+                "functionCall": 8,
+                "identifier": 5,
+                "if": 1,
+                "literal:number": 4,
+                "literal:string": 2,
+                "variableDeclaration": 2
+              },
+              "role": "creation",
+              "stage": "ir-optimized-on",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 30,
+                "and": 1,
+                "calldatacopy": 1,
+                "calldataload": 7,
+                "calldatasize": 8,
+                "callvalue": 2,
+                "gt": 10,
+                "iszero": 6,
+                "lt": 7,
+                "memoryguard": 1,
+                "mload": 6,
+                "mstore": 22,
+                "not": 7,
+                "or": 1,
+                "return": 2,
+                "revert": 20,
+                "sgt": 1,
+                "shl": 13,
+                "shr": 1,
+                "slt": 4,
+                "sub": 4
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "ArrayPeer_77_deployed",
+              "nodeKinds": {
+                "assignment": 13,
+                "block": 36,
+                "break": 1,
+                "case": 2,
+                "expressionStatement": 45,
+                "for": 3,
+                "functionCall": 158,
+                "functionDefinition": 2,
+                "identifier": 87,
+                "if": 21,
+                "literal:number": 136,
+                "switch": 1,
+                "variableDeclaration": 28
+              },
+              "role": "runtime",
+              "stage": "ir-optimized-on",
+              "subobjects": 0
+            }
+          ]
+        }
+      ],
+      "sha256": "e04580df71e35fe4995ae9e5366b4bb3b802c97b96488cb7168857b970a6b466",
+      "source": "testdata/differential/calldata_arrays_peer.sol"
+    },
+    {
+      "contracts": [
+        {
           "contract": "CalldataBytes",
           "objects": [
             {
@@ -12027,6 +12533,8 @@
           "creation": 100,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -12067,7 +12575,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1540,
+          "runtime": 1726,
           "subobject": 0
         },
         "address": {
@@ -12083,6 +12591,8 @@
           "creation": 49,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -12122,7 +12632,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 274,
+          "runtime": 278,
           "subobject": 0
         },
         "basefee": {
@@ -12156,19 +12666,23 @@
         "calldatacopy": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/dynamic_bytes_peer.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
             "testdata/differential/modifiers.sol"
           ],
-          "runtime": 8,
+          "runtime": 12,
           "subobject": 0
         },
         "calldataload": {
           "creation": 1,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -12204,13 +12718,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 198,
+          "runtime": 235,
           "subobject": 0
         },
         "calldatasize": {
           "creation": 2,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -12247,7 +12763,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 448,
+          "runtime": 479,
           "subobject": 0
         },
         "caller": {
@@ -12265,9 +12781,11 @@
           "subobject": 0
         },
         "callvalue": {
-          "creation": 50,
+          "creation": 52,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -12308,7 +12826,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 399,
+          "runtime": 414,
           "subobject": 0
         },
         "chainid": {
@@ -12320,9 +12838,11 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 57,
+          "creation": 59,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -12388,9 +12908,11 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -12435,9 +12957,11 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 106,
+          "creation": 110,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -12514,6 +13038,8 @@
           "creation": 14,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -12550,7 +13076,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 197,
+          "runtime": 201,
           "subobject": 0
         },
         "exp": {
@@ -12573,11 +13099,12 @@
         "gas": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/external.sol",
             "testdata/differential/imports.sol"
           ],
-          "runtime": 19,
+          "runtime": 22,
           "subobject": 0
         },
         "gaslimit": {
@@ -12599,6 +13126,8 @@
         "gt": {
           "creation": 40,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -12638,13 +13167,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 178,
+          "runtime": 230,
           "subobject": 0
         },
         "iszero": {
           "creation": 21,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -12683,7 +13214,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 437,
+          "runtime": 474,
           "subobject": 0
         },
         "keccak256": {
@@ -12764,6 +13295,8 @@
           "creation": 25,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -12801,12 +13334,13 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 203,
+          "runtime": 231,
           "subobject": 0
         },
         "mcopy": {
           "creation": 2,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/dynamic_bytes_peer.sol",
             "testdata/differential/memory_arrays.sol",
@@ -12814,13 +13348,15 @@
             "testdata/differential/oz_erc20.sol",
             "testdata/differential/public_getters.sol"
           ],
-          "runtime": 6,
+          "runtime": 7,
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -12861,13 +13397,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 47,
+          "runtime": 49,
           "subobject": 0
         },
         "mload": {
-          "creation": 74,
+          "creation": 76,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -12908,7 +13446,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 114,
+          "runtime": 129,
           "subobject": 0
         },
         "mod": {
@@ -12931,9 +13469,11 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 112,
+          "creation": 114,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -12974,7 +13514,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 697,
+          "runtime": 754,
           "subobject": 0
         },
         "mstore8": {
@@ -12991,6 +13531,8 @@
         "mul": {
           "creation": 15,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -13018,13 +13560,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 159,
+          "runtime": 195,
           "subobject": 0
         },
         "not": {
           "creation": 27,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/constructors.sol",
             "testdata/differential/context.sol",
@@ -13061,7 +13605,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 94,
+          "runtime": 96,
           "subobject": 0
         },
         "number": {
@@ -13076,6 +13620,8 @@
           "creation": 26,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -13115,7 +13661,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 88,
+          "runtime": 90,
           "subobject": 0
         },
         "origin": {
@@ -13127,9 +13673,11 @@
           "subobject": 0
         },
         "return": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -13170,33 +13718,37 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 397,
+          "runtime": 412,
           "subobject": 0
         },
         "returndatacopy": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/external.sol",
             "testdata/differential/imports.sol"
           ],
-          "runtime": 12,
+          "runtime": 15,
           "subobject": 0
         },
         "returndatasize": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/external.sol",
             "testdata/differential/imports.sol"
           ],
-          "runtime": 35,
+          "runtime": 41,
           "subobject": 0
         },
         "revert": {
-          "creation": 96,
+          "creation": 98,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -13237,7 +13789,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 417,
+          "runtime": 454,
           "subobject": 0
         },
         "sar": {
@@ -13259,17 +13811,20 @@
         "sgt": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/scalars.sol",
             "testdata/differential/storage.sol",
             "testdata/differential/type_bounds.sol"
           ],
-          "runtime": 6,
+          "runtime": 10,
           "subobject": 0
         },
         "shl": {
           "creation": 11,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/constructors.sol",
             "testdata/differential/context.sol",
@@ -13302,13 +13857,15 @@
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/storage_references.sol"
           ],
-          "runtime": 57,
+          "runtime": 58,
           "subobject": 0
         },
         "shr": {
           "creation": 8,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -13349,7 +13906,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 101,
+          "runtime": 103,
           "subobject": 0
         },
         "signextend": {
@@ -13413,6 +13970,8 @@
           "creation": 11,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -13450,7 +14009,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 209,
+          "runtime": 238,
           "subobject": 0
         },
         "smod": {
@@ -13500,11 +14059,12 @@
         "staticcall": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/external.sol",
             "testdata/differential/imports.sol"
           ],
-          "runtime": 10,
+          "runtime": 13,
           "subobject": 0
         },
         "stop": {
@@ -13524,6 +14084,8 @@
           "creation": 20,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -13561,7 +14123,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 757,
+          "runtime": 818,
           "subobject": 0
         },
         "timestamp": {
@@ -13583,9 +14145,11 @@
       },
       "nodeKinds": {
         "assignment": {
-          "creation": 355,
+          "creation": 357,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -13626,13 +14190,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 4480,
+          "runtime": 4807,
           "subobject": 0
         },
         "block": {
-          "creation": 694,
+          "creation": 704,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -13673,24 +14239,28 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6295,
+          "runtime": 6757,
           "subobject": 0
         },
         "break": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/control.sol",
             "testdata/differential/inline_assembly.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/frontend/pure_core.sol"
           ],
-          "runtime": 23,
+          "runtime": 26,
           "subobject": 0
         },
         "case": {
           "creation": 3,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -13726,7 +14296,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 438,
+          "runtime": 453,
           "subobject": 0
         },
         "continue": {
@@ -13743,6 +14313,8 @@
           "creation": 3,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -13778,13 +14350,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 56,
+          "runtime": 58,
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 588,
+          "creation": 600,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -13825,12 +14399,14 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 4084,
+          "runtime": 4362,
           "subobject": 0
         },
         "for": {
           "creation": 6,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/control.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/inline_assembly.sol",
@@ -13844,13 +14420,15 @@
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 54,
+          "runtime": 67,
           "subobject": 0
         },
         "functionCall": {
-          "creation": 1752,
+          "creation": 1778,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -13891,13 +14469,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 16836,
+          "runtime": 18015,
           "subobject": 0
         },
         "functionDefinition": {
-          "creation": 488,
+          "creation": 494,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -13938,13 +14518,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 4086,
+          "runtime": 4342,
           "subobject": 0
         },
         "identifier": {
-          "creation": 1178,
+          "creation": 1182,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -13985,13 +14567,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 18260,
+          "runtime": 19602,
           "subobject": 0
         },
         "if": {
-          "creation": 123,
+          "creation": 125,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14032,13 +14616,14 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1189,
+          "runtime": 1315,
           "subobject": 0
         },
         "leave": {
           "creation": 3,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14075,13 +14660,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 338,
+          "runtime": 351,
           "subobject": 0
         },
         "literal:number": {
-          "creation": 716,
+          "creation": 726,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14122,13 +14709,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6210,
+          "runtime": 6632,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 156,
+          "creation": 162,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14176,6 +14765,8 @@
           "creation": 3,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -14211,13 +14802,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 70,
+          "runtime": 72,
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 378,
+          "creation": 380,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14258,7 +14851,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 8660,
+          "runtime": 9127,
           "subobject": 0
         }
       },
@@ -14267,6 +14860,8 @@
           "creation": 0,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14307,7 +14902,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 49,
+          "runtime": 51,
           "subobject": 0
         },
         "datacopy": {
@@ -14317,9 +14912,11 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14364,9 +14961,11 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 106,
+          "creation": 110,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14411,9 +15010,11 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14472,6 +15073,8 @@
           "creation": 100,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14512,7 +15115,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1532,
+          "runtime": 1718,
           "subobject": 0
         },
         "address": {
@@ -14528,6 +15131,8 @@
           "creation": 49,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14567,7 +15172,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 274,
+          "runtime": 278,
           "subobject": 0
         },
         "basefee": {
@@ -14601,19 +15206,23 @@
         "calldatacopy": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/dynamic_bytes_peer.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
             "testdata/differential/modifiers.sol"
           ],
-          "runtime": 8,
+          "runtime": 12,
           "subobject": 0
         },
         "calldataload": {
           "creation": 1,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -14649,13 +15258,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 198,
+          "runtime": 235,
           "subobject": 0
         },
         "calldatasize": {
           "creation": 2,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -14692,7 +15303,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 448,
+          "runtime": 479,
           "subobject": 0
         },
         "caller": {
@@ -14710,9 +15321,11 @@
           "subobject": 0
         },
         "callvalue": {
-          "creation": 50,
+          "creation": 52,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14753,7 +15366,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 399,
+          "runtime": 414,
           "subobject": 0
         },
         "chainid": {
@@ -14765,9 +15378,11 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 57,
+          "creation": 59,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14833,9 +15448,11 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14880,9 +15497,11 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 106,
+          "creation": 110,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14957,6 +15576,8 @@
           "creation": 14,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -14993,7 +15614,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 197,
+          "runtime": 201,
           "subobject": 0
         },
         "exp": {
@@ -15016,11 +15637,12 @@
         "gas": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/external.sol",
             "testdata/differential/imports.sol"
           ],
-          "runtime": 19,
+          "runtime": 22,
           "subobject": 0
         },
         "gaslimit": {
@@ -15042,6 +15664,8 @@
         "gt": {
           "creation": 40,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15081,13 +15705,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 178,
+          "runtime": 230,
           "subobject": 0
         },
         "iszero": {
           "creation": 21,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15126,7 +15752,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 437,
+          "runtime": 474,
           "subobject": 0
         },
         "keccak256": {
@@ -15205,6 +15831,8 @@
           "creation": 25,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15242,12 +15870,13 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 203,
+          "runtime": 231,
           "subobject": 0
         },
         "mcopy": {
           "creation": 2,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/dynamic_bytes_peer.sol",
             "testdata/differential/memory_arrays.sol",
@@ -15255,13 +15884,15 @@
             "testdata/differential/oz_erc20.sol",
             "testdata/differential/public_getters.sol"
           ],
-          "runtime": 6,
+          "runtime": 7,
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15302,13 +15933,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 47,
+          "runtime": 49,
           "subobject": 0
         },
         "mload": {
-          "creation": 74,
+          "creation": 76,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15349,7 +15982,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 105,
+          "runtime": 120,
           "subobject": 0
         },
         "mod": {
@@ -15369,9 +16002,11 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 106,
+          "creation": 108,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15412,7 +16047,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 686,
+          "runtime": 743,
           "subobject": 0
         },
         "mstore8": {
@@ -15429,6 +16064,8 @@
         "mul": {
           "creation": 15,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15456,13 +16093,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 159,
+          "runtime": 195,
           "subobject": 0
         },
         "not": {
           "creation": 38,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15502,7 +16141,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 144,
+          "runtime": 146,
           "subobject": 0
         },
         "number": {
@@ -15517,6 +16156,8 @@
           "creation": 26,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15556,7 +16197,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 88,
+          "runtime": 90,
           "subobject": 0
         },
         "origin": {
@@ -15577,9 +16218,11 @@
           "subobject": 0
         },
         "return": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15620,33 +16263,37 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 397,
+          "runtime": 412,
           "subobject": 0
         },
         "returndatacopy": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/external.sol",
             "testdata/differential/imports.sol"
           ],
-          "runtime": 12,
+          "runtime": 15,
           "subobject": 0
         },
         "returndatasize": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/external.sol",
             "testdata/differential/imports.sol"
           ],
-          "runtime": 35,
+          "runtime": 41,
           "subobject": 0
         },
         "revert": {
-          "creation": 87,
+          "creation": 89,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15687,7 +16334,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 385,
+          "runtime": 421,
           "subobject": 0
         },
         "sar": {
@@ -15709,17 +16356,21 @@
         "sgt": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/scalars.sol",
             "testdata/differential/storage.sol",
             "testdata/differential/type_bounds.sol"
           ],
-          "runtime": 6,
+          "runtime": 10,
           "subobject": 0
         },
         "shl": {
           "creation": 53,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15759,13 +16410,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 239,
+          "runtime": 249,
           "subobject": 0
         },
         "shr": {
           "creation": 8,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15805,7 +16458,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 92,
+          "runtime": 94,
           "subobject": 0
         },
         "signextend": {
@@ -15869,6 +16522,8 @@
           "creation": 11,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -15906,7 +16561,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 209,
+          "runtime": 238,
           "subobject": 0
         },
         "smod": {
@@ -15956,11 +16611,12 @@
         "staticcall": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/external.sol",
             "testdata/differential/imports.sol"
           ],
-          "runtime": 10,
+          "runtime": 13,
           "subobject": 0
         },
         "stop": {
@@ -15980,6 +16636,8 @@
           "creation": 40,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16017,7 +16675,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 782,
+          "runtime": 846,
           "subobject": 0
         },
         "timestamp": {
@@ -16039,9 +16697,11 @@
       },
       "nodeKinds": {
         "assignment": {
-          "creation": 355,
+          "creation": 357,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16082,13 +16742,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 4433,
+          "runtime": 4760,
           "subobject": 0
         },
         "block": {
-          "creation": 661,
+          "creation": 671,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16129,24 +16791,28 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5962,
+          "runtime": 6403,
           "subobject": 0
         },
         "break": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/control.sol",
             "testdata/differential/inline_assembly.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/frontend/pure_core.sol"
           ],
-          "runtime": 23,
+          "runtime": 26,
           "subobject": 0
         },
         "case": {
           "creation": 3,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -16182,7 +16848,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 438,
+          "runtime": 453,
           "subobject": 0
         },
         "continue": {
@@ -16199,6 +16865,8 @@
           "creation": 3,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -16234,13 +16902,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 56,
+          "runtime": 58,
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 510,
+          "creation": 520,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16281,12 +16951,14 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 4044,
+          "runtime": 4321,
           "subobject": 0
         },
         "for": {
           "creation": 6,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/control.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/inline_assembly.sol",
@@ -16300,13 +16972,15 @@
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 54,
+          "runtime": 67,
           "subobject": 0
         },
         "functionCall": {
-          "creation": 1747,
+          "creation": 1771,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16347,13 +17021,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 16998,
+          "runtime": 18188,
           "subobject": 0
         },
         "functionDefinition": {
-          "creation": 416,
+          "creation": 420,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16394,13 +17070,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 4019,
+          "runtime": 4274,
           "subobject": 0
         },
         "identifier": {
-          "creation": 1157,
+          "creation": 1161,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16441,13 +17119,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 17945,
+          "runtime": 19278,
           "subobject": 0
         },
         "if": {
-          "creation": 123,
+          "creation": 125,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16488,13 +17168,14 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1189,
+          "runtime": 1315,
           "subobject": 0
         },
         "leave": {
           "creation": 3,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16531,13 +17212,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 338,
+          "runtime": 351,
           "subobject": 0
         },
         "literal:number": {
-          "creation": 744,
+          "creation": 754,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16578,13 +17261,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6271,
+          "runtime": 6702,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 156,
+          "creation": 162,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16632,6 +17317,8 @@
           "creation": 3,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -16667,13 +17354,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 70,
+          "runtime": 72,
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 353,
+          "creation": 355,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16714,7 +17403,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 8368,
+          "runtime": 8825,
           "subobject": 0
         }
       },
@@ -16723,6 +17412,8 @@
           "creation": 0,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16763,7 +17454,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 49,
+          "runtime": 51,
           "subobject": 0
         },
         "datacopy": {
@@ -16773,9 +17464,11 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16820,9 +17513,11 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 106,
+          "creation": 110,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16867,9 +17562,11 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16928,6 +17625,8 @@
           "creation": 122,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -16967,7 +17666,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1359,
+          "runtime": 1523,
           "subobject": 0
         },
         "address": {
@@ -16982,6 +17681,8 @@
         "and": {
           "creation": 34,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17015,7 +17716,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 633,
+          "runtime": 645,
           "subobject": 0
         },
         "basefee": {
@@ -17049,19 +17750,23 @@
         "calldatacopy": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/dynamic_bytes_peer.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
             "testdata/differential/modifiers.sol"
           ],
-          "runtime": 25,
+          "runtime": 29,
           "subobject": 0
         },
         "calldataload": {
           "creation": 1,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -17097,13 +17802,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 352,
+          "runtime": 394,
           "subobject": 0
         },
         "calldatasize": {
           "creation": 3,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -17140,7 +17847,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 508,
+          "runtime": 550,
           "subobject": 0
         },
         "caller": {
@@ -17158,9 +17865,11 @@
           "subobject": 0
         },
         "callvalue": {
-          "creation": 50,
+          "creation": 52,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17201,7 +17910,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 399,
+          "runtime": 414,
           "subobject": 0
         },
         "chainid": {
@@ -17213,9 +17922,11 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 57,
+          "creation": 59,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17281,9 +17992,11 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17328,9 +18041,11 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 57,
+          "creation": 59,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17397,6 +18112,7 @@
           "creation": 18,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17431,7 +18147,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 193,
+          "runtime": 197,
           "subobject": 0
         },
         "exp": {
@@ -17454,11 +18170,12 @@
         "gas": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/external.sol",
             "testdata/differential/imports.sol"
           ],
-          "runtime": 19,
+          "runtime": 22,
           "subobject": 0
         },
         "gaslimit": {
@@ -17480,6 +18197,8 @@
         "gt": {
           "creation": 54,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17518,13 +18237,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 227,
+          "runtime": 266,
           "subobject": 0
         },
         "iszero": {
           "creation": 37,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17562,7 +18283,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 554,
+          "runtime": 582,
           "subobject": 0
         },
         "keccak256": {
@@ -17640,6 +18361,8 @@
           "creation": 29,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17677,12 +18400,13 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 213,
+          "runtime": 237,
           "subobject": 0
         },
         "mcopy": {
           "creation": 2,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/dynamic_bytes_peer.sol",
             "testdata/differential/memory_arrays.sol",
@@ -17690,13 +18414,15 @@
             "testdata/differential/oz_erc20.sol",
             "testdata/differential/public_getters.sol"
           ],
-          "runtime": 8,
+          "runtime": 9,
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17737,13 +18463,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 38,
+          "runtime": 40,
           "subobject": 0
         },
         "mload": {
           "creation": 40,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17778,7 +18506,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 570,
+          "runtime": 616,
           "subobject": 0
         },
         "mod": {
@@ -17792,9 +18520,11 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 167,
+          "creation": 169,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17835,7 +18565,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1801,
+          "runtime": 1898,
           "subobject": 0
         },
         "mstore8": {
@@ -17872,6 +18602,8 @@
           "creation": 29,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17909,7 +18641,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 604,
+          "runtime": 630,
           "subobject": 0
         },
         "number": {
@@ -17923,6 +18655,8 @@
         "or": {
           "creation": 26,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -17953,7 +18687,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 136,
+          "runtime": 138,
           "subobject": 0
         },
         "origin": {
@@ -17975,9 +18709,11 @@
           "subobject": 0
         },
         "return": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -18018,33 +18754,37 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 379,
+          "runtime": 394,
           "subobject": 0
         },
         "returndatacopy": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/external.sol",
             "testdata/differential/imports.sol"
           ],
-          "runtime": 28,
+          "runtime": 33,
           "subobject": 0
         },
         "returndatasize": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/external.sol",
             "testdata/differential/imports.sol"
           ],
-          "runtime": 61,
+          "runtime": 71,
           "subobject": 0
         },
         "revert": {
-          "creation": 115,
+          "creation": 117,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -18085,7 +18825,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1398,
+          "runtime": 1496,
           "subobject": 0
         },
         "sar": {
@@ -18107,17 +18847,21 @@
         "sgt": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/scalars.sol",
             "testdata/differential/storage.sol",
             "testdata/differential/type_bounds.sol"
           ],
-          "runtime": 8,
+          "runtime": 12,
           "subobject": 0
         },
         "shl": {
           "creation": 85,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -18156,13 +18900,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 782,
+          "runtime": 830,
           "subobject": 0
         },
         "shr": {
           "creation": 22,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -18198,7 +18944,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 173,
+          "runtime": 175,
           "subobject": 0
         },
         "signextend": {
@@ -18259,6 +19005,8 @@
           "creation": 11,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -18296,7 +19044,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 407,
+          "runtime": 430,
           "subobject": 0
         },
         "smod": {
@@ -18346,11 +19094,12 @@
         "staticcall": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/external.sol",
             "testdata/differential/imports.sol"
           ],
-          "runtime": 10,
+          "runtime": 13,
           "subobject": 0
         },
         "stop": {
@@ -18370,6 +19119,8 @@
           "creation": 39,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -18400,7 +19151,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 205,
+          "runtime": 231,
           "subobject": 0
         },
         "timestamp": {
@@ -18425,6 +19176,8 @@
           "creation": 63,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
             "testdata/differential/context.sol",
@@ -18460,13 +19213,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 793,
+          "runtime": 872,
           "subobject": 0
         },
         "block": {
-          "creation": 290,
+          "creation": 296,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -18507,24 +19262,27 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2442,
+          "runtime": 2619,
           "subobject": 0
         },
         "break": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/control.sol",
             "testdata/differential/inline_assembly.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/frontend/pure_core.sol"
           ],
-          "runtime": 10,
+          "runtime": 11,
           "subobject": 0
         },
         "case": {
           "creation": 4,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -18557,7 +19315,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 438,
+          "runtime": 453,
           "subobject": 0
         },
         "continue": {
@@ -18587,9 +19345,11 @@
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 449,
+          "creation": 457,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -18630,12 +19390,14 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 4064,
+          "runtime": 4293,
           "subobject": 0
         },
         "for": {
           "creation": 9,
           "fixtures": [
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/control.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/inline_assembly.sol",
@@ -18649,13 +19411,15 @@
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 52,
+          "runtime": 65,
           "subobject": 0
         },
         "functionCall": {
-          "creation": 1294,
+          "creation": 1310,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -18696,13 +19460,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 12971,
+          "runtime": 13807,
           "subobject": 0
         },
         "functionDefinition": {
           "creation": 13,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -18734,13 +19500,15 @@
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol"
           ],
-          "runtime": 223,
+          "runtime": 239,
           "subobject": 0
         },
         "identifier": {
-          "creation": 761,
+          "creation": 771,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -18781,13 +19549,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5843,
+          "runtime": 6386,
           "subobject": 0
         },
         "if": {
-          "creation": 144,
+          "creation": 146,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -18828,7 +19598,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1508,
+          "runtime": 1611,
           "subobject": 0
         },
         "leave": {
@@ -18846,9 +19616,11 @@
           "subobject": 0
         },
         "literal:number": {
-          "creation": 1001,
+          "creation": 1009,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -18889,13 +19661,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 11273,
+          "runtime": 11908,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 107,
+          "creation": 111,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -18943,6 +19717,8 @@
           "creation": 4,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/context.sol",
@@ -18975,13 +19751,15 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 69,
+          "runtime": 71,
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 265,
+          "creation": 269,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -19022,7 +19800,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2251,
+          "runtime": 2422,
           "subobject": 0
         }
       },
@@ -19031,6 +19809,8 @@
           "creation": 0,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -19071,7 +19851,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 49,
+          "runtime": 51,
           "subobject": 0
         },
         "datacopy": {
@@ -19081,9 +19861,11 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -19128,9 +19910,11 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 57,
+          "creation": 59,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
@@ -19175,9 +19959,11 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 49,
+          "creation": 51,
           "fixtures": [
             "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
             "testdata/differential/calldata_bytes.sol",
             "testdata/differential/calls.sol",
             "testdata/differential/constructors.sol",
