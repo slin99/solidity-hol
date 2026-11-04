@@ -254,7 +254,7 @@ Definition eval_operation_def:
                   (case memory_array_length st r of
                      SOME n => ValueOk (ScalarValue (IntegerValue (&n)))
                    | NONE => ValueAbrupt (InvalidCompletion "bad memory array reference"))
-              | CalldataReference _ n (ArrayT _ _) => ValueOk (ScalarValue (IntegerValue (&n)))
+              | CalldataReference _ n _ => ValueOk (ScalarValue (IntegerValue (&n)))
               | _ => case reference_bytes st r of
                        SOME bs => ValueOk (ScalarValue (IntegerValue (&(LENGTH bs))))
                      | NONE => ValueAbrupt (InvalidCompletion "bad byte sequence reference"))

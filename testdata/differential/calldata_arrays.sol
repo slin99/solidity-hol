@@ -3,6 +3,7 @@ pragma solidity 0.8.37;
 
 interface Reverser {
     function rev(uint256[] calldata a) external pure returns (uint256[] memory);
+    function count(uint256[][] calldata a) external pure returns (uint256);
 }
 
 contract CalldataArrays {
@@ -62,5 +63,9 @@ contract CalldataArrays {
         m[2] = 3;
         uint256[] memory r = Reverser(target).rev(m);
         return (r[0], r.length);
+    }
+
+    function nestedViaPeer(address target, uint256[][] calldata a) external pure returns (uint256) {
+        return Reverser(target).count(a);
     }
 }

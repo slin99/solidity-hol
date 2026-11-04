@@ -645,6 +645,15 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(coverage.type_feature("t_bytes32"),
                          "fixed-size bytes members and indexing")
 
+    def test_uninitialized_calldata_locals_are_blocked(self) -> None:
+        local = variable(3, type_identifier="t_array$_t_uint256_$dyn_calldata_ptr")
+        local["storageLocation"] = "calldata"
+        declaration = {"nodeType": "VariableDeclarationStatement", "declarations": [local]}
+        self.assertEqual({b.feature for b in coverage.elaboration_blockers(declaration)},
+                         {"calldata locals without an initializer"})
+        declaration["initialValue"] = {"nodeType": "Identifier", "id": 4}
+        self.assertEqual(coverage.elaboration_blockers(declaration), [])
+
     def test_tuple_assignments_to_elements_are_blocked(self) -> None:
         ident = {"nodeType": "Identifier", "id": 5, "name": "x"}
         element = {"nodeType": "IndexAccess", "id": 6}

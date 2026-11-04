@@ -8,4 +8,10 @@ contract ArrayPeer {
             r[i] = a[a.length - 1 - i];
         }
     }
+
+    function count(uint256[][] calldata a) external pure returns (uint256 n) {
+        for (uint256 i = 0; i < a.length; i++) {
+            n += a[i].length;
+        }
+    }
 }

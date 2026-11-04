@@ -174,7 +174,8 @@ Definition calldata_abi_value_def:
            INL vs => INL (ListV vs)
          | INR c => INR c)
     | _ =>
-      case abi_value ty (ScalarValue (BytesValue (TAKE length (DROP data cd)))) of
+      case abi_value ty (ScalarValue (BytesValue
+             (TAKE length (DROP data cd ++ REPLICATE length 0w)))) of
         SOME a => INL a
       | NONE => INR (InvalidCompletion "bad calldata ABI value")) ∧
   (calldata_abi_elements cd element data i n =
@@ -207,18 +208,17 @@ End
 Definition runtime_abi_value_def:
   runtime_abi_value st ty v =
     case ty of
-      LocatedT MemoryLoc (ArrayT element length) =>
-        (case memory_abi_value st (ArrayT element length) v of
-           SOME a => INL (a, enc (abi_type ty) a)
-         | NONE => INR (InvalidCompletion "bad ABI value"))
-    | LocatedT CalldataLoc (ArrayT element length) =>
+      LocatedT _ (ArrayT element length) =>
         (case v of
            ReferenceValue (CalldataReference data n rty) =>
              if rty ≠ ArrayT element length then INR (InvalidCompletion "bad ABI value")
              else (case calldata_abi_value st.frame.call_data rty data n of
                      INL a => INL (a, enc (abi_type ty) a)
                    | INR c => INR c)
-         | _ => INR (InvalidCompletion "bad ABI value"))
+         | _ =>
+           case memory_abi_value st (ArrayT element length) v of
+             SOME a => INL (a, enc (abi_type ty) a)
+           | NONE => INR (InvalidCompletion "bad ABI value"))
     | _ =>
     let contents = case v of
           ReferenceValue r => byte_contents st r

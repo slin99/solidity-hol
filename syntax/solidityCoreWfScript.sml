@@ -411,7 +411,15 @@ End
 Definition wf_abi_atom_def:
   wf_abi_atom env ctx ty a ⇔
     case ty of
-      LocatedT _ (ArrayT _ _) => wf_core_atom env ctx (SingleType ty) a
+      LocatedT _ (ArrayT element length) =>
+        (case a of
+           BoundAtom x =>
+             (case ALOOKUP ctx.bindings x of
+                SOME (SingleType (LocatedT loc actual)) =>
+                  (loc = MemoryLoc ∨ loc = CalldataLoc) ∧
+                  actual = ArrayT element length ∧ located_value_type (LocatedT loc actual)
+              | _ => F)
+         | _ => F)
     | LocatedT _ element =>
         byte_sequence_type element ∧
         (case a of

@@ -702,6 +702,10 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
           and any(c is not None and unwrap(c)["nodeType"] != "Identifier"
                   for c in unwrap(node["leftHandSide"])["components"])):
         found.append("tuple assignments to element or member targets")
+    elif (kind == "VariableDeclarationStatement" and node.get("initialValue") is None
+          and any(d is not None and d["storageLocation"] == "calldata"
+                  for d in node["declarations"])):
+        found.append("calldata locals without an initializer")
     elif kind == "UnaryOperation" and node["operator"] not in UNARY_OPERATORS:
         found.append(f"operator {node['operator']}")
     elif ((kind == "UnaryOperation" and RATIONAL.fullmatch(node["typeDescriptions"]["typeIdentifier"]))
