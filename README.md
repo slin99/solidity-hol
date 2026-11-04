@@ -57,10 +57,9 @@ remain extension points rather than implemented aggregate semantics.
 An inline assembly block (`AssemblyStmt`) runs on the Yul evaluator, over a
 memory holding only the free memory pointer: it reads and writes back the
 value-type locals it names, sees state variables' slots and offsets, may write
-only the scratch space unless it halts, may read only memory it wrote itself and
-the free memory pointer, and `return`/`stop` end the frame with a
-`HaltCompletion`. Blocks marked memory-safe are rejected: the compiler may then
-move variables to memory and raise the free memory pointer. Memory/calldata execution and a memory model shared with
+only the scratch space unless it halts, may read only memory it wrote itself
+(not the free memory pointer, which the compiler may raise to keep variables in
+memory), and `return`/`stop` end the frame with a `HaltCompletion`. Memory/calldata execution and a memory model shared with
 inline assembly remain unresolved. High-level external calls run the callee on Verifereum
 through `externalCall`, a provisional adapter with a fixed gas budget and a
 fresh callee frame; creation is not connected yet. Core well-formedness alone does not rule out `InvalidCompletion`:

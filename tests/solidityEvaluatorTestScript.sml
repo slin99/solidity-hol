@@ -550,15 +550,16 @@ Proof
   CONV_TAC cv_eval
 QED
 
-(* What assembly_memory_ok admits: scratch written then read, the free memory
- * pointer, and writes above the scratch space only in a block that halts. *)
+(* What assembly_memory_ok admits: scratch written then read, and writes
+ * above the scratch space only in a block that halts; not the free memory
+ * pointer. *)
 Theorem asm_memory_rule:
   assembly_memory_ok
     [YulExprStmt (YulBuiltin YMStore [ylit 0w; YulName "x"]);
      YulExprStmt (YulBuiltin YMStore [ylit 32w; YulName "x"]);
-     YulAssign ["x"] (YulBuiltin YKeccak256 [ylit 0w; ylit 64w]);
-     YulAssign ["x"] (YulBuiltin YMLoad [ylit 64w])] ∧
+     YulAssign ["x"] (YulBuiltin YKeccak256 [ylit 0w; ylit 64w])] ∧
   ¬assembly_memory_ok [YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])] ∧
+  ¬assembly_memory_ok [YulAssign ["x"] (YulBuiltin YMLoad [ylit 64w])] ∧
   ¬assembly_memory_ok
     [YulExprStmt (YulBuiltin YMStore [ylit 1w; YulName "x"]);
      YulExprStmt (YulBuiltin YLog0 [ylit 0w; ylit 64w])] ∧

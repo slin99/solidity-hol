@@ -462,23 +462,8 @@ fun yul_identifiers v =
 
 val assembly_reference_ty = import_type "src_assembly_reference"
 
-(* A block marked memory-safe, by the flag or the deprecated comment, lets
- * the compiler move variables to memory when every block in the contract is
- * marked, which raises the free memory pointer the block would read above
- * the 0x80 the evaluator gives it. *)
-fun memory_safe v =
-  (case optional_field v "flags" of
-     SOME (JSON.ARRAY fs) =>
-       List.exists (fn JSON.STRING "memory-safe" => true | _ => false) fs
-   | _ => false) orelse
-  (case optional_field v "documentation" of
-     SOME (JSON.STRING d) => String.isSubstring "@solidity memory-safe-assembly" d
-   | _ => false)
-
 fun inline_assembly v =
   let
-    val () = if memory_safe v then fail (describe v ^ ": memory-safe assembly")
-             else ()
     val ast = field v "AST"
     val code = yulImportLib.import_code ast
       handle yulImportLib.ImportError msg => fail (describe v ^ ": " ^ msg)

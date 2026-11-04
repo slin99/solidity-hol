@@ -3,9 +3,8 @@ pragma solidity 0.8.37;
 
 // Inline assembly over value-type locals and state variable locations: reads
 // and writes of locals (cleaned on the way back), slot and offset, storage,
-// scratch memory, the free memory pointer, control flow, functions, logs,
-// the block ending the call with return, stop or revert, and blocks in and
-// under modifiers.
+// scratch memory, control flow, functions, logs, the block ending the call
+// with return, stop or revert, and blocks in and under modifiers.
 contract InlineAssembly {
     uint256 total;
     uint64 packedLow;
@@ -93,20 +92,6 @@ contract InlineAssembly {
             mstore(0, k)
             mstore(0x20, balances.slot)
             v := sload(keccak256(0, 0x40))
-        }
-    }
-
-    function freePointer() public pure returns (uint256 p) {
-        assembly {
-            p := mload(0x40)
-        }
-    }
-
-    function freePointerAfterAllocation() public pure returns (uint256 p, uint256 n) {
-        bytes memory b = "0123456789";
-        n = b.length;
-        assembly {
-            p := mload(0x40)
         }
     }
 

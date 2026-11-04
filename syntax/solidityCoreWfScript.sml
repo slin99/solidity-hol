@@ -771,7 +771,8 @@ End
 
 (* The memory a block may touch. A block starts from a memory holding only
  * the free memory pointer, so it may read only what it wrote itself earlier
- * on the same path, and the free memory pointer; and a block that can exit
+ * on the same path (not the free memory pointer, whose initial value the
+ * compiler may raise to keep variables in memory); and a block that can exit
  * normally may write only the scratch space [0, 0x40), the one part of memory
  * the source keeps no contents for. Addresses and lengths are literals. A
  * read is covered by the mstore statements with literal addresses that come
@@ -814,7 +815,7 @@ Definition builtin_memory_ok_def:
   builtin_memory_ok halts ws b es ⇔
     case (b, es) of
       (YMLoad, [p]) =>
-        yul_lit p = SOME 64 ∨ memory_read_ok ws p (YulLit (LitNumber 32w))
+        memory_read_ok ws p (YulLit (LitNumber 32w))
     | (YMStore, [p; _]) => memory_write_ok halts p (SOME 32)
     | (YMStore8, [p; _]) => memory_write_ok halts p (SOME 1)
     | (YMCopy, [d; p; l]) =>

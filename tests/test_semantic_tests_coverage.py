@@ -312,12 +312,13 @@ class ClassifyTests(unittest.TestCase):
 
         x = {"nodeType": "YulIdentifier", "name": "x"}
         ok = coverage.assembly_memory_ok
-        # scratch written then read in the same block; the free memory pointer
+        # scratch written then read in the same block
         self.assertTrue(ok([call("mstore", lit(0), x), call("mstore", lit(0x20), x),
-                            call("pop", yul_call("keccak256", lit(0), lit(0x40))),
-                            call("pop", yul_call("mload", lit(0x40)))]))
-        # scratch read the block did not write, or only partly wrote
+                            call("pop", yul_call("keccak256", lit(0), lit(0x40)))]))
+        # scratch read the block did not write, or only partly wrote; the free
+        # memory pointer, which the compiler may raise
         self.assertFalse(ok([call("pop", yul_call("mload", lit(0)))]))
+        self.assertFalse(ok([call("pop", yul_call("mload", lit(0x40)))]))
         self.assertFalse(ok([call("mstore", lit(1), x), call("log0", lit(0), lit(0x40))]))
         # a write in a nested list covers nothing after it
         self.assertFalse(ok([{"nodeType": "YulIf", "condition": x, "body": {
@@ -363,10 +364,6 @@ class ClassifyTests(unittest.TestCase):
         constant = dict(variable(8, type_identifier="t_uint256"), constant=True)
         self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 8}]), {8: constant}),
                          [coverage.Blocker("InlineAssembly", "inline assembly memory references", "elaboration")])
-        for marked in (dict(assembly([]), flags=["memory-safe"]),
-                       dict(assembly([]), documentation="@solidity memory-safe-assembly")):
-            self.assertEqual(coverage.assembly_blockers(marked, by_id),
-                             [coverage.Blocker("InlineAssembly", "memory-safe inline assembly", "import")])
 
     def test_overridden_functions_are_only_imported(self) -> None:
         coerced = {"nodeType": "VariableDeclarationStatement", "id": 6,

@@ -734,7 +734,7 @@ def yul_literal(value: dict[str, Any]) -> int | None:
 
 def assembly_memory_ok(statements: list[dict[str, Any]]) -> bool:
     """assembly_memory_ok: memory reads at literal ranges covered by earlier
-    literal mstores on the same path (or mload(0x40)), and, unless the block's
+    literal mstores on the same path, and, unless the block's
     last statement halts, memory writes only at literal ranges inside the
     scratch space [0, 0x40)."""
     last = statements[-1] if statements else {}
@@ -755,8 +755,8 @@ def assembly_memory_ok(statements: list[dict[str, Any]]) -> bool:
 
     def builtin_ok(ws: list[int], name: str, args: list[dict[str, Any]]) -> bool:
         if name == "mload":
-            return len(args) == 1 and (yul_literal(args[0]) == 64 or read_ok(
-                ws, args[0], {"nodeType": "YulLiteral", "kind": "number", "value": "32"}))
+            return len(args) == 1 and read_ok(
+                ws, args[0], {"nodeType": "YulLiteral", "kind": "number", "value": "32"})
         if name == "mstore":
             return len(args) == 2 and write_ok(args[0], 32)
         if name == "mstore8":
@@ -815,9 +815,9 @@ def assembly_memory_ok(statements: list[dict[str, Any]]) -> bool:
 
 def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[Blocker]:
     """What the importer and the elaborator reject in an inline assembly
-    block: blocks marked memory-safe, Yul the importer does not read
-    (functions other than the block's own, builtins outside the dialect,
-    boolean literals, references other than slot and offset), then builtins the source state cannot run (gas,
+    block: Yul the importer does not read (functions other than the block's
+    own, builtins outside the dialect, boolean literals, references other
+    than slot and offset), then builtins the source state cannot run (gas,
     calls, return data, code), memory use outside assembly_memory_ok, and
     references to anything but value-type locals and state variable
     locations."""
@@ -853,9 +853,6 @@ def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) ->
                     walk(v, top and kind == "YulBlock" and value is node["AST"])
 
     walk(statements, True)
-    if "memory-safe" in (node.get("flags") or []) or "@solidity memory-safe-assembly" in (
-            node.get("documentation") or ""):
-        blocker("memory-safe inline assembly", "import")
     if not assembly_memory_ok(statements):
         blocker("inline assembly memory outside the scratch space", "elaboration")
     for reference in node.get("externalReferences", []):
