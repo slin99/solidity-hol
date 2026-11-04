@@ -528,14 +528,30 @@ QED
 (* The same, with the outcome written out as the record it is.  A compute set
  * that has the helper unfolded hands the branch the record itself, and the test
  * on it is still unreduced when the rule runs, so this is the shape the rule
- * sees for a call inside a converted body. *)
+ * sees for a call inside a converted body.  The machine is any function of the
+ * case's own variable and machine, since a step that has already written to the
+ * machine -- `yul_pop_result`, over a branch's block -- puts one there. *)
 Theorem yul_expr_result_CASE_invoke_abrupt_lit:
-  ∀n fns name args m b1 T.
+  ∀n fns name args m b1 T M.
     yul_expr_result_CASE (invoke_yul n fns name args m) b1
-      (λc m'. if (<|completion := c; machine := m'|>).completion = YulNormal
-              then T c m' else <|completion := c; machine := m'|>) =
+      (λc m'. if (<|completion := c; machine := M c m'|>).completion = YulNormal
+              then T c m' else <|completion := c; machine := M c m'|>) =
     yul_expr_result_CASE (invoke_yul n fns name args m) b1
-      (λc m'. <|completion := c; machine := m'|>)
+      (λc m'. <|completion := c; machine := M c m'|>)
+Proof
+  rw [] >> Cases_on `invoke_yul n fns name args m` >>
+  imp_res_tac invoke_yul_abrupt_neq_normal >>
+  gvs [yul_expr_result_case_def]
+QED
+
+(* The same again for a branch whose test is the completion alone, which is the
+ * shape a case reaches once the field read above has taken the record apart. *)
+Theorem yul_expr_result_CASE_invoke_abrupt_cond:
+  ∀n fns name args m b1 T E.
+    yul_expr_result_CASE (invoke_yul n fns name args m) b1
+      (λc m'. if c = YulNormal then T c m' else E c m') =
+    yul_expr_result_CASE (invoke_yul n fns name args m) b1
+      (λc m'. E c m')
 Proof
   rw [] >> Cases_on `invoke_yul n fns name args m` >>
   imp_res_tac invoke_yul_abrupt_neq_normal >>

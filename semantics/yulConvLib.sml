@@ -499,6 +499,7 @@ fun push_all_conv tm =
  * there and the branch is the result itself.  That is what keeps the rest of
  * the body out of that branch, and a body of k calls at 2^k times the size. *)
 val prune_lemmas = [yul_expr_result_CASE_invoke_abrupt_lit,
+                    yul_expr_result_CASE_invoke_abrupt_cond,
                     yul_expr_result_CASE_invoke_abrupt]
 
 (* The rule's continuation is a function of the case's own variable and
@@ -736,10 +737,12 @@ fun result_conv v tm =
  * branches of a decision the block's own clause does not branch on. *)
 val yul_expr_result_RAND = TypeBase.case_rand_of ``:yul_expr_result``
 val option_RAND = TypeBase.case_rand_of ``:'a option``
+val list_RAND = TypeBase.case_rand_of ``:'a list``
 
 val distribute_lemmas = [boolTheory.COND_RAND,
                          yul_expr_result_RAND,
-                         option_RAND]
+                         option_RAND,
+                         list_RAND]
 
 fun is_binding tm =
   is_comb tm andalso
@@ -755,6 +758,21 @@ fun distribute_conv tm =
     in
       first distribute_lemmas
     end
+
+(* A `yul_pop_result` over a decision, pushed in: the pop goes inside the
+ * decision's branches, so the block's continuation meets a branch that already
+ * carries it rather than the whole pop term copied into every branch.  The
+ * rules are the ones a binding's continuation is pushed with -- here
+ * `yul_pop_result` is the function -- and only a `yul_pop_result` node is
+ * offered them, since a push at every application would copy the function. *)
+fun pop_result_conv tm =
+  let
+    fun first [] = raise Conv.UNCHANGED
+      | first (lem :: rest) =
+          Conv.REWR_CONV lem tm handle HOL_ERR _ => first rest
+  in
+    first distribute_lemmas
+  end
 
 (* The case equations of the types the evaluator's clauses case on: a
  * statement's result, and the `option` a value is looked up into and the
@@ -822,10 +840,15 @@ fun step_conv tm =
       if is_const_named "yulEvaluator" "yul_expr_result_CASE" c orelse
          is_const_named "option" "option_CASE" c orelse
          is_const_named "list" "list_CASE" c
-      then after_binding (case_conv tm)
+      then (after_binding (case_conv tm) handle Conv.UNCHANGED =>
+              prune_call_conv tm)
       else if is_beta orelse is_const_named "bool" "LET" c
       then binding_step_conv tm
-      else if is_const_named "bool" "COND" c then after_binding (decide_conv tm)
+      else if is_const_named "bool" "COND" c
+      then (after_binding (decide_conv tm) handle Conv.UNCHANGED =>
+              after_binding (Conv.REWR_CONV yul_expr_result_CASE_cond tm))
+      else if is_const_named "yulEvaluator" "yul_pop_result" c
+      then pop_result_conv tm
       else reduce_field tm
     end
 
@@ -962,6 +985,67 @@ val block_nil_clause = valOf (List.find clause_is_nil block_def_clauses)
 val block_cons_clause =
   valOf (List.find (fn th => not (clause_is_nil th)) block_def_clauses)
 
+(* A clause of the evaluator, evaluated the way the block is: the sub-result the
+ * clause tests is evaluated first and taken apart, so the clause's own function
+ * meets the values and the machine a leaf holds rather than the case's bound
+ * variables.
+ *
+ * Reducing the whole clause with the compute set instead leaves every step
+ * inside it that reads those variables undecided -- the arity guard
+ * `LENGTH names <> LENGTH vs`, the scope update behind it, the builtin's own
+ * argument scan -- and the block's split then hands the rest of the body to
+ * each branch of that undecided test, which is a copy per branch per step.  The
+ * recursion is what keeps that from happening one level down as well: the
+ * scrutinee is evaluated by this same rule rather than by the compute set, so
+ * the argument list and the call inside it are taken apart the same way. *)
+val eval_clauses =
+  List.filter (fn th => let val c = head_const_of th in
+                  is_const_named "yulEvaluator" "eval_yul_stmt" c orelse
+                  is_const_named "yulEvaluator" "eval_yul_expr" c orelse
+                  is_const_named "yulEvaluator" "eval_yul_args" c orelse
+                  is_const_named "yulEvaluator" "eval_yul_cases" c
+                end) clauses
+
+fun first_clause [] tm = raise Conv.UNCHANGED
+  | first_clause (th :: rest) tm =
+      Conv.REWR_CONV th tm handle HOL_ERR _ => first_clause rest tm
+
+(* The scrutinee of the case a clause builds: the case constant's first
+ * argument.  A clause that builds no case -- a literal's value, an empty
+ * argument list -- is left to the compute set. *)
+fun scrutinee_conv c tm =
+  if is_yul_case tm orelse
+     is_const_named "option" "option_CASE" (head_const tm)
+  then Conv.RATOR_CONV (Conv.RATOR_CONV (Conv.RAND_CONV c)) tm
+  else raise Conv.UNCHANGED
+
+fun eval_conv_raw tm =
+  let
+    val clause = first_clause eval_clauses tm
+    val body = rhs (concl clause)
+    (* Repeated, since a clause can build a case on a case -- a `let` whose
+     * value is an option the clause itself tests, and the expression behind it
+     * -- and the second scrutinee is only at the top once the first is taken
+     * apart. *)
+    fun go acc 0 = acc
+      | go acc k =
+          let
+            val cur = rhs (concl acc)
+            val ev = scrutinee_conv eval_conv_raw cur
+                       handle Conv.UNCHANGED => Thm.REFL cur
+            val settled = settle_conv (rhs (concl ev))
+            val next = Thm.TRANS acc (Thm.TRANS ev settled)
+          in
+            if aconv (rhs (concl next)) cur then next else go next (k - 1)
+          end
+    val settled = go (Thm.REFL body) 4
+    val red = computeLib.CBV_CONV (cs ()) (rhs (concl settled))
+  in
+    Thm.TRANS clause (Thm.TRANS settled red)
+  end
+  handle Conv.UNCHANGED => computeLib.CBV_CONV (cs ()) tm
+       | HOL_ERR _ => computeLib.CBV_CONV (cs ()) tm
+
 (* The statement rule, run as a compute rule (`add_conv` below): the clause is
  * instantiated, the statement is reduced with the compute set, and what the
  * statement reduced to is taken apart as `split_conv` or `value_conv` says. *)
@@ -988,7 +1072,7 @@ fun block_conv_raw tm =
               let
                 val redex = rhs (concl clause)
                 val (_, stmt) = dest_comb redex
-                val ev = computeLib.CBV_CONV (cs ()) stmt
+                val ev = eval_conv_raw stmt
                 val ev_form = rhs (concl ev)
                 val taken = Thm.TRANS clause
                               (Conv.RAND_CONV (fn _ => ev) redex)
