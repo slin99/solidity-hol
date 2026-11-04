@@ -380,6 +380,11 @@ fun expr v = within v (fn v =>
                 con "SrcBuiltinCall" [info v, info callee, con builtin [],
                   mk_opt expr_ty condition, mk_opt expr_ty message, type_id v]
               end
+            else if node_type callee = "NewExpression" then
+              (require v (length args = 1) "new takes one argument";
+               con "SrcNew"
+                 [info v, type_name (field callee "typeName"), hd args,
+                  type_id v])
             else con "SrcFunctionCall"
               [info v, expr callee, listSyntax.mk_list (args, expr_ty), type_id v]
         | "typeConversion" =>

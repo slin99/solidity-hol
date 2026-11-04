@@ -125,6 +125,119 @@ Definition copy_memory_bytes_def:
     | _ => NONE
 End
 
+(* Memory arrays: an object of type ArrayT element length holds one cell per
+ * element, a value or a pointer to another object, as the compiler's memory
+ * layout does. A cell never written holds the element's zero, a pointer to the
+ * empty object zero for a byte sequence or dynamic array; static array
+ * elements are allocated with their array. Object zero is also the empty
+ * dynamic array. *)
+
+Definition default_elementary_def:
+  default_elementary ty =
+    case ty of
+      BoolT => SOME (BoolValue F)
+    | UintT _ => SOME (IntegerValue 0)
+    | IntT _ => SOME (IntegerValue 0)
+    | AddressT _ => SOME (AddressValue 0w)
+    | FixedBytesT n => SOME (BytesValue (REPLICATE n 0w))
+    | _ => NONE
+End
+
+Definition memory_cell_def:
+  memory_cell obj element i =
+    case FLOOKUP obj.object_cells i of
+      SOME v => v
+    | NONE =>
+        case default_elementary element of
+          SOME s => ScalarValue s
+        | NONE => ReferenceValue (MemoryReference (HeapId 0) 0 element)
+End
+
+(* A zeroed array of n elements, after the compiler's allocation: the length
+ * word of a dynamic array and a word per element, Panic(0x41) when the free
+ * memory pointer would pass 2^64; then each static array element, in order. *)
+Definition zero_array_def:
+  (zero_array ty n (st : source_state) =
+    case ty of
+      ArrayT element length =>
+        let size = (if length = NONE then 32 else 0) + 32 * n in
+        if 2 ** 64 ≤ 128 + st.memory_allocated + size then
+          INR (PanicCompletion 65)
+        else
+          let id = st.next_heap_id + 1 in
+          let obj = <| object_type := ty; object_length := n;
+                       object_cells := FEMPTY |> in
+          let st1 = st with <| heap := st.heap |+ (id, obj); next_heap_id := id;
+                               memory_allocated := st.memory_allocated + size |> in
+          let r = ReferenceValue (MemoryReference (HeapId id) 0 ty) in
+          (case element of
+             ArrayT _ (SOME k) =>
+               (case zero_arrays element k 0 n FEMPTY st1 of
+                  INL (cells, st2) =>
+                    INL (r, st2 with heap :=
+                              st2.heap |+ (id, obj with object_cells := cells))
+                | INR c => INR c)
+           | _ => INL (r, st1))
+    | _ => INR (InvalidCompletion "bad memory array type")) ∧
+  (zero_arrays element k i m cells st =
+    if m = 0 then INL (cells, st) else
+    case zero_array element k st of
+      INL (v, st1) => zero_arrays element k (i + 1) (m - 1) (cells |+ (i, v)) st1
+    | INR c => INR c)
+Termination
+  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
+    INL (ty, n, st) => (sol_type_size ty, 0)
+  | INR (element, k, i, m, cells, st) => (sol_type_size element, m + 1))’ >>
+  rw[solidityASTTheory.sol_type_size_def]
+End
+
+(* The value of a memory variable before any assignment. *)
+Definition default_memory_value_def:
+  default_memory_value ty (st : source_state) =
+    case ty of
+      ArrayT _ (SOME n) => zero_array ty n st
+    | _ => INL (ReferenceValue (MemoryReference (HeapId 0) 0 ty), st)
+End
+
+Definition memory_array_length_def:
+  memory_array_length (st : source_state) r =
+    case r of
+      MemoryReference (HeapId id) 0 (ArrayT element length) =>
+        if id = 0 then SOME 0 else
+        (case FLOOKUP st.heap id of
+           SOME obj =>
+             if obj.object_type = ArrayT element length then SOME obj.object_length
+             else NONE
+         | NONE => NONE)
+    | _ => NONE
+End
+
+(* Element i of a memory array, which must exist: Panic(0x32) otherwise. *)
+Definition memory_array_element_def:
+  memory_array_element (st : source_state) r (i : int) =
+    case (r, memory_array_length st r) of
+      (MemoryReference (HeapId id) _ (ArrayT element _), SOME n) =>
+        if i < 0 ∨ &n ≤ i then INR (PanicCompletion 50) else
+        (case FLOOKUP st.heap id of
+           SOME obj => INL (id, Num i, element, memory_cell obj element (Num i))
+         | NONE => INR (InvalidCompletion "missing memory object"))
+    | _ => INR (InvalidCompletion "bad memory array reference")
+End
+
+Definition write_memory_element_def:
+  write_memory_element id i v (st : source_state) =
+    case FLOOKUP st.heap id of
+      SOME obj =>
+        (case obj.object_type of
+           ArrayT _ _ =>
+             if i < obj.object_length then
+               SOME (st with heap := st.heap |+ (id,
+                 obj with object_cells := obj.object_cells |+ (i, v)))
+             else NONE
+         | _ => NONE)
+    | NONE => NONE
+End
+
 (* Byte access and copies propagate malformed storage-header panics. *)
 Definition byte_contents_def:
   byte_contents st r =
@@ -187,6 +300,36 @@ val () = cv_auto_trans read_memory_reference_def;
 val () = cv_auto_trans navigate_memory_byte_def;
 val () = cv_auto_trans write_memory_byte_def;
 val () = cv_auto_trans copy_memory_bytes_def;
+
+val () = cv_auto_trans default_elementary_def;
+val () = cv_auto_trans memory_cell_def;
+(* How cv's precondition presents a heap object record. *)
+Theorem heap_object_literal:
+  <| object_type := a; object_length := b; object_cells := c |> = heap_object a b c
+Proof
+  simp[solidityStateTheory.heap_object_component_equality]
+QED
+
+val zero_array_pre_def = cv_auto_trans_pre_rec "zero_array_pre zero_arrays_pre" zero_array_def (
+  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
+    INL (ty, n, st) => (cv_size ty, 0)
+  | INR (element, k, i, m, cells, st) => (cv_size element, cv$c2n m + 1))’ >>
+  cv_termination_tac
+);
+
+Theorem zero_array_pre[cv_pre]:
+  (∀ty n st. zero_array_pre ty n st) ∧
+  (∀element k i m cells st. zero_arrays_pre element k i m cells st)
+Proof
+  ho_match_mp_tac zero_array_ind >> rpt strip_tac >>
+  simp[Once zero_array_pre_def] >> rw[] >> gvs[] >>
+  (* record updates appear as cases on the state *)
+  Cases_on ‘st’ >> gvs[solidityStateTheory.source_state_fn_updates, heap_object_literal]
+QED
+val () = cv_auto_trans default_memory_value_def;
+val () = cv_auto_trans memory_array_length_def;
+val () = cv_auto_trans memory_array_element_def;
+val () = cv_auto_trans write_memory_element_def;
 
 val () = cv_auto_trans byte_contents_def;
 val () = cv_auto_trans copy_byte_contents_def;

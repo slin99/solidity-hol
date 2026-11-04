@@ -18,6 +18,7 @@ val () = holbuild_extra_deps [
   "../testdata/differential/corpus.json",
   "../testdata/differential/expected/calldata_bytes.json",
   "../testdata/differential/expected/memory_bytes.json",
+  "../testdata/differential/expected/memory_arrays.json",
   "../testdata/differential/expected/storage_bytes.json",
   "../testdata/differential/expected/dynamic_bytes.json",
   "../testdata/differential/expected/dynamic_bytes_peer.json",
