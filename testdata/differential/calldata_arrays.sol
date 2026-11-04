@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.37;
 
+interface Reverser {
+    function rev(uint256[] calldata a) external pure returns (uint256[] memory);
+}
+
 contract CalldataArrays {
     function at(uint8[] calldata a, uint256 i) external pure returns (uint8, uint256) {
         return (a[i], a.length);
@@ -46,5 +50,17 @@ contract CalldataArrays {
     function sum(uint256[] calldata a) external pure returns (uint256) {
         uint256[] calldata b = a;
         return sumInternal(b);
+    }
+
+    function viaPeer(address target, uint256[] calldata a) external pure returns (uint256[] memory) {
+        return Reverser(target).rev(a);
+    }
+
+    function memoryViaPeer(address target) external pure returns (uint256, uint256) {
+        uint256[] memory m = new uint256[](3);
+        m[0] = 1;
+        m[2] = 3;
+        uint256[] memory r = Reverser(target).rev(m);
+        return (r[0], r.length);
     }
 }

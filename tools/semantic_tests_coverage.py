@@ -566,6 +566,7 @@ def decodes_component(type_identifier: str) -> bool:
     """Whether tuple_component admits a component's type identifier."""
     return (VALUE_TYPE.fullmatch(type_identifier) is not None
             or BYTE_SEQUENCE.fullmatch(type_identifier) is not None
+            or located_array(type_identifier)
             or type_identifier.startswith("t_stringliteral_"))
 
 
@@ -580,11 +581,25 @@ def decodes(type_identifier: str) -> bool:
         return True
     if not type_identifier.startswith("t_tuple$"):
         return False
-    *components, last = type_identifier[len("t_tuple$"):].split("$")
-    return last == "" and all(
+    *fields, last = type_identifier[len("t_tuple$"):].split("$")
+    components = tuple_components(fields)
+    return last == "" and components is not None and all(
         len(c) >= 2 and c[0] == c[-1] == "_" and decodes_component(c[1:-1])
         for c in components
     )
+
+
+def tuple_components(fields: list[str]) -> list[str] | None:
+    """tuple_components: rejoin an array's `$`-separated fields, where
+    "_t_array" opens an array and a field without a leading "_" closes one."""
+    components, depth, current = [], 0, None
+    for field in fields:
+        current = field if current is None else f"{current}${field}"
+        depth = depth + 1 if field == "_t_array" else depth if field.startswith("_") else max(depth - 1, 0)
+        if depth == 0:
+            components.append(current)
+            current = None
+    return components if current is None else None
 
 
 def storage_type_supported(type_identifier: str) -> bool:
@@ -671,6 +686,8 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
             elif (location not in ("default", "memory") and not BYTE_SEQUENCE.fullmatch(type_identifier)
                   and not (location == "calldata" and located_array(type_identifier))):
                 found.append("local reference bindings")
+            elif location == "default" and located_array(type_identifier):
+                found.append("event array parameters")
             if error_parameter and not VALUE_TYPE.fullmatch(type_identifier):
                 found.append("custom errors with reference parameters")
             if (node["stateVariable"] and node.get("visibility") == "public"
@@ -1180,6 +1197,15 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
             if n["nodeType"] == "Identifier" and n.get("referencedDeclaration") in returns:
                 found.setdefault(n["id"], []).append(
                     Blocker("Identifier", "return variables in modifier arguments", "elaboration"))
+    # A static memory return array is shared across a modifier's placeholders.
+    for f in live:
+        if any(m.get("kind") == "modifierInvocation" for m in by_id[f].get("modifiers", [])):
+            for v in by_id[f].get("returnParameters", {}).get("parameters", []):
+                tid = v["typeDescriptions"].get("typeIdentifier") or ""
+                if located_array(tid) and tid.endswith("_memory_ptr") and not tid.endswith("$dyn_memory_ptr"):
+                    found.setdefault(v["id"], []).append(Blocker(
+                        "VariableDeclaration", "static memory array returns under modifiers",
+                        "elaboration"))
     # The checker and the elaborator see only the functions nothing overrides.
     found = {i: [b for b in bs if not (i in dead and b.stage == "elaboration")]
              for i, bs in found.items() if i in reached}

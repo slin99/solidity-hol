@@ -92,4 +92,56 @@ contract MemoryArrays {
         q[0] = p[1];
         q[1] = p[0];
     }
+
+    function dirty(uint8[] memory xs) external pure returns (uint8) {
+        return xs[0];
+    }
+
+    function bytesParam(bytes[] memory xs) external pure returns (uint256, bytes1) {
+        return (xs.length, xs[1][0]);
+    }
+
+    function pairParam(bytes[2] memory xs) external pure returns (uint256) {
+        return xs[0].length + xs[1].length;
+    }
+
+    function nestedReturn() external pure returns (uint256[][] memory r) {
+        r = new uint256[][](2);
+        r[1] = new uint256[](1);
+        r[1][0] = 5;
+    }
+
+    function bytesReturn(bytes1 v) external pure returns (bytes[] memory r) {
+        r = new bytes[](1);
+        r[0] = new bytes(1);
+        r[0][0] = v;
+    }
+
+    function pair() private pure returns (uint256[] memory a, uint256 n) {
+        a = new uint256[](1);
+        a[0] = 7;
+        n = 2;
+    }
+
+    function tupleCall() external pure returns (uint256) {
+        (uint256[] memory a, uint256 n) = pair();
+        return a[0] + n;
+    }
+
+    function tupleReturn(uint256 v) external pure returns (uint256[] memory, uint256) {
+        uint256[] memory a = new uint256[](1);
+        a[0] = v;
+        return (a, v + 1);
+    }
+
+    function fresh() private pure returns (uint256[2] memory r) {
+        r[0] += 1;
+    }
+
+    function freshEachCall() external pure returns (uint256, uint256) {
+        uint256[2] memory x = fresh();
+        uint256[2] memory y = fresh();
+        x[1] = 5;
+        return (x[0] + y[0], y[1]);
+    }
 }
