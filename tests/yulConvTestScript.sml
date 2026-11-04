@@ -174,11 +174,15 @@ val () =
  * has not settled takes a copy of the rest of the body per branch, so the
  * copies multiply and a body's form is linear in its statements only while
  * nothing reads what a call answered.  The conversion settles a clause's own
- * sub-result before the clause's function is reduced, which is what took the
- * largest form here down by an order of magnitude; what is left is the same
- * shape one level further in, in the steps that still go to the compute set --
- * the builtin dispatch, the argument scan, a nested block's own statement
- * list.
+ * sub-result before the clause's function is reduced, and it runs for the
+ * clause constants themselves rather than only at the top of a statement, so a
+ * clause nested inside another -- an argument list's own tail, a call among a
+ * call's arguments -- is taken the same way instead of being handed to the
+ * compute set whole.  That is what took the largest form here down by an order
+ * of magnitude, and it is what brought the `abi_decode_*` group under the line;
+ * what is left is the same shape one level further in, in the steps that still
+ * go to the compute set -- the builtin dispatch, the scope updates, the machine
+ * a call answered.
  *
  * The line is drawn at a size rather than at a measured time because a time
  * moves with the machine the build runs on and a size does not.  The sizes on
@@ -187,14 +191,14 @@ val () =
  * conversion does, so they are re-measured with the list rather than read as an
  * invariant.  The line is enforced from one side only: the suite fails if a
  * form it does cover reaches 200k nodes, so a covered function that grew past
- * the line cannot pass unnoticed, but nothing here converts the 32 named for
+ * the line cannot pass unnoticed, but nothing here converts the 25 named for
  * their size -- a name whose form has dropped under the line keeps its line
  * until the list is re-measured, which happens with each change to the
  * conversion.  Converting them here as well would put the large forms' cost --
  * seconds each, and tens of millions of nodes at the far end
  * (`checked_exp_signed`'s) -- on every run of this suite.  The gap is narrow at
  * the bottom: the largest form below the line is 176k nodes and the smallest
- * above it 212k.  What is left is 105 of the 137, whose largest form is 176k
+ * above it 212k.  What is left is 112 of the 137, whose largest form is 176k
  * nodes and whose slowest the check below bounds at five seconds.
  *
  * No line says "no form" any more: every function of the object comes back
@@ -214,24 +218,17 @@ val () =
  * unnoticed.
  *)
 val excluded = [
-  ("checked_exp_signed", "form of 71340016 nodes"),
-  ("fun_boolLogic", "form of 4603544 nodes"),
-  ("checked_exp_unsigned", "form of 2259151 nodes"),
-  ("fun_signedLess", "form of 1249793 nodes"),
-  ("checked_div_int8", "form of 405709 nodes"),
+  ("checked_exp_signed", "form of 65588816 nodes"),
+  ("fun_boolLogic", "form of 4566176 nodes"),
+  ("checked_exp_unsigned", "form of 2208625 nodes"),
+  ("fun_signedLess", "form of 1184399 nodes"),
   ("fun_bitwise", "form of 389843 nodes"),
+  ("checked_div_int8", "form of 376953 nodes"),
   ("external_fun_bitwise", "form of 259521 nodes"),
   ("fun_widen", "form of 255275 nodes"),
   ("external_fun_widen", "form of 243821 nodes"),
   ("external_fun_signedLess", "form of 243361 nodes"),
   ("external_fun_boolLogic", "form of 243281 nodes"),
-  ("abi_decode_int8t_uint256", "form of 238291 nodes"),
-  ("abi_decode_uint256t_int256", "form of 238067 nodes"),
-  ("abi_decode_uint8t_uint256", "form of 237971 nodes"),
-  ("abi_decode_int8t_int8", "form of 237907 nodes"),
-  ("abi_decode_int8t_uint8", "form of 237427 nodes"),
-  ("abi_decode_uint8t_uint8", "form of 237107 nodes"),
-  ("abi_decode_boolt_bool", "form of 236387 nodes"),
   ("external_fun_truncate", "form of 228211 nodes"),
   ("external_fun_reinterpret", "form of 227791 nodes"),
   ("external_fun_shifts", "form of 227771 nodes"),

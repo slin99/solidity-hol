@@ -1021,17 +1021,20 @@ val block_cons_clause =
  * recursion is what keeps that from happening one level down as well: the
  * scrutinee is evaluated by this same rule rather than by the compute set, so
  * the argument list and the call inside it are taken apart the same way. *)
-val eval_clauses =
-  List.filter (fn th => let val c = head_const_of th in
-                  is_const_named "yulEvaluator" "eval_yul_stmt" c orelse
-                  is_const_named "yulEvaluator" "eval_yul_expr" c orelse
-                  is_const_named "yulEvaluator" "eval_yul_args" c orelse
-                  is_const_named "yulEvaluator" "eval_yul_cases" c
-                end) clauses
+(* Whether a clause is one of the four the rule below takes: a statement's, an
+ * expression's, an argument list's, or a switch's cases.  These are also the
+ * constants the compute set runs this same rule for (see `eval_compset`), so a
+ * clause nested inside another -- the tail of an argument list, a call among a
+ * call's arguments -- is taken here rather than handed to the set whole. *)
+fun is_eval_clause th =
+  let val c = head_const_of th in
+    is_const_named "yulEvaluator" "eval_yul_stmt" c orelse
+    is_const_named "yulEvaluator" "eval_yul_expr" c orelse
+    is_const_named "yulEvaluator" "eval_yul_args" c orelse
+    is_const_named "yulEvaluator" "eval_yul_cases" c
+  end
 
-fun first_clause [] tm = raise Conv.UNCHANGED
-  | first_clause (th :: rest) tm =
-      Conv.REWR_CONV th tm handle HOL_ERR _ => first_clause rest tm
+val eval_clauses = List.filter is_eval_clause clauses
 
 (* The scrutinee of the case a clause builds: the case constant's first
  * argument.  A clause that builds no case -- a literal's value, an empty
@@ -1044,7 +1047,7 @@ fun scrutinee_conv c tm =
 
 fun eval_conv_raw tm =
   let
-    val clause = first_clause eval_clauses tm
+    val clause = matching eval_clauses tm
     val body = rhs (concl clause)
     (* Repeated, since a clause can build a case on a case -- a `let` whose
      * value is an option the clause itself tests, and the expression behind it
@@ -1070,8 +1073,9 @@ fun eval_conv_raw tm =
        | HOL_ERR _ => computeLib.CBV_CONV (cs ()) tm
 
 (* The statement rule, run as a compute rule (`add_conv` below): the clause is
- * instantiated, the statement is reduced with the compute set, and what the
- * statement reduced to is taken apart as `split_conv` or `value_conv` says. *)
+ * instantiated, the statement is evaluated by `eval_conv_raw`, what is left of
+ * it is reduced with the compute set, and what that reduced to is taken apart
+ * as `split_conv` or `value_conv` says. *)
 fun block_conv_raw tm =
   let
     val (_, tms) = strip_comb tm
@@ -1174,10 +1178,33 @@ val eval_compset =
     fun guard ((c, nhyp, eqs), cs) =
       computeLib.add_conv (c, nhyp, guarded_unfold eqs)
         (computeLib.scrub_const cs c)
+    (* The four constants the conversion itself is written for: their clauses
+     * are not compiled into the set, and the conversion goes in their place.
+     * A clause nested inside another -- the tail of an argument list, a call
+     * among a call's arguments -- is then taken the way the block's own
+     * statements are, instead of being handed to the set whole, which is the
+     * treatment this rule exists to remove.  The arity comes off the clause:
+     * `eval_yul_stmt n fns s m` and its three siblings take four arguments,
+     * `eval_yul_cases n fns v cases default m` takes six. *)
+    fun register (th, cs) =
+      let val (c, args) = strip_comb (lhs (concl (SPEC_ALL th)))
+      in
+        computeLib.add_conv (c, List.length args, eval_conv_raw)
+          (computeLib.scrub_const cs c)
+      end
+    (* These go on before the clauses below, as the guards do above and for the
+     * same reason: a rule reaches the constants of its right-hand side through
+     * the entries that were there when it was compiled, and the clauses that
+     * reach `eval_yul_args` or `eval_yul_expr` are exactly the ones these
+     * entries are for. *)
+    val body_clauses =
+      List.filter (fn th => not (is_eval_clause th)) evaluator_clauses
+    val with_guards = List.foldl guard base guarded_helpers
+    val with_convs = List.foldl register with_guards eval_clauses
   in
     computeLib.add_conv (eval_yul_block_c, 4, block_conv)
-      (computeLib.add_thms (eval_yul_builtin_def :: evaluator_clauses @ helper_defs)
-         (List.foldl guard base guarded_helpers))
+      (computeLib.add_thms (eval_yul_builtin_def :: body_clauses @ helper_defs)
+         with_convs)
   end
 
 (* The rule above reduces a statement with this compute set; it has to be the
