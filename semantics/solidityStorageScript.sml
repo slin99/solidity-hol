@@ -334,6 +334,8 @@ Definition clear_storage_value_def:
       (case storage_byte_length accounts addr slot of
          INR c => INR c
        | INL length =>
+           (* An empty one is left as it is, as resizing it to zero does. *)
+           if length = 0 then INL accounts else
            let slots = if length < 32 then 0 else (length + 31) DIV 32 in
            INL (set_storage_word
                   (clear_byte_slots slots accounts addr (mapping_slot [] slot))

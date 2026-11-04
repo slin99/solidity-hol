@@ -770,7 +770,8 @@
         {"name": "storage_array_to_external_call_keeps_dirty_bytes", "function": "dirtyBlobViaPeer", "args": [20480], "expect": {"return": [44324892314095327676256184401137596806564088520918652802396734771827952320512]}, "final_storage": {"6": "1", "111414077815863400510004064629973595961579173665589224203503662149373724986687": "44324892314095327676256184401137596806564088520918652802396734771827952320514"}},
         {"name": "grow_packed_over_stale_slot", "function": "growOverStale", "args": [0], "expect": {"return": [0]}, "final_storage": {"1": "1"}},
         {"name": "grow_nested_over_stale_row", "function": "growOverStale", "args": [1], "expect": {"return": [0]}, "final_storage": {"4": "1"}},
-        {"name": "grow_bytes_over_bad_header_panics", "function": "growOverStale", "args": [2], "expect": {"panic": "0x22"}}
+        {"name": "grow_bytes_over_bad_header_panics", "function": "growOverStale", "args": [2], "expect": {"panic": "0x22"}},
+        {"name": "shrink_keeps_empty_dirty_bytes_header", "function": "growOverStale", "args": [3], "expect": {"return": [256]}, "final_storage": {"111414077815863400510004064629973595961579173665589224203503662149373724986687": "256"}}
       ]
     },
     {
