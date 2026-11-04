@@ -813,12 +813,14 @@ def assembly_memory_ok(statements: list[dict[str, Any]]) -> bool:
     return stmts_ok([], statements)
 
 
-def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[Blocker]:
+def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]],
+                      creation: bool = False) -> list[Blocker]:
     """What the importer and the elaborator reject in an inline assembly
     block: Yul the importer does not read (functions other than the block's
     own, builtins outside the dialect, boolean literals, references other
     than slot and offset), then builtins the source state cannot run (gas,
-    calls, return data, code), memory use outside assembly_memory_ok, and
+    calls, return data, code), `return` and `stop` in a block a constructor
+    runs (creation), memory use outside assembly_memory_ok, and
     references to anything but value-type locals and state variable
     locations."""
     if node["nodeType"] != "InlineAssembly":
@@ -848,6 +850,8 @@ def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) ->
                     blocker("inline assembly", "import")
                 elif name not in defined and name in YUL_UNSUPPORTED:
                     blocker("inline assembly calls, gas, return data and code", "elaboration")
+                elif name not in defined and creation and name in ("return", "stop"):
+                    blocker("inline assembly halts in a constructor", "elaboration")
             for k, v in value.items():
                 if k != "functionName":
                     walk(v, top and kind == "YulBlock" and value is node["AST"])
@@ -1076,6 +1080,14 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     dead.update(n["id"] for m in reached.values()
                 if m["nodeType"] == "ModifierDefinition" and m["id"] not in invoked
                 for n in nodes(m))
+    # The assembly a constructor runs, in its body or its modifiers'.
+    creation: set[int] = set()
+    for f in live:
+        if by_id[f]["kind"] == "constructor":
+            used = [by_id.get(m["modifierName"].get("referencedDeclaration"), {})
+                    for m in by_id[f].get("modifiers", [])]
+            for root in [by_id[f]] + [m for m in used if m.get("nodeType") == "ModifierDefinition"]:
+                creation.update(n["id"] for n in nodes(root) if n["nodeType"] == "InlineAssembly")
     # The signatures read only at nodes of overridden functions, unless they
     # belong to a function of an imported contract, which is read as such.
     read_at: dict[int, bool] = {}
@@ -1104,7 +1116,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                     + elaboration_blockers(node, storage_field=node["id"] in fields,
                                            error_parameter=node["id"] in error_parameters)
                     + coerced_literals(node, by_id)
-                    + assembly_blockers(node, by_id))
+                    + assembly_blockers(node, by_id, creation=node["id"] in creation))
         if node["nodeType"] == "EventDefinition" and node["id"] in file_level:
             blockers.append(Blocker("EventDefinition", "file-level events", "import"))
         if node["id"] in builtin_callees:

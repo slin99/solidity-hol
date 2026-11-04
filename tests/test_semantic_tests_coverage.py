@@ -365,6 +365,25 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 8}]), {8: constant}),
                          [coverage.Blocker("InlineAssembly", "inline assembly memory references", "elaboration")])
 
+    def test_inline_assembly_halts_in_constructors(self) -> None:
+        stop = assembly([{"nodeType": "YulExpressionStatement", "expression": yul_call("stop")}])
+        halts = [coverage.Blocker("InlineAssembly", "inline assembly halts in a constructor", "elaboration")]
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [stop])])}), {})
+        constructor = dict(function(4, [stop]), kind="constructor", stateMutability="nonpayable")
+        self.assertEqual(coverage.scan({"t.sol": unit([constructor])}), {20: halts})
+        # in a modifier only where a constructor runs it
+        modifier = {"nodeType": "ModifierDefinition", "id": 60, "name": "m", "virtual": False,
+                    "parameters": {"nodeType": "ParameterList", "id": 61, "parameters": []},
+                    "body": {"nodeType": "Block", "id": 63, "statements": [
+                        stop, {"nodeType": "PlaceholderStatement", "id": 64}]}}
+        invocation = {"nodeType": "ModifierInvocation", "id": 70, "kind": "modifierInvocation",
+                      "arguments": [], "modifierName": {"nodeType": "IdentifierPath", "id": 72,
+                                                        "name": "m", "referencedDeclaration": 60}}
+        self.assertEqual(coverage.scan({"t.sol": unit([modifier, dict(function(4, []), modifiers=[invocation])])}), {})
+        constructor = dict(function(4, []), kind="constructor", stateMutability="nonpayable",
+                           modifiers=[invocation])
+        self.assertEqual(coverage.scan({"t.sol": unit([modifier, constructor])}), {20: halts})
+
     def test_overridden_functions_are_only_imported(self) -> None:
         coerced = {"nodeType": "VariableDeclarationStatement", "id": 6,
                    "declarations": [variable(7, type_identifier="t_bytes4")],

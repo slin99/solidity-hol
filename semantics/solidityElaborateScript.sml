@@ -69,7 +69,8 @@ Datatype:
     state : (num # sol_type) list;
     returns : (num # sol_type) list;
     placeholder : (num # (num # sol_type) list) option;
-    mode : arithmetic_mode
+    mode : arithmetic_mode;
+    creation : bool
   |>
 End
 
@@ -1162,8 +1163,11 @@ Definition elab_stmts_def:
           SOME ((ss, as), n1) =>
             SOME ((ss ++ [RevertErrorStmt err.error_selector params as], ctx), n1)
         | NONE => NONE) ∧
+  (* A constructor, and the modifiers it runs, may not halt from assembly:
+   * the source installs no runtime code from the returned bytes. *)
   (elab_stmt ctx n (SrcInlineAssembly _ code refs) =
-    if ¬assembly_stmts_ok assembly_unsupported code ∨
+    if ¬assembly_stmts_ok (if ctx.creation then YReturn :: YStop :: assembly_unsupported
+                           else assembly_unsupported) code ∨
        ¬assembly_memory_ok code then NONE else
     case elab_assembly_references ctx refs of
       SOME rs => SOME (([AssemblyStmt code rs], ctx), n)
@@ -1270,7 +1274,8 @@ Definition elab_function_def:
         elab_levels <| functions := functions; structs := structs;
                        events := events; variables := ps ++ rs;
                        state := state; returns := rs; placeholder := NONE;
-                       mode := CheckedArithmetic |>
+                       mode := CheckedArithmetic;
+                       creation := (f.fn_kind = "constructor") |>
           modifiers ps rs f.fn_info.node_id n f.fn_modifiers ss
     | _ => NONE
 End
@@ -1552,7 +1557,8 @@ Definition elaborate_unit_def:
                             events := MAP (λe. (e.event_info.node_id, e))
                                         c.contract_events;
                             variables := []; state := state; returns := [];
-                            placeholder := NONE; mode := CheckedArithmetic |> c n of
+                            placeholder := NONE; mode := CheckedArithmetic;
+                            creation := T |> c n of
                     NONE => NONE
                   | SOME (creation, _) =>
                  SOME <| procedures := ps ++ [creation]; state_variables := cvs;
