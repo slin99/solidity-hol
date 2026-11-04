@@ -770,6 +770,15 @@
       "tests": 2
     },
     {
+      "feature": "inline assembly halts in a constructor",
+      "first_rejection": 0,
+      "node_types": [
+        "InlineAssembly"
+      ],
+      "only_blocker": 0,
+      "tests": 2
+    },
+    {
       "feature": "nested tuples",
       "first_rejection": 0,
       "node_types": [
@@ -13960,6 +13969,7 @@
         "contract creation (new C)",
         "external calls and contract members",
         "immutables",
+        "inline assembly halts in a constructor",
         "source units without exactly one contract"
       ],
       "first": "immutables",
@@ -17719,6 +17729,7 @@
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
         "external calls and contract members",
+        "inline assembly halts in a constructor",
         "source units without exactly one contract"
       ],
       "first": "address members (balance, call, transfer, \u2026)",

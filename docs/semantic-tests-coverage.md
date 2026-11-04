@@ -117,6 +117,7 @@ The scan disagrees with the HOL run on 0 tests.
 | built-in gasleft | `Identifier` | 2 | 2 | 2 |
 | built-in addmod | `Identifier` | 2 | 0 | 2 |
 | custom errors | `MemberAccess`, `TupleExpression` | 2 | 0 | 1 |
+| inline assembly halts in a constructor | `InlineAssembly` | 2 | 0 | 0 |
 | nested tuples | `TupleExpression` | 1 | 1 | 0 |
 | FunctionCallOptions nodes | `FunctionCallOptions` | 1 | 0 | 0 |
 | built-in mulmod | `Identifier` | 1 | 0 | 0 |
