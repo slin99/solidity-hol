@@ -1352,6 +1352,19 @@ fun block_conv tm =
         th
       end
 
+(* A division by a divisor that is not a literal stays the value it is,
+ * `with_zero word_div a b`.  Unfolded, its zero test is a decision on a value
+ * rather than a guard the body branches on, and nothing takes it apart: every
+ * step after it is evaluated over a result the conversion cannot read, once
+ * per branch of everything that follows.  A literal divisor decides the test,
+ * so that one is unfolded. *)
+val with_zero_c = prim_mk_const {Thy = "vfmExecution", Name = "with_zero"}
+
+fun with_zero_conv tm =
+  if wordsSyntax.is_word_literal (rand tm)
+  then Conv.REWR_CONV vfmExecutionTheory.with_zero_def tm
+  else raise Conv.UNCHANGED
+
 (* The base is EVAL's own compute set rather than the boolean one: an
  * evaluator clause is full of `case` over the Yul datatypes, and a datatype's
  * case equations are put where its definition registered them, not into the
@@ -1375,19 +1388,6 @@ fun block_conv tm =
  * the evaluator's clauses name the frame and memory operations, and a guard
  * that is not in place when they are compiled is one those occurrences do not
  * see. *)
-(* A division by a divisor that is not a literal stays the value it is,
- * `with_zero word_div a b`.  Unfolded, its zero test is a decision on a value
- * rather than a guard the body branches on, and nothing takes it apart: every
- * step after it is evaluated over a result the conversion cannot read, once
- * per branch of everything that follows.  A literal divisor decides the test,
- * so that one is unfolded. *)
-val with_zero_c = prim_mk_const {Thy = "vfmExecution", Name = "with_zero"}
-
-fun with_zero_conv tm =
-  if wordsSyntax.is_word_literal (rand tm)
-  then Conv.REWR_CONV vfmExecutionTheory.with_zero_def tm
-  else raise Conv.UNCHANGED
-
 val eval_compset =
   let
     val base =

@@ -197,28 +197,27 @@ val () =
  * conversion does, so they are re-measured with the list rather than read as an
  * invariant.  The line is enforced from one side only: the suite fails if a
  * form it does cover reaches 200k nodes, so a covered function that grew past
- * the line cannot pass unnoticed, but nothing here converts the six named here
- * -- a name whose form has dropped under the line keeps its line until the list
- * is re-measured, which happens with each change to the conversion.  Converting
- * them here as well would put their cost -- seconds each, and a million nodes
- * at the far end -- on every run of this suite.
+ * the line cannot pass unnoticed, but nothing here converts the five named
+ * here -- a name whose form has dropped under the line keeps its line until the
+ * list is re-measured, which happens with each change to the conversion.
+ * Converting them here as well would put their cost -- seconds each, and a
+ * million nodes at the far end -- on every run of this suite.
  *
  * The list was re-measured against this conversion, and it names two reasons.
  * Three are over the line: `fun_signedLess` (1 083 107) and `fun_boolLogic`
  * (1 008 029), whose calls sit inside a builtin's arguments
  * (`slt(cleanup_int8(x), cleanup_int8(y))`) and leave the arguments' own case
- * unsettled, and `checked_exp_signed` (903 697, in about 3s).  Three more are
+ * unsettled, and `checked_exp_signed` (903 697, in about 3s).  Two more are
  * under the line and inside the clock here, and are left out for the margin
  * the build machine needs: `fun_bitwise`'s conversion takes 7.2s there against
  * 2.4s on the box these numbers were measured on -- past the five-second
  * bound, and the first CI run that covered it is what said so -- and
- * `fun_widen` (1.1-1.4s here) and `checked_exp_unsigned` (93 349 nodes, 1.0-1.7s
- * here) are left out with it rather than run near a bound the machine they run
- * on cannot hold to.  That machine runs these conversions about three times
- * slower than the box they were timed on (91.3s against 32.5s for the same
- * set), so the bound below is worth keeping to forms whose time there is well
- * inside it.  What is left is 131 of the 137, whose largest form is 129 739
- * nodes and whose slowest the check below bounds at five seconds.
+ * `fun_widen` (1.1-1.4s here) is left out with it rather than run near a bound
+ * the machine it runs on cannot hold to.  That machine runs these conversions
+ * about three times slower than the box they were timed on (91.3s against
+ * 32.5s for the same set), so the bound below is worth keeping to forms whose
+ * time there is well inside it.  What is left is 132 of the 137, whose slowest
+ * the check below bounds at five seconds.
  *
  * No line says `no_form` now.  `checked_exp_signed` was the one that did: a
  * sweep did not see it come back inside a clock of a minute, and given a minute
@@ -246,8 +245,6 @@ val no_form = "no form within the clock"
 val excluded = [
   ("checked_exp_signed", "form of 903697 nodes"),
   ("fun_boolLogic", "form of 1008029 nodes"),
-  ("checked_exp_unsigned",
-   "conversion of 1.0-1.7s here, three times that on the build machine"),
   ("fun_signedLess", "form of 1083107 nodes"),
   ("fun_bitwise", "conversion of 7.2s on the build machine"),
   ("fun_widen", "conversion of 1.1s here, three times that on the build machine"),
@@ -441,11 +438,7 @@ val scalars_checked_sub_uint8 = save_thm ("scalars_checked_sub_uint8",
 
 (* A division by an argument stays the value it is: `wrapping_div_int8`'s
  * `sdiv(x, y)` comes out as `with_zero word_quot`, not as a test on `y` that
- * the rest of the body would be evaluated under.  And the form that rule
- * brought under the line, held to it: `checked_exp_unsigned` is left out of
- * the suite's clock for its time on the build machine (the list above), so its
- * size is checked here on its own, under the clock every conversion runs
- * under. *)
+ * the rest of the body would be evaluated under. *)
 val with_zero_c = prim_mk_const {Thy = "vfmExecution", Name = "with_zero"}
 
 val () =
@@ -453,22 +446,6 @@ val () =
          (rhs (concl (stated_form "wrapping_div_int8")))
   then ()
   else fail "wrapping_div_int8's division did not stay folded"
-
-val () =
-  let
-    val f = valOf (List.find (fn (n, _, _) => n = "checked_exp_unsigned")
-                             functions)
-    val t = call_term f
-    val n =
-      case under_clock 60.0 (fn () => yulConvLib.yul_invoke_conv table_defs t) of
-        NONE => fail "checked_exp_unsigned did not come back within 60s"
-      | SOME th => size_of (rhs (concl (checked_form ("checked_exp_unsigned",
-                                                      #3 f) t th)))
-  in
-    if n < 200000 then ()
-    else fail ("checked_exp_unsigned's form is " ^ Int.toString n
-               ^ " nodes, at or over the line")
-  end
 
 (* One function converted over the table *term* rather than over the constant it
  * is bound to.  A caller may give either, `defs` being what that term is folded
