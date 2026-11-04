@@ -181,8 +181,9 @@ static rows allocated eagerly. Functions with modifiers and a static memory
 array return are rejected: the compiler allocates that array once and passes it
 through the modifiers, which the per-level procedures do not model.
 
-Calldata arrays of the same element types are implemented as references into
-the frame's calldata: parameters, `T[] calldata` locals, indexing, `.length`,
+Calldata arrays of the same element types, except fixed-size dimensions of
+dynamic elements (`string[2]`, `uint256[][2]`), which import rejects, are
+implemented as references into the frame's calldata: parameters, `T[] calldata` locals, indexing, `.length`,
 copies to memory, and ABI encoding as return values and external call
 arguments. Static arrays are read in place; dynamic elements are reached
 through their offsets with the pinned compiler's checks, which revert, and an

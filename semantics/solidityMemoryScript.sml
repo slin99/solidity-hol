@@ -264,7 +264,15 @@ Definition copy_byte_contents_def:
            | INL bs => case store_storage_bytes st.world.accounts dst bs st.frame.static_context of
                INL accounts => INL (st with world := st.world with accounts := accounts)
              | INR c => INR c)
-    | _ => (case byte_contents st src of
+    | _ =>
+      (* The compiler's calldata-to-memory conversion reverts when the data,
+       * added as a word, ends past the calldata; its other readers pad. *)
+      if (case src of
+            CalldataReference offset length _ =>
+              LENGTH st.frame.call_data < (offset + length) MOD 2 ** 256
+          | _ => F)
+      then INR (RevertCompletion []) else
+      (case byte_contents st src of
         INR c => INR c
       | INL bs => case copy_memory_bytes src dst st of
           SOME st' => INL st'

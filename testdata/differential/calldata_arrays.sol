@@ -28,6 +28,10 @@ contract CalldataArrays {
         return bytes(a[i]).length;
     }
 
+    function stringCopy(string[] calldata a, uint256 i) external pure returns (string memory) {
+        return a[i];
+    }
+
     function copy(uint256[] calldata a) external pure returns (uint256, uint256) {
         uint256[] memory m = a;
         m[0] = 9;
