@@ -453,12 +453,12 @@ fun is_yul_case tm =
    question about the branch's own variables rather than about the rule's
    terms.  A case is settled when neither variable the rule rebinds appears
    anywhere the rule's output would not have put it: the values variable
-   outside `HD`, `TL` and `yul_take_shape`, and the machine variable outside
-   the frame's own update.  Before the rule runs the branch is the caller's
-   continuation, and a continuation uses the machine it was handed as a whole
-   -- `yul_normal m'`, `yul_bind names vs m'`, `eval_yul_block n fns ss m'` --
-   so an occurrence outside the update is what an unsettled case has and a
-   settled one has not.
+   outside the argument `HD`, `TL` and `yul_take_shape` are handed, and the
+   machine variable outside the record the frame's own update writes.  Before
+   the rule runs the branch is the caller's continuation, and a continuation
+   uses the machine it was handed as a whole -- `yul_normal m'`,
+   `yul_bind names vs m'`, `eval_yul_block n fns ss m'` -- so an occurrence
+   outside those is what an unsettled case has and a settled one has not.
 
    The search is over the branch alone.  A case nested in the continuation --
    settled earlier in the same bottom-up pass -- carries a marker of its own,
@@ -476,13 +476,32 @@ val frame_update_key =
 val vals_shape_keys = [("list", "HD"), ("list", "TL"),
                        ("yulEvaluatorProps", "yul_take_shape")]
 
-(* Whether the application `t` is one of `keys` applied to its argument, which
- * is where the rule's output puts the variable and where the search below
- * stops: that occurrence is the rule's own construction, and descending into
- * the argument would find the marker the rule wrote rather than a use of what
- * the call answered. *)
+(* The number of arguments a term of this type takes. *)
+fun args_of_ty ty =
+  case Lib.total Type.dom_rng ty of
+    SOME (_, r) => 1 + args_of_ty r
+  | NONE => 0
+
+(* Whether `t` is one of `keys` applied to its own last argument -- `HD vals`,
+ * `TL vals`, `yul_take_shape fd.function_results vals`, and the frame's own
+ * `m' with scopes := m.scopes`, whose record is the last argument of the
+ * update's constant.  Those are the positions the rule's output puts each
+ * variable in, and the only places the search below may stop at: the argument
+ * there is the rule's own construction, and descending into it would find the
+ * marker the rule wrote rather than a use of what the call answered.
+ *
+ * Everywhere else is searched, the arguments in front of the last one
+ * included, because those are the rule's own data -- `yul_take_shape`'s
+ * callee results, the expression an update writes -- and a use of either
+ * variable among them is not one the rule put there.  `yul_pop_scope` is what
+ * makes that case real: the set reduces the caller's `yul_pop_scope m'` to
+ * `m' with scopes := TL m'.scopes`, whose record is the machine variable but
+ * whose expression is too, and the rule is what that branch is waiting for. *)
 fun keyed t keys =
-  List.exists (fn (thy, nm) => is_const_named thy nm (head_const t)) keys
+  let val (f, args) = strip_comb t in
+    List.exists (fn (thy, nm) => is_const_named thy nm f) keys andalso
+    List.length args = args_of_ty (type_of f)
+  end
 
 (* Whether `v` occurs in `tm` at a place `keys` does not account for. *)
 fun escapes keys v tm =
@@ -491,8 +510,7 @@ fun escapes keys v tm =
     case dest_term tm of
       Term.LAMB (bv, b) => not (aconv bv v) andalso escapes keys v b
     | Term.COMB (x, y) =>
-        escapes keys v x orelse
-        (not (keyed x keys) andalso escapes keys v y)
+        escapes keys v x orelse (not (keyed tm keys) andalso escapes keys v y)
     | _ => false
 
 (* The frame rule's own guard, off the term alone: a case on a folded call

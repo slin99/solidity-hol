@@ -510,9 +510,8 @@ QED
  * a call inside another call's arguments: `wrapping_exp_uint8_uint8` closes now
  * -- its `exp` call is reached through the builtin dispatch rather than left to
  * the word library -- and the ones that carry a size above come back under a
- * longer one; all of them are measured with the rest, except the two the list
- * above names for what they take on the build machine.  The list is empty of
- * them now, and the check stays for the next body that stops coming back. *)
+ * longer clock.  No line carries this claim now, and the check stays for the
+ * next body that stops coming back. *)
 val () =
   List.app
     (fn (nm, why) =>
