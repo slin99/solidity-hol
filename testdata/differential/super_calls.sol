@@ -2,7 +2,8 @@
 pragma solidity 0.8.37;
 
 // super calls run the next implementation along the deployed contract's
-// linearization: SuperCalls, Three, Two, Digits, Capped, Pausable, Ledger.
+// linearization: SuperCalls, PickNarrow, PickWide, Three, Two, Digits,
+// Capped, Pausable, Ledger.
 contract Ledger {
     mapping(address => uint256) balances;
     uint256 updates;
@@ -60,7 +61,21 @@ abstract contract Three is Digits {
     }
 }
 
-contract SuperCalls is Pausable, Capped, Two, Three {
+abstract contract PickWide {
+    function pick(uint256) internal pure virtual returns (uint256) {
+        return 256;
+    }
+}
+
+abstract contract PickNarrow {
+    function pick(uint8) internal pure virtual returns (uint256) {
+        return 8;
+    }
+}
+
+// The first base after SuperCalls with a pick is PickNarrow, whose pick takes
+// a uint8, so super.pick(uint256) runs PickWide's.
+contract SuperCalls is Pausable, Capped, Two, Three, PickWide, PickNarrow {
     uint256 last;
 
     // Skips this contract's own _update: from the constructor, super starts
@@ -76,6 +91,14 @@ contract SuperCalls is Pausable, Capped, Two, Three {
 
     function digits() public pure override(Two, Three) returns (uint256) {
         return super.digits() * 10 + 4;
+    }
+
+    function pick(uint256 x) internal pure override returns (uint256) {
+        return super.pick(x) + 1;
+    }
+
+    function picked() public pure returns (uint256) {
+        return pick(uint256(1));
     }
 
     function mint(address to, uint256 amount) public {

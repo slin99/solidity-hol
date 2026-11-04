@@ -417,6 +417,14 @@ def super_callee(node: dict[str, Any]) -> bool:
                  ).startswith("t_type$_t_super"))
 
 
+def super_calls(function: dict[str, Any]) -> list[dict[str, Any]]:
+    """The super calls the importer admits in a function: those in its body and
+    in its modifier invocations' arguments."""
+    roots = [function.get("body")] + [m.get("arguments") for m in function.get("modifiers", [])
+                                      if m.get("kind") == "modifierInvocation"]
+    return [n for root in roots for n in nodes(root) if super_callee(n)]
+
+
 def parameter_types(function: dict[str, Any]) -> list[str | None]:
     return [p["typeDescriptions"].get("typeIdentifier") for p in function["parameters"]["parameters"]]
 
@@ -454,7 +462,7 @@ def live_functions(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> tu
             while pending:
                 f = pending.pop()
                 live.add(f["id"])
-                for call in (n for n in nodes(f) if super_callee(n)):
+                for call in super_calls(f):
                     declaration = by_id.get(call["expression"].get("referencedDeclaration"))
                     later = bases[bases.index(f["scope"]) + 1:] if f.get("scope") in bases else []
                     target = declaration and super_target(declaration, later, functions)
@@ -1222,10 +1230,11 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     builtin_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
                        and n["expression"]["nodeType"] == "Identifier"
                        and n["expression"].get("referencedDeclaration") in {REQUIRE, ASSERT, REVERT}}
-    # super.f(...) in a function, outside its modifiers' bodies.
+    # super.f(...) in a function's body or its modifier invocations' arguments,
+    # the only places the importer admits it.
     super_bases = {n["expression"]["expression"]["id"]
                    for f in reached.values() if f["nodeType"] == "FunctionDefinition"
-                   for n in nodes(f) if super_callee(n)}
+                   for n in super_calls(f)}
     plain_callees = builtin_callees | super_bases
     unread, found = special_forms(reached, by_id)
     file_level = {m["id"] for ast in asts.values() for m in ast["nodes"]}

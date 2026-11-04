@@ -255,8 +255,11 @@ fun is_super_member callee =
        (string_field (field base "typeDescriptions") "typeIdentifier")
    end)
 
-(* The declarations the super calls of the function being imported name. *)
+(* The declarations the super calls of the function being imported name,
+ * and whether one is being imported: super calls are admitted only in a
+ * function's body and its modifier invocations' arguments. *)
 val super_calls = ref ([] : IntInf.int list)
+val in_function = ref false
 
 (* Expressions *)
 
@@ -398,7 +401,11 @@ fun expr v = within v (fn v =>
                  [info v, type_name (field callee "typeName"), hd args,
                   type_id v])
             else if is_super_member callee then
-              let val r = int_field callee "referencedDeclaration" in
+              let
+                val () = require v (!in_function)
+                           "super outside a function body is not supported"
+                val r = int_field callee "referencedDeclaration"
+              in
                 if List.exists (fn x => x = r) (!super_calls) then ()
                 else super_calls := !super_calls @ [r];
                 con "SrcSuperCall"
@@ -635,6 +642,7 @@ fun function v = within v (fn v =>
     val () = super_calls := []
     val (params_id, params) = parameter_list (field v "parameters")
     val (returns_id, returns) = parameter_list (field v "returnParameters")
+    val () = in_function := true
     (* the modifier invocations; base constructor arguments are imported
      * with the contract *)
     val modifiers =
@@ -651,7 +659,9 @@ fun function v = within v (fn v =>
                  | NONE => [],
                  expr_ty))))))
       (JSONUtil.arrayMap I (field v "modifiers"))
-    val body = stmt (field v "body")
+      handle e => (in_function := false; raise e)
+    val body = stmt (field v "body") handle e => (in_function := false; raise e)
+    val () = in_function := false
     val supers = !super_calls
   in
     expect v "FunctionDefinition";

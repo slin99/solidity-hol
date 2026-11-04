@@ -442,6 +442,14 @@ class ClassifyTests(unittest.TestCase):
         ast["nodes"][1]["nodes"] = [modifier, dict(derived, modifiers=[invocation])]
         self.assertIn(coverage.Blocker("Identifier", "super calls", "import"),
                       coverage.scan({"t.sol": ast})[97])
+        specifier = {"nodeType": "ModifierInvocation", "id": 87, "kind": "baseConstructorSpecifier",
+                     "arguments": [super_call(100, 60)["expression"]],
+                     "modifierName": {"nodeType": "IdentifierPath", "id": 88, "name": "B",
+                                      "referencedDeclaration": 50}}
+        ast["nodes"][1]["nodes"] = [derived, dict(function(75, []), kind="constructor", scope=2,
+                                                  modifiers=[specifier])]
+        self.assertIn(coverage.Blocker("Identifier", "super calls", "import"),
+                      coverage.scan({"t.sol": ast})[102])
 
     def test_base_arguments_tuple_returns_and_calls_with_options_are_coerced(self) -> None:
         def string(node_id):
