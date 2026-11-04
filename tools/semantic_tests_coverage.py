@@ -407,20 +407,68 @@ def overridden(functions: list[dict[str, Any]], by_id: dict[int, dict[str, Any]]
     return found
 
 
+def super_callee(node: dict[str, Any]) -> bool:
+    """Whether a node is super.f called as a function."""
+    callee = node.get("expression") or {}
+    return (node["nodeType"] == "FunctionCall" and node["kind"] == "functionCall"
+            and callee["nodeType"] == "MemberAccess"
+            and callee["expression"]["nodeType"] == "Identifier"
+            and (callee["expression"]["typeDescriptions"].get("typeIdentifier") or ""
+                 ).startswith("t_type$_t_super"))
+
+
+def super_calls(function: dict[str, Any]) -> list[dict[str, Any]]:
+    """The super calls the importer admits in a function: those in its body and
+    in its modifier invocations' arguments."""
+    roots = [function.get("body")] + [m.get("arguments") for m in function.get("modifiers", [])
+                                      if m.get("kind") == "modifierInvocation"]
+    return [n for root in roots for n in nodes(root) if super_callee(n)]
+
+
+def parameter_types(function: dict[str, Any]) -> list[str | None]:
+    return [p["typeDescriptions"].get("typeIdentifier") for p in function["parameters"]["parameters"]]
+
+
+def super_target(declaration: dict[str, Any], later: list[int],
+                 functions: list[dict[str, Any]]) -> dict[str, Any] | None:
+    """The function a super call naming a declaration runs: the first, along
+    the bases after the caller's, with its name and parameter types
+    (super_target in solidityImport)."""
+    for base in later:
+        for f in functions:
+            if (f["scope"] == base and f["kind"] == "function" and f["name"] == declaration["name"]
+                    and parameter_types(f) == parameter_types(declaration)):
+                return f
+    return None
+
+
 def live_functions(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> tuple[set[int], set[int]]:
     """The implemented functions of the deployable contracts' bases, and those
-    of them no other function of the same contract overrides: the functions
-    valid_src_unit and elaborate_unit see."""
+    of them valid_src_unit and elaborate_unit see: the ones no other function
+    of the same contract overrides, and the ones super calls reach from
+    those."""
     based: set[int] = set()
     live: set[int] = set()
     for ast in asts.values():
         for contract in deployable(ast):
-            functions = [m for b in contract["linearizedBaseContracts"] if b in by_id
+            bases = contract["linearizedBaseContracts"]
+            functions = [m for b in bases if b in by_id
                          for m in by_id[b]["nodes"]
                          if m["nodeType"] == "FunctionDefinition" and m["implemented"]]
             dead = overridden(functions, by_id)
             based.update(f["id"] for f in functions)
-            live.update(f["id"] for f in functions if f["id"] not in dead)
+            pending = [f for f in functions if f["id"] not in dead]
+            seen = {f["id"] for f in pending}
+            while pending:
+                f = pending.pop()
+                live.add(f["id"])
+                for call in super_calls(f):
+                    declaration = by_id.get(call["expression"].get("referencedDeclaration"))
+                    later = bases[bases.index(f["scope"]) + 1:] if f.get("scope") in bases else []
+                    target = declaration and super_target(declaration, later, functions)
+                    if target is not None and target["id"] not in seen:
+                        seen.add(target["id"])
+                        pending.append(target)
     return based, live
 
 
@@ -739,7 +787,9 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
             found.append(type_feature(base_type))
     elif kind == "MemberAccess":
         base_type = node["expression"]["typeDescriptions"].get("typeIdentifier") or ""
-        if node.get("referencedDeclaration") is not None:
+        if base_type.startswith("t_type$_t_super"):
+            pass  # super.f: whether it is called where admitted is the import's check
+        elif node.get("referencedDeclaration") is not None:
             if not base_type.startswith("t_struct$_") or not storage_type_supported(base_type):
                 found.append(type_feature(base_type))
         elif node["memberName"] == "length":
@@ -1180,6 +1230,12 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     builtin_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
                        and n["expression"]["nodeType"] == "Identifier"
                        and n["expression"].get("referencedDeclaration") in {REQUIRE, ASSERT, REVERT}}
+    # super.f(...) in a function's body or its modifier invocations' arguments,
+    # the only places the importer admits it.
+    super_bases = {n["expression"]["expression"]["id"]
+                   for f in reached.values() if f["nodeType"] == "FunctionDefinition"
+                   for n in super_calls(f)}
+    plain_callees = builtin_callees | super_bases
     unread, found = special_forms(reached, by_id)
     file_level = {m["id"] for ast in asts.values() for m in ast["nodes"]}
     storage_bases = {n["baseExpression"]["id"] for n in reached.values()
@@ -1189,7 +1245,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     for node in reached.values():
         if node["id"] in unread:
             continue
-        blockers = (node_blockers(node, builtin_callee=node["id"] in builtin_callees)
+        blockers = (node_blockers(node, builtin_callee=node["id"] in plain_callees)
                     + callee_blockers(node, callees, conversions)
                     + elaboration_blockers(node, storage_field=node["id"] in fields,
                                            error_parameter=node["id"] in error_parameters)

@@ -787,6 +787,22 @@
       ]
     },
     {
+      "name": "super_calls",
+      "source": "testdata/differential/super_calls.sol",
+      "contract": "SuperCalls",
+      "artifact": "testdata/differential/expected/super_calls.json",
+      "cases": [
+        {"name": "constructor_super_skips_own_override", "deploy": true, "args": [], "expect": {"return": []}, "final_storage": {"55339514551095541597166361489097532198990872027936225909895186517043906691032": "5", "1": "1", "3": "5"}},
+        {"name": "virtual_call_runs_every_override", "function": "mint", "args": [12288, 7], "expect": {"return": []}, "final_storage": {"68113724183316182233052564790125915752421945217496801851705428207216635038832": "7", "1": "1", "3": "7", "4": "7"}},
+        {"name": "base_underflow_panics_through_chain", "function": "transfer", "args": [12288, 1], "expect": {"panic": "0x11"}},
+        {"name": "pausable_reverts_before_base", "function": "pauseAndMint", "args": [12288, 1], "expect": {"revert": "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000067061757365640000000000000000000000000000000000000000000000000000"}},
+        {"name": "capped_checks_after_base", "function": "mint", "args": [12288, 1001], "expect": {"revert": "0x"}},
+        {"name": "sibling_bases_chain_through_super", "function": "digits", "args": [], "expect": {"return": [1234]}},
+        {"name": "super_skips_a_later_overload", "function": "picked", "args": [], "expect": {"return": [257]}},
+        {"name": "super_from_live_function_skips_own_override", "function": "mintTwice", "args": [12288, 3], "expect": {"return": [6, 2]}, "final_storage": {"68113724183316182233052564790125915752421945217496801851705428207216635038832": "6", "1": "2", "3": "6", "4": "3"}}
+      ]
+    },
+    {
       "name": "storage_bytes",
       "source": "testdata/differential/storage_bytes.sol",
       "contract": "StorageBytes",

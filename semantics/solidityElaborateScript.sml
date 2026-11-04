@@ -15,9 +15,12 @@
  * Reads of msg.sender, msg.value, tx.origin, tx.gasprice, block members and
  * address(this), emits of events and reverts with custom errors, both with
  * elementary parameters. An internal
- * call runs the most derived override of the function it names (call_table);
- * the functions no other overrides are elaborated, and the external and
- * public ones among them, receive and fallback form the dispatch table.
+ * call runs the most derived override of the function it names (call_table),
+ * and a super call the function super_table finds along the bases after the
+ * caller's; the functions no other overrides are elaborated, and the external
+ * and public ones among them, receive and fallback form the dispatch table.
+ * The overridden functions super calls reach are elaborated too, but not
+ * dispatched.
  * State-variable initializers, constructors and base-constructor arguments
  * (inheritance specifiers or constructor modifiers) form one creation
  * procedure.
@@ -63,6 +66,7 @@ Libs
 Datatype:
   elab_ctx = <|
     functions : (num # src_function) list;
+    supers : (num # src_function) list;
     structs : src_struct list;
     events : (num # src_event) list;
     variables : (num # sol_type) list;
@@ -314,6 +318,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcTypeConversion _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcExternalCall _ _ _ operands _) ⇔ exprs_assign operands) ∧
   (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcSuperCall _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns _ ⇔ F) ∧
   (components_assign [] ⇔ F) ∧
   (components_assign (NONE :: cs) ⇔ components_assign cs) ∧
@@ -709,6 +714,20 @@ Definition elab_expr_def:
                    | NONE => NONE)
               | NONE => NONE)
          | _ => NONE)
+    | SrcSuperCall _ r args _ =>
+        (case ALOOKUP ctx.supers r of
+           SOME callee =>
+             (case callee_types callee of
+                SOME (params, rets) =>
+                  (case elab_args ctx n params args of
+                     SOME ((sa, atoms), n1) =>
+                       SOME ((sa ++ [DefineStmt (AstId n1) (call_result_type rets)
+                                       (InternalCallOperation
+                                          (AstId callee.fn_info.node_id) atoms)],
+                              BoundAtom (AstId n1), call_value rets), n1 + 1)
+                   | NONE => NONE)
+              | NONE => NONE)
+         | NONE => NONE)
     | SrcBuiltinCall _ _ builtin condition message _ =>
         (if ¬builtin_shape builtin condition message then NONE else
          let failure = builtin_failure builtin message in
@@ -1343,7 +1362,7 @@ Definition elab_levels_def:
             if static_memory_returns rs then NONE else
             (case elab_modifier_args ctx (n + 1) mps args of
                SOME (sa, n1) =>
-                 (case elab_stmts (ctx with <| variables := mps;
+                 (case elab_stmts (ctx with <| supers := []; variables := mps;
                                                placeholder := SOME (n, ps) |>)
                          n1 mss of
                     SOME ((code, _), n2) =>
@@ -1363,11 +1382,12 @@ End
  * returns keep their declaration ids.
  *)
 Definition elab_function_def:
-  elab_function structs events functions modifiers state n (f : src_function) =
+  elab_function structs events functions fs bases modifiers state n (f : src_function) =
     case (all_some (MAP variable_binding f.fn_parameters),
-          all_some (MAP variable_binding f.fn_returns), f.fn_body) of
-      (SOME ps, SOME rs, SrcBlock _ ss) =>
-        elab_levels <| functions := functions; structs := structs;
+          all_some (MAP variable_binding f.fn_returns), f.fn_body,
+          super_table fs bases f) of
+      (SOME ps, SOME rs, SrcBlock _ ss, SOME supers) =>
+        elab_levels <| functions := functions; supers := supers; structs := structs;
                        events := events; variables := ps ++ rs;
                        state := state; returns := rs; placeholder := NONE;
                        mode := CheckedArithmetic;
@@ -1377,11 +1397,12 @@ Definition elab_function_def:
 End
 
 Definition elab_functions_def:
-  (elab_functions structs events functions modifiers state n [] = SOME ([], n)) ∧
-  (elab_functions structs events functions modifiers state n (f :: fs) =
-    case elab_function structs events functions modifiers state n f of
+  (elab_functions structs events functions all bases modifiers state n [] =
+    SOME ([], n)) ∧
+  (elab_functions structs events functions all bases modifiers state n (f :: fs) =
+    case elab_function structs events functions all bases modifiers state n f of
       SOME (ps, n1) =>
-        (case elab_functions structs events functions modifiers state n1 fs of
+        (case elab_functions structs events functions all bases modifiers state n1 fs of
            SOME (ps', n2) => SOME (ps ++ ps', n2)
          | NONE => NONE)
     | NONE => NONE)
@@ -1639,9 +1660,11 @@ Definition elaborate_unit_def:
                    core_state_variables state c.contract_storage,
                    elab_functions c.contract_structs
                      (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
-                     (call_table c.contract_functions)
+                     (call_table c.contract_functions) c.contract_functions
+                     c.contract_bases
                      (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
-                     state (MAX_LIST (unit_ids u) + 1) fs) of
+                     state (MAX_LIST (unit_ids u) + 1)
+                     (checked_functions c.contract_functions c.contract_bases)) of
                (SOME decls, SOME layouts, SOME cvs, SOME (fps, n0)) =>
                  (case elab_getters state n0 (MAP FST c.contract_getters) of
                     NONE => NONE
@@ -1649,6 +1672,7 @@ Definition elaborate_unit_def:
                  let ps = fps ++ gps in
                  (case elab_creation
                          <| functions := call_table c.contract_functions;
+                            supers := [];
                             structs := c.contract_structs;
                             events := MAP (λe. (e.event_info.node_id, e))
                                         c.contract_events;

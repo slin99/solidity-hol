@@ -246,6 +246,21 @@ fun is_external_call callee =
   String.isPrefix "t_function_external_"
     (string_field (field callee "typeDescriptions") "typeIdentifier")
 
+(* super.f, as a callee. *)
+fun is_super_member callee =
+  node_type callee = "MemberAccess" andalso
+  (let val base = field callee "expression" in
+     node_type base = "Identifier" andalso
+     String.isPrefix "t_type$_t_super"
+       (string_field (field base "typeDescriptions") "typeIdentifier")
+   end)
+
+(* The declarations the super calls of the function being imported name,
+ * and whether one is being imported: super calls are admitted only in a
+ * function's body and its modifier invocations' arguments. *)
+val super_calls = ref ([] : IntInf.int list)
+val in_function = ref false
+
 (* Expressions *)
 
 fun expr v = within v (fn v =>
@@ -385,6 +400,18 @@ fun expr v = within v (fn v =>
                con "SrcNew"
                  [info v, type_name (field callee "typeName"), hd args,
                   type_id v])
+            else if is_super_member callee then
+              let
+                val () = require v (!in_function)
+                           "super outside a function body is not supported"
+                val r = int_field callee "referencedDeclaration"
+              in
+                if List.exists (fn x => x = r) (!super_calls) then ()
+                else super_calls := !super_calls @ [r];
+                con "SrcSuperCall"
+                  [info v, mk_num r, listSyntax.mk_list (args, expr_ty),
+                   type_id v]
+              end
             else con "SrcFunctionCall"
               [info v, expr callee, listSyntax.mk_list (args, expr_ty), type_id v]
         | "typeConversion" =>
@@ -612,8 +639,10 @@ fun overridden v =
 
 fun function v = within v (fn v =>
   let
+    val () = super_calls := []
     val (params_id, params) = parameter_list (field v "parameters")
     val (returns_id, returns) = parameter_list (field v "returnParameters")
+    val () = in_function := true
     (* the modifier invocations; base constructor arguments are imported
      * with the contract *)
     val modifiers =
@@ -630,6 +659,10 @@ fun function v = within v (fn v =>
                  | NONE => [],
                  expr_ty))))))
       (JSONUtil.arrayMap I (field v "modifiers"))
+      handle e => (in_function := false; raise e)
+    val body = stmt (field v "body") handle e => (in_function := false; raise e)
+    val () = in_function := false
+    val supers = !super_calls
   in
     expect v "FunctionDefinition";
     require v (List.exists (fn k => k = string_field v "kind")
@@ -652,7 +685,8 @@ fun function v = within v (fn v =>
        ("fn_modifiers", listSyntax.mk_list
           (modifiers, pairSyntax.mk_prod
                         (numSyntax.num, listSyntax.mk_list_type expr_ty))),
-       ("fn_body", stmt (field v "body"))]
+       ("fn_super_calls", listSyntax.mk_list (map mk_num supers, numSyntax.num)),
+       ("fn_body", body)]
   end)
 
 (* A modifier invocation runs the modifier it names, so one that could be

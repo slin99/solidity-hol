@@ -1,43 +1,18 @@
 {
   "counts": {
-    "admitted": 367,
+    "admitted": 444,
     "compile-failure": 0,
-    "elaboration-rejected": 34,
-    "import-rejected": 849,
+    "elaboration-rejected": 49,
+    "import-rejected": 785,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 320
+    "source-rejected": 292
   },
   "features": [
     {
-      "feature": "arrays",
-      "first_rejection": 2,
-      "node_types": [
-        "ArrayTypeName",
-        "FunctionCall",
-        "IndexAccess",
-        "MemberAccess",
-        "TupleExpression",
-        "VariableDeclaration"
-      ],
-      "only_blocker": 7,
-      "tests": 322
-    },
-    {
-      "feature": "array values",
-      "first_rejection": 0,
-      "node_types": [
-        "Identifier",
-        "IndexAccess",
-        "MemberAccess"
-      ],
-      "only_blocker": 9,
-      "tests": 261
-    },
-    {
       "feature": "external calls and contract members",
-      "first_rejection": 89,
+      "first_rejection": 99,
       "node_types": [
         "FunctionCall",
         "Identifier",
@@ -51,17 +26,8 @@
       "tests": 226
     },
     {
-      "feature": "local reference bindings",
-      "first_rejection": 0,
-      "node_types": [
-        "VariableDeclaration"
-      ],
-      "only_blocker": 0,
-      "tests": 215
-    },
-    {
       "feature": "structs",
-      "first_rejection": 16,
+      "first_rejection": 18,
       "node_types": [
         "FunctionCall",
         "IndexAccess",
@@ -73,13 +39,35 @@
       "tests": 165
     },
     {
+      "feature": "local reference bindings",
+      "first_rejection": 0,
+      "node_types": [
+        "VariableDeclaration"
+      ],
+      "only_blocker": 0,
+      "tests": 158
+    },
+    {
       "feature": "this",
-      "first_rejection": 4,
+      "first_rejection": 5,
       "node_types": [
         "Identifier"
       ],
-      "only_blocker": 0,
+      "only_blocker": 1,
       "tests": 140
+    },
+    {
+      "feature": "arrays",
+      "first_rejection": 2,
+      "node_types": [
+        "ArrayTypeName",
+        "IndexAccess",
+        "MemberAccess",
+        "TupleExpression",
+        "VariableDeclaration"
+      ],
+      "only_blocker": 0,
+      "tests": 130
     },
     {
       "feature": "source units without exactly one contract",
@@ -103,21 +91,12 @@
     },
     {
       "feature": "libraries",
-      "first_rejection": 39,
+      "first_rejection": 42,
       "node_types": [
         "ContractDefinition"
       ],
       "only_blocker": 1,
       "tests": 116
-    },
-    {
-      "feature": "memory arrays (new T[](n))",
-      "first_rejection": 73,
-      "node_types": [
-        "NewExpression"
-      ],
-      "only_blocker": 0,
-      "tests": 111
     },
     {
       "feature": "struct values and copying",
@@ -137,16 +116,16 @@
         "IndexAccess",
         "MemberAccess"
       ],
-      "only_blocker": 10,
+      "only_blocker": 11,
       "tests": 101
     },
     {
       "feature": "abi.* functions",
-      "first_rejection": 54,
+      "first_rejection": 58,
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 5,
+      "only_blocker": 12,
       "tests": 100
     },
     {
@@ -164,7 +143,7 @@
       "node_types": [
         "InlineAssembly"
       ],
-      "only_blocker": 0,
+      "only_blocker": 2,
       "tests": 91
     },
     {
@@ -179,7 +158,7 @@
     },
     {
       "feature": "contract creation (new C)",
-      "first_rejection": 8,
+      "first_rejection": 0,
       "node_types": [
         "NewExpression"
       ],
@@ -192,7 +171,7 @@
       "node_types": [
         "UnaryOperation"
       ],
-      "only_blocker": 5,
+      "only_blocker": 12,
       "tests": 75
     },
     {
@@ -201,8 +180,19 @@
       "node_types": [
         "FunctionDefinition"
       ],
-      "only_blocker": 7,
+      "only_blocker": 10,
       "tests": 73
+    },
+    {
+      "feature": "array values",
+      "first_rejection": 0,
+      "node_types": [
+        "Identifier",
+        "IndexAccess",
+        "MemberAccess"
+      ],
+      "only_blocker": 0,
+      "tests": 67
     },
     {
       "feature": "hash and signature built-ins",
@@ -229,7 +219,7 @@
         "BinaryOperation",
         "UnaryOperation"
       ],
-      "only_blocker": 24,
+      "only_blocker": 26,
       "tests": 57
     },
     {
@@ -269,8 +259,17 @@
       "node_types": [
         "InlineAssembly"
       ],
-      "only_blocker": 4,
+      "only_blocker": 6,
       "tests": 50
+    },
+    {
+      "feature": "inline arrays",
+      "first_rejection": 35,
+      "node_types": [
+        "TupleExpression"
+      ],
+      "only_blocker": 10,
+      "tests": 47
     },
     {
       "feature": "constants",
@@ -282,21 +281,12 @@
       "tests": 47
     },
     {
-      "feature": "inline arrays",
-      "first_rejection": 29,
-      "node_types": [
-        "TupleExpression"
-      ],
-      "only_blocker": 0,
-      "tests": 47
-    },
-    {
       "feature": "public state variables",
       "first_rejection": 0,
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 4,
+      "only_blocker": 5,
       "tests": 46
     },
     {
@@ -326,7 +316,7 @@
         "TupleExpression",
         "VariableDeclaration"
       ],
-      "only_blocker": 4,
+      "only_blocker": 9,
       "tests": 39
     },
     {
@@ -341,7 +331,7 @@
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
-      "only_blocker": 12,
+      "only_blocker": 15,
       "tests": 38
     },
     {
@@ -350,7 +340,7 @@
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 3,
+      "only_blocker": 8,
       "tests": 37
     },
     {
@@ -374,12 +364,12 @@
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
-      "only_blocker": 6,
+      "only_blocker": 8,
       "tests": 32
     },
     {
       "feature": "named arguments",
-      "first_rejection": 22,
+      "first_rejection": 25,
       "node_types": [
         "FunctionCall"
       ],
@@ -441,12 +431,21 @@
       "tests": 26
     },
     {
+      "feature": "memory arrays (new T[](n))",
+      "first_rejection": 0,
+      "node_types": [
+        "NewExpression"
+      ],
+      "only_blocker": 0,
+      "tests": 25
+    },
+    {
       "feature": "immutables",
       "first_rejection": 21,
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 9,
+      "only_blocker": 10,
       "tests": 24
     },
     {
@@ -465,7 +464,7 @@
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 12,
+      "only_blocker": 13,
       "tests": 23
     },
     {
@@ -480,15 +479,6 @@
       ],
       "only_blocker": 0,
       "tests": 22
-    },
-    {
-      "feature": "new bytes and string",
-      "first_rejection": 12,
-      "node_types": [
-        "NewExpression"
-      ],
-      "only_blocker": 1,
-      "tests": 20
     },
     {
       "feature": "try/catch",
@@ -507,7 +497,7 @@
       "node_types": [
         "IndexRangeAccess"
       ],
-      "only_blocker": 3,
+      "only_blocker": 4,
       "tests": 19
     },
     {
@@ -540,15 +530,14 @@
       "tests": 16
     },
     {
-      "feature": "super calls",
-      "first_rejection": 9,
+      "feature": "fixed-size bytes members and indexing",
+      "first_rejection": 0,
       "node_types": [
-        "Identifier",
-        "MemberAccess",
-        "TupleExpression"
+        "IndexAccess",
+        "MemberAccess"
       ],
-      "only_blocker": 6,
-      "tests": 15
+      "only_blocker": 2,
+      "tests": 12
     },
     {
       "feature": "built-in erc7201",
@@ -560,14 +549,13 @@
       "tests": 12
     },
     {
-      "feature": "fixed-size bytes members and indexing",
+      "feature": "event array parameters",
       "first_rejection": 0,
       "node_types": [
-        "IndexAccess",
-        "MemberAccess"
+        "VariableDeclaration"
       ],
-      "only_blocker": 1,
-      "tests": 12
+      "only_blocker": 6,
+      "tests": 11
     },
     {
       "feature": "literal subdenominations (ether, days, \u2026)",
@@ -584,7 +572,7 @@
       "node_types": [
         "InlineAssembly"
       ],
-      "only_blocker": 3,
+      "only_blocker": 4,
       "tests": 10
     },
     {
@@ -667,6 +655,25 @@
         "EventDefinition"
       ],
       "only_blocker": 2,
+      "tests": 5
+    },
+    {
+      "feature": "super calls",
+      "first_rejection": 2,
+      "node_types": [
+        "Identifier",
+        "TupleExpression"
+      ],
+      "only_blocker": 1,
+      "tests": 5
+    },
+    {
+      "feature": "tuple assignments to element or member targets",
+      "first_rejection": 0,
+      "node_types": [
+        "Assignment"
+      ],
+      "only_blocker": 0,
       "tests": 5
     },
     {
@@ -779,10 +786,10 @@
       "tests": 2
     },
     {
-      "feature": "nested tuples",
+      "feature": "static memory array returns under modifiers",
       "first_rejection": 0,
       "node_types": [
-        "TupleExpression"
+        "VariableDeclaration"
       ],
       "only_blocker": 1,
       "tests": 1
@@ -804,89 +811,98 @@
       ],
       "only_blocker": 0,
       "tests": 1
+    },
+    {
+      "feature": "nested tuples",
+      "first_rejection": 0,
+      "node_types": [
+        "TupleExpression"
+      ],
+      "only_blocker": 0,
+      "tests": 1
     }
   ],
   "format": "solidity-hol-semantic-tests-coverage-v1",
   "greedy_order": [
     {
-      "admitted": 24,
+      "admitted": 26,
       "feature": "constant expressions over literals"
     },
     {
-      "admitted": 38,
-      "feature": "address members (balance, call, transfer, \u2026)"
-    },
-    {
-      "admitted": 53,
-      "feature": "transient storage"
-    },
-    {
-      "admitted": 67,
-      "feature": "operator delete"
-    },
-    {
-      "admitted": 82,
-      "feature": "array values"
-    },
-    {
-      "admitted": 106,
-      "feature": "arrays"
-    },
-    {
-      "admitted": 145,
-      "feature": "local reference bindings"
-    },
-    {
-      "admitted": 174,
-      "feature": "memory arrays (new T[](n))"
-    },
-    {
-      "admitted": 200,
-      "feature": "structs"
-    },
-    {
-      "admitted": 242,
-      "feature": "struct values and copying"
-    },
-    {
-      "admitted": 269,
-      "feature": "aggregate array mutation"
-    },
-    {
-      "admitted": 291,
-      "feature": "abi.* functions"
-    },
-    {
-      "admitted": 312,
-      "feature": "inline arrays"
-    },
-    {
-      "admitted": 329,
-      "feature": "hash and signature built-ins"
-    },
-    {
-      "admitted": 347,
-      "feature": "bytes push and pop"
-    },
-    {
-      "admitted": 364,
+      "admitted": 41,
       "feature": "string literals as fixed-size bytes"
     },
     {
-      "admitted": 380,
-      "feature": "inline assembly memory references"
+      "admitted": 55,
+      "feature": "abi.* functions"
     },
     {
-      "admitted": 400,
-      "feature": "inline assembly memory outside the scratch space"
+      "admitted": 73,
+      "feature": "hash and signature built-ins"
     },
     {
-      "admitted": 417,
-      "feature": "inline assembly"
+      "admitted": 90,
+      "feature": "address members (balance, call, transfer, \u2026)"
     },
     {
-      "admitted": 433,
+      "admitted": 105,
+      "feature": "transient storage"
+    },
+    {
+      "admitted": 126,
+      "feature": "operator delete"
+    },
+    {
+      "admitted": 143,
+      "feature": "bytes push and pop"
+    },
+    {
+      "admitted": 160,
+      "feature": "literals of non-integer types"
+    },
+    {
+      "admitted": 175,
+      "feature": "inline arrays"
+    },
+    {
+      "admitted": 189,
+      "feature": "conditional expressions"
+    },
+    {
+      "admitted": 202,
       "feature": "constants"
+    },
+    {
+      "admitted": 215,
+      "feature": "aggregate array mutation"
+    },
+    {
+      "admitted": 228,
+      "feature": "immutables"
+    },
+    {
+      "admitted": 241,
+      "feature": "library calls and contract-name members"
+    },
+    {
+      "admitted": 253,
+      "feature": "libraries"
+    },
+    {
+      "admitted": 265,
+      "feature": "free functions"
+    },
+    {
+      "admitted": 278,
+      "feature": "source units without exactly one contract"
+    },
+    {
+      "admitted": 291,
+      "feature": "using for"
+    },
+    {
+      "admitted": 316,
+      "feature": "user-defined value types"
     }
   ],
   "profile": "solc-0.8.37-via-ir-osaka",
@@ -946,14 +962,11 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))",
         "struct values and copying",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "abicoder/abi_decode_from_memory_struct_v2.sol: NewExpression 28: unsupported expression NewExpression",
+      "first": "abi.* functions",
+      "reason": "abicoder/abi_decode_from_memory_struct_v2.sol: MemberAccess 60: unsupported built-in member encode",
       "scan_agrees": true,
       "test": "abicoder/abi_decode_from_memory_struct_v2.sol"
     },
@@ -961,14 +974,11 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))",
         "struct values and copying",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "abicoder/abi_decode_from_storage_struct_v2.sol: NewExpression 30: unsupported expression NewExpression",
+      "first": "abi.* functions",
+      "reason": "abicoder/abi_decode_from_storage_struct_v2.sol: MemberAccess 61: unsupported built-in member encode",
       "scan_agrees": true,
       "test": "abicoder/abi_decode_from_storage_struct_v2.sol"
     },
@@ -1076,13 +1086,10 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "address members (balance, call, transfer, \u2026)",
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
+        "address members (balance, call, transfer, \u2026)"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "abicoder/abi_encode_call.sol: NewExpression 60: unsupported expression NewExpression",
+      "first": "abi.* functions",
+      "reason": "abicoder/abi_encode_call.sol: MemberAccess 84: unsupported built-in member encodeWithSignature",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_call.sol"
     },
@@ -1140,8 +1147,6 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "array values",
-        "arrays",
         "external calls and contract members",
         "hash and signature built-ins",
         "this",
@@ -1195,13 +1200,8 @@
       "features": [
         "abi.* functions",
         "array slices",
-        "array values",
-        "arrays",
         "external calls and contract members",
         "literals of non-integer types",
-        "local reference bindings",
-        "memory arrays (new T[](n))",
-        "new bytes and string",
         "this"
       ],
       "first": "array slices",
@@ -1242,9 +1242,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "array values",
-        "arrays"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/abi_encode_memory_dynamic_array_and_calldata_bytes_v1.sol: MemberAccess 12: unsupported built-in member encode",
@@ -1265,10 +1263,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "array values",
-        "arrays",
-        "local reference bindings"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/abi_encode_storage_array_v2.sol: MemberAccess 21: unsupported built-in member encode",
@@ -1290,7 +1285,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "contract creation (new C)",
         "external calls and contract members",
         "inline arrays",
@@ -1342,10 +1336,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/abi_encode_with_signature_v1.sol: MemberAccess 7: unsupported built-in member encodeWithSignature",
@@ -1356,9 +1347,6 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))",
         "struct values and copying",
         "structs"
       ],
@@ -1370,8 +1358,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
         "local reference bindings",
         "struct values and copying",
         "structs"
@@ -1392,10 +1378,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "external calls and contract members",
-        "local reference bindings",
         "this"
       ],
       "first": "external calls and contract members",
@@ -1428,7 +1411,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "arrays",
         "external calls and contract members",
         "local reference bindings",
@@ -1443,10 +1425,7 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "array values",
-        "arrays",
         "external calls and contract members",
-        "local reference bindings",
         "this"
       ],
       "first": "abi.* functions",
@@ -1461,7 +1440,6 @@
         "arrays",
         "external calls and contract members",
         "local reference bindings",
-        "memory arrays (new T[](n))",
         "this"
       ],
       "first": "external calls and contract members",
@@ -1472,11 +1450,8 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "libraries",
-        "library calls and contract-name members",
-        "local reference bindings"
+        "library calls and contract-name members"
       ],
       "first": "libraries",
       "reason": "abicoder/calldataDecoding/array/calldata_array_dynamic_static_in_library_v2.sol: ContractDefinition 23: unsupported contract kind library",
@@ -1527,13 +1502,10 @@
       "test": "abicoder/calldataDecoding/array/calldata_array_function_types_v2.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "abicoder/calldataDecoding/array/calldata_array_indexing_1d_2d_v2.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_indexing_1d_2d_v2.sol"
     },
@@ -1572,7 +1544,6 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "array values",
         "arrays",
         "external calls and contract members",
         "local reference bindings",
@@ -1587,10 +1558,7 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "array values",
-        "arrays",
         "external calls and contract members",
-        "local reference bindings",
         "this"
       ],
       "first": "abi.* functions",
@@ -1599,13 +1567,10 @@
       "test": "abicoder/calldataDecoding/array/calldata_array_indexing_static_v2.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "abicoder/calldataDecoding/array/calldata_array_length_v2.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_length_v2.sol"
     },
@@ -1613,10 +1578,7 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "array values",
-        "arrays",
         "external calls and contract members",
-        "local reference bindings",
         "this"
       ],
       "first": "abi.* functions",
@@ -1629,10 +1591,8 @@
       "features": [
         "array slices",
         "array type expressions",
-        "array values",
         "arrays",
         "conversions to non-elementary types",
-        "local reference bindings",
         "members of elementary type names",
         "type names as values"
       ],
@@ -1649,7 +1609,6 @@
         "external calls and contract members",
         "inline arrays",
         "local reference bindings",
-        "memory arrays (new T[](n))",
         "this"
       ],
       "first": "external calls and contract members",
@@ -1658,13 +1617,10 @@
       "test": "abicoder/calldataDecoding/array/calldata_array_static_dynamic_static_v2.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "abicoder/calldataDecoding/array/calldata_array_static_of_uint_v2.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_static_of_uint_v2.sol"
     },
@@ -1672,10 +1628,7 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "array values",
-        "arrays",
         "external calls and contract members",
-        "local reference bindings",
         "this"
       ],
       "first": "abi.* functions",
@@ -1714,10 +1667,7 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "array values",
-        "arrays",
         "external calls and contract members",
-        "local reference bindings",
         "this"
       ],
       "first": "abi.* functions",
@@ -1729,10 +1679,7 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "array values",
-        "arrays",
         "external calls and contract members",
-        "local reference bindings",
         "this"
       ],
       "first": "abi.* functions",
@@ -1749,14 +1696,10 @@
       "test": "abicoder/calldataDecoding/array/calldata_bytes_bytes32_arrays_v1.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "abicoder/calldataDecoding/array/calldata_dynamic_array_to_memory_v2.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_dynamic_array_to_memory_v2.sol"
     },
@@ -1784,10 +1727,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "array values",
-        "arrays",
-        "local reference bindings"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/array/calldata_overlapping_dynamic_arrays_v2.sol: MemberAccess 43: unsupported built-in member encode",
@@ -1797,10 +1737,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "array values",
-        "arrays",
-        "local reference bindings"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/array/calldata_overlapping_nested_dynamic_arrays_v2.sol: MemberAccess 32: unsupported built-in member encode",
@@ -1808,13 +1745,10 @@
       "test": "abicoder/calldataDecoding/array/calldata_overlapping_nested_dynamic_arrays_v2.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "abicoder/calldataDecoding/array/calldata_string_array_v2.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_string_array_v2.sol"
     },
@@ -1834,21 +1768,17 @@
       "test": "abicoder/calldataDecoding/array/calldata_struct_array_reencode_v2.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "abicoder/calldataDecoding/array/memory_arrays_static.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/memory_arrays_static.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "array values",
-        "arrays"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/array/memory_dynamic_array_and_calldata_bytes.sol: MemberAccess 11: unsupported built-in member encode",
@@ -1858,10 +1788,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "array values",
-        "arrays",
-        "local reference bindings"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/array/memory_dynamic_array_and_calldata_static_array.sol: MemberAccess 13: unsupported built-in member encode",
@@ -1869,40 +1796,32 @@
       "test": "abicoder/calldataDecoding/array/memory_dynamic_array_and_calldata_static_array.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "abicoder/calldataDecoding/array/memory_dynamic_arrays.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/memory_dynamic_arrays.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "external calls and contract members",
-        "memory arrays (new T[](n))",
         "this"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "abicoder/calldataDecoding/array/memory_dynamic_nested_arrays_v2.sol: NewExpression 86: unsupported expression NewExpression",
+      "first": "external calls and contract members",
+      "reason": "abicoder/calldataDecoding/array/memory_dynamic_nested_arrays_v2.sol: Identifier 212: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/memory_dynamic_nested_arrays_v2.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "external calls and contract members",
-        "memory arrays (new T[](n))",
         "this"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "abicoder/calldataDecoding/array/memory_params_in_external_function.sol: NewExpression 62: unsupported expression NewExpression",
+      "first": "external calls and contract members",
+      "reason": "abicoder/calldataDecoding/array/memory_params_in_external_function.sol: Identifier 72: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/memory_params_in_external_function.sol"
     },
@@ -1943,7 +1862,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "arrays",
         "local reference bindings",
         "structs"
       ],
@@ -1955,7 +1873,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "arrays",
         "local reference bindings",
         "structs"
       ],
@@ -1982,7 +1899,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "arrays",
         "local reference bindings",
         "structs"
       ],
@@ -2009,17 +1925,14 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "external calls and contract members",
         "local reference bindings",
-        "memory arrays (new T[](n))",
         "struct values and copying",
         "structs",
         "this"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "abicoder/calldataDecoding/struct/member_offset_v2.sol: NewExpression 39: unsupported expression NewExpression",
+      "first": "structs",
+      "reason": "abicoder/calldataDecoding/struct/member_offset_v2.sol: FunctionCall 62: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/struct/member_offset_v2.sol"
     },
@@ -2218,17 +2131,13 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "external calls and contract members",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
-        "local reference bindings",
-        "memory arrays (new T[](n))",
         "this"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "abicoder/cleanup/dynamic_array_v2.sol: NewExpression 32: unsupported expression NewExpression",
+      "first": "external calls and contract members",
+      "reason": "abicoder/cleanup/dynamic_array_v2.sol: Identifier 38: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "abicoder/cleanup/dynamic_array_v2.sol"
     },
@@ -2297,13 +2206,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "external calls and contract members",
         "inline arrays",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
-        "local reference bindings",
         "this"
       ],
       "first": "inline arrays",
@@ -2386,31 +2292,26 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "arrays",
         "libraries",
         "library calls and contract-name members",
         "local reference bindings",
-        "memory arrays (new T[](n))",
         "struct values and copying",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "abicoder/libraryABI/storage_ptr.sol: NewExpression 75: unsupported expression NewExpression",
+      "first": "libraries",
+      "reason": "abicoder/libraryABI/storage_ptr.sol: ContractDefinition 48: unsupported contract kind library",
       "scan_agrees": true,
       "test": "abicoder/libraryABI/storage_ptr.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "external calls and contract members",
-        "memory arrays (new T[](n))",
         "this"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "abicoder/return_dynamic_types_cross_call_advanced.sol: NewExpression 27: unsupported expression NewExpression",
+      "first": "external calls and contract members",
+      "reason": "abicoder/return_dynamic_types_cross_call_advanced.sol: Identifier 73: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "abicoder/return_dynamic_types_cross_call_advanced.sol"
     },
@@ -2446,13 +2347,10 @@
       "test": "abicoder/return_dynamic_types_cross_call_simple.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "abicoder/validation/array_exceeds_calldatasize_no_revert_string.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/validation/array_exceeds_calldatasize_no_revert_string.sol"
     },
@@ -2585,9 +2483,9 @@
         "external calls to getters",
         "source units without exactly one contract"
       ],
-      "first": "contract creation (new C)",
-      "reason": "arithmetics/check_var_init.sol: NewExpression 16: unsupported expression NewExpression",
-      "scan_agrees": true,
+      "first": "unclassified",
+      "reason": "arithmetics/check_var_init.sol: FunctionCall 17: new takes one argument",
+      "scan_agrees": false,
       "test": "arithmetics/check_var_init.sol"
     },
     {
@@ -2665,34 +2563,28 @@
       "test": "arithmetics/unchecked_div_by_zero.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
-        "mappings",
-        "memory arrays (new T[](n))"
+        "mappings"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/arrayMemoryAllocation/array_2d_zeroed_memory_index_access.sol: NewExpression 48: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/arrayMemoryAllocation/array_2d_zeroed_memory_index_access.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/arrayMemoryAllocation/array_2d_zeroed_memory_index_access.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "arrays",
-        "mappings",
-        "memory arrays (new T[](n))"
+        "mappings"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/arrayMemoryAllocation/array_array_static.sol: NewExpression 46: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/arrayMemoryAllocation/array_array_static.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/arrayMemoryAllocation/array_array_static.sol"
     },
     {
       "category": "source-rejected",
       "features": [
-        "arrays",
         "mappings"
       ],
       "first": null,
@@ -2703,7 +2595,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "arrays",
         "mappings"
       ],
       "first": null,
@@ -2712,62 +2603,44 @@
       "test": "array/arrayMemoryAllocation/array_static_zeroed_memory_index_access.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "arrays",
-        "mappings",
-        "memory arrays (new T[](n))"
+        "mappings"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/arrayMemoryAllocation/array_zeroed_memory_index_access.sol: NewExpression 42: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/arrayMemoryAllocation/array_zeroed_memory_index_access.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/arrayMemoryAllocation/array_zeroed_memory_index_access.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/array_2d_assignment.sol: NewExpression 16: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/array_2d_assignment.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/array_2d_new.sol: NewExpression 16: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/array_2d_new.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/array_3d_assignment.sol: NewExpression 18: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/array_3d_assignment.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/array_3d_new.sol: NewExpression 18: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/array_3d_new.sol"
     },
@@ -2785,36 +2658,26 @@
       "test": "array/array_function_pointers.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/array_memory_as_parameter.sol: NewExpression 16: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/array_memory_as_parameter.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/array_memory_create.sol: NewExpression 14: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/array_memory_create.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/array_memory_index_access.sol: NewExpression 14: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/array_memory_index_access.sol"
     },
@@ -2899,13 +2762,10 @@
       "test": "array/array_storage_push_pop.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/arrays_complex_from_and_to_storage.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/arrays_complex_from_and_to_storage.sol"
     },
@@ -2970,13 +2830,10 @@
       "test": "array/bytes_to_fixed_bytes_too_long.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/calldata_array_bounds_check_nested_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/calldata_array_bounds_check_nested_bytes.sol"
     },
@@ -3058,7 +2915,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "arrays",
         "constants"
       ],
@@ -3068,73 +2924,50 @@
       "test": "array/constant_var_as_array_length.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/array_copy_calldata_storage.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_calldata_storage.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/array_copy_cleanup_uint128.sol: NewExpression 39: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_cleanup_uint128.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/array_copy_cleanup_uint40.sol: NewExpression 135: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_cleanup_uint40.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/array_copy_clear_storage.sol: NewExpression 39: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_clear_storage.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/array_copy_clear_storage_packed.sol: NewExpression 45: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_clear_storage_packed.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/array_copy_different_packing.sol: NewExpression 22: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_different_packing.sol"
     },
@@ -3142,7 +2975,6 @@
       "category": "source-rejected",
       "features": [
         "aggregate array mutation",
-        "array values",
         "operator delete"
       ],
       "first": null,
@@ -3151,34 +2983,24 @@
       "test": "array/copying/array_copy_including_array.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/array_copy_memory_to_storage.sol: NewExpression 25: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_memory_to_storage.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/array_copy_nested_array.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_nested_array.sol"
     },
     {
       "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
         "constant expressions over literals"
       ],
       "first": null,
@@ -3187,73 +3009,58 @@
       "test": "array/copying/array_copy_storage_abi_signed.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/array_copy_storage_storage_different_base.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_storage_storage_different_base.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/array_copy_storage_storage_different_base_nested.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_storage_storage_different_base_nested.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/array_copy_storage_storage_dyn_dyn.sol: NewExpression 18: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_storage_storage_dyn_dyn.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/array_copy_storage_storage_dynamic_dynamic.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_storage_storage_dynamic_dynamic.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/array_copy_storage_storage_static_dynamic.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_storage_storage_static_dynamic.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/array_copy_storage_storage_static_simple.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_storage_storage_static_simple.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/array_copy_storage_storage_static_static.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_storage_storage_static_static.sol"
     },
@@ -3269,22 +3076,17 @@
       "test": "array/copying/array_copy_storage_storage_struct.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/array_copy_storage_to_memory.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_storage_to_memory.sol"
     },
     {
       "category": "source-rejected",
       "features": [
-        "aggregate array mutation",
-        "array values",
-        "arrays"
+        "aggregate array mutation"
       ],
       "first": null,
       "reason": "array/copying/array_copy_storage_to_memory_nested.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -3292,56 +3094,47 @@
       "test": "array/copying/array_copy_storage_to_memory_nested.sol"
     },
     {
-      "category": "source-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "array values",
         "literals of non-integer types"
       ],
       "first": null,
-      "reason": "array/copying/array_copy_target_leftover.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": "array/copying/array_copy_target_leftover.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "array/copying/array_copy_target_leftover.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/array_copy_target_leftover2.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_target_leftover2.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/array_copy_target_simple.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_target_simple.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/array_copy_target_simple_2.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_target_simple_2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "array values",
         "arrays",
-        "local reference bindings",
-        "memory arrays (new T[](n))"
+        "local reference bindings"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/array_elements_to_mapping.sol: NewExpression 18: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/copying/array_elements_to_mapping.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/copying/array_elements_to_mapping.sol"
     },
@@ -3409,16 +3202,16 @@
       "test": "array/copying/array_of_struct_calldata_to_storage.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
         "memory arrays (new T[](n))",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/array_of_struct_memory_to_storage.sol: NewExpression 32: unsupported expression NewExpression",
-      "scan_agrees": true,
+      "first": null,
+      "reason": "array/copying/array_of_struct_memory_to_storage.sol: valid_src_unit failed (source validation/subset restriction)",
+      "scan_agrees": false,
       "test": "array/copying/array_of_struct_memory_to_storage.sol"
     },
     {
@@ -3457,8 +3250,8 @@
         "struct values and copying",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/array_of_structs_containing_arrays_memory_to_storage.sol: NewExpression 34: unsupported expression NewExpression",
+      "first": "inline arrays",
+      "reason": "array/copying/array_of_structs_containing_arrays_memory_to_storage.sol: TupleExpression 49: inline arrays are not supported",
       "scan_agrees": true,
       "test": "array/copying/array_of_structs_containing_arrays_memory_to_storage.sol"
     },
@@ -3471,26 +3264,21 @@
       "test": "array/copying/array_storage_multi_items_per_slot.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "array values",
         "arrays",
-        "local reference bindings",
-        "memory arrays (new T[](n))"
+        "local reference bindings"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/array_to_mapping.sol: NewExpression 18: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/copying/array_to_mapping.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/copying/array_to_mapping.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/arrays_from_and_to_storage.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/arrays_from_and_to_storage.sol"
     },
@@ -3527,25 +3315,19 @@
       "test": "array/copying/bytes_storage_to_memory.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "new bytes and string"
-      ],
-      "first": "new bytes and string",
-      "reason": "array/copying/bytes_storage_to_storage.sol: NewExpression 14: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/bytes_storage_to_storage.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "contract creation (new C)",
         "external calls and contract members",
         "immutables",
-        "local reference bindings",
-        "memory arrays (new T[](n))",
         "source units without exactly one contract"
       ],
       "first": "immutables",
@@ -3578,14 +3360,10 @@
       "test": "array/copying/calldata_2d_bytes_to_memory_2.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/calldata_array_dynamic_to_storage.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/calldata_array_dynamic_to_storage.sol"
     },
@@ -3603,37 +3381,26 @@
       "test": "array/copying/calldata_array_of_struct_to_memory.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/calldata_array_static_to_memory.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/calldata_array_static_to_memory.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/calldata_array_to_mapping.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/calldata_array_to_mapping.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/calldata_bytes_array_to_memory.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/calldata_bytes_array_to_memory.sol"
     },
@@ -3646,26 +3413,18 @@
       "test": "array/copying/calldata_bytes_to_storage.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/calldata_dyn_2d_bytes_to_memory.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/calldata_dyn_2d_bytes_to_memory.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/calldata_dynamic_array_to_memory.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/calldata_dynamic_array_to_memory.sol"
     },
@@ -3683,23 +3442,18 @@
       "test": "array/copying/calldata_nested_array_copy_to_memory.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/calldata_to_storage_different_base.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/calldata_to_storage_different_base.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "inline arrays",
+        "tuple assignments to element or member targets",
         "tuples of literals"
       ],
       "first": "inline arrays",
@@ -3826,7 +3580,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "arrays",
         "bytes push and pop"
       ],
       "first": null,
@@ -3853,27 +3606,20 @@
       "test": "array/copying/function_type_array_to_storage.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/memory_dyn_2d_bytes_to_storage.sol: NewExpression 16: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/memory_dyn_2d_bytes_to_storage.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))",
         "string literals as fixed-size bytes"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/memory_to_storage_different_base.sol: NewExpression 22: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/copying/memory_to_storage_different_base.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "array/copying/memory_to_storage_different_base.sol"
     },
@@ -3902,14 +3648,10 @@
       "test": "array/copying/nested_array_calldata_to_storage.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/nested_array_dynamic_dynamic_calldata_to_storage.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/nested_array_dynamic_dynamic_calldata_to_storage.sol"
     },
@@ -3926,19 +3668,6 @@
       "test": "array/copying/nested_array_dynamic_static_calldata_to_storage.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/nested_array_element_calldata_to_memory.sol: NewExpression 79: unsupported expression NewExpression",
-      "scan_agrees": true,
-      "test": "array/copying/nested_array_element_calldata_to_memory.sol"
-    },
-    {
       "category": "source-rejected",
       "features": [
         "array values",
@@ -3946,67 +3675,59 @@
         "local reference bindings"
       ],
       "first": null,
-      "reason": "array/copying/nested_array_element_calldata_to_storage.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": "array/copying/nested_array_element_calldata_to_memory.sol: valid_src_unit failed (source validation/subset restriction)",
+      "scan_agrees": true,
+      "test": "array/copying/nested_array_element_calldata_to_memory.sol"
+    },
+    {
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/nested_array_element_calldata_to_storage.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/nested_array_element_memory_to_memory.sol: NewExpression 79: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/nested_array_element_memory_to_memory.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/nested_array_element_memory_to_storage.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/nested_array_element_memory_to_storage.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
-        "inline arrays",
-        "memory arrays (new T[](n))"
+        "inline arrays"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/nested_array_element_storage_to_memory.sol: NewExpression 10: unsupported expression NewExpression",
+      "first": "inline arrays",
+      "reason": "array/copying/nested_array_element_storage_to_memory.sol: TupleExpression 68: inline arrays are not supported",
       "scan_agrees": true,
       "test": "array/copying/nested_array_element_storage_to_memory.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "inline arrays",
-        "memory arrays (new T[](n))"
+        "inline arrays"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/nested_array_element_storage_to_storage.sol: NewExpression 10: unsupported expression NewExpression",
+      "first": "inline arrays",
+      "reason": "array/copying/nested_array_element_storage_to_storage.sol: TupleExpression 86: inline arrays are not supported",
       "scan_agrees": true,
       "test": "array/copying/nested_array_element_storage_to_storage.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/nested_array_memory_to_storage.sol: NewExpression 33: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/nested_array_memory_to_storage.sol"
     },
@@ -4066,8 +3787,8 @@
         "named arguments",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/nested_array_of_structs_storage_to_storage.sol: NewExpression 48: unsupported expression NewExpression",
+      "first": "named arguments",
+      "reason": "array/copying/nested_array_of_structs_storage_to_storage.sol: FunctionCall 60: named arguments are not supported",
       "scan_agrees": true,
       "test": "array/copying/nested_array_of_structs_storage_to_storage.sol"
     },
@@ -4082,8 +3803,8 @@
         "struct values and copying",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/nested_array_of_structs_with_nested_array_from_storage_to_memory.sol: NewExpression 56: unsupported expression NewExpression",
+      "first": "inline arrays",
+      "reason": "array/copying/nested_array_of_structs_with_nested_array_from_storage_to_memory.sol: TupleExpression 81: inline arrays are not supported",
       "scan_agrees": true,
       "test": "array/copying/nested_array_of_structs_with_nested_array_from_storage_to_memory.sol"
     },
@@ -4091,35 +3812,25 @@
       "category": "import-rejected",
       "features": [
         "aggregate array mutation",
-        "array values",
-        "arrays",
-        "inline arrays",
-        "memory arrays (new T[](n))"
+        "inline arrays"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/nested_array_storage_to_memory.sol: NewExpression 28: unsupported expression NewExpression",
+      "first": "inline arrays",
+      "reason": "array/copying/nested_array_storage_to_memory.sol: TupleExpression 38: inline arrays are not supported",
       "scan_agrees": true,
       "test": "array/copying/nested_array_storage_to_memory.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/copying/nested_dynamic_array_element_calldata_to_storage.sol: NewExpression 92: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/nested_dynamic_array_element_calldata_to_storage.sol"
     },
     {
       "category": "source-rejected",
       "features": [
-        "aggregate array mutation",
-        "array values",
-        "arrays"
+        "aggregate array mutation"
       ],
       "first": null,
       "reason": "array/copying/storage_memory_nested.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -4129,9 +3840,7 @@
     {
       "category": "source-rejected",
       "features": [
-        "aggregate array mutation",
-        "array values",
-        "arrays"
+        "aggregate array mutation"
       ],
       "first": null,
       "reason": "array/copying/storage_memory_nested_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -4142,7 +3851,6 @@
       "category": "source-rejected",
       "features": [
         "aggregate array mutation",
-        "array values",
         "arrays",
         "local reference bindings"
       ],
@@ -4165,24 +3873,18 @@
       "test": "array/copying/storage_memory_nested_struct.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/storage_memory_packed.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/storage_memory_packed.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/storage_memory_packed_dyn.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/storage_memory_packed_dyn.sol"
     },
@@ -4195,74 +3897,62 @@
       "test": "array/copying/string_calldata_to_bytes_calldata.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/create_dynamic_array_with_zero_length.sol: NewExpression 14: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/create_dynamic_array_with_zero_length.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "arrays",
         "memory arrays (new T[](n))",
-        "new bytes and string",
         "string literals as fixed-size bytes",
         "structs"
       ],
-      "first": "new bytes and string",
-      "reason": "array/create_memory_array.sol: NewExpression 21: unsupported expression NewExpression",
-      "scan_agrees": true,
+      "first": null,
+      "reason": "array/create_memory_array.sol: valid_src_unit failed (source validation/subset restriction)",
+      "scan_agrees": false,
       "test": "array/create_memory_array.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "arrays",
-        "constant expressions over literals",
-        "memory arrays (new T[](n))"
+        "constant expressions over literals"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/create_memory_array_too_large.sol: NewExpression 20: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/create_memory_array_too_large.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/create_memory_array_too_large.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "new bytes and string",
         "string literals as fixed-size bytes"
       ],
-      "first": "new bytes and string",
-      "reason": "array/create_memory_byte_array.sol: NewExpression 8: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/create_memory_byte_array.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "array/create_memory_byte_array.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/create_multiple_dynamic_arrays.sol: NewExpression 14: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/create_multiple_dynamic_arrays.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "literals of non-integer types",
-        "new bytes and string",
         "operator delete"
       ],
-      "first": "new bytes and string",
-      "reason": "array/delete/bytes_delete_element.sol: NewExpression 9: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/delete/bytes_delete_element.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/delete/bytes_delete_element.sol"
     },
@@ -4278,17 +3968,14 @@
       "test": "array/delete/delete_bytes_array.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
-        "memory arrays (new T[](n))",
         "operator delete"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/delete/delete_memory_array.sol: NewExpression 12: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/delete/delete_memory_array.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/delete/delete_memory_array.sol"
     },
@@ -4320,7 +4007,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "operator delete"
       ],
       "first": null,
@@ -4331,7 +4017,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "operator delete"
       ],
       "first": null,
@@ -4342,8 +4027,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
         "operator delete"
       ],
       "first": null,
@@ -4365,10 +4048,8 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "arrays",
         "function members (selector, address, \u2026)",
         "library calls and contract-name members",
-        "memory arrays (new T[](n))",
         "operator delete",
         "structs"
       ],
@@ -4380,10 +4061,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "bytes.concat and string.concat",
-        "memory arrays (new T[](n))",
-        "new bytes and string",
         "operator delete",
         "structs",
         "type names as values"
@@ -4396,21 +4074,17 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
-        "memory arrays (new T[](n))",
-        "new bytes and string",
         "operator delete",
         "structs"
       ],
-      "first": "new bytes and string",
-      "reason": "array/delete/memory_bytes_delete_element_neighbor.sol: NewExpression 11: unsupported expression NewExpression",
+      "first": "structs",
+      "reason": "array/delete/memory_bytes_delete_element_neighbor.sol: FunctionCall 24: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "array/delete/memory_bytes_delete_element_neighbor.sol"
     },
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "operator delete"
       ],
       "first": null,
@@ -4460,20 +4134,16 @@
       "test": "array/evm_exceptions_out_of_band_access.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/external_array_args.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/external_array_args.sol"
     },
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "operator delete"
       ],
       "first": null,
@@ -4484,8 +4154,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "contract creation (new C)",
         "external calls and contract members",
         "source units without exactly one contract"
@@ -4496,12 +4164,10 @@
       "test": "array/fixed_arrays_as_return_type.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/fixed_arrays_in_constructors.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/fixed_arrays_in_constructors.sol"
     },
@@ -4564,23 +4230,20 @@
       "test": "array/function_memory_array.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/indexAccess/arrays_complex_memory_index_access.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/indexAccess/arrays_complex_memory_index_access.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "literals of non-integer types",
-        "new bytes and string"
+        "literals of non-integer types"
       ],
-      "first": "new bytes and string",
-      "reason": "array/indexAccess/bytes_index_access.sol: NewExpression 53: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/indexAccess/bytes_index_access.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "array/indexAccess/bytes_index_access.sol"
     },
@@ -4603,7 +4266,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "fixed-size bytes members and indexing",
         "inline arrays",
         "string literals as fixed-size bytes"
@@ -4614,20 +4276,18 @@
       "test": "array/indexAccess/fixed_bytes_index_access.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "fixed-size bytes members and indexing",
-        "new bytes and string"
+        "fixed-size bytes members and indexing"
       ],
-      "first": "new bytes and string",
-      "reason": "array/indexAccess/index_access.sol: NewExpression 9: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/indexAccess/index_access.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/indexAccess/index_access.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "inline arrays"
       ],
       "first": "inline arrays",
@@ -4638,7 +4298,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "inline arrays"
       ],
       "first": "inline arrays",
@@ -4649,9 +4308,7 @@
     {
       "category": "source-rejected",
       "features": [
-        "aggregate array mutation",
-        "array values",
-        "arrays"
+        "aggregate array mutation"
       ],
       "first": null,
       "reason": "array/indexAccess/memory_arrays_dynamic_index_access_write.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -4659,21 +4316,16 @@
       "test": "array/indexAccess/memory_arrays_dynamic_index_access_write.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/indexAccess/memory_arrays_index_access_write.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/indexAccess/memory_arrays_index_access_write.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "inline arrays"
       ],
       "first": "inline arrays",
@@ -4684,7 +4336,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "inline arrays"
       ],
       "first": "inline arrays",
@@ -4695,7 +4346,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "inline arrays"
       ],
       "first": "inline arrays",
@@ -4706,7 +4356,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "inline arrays"
       ],
       "first": "inline arrays",
@@ -4717,7 +4366,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "inline arrays"
       ],
       "first": "inline arrays",
@@ -4752,24 +4400,21 @@
       "test": "array/long_byte_array_cleanup_after_delete.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "bytes push and pop",
         "inline assembly memory references",
         "local reference bindings",
-        "new bytes and string",
         "structs"
       ],
-      "first": "new bytes and string",
-      "reason": "array/long_byte_array_cleanup_after_overwrite_with_long.sol: NewExpression 71: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/long_byte_array_cleanup_after_overwrite_with_long.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/long_byte_array_cleanup_after_overwrite_with_long.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "external calls and contract members",
         "this"
       ],
@@ -4779,14 +4424,10 @@
       "test": "array/memory.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/memory_arrays_of_various_sizes.sol: NewExpression 18: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/memory_arrays_of_various_sizes.sol"
     },
@@ -4802,7 +4443,6 @@
       "category": "import-rejected",
       "features": [
         "aggregate array mutation",
-        "array values",
         "inline arrays",
         "operator delete"
       ],
@@ -4966,10 +4606,7 @@
     {
       "category": "source-rejected",
       "features": [
-        "aggregate array mutation",
-        "array values",
-        "arrays",
-        "local reference bindings"
+        "aggregate array mutation"
       ],
       "first": null,
       "reason": "array/push/array_push_nested_from_calldata.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -4977,16 +4614,13 @@
       "test": "array/push/array_push_nested_from_calldata.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "aggregate array mutation",
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))",
         "operator delete"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/push/array_push_nested_from_memory.sol: NewExpression 25: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/push/array_push_nested_from_memory.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/push/array_push_nested_from_memory.sol"
     },
@@ -4999,17 +4633,14 @@
       "test": "array/push/array_push_packed_array.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "aggregate array mutation",
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))",
         "struct values and copying",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "array/push/array_push_struct.sol: NewExpression 56: unsupported expression NewExpression",
+      "first": null,
+      "reason": "array/push/array_push_struct.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/push/array_push_struct.sol"
     },
@@ -5120,7 +4751,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "operator delete"
       ],
       "first": null,
@@ -5129,14 +4759,10 @@
       "test": "array/short_fixed_array_cleanup.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/slices/array_calldata_assignment.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/slices/array_calldata_assignment.sol"
     },
@@ -5171,10 +4797,8 @@
       "category": "import-rejected",
       "features": [
         "array slices",
-        "array values",
         "arrays",
-        "inline arrays",
-        "local reference bindings"
+        "inline arrays"
       ],
       "first": "array slices",
       "reason": "array/slices/array_slice_calldata_to_memory.sol: IndexRangeAccess 20: unsupported expression IndexRangeAccess",
@@ -5185,9 +4809,7 @@
       "category": "import-rejected",
       "features": [
         "array slices",
-        "array values",
-        "arrays",
-        "local reference bindings"
+        "arrays"
       ],
       "first": "array slices",
       "reason": "array/slices/array_slice_calldata_to_storage.sol: IndexRangeAccess 19: unsupported expression IndexRangeAccess",
@@ -5198,9 +4820,7 @@
       "category": "import-rejected",
       "features": [
         "array slices",
-        "array values",
-        "arrays",
-        "local reference bindings"
+        "arrays"
       ],
       "first": "array slices",
       "reason": "array/slices/calldata_array_slicing.sol: IndexRangeAccess 13: unsupported expression IndexRangeAccess",
@@ -5210,7 +4830,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "arrays",
         "local reference bindings"
       ],
@@ -5375,7 +4994,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "built-in erc7201",
         "inline arrays"
       ],
@@ -5610,15 +5228,12 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "array values",
-        "arrays",
         "conversions to non-elementary types",
         "external calls and contract members",
-        "hash and signature built-ins",
-        "memory arrays (new T[](n))"
+        "hash and signature built-ins"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "builtinFunctions/keccak256_packed_complex_types.sol: NewExpression 20: unsupported expression NewExpression",
+      "first": "abi.* functions",
+      "reason": "builtinFunctions/keccak256_packed_complex_types.sol: MemberAccess 84: unsupported built-in member encodePacked",
       "scan_agrees": true,
       "test": "builtinFunctions/keccak256_packed_complex_types.sol"
     },
@@ -5734,18 +5349,15 @@
       "test": "cleanup/bool_conversion_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
         "bytes push and pop",
+        "event array parameters",
         "inline assembly memory outside the scratch space",
-        "inline assembly memory references",
-        "memory arrays (new T[](n))",
-        "new bytes and string"
+        "inline assembly memory references"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "cleanup/byte_array_to_storage_cleanup.sol: NewExpression 21: unsupported expression NewExpression",
+      "first": null,
+      "reason": "cleanup/byte_array_to_storage_cleanup.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "cleanup/byte_array_to_storage_cleanup.sol"
     },
@@ -5833,13 +5445,10 @@
       "test": "cleanup/dirty_calldata_bytes.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "cleanup/dirty_calldata_dynamic_array.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "cleanup/dirty_calldata_dynamic_array.sol"
     },
@@ -6115,8 +5724,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "contract creation (new C)",
         "external calls and contract members",
         "external calls to getters",
@@ -6218,13 +5825,10 @@
       "test": "constructor/constructor_function_complex.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "constructor/constructor_static_array_argument.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "constructor/constructor_static_array_argument.sol"
     },
@@ -6295,13 +5899,10 @@
       "test": "constructor/no_callvalue_check.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "constructor/order_of_evaluation.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "constructor/order_of_evaluation.sol"
     },
@@ -6534,13 +6135,12 @@
       "test": "deployedCodeExclusion/subassembly_deduplication.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly calls, gas, return data and code",
-        "super calls"
+        "inline assembly calls, gas, return data and code"
       ],
-      "first": "super calls",
-      "reason": "deployedCodeExclusion/super_function.sol: Identifier 17: built-in super is not supported",
+      "first": null,
+      "reason": "deployedCodeExclusion/super_function.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "deployedCodeExclusion/super_function.sol"
     },
@@ -6778,10 +6378,8 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
         "custom errors with reference parameters",
-        "local reference bindings"
+        "event array parameters"
       ],
       "first": null,
       "reason": "errors/error_static_calldata_uint_array_and_dynamic_array.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -7101,9 +6699,8 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
-        "custom errors with reference parameters"
+        "custom errors with reference parameters",
+        "event array parameters"
       ],
       "first": null,
       "reason": "errors/revert_conversion.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -7294,34 +6891,29 @@
       "test": "events/event_constructor.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
+        "event array parameters"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "events/event_dynamic_array_memory.sol: NewExpression 17: unsupported expression NewExpression",
+      "first": null,
+      "reason": "events/event_dynamic_array_memory.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "events/event_dynamic_array_memory.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
+        "event array parameters"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "events/event_dynamic_array_memory_v2.sol: NewExpression 18: unsupported expression NewExpression",
+      "first": null,
+      "reason": "events/event_dynamic_array_memory_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "events/event_dynamic_array_memory_v2.sol"
     },
     {
       "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays"
+        "event array parameters"
       ],
       "first": null,
       "reason": "events/event_dynamic_array_storage.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -7331,8 +6923,7 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays"
+        "event array parameters"
       ],
       "first": null,
       "reason": "events/event_dynamic_array_storage_v2.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -7340,27 +6931,23 @@
       "test": "events/event_dynamic_array_storage_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
+        "event array parameters"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "events/event_dynamic_nested_array_memory_v2.sol: NewExpression 21: unsupported expression NewExpression",
+      "first": null,
+      "reason": "events/event_dynamic_nested_array_memory_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "events/event_dynamic_nested_array_memory_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "aggregate array mutation",
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))"
+        "event array parameters"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "events/event_dynamic_nested_array_storage_v2.sol: NewExpression 21: unsupported expression NewExpression",
+      "first": null,
+      "reason": "events/event_dynamic_nested_array_storage_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "events/event_dynamic_nested_array_storage_v2.sol"
     },
@@ -7497,9 +7084,8 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
-        "bytes push and pop"
+        "bytes push and pop",
+        "event array parameters"
       ],
       "first": null,
       "reason": "events/event_indexed_string.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -7541,13 +7127,12 @@
       "test": "events/event_really_lots_of_data_from_storage.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "new bytes and string",
         "string literals as fixed-size bytes"
       ],
-      "first": "new bytes and string",
-      "reason": "events/event_really_really_lots_of_data_from_storage.sol: NewExpression 15: unsupported expression NewExpression",
+      "first": null,
+      "reason": "events/event_really_really_lots_of_data_from_storage.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "events/event_really_really_lots_of_data_from_storage.sol"
     },
@@ -7606,9 +7191,7 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
-        "local reference bindings"
+        "event array parameters"
       ],
       "first": null,
       "reason": "events/event_static_calldata_uint_array_and_dynamic_array.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -7772,8 +7355,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "conditional expressions",
         "string literals as fixed-size bytes"
       ],
@@ -7785,8 +7366,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "conditional expressions",
         "string literals as fixed-size bytes"
       ],
@@ -7934,7 +7513,6 @@
         "libraries",
         "library calls and contract-name members",
         "literals of non-integer types",
-        "new bytes and string",
         "source units without exactly one contract"
       ],
       "first": "libraries",
@@ -7952,7 +7530,6 @@
         "fixed-size bytes members and indexing",
         "hash and signature built-ins",
         "literal subdenominations (ether, days, \u2026)",
-        "new bytes and string",
         "type(\u2026)"
       ],
       "first": "constants",
@@ -8029,7 +7606,6 @@
         "library calls and contract-name members",
         "members of elementary type names",
         "memory arrays (new T[](n))",
-        "new bytes and string",
         "struct values and copying",
         "structs",
         "type names as values",
@@ -8054,7 +7630,6 @@
         "libraries",
         "literals of non-integer types",
         "memory arrays (new T[](n))",
-        "new bytes and string",
         "source units without exactly one contract",
         "struct values and copying",
         "structs",
@@ -8354,7 +7929,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "arrays",
         "free functions",
         "local reference bindings"
@@ -8365,13 +7939,10 @@
       "test": "freeFunctions/storage_calldata_refs.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "functionCall/array_multiple_local_vars.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "functionCall/array_multiple_local_vars.sol"
     },
@@ -8495,11 +8066,10 @@
       "features": [
         "external calls and contract members",
         "literals of non-integer types",
-        "new bytes and string",
         "this"
       ],
-      "first": "new bytes and string",
-      "reason": "functionCall/calldata_and_memory_arguments.sol: NewExpression 51: unsupported expression NewExpression",
+      "first": "external calls and contract members",
+      "reason": "functionCall/calldata_and_memory_arguments.sol: Identifier 87: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "functionCall/calldata_and_memory_arguments.sol"
     },
@@ -8525,10 +8095,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "array slices",
-        "array values",
-        "arrays",
-        "local reference bindings"
+        "array slices"
       ],
       "first": "array slices",
       "reason": "functionCall/calldata_argument_internal_dynamic_array_v2.sol: IndexRangeAccess 52: unsupported expression IndexRangeAccess",
@@ -8542,18 +8109,16 @@
         "libraries",
         "library calls and contract-name members",
         "literals of non-integer types",
-        "new bytes and string",
         "this"
       ],
-      "first": "new bytes and string",
-      "reason": "functionCall/calldata_argument_internal_library_bytes.sol: NewExpression 40: unsupported expression NewExpression",
+      "first": "external calls and contract members",
+      "reason": "functionCall/calldata_argument_internal_library_bytes.sol: Identifier 50: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "functionCall/calldata_argument_internal_library_bytes.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "libraries",
         "library calls and contract-name members",
         "local reference bindings",
@@ -8586,21 +8151,17 @@
         "arrays",
         "external calls and contract members",
         "local reference bindings",
-        "memory arrays (new T[](n))",
         "this"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "functionCall/calldata_argument_internal_multi_array_v2.sol: NewExpression 77: unsupported expression NewExpression",
+      "first": "external calls and contract members",
+      "reason": "functionCall/calldata_argument_internal_multi_array_v2.sol: Identifier 108: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "functionCall/calldata_argument_internal_multi_array_v2.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "external calls and contract members",
-        "local reference bindings",
         "this"
       ],
       "first": "external calls and contract members",
@@ -8611,7 +8172,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "arrays",
         "local reference bindings",
         "struct values and copying",
         "structs"
@@ -8787,22 +8347,19 @@
         "source units without exactly one contract",
         "this"
       ],
-      "first": "contract creation (new C)",
-      "reason": "functionCall/external_call_at_construction_time.sol: NewExpression 42: unsupported expression NewExpression",
-      "scan_agrees": true,
+      "first": "unclassified",
+      "reason": "functionCall/external_call_at_construction_time.sol: FunctionCall 43: new takes one argument",
+      "scan_agrees": false,
       "test": "functionCall/external_call_at_construction_time.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "external calls and contract members",
-        "memory arrays (new T[](n))",
         "this"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "functionCall/external_call_dynamic_returndata.sol: NewExpression 16: unsupported expression NewExpression",
+      "first": "external calls and contract members",
+      "reason": "functionCall/external_call_dynamic_returndata.sol: Identifier 53: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "functionCall/external_call_dynamic_returndata.sol"
     },
@@ -8958,22 +8515,18 @@
       "test": "functionCall/inheritance/call_unimplemented_base.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "super calls"
-      ],
-      "first": "super calls",
-      "reason": "functionCall/inheritance/super_skip_unimplemented_in_abstract_contract.sol: Identifier 27: built-in super is not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "functionCall/inheritance/super_skip_unimplemented_in_abstract_contract.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "super calls"
-      ],
-      "first": "super calls",
-      "reason": "functionCall/inheritance/super_skip_unimplemented_in_interface.sol: Identifier 27: built-in super is not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "functionCall/inheritance/super_skip_unimplemented_in_interface.sol"
     },
@@ -9081,7 +8634,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "contract creation (new C)",
         "external calls and contract members",
         "inline assembly memory outside the scratch space",
@@ -9103,7 +8655,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "contract creation (new C)",
         "external calls and contract members",
         "inline assembly memory outside the scratch space",
@@ -9159,7 +8710,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "conversions to non-elementary types",
         "external calls and contract members",
         "function members (selector, address, \u2026)",
@@ -9289,8 +8839,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "function members (selector, address, \u2026)",
         "function types",
         "libraries",
@@ -9322,7 +8870,6 @@
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
-        "new bytes and string",
         "this"
       ],
       "first": "function types",
@@ -9910,7 +9457,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "immutables",
         "inline arrays"
       ],
@@ -9942,8 +9488,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "immutables",
-        "memory arrays (new T[](n))"
+        "immutables"
       ],
       "first": "immutables",
       "reason": "immutable/use_scratch.sol: VariableDeclaration 2: immutable variables are not supported",
@@ -10049,14 +9594,10 @@
       "test": "inheritance/constructor_with_params_inheritance_2.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays",
-        "local reference bindings"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "inheritance/dataLocation/external_public_calldata.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/dataLocation/external_public_calldata.sol"
     },
@@ -10110,12 +9651,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "contract creation (new C)",
         "conversions to non-elementary types",
         "external calls and contract members",
-        "local reference bindings",
-        "memory arrays (new T[](n))",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -10126,25 +9664,19 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))",
         "this"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "inheritance/inherited_function_calldata_memory.sol: NewExpression 42: unsupported expression NewExpression",
+      "first": "this",
+      "reason": "inheritance/inherited_function_calldata_memory.sol: Identifier 59: built-in this is not supported",
       "scan_agrees": true,
       "test": "inheritance/inherited_function_calldata_memory.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "contract creation (new C)",
         "conversions to non-elementary types",
         "external calls and contract members",
-        "local reference bindings",
-        "memory arrays (new T[](n))",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -10283,12 +9815,10 @@
       "test": "inheritance/state_variables_init_order_3.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "super calls"
-      ],
-      "first": "super calls",
-      "reason": "inheritance/super_in_constructor.sol: Identifier 51: built-in super is not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/super_in_constructor.sol"
     },
@@ -10305,12 +9835,10 @@
       "test": "inheritance/super_in_constructor_assignment.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "super calls"
-      ],
-      "first": "super calls",
-      "reason": "inheritance/super_overload.sol: Identifier 33: built-in super is not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/super_overload.sol"
     },
@@ -10396,11 +9924,8 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "inline assembly",
-        "inline assembly memory references",
-        "local reference bindings"
+        "inline assembly memory references"
       ],
       "first": "inline assembly",
       "reason": "inlineAssembly/calldata_array_assign_dynamic.sol: InlineAssembly 13: unsupported reference x.length",
@@ -10408,26 +9933,20 @@
       "test": "inlineAssembly/calldata_array_assign_dynamic.sol"
     },
     {
-      "category": "source-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "array values",
-        "arrays",
-        "inline assembly memory references",
-        "local reference bindings"
+        "inline assembly memory references"
       ],
       "first": null,
-      "reason": "inlineAssembly/calldata_array_assign_static.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": "inlineAssembly/calldata_array_assign_static.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "inlineAssembly/calldata_array_assign_static.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "inline assembly",
-        "inline assembly memory references",
-        "local reference bindings"
+        "inline assembly memory references"
       ],
       "first": "inline assembly",
       "reason": "inlineAssembly/calldata_array_read.sol: InlineAssembly 14: unsupported reference x.length",
@@ -10738,14 +10257,13 @@
       "test": "inlineAssembly/inline_assembly_in_modifiers.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
         "inline assembly memory outside the scratch space",
-        "inline assembly memory references",
-        "new bytes and string"
+        "inline assembly memory references"
       ],
-      "first": "new bytes and string",
-      "reason": "inlineAssembly/inline_assembly_memory_access.sol: NewExpression 8: unsupported expression NewExpression",
+      "first": null,
+      "reason": "inlineAssembly/inline_assembly_memory_access.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "inlineAssembly/inline_assembly_memory_access.sol"
     },
@@ -10784,7 +10302,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "arrays",
         "inline assembly memory references",
         "local reference bindings"
@@ -11357,8 +10874,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "inline arrays"
       ],
       "first": "inline arrays",
@@ -11370,9 +10885,7 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "address members (balance, call, transfer, \u2026)",
-        "array values",
-        "arrays"
+        "address members (balance, call, transfer, \u2026)"
       ],
       "first": "abi.* functions",
       "reason": "isoltestTesting/precompiles_ignoring_trailing_input.sol: MemberAccess 19: unsupported built-in member encode",
@@ -11411,10 +10924,8 @@
       "category": "import-rejected",
       "features": [
         "array slices",
-        "array values",
         "arrays",
         "libraries",
-        "local reference bindings",
         "using for"
       ],
       "first": "using for",
@@ -11427,7 +10938,6 @@
       "features": [
         "arrays",
         "libraries",
-        "local reference bindings",
         "using for"
       ],
       "first": "using for",
@@ -11514,7 +11024,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "arrays",
         "libraries",
         "library calls and contract-name members",
@@ -11542,11 +11051,8 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "function members (selector, address, \u2026)",
         "libraries",
-        "memory arrays (new T[](n))",
         "structs",
         "using for"
       ],
@@ -11570,14 +11076,11 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "libraries",
-        "library calls and contract-name members",
-        "memory arrays (new T[](n))"
+        "library calls and contract-name members"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "libraries/internal_library_function.sol: NewExpression 26: unsupported expression NewExpression",
+      "first": "libraries",
+      "reason": "libraries/internal_library_function.sol: ContractDefinition 14: unsupported contract kind library",
       "scan_agrees": true,
       "test": "libraries/internal_library_function.sol"
     },
@@ -11647,7 +11150,6 @@
       "features": [
         "arrays",
         "libraries",
-        "memory arrays (new T[](n))",
         "using for"
       ],
       "first": "using for",
@@ -11816,10 +11318,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "libraries",
-        "memory arrays (new T[](n))",
         "structs",
         "using for"
       ],
@@ -11831,14 +11330,11 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "libraries",
-        "library calls and contract-name members",
-        "memory arrays (new T[](n))"
+        "library calls and contract-name members"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "libraries/internal_library_function_calling_private.sol: NewExpression 37: unsupported expression NewExpression",
+      "first": "libraries",
+      "reason": "libraries/internal_library_function_calling_private.sol: ContractDefinition 25: unsupported contract kind library",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_calling_private.sol"
     },
@@ -11859,10 +11355,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "libraries",
-        "memory arrays (new T[](n))",
         "structs",
         "using for"
       ],
@@ -11874,7 +11367,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "arrays",
         "libraries",
         "library calls and contract-name members",
@@ -11945,7 +11437,6 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "array values",
         "arrays",
         "conditional expressions",
         "function members (selector, address, \u2026)",
@@ -11965,7 +11456,6 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "array values",
         "arrays",
         "conditional expressions",
         "function members (selector, address, \u2026)",
@@ -11985,7 +11475,6 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "array values",
         "arrays",
         "conditional expressions",
         "function members (selector, address, \u2026)",
@@ -12057,7 +11546,6 @@
         "library calls and contract-name members",
         "local reference bindings",
         "members of elementary type names",
-        "memory arrays (new T[](n))",
         "type names as values"
       ],
       "first": "function members (selector, address, \u2026)",
@@ -12443,47 +11931,40 @@
       "test": "literals/wei.sol"
     },
     {
-      "category": "source-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "arrays",
         "inline assembly memory references"
       ],
       "first": null,
-      "reason": "memoryManagement/assembly_access.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": "memoryManagement/assembly_access.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "memoryManagement/assembly_access.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "memoryManagement/memory_types_initialisation.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "memoryManagement/memory_types_initialisation.sol"
     },
     {
-      "category": "source-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "array values",
-        "arrays",
         "inline assembly memory outside the scratch space"
       ],
       "first": null,
-      "reason": "memoryManagement/return_variable.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": "memoryManagement/return_variable.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "memoryManagement/return_variable.sol"
     },
     {
-      "category": "source-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "array values",
-        "arrays",
         "inline assembly memory outside the scratch space"
       ],
       "first": null,
-      "reason": "memoryManagement/static_memory_array_allocation.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": "memoryManagement/static_memory_array_allocation.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "memoryManagement/static_memory_array_allocation.sol"
     },
@@ -12544,13 +12025,10 @@
       "test": "modifiers/continue_in_modifier.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "modifiers/evaluation_order.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/evaluation_order.sol"
     },
@@ -12746,12 +12224,12 @@
       "test": "modifiers/modifier_in_constructor_ice.sol"
     },
     {
-      "category": "source-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "arrays"
+        "static memory array returns under modifiers"
       ],
       "first": null,
-      "reason": "modifiers/modifier_init_return.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": "modifiers/modifier_init_return.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "modifiers/modifier_init_return.sol"
     },
@@ -12875,8 +12353,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "free functions",
-        "super calls"
+        "free functions"
       ],
       "first": "free functions",
       "reason": "s1.sol: FunctionDefinition 8: unsupported source unit member FunctionDefinition",
@@ -12886,8 +12363,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "free functions",
-        "super calls"
+        "free functions"
       ],
       "first": "free functions",
       "reason": "s1.sol: FunctionDefinition 8: unsupported source unit member FunctionDefinition",
@@ -12926,8 +12402,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "free functions",
-        "super calls"
+        "free functions"
       ],
       "first": "free functions",
       "reason": "s1.sol: FunctionDefinition 8: unsupported source unit member FunctionDefinition",
@@ -14002,7 +13477,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "arrays",
         "inline arrays",
         "structs",
@@ -14348,25 +13822,20 @@
       "test": "storage/accessors_mapping_for_array.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "array values",
-        "memory arrays (new T[](n))",
         "public state variables"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "storage/array_accessor.sol: NewExpression 53: unsupported expression NewExpression",
+      "first": null,
+      "reason": "storage/array_accessor.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storage/array_accessor.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "constant expressions over literals",
-        "inline arrays",
-        "memory arrays (new T[](n))"
+        "inline arrays"
       ],
       "first": "inline arrays",
       "reason": "storage/chop_sign_bits.sol: TupleExpression 7: inline arrays are not supported",
@@ -14397,8 +13866,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "inline arrays",
         "operator delete",
         "transient storage"
@@ -14468,8 +13935,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "inline arrays",
         "operator delete",
         "transient storage"
@@ -14482,8 +13947,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "inline arrays",
         "operator delete",
         "transient storage"
@@ -14663,7 +14126,6 @@
       "category": "import-rejected",
       "features": [
         "array values",
-        "arrays",
         "named arguments",
         "operator delete",
         "struct values and copying",
@@ -14677,7 +14139,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "arrays",
         "inline arrays",
         "inline assembly memory references",
@@ -14692,7 +14153,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "arrays",
         "inline assembly memory references",
         "local reference bindings"
@@ -14705,7 +14165,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "arrays",
         "inline arrays",
         "inline assembly memory references",
@@ -14720,7 +14179,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "arrays",
         "inline assembly memory references",
         "local reference bindings",
@@ -14734,7 +14192,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "arrays",
         "inline assembly memory references",
         "local reference bindings",
@@ -14748,7 +14205,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "arrays",
         "inline arrays",
         "inline assembly memory references",
@@ -14764,7 +14220,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "arrays",
         "inline arrays",
         "inline assembly memory references",
@@ -14778,7 +14233,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "arrays",
         "inline arrays",
         "inline assembly memory references",
@@ -14794,7 +14248,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "arrays",
         "inline assembly memory references",
         "local reference bindings",
@@ -14857,13 +14310,10 @@
       "test": "storage/storage_boundary_struct_array_packed.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "array values",
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "storage/storage_packed_array_copy.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "storage/storage_packed_array_copy.sol"
     },
@@ -14896,7 +14346,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "operator delete"
       ],
       "first": null,
@@ -14924,13 +14373,12 @@
       "test": "storageLayoutSpecifier/dynamic_array_storage_end.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "library calls and contract-name members",
-        "super calls"
+        "library calls and contract-name members"
       ],
-      "first": "super calls",
-      "reason": "storageLayoutSpecifier/function_from_base_contract.sol: Identifier 48: built-in super is not supported",
+      "first": null,
+      "reason": "storageLayoutSpecifier/function_from_base_contract.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/function_from_base_contract.sol"
     },
@@ -14949,9 +14397,9 @@
         "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "contract creation (new C)",
-      "reason": "storageLayoutSpecifier/inheritance_constructor_order_calling_revert.sol: NewExpression 57: unsupported expression NewExpression",
-      "scan_agrees": true,
+      "first": "unclassified",
+      "reason": "storageLayoutSpecifier/inheritance_constructor_order_calling_revert.sol: FunctionCall 58: new takes one argument",
+      "scan_agrees": false,
       "test": "storageLayoutSpecifier/inheritance_constructor_order_calling_revert.sol"
     },
     {
@@ -14974,9 +14422,9 @@
         "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "contract creation (new C)",
-      "reason": "storageLayoutSpecifier/inheritance_constructors_with_different_number_of_arguments.sol: NewExpression 50: unsupported expression NewExpression",
-      "scan_agrees": true,
+      "first": "unclassified",
+      "reason": "storageLayoutSpecifier/inheritance_constructors_with_different_number_of_arguments.sol: FunctionCall 51: new takes one argument",
+      "scan_agrees": false,
       "test": "storageLayoutSpecifier/inheritance_constructors_with_different_number_of_arguments.sol"
     },
     {
@@ -15058,8 +14506,8 @@
         "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "contract creation (new C)",
-      "reason": "storageLayoutSpecifier/inheritance_multiple_parents_constructors_with_arguments.sol: NewExpression 53: unsupported expression NewExpression",
+      "first": "external calls and contract members",
+      "reason": "storageLayoutSpecifier/inheritance_multiple_parents_constructors_with_arguments.sol: UserDefinedTypeName 52: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_multiple_parents_constructors_with_arguments.sol"
     },
@@ -15178,13 +14626,10 @@
       "test": "storageLayoutSpecifier/state_variable_constant_and_immutable.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "array values",
-        "memory arrays (new T[](n))"
-      ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "storageLayoutSpecifier/state_variable_dynamic_array.sol: NewExpression 62: unsupported expression NewExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/state_variable_dynamic_array.sol"
     },
@@ -15250,7 +14695,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "arrays",
         "local reference bindings"
       ],
@@ -15480,47 +14924,42 @@
       "test": "structs/conversion/recursive_storage_memory.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "aggregate array mutation",
-        "array values",
         "arrays",
-        "memory arrays (new T[](n))",
         "struct values and copying",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "structs/conversion/recursive_storage_memory_complex.sol: NewExpression 264: unsupported expression NewExpression",
+      "first": null,
+      "reason": "structs/conversion/recursive_storage_memory_complex.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "structs/conversion/recursive_storage_memory_complex.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "local reference bindings",
-        "memory arrays (new T[](n))",
         "named arguments",
         "struct values and copying",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "structs/copy_from_mapping.sol: NewExpression 19: unsupported expression NewExpression",
+      "first": "named arguments",
+      "reason": "structs/copy_from_mapping.sol: FunctionCall 42: named arguments are not supported",
       "scan_agrees": true,
       "test": "structs/copy_from_mapping.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
         "memory arrays (new T[](n))",
         "struct values and copying"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "structs/copy_from_storage.sol: NewExpression 32: unsupported expression NewExpression",
-      "scan_agrees": true,
+      "first": null,
+      "reason": "structs/copy_from_storage.sol: valid_src_unit failed (source validation/subset restriction)",
+      "scan_agrees": false,
       "test": "structs/copy_from_storage.sol"
     },
     {
@@ -15575,7 +15014,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "inline arrays",
         "struct values and copying"
       ],
@@ -15599,46 +15037,37 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "local reference bindings",
-        "memory arrays (new T[](n))",
         "named arguments",
         "struct values and copying",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "structs/copy_substructures_from_mapping.sol: NewExpression 19: unsupported expression NewExpression",
+      "first": "named arguments",
+      "reason": "structs/copy_substructures_from_mapping.sol: FunctionCall 42: named arguments are not supported",
       "scan_agrees": true,
       "test": "structs/copy_substructures_from_mapping.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
         "local reference bindings",
-        "memory arrays (new T[](n))",
         "struct values and copying",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "structs/copy_substructures_to_mapping.sol: NewExpression 22: unsupported expression NewExpression",
+      "first": null,
+      "reason": "structs/copy_substructures_to_mapping.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "structs/copy_substructures_to_mapping.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
         "local reference bindings",
-        "memory arrays (new T[](n))",
         "struct values and copying",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "structs/copy_to_mapping.sol: NewExpression 22: unsupported expression NewExpression",
+      "first": null,
+      "reason": "structs/copy_to_mapping.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "structs/copy_to_mapping.sol"
     },
@@ -15746,7 +15175,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "arrays",
         "struct values and copying",
         "structs"
       ],
@@ -15833,7 +15261,7 @@
       "test": "structs/recursive_struct_2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "memory arrays (new T[](n))",
@@ -15841,9 +15269,9 @@
         "struct values and copying",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "structs/recursive_structs.sol: NewExpression 23: unsupported expression NewExpression",
-      "scan_agrees": true,
+      "first": null,
+      "reason": "structs/recursive_structs.sol: valid_src_unit failed (source validation/subset restriction)",
+      "scan_agrees": false,
       "test": "structs/recursive_structs.sol"
     },
     {
@@ -15871,8 +15299,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "struct values and copying",
         "structs"
       ],
@@ -15930,7 +15356,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "arrays",
         "local reference bindings",
         "struct values and copying",
         "structs"
@@ -15943,7 +15368,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "arrays",
         "local reference bindings",
         "struct values and copying",
         "structs"
@@ -16056,7 +15480,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "arrays",
         "inline assembly memory references",
         "local reference bindings",
@@ -16601,16 +16024,13 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
-        "arrays",
         "inline arrays",
-        "memory arrays (new T[](n))",
         "named arguments",
         "struct values and copying",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "types/mapping/copy_from_mapping_to_mapping.sol: NewExpression 32: unsupported expression NewExpression",
+      "first": "inline arrays",
+      "reason": "types/mapping/copy_from_mapping_to_mapping.sol: TupleExpression 80: inline arrays are not supported",
       "scan_agrees": true,
       "test": "types/mapping/copy_from_mapping_to_mapping.sol"
     },
@@ -16773,6 +16193,7 @@
     {
       "category": "source-rejected",
       "features": [
+        "tuple assignments to element or member targets",
         "tuples of literals",
         "tuples with empty components"
       ],
@@ -16822,7 +16243,8 @@
     {
       "category": "source-rejected",
       "features": [
-        "nested tuples"
+        "nested tuples",
+        "tuple assignments to element or member targets"
       ],
       "first": null,
       "reason": "types/tuple_assign_multi_slot_grow.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -16857,9 +16279,9 @@
         "functions as values",
         "source units without exactly one contract"
       ],
-      "first": "contract creation (new C)",
-      "reason": "uninitializedFunctionPointer/invalidInConstructor.sol: NewExpression 40: unsupported expression NewExpression",
-      "scan_agrees": true,
+      "first": "unclassified",
+      "reason": "uninitializedFunctionPointer/invalidInConstructor.sol: FunctionCall 41: new takes one argument",
+      "scan_agrees": false,
       "test": "uninitializedFunctionPointer/invalidInConstructor.sol"
     },
     {
@@ -16872,9 +16294,9 @@
         "functions as values",
         "source units without exactly one contract"
       ],
-      "first": "contract creation (new C)",
-      "reason": "uninitializedFunctionPointer/invalidStoredInConstructor.sol: NewExpression 40: unsupported expression NewExpression",
-      "scan_agrees": true,
+      "first": "unclassified",
+      "reason": "uninitializedFunctionPointer/invalidStoredInConstructor.sol: FunctionCall 41: new takes one argument",
+      "scan_agrees": false,
       "test": "uninitializedFunctionPointer/invalidStoredInConstructor.sol"
     },
     {
@@ -17296,7 +16718,6 @@
       "features": [
         "arrays",
         "free functions",
-        "local reference bindings",
         "using for"
       ],
       "first": "using for",
@@ -17888,9 +17309,9 @@
         "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "contract creation (new C)",
-      "reason": "various/contract_binary_dependencies.sol: NewExpression 20: unsupported expression NewExpression",
-      "scan_agrees": true,
+      "first": "unclassified",
+      "reason": "various/contract_binary_dependencies.sol: FunctionCall 21: new takes one argument",
+      "scan_agrees": false,
       "test": "various/contract_binary_dependencies.sol"
     },
     {
@@ -17950,16 +17371,14 @@
       "test": "various/decayed_tuple.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
-        "memory arrays (new T[](n))",
+        "tuple assignments to element or member targets",
         "tuples of literals",
         "tuples with empty components"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "various/destructuring_assignment.sol: NewExpression 20: unsupported expression NewExpression",
+      "first": null,
+      "reason": "various/destructuring_assignment.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "various/destructuring_assignment.sol"
     },
@@ -18058,7 +17477,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "constant expressions over literals",
         "inline arrays"
       ],
@@ -18247,14 +17665,12 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
         "external calls and contract members",
-        "memory arrays (new T[](n))",
         "this",
         "tuples of literals"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "various/skip_dynamic_types.sol: NewExpression 13: unsupported expression NewExpression",
+      "first": "external calls and contract members",
+      "reason": "various/skip_dynamic_types.sol: Identifier 31: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "various/skip_dynamic_types.sol"
     },
@@ -18264,7 +17680,6 @@
         "arrays",
         "external calls and contract members",
         "inline arrays",
-        "memory arrays (new T[](n))",
         "structs",
         "this",
         "tuples of literals"
@@ -18277,7 +17692,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "external calls and contract members",
         "external calls to getters",
         "inline arrays",
@@ -18359,12 +17773,10 @@
       "test": "various/string_tuples.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "super calls"
-      ],
-      "first": "super calls",
-      "reason": "various/super.sol: Identifier 53: built-in super is not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "various/super.sol"
     },
@@ -18426,7 +17838,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "array values",
         "arrays",
         "external calls and contract members",
         "local reference bindings",
@@ -18770,7 +18181,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "arrays",
         "local reference bindings",
         "structs"
       ],
@@ -18780,22 +18190,19 @@
       "test": "viaYul/dirty_calldata_struct.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "arrays",
         "inline assembly memory outside the scratch space",
-        "inline assembly memory references",
-        "memory arrays (new T[](n))"
+        "inline assembly memory references"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "viaYul/dirty_memory_dynamic_array.sol: NewExpression 12: unsupported expression NewExpression",
+      "first": null,
+      "reason": "viaYul/dirty_memory_dynamic_array.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "viaYul/dirty_memory_dynamic_array.sol"
     },
     {
       "category": "source-rejected",
       "features": [
-        "arrays",
         "constant expressions over literals",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references"
@@ -18806,41 +18213,36 @@
       "test": "viaYul/dirty_memory_int32.sol"
     },
     {
-      "category": "source-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "arrays",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references"
       ],
       "first": null,
-      "reason": "viaYul/dirty_memory_static_array.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": "viaYul/dirty_memory_static_array.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "viaYul/dirty_memory_static_array.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
-        "memory arrays (new T[](n))",
         "structs"
       ],
-      "first": "memory arrays (new T[](n))",
-      "reason": "viaYul/dirty_memory_struct.sol: NewExpression 18: unsupported expression NewExpression",
+      "first": null,
+      "reason": "viaYul/dirty_memory_struct.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "viaYul/dirty_memory_struct.sol"
     },
     {
-      "category": "source-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "arrays",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references"
       ],
       "first": null,
-      "reason": "viaYul/dirty_memory_uint32.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": "viaYul/dirty_memory_uint32.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "viaYul/dirty_memory_uint32.sol"
     },
@@ -18929,12 +18331,10 @@
       "test": "viaYul/function_address.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "arrays"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "viaYul/function_entry_checks.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/function_entry_checks.sol"
     },
@@ -19007,7 +18407,7 @@
     {
       "category": "source-rejected",
       "features": [
-        "arrays",
+        "tuple assignments to element or member targets",
         "tuples of literals",
         "tuples with empty components"
       ],
@@ -19142,7 +18542,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
         "arrays",
         "local reference bindings"
       ],
@@ -19287,8 +18686,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "array values",
-        "arrays",
         "local reference bindings",
         "structs"
       ],
