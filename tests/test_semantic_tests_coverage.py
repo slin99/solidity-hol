@@ -645,6 +645,17 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(coverage.type_feature("t_bytes32"),
                          "fixed-size bytes members and indexing")
 
+    def test_tuple_assignments_to_elements_are_blocked(self) -> None:
+        ident = {"nodeType": "Identifier", "id": 5, "name": "x"}
+        element = {"nodeType": "IndexAccess", "id": 6}
+        assign = {"nodeType": "Assignment", "operator": "=",
+                  "leftHandSide": {"nodeType": "TupleExpression", "isInlineArray": False,
+                                   "components": [ident, None]}}
+        self.assertEqual(coverage.elaboration_blockers(assign), [])
+        assign["leftHandSide"]["components"] = [ident, element]
+        self.assertEqual({b.feature for b in coverage.elaboration_blockers(assign)},
+                         {"tuple assignments to element or member targets"})
+
     def test_storage_and_every_mutability_are_admitted(self) -> None:
         f = function(4, [])
         ast = unit([variable(3, state=True), f])

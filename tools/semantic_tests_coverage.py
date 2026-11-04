@@ -582,15 +582,15 @@ def decodes(type_identifier: str) -> bool:
     if not type_identifier.startswith("t_tuple$"):
         return False
     *fields, last = type_identifier[len("t_tuple$"):].split("$")
-    components = tuple_components(fields)
+    components = tuple_identifier_components(fields)
     return last == "" and components is not None and all(
         len(c) >= 2 and c[0] == c[-1] == "_" and decodes_component(c[1:-1])
         for c in components
     )
 
 
-def tuple_components(fields: list[str]) -> list[str] | None:
-    """tuple_components: rejoin an array's `$`-separated fields, where
+def tuple_identifier_components(fields: list[str]) -> list[str] | None:
+    """tuple_identifier_components: rejoin an array's `$`-separated fields, where
     "_t_array" opens an array and a field without a leading "_" closes one."""
     components, depth, current = [], 0, None
     for field in fields:
@@ -698,6 +698,10 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
         type_identifier = node["typeDescriptions"]["typeIdentifier"]
         found.append("tuples of literals" if "t_rational" in type_identifier
                      else type_feature(type_identifier))
+    elif (kind == "Assignment" and unwrap(node["leftHandSide"])["nodeType"] == "TupleExpression"
+          and any(c is not None and unwrap(c)["nodeType"] != "Identifier"
+                  for c in unwrap(node["leftHandSide"])["components"])):
+        found.append("tuple assignments to element or member targets")
     elif kind == "UnaryOperation" and node["operator"] not in UNARY_OPERATORS:
         found.append(f"operator {node['operator']}")
     elif ((kind == "UnaryOperation" and RATIONAL.fullmatch(node["typeDescriptions"]["typeIdentifier"]))

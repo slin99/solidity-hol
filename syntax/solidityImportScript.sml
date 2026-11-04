@@ -524,17 +524,17 @@ End
  * rejoining an array's fields: "_t_array" opens an array and a dimension,
  * the one field without a leading "_", closes one. *)
 Definition tuple_components_def:
-  (tuple_components (depth : num) acc [] =
+  (tuple_identifier_components (depth : num) acc [] =
     if depth = 0 ∧ acc = "" then SOME [] else NONE) ∧
-  (tuple_components depth acc (f :: fs) =
+  (tuple_identifier_components depth acc (f :: fs) =
     let component = if acc = "" then f else acc ++ "$" ++ f in
     let depth' = if f = "_t_array" then depth + 1
                  else if isPREFIX "_" f then depth else depth - 1 in
     if depth' = 0 then
-      case tuple_components 0 "" fs of
+      case tuple_identifier_components 0 "" fs of
         SOME cs => SOME (component :: cs)
       | NONE => NONE
-    else tuple_components depth' component fs)
+    else tuple_identifier_components depth' component fs)
 End
 
 Definition decode_type_identifier_def:
@@ -545,7 +545,7 @@ Definition decode_type_identifier_def:
     else if isPREFIX "t_tuple$" s then
       case REVERSE (separated_fields #"$" "" (DROP 8 s)) of
         [] :: pieces =>
-          (case tuple_components 0 "" (REVERSE pieces) of
+          (case tuple_identifier_components 0 "" (REVERSE pieces) of
              SOME cs => OPTION_MAP SrcTupleType (all_some (MAP tuple_component cs))
            | NONE => NONE)
       | _ => NONE
