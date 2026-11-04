@@ -582,3 +582,105 @@ Theorem run_yul_fuel_stable:
 Proof
   rw[run_yul_def] >> metis_tac[eval_yul_fuel_stable]
 QED
+
+(* ---------------------------------------------------------------------------
+   What a call hands back: the caller's own scope stack, and as many values as
+   the callee declares results.
+
+   A call's frame is the callee's alone, so the machine a call returns differs
+   from the caller's only in the fields the callee itself wrote: its scope
+   stack is the caller's, unchanged.  And the values it returns are the
+   callee's result names read out of that frame, one apiece, so their number is
+   the callee's -- known from the function table, and the reason a caller's
+   binding of them can be resolved at all.
+ ---------------------------------------------------------------------------*)
+
+Theorem invoke_yul_scopes:
+  (∀n fns name args m vals m'.
+     invoke_yul n fns name args m = EvalValues vals m' ⇒ m'.scopes = m.scopes) ∧
+  (∀n fns name args m c m'.
+     invoke_yul n fns name args m = EvalAbrupt c m' ⇒ m'.scopes = m.scopes)
+Proof
+  conj_tac >> rpt gen_tac >> strip_tac >>
+  pop_assum mp_tac >> simp [eval_yul_block_def] >>
+  BasicProvers.every_case_tac >> rpt strip_tac >>
+  gvs [yulStateTheory.yul_machine_accfupds]
+QED
+
+Theorem yul_lookup_names_length:
+  ∀nms scopes vals. yul_lookup_names nms scopes = SOME vals ⇒
+    LENGTH vals = LENGTH nms
+Proof
+  Induct_on `nms` >> rw [yul_lookup_names_def] >>
+  rename1 `yul_lookup nm scopes` >>
+  Cases_on `yul_lookup nm scopes` >> gvs [] >>
+  Cases_on `yul_lookup_names nms scopes` >> gvs [] >> metis_tac []
+QED
+
+Theorem invoke_yul_values_length:
+  ∀n fns name args m vals m' fd.
+    FLOOKUP fns name = SOME fd ∧
+    invoke_yul n fns name args m = EvalValues vals m' ⇒
+    LENGTH vals = LENGTH fd.function_results
+Proof
+  rpt gen_tac >> strip_tac >>
+  pop_assum mp_tac >> simp [eval_yul_block_def] >>
+  BasicProvers.every_case_tac >> rpt strip_tac >>
+  gvs [] >> imp_res_tac yul_lookup_names_length >> gvs []
+QED
+
+(* The spine a call's answer has, off the callee's own result names: a list of
+ * a known length is still a variable, and `ZIP` and `list_CASE` match on `::`
+ * and `[]`, so a caller binding the answer stays stuck on it however well its
+ * length is known.  Taking the names' own shape turns the known length into
+ * the constructors the match needs. *)
+Definition yul_take_shape_def:
+  (yul_take_shape ([] : string list) (vals : bytes32 list) = []) ∧
+  (yul_take_shape (nm :: nms) vals = HD vals :: yul_take_shape nms (TL vals))
+End
+
+Theorem yul_take_shape_id:
+  ∀nms vals. LENGTH nms = LENGTH vals ⇒ yul_take_shape nms vals = vals
+Proof
+  Induct_on `nms` >> rpt gen_tac >> Cases_on `vals` >>
+  gvs [yul_take_shape_def]
+QED
+
+(* One rewrite that says both, on the case a caller's split leaves: a branch
+ * that reads the answer's spine or the machine's scope stack sees the callee's
+ * result names and the caller's own scopes instead.  The two antecedents are
+ * what the caller can look up (the table's binding, and the arity the clause
+ * itself tests), and the branch functions are arbitrary, so the rule reaches a
+ * case wherever the continuation has been pushed into it. *)
+(* Rewriting a machine's own scope stack back into it is the machine.  The
+ * record package's own `_fupd` equations do the work; what this adds is the
+ * single equation the conversion's rule below needs. *)
+Theorem yul_machine_scopes_update_self:
+  ∀m. m with scopes := m.scopes = m
+Proof
+  simp [yulStateTheory.yul_machine_component_equality,
+        yulStateTheory.yul_machine_accfupds]
+QED
+
+Theorem yul_machine_scopes_update_eq:
+  ∀m m'. m'.scopes = m.scopes ⇒ m' with scopes := m.scopes = m'
+Proof
+  rpt gen_tac >> strip_tac >>
+  pop_assum (fn th => REWRITE_TAC [GSYM th]) >>
+  simp [yul_machine_scopes_update_self]
+QED
+
+Theorem yul_expr_result_CASE_invoke_frame:
+  ∀n fns name args m b1 b2 fd.
+    FLOOKUP fns name = SOME fd ∧ LENGTH fd.function_params = LENGTH args ⇒
+    yul_expr_result_CASE (invoke_yul n fns name args m) b1 b2 =
+    yul_expr_result_CASE (invoke_yul n fns name args m)
+      (λvals m'. b1 (yul_take_shape fd.function_results vals)
+                   (m' with scopes := m.scopes))
+      b2
+Proof
+  rw [] >> Cases_on `invoke_yul n fns name args m` >>
+  imp_res_tac invoke_yul_values_length >> imp_res_tac invoke_yul_scopes >>
+  gvs [yul_take_shape_id, yul_machine_scopes_update_eq]
+QED
+

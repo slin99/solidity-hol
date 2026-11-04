@@ -68,6 +68,11 @@ val eval_yul_builtin_c =
 val yul_lookup_c = prim_mk_const {Thy = "yulEvaluator", Name = "yul_lookup"}
 val yul_lookup_names_c =
   prim_mk_const {Thy = "yulEvaluator", Name = "yul_lookup_names"}
+(* The shaping function the frame rule below hands a callee's result names to,
+ * and the marker that says a case has already been settled with it. *)
+val yul_take_shape_c =
+  prim_mk_const {Thy = "yulEvaluatorProps", Name = "yul_take_shape"}
+
 
 (* The constants are recognised by theory and name, reading the record
  * `dest_term` leaves rather than making one to compare against. *)
@@ -285,6 +290,14 @@ val helper_defs = [
   yul_normal_def, yul_abrupt_def, yul_invalid_def,
   yul_literal_value_def, yul_sign_extend_def
 ]
+
+(* The shaping the frame rule builds with, unfolded unconditionally: it is a
+ * plain recursion over the result names, and unfolding it is what puts the
+ * spine -- `HD vals`, `HD (TL vals)`, ... -- in the branch, where the arity the
+ * clause tests and the binding the block writes can read it.  `helper_defs` is
+ * the list a form's residues are read against, and this is not one of them: it
+ * is this conversion's own construction and never part of an evaluator clause. *)
+val shape_defs = [yul_take_shape_def]
 
 (* The operations that read or build a machine, a scope, memory or storage, and
  * the builtin dispatch that reaches them.  `yul_bind` is the shape of them all:
@@ -549,7 +562,24 @@ fun prune_call_conv tm =
  * dropped wherever the taking apart has left it; the pass below is what reaches
  * it there, and this one, between the push and the taking apart, is what drops
  * it before the taking apart has carried the branch it sits in any further. *)
-fun prune_deep_conv tm = Conv.QCONV (Conv.DEPTH_CONV prune_call_conv) tm
+local
+  val frame_ref : (term -> thm) ref = ref (fn _ => raise Conv.UNCHANGED)
+in
+  (* The frame rule below settles a folded call's values branch -- the values it
+   * answered with, and the machine it came back on -- and it needs the table
+   * reader to know what the callee declared, which is defined further down.  The
+   * passes that run it reach it through this reference. *)
+  fun frame_conv tm = !frame_ref tm
+  fun set_frame_conv f = frame_ref := f
+end
+
+(* A call's case with its values branch settled if the frame rule takes it, and
+ * otherwise the prune.  One or the other: both rewrite the same case, and the
+ * frame rule's own guard is what stops it firing on the term it produced. *)
+fun call_case_conv tm =
+  frame_conv tm handle Conv.UNCHANGED => prune_call_conv tm
+
+fun prune_deep_conv tm = Conv.QCONV (Conv.DEPTH_CONV call_case_conv) tm
 
 fun prune_all_conv tm =
   let
@@ -1230,7 +1260,8 @@ val eval_compset =
     val with_convs = List.foldl register with_guards eval_clauses
   in
     computeLib.add_conv (eval_yul_block_c, 4, block_conv)
-      (computeLib.add_thms (eval_yul_builtin_def :: body_clauses @ helper_defs)
+      (computeLib.add_thms
+         (eval_yul_builtin_def :: body_clauses @ helper_defs @ shape_defs)
          with_convs)
   end
 
@@ -1305,6 +1336,120 @@ fun binding_thm defs fns name =
     else raise ERR "yulConvLib.binding_thm"
                  ("the function table does not bind " ^ term_to_string name)
   end
+
+(*---------------------------------------------------------------------------
+   Settling a folded call's frame.
+
+   A statement whose expression is a call is a case on `invoke_yul`, whose
+   values branch is the rest of the body.  The call is folded, so the body's
+   first use of its answer -- `yul_bind names vals m'`, `yul_assign`, a test on
+   `m'` -- reads two things the conversion cannot resolve: the length of `vals`
+   (against the names it is bound to) and the scope stack of `m'`.  Both are
+   decided by the call itself, and neither needs the callee's body:
+
+     - `vals` is as long as the callee declares results, so the spine the
+       callee's own result names give is the spine `vals` has, and `ZIP` and
+       `list_CASE` -- which match on `::` and `[]`, not on a length -- fire on
+       it;
+     - `m'` has the caller's own scope stack, because the frame is the callee's
+       alone and `invoke_yul` hands the caller its scopes back.
+
+   `yulEvaluatorProps.yul_expr_result_CASE_invoke_frame` states both on the
+   case, so a single rewrite settles the branch; what is left in it is the
+   caller's own machinery, which the conversion then resolves as it would for
+   any other statement.  The callee's declaration comes from the table, read
+   the way the entry call's is (`binding_thm`), and the arity the clause itself
+   tests is decided on the term.
+
+   Without this, every statement after a call carries a decision per read of
+   the call's answer, so a body of k call statements comes out at about 2^k
+   times the size -- which is where the corpus's remaining forms are.
+ ---------------------------------------------------------------------------*)
+
+(* The definitions the table is read from, for the callee lookup below: set by
+ * the conversion that is running, like the compute set itself. *)
+local
+  val defs_ref : thm list ref = ref []
+  (* The callee's declaration, one per name: a body's calls name the same
+   * callees over and over -- the same statement is taken apart by every pass
+   * over it -- and reading it off the table is a walk of the folded table
+   * (138 entries for the corpus object) each time.  Cleared with the set of
+   * definitions it is read from, which is what a conversion installs. *)
+  val bindings : (term * thm) list ref = ref []
+in
+  fun set_frame_defs ds = (defs_ref := ds; bindings := [])
+  fun frame_defs () = !defs_ref
+  fun binding_memo defs fns name =
+    case List.find (fn (n, _) => aconv n name) (!bindings) of
+      SOME (_, th) => th
+    | NONE =>
+        let val th = binding_thm defs fns name in
+          bindings := (name, th) :: !bindings; th
+        end
+end
+
+(* The rule's own antecedent, decided on the term.  Its arity half is about the
+ * table's declaration and the argument list, both literals by the time a case
+ * is on the call, so the test set either answers it or the rule declines -- a
+ * call the table's arity contradicts is one the clause itself answers abruptly,
+ * and there is nothing to settle in its values branch. *)
+fun arity_thm tm =
+  let val th = eval_test tm in
+    if aconv (rhs (concl th)) boolSyntax.T then EQT_ELIM th
+    else raise Conv.UNCHANGED
+  end
+
+(* The rule's own output, recognised so that it is not rewritten again.  The
+ * branch it builds applies `yul_take_shape` to the callee's result names and to
+ * the branch's *own* values variable, and one of those in the branch means this
+ * case is settled.  Sought in the branch alone, not in the whole node: a case
+ * nested in the continuation -- settled earlier in the same bottom-up pass --
+ * carries one of its own, over a variable of its own, and must not stop this
+ * one. *)
+fun shape_call (v : term) (tm : term) =
+  (is_comb tm andalso is_comb (rator tm) andalso
+   same_const yul_take_shape_c (fst (dest_comb (rator tm))) andalso
+   aconv (rand tm) v)
+  orelse
+  (case dest_term tm of
+     Term.LAMB (_, b) => shape_call v b
+   | Term.COMB (x, y) => shape_call v x orelse shape_call v y
+   | _ => false)
+
+fun frame_conv_raw tm =
+  if not (is_yul_case tm) then raise Conv.UNCHANGED else
+  let
+    val cargs = snd (strip_comb tm)
+    val _ = if List.length cargs = 3 then () else raise Conv.UNCHANGED
+    val inv = List.nth (cargs, 0)
+    val b1 = List.nth (cargs, 1)
+    val b2 = List.nth (cargs, 2)
+    val _ = if is_invoke (head_const inv) andalso is_abs b1
+            then () else raise Conv.UNCHANGED
+    val (vals_v, rest) = dest_abs b1
+    val (mach_v, body) = dest_abs rest
+    val _ = if shape_call vals_v body then raise Conv.UNCHANGED else ()
+    val itms = snd (strip_comb inv)
+    val _ = if List.length itms = 5 then () else raise Conv.UNCHANGED
+    val n_tm = List.nth (itms, 0)
+    val fns_tm = List.nth (itms, 1)
+    val name_tm = List.nth (itms, 2)
+    val args_tm = List.nth (itms, 3)
+    val mach_tm = List.nth (itms, 4)
+    val bind = binding_memo (frame_defs ()) fns_tm name_tm
+    val fd = rand (rhs (concl bind))
+    val inst = ISPECL
+      [n_tm, fns_tm, name_tm, args_tm, mach_tm, b1, b2, fd]
+      yul_expr_result_CASE_invoke_frame
+    val (ant, _) = dest_imp (concl inst)
+    val (_, arity) = dest_conj ant
+  in
+    Thm.MP inst (Thm.CONJ bind (arity_thm arity))
+  end
+
+val () =
+  set_frame_conv
+    (fn tm => frame_conv_raw tm handle HOL_ERR _ => raise Conv.UNCHANGED)
 
 (*---------------------------------------------------------------------------
    Keeping the client's table out of the set the conversion runs on.
@@ -1405,6 +1550,7 @@ fun yul_invoke_conv defs tm =
      * client's table scrubbed out of it.  Its fallback set is made from that
      * one, for the same reason. *)
     val () = set_block_compset cs (clause_set cs)
+    val () = set_frame_defs defs
     val res = computeLib.CBV_CONV cs (rhs (concl step))
   in
     Thm.TRANS step res
@@ -1502,6 +1648,7 @@ fun is_fixed_point defs tm =
      * set the last conversion left behind -- with the client's definitions
      * folded back in, which is the other thing this set exists to keep out. *)
     val () = set_block_compset cs (clause_set cs)
+    val () = set_frame_defs defs
   in
     aconv tm (rhs (concl (computeLib.CBV_CONV cs tm)))
   end
