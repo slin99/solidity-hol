@@ -510,15 +510,34 @@ val prune_lemmas = [yul_expr_result_CASE_invoke_abrupt_lit,
  * to bound variables to whatever the body is, so it takes the rule's
  * `T` to be an abstraction and beta-reduces what it puts back. *)
 fun prune_call_conv tm =
-  let
-    fun try_ho lem = Conv.HO_REWR_CONV lem tm handle HOL_ERR _ => raise Conv.UNCHANGED
-    fun first [] = raise Conv.UNCHANGED
-      | first (lem :: rest) =
-          (Conv.REWR_CONV lem tm handle HOL_ERR _ => try_ho lem)
-          handle Conv.UNCHANGED => first rest
-  in
-    first prune_lemmas
-  end
+  (* Both lemmas are stated on a case whose scrutinee is the call itself, and
+   * neither matches anything else, so the shape is checked here rather than
+   * left to the rewrite match: the prune is run at every node below, and
+   * almost every node of a form is not a case at all. *)
+  if not (is_yul_case tm) then raise Conv.UNCHANGED
+  else
+    let val args = snd (strip_comb tm) in
+      if List.length args <> 3 orelse not (is_invoke (head_const (hd args)))
+      then raise Conv.UNCHANGED
+      else
+        let
+          fun try_ho lem = Conv.HO_REWR_CONV lem tm handle HOL_ERR _ => raise Conv.UNCHANGED
+          fun first [] = raise Conv.UNCHANGED
+            | first (lem :: rest) =
+                (Conv.REWR_CONV lem tm handle HOL_ERR _ => try_ho lem)
+                handle Conv.UNCHANGED => first rest
+        in
+          first prune_lemmas
+        end
+    end
+
+(* The prune at every node, not only at the top.  A call's case is surfaced by
+ * the taking apart into a branch or a test as often as to the top, and the same
+ * pass reads fields (`reduce_field`), which rewrites the conditional both
+ * lemmas are stated on -- the test `(<|completion := c; …|>).completion =
+ * YulNormal` becomes `c = YulNormal` -- so a prune that reaches a node after
+ * the field read has nothing left to match. *)
+fun prune_deep_conv tm = Conv.QCONV (Conv.DEPTH_CONV prune_call_conv) tm
 
 fun prune_all_conv tm =
   let
@@ -528,7 +547,7 @@ fun prune_all_conv tm =
             NONE => acc
           | SOME th => go (Thm.TRANS acc th) (k - 1)
   in
-    go (Thm.REFL tm) 4
+    go (prune_deep_conv tm) 4
   end
 
 (* Whether a test is worth handing to the set at all, which is not the case
@@ -647,7 +666,9 @@ fun reduce_field tm =
     SOME (acc, _) =>
       if not (is_result_field acc) then raise Conv.UNCHANGED
       else
-        let val th = computeLib.CBV_CONV (cs ()) tm in
+        let
+          val th = computeLib.CBV_CONV (cs ()) tm
+        in
           if aconv tm (rhs (concl th)) then raise Conv.UNCHANGED else th
         end
   | NONE => raise Conv.UNCHANGED
@@ -826,8 +847,14 @@ fun expose_all_conv tm =
       | go acc k =
           let
             val pushed = push_all_conv (rhs (concl acc))
-            val red = expose_conv (rhs (concl pushed))
-            val next = Thm.TRANS acc (Thm.TRANS pushed red)
+            (* The prune sits between the push and the taking apart: the push
+             * is what surfaces a call's case into a branch or a test, and the
+             * taking apart reads fields (`reduce_field`), which rewrites the
+             * conditional the prune's lemmas are stated on. *)
+            val pruned = prune_deep_conv (rhs (concl pushed))
+            val red = expose_conv (rhs (concl pruned))
+            val next =
+              Thm.TRANS acc (Thm.TRANS pushed (Thm.TRANS pruned red))
           in
             if aconv (rhs (concl next)) (rhs (concl acc)) then next
             else go next (k - 1)
@@ -848,9 +875,16 @@ fun settle_conv tm =
     fun go acc 0 = acc
       | go acc k =
           let
-            val exposed = expose_all_conv (rhs (concl acc))
+            (* The prune is tried before the taking apart as well as after it:
+             * taking the form apart reads the fields of the result the clause
+             * left (`reduce_field` below), which rewrites the conditional the
+             * prune's own lemmas are stated on -- its test becomes the
+             * variable it is on -- and neither lemma matches afterwards. *)
+            val pruned0 = prune_all_conv (rhs (concl acc))
+            val exposed = expose_all_conv (rhs (concl pruned0))
             val pruned = prune_all_conv (rhs (concl exposed))
-            val next = Thm.TRANS acc (Thm.TRANS exposed pruned)
+            val next =
+              Thm.TRANS acc (Thm.TRANS pruned0 (Thm.TRANS exposed pruned))
           in
             if aconv (rhs (concl next)) (rhs (concl acc)) then next
             else go next (k - 1)
@@ -901,8 +935,10 @@ fun value_conv v redex =
      in
        Thm.TRANS pushed (Thm.TRANS recd out)
      end
-     handle Conv.UNCHANGED => Conv.QCONV (Conv.DEPTH_CONV beta_conv) redex)
-  | HOL_ERR _ => Conv.QCONV (Conv.DEPTH_CONV beta_conv) redex
+     handle Conv.UNCHANGED =>
+       Conv.QCONV (Conv.DEPTH_CONV beta_conv) redex)
+  | HOL_ERR _ =>
+      Conv.QCONV (Conv.DEPTH_CONV beta_conv) redex
 
 (*---------------------------------------------------------------------------
    The compute rule for `eval_yul_block`.
@@ -953,6 +989,7 @@ fun block_conv_raw tm =
                 val redex = rhs (concl clause)
                 val (_, stmt) = dest_comb redex
                 val ev = computeLib.CBV_CONV (cs ()) stmt
+                val ev_form = rhs (concl ev)
                 val taken = Thm.TRANS clause
                               (Conv.RAND_CONV (fn _ => ev) redex)
                 val redex' = rhs (concl taken)
@@ -960,11 +997,9 @@ fun block_conv_raw tm =
                 (* A case at the top is the split; anything else is the
                  * statement's own result, and the binding is taken with
                  * whatever the result is (see `value_conv` above). *)
-                let val ev_form = rhs (concl ev) in
                 if is_yul_case ev_form
                 then Thm.TRANS taken (split_conv redex')
                 else Thm.TRANS taken (value_conv ev_form redex')
-                end
               end
           end
   end
