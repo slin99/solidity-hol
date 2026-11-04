@@ -97,7 +97,10 @@ Definition coerce_def:
       ElabType src =>
         if src = ty then SOME (([], a), n)
         else (case (src, ty) of
-          (LocatedT loc element, LocatedT MemoryLoc element') =>
+          (LocatedT CalldataLoc (ArrayT e l), LocatedT MemoryLoc element') =>
+            if element' ≠ ArrayT e l then NONE
+            else SOME (bind_value n ty (CopyToMemoryOperation a), n + 1)
+        | (LocatedT loc element, LocatedT MemoryLoc element') =>
             if loc = MemoryLoc ∨ element ≠ element' ∨ ¬byte_sequence_type element then NONE
             else let (ls, len) = bind_value n (UintT 256) (ArrayLengthOperation a) in
                  let (ds, dst) = bind_value (n + 1) ty (AllocateMemoryOperation element len) in
@@ -456,9 +459,9 @@ Definition elab_expr_def:
            SOME ((ss, ref, ElabType (LocatedT loc BytesT)), n1) =>
              let (rs, a) = bind_value n1 (UintT 256) (ArrayLengthOperation ref) in
              SOME ((ss ++ rs, a, ElabType (UintT 256)), n1 + 1)
-         | SOME ((ss, ref, ElabType (LocatedT MemoryLoc (ArrayT _ (SOME length)))), n1) =>
+         | SOME ((ss, ref, ElabType (LocatedT _ (ArrayT _ (SOME length)))), n1) =>
              SOME ((ss, ConstantAtom (IntegerValue (&length)), ElabType (UintT 256)), n1)
-         | SOME ((ss, ref, ElabType (LocatedT MemoryLoc (ArrayT _ NONE))), n1) =>
+         | SOME ((ss, ref, ElabType (LocatedT _ (ArrayT _ NONE))), n1) =>
              let (rs, a) = bind_value n1 (UintT 256) (ArrayLengthOperation ref) in
              SOME ((ss ++ rs, a, ElabType (UintT 256)), n1 + 1)
          | _ =>
@@ -503,15 +506,15 @@ Definition elab_expr_def:
                        SOME ((ss ++ saved ++ si ++ cs ++ rs, a, ElabType (FixedBytesT 1)), n3 + 1)
                    | NONE => NONE)
               | NONE => NONE)
-         | SOME ((ss, ref, ElabType (LocatedT MemoryLoc (ArrayT element length))), n1) =>
-             let ty = LocatedT MemoryLoc (ArrayT element length) in
+         | SOME ((ss, ref, ElabType (LocatedT loc (ArrayT element length))), n1) =>
+             let ty = LocatedT loc (ArrayT element length) in
              let (captured, next) = snapshot n1 ref (ElabType ty) in
              let (saved, ref') = captured in
              (case elab_expr ctx next index of
                 SOME ((si, i, vt), n2) =>
                   (case coerce n2 (UintT 256) i vt of
                      SOME ((cs, i'), n3) =>
-                       let ety = memory_element_type element in
+                       let ety = element_type loc element in
                        let (rs, a) = bind_value n3 ety (ArrayIndexOperation ref' i') in
                        SOME ((ss ++ saved ++ si ++ cs ++ rs, a, ElabType ety), n3 + 1)
                    | NONE => NONE)
@@ -917,7 +920,7 @@ Definition elab_expr_def:
                     (case coerce n2 (UintT 256) i vt of
                        SOME ((cs, i'), n3) =>
                          SOME ((ss ++ saved ++ si ++ cs,
-                                ElementDestination ref' i' (memory_element_type element)), n3)
+                                ElementDestination ref' i' (element_type MemoryLoc element)), n3)
                      | NONE => NONE)
                 | NONE => NONE)
            | _ =>

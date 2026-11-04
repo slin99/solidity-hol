@@ -91,6 +91,7 @@ Definition run_entry_def:
         (case encoded_runtime_values r.state (MAP SND p.return_bindings) vs of
            INL data => ContractReturned data w'
          | INR (PanicCompletion code) => ContractReverted (panic_data code) w
+         | INR (RevertCompletion data) => ContractReverted data w
          | INR _ => ContractInvalid "unencodable return values")
     | FrameRevert data w' => ContractReverted data w'
     | FrameHalt data w' =>

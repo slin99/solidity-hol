@@ -231,19 +231,41 @@ Definition memory_object_type_def:
   (memory_object_type ty ⇔ byte_sequence_type ty)
 End
 
-(* Located values: byte sequences in any location, and memory arrays. *)
+(* Whether an encoding of the type has a fixed size, with no offsets. *)
+Definition static_object_type_def:
+  (static_object_type (ArrayT element (SOME n)) ⇔ static_object_type element) ∧
+  (static_object_type (ArrayT element NONE) ⇔ F) ∧
+  (static_object_type ty ⇔ ¬byte_sequence_type ty)
+End
+
+(* What a calldata reference denotes: a byte sequence, or an array read in
+ * place from its ABI encoding. A fixed-size array's elements are static, so
+ * every dynamic object is reached through an offset and a length. *)
+Definition calldata_object_type_def:
+  (calldata_object_type (ArrayT element NONE) ⇔
+    (is_elementary_type element ∧ valid_type_shape element) ∨
+    calldata_object_type element) ∧
+  (calldata_object_type (ArrayT element (SOME n)) ⇔
+    memory_object_type (ArrayT element (SOME n)) ∧ static_object_type element) ∧
+  (calldata_object_type ty ⇔ byte_sequence_type ty)
+End
+
+(* Located values: byte sequences in any location, and memory and calldata
+ * arrays. *)
 Definition located_value_type_def:
   located_value_type ty ⇔
     case ty of
       LocatedT MemoryLoc element => memory_object_type element
+    | LocatedT CalldataLoc element => calldata_object_type element
     | LocatedT loc element => byte_sequence_type element
     | _ => F
 End
 
-(* The type of an element of a memory array: a value, or a memory pointer. *)
-Definition memory_element_type_def:
-  memory_element_type element =
-    if is_elementary_type element then element else LocatedT MemoryLoc element
+(* The type of an element of a memory or calldata array: a value, or a
+ * reference in the array's location. *)
+Definition element_type_def:
+  element_type loc element =
+    if is_elementary_type element then element else LocatedT loc element
 End
 
 (* ABI values contain scalars, byte sequences in memory/calldata and memory
@@ -335,7 +357,7 @@ Definition value_has_type_def:
     (case storage_bytes ty of SOME b => offset + b ≤ 32 | NONE => offset = 0)) ∧
   (value_has_type env (SingleType (LocatedT CalldataLoc ty))
      (ReferenceValue (CalldataReference _ _ rty)) ⇔
-    ty = rty ∧ byte_sequence_type ty) ∧
+    ty = rty ∧ calldata_object_type ty) ∧
   (value_has_type env (SingleType (LocatedT MemoryLoc ty))
      (ReferenceValue (MemoryReference _ 0 rty)) ⇔
     ty = rty ∧ memory_object_type ty) ∧
@@ -389,7 +411,7 @@ End
 Definition wf_abi_atom_def:
   wf_abi_atom env ctx ty a ⇔
     case ty of
-      LocatedT MemoryLoc (ArrayT _ _) => wf_core_atom env ctx (SingleType ty) a
+      LocatedT _ (ArrayT _ _) => wf_core_atom env ctx (SingleType ty) a
     | LocatedT _ element =>
         byte_sequence_type element ∧
         (case a of
@@ -655,10 +677,16 @@ Definition wf_core_operation_def:
     case a of
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
-           SOME (SingleType (LocatedT MemoryLoc (ArrayT element length))) =>
-             memory_object_type (ArrayT element length) ∧
-             annotation = SingleType (memory_element_type element)
+           SOME (SingleType (LocatedT loc (ArrayT element length))) =>
+             located_value_type (LocatedT loc (ArrayT element length)) ∧
+             annotation = SingleType (element_type loc element)
          | _ => F)
+    | _ => F) ∧
+  (wf_core_operation env ctx annotation (CopyToMemoryOperation a) ⇔
+    case (a, annotation) of
+      (BoundAtom x, SingleType (LocatedT MemoryLoc ty)) =>
+        ALOOKUP ctx.bindings x = SOME (SingleType (LocatedT CalldataLoc ty)) ∧
+        calldata_object_type ty ∧ (case ty of ArrayT _ _ => T | _ => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (ArrayLengthOperation a) ⇔
     annotation = SingleType (UintT 256) ∧
@@ -667,7 +695,7 @@ Definition wf_core_operation_def:
         (case ALOOKUP ctx.bindings x of
            SOME (SingleType (LocatedT loc ty)) =>
              byte_sequence_type ty ∨
-             (loc = MemoryLoc ∧ case ty of ArrayT _ _ => T | _ => F)
+             (loc ≠ StorageLoc ∧ case ty of ArrayT _ _ => T | _ => F)
          | SOME (ReferenceType (ArrayT _ NONE)) => T
          | _ => F)
     | _ => F) ∧
@@ -988,7 +1016,7 @@ Definition check_core_stmts_def:
                 memory_object_type (ArrayT element length) ∧
                 wf_core_atom env ctx (SingleType (UintT 256)) i
              then check_core_stmts env
-                    (capture_core_target t (memory_element_type element) ctx) ss
+                    (capture_core_target t (element_type MemoryLoc element) ctx) ss
              else NONE
          | _ => NONE)
     | _ => NONE) ∧

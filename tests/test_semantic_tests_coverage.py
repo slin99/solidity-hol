@@ -244,7 +244,7 @@ class ClassifyTests(unittest.TestCase):
     def test_elaboration_rejection_and_admission(self) -> None:
         arrays = unit([function(4, [{
             "nodeType": "VariableDeclarationStatement", "id": 5,
-            "declarations": [variable(6, type_identifier="t_array$_t_uint256_$dyn_calldata_ptr")],
+            "declarations": [variable(6, type_identifier="t_array$_t_struct$_S_$3_memory_ptr_$dyn_memory_ptr")],
         }])])
         rejected = coverage.classify(
             "s.sol", coverage.scan({"s.sol": arrays}),
@@ -466,7 +466,7 @@ class ClassifyTests(unittest.TestCase):
             self.assertIn(32, coverage.scan({"t.sol": ast}))
 
     def test_external_calls_in_overridden_functions_leave_signatures_unchecked(self) -> None:
-        parameter = dict(variable(83, type_identifier="t_array$_t_uint256_$dyn_calldata_ptr"),
+        parameter = dict(variable(83, type_identifier="t_struct$_S_$3_calldata_ptr"),
                          storageLocation="calldata")
         target = dict(function(81, []), implemented=False, visibility="external",
                       parameters={"nodeType": "ParameterList", "id": 82, "parameters": [parameter]},
@@ -608,11 +608,14 @@ class ClassifyTests(unittest.TestCase):
         by_id = {n["id"]: n for n in coverage.nodes(ast)}
         self.assertIn(struct, coverage.imported({"t.sol": ast}, by_id))
 
-    def test_memory_arrays_of_elementary_leaves_decode(self) -> None:
+    def test_memory_and_calldata_arrays_of_elementary_leaves_decode(self) -> None:
         self.assertTrue(coverage.decodes("t_array$_t_uint8_$dyn_memory_ptr"))
         self.assertTrue(coverage.decodes("t_array$_t_array$_t_bytes_memory_ptr_$2_memory_ptr_$dyn_memory_ptr"))
         self.assertFalse(coverage.decodes("t_array$_t_uint8_$0_memory_ptr"))
-        self.assertFalse(coverage.decodes("t_array$_t_uint8_$dyn_calldata_ptr"))
+        self.assertTrue(coverage.decodes("t_array$_t_uint8_$dyn_calldata_ptr"))
+        self.assertTrue(coverage.decodes("t_array$_t_array$_t_uint8_$2_calldata_ptr_$dyn_calldata_ptr"))
+        self.assertFalse(coverage.decodes("t_array$_t_array$_t_uint8_$dyn_calldata_ptr_$2_calldata_ptr"))
+        self.assertFalse(coverage.decodes("t_array$_t_bytes_calldata_ptr_$2_calldata_ptr"))
         self.assertFalse(coverage.decodes("t_array$_t_struct$_S_$3_memory_ptr_$dyn_memory_ptr"))
 
     def test_tuples_are_classified_by_a_component(self) -> None:

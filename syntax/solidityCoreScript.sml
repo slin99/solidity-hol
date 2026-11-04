@@ -108,7 +108,8 @@ End
 (* DefaultMemoryOperation ty: the default value of a memory variable of type
  * ty. AllocateMemoryOperation ty n: new ty(n), a zeroed byte sequence or
  * dynamic array of length n. ArrayIndexOperation a i: element i of the memory
- * array a.
+ * or calldata array a. CopyToMemoryOperation a: a new memory copy of the
+ * calldata array a.
  * ExternalCallOperation kind selector parameter_types return_types target
  * value arguments: a high-level call I(target).f{value: value}(arguments) of
  * the function with that selector and those ABI types.
@@ -127,6 +128,7 @@ Datatype:
   | AllocateMemoryOperation sol_type core_atom
   | ByteIndexOperation core_atom core_atom
   | ArrayIndexOperation core_atom core_atom
+  | CopyToMemoryOperation core_atom
   | ArrayLengthOperation core_atom
   | ArrayPushOperation core_atom (core_atom option)
   | ArrayPopOperation core_atom
