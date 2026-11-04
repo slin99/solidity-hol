@@ -528,10 +528,28 @@ QED
 (* The same, with the outcome written out as the record it is.  A compute set
  * that has the helper unfolded hands the branch the record itself, and the test
  * on it is still unreduced when the rule runs, so this is the shape the rule
- * sees for a call inside a converted body.  The machine is any function of the
- * case's own variable and machine, since a step that has already written to the
- * machine -- `yul_pop_result`, over a branch's block -- puts one there. *)
+ * sees for a call inside a converted body. *)
 Theorem yul_expr_result_CASE_invoke_abrupt_lit:
+  ∀n fns name args m b1 T.
+    yul_expr_result_CASE (invoke_yul n fns name args m) b1
+      (λc m'. if (<|completion := c; machine := m'|>).completion = YulNormal
+              then T c m' else <|completion := c; machine := m'|>) =
+    yul_expr_result_CASE (invoke_yul n fns name args m) b1
+      (λc m'. <|completion := c; machine := m'|>)
+Proof
+  rw [] >> Cases_on `invoke_yul n fns name args m` >>
+  imp_res_tac invoke_yul_abrupt_neq_normal >>
+  gvs [yul_expr_result_case_def]
+QED
+
+(* The same again with the machine a function of the case's own variable and
+ * machine rather than the branch's machine as it stands, which is what a branch
+ * that has already written to it -- `yul_pop_result`, over a branch's block --
+ * hands the record.  The test reads the completion alone, so the machine is
+ * irrelevant to it and the branch is still the record itself; `_lit` is this
+ * with `M` the second projection, kept as the statement a caller that has the
+ * branch's own machine can rewrite with directly. *)
+Theorem yul_expr_result_CASE_invoke_abrupt_record:
   ∀n fns name args m b1 T M.
     yul_expr_result_CASE (invoke_yul n fns name args m) b1
       (λc m'. if (<|completion := c; machine := M c m'|>).completion = YulNormal

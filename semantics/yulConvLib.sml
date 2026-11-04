@@ -497,8 +497,16 @@ fun push_all_conv tm =
  * takes cannot be the body's continuation at all -- a call that ends abruptly
  * never ends `YulNormal`, so the continuation's test `c = YulNormal` is false
  * there and the branch is the result itself.  That is what keeps the rest of
- * the body out of that branch, and a body of k calls at 2^k times the size. *)
-val prune_lemmas = [yul_expr_result_CASE_invoke_abrupt_lit,
+ * the body out of that branch, and a body of k calls at 2^k times the size.
+ *
+ * Three shapes, one per form the test takes when the rule reaches it:
+ * `_record`, where the branch is the result record with the machine a function
+ * of the case's own variables; `_cond`, where the field read has already taken
+ * the record apart and the test is the completion variable alone; and
+ * `_abrupt`, where the branch is `yul_abrupt`.  `_lit` is `_record` with the
+ * machine the branch's own, and is not listed: `_record` matches that shape
+ * too, through the higher-order match below. *)
+val prune_lemmas = [yul_expr_result_CASE_invoke_abrupt_record,
                     yul_expr_result_CASE_invoke_abrupt_cond,
                     yul_expr_result_CASE_invoke_abrupt]
 
@@ -511,8 +519,8 @@ val prune_lemmas = [yul_expr_result_CASE_invoke_abrupt_lit,
  * to bound variables to whatever the body is, so it takes the rule's
  * `T` to be an abstraction and beta-reduces what it puts back. *)
 fun prune_call_conv tm =
-  (* Both lemmas are stated on a case whose scrutinee is the call itself, and
-   * neither matches anything else, so the shape is checked here rather than
+  (* Every lemma above is stated on a case whose scrutinee is the call itself,
+   * and none matches anything else, so the shape is checked here rather than
    * left to the rewrite match: the prune is run at every node below, and
    * almost every node of a form is not a case at all. *)
   if not (is_yul_case tm) then raise Conv.UNCHANGED
@@ -534,10 +542,13 @@ fun prune_call_conv tm =
 
 (* The prune at every node, not only at the top.  A call's case is surfaced by
  * the taking apart into a branch or a test as often as to the top, and the same
- * pass reads fields (`reduce_field`), which rewrites the conditional both
- * lemmas are stated on -- the test `(<|completion := c; …|>).completion =
- * YulNormal` becomes `c = YulNormal` -- so a prune that reaches a node after
- * the field read has nothing left to match. *)
+ * pass reads fields (`reduce_field`), which rewrites the conditional
+ * `_record`/`_lit` are stated on -- the test `(<|completion := c; …|>).completion
+ * = YulNormal` becomes `c = YulNormal` -- into the one `_cond` is stated on.
+ * `prune_lemmas` carries a lemma per shape the test can be in, so a case is
+ * dropped wherever the taking apart has left it; the pass below is what reaches
+ * it there, and this one, between the push and the taking apart, is what drops
+ * it before the taking apart has carried the branch it sits in any further. *)
 fun prune_deep_conv tm = Conv.QCONV (Conv.DEPTH_CONV prune_call_conv) tm
 
 fun prune_all_conv tm =
@@ -715,7 +726,7 @@ fun result_conv v tm =
  *
  * Neither reduction is one of the evaluator's own clauses: the branches'
  * scrutinees are the case's bound variables, so no compute rule reaches them,
- * and they are what the two `_invoke_abrupt` lemmas do for a call by hand. *)
+ * and they are what the `_invoke_abrupt` lemmas do for a call by hand. *)
 
 (* The function the block's clause hands on is the rest of the body, and an
  * applied function moves inside a decision its argument makes: `f (if g then a
@@ -846,7 +857,8 @@ fun step_conv tm =
       then binding_step_conv tm
       else if is_const_named "bool" "COND" c
       then (after_binding (decide_conv tm) handle Conv.UNCHANGED =>
-              after_binding (Conv.REWR_CONV yul_expr_result_CASE_cond tm))
+              after_binding (Conv.REWR_CONV yul_expr_result_CASE_cond tm
+                               handle HOL_ERR _ => raise Conv.UNCHANGED))
       else if is_const_named "yulEvaluator" "yul_pop_result" c
       then pop_result_conv tm
       else reduce_field tm
@@ -871,9 +883,11 @@ fun expose_all_conv tm =
           let
             val pushed = push_all_conv (rhs (concl acc))
             (* The prune sits between the push and the taking apart: the push
-             * is what surfaces a call's case into a branch or a test, and the
-             * taking apart reads fields (`reduce_field`), which rewrites the
-             * conditional the prune's lemmas are stated on. *)
+             * is what surfaces a call's case into a branch or a test, and it is
+             * dropped there, before the taking apart reads the fields around it
+             * (`reduce_field`) and carries the branch it sits in any further.
+             * The shapes are all in `prune_lemmas`, so a case the field read
+             * rewrites is still reached by the pass after this one. *)
             val pruned = prune_deep_conv (rhs (concl pushed))
             val red = expose_conv (rhs (concl pruned))
             val next =
@@ -892,22 +906,24 @@ fun expose_all_conv tm =
  * prune is what drops -- and a branch the prune drops may leave a case that
  * has just become reducible behind it.  Doing all the taking apart first and
  * the pruning after leaves every call case the push surfaced unpruned, and a
- * body of k calls at 2^k times the size. *)
+ * body of k calls at 2^k times the size.
+ *
+ * The prune is not run before the taking apart here.  It was, while the only
+ * lemmas that dropped a call's dead branch were stated on the branch written as
+ * the record, which the taking apart's own field read rewrites -- `_cond` is
+ * stated on the completion variable that read leaves, so the shape is reachable
+ * after it as well, and the earlier prune was measured to make no difference:
+ * without it the acceptance suite's line is identical, 105 of the 137 functions
+ * inside the bound with the largest form `fun_shifts` at 176 309 nodes. *)
 fun settle_conv tm =
   let
     fun go acc 0 = acc
       | go acc k =
           let
-            (* The prune is tried before the taking apart as well as after it:
-             * taking the form apart reads the fields of the result the clause
-             * left (`reduce_field` below), which rewrites the conditional the
-             * prune's own lemmas are stated on -- its test becomes the
-             * variable it is on -- and neither lemma matches afterwards. *)
-            val pruned0 = prune_all_conv (rhs (concl acc))
-            val exposed = expose_all_conv (rhs (concl pruned0))
+            val exposed = expose_all_conv (rhs (concl acc))
             val pruned = prune_all_conv (rhs (concl exposed))
             val next =
-              Thm.TRANS acc (Thm.TRANS pruned0 (Thm.TRANS exposed pruned))
+              Thm.TRANS acc (Thm.TRANS exposed pruned)
           in
             if aconv (rhs (concl next)) (rhs (concl acc)) then next
             else go next (k - 1)
