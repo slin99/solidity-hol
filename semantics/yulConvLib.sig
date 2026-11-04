@@ -36,6 +36,24 @@ sig
    *)
   val yul_invoke_conv : thm list -> conv
 
+  (* A loop is folded like a call: the form of a body with a loop in it stops
+   * at the loop, as `eval_yul_loop n fns cond post body m` over the machine
+   * it is entered with, and the rest of the body is left as an unevaluated
+   * block over the machine the loop returns.
+   *
+   * `yul_loop_conv defs` takes one iteration of such a loop: the loop's clause,
+   * then the condition, the body and the post evaluated as in yul_invoke_conv,
+   * with the next iteration left as `eval_yul_loop (n - 1) ...`.  The fuel may
+   * be symbolic; written `SUC k`, the zero tests on it reduce, so the body's
+   * calls are left as folded `invoke_yul k ...` and the next iteration is at
+   * `k`.
+   *
+   * `yul_eval_conv defs fns` evaluates any other term over the table fns the
+   * same way, such as the rest of a body over the machine a loop returned.
+   *)
+  val yul_loop_conv : thm list -> conv
+  val yul_eval_conv : thm list -> term -> conv
+
   (* What the conversion's own rules are still standing on in a term, as
    * (theory, name) constants: the block, the statements and the expressions it
    * takes apart, the builtin dispatch, the frame and memory operations it

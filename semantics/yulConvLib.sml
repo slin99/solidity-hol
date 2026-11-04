@@ -59,6 +59,7 @@ val (flookup_tm, mk_flookup, dest_flookup, is_flookup) =
 
 val invoke_c = prim_mk_const {Thy = "yulEvaluator", Name = "invoke_yul"}
 val eval_yul_block_c = prim_mk_const {Thy = "yulEvaluator", Name = "eval_yul_block"}
+val eval_yul_loop_c = prim_mk_const {Thy = "yulEvaluator", Name = "eval_yul_loop"}
 val eval_yul_builtin_c =
   prim_mk_const {Thy = "yulEvaluator", Name = "eval_yul_builtin"}
 (* The scope readers.  They are definitions of their own, outside the recursive
@@ -126,6 +127,11 @@ in
 end
 
 fun contains_invoke tm = #1 (scan tm)
+
+(* Whether a machine is one a folded loop handed on.  The rest of a body after
+ * a loop is left unevaluated over it: every scope read would be undecided, and
+ * the client substitutes the loop's outcome and evaluates the rest then. *)
+fun contains_loop tm = can (find_term (same_const eval_yul_loop_c)) tm
 
 (*---------------------------------------------------------------------------
    One scope lookup.
@@ -273,11 +279,21 @@ val clauses = CONJUNCTS eval_yul_block_def
 val invoke_clause =
   valOf (List.find (fn th => is_invoke (head_const_of th)) clauses)
 
-(* What the compute set runs: everything but the call, which is folded, and the
- * block, whose clauses the rule below replaces with a split on the statement's
- * result. *)
+fun is_loop_clause th = same_const eval_yul_loop_c (head_const_of th)
+
+(* A loop is folded the way a call is: its run is a recursion with no closed
+ * form, so the evaluation stops at it and a client proves it by induction on
+ * the fuel, one iteration at a time (`yul_loop_conv`).  Unfolded,
+ * it repeats the body once per unit of fuel with every iteration's guard
+ * undecided, which no fuel big enough for the body's calls survives. *)
+val loop_clause = valOf (List.find is_loop_clause clauses)
+
+(* What the compute set runs: everything but the call and the loop, which are
+ * folded, and the block, whose clauses the rule below replaces with a split on
+ * the statement's result. *)
 val evaluator_clauses =
   List.filter (fn th => not (is_invoke (head_const_of th)) andalso
+                        not (is_loop_clause th) andalso
                         not (is_block_clause th)) clauses
 
 (* What the equations reach on the way: the record readers, which build a
@@ -1294,6 +1310,8 @@ fun block_conv_raw tm =
       case Lib.total listSyntax.dest_list (List.nth (tms, 2)) of
         NONE => raise Conv.UNCHANGED
       | SOME (ss, _) =>
+        if not (null ss) andalso contains_loop (List.nth (tms, 3))
+        then raise Conv.UNCHANGED else
           let
             val clause = Conv.REWR_CONV
                            (if null ss then block_nil_clause
@@ -1380,7 +1398,9 @@ val eval_compset =
                (computeLib.copy (computeLib.the_compset ()))
                eval_yul_block_c)
             invoke_c
-        val cs1 = computeLib.scrub_const cs0 eval_yul_builtin_c
+        val cs1 = computeLib.scrub_const
+                    (computeLib.scrub_const cs0 eval_yul_builtin_c)
+                    eval_yul_loop_c
         val cs2 = wordsLib.add_words_compset true cs1
         val cs3 =
           computeLib.scrub_const
@@ -1389,6 +1409,12 @@ val eval_compset =
         val cs4 = computeLib.add_conv (word_exp_c, 2, word_exp_conv) cs3
         val cs4 = computeLib.add_conv (with_zero_c, 3, with_zero_conv)
                     (computeLib.scrub_const cs4 with_zero_c)
+        (* A fuel written as a successor, which is how a caller states a run at
+         * a fuel it does not know but knows is not zero: a call's test `n = 0`
+         * and its decrement `n - 1` reduce on it, so the call is the folded
+         * `invoke_yul` the rules that settle a call are stated on. *)
+        val cs4 = computeLib.add_thms
+                    [arithmeticTheory.SUC_SUB1, numTheory.NOT_SUC] cs4
       in
         computeLib.add_conv (flookup_tm, 2, flookup_conv) cs4
       end
@@ -1696,6 +1722,35 @@ fun yul_invoke_conv defs tm =
     Thm.TRANS step res
   end
 
+(* The same evaluation on any term over a table: one iteration of a loop after
+ * the loop's clause, or the rest of a body a loop handed its machine to.  No
+ * binding is added, since no call is unfolded here. *)
+fun yul_eval_conv defs fns tm =
+  let
+    val cs = body_set (computeLib.copy eval_compset) defs fns
+    val () = set_block_compset cs (clause_set cs)
+    val () = set_frame_defs defs
+  in
+    computeLib.CBV_CONV cs tm
+  end
+
+(* One iteration of a loop: its clause, then the evaluation above on what the
+ * clause gives, which stops again at the next iteration's loop. *)
+fun yul_loop_conv defs tm =
+  let
+    val (f, tms) = strip_comb tm
+    val fns =
+      case tms of
+        [_, fns, _, _, _, _] =>
+          if same_const eval_yul_loop_c f then fns
+          else raise ERR "yulConvLib.yul_loop_conv"
+                         "expected an eval_yul_loop application"
+      | _ => raise ERR "yulConvLib.yul_loop_conv"
+                       "expected an eval_yul_loop application"
+  in
+    (Conv.REWR_CONV loop_clause THENC yul_eval_conv defs fns) tm
+  end
+
 (*---------------------------------------------------------------------------
    Is a form the conversion produced closed?
  ---------------------------------------------------------------------------*)
@@ -1711,7 +1766,8 @@ fun yul_invoke_conv defs tm =
  * what a caller reads to see which. *)
 val conversion_consts =
   List.map (const_key o dest_thy_const)
-    (flookup_tm :: invoke_c :: eval_yul_builtin_c :: yul_lookup_c ::
+    (flookup_tm :: invoke_c :: eval_yul_loop_c :: eval_yul_builtin_c ::
+     yul_lookup_c ::
      yul_lookup_names_c ::
      (clause_heads (evaluator_clauses @ helper_defs @ block_def_clauses) @
       List.map (fn (c, _, _) => c) guarded_helpers))
@@ -1733,7 +1789,7 @@ fun residues tm =
  * stopped early, which a test says by requiring every residue of a form to be
  * one of these. *)
 val permitted_residues =
-  ("yulEvaluator", "invoke_yul")
+  ("yulEvaluator", "invoke_yul") :: ("yulEvaluator", "eval_yul_loop")
   :: List.map (const_key o dest_thy_const)
        (flookup_tm :: yul_lookup_c :: yul_lookup_names_c ::
         (clause_heads helper_defs @
