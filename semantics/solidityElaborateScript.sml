@@ -421,7 +421,9 @@ Definition coerce_values_def:
 End
 
 (* Keep byte-sequence references live until ABI serialization. Unlike an
- * internal memory parameter, an encoded argument needs no location copy. *)
+ * internal memory parameter, an encoded byte sequence needs no location copy;
+ * a calldata array is copied to memory, which validates its elements as the
+ * encoder does. *)
 Definition coerce_abi_values_def:
   (coerce_abi_values n [] [] = SOME ([], [], n)) ∧
   (coerce_abi_values n (ty :: tys) ((a, vt) :: vs) =
@@ -429,7 +431,7 @@ Definition coerce_abi_values_def:
       (LocatedT _ element, ElabType (LocatedT _ actual)) =>
         if element = actual ∧ (byte_sequence_type element ∨ vt = ElabType ty)
         then SOME (([], a), n)
-        else NONE
+        else coerce n ty a vt
     | (LocatedT _ element, ElabBytesLiteral) =>
         if byte_sequence_type element then SOME (([], a), n) else NONE
     | _ => coerce n ty a vt in
