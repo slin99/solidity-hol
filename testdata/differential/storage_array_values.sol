@@ -261,12 +261,23 @@ contract StorageArrayValues {
                 mstore(0, keccak256(0, 0x20))
                 word := sload(keccak256(0, 0x20))
             }
-        } else {
+        } else if (which == 2) {
             assembly {
                 mstore(0, blobs.slot)
                 sstore(keccak256(0, 0x20), 1)
             }
             blobs = new bytes[](1);
+        } else {
+            blobs = new bytes[](1);
+            assembly {
+                mstore(0, blobs.slot)
+                sstore(keccak256(0, 0x20), 0x100)
+            }
+            blobs = new bytes[](0);
+            assembly {
+                mstore(0, blobs.slot)
+                word := sload(keccak256(0, 0x20))
+            }
         }
         return word;
     }
