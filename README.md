@@ -59,7 +59,9 @@ memory holding only the free memory pointer: it reads and writes back the
 value-type locals it names, sees state variables' slots and offsets, may write
 only the scratch space unless it halts, may read only memory it wrote itself
 (not the free memory pointer, which the compiler may raise to keep variables in
-memory), and `return`/`stop` end the frame with a `HaltCompletion`. Memory/calldata execution and a memory model shared with
+memory), and `return`/`stop` end the frame with a `HaltCompletion`. Memory
+expansion gas is not modelled, so a halting block's write far past the used
+memory succeeds where the EVM runs out of gas. Memory/calldata execution and a memory model shared with
 inline assembly remain unresolved. High-level external calls run the callee on Verifereum
 through `externalCall`, a provisional adapter with a fixed gas budget and a
 fresh callee frame; creation is not connected yet. Core well-formedness alone does not rule out `InvalidCompletion`:
