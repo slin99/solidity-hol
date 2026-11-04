@@ -125,8 +125,15 @@ metadata. Inheritance needs two of these annotations (the differential fixture
 function's `baseFunctions`. Base-constructor specifiers on constructors
 (`constructors.sol`) and invocations of non-virtual modifiers
 (`modifiers.sol`) are resolved through their `referencedDeclaration`; virtual
-and overriding modifiers and `super` calls are rejected, and their resolution
-requirements remain to be established.
+and overriding modifiers are rejected. A `super.f(...)` call
+(`super_calls.sol`) runs what the compiler's lookup finds in the deployed
+contract's linearization: the first function after the caller's contract with
+the name and parameter types of the declaration the call's
+`referencedDeclaration` names. That declaration is resolved from the caller's
+own contract, so in a diamond it can differ from the function that runs. The
+overridden functions super calls reach are checked and elaborated, but not
+dispatched. `super` in a modifier body, an initializer or a base-constructor
+argument is rejected.
 
 ## Storage layout
 
@@ -294,7 +301,7 @@ import error, not a partial semantic result.
 ## Open reconnaissance work
 
 Before fixing a complete core AST, extend the corpus to cover control flow,
-tuple holes, modifiers, `super`, external calls, creation,
+tuple holes, modifiers, external calls, creation,
 try/catch, errors, fallback/receive, dynamic and memory/calldata arrays, bytes/string, function
 pointers, transient storage, and custom storage layout bases. The first HOL type
 theory can begin from the normalized types already observed, provided unsupported

@@ -401,6 +401,48 @@ class ClassifyTests(unittest.TestCase):
         del derived["baseFunctions"]
         self.assertIn(6, coverage.scan({"t.sol": ast}))
 
+    def test_super_calls_reach_overridden_functions(self) -> None:
+        def super_call(node_id, declaration):
+            base = {"nodeType": "Identifier", "id": node_id + 2, "name": "super",
+                    "referencedDeclaration": -24,
+                    "typeDescriptions": {"typeIdentifier": "t_type$_t_super$_C$2_$"}}
+            callee = {"nodeType": "MemberAccess", "id": node_id + 1, "memberName": "f",
+                      "referencedDeclaration": declaration, "expression": base,
+                      "typeDescriptions": {"typeIdentifier": "t_function_internal_pure$__$returns$__$"}}
+            return {"nodeType": "ExpressionStatement", "id": node_id + 3, "expression": {
+                "nodeType": "FunctionCall", "id": node_id, "kind": "functionCall", "names": [], "tryCall": False,
+                "arguments": [], "expression": callee,
+                "typeDescriptions": {"typeIdentifier": "t_tuple$__$"}}}
+
+        coerced = {"nodeType": "VariableDeclarationStatement", "id": 6,
+                   "declarations": [variable(7, type_identifier="t_bytes4")],
+                   "initialValue": {"nodeType": "Literal", "id": 8, "kind": "string", "value": "abcd",
+                                    "typeDescriptions": {"typeIdentifier": "t_stringliteral_abcd"}}}
+        base = {"nodeType": "ContractDefinition", "id": 50, "contractKind": "contract",
+                "abstract": False, "baseContracts": [], "linearizedBaseContracts": [50],
+                "nodes": [dict(function(60, [coerced]), virtual=True, name="f", scope=50)]}
+        derived = dict(function(70, [super_call(90, 60)]), baseFunctions=[60], name="f", scope=2)
+        ast = unit([derived])
+        ast["nodes"][0]["linearizedBaseContracts"] = [2, 50]
+        ast["nodes"].insert(0, base)
+        found = coverage.scan({"t.sol": ast})
+        self.assertEqual(found, {6: [coverage.Blocker("VariableDeclarationStatement",
+                                                      "string literals as fixed-size bytes",
+                                                      "elaboration")]})
+        derived["body"]["statements"] = []
+        self.assertEqual(coverage.scan({"t.sol": ast}), {})
+        modifier = {"nodeType": "ModifierDefinition", "id": 80, "name": "m", "virtual": False,
+                    "parameters": {"nodeType": "ParameterList", "id": 81, "parameters": []},
+                    "body": {"nodeType": "Block", "id": 82, "statements": [
+                        super_call(95, 60), {"nodeType": "PlaceholderStatement", "id": 84}]}}
+        invocation = {"nodeType": "ModifierInvocation", "id": 85, "kind": "modifierInvocation",
+                      "arguments": [],
+                      "modifierName": {"nodeType": "IdentifierPath", "id": 86, "name": "m",
+                                       "referencedDeclaration": 80}}
+        ast["nodes"][1]["nodes"] = [modifier, dict(derived, modifiers=[invocation])]
+        self.assertIn(coverage.Blocker("Identifier", "super calls", "import"),
+                      coverage.scan({"t.sol": ast})[97])
+
     def test_base_arguments_tuple_returns_and_calls_with_options_are_coerced(self) -> None:
         def string(node_id):
             return {"nodeType": "Literal", "id": node_id, "kind": "string", "value": "abcd",

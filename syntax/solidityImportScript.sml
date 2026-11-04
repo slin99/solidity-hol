@@ -4,7 +4,7 @@
  * solidityImportLib builds these terms from a compiler artifact and fails
  * closed: an unknown nodeType, a missing required field, or a feature outside
  * the subset (public, constant, immutable or initialised state variables,
- * modifiers, super, named or try calls, built-ins other than
+ * modifiers, super other than in calls, named or try calls, built-ins other than
  * require, assert, revert, members of msg, tx and block, address(this) and
  * type(T).max and .min for integer types T, literal subdenominations,
  * inline arrays, type names other than elementary types, arrays and mappings, ...)
@@ -50,7 +50,10 @@
  *    continue occur in loop bodies, conditions are boolean;
  *  - functions, receive and fallback are pure, view, nonpayable or payable,
  *    and only non-pure ones refer to state variables; functions a more
- *    derived one overrides are not checked, since nothing reaches them;
+ *    derived one overrides are checked only when a super call reaches
+ *    them, since nothing else does; a super call runs the first function
+ *    with the name and parameter types of the one it names in a base after
+ *    the caller's, and modifier bodies make none;
  *    contracts are scoped by the unit, functions by a base of their contract,
  *    structs by a base or a source unit of the compilation;
  *  - operators belong to the admitted set and every other expression
@@ -113,6 +116,8 @@ End
  * Assignment: operator, left and right hand sides.
  * TupleExpression: components, NONE for a hole.
  * FunctionCall (kind functionCall): callee, positional arguments.
+ * SuperCall (super.f(args)): the declaration of f the compiler resolved
+ * from the caller's contract, positional arguments.
  * FunctionCall (kind typeConversion): target type name, argument.
  * Environment: a member of msg, tx or block, or address(this).
  * New (new T(n)): the type name of T, the length.
@@ -157,6 +162,7 @@ Datatype:
   | SrcIndexAccess node_info src_expr src_expr string
   | SrcTupleExpression node_info (src_expr option list) string
   | SrcFunctionCall node_info src_expr (src_expr list) string
+  | SrcSuperCall node_info num (src_expr list) string
   | SrcBuiltinCall node_info node_info src_builtin (src_expr option)
       (src_expr option) string
   | SrcTypeConversion node_info src_type_name src_expr string
@@ -218,7 +224,8 @@ End
  * public function. The base functions are the declarations it overrides,
  * directly or through other overridden declarations (the closure of the
  * compiler's baseFunctions). The modifiers are the modifier invocations, in
- * order: the modifier's id and the arguments.
+ * order: the modifier's id and the arguments. The super calls are the
+ * declarations the body's super calls name.
  *)
 Datatype:
   src_function = <|
@@ -235,6 +242,7 @@ Datatype:
     fn_returns_id : num;
     fn_returns : src_variable list;
     fn_modifiers : (num # src_expr list) list;
+    fn_super_calls : num list;
     fn_body : src_stmt
   |>
 End
@@ -839,6 +847,7 @@ Definition expr_ids_def:
     info.node_id :: component_ids cs) ∧
   (expr_ids (SrcFunctionCall info f args _) =
     info.node_id :: expr_ids f ++ exprs_ids args) ∧
+  (expr_ids (SrcSuperCall info _ args _) = info.node_id :: exprs_ids args) ∧
   (expr_ids (SrcBuiltinCall info callee _ condition message _) =
     [info.node_id; callee.node_id] ++
     (case condition of NONE => [] | SOME c => expr_ids c) ++
@@ -946,13 +955,15 @@ Definition assignment_operator_ok_def:
     op = "<<=" ∨ op = ">>=" ∨ op = "&=" ∨ op = "|=" ∨ op = "^="
 End
 
-(* Functions callable by id; variables in lexical scope; the contract's state
+(* Functions callable by id, and those super calls run, by the declaration
+ * they name; variables in lexical scope; the contract's state
  * variables, if the function may read them; the innermost scope node; the
  * enclosing function's return list; whether in a loop body.
  *)
 Datatype:
   import_env = <|
     functions : (num # src_function) list;
+    supers : (num # src_function) list;
     structs : src_struct list;
     events : (num # src_event) list;
     variables : (num # sol_type) list;
@@ -1122,6 +1133,18 @@ Definition check_expr_def:
          | _ => NONE)
     | NONE => NONE) ∧
   (check_expr env (SrcFunctionCall _ _ _ _) = NONE) ∧
+  (check_expr env (SrcSuperCall _ r args tid) =
+    case ALOOKUP env.supers r of
+      SOME callee =>
+        (case (all_some (MAP variable_type callee.fn_returns),
+               decode_type_identifier tid) of
+           (SOME tys, SOME vt) =>
+             if LENGTH args = LENGTH callee.fn_parameters ∧
+                callee.fn_visibility ≠ "external" ∧ check_exprs env args ∧
+                vt = call_value_type tys
+             then SOME vt else NONE
+         | _ => NONE)
+    | NONE => NONE) ∧
   (check_expr env (SrcBuiltinCall _ _ builtin condition message tid) =
     if builtin_shape builtin condition message ∧ tid = "t_tuple$__$" ∧
        (case condition of NONE => T
@@ -1361,6 +1384,70 @@ Definition live_functions_def:
                 (ALOOKUP table f.fn_info.node_id) = SOME f.fn_info.node_id) fs
 End
 
+(* The bases after x in the linearization, where a super call from a
+ * function of x looks. *)
+Definition later_bases_def:
+  (later_bases x [] = []) ∧
+  (later_bases x (y :: ys) = if x = y then ys else later_bases x ys)
+End
+
+(* The function a super call naming d runs: the first function, along the
+ * bases given, with d's name and parameter types (the compiler's lookup,
+ * from the deployed contract's linearization). *)
+Definition super_target_def:
+  (super_target fs (d : src_function) [] = NONE) ∧
+  (super_target fs d (x :: xs) =
+    case FILTER (λ(g : src_function).
+                   g.fn_scope = x ∧ g.fn_kind = "function" ∧
+                   g.fn_name = d.fn_name ∧
+                   MAP variable_type g.fn_parameters =
+                   MAP variable_type d.fn_parameters) fs of
+      g :: _ => SOME g
+    | [] => super_target fs d xs)
+End
+
+(* The functions the super calls of f run, by the declaration each names. *)
+Definition super_table_def:
+  super_table fs bases (f : src_function) =
+    all_some (MAP (λr.
+      case FILTER (λ(d : src_function). d.fn_info.node_id = r) fs of
+        d :: _ => OPTION_MAP (λg. (r, g))
+                    (super_target fs d (later_bases f.fn_scope bases))
+      | [] => NONE) f.fn_super_calls)
+End
+
+Definition super_targets_def:
+  (super_targets fs bases [] = []) ∧
+  (super_targets fs bases (f :: rs) =
+    (case super_table fs bases f of SOME t => MAP SND t | NONE => []) ++
+    super_targets fs bases rs)
+End
+
+Definition add_functions_def:
+  (add_functions rs [] = rs) ∧
+  (add_functions rs ((g : src_function) :: gs) =
+    add_functions
+      (if MEM g.fn_info.node_id (MAP (λ(f : src_function). f.fn_info.node_id) rs)
+       then rs else rs ++ [g]) gs)
+End
+
+(* The functions calls reach: the live ones and those super calls reach from
+ * them. Each round adds a function or ends, so as many rounds as there are
+ * functions suffice. *)
+Definition reached_functions_def:
+  (reached_functions fs bases 0 rs = rs) ∧
+  (reached_functions fs bases (SUC k) rs =
+    let rs' = add_functions rs (super_targets fs bases rs) in
+    if LENGTH rs' = LENGTH rs then rs else reached_functions fs bases k rs')
+End
+
+(* The functions checked and elaborated: the live ones, then those only super
+ * calls reach, which the dispatch table does not list. *)
+Definition checked_functions_def:
+  checked_functions fs bases =
+    reached_functions fs bases (LENGTH fs) (live_functions fs)
+End
+
 (* The constructor a base declares, if any. *)
 Definition contract_constructor_def:
   (contract_constructor x [] = NONE) ∧
@@ -1408,8 +1495,9 @@ Definition check_modifier_def:
               m.modifier_body) of
           (SOME variables, SrcBlock info ss) =>
             IS_SOME (check_stmts
-              (env with <| variables := variables; scope := info.node_id;
-                           returns_id := 0; in_modifier := T |>) ss)
+              (env with <| supers := []; variables := variables;
+                           scope := info.node_id; returns_id := 0;
+                           in_modifier := T |>) ss)
         | _ => F
 End
 
@@ -1419,7 +1507,7 @@ End
  * of the return variables, which the elaborator does not model.
  *)
 Definition check_function_def:
-  check_function structs events functions modifiers state bases (f : src_function) ⇔
+  check_function structs events functions fs modifiers state bases (f : src_function) ⇔
     MEM f.fn_scope bases ∧
     (f.fn_kind = "function" ∨ f.fn_kind = "receive" ∨ f.fn_kind = "fallback" ∨
      f.fn_kind = "constructor") ∧
@@ -1429,7 +1517,11 @@ Definition check_function_def:
           all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_returns),
           f.fn_body) of
       (SOME ps, SOME rs, SrcBlock info ss) =>
-        let env = <| functions := functions; structs := structs; events := events;
+        (case super_table fs bases f of
+           NONE => F
+         | SOME supers =>
+        let env = <| functions := functions; supers := supers;
+                     structs := structs; events := events;
                      variables := ps ++ rs;
                      state := if f.fn_mutability = "pure" then [] else state;
                      locations := state;
@@ -1437,7 +1529,7 @@ Definition check_function_def:
                      in_loop := F; in_modifier := F |> in
         EVERY (check_modifier modifiers (env with variables := ps))
           f.fn_modifiers ∧
-        IS_SOME (check_stmts env ss)
+        IS_SOME (check_stmts env ss))
     | _ => F
 End
 
@@ -1480,7 +1572,7 @@ End
  * constructor of the base giving them. *)
 Definition initializer_env_def:
   initializer_env (c : src_contract) state =
-    <| functions := call_table c.contract_functions;
+    <| functions := call_table c.contract_functions; supers := [];
        structs := c.contract_structs;
        events := MAP (λe. (e.event_info.node_id, e)) c.contract_events;
        variables := []; state := state; locations := state; scope := c.contract_info.node_id;
@@ -1501,10 +1593,10 @@ Definition check_contract_def:
       SOME state =>
         EVERY (check_function c.contract_structs
                  (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
-                 (call_table c.contract_functions)
+                 (call_table c.contract_functions) c.contract_functions
                  (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
                  state c.contract_bases)
-          (live_functions c.contract_functions) ∧
+          (checked_functions c.contract_functions c.contract_bases) ∧
         EVERY (λ(x, e). IS_SOME (ALOOKUP state x) ∧
                         IS_SOME (check_expr (initializer_env c state) e))
           c.contract_initializers ∧
@@ -1641,6 +1733,13 @@ val () = cv_auto_trans call_table_def;
 val () = cv_auto_trans contract_constructor_def;
 val () = cv_auto_trans constructor_parameters_def;
 val () = cv_auto_trans live_functions_def;
+val () = cv_auto_trans later_bases_def;
+val () = cv_auto_trans super_target_def;
+val () = cv_auto_trans super_table_def;
+val () = cv_auto_trans super_targets_def;
+val () = cv_auto_trans add_functions_def;
+val () = cv_auto_trans reached_functions_def;
+val () = cv_auto_trans checked_functions_def;
 val () = cv_auto_trans storage_layout_ok_def;
 val () = cv_auto_trans check_modifier_def;
 val () = cv_auto_trans check_function_def;
