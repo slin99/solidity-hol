@@ -563,13 +563,16 @@ Definition implicitly_convertible_def:
 End
 
 (* The arrays an assignment copies into a storage array of type dst: the
- * same shape, a fixed-size dimension also into a dynamic one, with leaves
- * implicitly convertible. *)
+ * same shape, a fixed-size dimension also into a dynamic one or a longer
+ * fixed-size one, with leaves implicitly convertible. *)
 Definition storage_copy_type_def:
   storage_copy_type src dst ⇔
     case (src, dst) of
       (ArrayT e l, ArrayT e' l') =>
-        (l' = NONE ∨ l' = l) ∧ storage_copy_type e e'
+        (case (l, l') of
+           (_, NONE) => T
+         | (SOME n, SOME m) => n ≤ m
+         | _ => F) ∧ storage_copy_type e e'
     | (ArrayT _ _, _) => F
     | (_, ArrayT _ _) => F
     | _ => implicitly_convertible src dst

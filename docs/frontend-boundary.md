@@ -197,8 +197,9 @@ return values and external call arguments. An assignment from another
 array reads the source first, clears the destination (shrinking it, nested
 data included) and writes the elements, converting them as the compiler's
 implicit conversions allow (`uint8[]` to `uint16[]`, `bytes8` to `bytes10`,
-static to dynamic); a self-assignment returns at once, as the compiler's copy
-does. Reading the whole source before clearing the destination differs from the
+static to dynamic, a static array into a longer static one, whose remaining
+elements are cleared); a self-assignment returns at once, as the compiler's
+copy does. Reading the whole source before clearing the destination differs from the
 compiler, which resizes the destination and then copies slot by slot, only
 under storage forged with inline assembly: two distinct arrays that alias
 through a wrapped-around length, or which failure comes first when a corrupt
