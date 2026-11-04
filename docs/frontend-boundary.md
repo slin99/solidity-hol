@@ -190,6 +190,16 @@ through their offsets with the pinned compiler's checks, which revert, and an
 index out of range panics with `0x32`. Elementary elements are validated when
 read, so a dirty element reverts when it is indexed, copied or re-encoded.
 
+Storage arrays of the same element types are values too: they copy to memory
+(reading every element, panic `0x41` past the allocation limit), are assigned
+from memory, calldata or another storage array, and are ABI-encoded in place as
+return values and external call arguments. An assignment reads the source
+first, clears the destination (shrinking it, nested data included) and writes
+the elements, converting them as the compiler's implicit conversions allow
+(`uint8[]` to `uint16[]`, `bytes8` to `bytes10`, static to dynamic), so
+self-assignment needs no special case. `T storage` locals of arrays are still
+rejected.
+
 Struct declarations may be file-level or contract members. User-defined type
 names and field accesses retain declaration IDs; field ownership and expression
 types are checked against the declared struct. Struct fields use solc's storage

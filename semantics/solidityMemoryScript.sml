@@ -250,6 +250,47 @@ Definition byte_contents_def:
       | NONE => INR (InvalidCompletion "bad byte sequence reference")
 End
 
+(* The value of a memory array, as a copy reads it: the tuple of its
+ * elements, byte sequences as their bytes. *)
+Definition memory_array_value_def:
+  (memory_array_value (st : source_state) ty v =
+    case (ty, v) of
+      (ArrayT element length, ReferenceValue (MemoryReference (HeapId id) 0 rty)) =>
+        if rty ≠ ty then INR (InvalidCompletion "bad memory array reference")
+        else if id = 0 then
+          (if length = NONE then INL (TupleValue [])
+           else INR (InvalidCompletion "bad memory array reference"))
+        else
+          (case FLOOKUP st.heap id of
+             SOME obj =>
+               if obj.object_type ≠ ty then
+                 INR (InvalidCompletion "bad memory array reference")
+               else
+                 (case memory_array_cells st element obj 0 obj.object_length of
+                    INL vs => INL (TupleValue vs)
+                  | INR c => INR c)
+           | NONE => INR (InvalidCompletion "missing memory object"))
+    | (_, ReferenceValue r) =>
+        (case byte_contents st r of
+           INL bs => INL (ScalarValue (BytesValue bs))
+         | INR c => INR c)
+    | (_, ScalarValue _) => INL v
+    | _ => INR (InvalidCompletion "bad memory array value")) ∧
+  (memory_array_cells st element obj i n =
+    if n = 0 then INL [] else
+    case memory_array_value st element (memory_cell obj element i) of
+      INR c => INR c
+    | INL v =>
+        case memory_array_cells st element obj (i + 1) (n - 1) of
+          INL vs => INL (v :: vs)
+        | INR c => INR c)
+Termination
+  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
+    INL (st, ty, v) => (sol_type_size ty, 0)
+  | INR (st, element, obj, i, n) => (sol_type_size element, n + 1))’ >>
+  rw[solidityASTTheory.sol_type_size_def]
+End
+
 Definition copy_byte_contents_def:
   copy_byte_contents src dst st =
     case dst of
@@ -342,5 +383,21 @@ val () = cv_auto_trans memory_array_element_def;
 val () = cv_auto_trans write_memory_element_def;
 
 val () = cv_auto_trans byte_contents_def;
+val memory_array_value_pre_def = cv_auto_trans_pre_rec
+  "memory_array_value_pre memory_array_cells_pre" memory_array_value_def (
+  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
+    INL (st, ty, v) => (cv_size ty, 0)
+  | INR (st, element, obj, i, n) => (cv_size element, cv$c2n n + 1))’ >>
+  cv_termination_tac
+);
+
+Theorem memory_array_value_pre[cv_pre]:
+  (∀st ty v. memory_array_value_pre st ty v) ∧
+  (∀st element obj i n. memory_array_cells_pre st element obj i n)
+Proof
+  ho_match_mp_tac memory_array_value_ind >> rpt strip_tac >>
+  simp[Once memory_array_value_pre_def] >> rw[] >> gvs[]
+QED
+
 val () = cv_auto_trans copy_byte_contents_def;
 val () = cv_auto_trans convert_byte_reference_def;

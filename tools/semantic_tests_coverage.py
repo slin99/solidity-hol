@@ -566,7 +566,7 @@ def decodes_component(type_identifier: str) -> bool:
     """Whether tuple_component admits a component's type identifier."""
     return (VALUE_TYPE.fullmatch(type_identifier) is not None
             or BYTE_SEQUENCE.fullmatch(type_identifier) is not None
-            or located_array(type_identifier)
+            or located_array(type_identifier) or storage_array_value(type_identifier)
             or type_identifier.startswith("t_stringliteral_"))
 
 
@@ -575,6 +575,7 @@ def decodes(type_identifier: str) -> bool:
     value type or byte sequence, a literal type, or a tuple of those."""
     if (VALUE_TYPE.fullmatch(type_identifier) or RATIONAL.fullmatch(type_identifier)
             or BYTE_SEQUENCE.fullmatch(type_identifier) or located_array(type_identifier)
+            or storage_array_value(type_identifier)
             or type_identifier.startswith("t_stringliteral_")):
         return True
     if type_identifier == "t_tuple$__$":
@@ -637,6 +638,21 @@ def storage_type_supported(type_identifier: str) -> bool:
         return scalar.end() if scalar is not None else None
 
     return parse_at(0) == len(type_identifier)
+
+
+def storage_array_value(type_identifier: str) -> bool:
+    """Whether decode_located_array admits a storage array value's type
+    identifier, as an assignment or tuple component has (no `_ptr`)."""
+    return type_identifier.endswith("_storage") and storage_array(type_identifier)
+
+
+def storage_array(type_identifier: str) -> bool:
+    """Whether a storage array is read as a value (memory_object_type): an
+    array, possibly nested, of elementary value types or byte sequences."""
+    base = type_identifier.removesuffix("_ptr")
+    return (base.startswith("t_array$_") and base.endswith("_storage")
+            and "t_mapping$_" not in base and "t_struct$_" not in base
+            and storage_type_supported(base))
 
 
 UNARY_OPERATORS = {"++", "--", "-", "!", "~"}
@@ -1189,7 +1205,8 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
         if (node["nodeType"] in {"Identifier", "IndexAccess", "MemberAccess"}
                 and node.get("typeDescriptions", {}).get("typeIdentifier", "").startswith(("t_mapping$_", "t_array$_", "t_struct$_"))
                 and node["id"] not in storage_bases
-                and not located_array(node["typeDescriptions"]["typeIdentifier"])):
+                and not located_array(node["typeDescriptions"]["typeIdentifier"])
+                and not storage_array(node["typeDescriptions"]["typeIdentifier"])):
             tid = node["typeDescriptions"]["typeIdentifier"]
             feature = ("array values" if tid.startswith("t_array$_")
                        else "mapping values" if tid.startswith("t_mapping$_")

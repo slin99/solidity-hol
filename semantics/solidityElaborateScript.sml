@@ -97,8 +97,8 @@ Definition coerce_def:
       ElabType src =>
         if src = ty then SOME (([], a), n)
         else (case (src, ty) of
-          (LocatedT CalldataLoc (ArrayT e l), LocatedT MemoryLoc element') =>
-            if element' ≠ ArrayT e l then NONE
+          (LocatedT loc (ArrayT e l), LocatedT MemoryLoc element') =>
+            if loc = MemoryLoc ∨ element' ≠ ArrayT e l then NONE
             else SOME (bind_value n ty (CopyToMemoryOperation a), n + 1)
         | (LocatedT loc element, LocatedT MemoryLoc element') =>
             if loc = MemoryLoc ∨ element ≠ element' ∨ ¬byte_sequence_type element then NONE
@@ -168,8 +168,9 @@ Definition variable_destination_def:
          | NONE => NONE)
 End
 
+(* Reading a storage byte sequence or array yields a reference to it. *)
 Definition read_value_type_def:
-  read_value_type ty = if byte_sequence_type ty then LocatedT StorageLoc ty else ty
+  read_value_type ty = if memory_object_type ty then LocatedT StorageLoc ty else ty
 End
 
 Definition read_destination_def:
@@ -189,18 +190,19 @@ Definition write_destination_def:
     [CaptureValueStmt (AstId t) ref; WriteScalarStmt (AstId t) ty a])
 End
 
-(* Assigning a storage object copies contents; binding a local storage pointer
- * continues to use the ordinary alias-preserving local assignment. *)
+(* Assigning a storage byte sequence or array copies contents, converting an
+ * array's elements as storage_copy_type allows; binding a local storage
+ * pointer continues to use the ordinary alias-preserving local assignment. *)
 Definition plain_assignment_def:
   plain_assignment n target a vt =
     case target of
       ReferenceDestination ref ty =>
-        if byte_sequence_type ty then
+        if memory_object_type ty then
           let source =
             case vt of
               ElabBytesLiteral => coerce n (LocatedT MemoryLoc ty) a vt
             | ElabType (LocatedT loc element) =>
-                if element = ty then SOME (([], a), n) else NONE
+                if storage_copy_type element ty then SOME (([], a), n) else NONE
             | _ => NONE in
           (case source of
              NONE => NONE
@@ -420,18 +422,15 @@ Definition coerce_values_def:
   (coerce_values n _ _ = NONE)
 End
 
-(* Keep byte-sequence and calldata array references live until ABI
- * serialization: unlike an internal memory parameter, an encoded argument
- * needs no location copy, and the encoder reads it where it is. *)
+(* Keep byte-sequence and array references live until ABI serialization:
+ * unlike an internal memory parameter, an encoded argument needs no location
+ * copy, and the encoder reads it where it is, in memory, calldata or storage. *)
 Definition coerce_abi_values_def:
   (coerce_abi_values n [] [] = SOME ([], [], n)) ∧
   (coerce_abi_values n (ty :: tys) ((a, vt) :: vs) =
     let converted = case (ty, vt) of
       (LocatedT _ element, ElabType (LocatedT _ actual)) =>
-        if element = actual ∧
-           (byte_sequence_type element ∨ vt = ElabType ty ∨
-            vt = ElabType (LocatedT CalldataLoc actual))
-        then SOME (([], a), n)
+        if element = actual then SOME (([], a), n)
         else NONE
     | (LocatedT _ element, ElabBytesLiteral) =>
         if byte_sequence_type element then SOME (([], a), n) else NONE
@@ -452,7 +451,7 @@ Definition elab_expr_def:
         (case variable_destination ctx n x of
            SOME ((ls, target), n1) =>
              let ty = destination_type target in
-             if ¬(is_elementary_type ty ∨ byte_sequence_type ty ∨ located_value_type ty) then NONE else
+             if ¬(is_elementary_type ty ∨ memory_object_type ty ∨ located_value_type ty) then NONE else
              let (read, n2) = read_destination n1 target in
              let (ss, a) = read in
              SOME ((ls ++ ss, a, ElabType (read_value_type ty)), n2)
@@ -490,7 +489,7 @@ Definition elab_expr_def:
     | SrcMemberAccess _ _ _ _ =>
         (case elab_location ctx n expression of
            SOME ((ss, ref, ty), n1) =>
-             if is_elementary_type ty ∨ byte_sequence_type ty then
+             if is_elementary_type ty ∨ memory_object_type ty then
                let (rs, a) = bind_value n1 (read_value_type ty) (ReadOperation ty ref) in
                SOME ((ss ++ rs, a, ElabType (read_value_type ty)), n1 + 1)
              else NONE
@@ -525,7 +524,7 @@ Definition elab_expr_def:
          | _ =>
            case elab_location ctx n expression of
              SOME ((ss, ref, ty), n1) =>
-               if is_elementary_type ty ∨ byte_sequence_type ty then
+               if is_elementary_type ty ∨ memory_object_type ty then
                  let (rs, a) = bind_value n1 (read_value_type ty) (ReadOperation ty ref) in
                  SOME ((ss ++ rs, a, ElabType (read_value_type ty)), n1 + 1)
                else NONE
