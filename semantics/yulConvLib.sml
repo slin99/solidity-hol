@@ -68,10 +68,6 @@ val eval_yul_builtin_c =
 val yul_lookup_c = prim_mk_const {Thy = "yulEvaluator", Name = "yul_lookup"}
 val yul_lookup_names_c =
   prim_mk_const {Thy = "yulEvaluator", Name = "yul_lookup_names"}
-(* The shaping function the frame rule below hands a callee's result names to,
- * and the marker that says a case has already been settled with it. *)
-val yul_take_shape_c =
-  prim_mk_const {Thy = "yulEvaluatorProps", Name = "yul_take_shape"}
 
 
 (* The constants are recognised by theory and name, reading the record
@@ -424,6 +420,118 @@ fun guarded_unfold eqs tm =
  * to see. *)
 fun is_yul_case tm =
   is_const_named "yulEvaluator" "yul_expr_result_CASE" (head_const tm)
+
+(*---------------------------------------------------------------------------
+   Recognising a call's case the frame rule has already settled.
+
+   The frame rule below rewrites a case on a folded call, `case (invoke_yul …)
+   of … | EvalValues vals m' => CONT`, to the same case with the branch's own
+   two variables read through what the call answered: `vals` through
+   `yul_take_shape fd.function_results vals`, and `m'` through the caller's own
+   scope stack, `m' with scopes := m.scopes`.
+
+   Both halves of what the rule wrote are gone from the term by the time a
+   later pass sees it: the conversion's own set unfolds the shaping
+   (`yul_take_shape_def` is in it, deliberately: the spine is what the clause's
+   arity test and the block's binding read), and the scope stack is the record
+   package's own update, which the set reduces through.  A marker that looks
+   for the rule's own output therefore finds nothing after the round that took
+   the shaping out, and the rule fires again on every later pass over the same
+   case: a sweep counts 1 283 applications for `fun_bitwise`, whose body has
+   five calls, and 24 303 for `checked_exp_signed`.
+
+   What a later application writes is the term that was already there -- the
+   branch's values have been read by then, and the machine is up to
+   `(m with scopes := s) with scopes := s` -- so what the re-fires cost is the
+   rule's instantiation and the re-reduction of the clause, not a larger form.
+   The forms of all 137 conversions are what they were before this marker, and
+   the 133 the suite covers convert faster: 31.9s against 64.9s at the old one
+   (one run each, the same set, the same box), `checked_exp_unsigned` alone at
+   1.0s against 3.8.
+
+   So the marker is not what the rule wrote but where it wrote it, and it is a
+   question about the branch's own variables rather than about the rule's
+   terms.  A case is settled when neither variable the rule rebinds appears
+   anywhere the rule's output would not have put it: the values variable
+   outside the argument `HD`, `TL` and `yul_take_shape` are handed, and the
+   machine variable outside the record the frame's own update writes.  Before
+   the rule runs the branch is the caller's continuation, and a continuation
+   uses the machine it was handed as a whole -- `yul_normal m'`,
+   `yul_bind names vs m'`, `eval_yul_block n fns ss m'` -- so an occurrence
+   outside those is what an unsettled case has and a settled one has not.
+
+   The search is over the branch alone.  A case nested in the continuation --
+   settled earlier in the same bottom-up pass -- carries a marker of its own,
+   over a variable of its own, and must not stop this one.
+ ---------------------------------------------------------------------------*)
+
+(* The constant the frame's update is written with, off the frame's own
+ * equation rather than by name: the record package generates the name, and it
+ * is not one to spell here. *)
+val frame_update_key =
+  const_key (dest_thy_const
+    (fst (strip_comb
+            (lhs (concl (SPEC_ALL yul_machine_scopes_update_self))))))
+
+val vals_shape_keys = [("list", "HD"), ("list", "TL"),
+                       ("yulEvaluatorProps", "yul_take_shape")]
+
+(* The number of arguments a term of this type takes. *)
+fun args_of_ty ty =
+  case Lib.total Type.dom_rng ty of
+    SOME (_, r) => 1 + args_of_ty r
+  | NONE => 0
+
+(* Whether `t` is one of `keys` applied to its own last argument -- `HD vals`,
+ * `TL vals`, `yul_take_shape fd.function_results vals`, and the frame's own
+ * `m' with scopes := m.scopes`, whose record is the last argument of the
+ * update's constant.  Those are the positions the rule's output puts each
+ * variable in, and the only places the search below may stop at: the argument
+ * there is the rule's own construction, and descending into it would find the
+ * marker the rule wrote rather than a use of what the call answered.
+ *
+ * Everywhere else is searched, the arguments in front of the last one
+ * included, because those are the rule's own data -- `yul_take_shape`'s
+ * callee results, the expression an update writes -- and a use of either
+ * variable among them is not one the rule put there.  `yul_pop_scope` is what
+ * makes that case real: the set reduces the caller's `yul_pop_scope m'` to
+ * `m' with scopes := TL m'.scopes`, whose record is the machine variable but
+ * whose expression is too, and the rule is what that branch is waiting for. *)
+fun keyed t keys =
+  let val (f, args) = strip_comb t in
+    List.exists (fn (thy, nm) => is_const_named thy nm f) keys andalso
+    List.length args = args_of_ty (type_of f)
+  end
+
+(* Whether `v` occurs in `tm` at a place `keys` does not account for. *)
+fun escapes keys v tm =
+  if aconv tm v then true
+  else
+    case dest_term tm of
+      Term.LAMB (bv, b) => not (aconv bv v) andalso escapes keys v b
+    | Term.COMB (x, y) =>
+        escapes keys v x orelse (not (keyed tm keys) andalso escapes keys v y)
+    | _ => false
+
+(* The frame rule's own guard, off the term alone: a case on a folded call
+ * whose values branch the rule has not settled.  It is the whole of what the
+ * rule tests before it does any work, so a case it has settled -- the case
+ * every pass after the first sees -- costs the search below and nothing
+ * else. *)
+fun frame_pending tm =
+  is_yul_case tm andalso
+  (let val cargs = snd (strip_comb tm) in
+     List.length cargs = 3 andalso is_invoke (head_const (hd cargs)) andalso
+     is_abs (List.nth (cargs, 1)) andalso
+     (let val (vals_v, rest) = dest_abs (List.nth (cargs, 1)) in
+        is_abs rest andalso
+        (let val (mach_v, body) = dest_abs rest in
+           escapes vals_shape_keys vals_v body orelse
+           escapes [frame_update_key] mach_v body
+         end)
+      end)
+   end
+   handle HOL_ERR _ => false)
 
 (* How often a variable is used, to see whether a substitution would copy. *)
 fun occurrences v tm =
@@ -1439,36 +1547,13 @@ fun arity_thm tm =
     else raise Conv.UNCHANGED
   end
 
-(* The rule's own output, recognised so that it is not rewritten again.  The
- * branch it builds applies `yul_take_shape` to the callee's result names and to
- * the branch's *own* values variable, and one of those in the branch means this
- * case is settled.  Sought in the branch alone, not in the whole node: a case
- * nested in the continuation -- settled earlier in the same bottom-up pass --
- * carries one of its own, over a variable of its own, and must not stop this
- * one. *)
-fun shape_call (v : term) (tm : term) =
-  (is_comb tm andalso is_comb (rator tm) andalso
-   same_const yul_take_shape_c (fst (dest_comb (rator tm))) andalso
-   aconv (rand tm) v)
-  orelse
-  (case dest_term tm of
-     Term.LAMB (_, b) => shape_call v b
-   | Term.COMB (x, y) => shape_call v x orelse shape_call v y
-   | _ => false)
-
 fun frame_conv_raw tm =
-  if not (is_yul_case tm) then raise Conv.UNCHANGED else
+  if not (frame_pending tm) then raise Conv.UNCHANGED else
   let
     val cargs = snd (strip_comb tm)
-    val _ = if List.length cargs = 3 then () else raise Conv.UNCHANGED
     val inv = List.nth (cargs, 0)
     val b1 = List.nth (cargs, 1)
     val b2 = List.nth (cargs, 2)
-    val _ = if is_invoke (head_const inv) andalso is_abs b1
-            then () else raise Conv.UNCHANGED
-    val (vals_v, rest) = dest_abs b1
-    val (mach_v, body) = dest_abs rest
-    val _ = if shape_call vals_v body then raise Conv.UNCHANGED else ()
     val itms = snd (strip_comb inv)
     val _ = if List.length itms = 5 then () else raise Conv.UNCHANGED
     val n_tm = List.nth (itms, 0)

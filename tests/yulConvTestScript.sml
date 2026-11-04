@@ -163,12 +163,11 @@ val () =
           ^ Int.toString (List.length loop_free) ^ " loop-free, looping: "
           ^ String.concatWith ", " (List.map (fn (nm, _, _) => nm) looping))
 
-(* The functions the bound below is not asked of yet: those whose form comes out
- * at two hundred thousand nodes or more.  The number in each line is that
- * function's form as this suite measures it -- every node of the term, which is
- * the `size` this test prints below -- and every line here names a body that
- * calls: the external wrappers above all, and the four forms in the millions
- * at the top of the list.
+(* The functions the bound below is not asked of yet.  A line carries one of
+ * three things about why it is there: the form this suite measures -- every node
+ * of the term, which is the `size` this test prints below; a claim that no form
+ * comes back inside a clock; or the conversion times that keep it out although
+ * its form is inside the bound.  Every line here names a body that calls.
  *
  * A call's answer is what leaves a decision standing -- the arity the callee
  * answered with, and the frame it came back on -- and a decision the conversion
@@ -192,23 +191,36 @@ val () =
  * conversion does, so they are re-measured with the list rather than read as an
  * invariant.  The line is enforced from one side only: the suite fails if a
  * form it does cover reaches 200k nodes, so a covered function that grew past
- * the line cannot pass unnoticed, but nothing here converts the 25 named for
- * their size -- a name whose form has dropped under the line keeps its line
- * until the list is re-measured, which happens with each change to the
- * conversion.  Converting them here as well would put the large forms' cost --
- * seconds each, and tens of millions of nodes at the far end
- * (`checked_exp_signed`'s) -- on every run of this suite.  The gap is no longer
- * narrow: twenty-one of the twenty-five now come out under the line, between
- * 20 719 and 169 905 nodes, and are named for their time -- the four still over
- * it are `fun_signedLess` and `fun_boolLogic` at about a million nodes,
- * `checked_exp_unsigned` at 230 276, and `checked_exp_signed`, which does not
- * come back inside the sweep's clock.  What is left is 112 of the 137, whose
- * largest form is 79 639 nodes and whose slowest the check below bounds at five
- * seconds.
+ * the line cannot pass unnoticed, but nothing here converts the six named here
+ * -- a name whose form has dropped under the line keeps its line until the list
+ * is re-measured, which happens with each change to the conversion.  Converting
+ * them here as well would put their cost -- seconds each, and 64 540 998 nodes
+ * at the far end (`checked_exp_signed`'s) -- on every run of this suite.
+ *
+ * The list was re-measured against this conversion, and it names two reasons
+ * now.  Four are over the line: `fun_signedLess` (1 083 107) and
+ * `fun_boolLogic` (1 008 029) at about a million nodes, `checked_exp_unsigned`
+ * at 230 276, and `checked_exp_signed`, which does not come back inside the
+ * clock below.  Two more are under the line and inside the clock here, and are
+ * left out for the margin the build machine needs: of the twenty-one the sweep
+ * had named for their time, nineteen come out between 20 719 and 129 739 nodes
+ * inside a second and are measured with the rest, while `fun_bitwise`'s
+ * conversion takes 7.2s there against 2.4s on the box these numbers were
+ * measured on -- past the five-second bound, and the first CI run on this
+ * change is what said so -- and `fun_widen`, next behind it at 1.1s here, is
+ * left out with it rather than run near a bound the machine it runs on cannot
+ * hold to.  That machine runs these conversions about three times slower than
+ * the box they were timed on (91.3s against 32.5s for the same set), so the
+ * bound below is worth keeping to forms whose time there is well inside it.
+ * What is left is 131 of the 137, whose largest form is 129 739 nodes and whose
+ * slowest the check below bounds at five seconds.
  *
  * One line says `no_form`: `checked_exp_signed` is the body a sweep of the
  * corpus did not see come back inside a clock of a minute, and it is the form
- * at the top of the list -- the one this suite had never seen.  A line that
+ * at the top of the list -- the one this suite had never seen.  It is not a
+ * body that never returns: given a clock of a minute and a half it comes back
+ * with 64 540 998 nodes in about 74s, which is the far end of the line the four
+ * are over rather than a conversion that has stopped.  A line that
  * claims no form is converted under a clock by the check below, so that the
  * claim is asked of the conversion rather than taken on trust: the run has to
  * abort, and one that comes back fails the check by name, with the size of its
@@ -234,27 +246,8 @@ val excluded = [
   ("fun_boolLogic", "form of 1008029 nodes"),
   ("checked_exp_unsigned", "form of 230276 nodes"),
   ("fun_signedLess", "form of 1083107 nodes"),
-  ("fun_bitwise", "form of 169905 nodes"),
-  ("checked_div_int8", "form of 129739 nodes"),
-  ("external_fun_bitwise", "form of 29559 nodes"),
-  ("fun_widen", "form of 146873 nodes"),
-  ("external_fun_widen", "form of 26489 nodes"),
-  ("external_fun_signedLess", "form of 26459 nodes"),
-  ("external_fun_boolLogic", "form of 26379 nodes"),
-  ("external_fun_truncate", "form of 24189 nodes"),
-  ("external_fun_reinterpret", "form of 23949 nodes"),
-  ("external_fun_shifts", "form of 23829 nodes"),
-  ("external_fun_wrappingMultiply", "form of 22119 nodes"),
-  ("external_fun_wrappingDivide", "form of 21919 nodes"),
-  ("external_fun_signedShift", "form of 21899 nodes"),
-  ("external_fun_signedPower", "form of 21719 nodes"),
-  ("external_fun_remainder", "form of 21419 nodes"),
-  ("external_fun_wrappingSubtract", "form of 21819 nodes"),
-  ("external_fun_multiply", "form of 21319 nodes"),
-  ("external_fun_divide", "form of 21119 nodes"),
-  ("external_fun_wrappingPower", "form of 21519 nodes"),
-  ("external_fun_subtract", "form of 21019 nodes"),
-  ("external_fun_power", "form of 20719 nodes"),
+  ("fun_bitwise", "conversion of 7.2s on the build machine"),
+  ("fun_widen", "conversion of 1.1s here, three times that on the build machine"),
 ]
 
 val excluded_names = List.map #1 excluded
@@ -516,10 +509,10 @@ QED
  * The shapes that have left this class as the conversion has improved all nest
  * a call inside another call's arguments: `wrapping_exp_uint8_uint8` closes now
  * -- its `exp` call is reached through the builtin dispatch rather than left to
- * the word library -- `fun_bitwise` comes back inside this suite's own clock,
- * and the ones that carry a size above come back under a longer one; all of
- * them are measured with the rest.  The list is empty of them now, and the
- * check stays for the next body that stops coming back. *)
+ * the word library -- and the ones that carry a size above come back under a
+ * longer clock.  One line is left in the class -- the one at the top of the
+ * list, whose paragraph above says what it does come back as -- and the check
+ * stays for the next body that stops coming back. *)
 val () =
   List.app
     (fn (nm, why) =>
