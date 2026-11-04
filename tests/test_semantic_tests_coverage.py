@@ -705,6 +705,17 @@ class ClassifyTests(unittest.TestCase):
         self.assertTrue(coverage.storage_type_supported("t_array$_t_array$_t_uint8_$dyn_storage_$dyn_storage"))
         self.assertTrue(coverage.storage_type_supported("t_array$_t_array$_t_uint8_$dyn_storage_$2_storage"))
 
+    def test_navigating_a_returned_storage_pointer_is_blocked(self) -> None:
+        call = {"nodeType": "FunctionCall", "id": 5, "kind": "functionCall", "arguments": [],
+                "typeDescriptions": {"typeIdentifier": "t_mapping$_t_uint8_$_t_uint8_$"}}
+        index = {"nodeType": "IndexAccess", "id": 6, "baseExpression": call,
+                 "typeDescriptions": {"typeIdentifier": "t_uint8"}}
+        self.assertIn("local reference bindings", {b.feature for b in coverage.elaboration_blockers(index)})
+        call["typeDescriptions"]["typeIdentifier"] = "t_struct$_S_$4_storage_ptr"
+        member = {"nodeType": "MemberAccess", "id": 7, "memberName": "x", "expression": call,
+                  "referencedDeclaration": 8, "typeDescriptions": {"typeIdentifier": "t_uint8"}}
+        self.assertIn("local reference bindings", {b.feature for b in coverage.elaboration_blockers(member)})
+
     def test_nested_array_types_and_fixed_length_prefix(self) -> None:
         tid = "t_array$_t_array$_t_uint24_$11_storage_$2_storage"
         self.assertTrue(coverage.storage_type_supported(tid))

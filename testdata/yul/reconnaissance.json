@@ -10791,6 +10791,265 @@
     {
       "contracts": [
         {
+          "contract": "StoragePointerBase",
+          "objects": [
+            {
+              "builtins": {
+                "add": 5,
+                "and": 4,
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 2,
+                "div": 1,
+                "iszero": 2,
+                "keccak256": 5,
+                "lt": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mod": 1,
+                "mstore": 13,
+                "mul": 2,
+                "not": 2,
+                "or": 2,
+                "return": 1,
+                "revert": 3,
+                "shl": 2,
+                "sload": 5,
+                "sstore": 3,
+                "sub": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "StoragePointerBase_117",
+              "nodeKinds": {
+                "assignment": 42,
+                "block": 46,
+                "expressionStatement": 32,
+                "functionCall": 124,
+                "functionDefinition": 42,
+                "identifier": 131,
+                "if": 3,
+                "literal:number": 60,
+                "literal:string": 3,
+                "variableDeclaration": 58
+              },
+              "role": "creation",
+              "stage": "ir",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 10,
+                "calldataload": 1,
+                "calldatasize": 2,
+                "callvalue": 1,
+                "div": 1,
+                "iszero": 2,
+                "keccak256": 5,
+                "lt": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mod": 1,
+                "mstore": 12,
+                "mul": 2,
+                "return": 1,
+                "revert": 4,
+                "shr": 3,
+                "sload": 3,
+                "slt": 1,
+                "sub": 3
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "StoragePointerBase_117_deployed",
+              "nodeKinds": {
+                "assignment": 41,
+                "block": 42,
+                "case": 1,
+                "default": 1,
+                "expressionStatement": 28,
+                "functionCall": 109,
+                "functionDefinition": 35,
+                "identifier": 117,
+                "if": 4,
+                "leave": 1,
+                "literal:number": 66,
+                "switch": 1,
+                "variableDeclaration": 57
+              },
+              "role": "runtime",
+              "stage": "ir",
+              "subobjects": 0
+            },
+            {
+              "builtins": {
+                "add": 4,
+                "and": 4,
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 2,
+                "iszero": 2,
+                "keccak256": 4,
+                "lt": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 12,
+                "mul": 2,
+                "not": 4,
+                "or": 2,
+                "return": 1,
+                "revert": 3,
+                "shl": 4,
+                "sload": 5,
+                "sstore": 3
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "StoragePointerBase_117",
+              "nodeKinds": {
+                "assignment": 38,
+                "block": 45,
+                "expressionStatement": 31,
+                "functionCall": 121,
+                "functionDefinition": 40,
+                "identifier": 122,
+                "if": 3,
+                "literal:number": 56,
+                "literal:string": 3,
+                "variableDeclaration": 54
+              },
+              "role": "creation",
+              "stage": "ir-optimized-off",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 9,
+                "calldataload": 1,
+                "calldatasize": 2,
+                "callvalue": 1,
+                "iszero": 2,
+                "keccak256": 4,
+                "lt": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 11,
+                "mul": 2,
+                "return": 1,
+                "revert": 4,
+                "shl": 1,
+                "shr": 3,
+                "sload": 3,
+                "slt": 1,
+                "sub": 2
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "StoragePointerBase_117_deployed",
+              "nodeKinds": {
+                "assignment": 37,
+                "block": 41,
+                "case": 1,
+                "default": 1,
+                "expressionStatement": 27,
+                "functionCall": 103,
+                "functionDefinition": 33,
+                "identifier": 111,
+                "if": 4,
+                "leave": 1,
+                "literal:number": 61,
+                "switch": 1,
+                "variableDeclaration": 56
+              },
+              "role": "runtime",
+              "stage": "ir-optimized-off",
+              "subobjects": 0
+            },
+            {
+              "builtins": {
+                "add": 5,
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 1,
+                "iszero": 4,
+                "keccak256": 5,
+                "lt": 4,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 17,
+                "return": 1,
+                "revert": 5,
+                "shl": 4,
+                "sload": 3,
+                "sstore": 7
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "StoragePointerBase_117",
+              "nodeKinds": {
+                "block": 7,
+                "expressionStatement": 31,
+                "functionCall": 61,
+                "identifier": 19,
+                "if": 5,
+                "literal:number": 72,
+                "literal:string": 2,
+                "variableDeclaration": 8
+              },
+              "role": "creation",
+              "stage": "ir-optimized-on",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 7,
+                "calldataload": 1,
+                "calldatasize": 2,
+                "callvalue": 1,
+                "eq": 1,
+                "iszero": 3,
+                "keccak256": 6,
+                "lt": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 20,
+                "not": 1,
+                "return": 1,
+                "revert": 5,
+                "shl": 2,
+                "shr": 1,
+                "sload": 7,
+                "slt": 1
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "StoragePointerBase_117_deployed",
+              "nodeKinds": {
+                "assignment": 4,
+                "block": 8,
+                "expressionStatement": 26,
+                "functionCall": 63,
+                "identifier": 14,
+                "if": 6,
+                "literal:number": 76,
+                "variableDeclaration": 11
+              },
+              "role": "runtime",
+              "stage": "ir-optimized-on",
+              "subobjects": 0
+            }
+          ]
+        }
+      ],
+      "sha256": "668a93fa0f42ccc03fb3f78354192e27806af1b279bd1003c3b9654c787e9eaf",
+      "source": "testdata/differential/storage_pointer_base.sol"
+    },
+    {
+      "contracts": [
+        {
           "contract": "StoragePointers",
           "objects": [
             {
@@ -13087,7 +13346,7 @@
     "ir": {
       "builtins": {
         "add": {
-          "creation": 100,
+          "creation": 105,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -13124,6 +13383,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -13134,7 +13394,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2316,
+          "runtime": 2326,
           "subobject": 0
         },
         "address": {
@@ -13147,7 +13407,7 @@
           "subobject": 0
         },
         "and": {
-          "creation": 49,
+          "creation": 53,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -13183,6 +13443,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -13273,6 +13534,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -13283,7 +13545,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 261,
+          "runtime": 262,
           "subobject": 0
         },
         "calldatasize": {
@@ -13320,6 +13582,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -13330,7 +13593,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 525,
+          "runtime": 527,
           "subobject": 0
         },
         "caller": {
@@ -13348,6 +13611,139 @@
           "subobject": 0
         },
         "callvalue": {
+          "creation": 55,
+          "fixtures": [
+            "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
+            "testdata/differential/calldata_bytes.sol",
+            "testdata/differential/calls.sol",
+            "testdata/differential/constructors.sol",
+            "testdata/differential/context.sol",
+            "testdata/differential/control.sol",
+            "testdata/differential/dynamic_bytes.sol",
+            "testdata/differential/dynamic_bytes_peer.sol",
+            "testdata/differential/dynamic_storage_arrays.sol",
+            "testdata/differential/errors.sol",
+            "testdata/differential/external.sol",
+            "testdata/differential/fallback.sol",
+            "testdata/differential/imports.sol",
+            "testdata/differential/inheritance.sol",
+            "testdata/differential/inheritance_diamond.sol",
+            "testdata/differential/inherited_payable.sol",
+            "testdata/differential/initializers_only.sol",
+            "testdata/differential/inline_assembly.sol",
+            "testdata/differential/mappings.sol",
+            "testdata/differential/memory_arrays.sol",
+            "testdata/differential/memory_bytes.sol",
+            "testdata/differential/modifiers.sol",
+            "testdata/differential/mutant.sol",
+            "testdata/differential/oz_erc20.sol",
+            "testdata/differential/public_getters.sol",
+            "testdata/differential/receive.sol",
+            "testdata/differential/scalars.sol",
+            "testdata/differential/shadowed_builtins.sol",
+            "testdata/differential/storage.sol",
+            "testdata/differential/storage_array_values.sol",
+            "testdata/differential/storage_arrays.sol",
+            "testdata/differential/storage_bytes.sol",
+            "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
+            "testdata/differential/storage_pointers.sol",
+            "testdata/differential/storage_structs.sol",
+            "testdata/differential/storage_structs_top_level.sol",
+            "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
+            "testdata/frontend/evaluation_order.sol",
+            "testdata/frontend/pure_core.sol",
+            "testdata/frontend/storage_references.sol",
+            "testdata/frontend/types.sol"
+          ],
+          "runtime": 452,
+          "subobject": 0
+        },
+        "chainid": {
+          "creation": 0,
+          "fixtures": [
+            "testdata/differential/context.sol"
+          ],
+          "runtime": 1,
+          "subobject": 0
+        },
+        "codecopy": {
+          "creation": 62,
+          "fixtures": [
+            "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
+            "testdata/differential/calldata_bytes.sol",
+            "testdata/differential/calls.sol",
+            "testdata/differential/constructors.sol",
+            "testdata/differential/context.sol",
+            "testdata/differential/control.sol",
+            "testdata/differential/dynamic_bytes.sol",
+            "testdata/differential/dynamic_bytes_peer.sol",
+            "testdata/differential/dynamic_storage_arrays.sol",
+            "testdata/differential/errors.sol",
+            "testdata/differential/external.sol",
+            "testdata/differential/fallback.sol",
+            "testdata/differential/imports.sol",
+            "testdata/differential/inheritance.sol",
+            "testdata/differential/inheritance_diamond.sol",
+            "testdata/differential/inherited_payable.sol",
+            "testdata/differential/initializers_only.sol",
+            "testdata/differential/inline_assembly.sol",
+            "testdata/differential/mappings.sol",
+            "testdata/differential/memory_arrays.sol",
+            "testdata/differential/memory_bytes.sol",
+            "testdata/differential/modifiers.sol",
+            "testdata/differential/mutant.sol",
+            "testdata/differential/oz_erc20.sol",
+            "testdata/differential/public_getters.sol",
+            "testdata/differential/receive.sol",
+            "testdata/differential/scalars.sol",
+            "testdata/differential/shadowed_builtins.sol",
+            "testdata/differential/storage.sol",
+            "testdata/differential/storage_array_values.sol",
+            "testdata/differential/storage_arrays.sol",
+            "testdata/differential/storage_bytes.sol",
+            "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
+            "testdata/differential/storage_pointers.sol",
+            "testdata/differential/storage_structs.sol",
+            "testdata/differential/storage_structs_top_level.sol",
+            "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
+            "testdata/frontend/evaluation_order.sol",
+            "testdata/frontend/pure_core.sol",
+            "testdata/frontend/storage_references.sol",
+            "testdata/frontend/types.sol"
+          ],
+          "runtime": 0,
+          "subobject": 0
+        },
+        "codesize": {
+          "creation": 8,
+          "fixtures": [
+            "testdata/differential/calldata_bytes.sol",
+            "testdata/differential/constructors.sol",
+            "testdata/differential/dynamic_bytes.sol",
+            "testdata/differential/inherited_payable.sol",
+            "testdata/differential/modifiers.sol",
+            "testdata/differential/oz_erc20.sol"
+          ],
+          "runtime": 0,
+          "subobject": 0
+        },
+        "coinbase": {
+          "creation": 0,
+          "fixtures": [
+            "testdata/differential/context.sol"
+          ],
+          "runtime": 1,
+          "subobject": 0
+        },
+        "dataoffset": {
           "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
@@ -13385,137 +13781,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
-            "testdata/differential/storage_pointers.sol",
-            "testdata/differential/storage_structs.sol",
-            "testdata/differential/storage_structs_top_level.sol",
-            "testdata/differential/token.sol",
-            "testdata/differential/type_bounds.sol",
-            "testdata/frontend/evaluation_order.sol",
-            "testdata/frontend/pure_core.sol",
-            "testdata/frontend/storage_references.sol",
-            "testdata/frontend/types.sol"
-          ],
-          "runtime": 451,
-          "subobject": 0
-        },
-        "chainid": {
-          "creation": 0,
-          "fixtures": [
-            "testdata/differential/context.sol"
-          ],
-          "runtime": 1,
-          "subobject": 0
-        },
-        "codecopy": {
-          "creation": 61,
-          "fixtures": [
-            "testdata/differential/builtins.sol",
-            "testdata/differential/calldata_arrays.sol",
-            "testdata/differential/calldata_arrays_peer.sol",
-            "testdata/differential/calldata_bytes.sol",
-            "testdata/differential/calls.sol",
-            "testdata/differential/constructors.sol",
-            "testdata/differential/context.sol",
-            "testdata/differential/control.sol",
-            "testdata/differential/dynamic_bytes.sol",
-            "testdata/differential/dynamic_bytes_peer.sol",
-            "testdata/differential/dynamic_storage_arrays.sol",
-            "testdata/differential/errors.sol",
-            "testdata/differential/external.sol",
-            "testdata/differential/fallback.sol",
-            "testdata/differential/imports.sol",
-            "testdata/differential/inheritance.sol",
-            "testdata/differential/inheritance_diamond.sol",
-            "testdata/differential/inherited_payable.sol",
-            "testdata/differential/initializers_only.sol",
-            "testdata/differential/inline_assembly.sol",
-            "testdata/differential/mappings.sol",
-            "testdata/differential/memory_arrays.sol",
-            "testdata/differential/memory_bytes.sol",
-            "testdata/differential/modifiers.sol",
-            "testdata/differential/mutant.sol",
-            "testdata/differential/oz_erc20.sol",
-            "testdata/differential/public_getters.sol",
-            "testdata/differential/receive.sol",
-            "testdata/differential/scalars.sol",
-            "testdata/differential/shadowed_builtins.sol",
-            "testdata/differential/storage.sol",
-            "testdata/differential/storage_array_values.sol",
-            "testdata/differential/storage_arrays.sol",
-            "testdata/differential/storage_bytes.sol",
-            "testdata/differential/storage_bytes_aliases.sol",
-            "testdata/differential/storage_pointers.sol",
-            "testdata/differential/storage_structs.sol",
-            "testdata/differential/storage_structs_top_level.sol",
-            "testdata/differential/token.sol",
-            "testdata/differential/type_bounds.sol",
-            "testdata/frontend/evaluation_order.sol",
-            "testdata/frontend/pure_core.sol",
-            "testdata/frontend/storage_references.sol",
-            "testdata/frontend/types.sol"
-          ],
-          "runtime": 0,
-          "subobject": 0
-        },
-        "codesize": {
-          "creation": 8,
-          "fixtures": [
-            "testdata/differential/calldata_bytes.sol",
-            "testdata/differential/constructors.sol",
-            "testdata/differential/dynamic_bytes.sol",
-            "testdata/differential/inherited_payable.sol",
-            "testdata/differential/modifiers.sol",
-            "testdata/differential/oz_erc20.sol"
-          ],
-          "runtime": 0,
-          "subobject": 0
-        },
-        "coinbase": {
-          "creation": 0,
-          "fixtures": [
-            "testdata/differential/context.sol"
-          ],
-          "runtime": 1,
-          "subobject": 0
-        },
-        "dataoffset": {
-          "creation": 53,
-          "fixtures": [
-            "testdata/differential/builtins.sol",
-            "testdata/differential/calldata_arrays.sol",
-            "testdata/differential/calldata_arrays_peer.sol",
-            "testdata/differential/calldata_bytes.sol",
-            "testdata/differential/calls.sol",
-            "testdata/differential/constructors.sol",
-            "testdata/differential/context.sol",
-            "testdata/differential/control.sol",
-            "testdata/differential/dynamic_bytes.sol",
-            "testdata/differential/dynamic_bytes_peer.sol",
-            "testdata/differential/dynamic_storage_arrays.sol",
-            "testdata/differential/errors.sol",
-            "testdata/differential/external.sol",
-            "testdata/differential/fallback.sol",
-            "testdata/differential/imports.sol",
-            "testdata/differential/inheritance.sol",
-            "testdata/differential/inheritance_diamond.sol",
-            "testdata/differential/inherited_payable.sol",
-            "testdata/differential/initializers_only.sol",
-            "testdata/differential/inline_assembly.sol",
-            "testdata/differential/mappings.sol",
-            "testdata/differential/memory_arrays.sol",
-            "testdata/differential/memory_bytes.sol",
-            "testdata/differential/modifiers.sol",
-            "testdata/differential/mutant.sol",
-            "testdata/differential/oz_erc20.sol",
-            "testdata/differential/public_getters.sol",
-            "testdata/differential/receive.sol",
-            "testdata/differential/scalars.sol",
-            "testdata/differential/shadowed_builtins.sol",
-            "testdata/differential/storage.sol",
-            "testdata/differential/storage_array_values.sol",
-            "testdata/differential/storage_arrays.sol",
-            "testdata/differential/storage_bytes.sol",
-            "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -13530,7 +13796,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 114,
+          "creation": 116,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -13567,6 +13833,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -13581,7 +13848,7 @@
           "subobject": 0
         },
         "div": {
-          "creation": 10,
+          "creation": 11,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calls.sol",
@@ -13601,6 +13868,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -13608,7 +13876,7 @@
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol"
           ],
-          "runtime": 96,
+          "runtime": 97,
           "subobject": 0
         },
         "eq": {
@@ -13754,7 +14022,7 @@
           "subobject": 0
         },
         "iszero": {
-          "creation": 21,
+          "creation": 23,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -13789,6 +14057,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -13799,11 +14068,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 565,
+          "runtime": 567,
           "subobject": 0
         },
         "keccak256": {
-          "creation": 4,
+          "creation": 9,
           "fixtures": [
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/dynamic_storage_arrays.sol",
@@ -13819,13 +14088,14 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/differential/token.sol",
             "testdata/frontend/storage_references.sol"
           ],
-          "runtime": 113,
+          "runtime": 118,
           "subobject": 0
         },
         "log0": {
@@ -13879,7 +14149,7 @@
           "subobject": 0
         },
         "lt": {
-          "creation": 25,
+          "creation": 27,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -13913,6 +14183,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -13923,7 +14194,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 373,
+          "runtime": 375,
           "subobject": 0
         },
         "mcopy": {
@@ -13942,7 +14213,7 @@
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 53,
+          "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -13979,6 +14250,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -13989,11 +14261,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 50,
+          "runtime": 51,
           "subobject": 0
         },
         "mload": {
-          "creation": 78,
+          "creation": 79,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14030,6 +14302,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14040,11 +14313,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 180,
+          "runtime": 181,
           "subobject": 0
         },
         "mod": {
-          "creation": 0,
+          "creation": 1,
           "fixtures": [
             "testdata/differential/control.sol",
             "testdata/differential/dynamic_bytes.sol",
@@ -14055,17 +14328,18 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
             "testdata/frontend/pure_core.sol",
             "testdata/frontend/storage_references.sol"
           ],
-          "runtime": 51,
+          "runtime": 52,
           "subobject": 0
         },
         "mstore": {
-          "creation": 116,
+          "creation": 129,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14102,6 +14376,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14112,7 +14387,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 890,
+          "runtime": 902,
           "subobject": 0
         },
         "mstore8": {
@@ -14128,7 +14403,7 @@
           "subobject": 0
         },
         "mul": {
-          "creation": 15,
+          "creation": 17,
           "fixtures": [
             "testdata/differential/calldata_arrays.sol",
             "testdata/differential/calldata_arrays_peer.sol",
@@ -14153,6 +14428,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14161,11 +14437,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 308,
+          "runtime": 310,
           "subobject": 0
         },
         "not": {
-          "creation": 27,
+          "creation": 29,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14199,6 +14475,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14220,7 +14497,7 @@
           "subobject": 0
         },
         "or": {
-          "creation": 26,
+          "creation": 28,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14256,6 +14533,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14278,7 +14556,7 @@
           "subobject": 0
         },
         "return": {
-          "creation": 53,
+          "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14315,6 +14593,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14325,7 +14604,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 449,
+          "runtime": 450,
           "subobject": 0
         },
         "returndatacopy": {
@@ -14355,7 +14634,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 100,
+          "creation": 103,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14392,6 +14671,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14402,7 +14682,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 494,
+          "runtime": 498,
           "subobject": 0
         },
         "sar": {
@@ -14435,7 +14715,7 @@
           "subobject": 0
         },
         "shl": {
-          "creation": 11,
+          "creation": 13,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14466,6 +14746,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14514,6 +14795,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14524,7 +14806,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 140,
+          "runtime": 143,
           "subobject": 0
         },
         "signextend": {
@@ -14548,7 +14830,7 @@
           "subobject": 0
         },
         "sload": {
-          "creation": 23,
+          "creation": 28,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_bytes.sol",
@@ -14576,6 +14858,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14583,7 +14866,7 @@
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/storage_references.sol"
           ],
-          "runtime": 306,
+          "runtime": 309,
           "subobject": 0
         },
         "slt": {
@@ -14621,6 +14904,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14631,7 +14915,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 269,
+          "runtime": 270,
           "subobject": 0
         },
         "smod": {
@@ -14643,7 +14927,7 @@
           "subobject": 0
         },
         "sstore": {
-          "creation": 27,
+          "creation": 30,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_bytes.sol",
@@ -14670,6 +14954,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14707,7 +14992,7 @@
           "subobject": 0
         },
         "sub": {
-          "creation": 20,
+          "creation": 21,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14741,6 +15026,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14751,7 +15037,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 967,
+          "runtime": 970,
           "subobject": 0
         },
         "timestamp": {
@@ -14773,7 +15059,7 @@
       },
       "nodeKinds": {
         "assignment": {
-          "creation": 359,
+          "creation": 401,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14810,6 +15096,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14820,11 +15107,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6051,
+          "runtime": 6092,
           "subobject": 0
         },
         "block": {
-          "creation": 714,
+          "creation": 760,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14861,6 +15148,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14871,7 +15159,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 8249,
+          "runtime": 8291,
           "subobject": 0
         },
         "break": {
@@ -14922,6 +15210,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14932,7 +15221,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 507,
+          "runtime": 508,
           "subobject": 0
         },
         "continue": {
@@ -14978,6 +15267,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -14988,11 +15278,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 73,
+          "runtime": 74,
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 612,
+          "creation": 644,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15029,6 +15319,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15039,7 +15330,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5251,
+          "runtime": 5279,
           "subobject": 0
         },
         "for": {
@@ -15066,7 +15357,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 1804,
+          "creation": 1928,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15103,6 +15394,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15113,11 +15405,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 22291,
+          "runtime": 22400,
           "subobject": 0
         },
         "functionDefinition": {
-          "creation": 500,
+          "creation": 542,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15154,6 +15446,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15164,11 +15457,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5180,
+          "runtime": 5215,
           "subobject": 0
         },
         "identifier": {
-          "creation": 1186,
+          "creation": 1317,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15205,6 +15498,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15215,11 +15509,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 24862,
+          "runtime": 24979,
           "subobject": 0
         },
         "if": {
-          "creation": 127,
+          "creation": 130,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15256,6 +15550,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15266,7 +15561,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1626,
+          "runtime": 1630,
           "subobject": 0
         },
         "leave": {
@@ -15302,6 +15597,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15312,11 +15608,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 398,
+          "runtime": 399,
           "subobject": 0
         },
         "literal:number": {
-          "creation": 736,
+          "creation": 796,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15353,6 +15649,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15363,11 +15660,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 8408,
+          "runtime": 8474,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 168,
+          "creation": 171,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15404,6 +15701,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15450,6 +15748,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15460,11 +15759,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 89,
+          "runtime": 90,
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 382,
+          "creation": 440,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15501,6 +15800,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15511,7 +15811,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 11494,
+          "runtime": 11551,
           "subobject": 0
         }
       },
@@ -15554,6 +15854,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15564,7 +15865,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 53,
+          "runtime": 54,
           "subobject": 0
         },
         "datacopy": {
@@ -15574,7 +15875,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 53,
+          "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15611,6 +15912,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15625,7 +15927,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 114,
+          "creation": 116,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15662,6 +15964,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15676,7 +15979,7 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 53,
+          "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15713,6 +16016,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15738,7 +16042,7 @@
     "ir-optimized-off": {
       "builtins": {
         "add": {
-          "creation": 100,
+          "creation": 104,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15775,6 +16079,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15785,7 +16090,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2305,
+          "runtime": 2314,
           "subobject": 0
         },
         "address": {
@@ -15798,7 +16103,7 @@
           "subobject": 0
         },
         "and": {
-          "creation": 49,
+          "creation": 53,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15834,6 +16139,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15924,6 +16230,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15934,7 +16241,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 261,
+          "runtime": 262,
           "subobject": 0
         },
         "calldatasize": {
@@ -15971,6 +16278,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -15981,7 +16289,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 525,
+          "runtime": 527,
           "subobject": 0
         },
         "caller": {
@@ -15999,6 +16307,139 @@
           "subobject": 0
         },
         "callvalue": {
+          "creation": 55,
+          "fixtures": [
+            "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
+            "testdata/differential/calldata_bytes.sol",
+            "testdata/differential/calls.sol",
+            "testdata/differential/constructors.sol",
+            "testdata/differential/context.sol",
+            "testdata/differential/control.sol",
+            "testdata/differential/dynamic_bytes.sol",
+            "testdata/differential/dynamic_bytes_peer.sol",
+            "testdata/differential/dynamic_storage_arrays.sol",
+            "testdata/differential/errors.sol",
+            "testdata/differential/external.sol",
+            "testdata/differential/fallback.sol",
+            "testdata/differential/imports.sol",
+            "testdata/differential/inheritance.sol",
+            "testdata/differential/inheritance_diamond.sol",
+            "testdata/differential/inherited_payable.sol",
+            "testdata/differential/initializers_only.sol",
+            "testdata/differential/inline_assembly.sol",
+            "testdata/differential/mappings.sol",
+            "testdata/differential/memory_arrays.sol",
+            "testdata/differential/memory_bytes.sol",
+            "testdata/differential/modifiers.sol",
+            "testdata/differential/mutant.sol",
+            "testdata/differential/oz_erc20.sol",
+            "testdata/differential/public_getters.sol",
+            "testdata/differential/receive.sol",
+            "testdata/differential/scalars.sol",
+            "testdata/differential/shadowed_builtins.sol",
+            "testdata/differential/storage.sol",
+            "testdata/differential/storage_array_values.sol",
+            "testdata/differential/storage_arrays.sol",
+            "testdata/differential/storage_bytes.sol",
+            "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
+            "testdata/differential/storage_pointers.sol",
+            "testdata/differential/storage_structs.sol",
+            "testdata/differential/storage_structs_top_level.sol",
+            "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
+            "testdata/frontend/evaluation_order.sol",
+            "testdata/frontend/pure_core.sol",
+            "testdata/frontend/storage_references.sol",
+            "testdata/frontend/types.sol"
+          ],
+          "runtime": 452,
+          "subobject": 0
+        },
+        "chainid": {
+          "creation": 0,
+          "fixtures": [
+            "testdata/differential/context.sol"
+          ],
+          "runtime": 1,
+          "subobject": 0
+        },
+        "codecopy": {
+          "creation": 62,
+          "fixtures": [
+            "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
+            "testdata/differential/calldata_bytes.sol",
+            "testdata/differential/calls.sol",
+            "testdata/differential/constructors.sol",
+            "testdata/differential/context.sol",
+            "testdata/differential/control.sol",
+            "testdata/differential/dynamic_bytes.sol",
+            "testdata/differential/dynamic_bytes_peer.sol",
+            "testdata/differential/dynamic_storage_arrays.sol",
+            "testdata/differential/errors.sol",
+            "testdata/differential/external.sol",
+            "testdata/differential/fallback.sol",
+            "testdata/differential/imports.sol",
+            "testdata/differential/inheritance.sol",
+            "testdata/differential/inheritance_diamond.sol",
+            "testdata/differential/inherited_payable.sol",
+            "testdata/differential/initializers_only.sol",
+            "testdata/differential/inline_assembly.sol",
+            "testdata/differential/mappings.sol",
+            "testdata/differential/memory_arrays.sol",
+            "testdata/differential/memory_bytes.sol",
+            "testdata/differential/modifiers.sol",
+            "testdata/differential/mutant.sol",
+            "testdata/differential/oz_erc20.sol",
+            "testdata/differential/public_getters.sol",
+            "testdata/differential/receive.sol",
+            "testdata/differential/scalars.sol",
+            "testdata/differential/shadowed_builtins.sol",
+            "testdata/differential/storage.sol",
+            "testdata/differential/storage_array_values.sol",
+            "testdata/differential/storage_arrays.sol",
+            "testdata/differential/storage_bytes.sol",
+            "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
+            "testdata/differential/storage_pointers.sol",
+            "testdata/differential/storage_structs.sol",
+            "testdata/differential/storage_structs_top_level.sol",
+            "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
+            "testdata/frontend/evaluation_order.sol",
+            "testdata/frontend/pure_core.sol",
+            "testdata/frontend/storage_references.sol",
+            "testdata/frontend/types.sol"
+          ],
+          "runtime": 0,
+          "subobject": 0
+        },
+        "codesize": {
+          "creation": 8,
+          "fixtures": [
+            "testdata/differential/calldata_bytes.sol",
+            "testdata/differential/constructors.sol",
+            "testdata/differential/dynamic_bytes.sol",
+            "testdata/differential/inherited_payable.sol",
+            "testdata/differential/modifiers.sol",
+            "testdata/differential/oz_erc20.sol"
+          ],
+          "runtime": 0,
+          "subobject": 0
+        },
+        "coinbase": {
+          "creation": 0,
+          "fixtures": [
+            "testdata/differential/context.sol"
+          ],
+          "runtime": 1,
+          "subobject": 0
+        },
+        "dataoffset": {
           "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
@@ -16036,137 +16477,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
-            "testdata/differential/storage_pointers.sol",
-            "testdata/differential/storage_structs.sol",
-            "testdata/differential/storage_structs_top_level.sol",
-            "testdata/differential/token.sol",
-            "testdata/differential/type_bounds.sol",
-            "testdata/frontend/evaluation_order.sol",
-            "testdata/frontend/pure_core.sol",
-            "testdata/frontend/storage_references.sol",
-            "testdata/frontend/types.sol"
-          ],
-          "runtime": 451,
-          "subobject": 0
-        },
-        "chainid": {
-          "creation": 0,
-          "fixtures": [
-            "testdata/differential/context.sol"
-          ],
-          "runtime": 1,
-          "subobject": 0
-        },
-        "codecopy": {
-          "creation": 61,
-          "fixtures": [
-            "testdata/differential/builtins.sol",
-            "testdata/differential/calldata_arrays.sol",
-            "testdata/differential/calldata_arrays_peer.sol",
-            "testdata/differential/calldata_bytes.sol",
-            "testdata/differential/calls.sol",
-            "testdata/differential/constructors.sol",
-            "testdata/differential/context.sol",
-            "testdata/differential/control.sol",
-            "testdata/differential/dynamic_bytes.sol",
-            "testdata/differential/dynamic_bytes_peer.sol",
-            "testdata/differential/dynamic_storage_arrays.sol",
-            "testdata/differential/errors.sol",
-            "testdata/differential/external.sol",
-            "testdata/differential/fallback.sol",
-            "testdata/differential/imports.sol",
-            "testdata/differential/inheritance.sol",
-            "testdata/differential/inheritance_diamond.sol",
-            "testdata/differential/inherited_payable.sol",
-            "testdata/differential/initializers_only.sol",
-            "testdata/differential/inline_assembly.sol",
-            "testdata/differential/mappings.sol",
-            "testdata/differential/memory_arrays.sol",
-            "testdata/differential/memory_bytes.sol",
-            "testdata/differential/modifiers.sol",
-            "testdata/differential/mutant.sol",
-            "testdata/differential/oz_erc20.sol",
-            "testdata/differential/public_getters.sol",
-            "testdata/differential/receive.sol",
-            "testdata/differential/scalars.sol",
-            "testdata/differential/shadowed_builtins.sol",
-            "testdata/differential/storage.sol",
-            "testdata/differential/storage_array_values.sol",
-            "testdata/differential/storage_arrays.sol",
-            "testdata/differential/storage_bytes.sol",
-            "testdata/differential/storage_bytes_aliases.sol",
-            "testdata/differential/storage_pointers.sol",
-            "testdata/differential/storage_structs.sol",
-            "testdata/differential/storage_structs_top_level.sol",
-            "testdata/differential/token.sol",
-            "testdata/differential/type_bounds.sol",
-            "testdata/frontend/evaluation_order.sol",
-            "testdata/frontend/pure_core.sol",
-            "testdata/frontend/storage_references.sol",
-            "testdata/frontend/types.sol"
-          ],
-          "runtime": 0,
-          "subobject": 0
-        },
-        "codesize": {
-          "creation": 8,
-          "fixtures": [
-            "testdata/differential/calldata_bytes.sol",
-            "testdata/differential/constructors.sol",
-            "testdata/differential/dynamic_bytes.sol",
-            "testdata/differential/inherited_payable.sol",
-            "testdata/differential/modifiers.sol",
-            "testdata/differential/oz_erc20.sol"
-          ],
-          "runtime": 0,
-          "subobject": 0
-        },
-        "coinbase": {
-          "creation": 0,
-          "fixtures": [
-            "testdata/differential/context.sol"
-          ],
-          "runtime": 1,
-          "subobject": 0
-        },
-        "dataoffset": {
-          "creation": 53,
-          "fixtures": [
-            "testdata/differential/builtins.sol",
-            "testdata/differential/calldata_arrays.sol",
-            "testdata/differential/calldata_arrays_peer.sol",
-            "testdata/differential/calldata_bytes.sol",
-            "testdata/differential/calls.sol",
-            "testdata/differential/constructors.sol",
-            "testdata/differential/context.sol",
-            "testdata/differential/control.sol",
-            "testdata/differential/dynamic_bytes.sol",
-            "testdata/differential/dynamic_bytes_peer.sol",
-            "testdata/differential/dynamic_storage_arrays.sol",
-            "testdata/differential/errors.sol",
-            "testdata/differential/external.sol",
-            "testdata/differential/fallback.sol",
-            "testdata/differential/imports.sol",
-            "testdata/differential/inheritance.sol",
-            "testdata/differential/inheritance_diamond.sol",
-            "testdata/differential/inherited_payable.sol",
-            "testdata/differential/initializers_only.sol",
-            "testdata/differential/inline_assembly.sol",
-            "testdata/differential/mappings.sol",
-            "testdata/differential/memory_arrays.sol",
-            "testdata/differential/memory_bytes.sol",
-            "testdata/differential/modifiers.sol",
-            "testdata/differential/mutant.sol",
-            "testdata/differential/oz_erc20.sol",
-            "testdata/differential/public_getters.sol",
-            "testdata/differential/receive.sol",
-            "testdata/differential/scalars.sol",
-            "testdata/differential/shadowed_builtins.sol",
-            "testdata/differential/storage.sol",
-            "testdata/differential/storage_array_values.sol",
-            "testdata/differential/storage_arrays.sol",
-            "testdata/differential/storage_bytes.sol",
-            "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -16181,7 +16492,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 114,
+          "creation": 116,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16218,6 +16529,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -16403,7 +16715,7 @@
           "subobject": 0
         },
         "iszero": {
-          "creation": 21,
+          "creation": 23,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16438,6 +16750,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -16448,11 +16761,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 565,
+          "runtime": 567,
           "subobject": 0
         },
         "keccak256": {
-          "creation": 4,
+          "creation": 8,
           "fixtures": [
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/dynamic_storage_arrays.sol",
@@ -16467,12 +16780,13 @@
             "testdata/differential/storage_array_values.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/token.sol",
             "testdata/frontend/storage_references.sol"
           ],
-          "runtime": 105,
+          "runtime": 109,
           "subobject": 0
         },
         "log0": {
@@ -16526,7 +16840,7 @@
           "subobject": 0
         },
         "lt": {
-          "creation": 25,
+          "creation": 27,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16560,6 +16874,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -16570,7 +16885,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 373,
+          "runtime": 375,
           "subobject": 0
         },
         "mcopy": {
@@ -16589,7 +16904,7 @@
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 53,
+          "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16626,6 +16941,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -16636,11 +16952,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 50,
+          "runtime": 51,
           "subobject": 0
         },
         "mload": {
-          "creation": 78,
+          "creation": 79,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16677,6 +16993,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -16687,7 +17004,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 170,
+          "runtime": 171,
           "subobject": 0
         },
         "mod": {
@@ -16709,7 +17026,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 110,
+          "creation": 122,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16746,6 +17063,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -16756,7 +17074,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 878,
+          "runtime": 889,
           "subobject": 0
         },
         "mstore8": {
@@ -16772,7 +17090,7 @@
           "subobject": 0
         },
         "mul": {
-          "creation": 15,
+          "creation": 17,
           "fixtures": [
             "testdata/differential/calldata_arrays.sol",
             "testdata/differential/calldata_arrays_peer.sol",
@@ -16797,6 +17115,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -16805,11 +17124,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 306,
+          "runtime": 308,
           "subobject": 0
         },
         "not": {
-          "creation": 38,
+          "creation": 42,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16845,6 +17164,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -16867,7 +17187,7 @@
           "subobject": 0
         },
         "or": {
-          "creation": 26,
+          "creation": 28,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16903,6 +17223,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -16936,7 +17257,7 @@
           "subobject": 0
         },
         "return": {
-          "creation": 53,
+          "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16973,6 +17294,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -16983,7 +17305,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 449,
+          "runtime": 450,
           "subobject": 0
         },
         "returndatacopy": {
@@ -17013,7 +17335,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 91,
+          "creation": 94,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17050,6 +17372,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17060,7 +17383,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 459,
+          "runtime": 463,
           "subobject": 0
         },
         "sar": {
@@ -17093,7 +17416,7 @@
           "subobject": 0
         },
         "shl": {
-          "creation": 53,
+          "creation": 57,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17129,6 +17452,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17139,7 +17463,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 276,
+          "runtime": 277,
           "subobject": 0
         },
         "shr": {
@@ -17179,6 +17503,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17189,7 +17514,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 131,
+          "runtime": 134,
           "subobject": 0
         },
         "signextend": {
@@ -17213,7 +17538,7 @@
           "subobject": 0
         },
         "sload": {
-          "creation": 23,
+          "creation": 28,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_bytes.sol",
@@ -17241,6 +17566,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17248,7 +17574,7 @@
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/storage_references.sol"
           ],
-          "runtime": 305,
+          "runtime": 308,
           "subobject": 0
         },
         "slt": {
@@ -17286,6 +17612,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17296,7 +17623,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 269,
+          "runtime": 270,
           "subobject": 0
         },
         "smod": {
@@ -17308,7 +17635,7 @@
           "subobject": 0
         },
         "sstore": {
-          "creation": 27,
+          "creation": 30,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_bytes.sol",
@@ -17335,6 +17662,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17406,6 +17734,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17416,7 +17745,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 993,
+          "runtime": 995,
           "subobject": 0
         },
         "timestamp": {
@@ -17438,7 +17767,7 @@
       },
       "nodeKinds": {
         "assignment": {
-          "creation": 359,
+          "creation": 397,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17475,6 +17804,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17485,11 +17815,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5994,
+          "runtime": 6031,
           "subobject": 0
         },
         "block": {
-          "creation": 681,
+          "creation": 726,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17526,6 +17856,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17536,7 +17867,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 7838,
+          "runtime": 7879,
           "subobject": 0
         },
         "break": {
@@ -17587,6 +17918,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17597,7 +17929,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 507,
+          "runtime": 508,
           "subobject": 0
         },
         "continue": {
@@ -17643,6 +17975,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17653,11 +17986,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 73,
+          "runtime": 74,
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 530,
+          "creation": 561,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17694,6 +18027,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17704,7 +18038,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5216,
+          "runtime": 5243,
           "subobject": 0
         },
         "for": {
@@ -17731,7 +18065,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 1795,
+          "creation": 1916,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17768,6 +18102,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17778,11 +18113,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 22471,
+          "runtime": 22574,
           "subobject": 0
         },
         "functionDefinition": {
-          "creation": 424,
+          "creation": 464,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17819,6 +18154,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17829,11 +18165,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5103,
+          "runtime": 5136,
           "subobject": 0
         },
         "identifier": {
-          "creation": 1165,
+          "creation": 1287,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17870,6 +18206,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17880,11 +18217,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 24444,
+          "runtime": 24555,
           "subobject": 0
         },
         "if": {
-          "creation": 127,
+          "creation": 130,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17921,6 +18258,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17931,7 +18269,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1626,
+          "runtime": 1630,
           "subobject": 0
         },
         "leave": {
@@ -17967,6 +18305,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -17977,11 +18316,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 398,
+          "runtime": 399,
           "subobject": 0
         },
         "literal:number": {
-          "creation": 764,
+          "creation": 820,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18018,6 +18357,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18028,11 +18368,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 8442,
+          "runtime": 8503,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 168,
+          "creation": 171,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18069,6 +18409,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18115,6 +18456,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18125,11 +18467,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 89,
+          "runtime": 90,
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 357,
+          "creation": 411,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18166,6 +18508,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18176,7 +18519,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 11070,
+          "runtime": 11126,
           "subobject": 0
         }
       },
@@ -18219,6 +18562,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18229,7 +18573,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 53,
+          "runtime": 54,
           "subobject": 0
         },
         "datacopy": {
@@ -18239,7 +18583,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 53,
+          "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18276,6 +18620,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18290,7 +18635,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 114,
+          "creation": 116,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18327,6 +18672,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18341,7 +18687,7 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 53,
+          "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18378,6 +18724,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18403,7 +18750,7 @@
     "ir-optimized-on": {
       "builtins": {
         "add": {
-          "creation": 122,
+          "creation": 127,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18439,6 +18786,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18449,7 +18797,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2026,
+          "runtime": 2033,
           "subobject": 0
         },
         "address": {
@@ -18580,6 +18928,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18590,7 +18939,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 433,
+          "runtime": 434,
           "subobject": 0
         },
         "calldatasize": {
@@ -18627,6 +18976,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18637,7 +18987,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 601,
+          "runtime": 603,
           "subobject": 0
         },
         "caller": {
@@ -18655,6 +19005,139 @@
           "subobject": 0
         },
         "callvalue": {
+          "creation": 55,
+          "fixtures": [
+            "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
+            "testdata/differential/calldata_bytes.sol",
+            "testdata/differential/calls.sol",
+            "testdata/differential/constructors.sol",
+            "testdata/differential/context.sol",
+            "testdata/differential/control.sol",
+            "testdata/differential/dynamic_bytes.sol",
+            "testdata/differential/dynamic_bytes_peer.sol",
+            "testdata/differential/dynamic_storage_arrays.sol",
+            "testdata/differential/errors.sol",
+            "testdata/differential/external.sol",
+            "testdata/differential/fallback.sol",
+            "testdata/differential/imports.sol",
+            "testdata/differential/inheritance.sol",
+            "testdata/differential/inheritance_diamond.sol",
+            "testdata/differential/inherited_payable.sol",
+            "testdata/differential/initializers_only.sol",
+            "testdata/differential/inline_assembly.sol",
+            "testdata/differential/mappings.sol",
+            "testdata/differential/memory_arrays.sol",
+            "testdata/differential/memory_bytes.sol",
+            "testdata/differential/modifiers.sol",
+            "testdata/differential/mutant.sol",
+            "testdata/differential/oz_erc20.sol",
+            "testdata/differential/public_getters.sol",
+            "testdata/differential/receive.sol",
+            "testdata/differential/scalars.sol",
+            "testdata/differential/shadowed_builtins.sol",
+            "testdata/differential/storage.sol",
+            "testdata/differential/storage_array_values.sol",
+            "testdata/differential/storage_arrays.sol",
+            "testdata/differential/storage_bytes.sol",
+            "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
+            "testdata/differential/storage_pointers.sol",
+            "testdata/differential/storage_structs.sol",
+            "testdata/differential/storage_structs_top_level.sol",
+            "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
+            "testdata/frontend/evaluation_order.sol",
+            "testdata/frontend/pure_core.sol",
+            "testdata/frontend/storage_references.sol",
+            "testdata/frontend/types.sol"
+          ],
+          "runtime": 452,
+          "subobject": 0
+        },
+        "chainid": {
+          "creation": 0,
+          "fixtures": [
+            "testdata/differential/context.sol"
+          ],
+          "runtime": 1,
+          "subobject": 0
+        },
+        "codecopy": {
+          "creation": 62,
+          "fixtures": [
+            "testdata/differential/builtins.sol",
+            "testdata/differential/calldata_arrays.sol",
+            "testdata/differential/calldata_arrays_peer.sol",
+            "testdata/differential/calldata_bytes.sol",
+            "testdata/differential/calls.sol",
+            "testdata/differential/constructors.sol",
+            "testdata/differential/context.sol",
+            "testdata/differential/control.sol",
+            "testdata/differential/dynamic_bytes.sol",
+            "testdata/differential/dynamic_bytes_peer.sol",
+            "testdata/differential/dynamic_storage_arrays.sol",
+            "testdata/differential/errors.sol",
+            "testdata/differential/external.sol",
+            "testdata/differential/fallback.sol",
+            "testdata/differential/imports.sol",
+            "testdata/differential/inheritance.sol",
+            "testdata/differential/inheritance_diamond.sol",
+            "testdata/differential/inherited_payable.sol",
+            "testdata/differential/initializers_only.sol",
+            "testdata/differential/inline_assembly.sol",
+            "testdata/differential/mappings.sol",
+            "testdata/differential/memory_arrays.sol",
+            "testdata/differential/memory_bytes.sol",
+            "testdata/differential/modifiers.sol",
+            "testdata/differential/mutant.sol",
+            "testdata/differential/oz_erc20.sol",
+            "testdata/differential/public_getters.sol",
+            "testdata/differential/receive.sol",
+            "testdata/differential/scalars.sol",
+            "testdata/differential/shadowed_builtins.sol",
+            "testdata/differential/storage.sol",
+            "testdata/differential/storage_array_values.sol",
+            "testdata/differential/storage_arrays.sol",
+            "testdata/differential/storage_bytes.sol",
+            "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
+            "testdata/differential/storage_pointers.sol",
+            "testdata/differential/storage_structs.sol",
+            "testdata/differential/storage_structs_top_level.sol",
+            "testdata/differential/token.sol",
+            "testdata/differential/type_bounds.sol",
+            "testdata/frontend/evaluation_order.sol",
+            "testdata/frontend/pure_core.sol",
+            "testdata/frontend/storage_references.sol",
+            "testdata/frontend/types.sol"
+          ],
+          "runtime": 0,
+          "subobject": 0
+        },
+        "codesize": {
+          "creation": 8,
+          "fixtures": [
+            "testdata/differential/calldata_bytes.sol",
+            "testdata/differential/constructors.sol",
+            "testdata/differential/dynamic_bytes.sol",
+            "testdata/differential/inherited_payable.sol",
+            "testdata/differential/modifiers.sol",
+            "testdata/differential/oz_erc20.sol"
+          ],
+          "runtime": 0,
+          "subobject": 0
+        },
+        "coinbase": {
+          "creation": 0,
+          "fixtures": [
+            "testdata/differential/context.sol"
+          ],
+          "runtime": 1,
+          "subobject": 0
+        },
+        "dataoffset": {
           "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
@@ -18692,137 +19175,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
-            "testdata/differential/storage_pointers.sol",
-            "testdata/differential/storage_structs.sol",
-            "testdata/differential/storage_structs_top_level.sol",
-            "testdata/differential/token.sol",
-            "testdata/differential/type_bounds.sol",
-            "testdata/frontend/evaluation_order.sol",
-            "testdata/frontend/pure_core.sol",
-            "testdata/frontend/storage_references.sol",
-            "testdata/frontend/types.sol"
-          ],
-          "runtime": 451,
-          "subobject": 0
-        },
-        "chainid": {
-          "creation": 0,
-          "fixtures": [
-            "testdata/differential/context.sol"
-          ],
-          "runtime": 1,
-          "subobject": 0
-        },
-        "codecopy": {
-          "creation": 61,
-          "fixtures": [
-            "testdata/differential/builtins.sol",
-            "testdata/differential/calldata_arrays.sol",
-            "testdata/differential/calldata_arrays_peer.sol",
-            "testdata/differential/calldata_bytes.sol",
-            "testdata/differential/calls.sol",
-            "testdata/differential/constructors.sol",
-            "testdata/differential/context.sol",
-            "testdata/differential/control.sol",
-            "testdata/differential/dynamic_bytes.sol",
-            "testdata/differential/dynamic_bytes_peer.sol",
-            "testdata/differential/dynamic_storage_arrays.sol",
-            "testdata/differential/errors.sol",
-            "testdata/differential/external.sol",
-            "testdata/differential/fallback.sol",
-            "testdata/differential/imports.sol",
-            "testdata/differential/inheritance.sol",
-            "testdata/differential/inheritance_diamond.sol",
-            "testdata/differential/inherited_payable.sol",
-            "testdata/differential/initializers_only.sol",
-            "testdata/differential/inline_assembly.sol",
-            "testdata/differential/mappings.sol",
-            "testdata/differential/memory_arrays.sol",
-            "testdata/differential/memory_bytes.sol",
-            "testdata/differential/modifiers.sol",
-            "testdata/differential/mutant.sol",
-            "testdata/differential/oz_erc20.sol",
-            "testdata/differential/public_getters.sol",
-            "testdata/differential/receive.sol",
-            "testdata/differential/scalars.sol",
-            "testdata/differential/shadowed_builtins.sol",
-            "testdata/differential/storage.sol",
-            "testdata/differential/storage_array_values.sol",
-            "testdata/differential/storage_arrays.sol",
-            "testdata/differential/storage_bytes.sol",
-            "testdata/differential/storage_bytes_aliases.sol",
-            "testdata/differential/storage_pointers.sol",
-            "testdata/differential/storage_structs.sol",
-            "testdata/differential/storage_structs_top_level.sol",
-            "testdata/differential/token.sol",
-            "testdata/differential/type_bounds.sol",
-            "testdata/frontend/evaluation_order.sol",
-            "testdata/frontend/pure_core.sol",
-            "testdata/frontend/storage_references.sol",
-            "testdata/frontend/types.sol"
-          ],
-          "runtime": 0,
-          "subobject": 0
-        },
-        "codesize": {
-          "creation": 8,
-          "fixtures": [
-            "testdata/differential/calldata_bytes.sol",
-            "testdata/differential/constructors.sol",
-            "testdata/differential/dynamic_bytes.sol",
-            "testdata/differential/inherited_payable.sol",
-            "testdata/differential/modifiers.sol",
-            "testdata/differential/oz_erc20.sol"
-          ],
-          "runtime": 0,
-          "subobject": 0
-        },
-        "coinbase": {
-          "creation": 0,
-          "fixtures": [
-            "testdata/differential/context.sol"
-          ],
-          "runtime": 1,
-          "subobject": 0
-        },
-        "dataoffset": {
-          "creation": 53,
-          "fixtures": [
-            "testdata/differential/builtins.sol",
-            "testdata/differential/calldata_arrays.sol",
-            "testdata/differential/calldata_arrays_peer.sol",
-            "testdata/differential/calldata_bytes.sol",
-            "testdata/differential/calls.sol",
-            "testdata/differential/constructors.sol",
-            "testdata/differential/context.sol",
-            "testdata/differential/control.sol",
-            "testdata/differential/dynamic_bytes.sol",
-            "testdata/differential/dynamic_bytes_peer.sol",
-            "testdata/differential/dynamic_storage_arrays.sol",
-            "testdata/differential/errors.sol",
-            "testdata/differential/external.sol",
-            "testdata/differential/fallback.sol",
-            "testdata/differential/imports.sol",
-            "testdata/differential/inheritance.sol",
-            "testdata/differential/inheritance_diamond.sol",
-            "testdata/differential/inherited_payable.sol",
-            "testdata/differential/initializers_only.sol",
-            "testdata/differential/inline_assembly.sol",
-            "testdata/differential/mappings.sol",
-            "testdata/differential/memory_arrays.sol",
-            "testdata/differential/memory_bytes.sol",
-            "testdata/differential/modifiers.sol",
-            "testdata/differential/mutant.sol",
-            "testdata/differential/oz_erc20.sol",
-            "testdata/differential/public_getters.sol",
-            "testdata/differential/receive.sol",
-            "testdata/differential/scalars.sol",
-            "testdata/differential/shadowed_builtins.sol",
-            "testdata/differential/storage.sol",
-            "testdata/differential/storage_array_values.sol",
-            "testdata/differential/storage_arrays.sol",
-            "testdata/differential/storage_bytes.sol",
-            "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18837,7 +19190,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 61,
+          "creation": 62,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18874,6 +19227,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18939,6 +19293,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -18949,7 +19304,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 221,
+          "runtime": 222,
           "subobject": 0
         },
         "exp": {
@@ -19047,7 +19402,7 @@
           "subobject": 0
         },
         "iszero": {
-          "creation": 37,
+          "creation": 41,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19081,6 +19436,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -19091,11 +19447,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 705,
+          "runtime": 708,
           "subobject": 0
         },
         "keccak256": {
-          "creation": 10,
+          "creation": 15,
           "fixtures": [
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/dynamic_storage_arrays.sol",
@@ -19109,12 +19465,13 @@
             "testdata/differential/storage_array_values.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/token.sol",
             "testdata/frontend/storage_references.sol"
           ],
-          "runtime": 250,
+          "runtime": 256,
           "subobject": 0
         },
         "log0": {
@@ -19168,7 +19525,7 @@
           "subobject": 0
         },
         "lt": {
-          "creation": 29,
+          "creation": 33,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19202,6 +19559,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -19212,7 +19570,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 375,
+          "runtime": 377,
           "subobject": 0
         },
         "mcopy": {
@@ -19231,7 +19589,7 @@
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 53,
+          "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19268,6 +19626,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -19278,11 +19637,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 41,
+          "runtime": 42,
           "subobject": 0
         },
         "mload": {
-          "creation": 40,
+          "creation": 41,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19314,6 +19673,7 @@
             "testdata/differential/storage_array_values.sol",
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/token.sol",
@@ -19323,7 +19683,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 764,
+          "runtime": 765,
           "subobject": 0
         },
         "mod": {
@@ -19339,7 +19699,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 171,
+          "creation": 188,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19376,6 +19736,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -19386,7 +19747,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2257,
+          "runtime": 2277,
           "subobject": 0
         },
         "mstore8": {
@@ -19456,6 +19817,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -19466,7 +19828,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 747,
+          "runtime": 748,
           "subobject": 0
         },
         "number": {
@@ -19538,7 +19900,7 @@
           "subobject": 0
         },
         "return": {
-          "creation": 53,
+          "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19575,6 +19937,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -19585,7 +19948,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 431,
+          "runtime": 432,
           "subobject": 0
         },
         "returndatacopy": {
@@ -19615,7 +19978,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 119,
+          "creation": 124,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19652,6 +20015,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -19662,7 +20026,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1654,
+          "runtime": 1659,
           "subobject": 0
         },
         "sar": {
@@ -19695,7 +20059,7 @@
           "subobject": 0
         },
         "shl": {
-          "creation": 85,
+          "creation": 89,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19730,6 +20094,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -19740,7 +20105,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1012,
+          "runtime": 1014,
           "subobject": 0
         },
         "shr": {
@@ -19776,6 +20141,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -19786,7 +20152,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 228,
+          "runtime": 229,
           "subobject": 0
         },
         "signextend": {
@@ -19810,7 +20176,7 @@
           "subobject": 0
         },
         "sload": {
-          "creation": 20,
+          "creation": 23,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/constructors.sol",
@@ -19835,6 +20201,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -19842,7 +20209,7 @@
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/storage_references.sol"
           ],
-          "runtime": 629,
+          "runtime": 636,
           "subobject": 0
         },
         "slt": {
@@ -19880,6 +20247,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -19890,7 +20258,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 473,
+          "runtime": 474,
           "subobject": 0
         },
         "smod": {
@@ -19902,7 +20270,7 @@
           "subobject": 0
         },
         "sstore": {
-          "creation": 57,
+          "creation": 64,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_bytes.sol",
@@ -19929,6 +20297,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -20057,6 +20426,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -20067,11 +20437,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1268,
+          "runtime": 1272,
           "subobject": 0
         },
         "block": {
-          "creation": 302,
+          "creation": 309,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20108,6 +20478,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -20118,7 +20489,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 3344,
+          "runtime": 3352,
           "subobject": 0
         },
         "break": {
@@ -20204,7 +20575,7 @@
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 465,
+          "creation": 496,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20241,6 +20612,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -20251,7 +20623,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5233,
+          "runtime": 5259,
           "subobject": 0
         },
         "for": {
@@ -20278,7 +20650,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 1326,
+          "creation": 1387,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20315,6 +20687,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -20325,7 +20698,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 17063,
+          "runtime": 17126,
           "subobject": 0
         },
         "functionDefinition": {
@@ -20371,7 +20744,7 @@
           "subobject": 0
         },
         "identifier": {
-          "creation": 781,
+          "creation": 800,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20408,6 +20781,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -20418,11 +20792,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 8457,
+          "runtime": 8471,
           "subobject": 0
         },
         "if": {
-          "creation": 148,
+          "creation": 153,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20459,6 +20833,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -20469,7 +20844,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1910,
+          "runtime": 1916,
           "subobject": 0
         },
         "leave": {
@@ -20488,7 +20863,7 @@
           "subobject": 0
         },
         "literal:number": {
-          "creation": 1017,
+          "creation": 1089,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20525,6 +20900,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -20535,11 +20911,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 14354,
+          "runtime": 14430,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 115,
+          "creation": 117,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20576,6 +20952,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -20633,7 +21010,7 @@
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 273,
+          "creation": 281,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20670,6 +21047,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -20680,7 +21058,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 3187,
+          "runtime": 3198,
           "subobject": 0
         }
       },
@@ -20723,6 +21101,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -20733,7 +21112,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 53,
+          "runtime": 54,
           "subobject": 0
         },
         "datacopy": {
@@ -20743,7 +21122,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 53,
+          "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20780,6 +21159,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -20794,7 +21174,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 61,
+          "creation": 62,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20831,6 +21211,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",
@@ -20845,7 +21226,7 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 53,
+          "creation": 54,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20882,6 +21263,7 @@
             "testdata/differential/storage_arrays.sol",
             "testdata/differential/storage_bytes.sol",
             "testdata/differential/storage_bytes_aliases.sol",
+            "testdata/differential/storage_pointer_base.sol",
             "testdata/differential/storage_pointers.sol",
             "testdata/differential/storage_structs.sol",
             "testdata/differential/storage_structs_top_level.sol",

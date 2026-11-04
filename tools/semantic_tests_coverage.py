@@ -691,11 +691,28 @@ def storage_pointer(declaration: dict[str, Any]) -> bool:
             and not declaration.get("stateVariable"))
 
 
+def pointer_call(expression: dict[str, Any]) -> bool:
+    """Whether an expression is a call returning a storage pointer. Only
+    variables and their members and elements are storage locations, so the
+    elaborator indexes a mapping, reads a struct field or pushes and pops only
+    through those; it reads an array's elements and length from any value."""
+    expression = unwrap(expression)
+    type_identifier = expression["typeDescriptions"].get("typeIdentifier") or ""
+    return (expression["nodeType"] == "FunctionCall" and expression.get("kind") == "functionCall"
+            and (type_identifier.startswith("t_mapping$_") or type_identifier.endswith("_storage_ptr")))
+
+
+def base_constructor(declaration: dict[str, Any]) -> dict[str, Any]:
+    """The constructor of a contract a base constructor call names, if any."""
+    return next((n for n in declaration.get("nodes", []) if n.get("nodeType") == "FunctionDefinition"
+                 and n.get("kind") == "constructor"), {})
+
+
 def storage_pointer_sources(reached: dict[int, dict[str, Any]],
                             by_id: dict[int, dict[str, Any]]) -> set[int]:
     """The expressions bound to a storage pointer, which are references rather
-    than values: an initializer, both sides of a rebinding, an argument and a
-    returned value."""
+    than values: an initializer, both sides of a rebinding, an argument (to a
+    function or a base constructor) and a returned value."""
     found: set[int] = set()
     for node in reached.values():
         kind = node["nodeType"]
@@ -711,6 +728,14 @@ def storage_pointer_sources(reached: dict[int, dict[str, Any]],
             callee = by_id.get(node["expression"].get("referencedDeclaration"), {})
             if callee.get("nodeType") == "FunctionDefinition":
                 found.update(unwrap(a)["id"] for p, a in zip(callee["parameters"]["parameters"], node["arguments"])
+                             if storage_pointer(p))
+        elif kind in ("ModifierInvocation", "InheritanceSpecifier") and node.get("arguments"):
+            name = node["modifierName" if kind == "ModifierInvocation" else "baseName"]
+            base = by_id.get(name.get("referencedDeclaration"), {})
+            if base.get("nodeType") == "ContractDefinition":
+                constructor = base_constructor(base)
+                found.update(unwrap(a)["id"] for p, a in zip(constructor.get("parameters", {}).get("parameters", []),
+                                                             node["arguments"])
                              if storage_pointer(p))
         elif kind == "Return" and node.get("expression") is not None:
             returns = by_id[node["functionReturnParameters"]]["parameters"]
@@ -777,13 +802,18 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
         found.append("literals of non-integer types")
     elif kind == "IndexAccess":
         base_type = storage_object(node["baseExpression"]["typeDescriptions"].get("typeIdentifier") or "")
-        if not (BYTES.fullmatch(base_type) or located_array(base_type)
+        if base_type.startswith("t_mapping$_") and pointer_call(node["baseExpression"]):
+            found.append("local reference bindings")
+        elif not (BYTES.fullmatch(base_type) or located_array(base_type)
                 or (base_type.startswith(("t_mapping$_", "t_array$_"))
                     and storage_type_supported(base_type))):
             found.append(type_feature(base_type))
     elif kind == "MemberAccess":
         base_type = storage_object(node["expression"]["typeDescriptions"].get("typeIdentifier") or "")
-        if node.get("referencedDeclaration") is not None:
+        if ((node.get("referencedDeclaration") is not None or node["memberName"] in {"push", "pop"})
+                and pointer_call(node["expression"])):
+            found.append("local reference bindings")
+        elif node.get("referencedDeclaration") is not None:
             if not base_type.startswith("t_struct$_") or not storage_type_supported(base_type):
                 found.append(type_feature(base_type))
         elif node["memberName"] == "length":

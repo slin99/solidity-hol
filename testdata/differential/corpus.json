@@ -809,6 +809,15 @@
       ]
     },
     {
+      "name": "storage_pointer_base",
+      "source": "testdata/differential/storage_pointer_base.sol",
+      "contract": "StoragePointerBase",
+      "artifact": "testdata/differential/expected/storage_pointer_base.json",
+      "cases": [
+        {"name": "base_constructor_writes_through_pointers", "function": "read", "args": [], "expect": {"return": [20, 3, 4, 9, 1]}, "final_storage": {"2": "2", "19511599891424801449367108142964227787403202039135897967463264740723690140170": "20", "29102676481673041902632991033461445430619272659676223336789171408008386403022": "9", "29102676481673041902632991033461445430619272659676223336789171408008386403023": "1", "69309421283222113012593111238270483737094523285068117333977424979339378140271": "3", "92458281274488595289803937127152923398167637295201432141969818930235769911600": "4"}}
+      ]
+    },
+    {
       "name": "storage_bytes",
       "source": "testdata/differential/storage_bytes.sol",
       "contract": "StorageBytes",
