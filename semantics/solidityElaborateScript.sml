@@ -1289,8 +1289,7 @@ Definition elab_modifier_args_def:
 End
 
 (* A static memory array return variable starts as a zeroed array, allocated
- * on entry. The compiler allocates it once per call and passes it through the
- * modifiers; here each procedure of a modified function allocates its own. *)
+ * on entry. *)
 Definition return_defaults_def:
   (return_defaults n [] = ([], n)) ∧
   (return_defaults n ((x, ty) :: rs) =
@@ -1301,6 +1300,17 @@ Definition return_defaults_def:
              (DefaultMemoryOperation (ArrayT element (SOME k))) ::
            assign_local (n + 1) x ty (BoundAtom (AstId n)) ++ ss, n1)
     | _ => return_defaults n rs)
+End
+
+(* The compiler allocates a static memory return array once and passes it
+ * through a function's modifiers, so a body run twice by `_; _;` sees its
+ * first run's writes. Procedures here start from fresh return values, so
+ * modified functions with such returns are rejected. *)
+Definition static_memory_returns_def:
+  (static_memory_returns [] ⇔ F) ∧
+  (static_memory_returns ((x, ty) :: rs) ⇔
+    (case ty of LocatedT MemoryLoc (ArrayT _ (SOME _)) => T | _ => F) ∨
+    static_memory_returns rs)
 End
 
 (* The procedures of a function with modifiers: one per modifier invocation,
@@ -1325,8 +1335,8 @@ Definition elab_levels_def:
         case (all_some (MAP variable_binding md.modifier_parameters),
               md.modifier_body) of
           (SOME mps, SrcBlock _ mss) =>
-            let (ds, n0) = return_defaults (n + 1) rs in
-            (case elab_modifier_args ctx n0 mps args of
+            if static_memory_returns rs then NONE else
+            (case elab_modifier_args ctx (n + 1) mps args of
                SOME (sa, n1) =>
                  (case elab_stmts (ctx with <| variables := mps;
                                                placeholder := SOME (n, ps) |>)
@@ -1337,7 +1347,7 @@ Definition elab_levels_def:
                            SOME (<| procedure_id := AstId x;
                                     parameters := core_bindings ps;
                                     return_bindings := core_bindings rs;
-                                    body := ds ++ sa ++ code |> :: levels, n3)
+                                    body := sa ++ code |> :: levels, n3)
                        | NONE => NONE)
                   | NONE => NONE)
              | NONE => NONE)
@@ -1835,6 +1845,7 @@ val () = cv_auto_trans elab_assembly_references_def;
 val () = cv_auto_trans return_writes_def;
 val () = cv_auto_trans placeholder_call_def;
 val () = cv_auto_trans return_defaults_def;
+val () = cv_auto_trans static_memory_returns_def;
 val () = cv_auto_trans flag_def;
 val () = cv_auto_trans set_flag_def;
 

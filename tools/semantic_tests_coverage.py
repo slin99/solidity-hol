@@ -663,6 +663,8 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
                 found.append("transient storage")
             elif location not in ("default", "memory") and not BYTE_SEQUENCE.fullmatch(type_identifier):
                 found.append("local reference bindings")
+            elif location == "default" and memory_array(type_identifier):
+                found.append("event array parameters")
             if error_parameter and not VALUE_TYPE.fullmatch(type_identifier):
                 found.append("custom errors with reference parameters")
             if (node["stateVariable"] and node.get("visibility") == "public"
@@ -1172,6 +1174,15 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
             if n["nodeType"] == "Identifier" and n.get("referencedDeclaration") in returns:
                 found.setdefault(n["id"], []).append(
                     Blocker("Identifier", "return variables in modifier arguments", "elaboration"))
+    # A static memory return array is shared across a modifier's placeholders.
+    for f in live:
+        if any(m.get("kind") == "modifierInvocation" for m in by_id[f].get("modifiers", [])):
+            for v in by_id[f].get("returnParameters", {}).get("parameters", []):
+                tid = v["typeDescriptions"].get("typeIdentifier") or ""
+                if memory_array(tid) and not tid.endswith("$dyn_memory_ptr"):
+                    found.setdefault(v["id"], []).append(Blocker(
+                        "VariableDeclaration", "static memory array returns under modifiers",
+                        "elaboration"))
     # The checker and the elaborator see only the functions nothing overrides.
     found = {i: [b for b in bs if not (i in dead and b.stage == "elaboration")]
              for i, bs in found.items() if i in reached}

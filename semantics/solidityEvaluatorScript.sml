@@ -552,6 +552,8 @@ Definition simple_stmt_def:
              if n < 0 then abrupt_result (InvalidCompletion "negative allocation") st gas
              else if 2 ** 64 ≤ Num n then abrupt_result (PanicCompletion 65) st gas
              else if byte_sequence_type element then
+               if 2 ** 64 ≤ 128 + st.memory_allocated + 32 + 32 * ((Num n + 31) DIV 32)
+               then abrupt_result (PanicCompletion 65) st gas else
                let (v, st') = allocate_bytes element (REPLICATE (Num n) 0w) st in
                normal_result (define_binding x ty v st') gas
              else

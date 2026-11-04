@@ -554,6 +554,21 @@ class ClassifyTests(unittest.TestCase):
         found = coverage.scan({"t.sol": unit([modifier, dict(function(4, []),
                                                               modifiers=[dict(invocation, kind="other")])])})
         self.assertIn(coverage.Blocker("ModifierInvocation", "modifiers", "import"), found[70])
+        static = dict(variable(85, type_identifier="t_array$_t_uint256_$2_memory_ptr"),
+                      storageLocation="memory")
+        dynamic = dict(variable(86, type_identifier="t_array$_t_uint256_$dyn_memory_ptr"),
+                       storageLocation="memory")
+        returns = {"nodeType": "ParameterList", "id": 80, "parameters": [static, dynamic]}
+        found = coverage.scan({"t.sol": unit([modifier, dict(function(4, []), returnParameters=returns,
+                                                              modifiers=[invocation])])})
+        self.assertIn(coverage.Blocker("VariableDeclaration", "static memory array returns under modifiers",
+                                       "elaboration"), found[85])
+        self.assertNotIn(86, found)
+
+    def test_event_array_parameters_are_rejected(self) -> None:
+        parameter = variable(6, type_identifier="t_array$_t_uint256_$dyn_memory_ptr")
+        self.assertIn("event array parameters",
+                      {b.feature for b in coverage.elaboration_blockers(parameter)})
 
     def test_mapping_keys_parentheses_and_tuples_are_coerced(self) -> None:
         def string(node_id):
