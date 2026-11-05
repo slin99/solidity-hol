@@ -214,7 +214,8 @@ val test_compset =
   computeLib.add_conv (word_exp_c, 2, word_exp_conv)
     (List.foldl (fn (c, cs) => computeLib.scrub_const cs c)
        (computeLib.copy (computeLib.the_compset ()))
-       [eval_yul_block_c, invoke_c, word_exp_c, word_exp_tailrec_c])
+       [eval_yul_block_c, invoke_c, eval_yul_loop_c, word_exp_c,
+        word_exp_tailrec_c])
 
 fun eval_test tm = computeLib.CBV_CONV test_compset tm
 

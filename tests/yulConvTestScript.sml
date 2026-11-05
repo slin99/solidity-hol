@@ -629,20 +629,25 @@ val () = print ("yulConvTest: checked_exp_helper's entry " ^ Int.toString
                 ^ " nodes\n")
 
 (* A loop with statements after it.  `checked_exp_helper`'s loop is the last
- * statement of its body, so the rest after it is empty; here it is not.  The
- * entry's form stops at the loop with the rest left unevaluated over the
- * machine the loop returns -- a form that is not closed, since that rest is
- * evaluation still to do.  Once the loop's outcome is in, `yul_eval_conv`
- * finishes the rest.  The argument makes the loop exit at once, so its one
- * iteration is its whole run, and the end result is held to what the
- * evaluator itself gives. *)
+ * statement of its body, so the rest after it is empty; here it is not: `f`'s
+ * loop is followed by an assignment, and `g`'s is the same loop in a block of
+ * its own, so the block's result is decided over the machine the loop returns.
+ * An entry's form stops at the loop with the rest left unevaluated -- a form
+ * that is not closed, since that rest is evaluation still to do -- at a numeral
+ * fuel and at `SUC n` alike.  Taking the loop's iterations one at a time and
+ * then finishing the rest with `yul_eval_conv` gives what the evaluator itself
+ * gives.  On 2 the loop runs its post once before it exits. *)
 Definition loop_rest_object_def:
   loop_rest_object =
-    [YulFunction "f" ["x"] ["r"]
-       [YulFor [] (YulBuiltin YLt [YulName "x"; YulLit (LitNumber 3w)])
-          [YulAssign ["x"] (YulBuiltin YAdd [YulName "x"; YulLit (LitNumber 1w)])]
-          [];
-        YulAssign ["r"] (YulBuiltin YAdd [YulName "x"; YulLit (LitNumber 1w)])]]
+    let loop = YulFor [] (YulBuiltin YLt [YulName "x"; YulLit (LitNumber 3w)])
+                 [YulAssign ["x"]
+                    (YulBuiltin YAdd [YulName "x"; YulLit (LitNumber 1w)])]
+                 [];
+        rest = YulAssign ["r"]
+                 (YulBuiltin YAdd [YulName "x"; YulLit (LitNumber 1w)])
+    in
+      [YulFunction "f" ["x"] ["r"] [loop; rest];
+       YulFunction "g" ["x"] ["r"] [YulBlock [loop]; rest]]
 End
 
 Definition loop_rest_table_def:
@@ -652,44 +657,57 @@ End
 val () =
   let
     val defs = [loop_rest_table_def, loop_rest_object_def]
-    val t = list_mk_comb (invoke_c,
-              [``20n``, ``loop_rest_table``, stringSyntax.fromMLstring "f",
-               ``[5w : bytes32]``, yul_conv_machine_term])
-    val entry =
-      case under_clock 60.0 (fn () => yulConvLib.yul_invoke_conv defs t) of
-        NONE => fail "f's entry did not come back within 60s"
-      | SOME th => th
-    val form = rhs (concl entry)
-    val loop = find_term (is_loop_at NONE) form
-               handle HOL_ERR _ => fail "f's entry does not stop at its loop"
-    val () =
-      if yulConvLib.is_closed_form form then
-        fail "f's entry is closed, so the rest after its loop was dropped"
-      else ()
-    val it =
-      case under_clock 60.0 (fn () => yulConvLib.yul_loop_conv defs loop) of
-        NONE => fail "f's loop did not come back within 60s"
-      | SOME th => th
-    val () =
-      if can (find_term (is_loop_at NONE)) (rhs (concl it)) then
-        fail "f's loop does not exit at once on 5"
-      else ()
-    val fns = el 2 (snd (strip_comb loop))
-    val rest = subst [loop |-> rhs (concl it)] form
-    val final =
-      case under_clock 60.0 (fn () => yulConvLib.yul_eval_conv defs fns rest) of
-        NONE => fail "the rest after f's loop did not come back within 60s"
+    fun call fuel nm arg =
+      list_mk_comb (invoke_c,
+        [fuel, ``loop_rest_table``, stringSyntax.fromMLstring nm,
+         listSyntax.mk_list ([arg], bytes32_ty), yul_conv_machine_term])
+    fun clocked what conv t =
+      case under_clock 60.0 (fn () => conv t) of
+        NONE => fail (what ^ " did not come back within 60s")
       | SOME th => rhs (concl th)
-    (* EVAL also unfolds the frame's parameters, which the conversion keeps
-     * by name, so the two are compared with those unfolded on both sides. *)
-    val direct = rhs (concl (EVAL t))
-    val final' = rhs (concl (QCONV EVAL final))
+    fun entry what t =
+      let val form = clocked what (yulConvLib.yul_invoke_conv defs) t in
+        if not (can (find_term (is_loop_at NONE)) form) then
+          fail (what ^ " does not stop at its loop")
+        else if yulConvLib.is_closed_form form then
+          fail (what ^ " is closed, so the rest after its loop was dropped")
+        else form
+      end
+    (* the loop's iterations, one at a time, until it exits *)
+    fun run what i form =
+      case Lib.total (find_term (is_loop_at NONE)) form of
+        NONE => form
+      | SOME loop =>
+          if i > 3 then fail (what ^ "'s loop did not exit in 3 iterations")
+          else
+            run what (i + 1)
+              (subst [loop |-> clocked (what ^ "'s loop")
+                                 (yulConvLib.yul_loop_conv defs) loop] form)
+    fun check nm =
+      let
+        val t = call ``20n`` nm ``2w : bytes32``
+        val form = run nm 1 (entry (nm ^ "'s entry") t)
+        val fns = ``loop_rest_table``
+        val final = clocked ("the rest after " ^ nm ^ "'s loop")
+                      (yulConvLib.yul_eval_conv defs fns) form
+        (* EVAL also unfolds the frame's parameters, which the conversion
+         * keeps by name, so the two are compared with those unfolded on both
+         * sides. *)
+        val direct = rhs (concl (EVAL t))
+        val final' = rhs (concl (QCONV EVAL final))
+        val n = mk_var ("n", numSyntax.num)
+      in
+        if not (yulConvLib.is_closed_form final) then
+          fail ("the rest after " ^ nm ^ "'s loop left "
+                ^ show_residues (yulConvLib.residues final))
+        else if not (aconv final' direct) then
+          fail ("the rest after " ^ nm ^ "'s loop gives "
+                ^ term_to_string final ^ ", but the evaluator gives "
+                ^ term_to_string direct)
+        else
+          ignore (entry (nm ^ "'s entry at SUC n")
+                    (call (numSyntax.mk_suc n) nm (hd arg_names)))
+      end
   in
-    if not (yulConvLib.is_closed_form final) then
-      fail ("the rest after f's loop left "
-            ^ show_residues (yulConvLib.residues final))
-    else if not (aconv final' direct) then
-      fail ("the rest after f's loop gives " ^ term_to_string final
-            ^ ", but the evaluator gives " ^ term_to_string direct)
-    else ()
+    List.app check ["f", "g"]
   end
