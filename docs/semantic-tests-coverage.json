@@ -1,18 +1,18 @@
 {
   "counts": {
-    "admitted": 485,
+    "admitted": 502,
     "compile-failure": 0,
-    "elaboration-rejected": 52,
-    "import-rejected": 761,
+    "elaboration-rejected": 54,
+    "import-rejected": 735,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 272
+    "source-rejected": 279
   },
   "features": [
     {
       "feature": "external calls and contract members",
-      "first_rejection": 104,
+      "first_rejection": 103,
       "node_types": [
         "FunctionCall",
         "Identifier",
@@ -57,6 +57,15 @@
       "tests": 140
     },
     {
+      "feature": "source units without exactly one contract",
+      "first_rejection": 0,
+      "node_types": [
+        "SourceUnit"
+      ],
+      "only_blocker": 5,
+      "tests": 129
+    },
+    {
       "feature": "arrays",
       "first_rejection": 6,
       "node_types": [
@@ -67,20 +76,11 @@
         "VariableDeclaration"
       ],
       "only_blocker": 3,
-      "tests": 130
-    },
-    {
-      "feature": "source units without exactly one contract",
-      "first_rejection": 0,
-      "node_types": [
-        "SourceUnit"
-      ],
-      "only_blocker": 4,
-      "tests": 129
+      "tests": 125
     },
     {
       "feature": "function members (selector, address, \u2026)",
-      "first_rejection": 21,
+      "first_rejection": 16,
       "node_types": [
         "MemberAccess",
         "TupleExpression",
@@ -88,15 +88,6 @@
       ],
       "only_blocker": 0,
       "tests": 121
-    },
-    {
-      "feature": "libraries",
-      "first_rejection": 42,
-      "node_types": [
-        "ContractDefinition"
-      ],
-      "only_blocker": 1,
-      "tests": 116
     },
     {
       "feature": "struct values and copying",
@@ -110,18 +101,8 @@
       "tests": 108
     },
     {
-      "feature": "library calls and contract-name members",
-      "first_rejection": 0,
-      "node_types": [
-        "IndexAccess",
-        "MemberAccess"
-      ],
-      "only_blocker": 13,
-      "tests": 101
-    },
-    {
       "feature": "abi.* functions",
-      "first_rejection": 58,
+      "first_rejection": 56,
       "node_types": [
         "MemberAccess"
       ],
@@ -130,7 +111,7 @@
     },
     {
       "feature": "function types",
-      "first_rejection": 78,
+      "first_rejection": 82,
       "node_types": [
         "FunctionTypeName"
       ],
@@ -145,16 +126,6 @@
       ],
       "only_blocker": 2,
       "tests": 91
-    },
-    {
-      "feature": "using for",
-      "first_rejection": 47,
-      "node_types": [
-        "MemberAccess",
-        "UsingForDirective"
-      ],
-      "only_blocker": 0,
-      "tests": 81
     },
     {
       "feature": "contract creation (new C)",
@@ -195,6 +166,16 @@
       "tests": 67
     },
     {
+      "feature": "functions as values",
+      "first_rejection": 0,
+      "node_types": [
+        "Identifier",
+        "MemberAccess"
+      ],
+      "only_blocker": 1,
+      "tests": 65
+    },
+    {
       "feature": "hash and signature built-ins",
       "first_rejection": 16,
       "node_types": [
@@ -210,16 +191,7 @@
         "MemberAccess"
       ],
       "only_blocker": 14,
-      "tests": 58
-    },
-    {
-      "feature": "functions as values",
-      "first_rejection": 0,
-      "node_types": [
-        "Identifier"
-      ],
-      "only_blocker": 1,
-      "tests": 55
+      "tests": 56
     },
     {
       "feature": "type names as values",
@@ -232,7 +204,7 @@
     },
     {
       "feature": "user-defined value types",
-      "first_rejection": 46,
+      "first_rejection": 48,
       "node_types": [
         "MemberAccess",
         "TupleExpression",
@@ -240,7 +212,7 @@
         "UserDefinedValueTypeDefinition",
         "VariableDeclaration"
       ],
-      "only_blocker": 6,
+      "only_blocker": 7,
       "tests": 52
     },
     {
@@ -259,6 +231,15 @@
         "TupleExpression"
       ],
       "only_blocker": 13,
+      "tests": 47
+    },
+    {
+      "feature": "external library functions",
+      "first_rejection": 31,
+      "node_types": [
+        "FunctionDefinition"
+      ],
+      "only_blocker": 6,
       "tests": 47
     },
     {
@@ -281,7 +262,7 @@
     },
     {
       "feature": "conditional expressions",
-      "first_rejection": 23,
+      "first_rejection": 25,
       "node_types": [
         "Conditional"
       ],
@@ -293,7 +274,6 @@
       "first_rejection": 0,
       "node_types": [
         "IndexAccess",
-        "MemberAccess",
         "TupleExpression",
         "VariableDeclaration"
       ],
@@ -316,6 +296,16 @@
       "tests": 38
     },
     {
+      "feature": "library calls and contract-name members",
+      "first_rejection": 0,
+      "node_types": [
+        "IndexAccess",
+        "MemberAccess"
+      ],
+      "only_blocker": 13,
+      "tests": 37
+    },
+    {
       "feature": "aggregate array mutation",
       "first_rejection": 0,
       "node_types": [
@@ -326,7 +316,7 @@
     },
     {
       "feature": "inline assembly",
-      "first_rejection": 19,
+      "first_rejection": 22,
       "node_types": [
         "InlineAssembly"
       ],
@@ -354,12 +344,12 @@
       "node_types": [
         "FunctionCall"
       ],
-      "only_blocker": 4,
+      "only_blocker": 5,
       "tests": 32
     },
     {
       "feature": "bytes.concat and string.concat",
-      "first_rejection": 13,
+      "first_rejection": 14,
       "node_types": [
         "MemberAccess",
         "TupleExpression"
@@ -378,7 +368,7 @@
     },
     {
       "feature": "enums",
-      "first_rejection": 25,
+      "first_rejection": 23,
       "node_types": [
         "EnumDefinition",
         "EnumValue",
@@ -392,6 +382,15 @@
       "tests": 29
     },
     {
+      "feature": "using for with functions",
+      "first_rejection": 3,
+      "node_types": [
+        "UsingForDirective"
+      ],
+      "only_blocker": 0,
+      "tests": 29
+    },
+    {
       "feature": "tuples of literals",
       "first_rejection": 0,
       "node_types": [
@@ -401,15 +400,25 @@
       "tests": 28
     },
     {
+      "feature": "library structs and events",
+      "first_rejection": 26,
+      "node_types": [
+        "EnumDefinition",
+        "EventDefinition",
+        "StructDefinition"
+      ],
+      "only_blocker": 1,
+      "tests": 26
+    },
+    {
       "feature": "conversions to non-elementary types",
       "first_rejection": 1,
       "node_types": [
         "Identifier",
-        "IndexAccess",
-        "MemberAccess"
+        "IndexAccess"
       ],
       "only_blocker": 0,
-      "tests": 26
+      "tests": 25
     },
     {
       "feature": "memory arrays (new T[](n))",
@@ -465,11 +474,11 @@
     },
     {
       "feature": "array slices",
-      "first_rejection": 15,
+      "first_rejection": 16,
       "node_types": [
         "IndexRangeAccess"
       ],
-      "only_blocker": 4,
+      "only_blocker": 5,
       "tests": 19
     },
     {
@@ -511,16 +520,6 @@
       "tests": 16
     },
     {
-      "feature": "fixed-size bytes members and indexing",
-      "first_rejection": 0,
-      "node_types": [
-        "IndexAccess",
-        "MemberAccess"
-      ],
-      "only_blocker": 2,
-      "tests": 12
-    },
-    {
       "feature": "built-in erc7201",
       "first_rejection": 7,
       "node_types": [
@@ -553,16 +552,17 @@
       "node_types": [
         "InlineAssembly"
       ],
-      "only_blocker": 4,
+      "only_blocker": 5,
       "tests": 10
     },
     {
-      "feature": "bytes and string",
+      "feature": "fixed-size bytes members and indexing",
       "first_rejection": 0,
       "node_types": [
+        "IndexAccess",
         "MemberAccess"
       ],
-      "only_blocker": 0,
+      "only_blocker": 2,
       "tests": 10
     },
     {
@@ -576,11 +576,11 @@
     },
     {
       "feature": "events named through a contract or library",
-      "first_rejection": 5,
+      "first_rejection": 6,
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 3,
+      "only_blocker": 4,
       "tests": 8
     },
     {
@@ -592,6 +592,15 @@
       ],
       "only_blocker": 0,
       "tests": 8
+    },
+    {
+      "feature": "using for",
+      "first_rejection": 0,
+      "node_types": [
+        "MemberAccess"
+      ],
+      "only_blocker": 0,
+      "tests": 7
     },
     {
       "feature": "msg/block/tx globals",
@@ -676,6 +685,15 @@
       "tests": 4
     },
     {
+      "feature": "bound calls copying their receiver",
+      "first_rejection": 0,
+      "node_types": [
+        "MemberAccess"
+      ],
+      "only_blocker": 2,
+      "tests": 4
+    },
+    {
       "feature": "built-in blobhash",
       "first_rejection": 3,
       "node_types": [
@@ -731,7 +749,7 @@
     },
     {
       "feature": "events",
-      "first_rejection": 3,
+      "first_rejection": 0,
       "node_types": [
         "MemberAccess"
       ],
@@ -837,72 +855,72 @@
       "feature": "hash and signature built-ins"
     },
     {
-      "admitted": 67,
+      "admitted": 68,
       "feature": "address members (balance, call, transfer, \u2026)"
     },
     {
-      "admitted": 82,
+      "admitted": 83,
       "feature": "transient storage"
     },
     {
-      "admitted": 104,
+      "admitted": 105,
       "feature": "operator delete"
     },
     {
-      "admitted": 121,
+      "admitted": 122,
       "feature": "bytes push and pop"
     },
     {
-      "admitted": 138,
+      "admitted": 139,
       "feature": "literals of non-integer types"
     },
     {
-      "admitted": 154,
+      "admitted": 155,
       "feature": "inline arrays"
     },
     {
-      "admitted": 168,
+      "admitted": 169,
       "feature": "conditional expressions"
     },
     {
-      "admitted": 181,
-      "feature": "library calls and contract-name members"
-    },
-    {
-      "admitted": 194,
+      "admitted": 182,
       "feature": "aggregate array mutation"
     },
     {
+      "admitted": 195,
+      "feature": "library calls and contract-name members"
+    },
+    {
       "admitted": 206,
-      "feature": "libraries"
-    },
-    {
-      "admitted": 218,
-      "feature": "free functions"
-    },
-    {
-      "admitted": 230,
-      "feature": "source units without exactly one contract"
-    },
-    {
-      "admitted": 243,
-      "feature": "using for"
-    },
-    {
-      "admitted": 265,
-      "feature": "user-defined value types"
-    },
-    {
-      "admitted": 276,
       "feature": "struct values and copying"
     },
     {
-      "admitted": 305,
+      "admitted": 231,
       "feature": "structs"
     },
     {
-      "admitted": 340,
+      "admitted": 263,
       "feature": "local reference bindings"
+    },
+    {
+      "admitted": 283,
+      "feature": "arrays"
+    },
+    {
+      "admitted": 312,
+      "feature": "array values"
+    },
+    {
+      "admitted": 332,
+      "feature": "inline assembly memory references"
+    },
+    {
+      "admitted": 354,
+      "feature": "inline assembly memory outside the scratch space"
+    },
+    {
+      "admitted": 371,
+      "feature": "inline assembly"
     }
   ],
   "profile": "solc-0.8.37-via-ir-osaka",
@@ -1448,11 +1466,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members"
+        "external library functions"
       ],
-      "first": "libraries",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_dynamic_static_in_library_v2.sol: ContractDefinition 23: unsupported contract kind library",
+      "first": "external library functions",
+      "reason": "abicoder/calldataDecoding/array/calldata_array_dynamic_static_in_library_v2.sol: FunctionDefinition 22: only internal library functions are supported",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_dynamic_static_in_library_v2.sol"
     },
@@ -2291,14 +2308,14 @@
       "category": "import-rejected",
       "features": [
         "arrays",
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
+        "library structs and events",
         "local reference bindings",
         "struct values and copying",
         "structs"
       ],
-      "first": "libraries",
-      "reason": "abicoder/libraryABI/storage_ptr.sol: ContractDefinition 48: unsupported contract kind library",
+      "first": "library structs and events",
+      "reason": "abicoder/libraryABI/storage_ptr.sol: StructDefinition 5: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "abicoder/libraryABI/storage_ptr.sol"
     },
@@ -5933,9 +5950,7 @@
       "features": [
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "libraries",
-        "library calls and contract-name members"
+        "functions as values"
       ],
       "first": "function types",
       "reason": "constructor/store_internal_unused_library_function_in_constructor.sol: FunctionTypeName 14: unsupported type name FunctionTypeName",
@@ -6002,22 +6017,20 @@
         "free functions",
         "inline assembly calls, gas, return data and code",
         "structs",
-        "using for"
+        "using for with functions"
       ],
-      "first": "using for",
-      "reason": "deployedCodeExclusion/bound_function.sol: UsingForDirective 18: unsupported source unit member UsingForDirective",
+      "first": "using for with functions",
+      "reason": "deployedCodeExclusion/bound_function.sol: UsingForDirective 18: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "deployedCodeExclusion/bound_function.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "inline assembly calls, gas, return data and code",
-        "libraries",
-        "library calls and contract-name members"
+        "inline assembly calls, gas, return data and code"
       ],
-      "first": "libraries",
-      "reason": "deployedCodeExclusion/library_function.sol: ContractDefinition 9: unsupported contract kind library",
+      "first": null,
+      "reason": "deployedCodeExclusion/library_function.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "deployedCodeExclusion/library_function.sol"
     },
@@ -6027,9 +6040,7 @@
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
-        "hash and signature built-ins",
-        "libraries",
-        "library calls and contract-name members"
+        "hash and signature built-ins"
       ],
       "first": "function types",
       "reason": "deployedCodeExclusion/library_function_deployed.sol: FunctionTypeName 16: unsupported type name FunctionTypeName",
@@ -6239,11 +6250,12 @@
       "category": "import-rejected",
       "features": [
         "enums",
-        "libraries",
-        "library calls and contract-name members"
+        "external library functions",
+        "library calls and contract-name members",
+        "library structs and events"
       ],
-      "first": "enums",
-      "reason": "enums/enum_referencing.sol: EnumDefinition 5: unsupported contract member",
+      "first": "library structs and events",
+      "reason": "enums/enum_referencing.sol: EnumDefinition 9: unsupported library member EnumDefinition",
       "scan_agrees": true,
       "test": "enums/enum_referencing.sol"
     },
@@ -6324,12 +6336,10 @@
       "test": "enums/using_inherited_enum_excplicitly.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "libraries"
-      ],
-      "first": "libraries",
-      "reason": "errors/error_in_library_and_interface.sol: ContractDefinition 11: unsupported contract kind library",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "errors/error_in_library_and_interface.sol"
     },
@@ -6337,7 +6347,6 @@
       "category": "import-rejected",
       "features": [
         "custom errors",
-        "libraries",
         "library calls and contract-name members"
       ],
       "first": "custom errors",
@@ -6988,12 +6997,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "events named through a contract or library",
-        "libraries",
-        "library calls and contract-name members"
+        "events named through a contract or library"
       ],
-      "first": "libraries",
-      "reason": "events/event_emit_interface_event_via_library.sol: ContractDefinition 13: unsupported contract kind library",
+      "first": "events named through a contract or library",
+      "reason": "events/event_emit_interface_event_via_library.sol: MemberAccess 8: expected Identifier",
       "scan_agrees": true,
       "test": "events/event_emit_interface_event_via_library.sol"
     },
@@ -7110,12 +7117,12 @@
       "category": "import-rejected",
       "features": [
         "events",
-        "libraries",
         "library calls and contract-name members",
+        "library structs and events",
         "source units without exactly one contract"
       ],
-      "first": "events",
-      "reason": "events/event_selector.sol: MemberAccess 132: unsupported built-in member",
+      "first": "library structs and events",
+      "reason": "events/event_selector.sol: EventDefinition 2: unsupported library member EventDefinition",
       "scan_agrees": true,
       "test": "events/event_selector.sol"
     },
@@ -7124,11 +7131,10 @@
       "features": [
         "events",
         "file-level events",
-        "libraries",
-        "library calls and contract-name members"
+        "library structs and events"
       ],
-      "first": "events",
-      "reason": "events/event_selector_file_level.sol: MemberAccess 14: unsupported built-in member",
+      "first": "library structs and events",
+      "reason": "events/event_selector_file_level.sol: EventDefinition 4: unsupported library member EventDefinition",
       "scan_agrees": true,
       "test": "events/event_selector_file_level.sol"
     },
@@ -7137,24 +7143,22 @@
       "features": [
         "events",
         "file-level events",
-        "libraries",
-        "library calls and contract-name members"
+        "library structs and events"
       ],
-      "first": "events",
-      "reason": "events/event_shadowing_file_level.sol: MemberAccess 64: unsupported built-in member",
+      "first": "library structs and events",
+      "reason": "events/event_shadowing_file_level.sol: EventDefinition 6: unsupported library member EventDefinition",
       "scan_agrees": true,
       "test": "events/event_shadowing_file_level.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
+        "library structs and events",
         "struct values and copying",
         "structs"
       ],
-      "first": "libraries",
-      "reason": "events/event_signature_in_library.sol: ContractDefinition 28: unsupported contract kind library",
+      "first": "library structs and events",
+      "reason": "events/event_signature_in_library.sol: StructDefinition 6: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "events/event_signature_in_library.sol"
     },
@@ -7466,13 +7470,11 @@
         "conditional expressions",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
-        "libraries",
-        "library calls and contract-name members",
         "literals of non-integer types",
         "source units without exactly one contract"
       ],
-      "first": "libraries",
-      "reason": "_base64/base64_inline_asm.sol: ContractDefinition 50: unsupported contract kind library",
+      "first": "conditional expressions",
+      "reason": "base64.sol: Conditional 144: unsupported expression Conditional",
       "scan_agrees": true,
       "test": "externalContracts/base64.sol"
     },
@@ -7498,13 +7500,10 @@
         "conditional expressions",
         "inline assembly",
         "inline assembly memory references",
-        "libraries",
-        "library calls and contract-name members",
-        "source units without exactly one contract",
-        "using for"
+        "source units without exactly one contract"
       ],
-      "first": "libraries",
-      "reason": "_prbmath/PRBMathCommon.sol: ContractDefinition 1509: unsupported contract kind library",
+      "first": "inline assembly",
+      "reason": "prbmath.sol: InlineAssembly 1145: YulFunctionCall: call to mulmod, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "externalContracts/prbmath_signed.sol"
     },
@@ -7514,13 +7513,10 @@
         "conditional expressions",
         "inline assembly",
         "inline assembly memory references",
-        "libraries",
-        "library calls and contract-name members",
-        "source units without exactly one contract",
-        "using for"
+        "source units without exactly one contract"
       ],
-      "first": "libraries",
-      "reason": "_prbmath/PRBMathCommon.sol: ContractDefinition 1509: unsupported contract kind library",
+      "first": "inline assembly",
+      "reason": "prbmath.sol: InlineAssembly 1145: YulFunctionCall: call to mulmod, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "externalContracts/prbmath_unsigned.sol"
     },
@@ -7531,13 +7527,10 @@
         "free functions",
         "inline assembly",
         "inline assembly memory references",
-        "libraries",
-        "library calls and contract-name members",
-        "source units without exactly one contract",
-        "using for"
+        "source units without exactly one contract"
       ],
-      "first": "libraries",
-      "reason": "_prbmath/PRBMathCommon.sol: ContractDefinition 1509: unsupported contract kind library",
+      "first": "inline assembly",
+      "reason": "ramanujan_pi.sol: InlineAssembly 1145: YulFunctionCall: call to mulmod, which is neither a builtin nor a function the object defines",
       "scan_agrees": true,
       "test": "externalContracts/ramanujan_pi.sol"
     },
@@ -7551,17 +7544,15 @@
         "inline arrays",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
-        "libraries",
-        "library calls and contract-name members",
+        "library structs and events",
         "members of elementary type names",
         "memory arrays (new T[](n))",
         "struct values and copying",
         "structs",
-        "type names as values",
-        "using for"
+        "type names as values"
       ],
-      "first": "using for",
-      "reason": "externalContracts/snark.sol: UsingForDirective 707: unsupported contract member",
+      "first": "library structs and events",
+      "reason": "externalContracts/snark.sol: StructDefinition 6: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "externalContracts/snark.sol"
     },
@@ -7570,21 +7561,18 @@
       "features": [
         "array values",
         "arrays",
-        "bytes and string",
         "conditional expressions",
-        "fixed-size bytes members and indexing",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
-        "libraries",
+        "library structs and events",
         "literals of non-integer types",
         "memory arrays (new T[](n))",
         "source units without exactly one contract",
         "struct values and copying",
-        "structs",
-        "using for"
+        "structs"
       ],
-      "first": "libraries",
-      "reason": "_stringutils/stringutils.sol: ContractDefinition 1793: unsupported contract kind library",
+      "first": "library structs and events",
+      "reason": "strings.sol: StructDefinition 6: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "externalContracts/strings.sol"
     },
@@ -7831,9 +7819,8 @@
     {
       "category": "import-rejected",
       "features": [
-        "free functions",
-        "libraries",
-        "library calls and contract-name members"
+        "external library functions",
+        "free functions"
       ],
       "first": "free functions",
       "reason": "freeFunctions/libraries_from_free.sol: FunctionDefinition 33: unsupported source unit member FunctionDefinition",
@@ -7909,40 +7896,38 @@
       "features": [
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "libraries",
-        "using for"
+        "functions as values"
       ],
-      "first": "using for",
-      "reason": "functionCall/call_attached_library_function_on_function.sol: UsingForDirective 18: unsupported contract member",
+      "first": "function types",
+      "reason": "functionCall/call_attached_library_function_on_function.sol: FunctionTypeName 5: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "functionCall/call_attached_library_function_on_function.sol"
     },
     {
       "category": "import-rejected",
       "features": [
+        "external library functions",
         "function members (selector, address, \u2026)",
-        "libraries",
+        "library structs and events",
         "local reference bindings",
         "named arguments",
         "public state variables",
         "structs",
         "using for"
       ],
-      "first": "using for",
-      "reason": "functionCall/call_attached_library_function_on_storage_variable.sol: UsingForDirective 24: unsupported contract member",
+      "first": "library structs and events",
+      "reason": "functionCall/call_attached_library_function_on_storage_variable.sol: StructDefinition 3: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "functionCall/call_attached_library_function_on_storage_variable.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "bytes and string",
-        "libraries",
-        "using for"
+        "bound calls copying their receiver",
+        "external library functions"
       ],
-      "first": "using for",
-      "reason": "functionCall/call_attached_library_function_on_string.sol: UsingForDirective 18: unsupported contract member",
+      "first": "external library functions",
+      "reason": "functionCall/call_attached_library_function_on_string.sol: FunctionDefinition 14: only internal library functions are supported",
       "scan_agrees": true,
       "test": "functionCall/call_attached_library_function_on_string.sol"
     },
@@ -8054,8 +8039,6 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "libraries",
-        "library calls and contract-name members",
         "literals of non-integer types",
         "this"
       ],
@@ -8067,28 +8050,25 @@
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "local reference bindings",
         "struct values and copying",
         "structs"
       ],
-      "first": "libraries",
-      "reason": "functionCall/calldata_argument_internal_library_dynamic_struct_v2.sol: ContractDefinition 60: unsupported contract kind library",
+      "first": "external library functions",
+      "reason": "functionCall/calldata_argument_internal_library_dynamic_struct_v2.sol: FunctionDefinition 59: only internal library functions are supported",
       "scan_agrees": true,
       "test": "functionCall/calldata_argument_internal_library_dynamic_struct_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
         "local reference bindings",
         "struct values and copying",
         "structs"
       ],
-      "first": "libraries",
-      "reason": "functionCall/calldata_argument_internal_library_static_struct_v2.sol: ContractDefinition 24: unsupported contract kind library",
+      "first": null,
+      "reason": "functionCall/calldata_argument_internal_library_static_struct_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "functionCall/calldata_argument_internal_library_static_struct_v2.sol"
     },
@@ -8789,11 +8769,10 @@
       "features": [
         "function members (selector, address, \u2026)",
         "function types",
-        "libraries",
-        "library calls and contract-name members"
+        "functions as values"
       ],
-      "first": "libraries",
-      "reason": "functionTypes/function_type_library_internal.sol: ContractDefinition 60: unsupported contract kind library",
+      "first": "function types",
+      "reason": "functionTypes/function_type_library_internal.sol: FunctionTypeName 12: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "functionTypes/function_type_library_internal.sol"
     },
@@ -9032,7 +9011,7 @@
       "features": [
         "conditional expressions",
         "function members (selector, address, \u2026)",
-        "libraries",
+        "functions as values",
         "library calls and contract-name members"
       ],
       "first": "conditional expressions",
@@ -9603,13 +9582,10 @@
       "test": "inheritance/inherited_function_calldata_memory_interface.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "libraries",
-        "library calls and contract-name members"
-      ],
-      "first": "libraries",
-      "reason": "inheritance/inherited_function_from_a_library.sol: ContractDefinition 9: unsupported contract kind library",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/inherited_function_from_a_library.sol"
     },
@@ -10820,98 +10796,76 @@
     {
       "category": "import-rejected",
       "features": [
-        "bytes and string",
-        "libraries",
-        "using for"
+        "bound calls copying their receiver"
       ],
-      "first": "using for",
-      "reason": "libraries/attached_internal_library_function_accepting_calldata.sol: UsingForDirective 28: unsupported contract member",
-      "scan_agrees": true,
+      "first": "unclassified",
+      "reason": "libraries/attached_internal_library_function_accepting_calldata.sol: FunctionCall 42: a bound call copying its receiver to memory is not supported",
+      "scan_agrees": false,
       "test": "libraries/attached_internal_library_function_accepting_calldata.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "array slices",
-        "arrays",
-        "libraries",
-        "using for"
+        "array slices"
       ],
-      "first": "using for",
-      "reason": "libraries/attached_internal_library_function_accepting_calldata_dynamic_array_or_slice_v2.sol: UsingForDirective 23: unsupported contract member",
+      "first": "array slices",
+      "reason": "libraries/attached_internal_library_function_accepting_calldata_dynamic_array_or_slice_v2.sol: IndexRangeAccess 57: unsupported expression IndexRangeAccess",
       "scan_agrees": true,
       "test": "libraries/attached_internal_library_function_accepting_calldata_dynamic_array_or_slice_v2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "arrays",
-        "libraries",
-        "using for"
-      ],
-      "first": "using for",
-      "reason": "libraries/attached_internal_library_function_accepting_calldata_static_array_v2.sol: UsingForDirective 27: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/attached_internal_library_function_accepting_calldata_static_array_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "libraries",
         "local reference bindings",
-        "structs",
-        "using for"
+        "structs"
       ],
-      "first": "using for",
-      "reason": "libraries/attached_internal_library_function_accepting_calldata_struct_v2.sol: UsingForDirective 28: unsupported contract member",
+      "first": null,
+      "reason": "libraries/attached_internal_library_function_accepting_calldata_struct_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "libraries/attached_internal_library_function_accepting_calldata_struct_v2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "bytes and string",
-        "libraries",
-        "using for"
-      ],
-      "first": "using for",
-      "reason": "libraries/attached_internal_library_function_accepting_calldata_v2.sol: UsingForDirective 23: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/attached_internal_library_function_accepting_calldata_v2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "bytes and string",
-        "libraries",
-        "using for"
-      ],
-      "first": "using for",
-      "reason": "libraries/attached_internal_library_function_returning_calldata.sol: UsingForDirective 24: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/attached_internal_library_function_returning_calldata.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "bytes and string",
-        "libraries",
-        "using for"
+        "bound calls copying their receiver",
+        "external library functions"
       ],
-      "first": "using for",
-      "reason": "libraries/attached_public_library_function_accepting_calldata.sol: UsingForDirective 28: unsupported contract member",
+      "first": "external library functions",
+      "reason": "libraries/attached_public_library_function_accepting_calldata.sol: FunctionDefinition 12: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/attached_public_library_function_accepting_calldata.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "bytes and string",
-        "libraries",
-        "using for"
+        "external library functions"
       ],
-      "first": "using for",
-      "reason": "libraries/attached_public_library_function_returning_calldata.sol: UsingForDirective 24: unsupported contract member",
+      "first": "external library functions",
+      "reason": "libraries/attached_public_library_function_returning_calldata.sol: FunctionDefinition 10: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/attached_public_library_function_returning_calldata.sol"
     },
@@ -10919,14 +10873,13 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
+        "external library functions",
         "function members (selector, address, \u2026)",
         "function types",
-        "libraries",
-        "library calls and contract-name members",
         "this"
       ],
-      "first": "this",
-      "reason": "libraries/external_call_with_function_pointer_parameter.sol: Identifier 42: built-in this is not supported",
+      "first": "external library functions",
+      "reason": "libraries/external_call_with_function_pointer_parameter.sol: FunctionDefinition 20: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/external_call_with_function_pointer_parameter.sol"
     },
@@ -10934,26 +10887,24 @@
       "category": "import-rejected",
       "features": [
         "arrays",
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "local reference bindings"
       ],
-      "first": "libraries",
-      "reason": "libraries/external_call_with_storage_array_parameter.sol: ContractDefinition 19: unsupported contract kind library",
+      "first": "external library functions",
+      "reason": "libraries/external_call_with_storage_array_parameter.sol: FunctionDefinition 18: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/external_call_with_storage_array_parameter.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "local reference bindings",
         "mapping values",
         "mappings"
       ],
-      "first": "libraries",
-      "reason": "libraries/external_call_with_storage_mapping_parameter.sol: ContractDefinition 19: unsupported contract kind library",
+      "first": "external library functions",
+      "reason": "libraries/external_call_with_storage_mapping_parameter.sol: FunctionDefinition 18: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/external_call_with_storage_mapping_parameter.sol"
     },
@@ -10961,82 +10912,63 @@
       "category": "import-rejected",
       "features": [
         "function members (selector, address, \u2026)",
-        "libraries",
+        "library structs and events",
         "structs",
         "using for"
       ],
-      "first": "using for",
-      "reason": "libraries/internal_call_attached_with_parentheses.sol: UsingForDirective 24: unsupported contract member",
+      "first": "library structs and events",
+      "reason": "libraries/internal_call_attached_with_parentheses.sol: StructDefinition 4: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "libraries/internal_call_attached_with_parentheses.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "function members (selector, address, \u2026)",
-        "libraries",
-        "library calls and contract-name members"
+        "functions as values"
       ],
-      "first": "libraries",
-      "reason": "libraries/internal_call_unattached_with_parentheses.sol: ContractDefinition 9: unsupported contract kind library",
+      "first": null,
+      "reason": "libraries/internal_call_unattached_with_parentheses.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "libraries/internal_call_unattached_with_parentheses.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "libraries",
-        "library calls and contract-name members"
-      ],
-      "first": "libraries",
-      "reason": "libraries/internal_library_function.sol: ContractDefinition 14: unsupported contract kind library",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/internal_library_function.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "address members (balance, call, transfer, \u2026)",
-        "libraries",
-        "using for"
-      ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_address.sol: UsingForDirective 18: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_address.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "address members (balance, call, transfer, \u2026)",
-        "libraries",
-        "using for"
-      ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_address_named_send_transfer.sol: UsingForDirective 16: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_address_named_send_transfer.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "arrays",
-        "libraries",
-        "using for"
-      ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_array_named_pop_push.sol: UsingForDirective 22: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_array_named_pop_push.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "libraries",
-        "using for"
-      ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_bool.sol: UsingForDirective 18: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_bool.sol"
     },
@@ -11045,38 +10977,29 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
-        "libraries",
-        "source units without exactly one contract",
-        "using for"
+        "source units without exactly one contract"
       ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_contract.sol: UsingForDirective 17: unsupported contract member",
+      "first": "external calls and contract members",
+      "reason": "libraries/internal_library_function_attached_to_contract.sol: UserDefinedTypeName 23: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_contract.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "arrays",
-        "libraries",
-        "using for"
-      ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_dynamic_array.sol: UsingForDirective 20: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_dynamic_array.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "conversions to non-elementary types",
         "enums",
-        "libraries",
-        "library calls and contract-name members",
-        "using for"
+        "library structs and events"
       ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_enum.sol: UsingForDirective 24: unsupported contract member",
+      "first": "library structs and events",
+      "reason": "libraries/internal_library_function_attached_to_enum.sol: EnumDefinition 3: unsupported library member EnumDefinition",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_enum.sol"
     },
@@ -11086,47 +11009,34 @@
         "external calls and contract members",
         "function members (selector, address, \u2026)",
         "function types",
-        "libraries",
-        "this",
-        "using for"
+        "this"
       ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_external_function_type.sol: UsingForDirective 32: unsupported contract member",
+      "first": "this",
+      "reason": "libraries/internal_library_function_attached_to_external_function_type.sol: Identifier 49: built-in this is not supported",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_external_function_type.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "arrays",
-        "libraries",
-        "using for"
-      ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_fixed_array.sol: UsingForDirective 22: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_fixed_array.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "fixed-size bytes members and indexing",
-        "libraries",
-        "using for"
-      ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_fixed_bytes.sol: UsingForDirective 27: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_fixed_bytes.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "libraries",
-        "using for"
-      ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_integer.sol: UsingForDirective 18: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_integer.sol"
     },
@@ -11136,12 +11046,10 @@
         "contract creation (new C)",
         "conversions to non-elementary types",
         "external calls and contract members",
-        "libraries",
-        "source units without exactly one contract",
-        "using for"
+        "source units without exactly one contract"
       ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_interface.sol: UsingForDirective 20: unsupported contract member",
+      "first": "external calls and contract members",
+      "reason": "libraries/internal_library_function_attached_to_interface.sol: UserDefinedTypeName 26: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_interface.sol"
     },
@@ -11150,12 +11058,10 @@
       "features": [
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "libraries",
-        "using for"
+        "functions as values"
       ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_internal_function_type.sol: UsingForDirective 32: unsupported contract member",
+      "first": "function types",
+      "reason": "libraries/internal_library_function_attached_to_internal_function_type.sol: FunctionTypeName 7: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_internal_function_type.sol"
     },
@@ -11164,86 +11070,69 @@
       "features": [
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "libraries",
-        "using for"
+        "functions as values"
       ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_internal_function_type_named_selector.sol: UsingForDirective 32: unsupported contract member",
+      "first": "function types",
+      "reason": "libraries/internal_library_function_attached_to_internal_function_type_named_selector.sol: FunctionTypeName 7: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_internal_function_type_named_selector.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "bytes and string",
         "bytes.concat and string.concat",
-        "libraries",
-        "type names as values",
-        "using for"
+        "type names as values"
       ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_literal.sol: UsingForDirective 30: unsupported contract member",
+      "first": "bytes.concat and string.concat",
+      "reason": "libraries/internal_library_function_attached_to_literal.sol: MemberAccess 21: unsupported built-in member",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_literal.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "libraries",
         "local reference bindings",
-        "mappings",
-        "using for"
+        "mappings"
       ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_mapping.sol: UsingForDirective 22: unsupported contract member",
+      "first": null,
+      "reason": "libraries/internal_library_function_attached_to_mapping.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_mapping.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "bytes and string",
-        "libraries",
-        "using for"
-      ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_string_accepting_memory.sol: UsingForDirective 24: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_string_accepting_memory.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "bytes and string",
-        "libraries",
-        "using for"
+        "bound calls copying their receiver"
       ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_string_accepting_storage.sol: UsingForDirective 24: unsupported contract member",
-      "scan_agrees": true,
+      "first": "unclassified",
+      "reason": "libraries/internal_library_function_attached_to_string_accepting_storage.sol: FunctionCall 41: a bound call copying its receiver to memory is not supported",
+      "scan_agrees": false,
       "test": "libraries/internal_library_function_attached_to_string_accepting_storage.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "structs",
-        "using for"
+        "library structs and events",
+        "structs"
       ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_attached_to_struct.sol: UsingForDirective 24: unsupported contract member",
+      "first": "library structs and events",
+      "reason": "libraries/internal_library_function_attached_to_struct.sol: StructDefinition 4: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_struct.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "libraries",
-        "library calls and contract-name members"
-      ],
-      "first": "libraries",
-      "reason": "libraries/internal_library_function_calling_private.sol: ContractDefinition 25: unsupported contract kind library",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/internal_library_function_calling_private.sol"
     },
@@ -11252,9 +11141,7 @@
       "features": [
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "libraries",
-        "library calls and contract-name members"
+        "functions as values"
       ],
       "first": "function types",
       "reason": "libraries/internal_library_function_pointer.sol: FunctionTypeName 18: unsupported type name FunctionTypeName",
@@ -11264,12 +11151,11 @@
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "structs",
-        "using for"
+        "library structs and events",
+        "structs"
       ],
-      "first": "using for",
-      "reason": "libraries/internal_library_function_return_var_size.sol: UsingForDirective 30: unsupported contract member",
+      "first": "library structs and events",
+      "reason": "libraries/internal_library_function_return_var_size.sol: StructDefinition 4: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_return_var_size.sol"
     },
@@ -11277,13 +11163,12 @@
       "category": "import-rejected",
       "features": [
         "arrays",
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "local reference bindings",
         "mappings"
       ],
-      "first": "libraries",
-      "reason": "libraries/internal_types_in_library.sol: ContractDefinition 38: unsupported contract kind library",
+      "first": "external library functions",
+      "reason": "libraries/internal_types_in_library.sol: FunctionDefinition 37: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/internal_types_in_library.sol"
     },
@@ -11292,13 +11177,12 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "abi.* functions",
-      "reason": "libraries/library_address.sol: MemberAccess 71: unsupported built-in member encodeWithSignature",
+      "first": "external library functions",
+      "reason": "libraries/library_address.sol: FunctionDefinition 12: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/library_address.sol"
     },
@@ -11306,8 +11190,7 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "address members (balance, call, transfer, \u2026)",
-        "libraries"
+        "address members (balance, call, transfer, \u2026)"
       ],
       "first": "abi.* functions",
       "reason": "libraries/library_address_homestead.sol: MemberAccess 50: unsupported built-in member encodeWithSignature",
@@ -11319,25 +11202,23 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
+        "external library functions",
         "imports",
-        "libraries",
-        "library calls and contract-name members",
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "abi.* functions",
-      "reason": "a.sol: MemberAccess 75: unsupported built-in member encodeWithSignature",
+      "first": "external library functions",
+      "reason": "a.sol: FunctionDefinition 13: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/library_address_via_module.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members"
+        "external library functions"
       ],
-      "first": "libraries",
-      "reason": "libraries/library_call_in_homestead.sol: ContractDefinition 10: unsupported contract kind library",
+      "first": "external library functions",
+      "reason": "libraries/library_call_in_homestead.sol: FunctionDefinition 9: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/library_call_in_homestead.sol"
     },
@@ -11348,15 +11229,15 @@
         "address members (balance, call, transfer, \u2026)",
         "arrays",
         "conditional expressions",
+        "external library functions",
         "function members (selector, address, \u2026)",
-        "libraries",
-        "library calls and contract-name members",
+        "functions as values",
         "local reference bindings",
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "libraries/library_delegatecall_guard_pure.sol: MemberAccess 62: unsupported built-in member",
+      "first": "external library functions",
+      "reason": "libraries/library_delegatecall_guard_pure.sol: FunctionDefinition 11: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/library_delegatecall_guard_pure.sol"
     },
@@ -11367,15 +11248,15 @@
         "address members (balance, call, transfer, \u2026)",
         "arrays",
         "conditional expressions",
+        "external library functions",
         "function members (selector, address, \u2026)",
-        "libraries",
-        "library calls and contract-name members",
+        "functions as values",
         "local reference bindings",
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "libraries/library_delegatecall_guard_view_needed.sol: MemberAccess 63: unsupported built-in member",
+      "first": "external library functions",
+      "reason": "libraries/library_delegatecall_guard_view_needed.sol: FunctionDefinition 12: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/library_delegatecall_guard_view_needed.sol"
     },
@@ -11386,15 +11267,15 @@
         "address members (balance, call, transfer, \u2026)",
         "arrays",
         "conditional expressions",
+        "external library functions",
         "function members (selector, address, \u2026)",
-        "libraries",
-        "library calls and contract-name members",
+        "functions as values",
         "local reference bindings",
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "libraries/library_delegatecall_guard_view_not_needed.sol: MemberAccess 60: unsupported built-in member",
+      "first": "external library functions",
+      "reason": "libraries/library_delegatecall_guard_view_not_needed.sol: FunctionDefinition 11: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/library_delegatecall_guard_view_not_needed.sol"
     },
@@ -11407,15 +11288,15 @@
         "contract creation (new C)",
         "external calls and contract members",
         "external calls to getters",
+        "external library functions",
         "function members (selector, address, \u2026)",
-        "libraries",
-        "library calls and contract-name members",
+        "functions as values",
         "members of elementary type names",
         "source units without exactly one contract",
         "type names as values"
       ],
-      "first": "external calls and contract members",
-      "reason": "libraries/library_delegatecall_guard_view_staticcall.sol: UserDefinedTypeName 27: only struct user-defined types are supported",
+      "first": "external library functions",
+      "reason": "libraries/library_delegatecall_guard_view_staticcall.sol: FunctionDefinition 24: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/library_delegatecall_guard_view_staticcall.sol"
     },
@@ -11423,23 +11304,21 @@
       "category": "import-rejected",
       "features": [
         "enums",
-        "libraries",
-        "library calls and contract-name members"
+        "library structs and events"
       ],
-      "first": "libraries",
-      "reason": "libraries/library_enum_as_an_expression.sol: ContractDefinition 4: unsupported contract kind library",
+      "first": "library structs and events",
+      "reason": "libraries/library_enum_as_an_expression.sol: EnumDefinition 3: unsupported library member EnumDefinition",
       "scan_agrees": true,
       "test": "libraries/library_enum_as_an_expression.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "named arguments"
       ],
-      "first": "named arguments",
-      "reason": "libraries/library_function_named_parameters.sol: FunctionCall 59: named arguments are not supported",
+      "first": "external library functions",
+      "reason": "libraries/library_function_named_parameters.sol: FunctionDefinition 48: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/library_function_named_parameters.sol"
     },
@@ -11449,16 +11328,16 @@
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
         "arrays",
+        "external library functions",
         "function members (selector, address, \u2026)",
+        "functions as values",
         "hash and signature built-ins",
-        "libraries",
-        "library calls and contract-name members",
         "local reference bindings",
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "libraries/library_function_selectors.sol: MemberAccess 75: unsupported built-in member",
+      "first": "external library functions",
+      "reason": "libraries/library_function_selectors.sol: FunctionDefinition 10: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/library_function_selectors.sol"
     },
@@ -11467,17 +11346,18 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
+        "external library functions",
         "function members (selector, address, \u2026)",
+        "functions as values",
         "hash and signature built-ins",
-        "libraries",
-        "library calls and contract-name members",
+        "library structs and events",
         "local reference bindings",
         "members of elementary type names",
         "structs",
         "type names as values"
       ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "libraries/library_function_selectors_struct.sol: MemberAccess 68: unsupported built-in member",
+      "first": "library structs and events",
+      "reason": "libraries/library_function_selectors_struct.sol: StructDefinition 4: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "libraries/library_function_selectors_struct.sol"
     },
@@ -11486,8 +11366,7 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -11498,14 +11377,14 @@
     {
       "category": "import-rejected",
       "features": [
+        "external library functions",
         "inline assembly memory references",
-        "libraries",
-        "library calls and contract-name members",
+        "library structs and events",
         "local reference bindings",
         "structs"
       ],
-      "first": "libraries",
-      "reason": "libraries/library_return_struct_with_mapping.sol: ContractDefinition 15: unsupported contract kind library",
+      "first": "library structs and events",
+      "reason": "libraries/library_return_struct_with_mapping.sol: StructDefinition 6: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "libraries/library_return_struct_with_mapping.sol"
     },
@@ -11513,48 +11392,44 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "this"
       ],
-      "first": "external calls and contract members",
-      "reason": "libraries/library_staticcall_delegatecall.sol: Identifier 20: calls only on an address converted to a contract type",
+      "first": "external library functions",
+      "reason": "libraries/library_staticcall_delegatecall.sol: FunctionDefinition 8: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/library_staticcall_delegatecall.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members"
+        "external library functions",
+        "functions as values"
       ],
-      "first": "libraries",
-      "reason": "libraries/library_stray_values.sol: ContractDefinition 15: unsupported contract kind library",
+      "first": "external library functions",
+      "reason": "libraries/library_stray_values.sol: FunctionDefinition 14: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/library_stray_values.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members"
+        "library structs and events"
       ],
-      "first": "libraries",
-      "reason": "libraries/library_struct_as_an_expression.sol: ContractDefinition 6: unsupported contract kind library",
+      "first": "library structs and events",
+      "reason": "libraries/library_struct_as_an_expression.sol: StructDefinition 5: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "libraries/library_struct_as_an_expression.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
         "local reference bindings",
         "mapping values",
         "mappings"
       ],
-      "first": "libraries",
-      "reason": "libraries/mapping_arguments_in_library.sol: ContractDefinition 35: unsupported contract kind library",
+      "first": null,
+      "reason": "libraries/mapping_arguments_in_library.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "libraries/mapping_arguments_in_library.sol"
     },
@@ -11562,170 +11437,154 @@
       "category": "import-rejected",
       "features": [
         "conditional expressions",
-        "libraries",
-        "library calls and contract-name members",
         "local reference bindings",
         "mapping values",
         "mappings"
       ],
-      "first": "libraries",
-      "reason": "libraries/mapping_returns_in_library.sol: ContractDefinition 24: unsupported contract kind library",
+      "first": "conditional expressions",
+      "reason": "libraries/mapping_returns_in_library.sol: Conditional 20: unsupported expression Conditional",
       "scan_agrees": true,
       "test": "libraries/mapping_returns_in_library.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
         "local reference bindings",
         "mapping values",
         "mappings"
       ],
-      "first": "libraries",
-      "reason": "libraries/mapping_returns_in_library_named.sol: ContractDefinition 37: unsupported contract kind library",
+      "first": null,
+      "reason": "libraries/mapping_returns_in_library_named.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "libraries/mapping_returns_in_library_named.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members"
+        "external library functions"
       ],
-      "first": "libraries",
-      "reason": "libraries/payable_function_calls_library.sol: ContractDefinition 9: unsupported contract kind library",
+      "first": "external library functions",
+      "reason": "libraries/payable_function_calls_library.sol: FunctionDefinition 8: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/payable_function_calls_library.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members"
+        "external library functions"
       ],
-      "first": "libraries",
-      "reason": "libraries/stub.sol: ContractDefinition 13: unsupported contract kind library",
+      "first": "external library functions",
+      "reason": "libraries/stub.sol: FunctionDefinition 12: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/stub.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "libraries",
-        "library calls and contract-name members"
-      ],
-      "first": "libraries",
-      "reason": "libraries/stub_internal.sol: ContractDefinition 13: unsupported contract kind library",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/stub_internal.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
+        "external library functions",
+        "library structs and events",
         "local reference bindings",
         "named arguments",
         "public state variables",
-        "structs",
-        "using for"
+        "structs"
       ],
-      "first": "using for",
-      "reason": "libraries/using_for_by_name.sol: UsingForDirective 24: unsupported contract member",
+      "first": "library structs and events",
+      "reason": "libraries/using_for_by_name.sol: StructDefinition 3: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "libraries/using_for_by_name.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "using for"
+        "external library functions"
       ],
-      "first": "using for",
-      "reason": "libraries/using_for_function_on_int.sol: UsingForDirective 16: unsupported contract member",
+      "first": "external library functions",
+      "reason": "libraries/using_for_function_on_int.sol: FunctionDefinition 12: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/using_for_function_on_int.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "named arguments",
-        "using for"
+        "named arguments"
       ],
-      "first": "using for",
-      "reason": "libraries/using_for_named_parameters.sol: UsingForDirective 26: unsupported contract member",
+      "first": "named arguments",
+      "reason": "libraries/using_for_named_parameters.sol: FunctionCall 41: named arguments are not supported",
       "scan_agrees": true,
       "test": "libraries/using_for_named_parameters.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
+        "external library functions",
+        "library structs and events",
         "local reference bindings",
         "public state variables",
-        "structs",
-        "using for"
+        "structs"
       ],
-      "first": "using for",
-      "reason": "libraries/using_for_overload.sol: UsingForDirective 35: unsupported contract member",
+      "first": "library structs and events",
+      "reason": "libraries/using_for_overload.sol: StructDefinition 3: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "libraries/using_for_overload.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "libraries",
         "local reference bindings",
         "struct values and copying",
-        "structs",
-        "using for"
+        "structs"
       ],
-      "first": "using for",
-      "reason": "libraries/using_for_storage_structs.sol: UsingForDirective 20: unsupported contract member",
+      "first": null,
+      "reason": "libraries/using_for_storage_structs.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "libraries/using_for_storage_structs.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "local reference bindings",
         "mapping values",
         "mappings"
       ],
-      "first": "libraries",
-      "reason": "libraries/using_library_mappings_public.sol: ContractDefinition 19: unsupported contract kind library",
+      "first": "external library functions",
+      "reason": "libraries/using_library_mappings_public.sol: FunctionDefinition 18: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/using_library_mappings_public.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "local reference bindings",
         "mapping values",
         "mappings"
       ],
-      "first": "libraries",
-      "reason": "libraries/using_library_mappings_return.sol: ContractDefinition 21: unsupported contract kind library",
+      "first": "external library functions",
+      "reason": "libraries/using_library_mappings_return.sol: FunctionDefinition 20: only internal library functions are supported",
       "scan_agrees": true,
       "test": "libraries/using_library_mappings_return.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
+        "library structs and events",
         "local reference bindings",
         "mappings",
         "struct values and copying",
         "structs"
       ],
-      "first": "libraries",
-      "reason": "libraries/using_library_structs.sol: ContractDefinition 41: unsupported contract kind library",
+      "first": "library structs and events",
+      "reason": "libraries/using_library_structs.sol: StructDefinition 6: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "libraries/using_library_structs.sol"
     },
@@ -11976,30 +11835,26 @@
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
+        "library structs and events",
         "local reference bindings",
         "struct values and copying",
-        "structs",
-        "using for"
+        "structs"
       ],
-      "first": "using for",
-      "reason": "modifiers/function_modifier_library.sol: UsingForDirective 34: unsupported contract member",
+      "first": "library structs and events",
+      "reason": "modifiers/function_modifier_library.sol: StructDefinition 3: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "modifiers/function_modifier_library.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
+        "library structs and events",
         "local reference bindings",
         "struct values and copying",
-        "structs",
-        "using for"
+        "structs"
       ],
-      "first": "using for",
-      "reason": "modifiers/function_modifier_library_inheritance.sol: UsingForDirective 34: unsupported contract member",
+      "first": "library structs and events",
+      "reason": "modifiers/function_modifier_library_inheritance.sol: StructDefinition 3: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "modifiers/function_modifier_library_inheritance.sol"
     },
@@ -12704,7 +12559,7 @@
         "constants",
         "free functions",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/all_possible_operators.sol: UserDefinedTypeName 401: only struct user-defined types are supported",
@@ -12716,7 +12571,7 @@
       "features": [
         "free functions",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/all_possible_user_defined_value_types_with_operators.sol: MemberAccess 5304: unsupported built-in member",
@@ -12728,7 +12583,7 @@
       "features": [
         "free functions",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/attaching_and_defining_operator_with_same_function.sol: UserDefinedTypeName 36: only struct user-defined types are supported",
@@ -12740,7 +12595,7 @@
       "features": [
         "free functions",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/checked_operators.sol: UserDefinedTypeName 35: only struct user-defined types are supported",
@@ -12753,7 +12608,7 @@
         "free functions",
         "literals of non-integer types",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/consecutive_operator_invocations.sol: UserDefinedTypeName 44: only struct user-defined types are supported",
@@ -12766,7 +12621,7 @@
         "constants",
         "free functions",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/fixed_point_udvt_with_operators.sol: UserDefinedTypeName 94: only struct user-defined types are supported",
@@ -12778,7 +12633,7 @@
       "features": [
         "free functions",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/multiple_operator_definitions_different_types_different_functions_separate_directives.sol: UserDefinedTypeName 70: only struct user-defined types are supported",
@@ -12790,7 +12645,7 @@
       "features": [
         "free functions",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/multiple_operator_definitions_same_type_same_function_same_directive.sol: UserDefinedTypeName 36: only struct user-defined types are supported",
@@ -12802,7 +12657,7 @@
       "features": [
         "free functions",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/operator_definition_shadowing_builtin_keccak256.sol: UserDefinedTypeName 35: only struct user-defined types are supported",
@@ -12814,7 +12669,7 @@
       "features": [
         "free functions",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/operator_evaluation_order.sol: UserDefinedTypeName 85: only struct user-defined types are supported",
@@ -12832,7 +12687,7 @@
         "inline assembly memory references",
         "source units without exactly one contract",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/operator_making_pure_external_call.sol: UserDefinedTypeName 134: only struct user-defined types are supported",
@@ -12850,7 +12705,7 @@
         "inline assembly memory references",
         "source units without exactly one contract",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/operator_making_view_external_call.sol: UserDefinedTypeName 156: only struct user-defined types are supported",
@@ -12863,7 +12718,7 @@
         "free functions",
         "inline assembly memory references",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/operator_parameter_and_return_cleanup_between_calls.sol: UserDefinedTypeName 37: only struct user-defined types are supported",
@@ -12876,7 +12731,7 @@
         "free functions",
         "inline assembly memory references",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/operator_parameter_cleanup.sol: UserDefinedTypeName 35: only struct user-defined types are supported",
@@ -12889,7 +12744,7 @@
         "constants",
         "free functions",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/operator_precendence.sol: UserDefinedTypeName 263: only struct user-defined types are supported",
@@ -12902,7 +12757,7 @@
         "free functions",
         "inline assembly memory references",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/operator_return_parameter_cleanup.sol: UserDefinedTypeName 40: only struct user-defined types are supported",
@@ -12914,7 +12769,7 @@
       "features": [
         "free functions",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/recursive_operator.sol: UserDefinedTypeName 120: only struct user-defined types are supported",
@@ -12926,7 +12781,7 @@
       "features": [
         "free functions",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "user-defined value types",
       "reason": "operators/userDefined/unchecked_operators.sol: UserDefinedTypeName 36: only struct user-defined types are supported",
@@ -14597,15 +14452,14 @@
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "local reference bindings",
         "public state variables",
         "struct values and copying",
         "structs"
       ],
-      "first": "libraries",
-      "reason": "storageLayoutSpecifier/storage_reference_library_function.sol: ContractDefinition 26: unsupported contract kind library",
+      "first": "external library functions",
+      "reason": "storageLayoutSpecifier/storage_reference_library_function.sol: FunctionDefinition 25: only internal library functions are supported",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/storage_reference_library_function.sol"
     },
@@ -14963,12 +14817,12 @@
       "category": "import-rejected",
       "features": [
         "events named through a contract or library",
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
+        "library structs and events",
         "structs"
       ],
-      "first": "libraries",
-      "reason": "structs/event.sol: ContractDefinition 22: unsupported contract kind library",
+      "first": "library structs and events",
+      "reason": "structs/event.sol: EventDefinition 9: unsupported library member EventDefinition",
       "scan_agrees": true,
       "test": "structs/event.sol"
     },
@@ -15445,13 +15299,13 @@
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
+        "library structs and events",
         "struct values and copying",
         "structs"
       ],
-      "first": "libraries",
-      "reason": "structs/struct_referencing.sol: ContractDefinition 73: unsupported contract kind library",
+      "first": "library structs and events",
+      "reason": "structs/struct_referencing.sol: StructDefinition 10: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "structs/struct_referencing.sol"
     },
@@ -15511,14 +15365,14 @@
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
+        "external library functions",
+        "library structs and events",
         "local reference bindings",
         "public state variables",
-        "structs",
-        "using for"
+        "structs"
       ],
-      "first": "using for",
-      "reason": "structs/using_for_function_on_struct.sol: UsingForDirective 24: unsupported contract member",
+      "first": "library structs and events",
+      "reason": "structs/using_for_function_on_struct.sol: StructDefinition 3: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "structs/using_for_function_on_struct.sol"
     },
@@ -15764,16 +15618,15 @@
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
+        "library structs and events",
         "local reference bindings",
         "structs",
         "try/catch",
-        "tuples of literals",
-        "using for"
+        "tuples of literals"
       ],
-      "first": "using for",
-      "reason": "tryCatch/try_catch_library_call.sol: UsingForDirective 50: unsupported contract member",
+      "first": "library structs and events",
+      "reason": "tryCatch/try_catch_library_call.sol: StructDefinition 3: unsupported library member StructDefinition",
       "scan_agrees": true,
       "test": "tryCatch/try_catch_library_call.sol"
     },
@@ -15930,15 +15783,14 @@
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "local reference bindings",
         "mapping values",
         "mappings",
         "user-defined value types"
       ],
-      "first": "user-defined value types",
-      "reason": "types/mapping/user_defined_types_mapping_storage.sol: UserDefinedTypeName 55: only struct user-defined types are supported",
+      "first": "external library functions",
+      "reason": "types/mapping/user_defined_types_mapping_storage.sol: FunctionDefinition 29: only internal library functions are supported",
       "scan_agrees": true,
       "test": "types/mapping/user_defined_types_mapping_storage.sol"
     },
@@ -15983,14 +15835,13 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "local reference bindings",
         "mapping values",
         "mappings"
       ],
-      "first": "external calls and contract members",
-      "reason": "types/mapping_contract_key_library.sol: UserDefinedTypeName 42: only struct user-defined types are supported",
+      "first": "external library functions",
+      "reason": "types/mapping_contract_key_library.sol: FunctionDefinition 19: only internal library functions are supported",
       "scan_agrees": true,
       "test": "types/mapping_contract_key_library.sol"
     },
@@ -16029,14 +15880,13 @@
       "category": "import-rejected",
       "features": [
         "enums",
-        "libraries",
-        "library calls and contract-name members",
+        "external library functions",
         "local reference bindings",
         "mapping values",
         "mappings"
       ],
-      "first": "enums",
-      "reason": "types/mapping_enum_key_library_v2.sol: UserDefinedTypeName 46: only struct user-defined types are supported",
+      "first": "external library functions",
+      "reason": "types/mapping_enum_key_library_v2.sol: FunctionDefinition 23: only internal library functions are supported",
       "scan_agrees": true,
       "test": "types/mapping_enum_key_library_v2.sol"
     },
@@ -16373,21 +16223,17 @@
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
         "mappings",
-        "user-defined value types",
-        "using for"
+        "user-defined value types"
       ],
-      "first": "using for",
-      "reason": "userDefinedValueType/erc20.sol: UsingForDirective 60: unsupported contract member",
+      "first": "user-defined value types",
+      "reason": "userDefinedValueType/erc20.sol: UserDefinedTypeName 81: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "userDefinedValueType/erc20.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "library calls and contract-name members",
         "user-defined value types"
       ],
       "first": "user-defined value types",
@@ -16588,10 +16434,10 @@
       "features": [
         "arrays",
         "free functions",
-        "using for"
+        "using for with functions"
       ],
-      "first": "using for",
-      "reason": "using/calldata_memory_copy.sol: UsingForDirective 46: unsupported source unit member UsingForDirective",
+      "first": "using for with functions",
+      "reason": "using/calldata_memory_copy.sol: UsingForDirective 46: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "using/calldata_memory_copy.sol"
     },
@@ -16599,9 +16445,10 @@
       "category": "import-rejected",
       "features": [
         "free functions",
-        "using for"
+        "using for",
+        "using for with functions"
       ],
-      "first": "using for",
+      "first": "using for with functions",
       "reason": "using/free_function_braces.sol: UsingForDirective 48: unsupported contract member",
       "scan_agrees": true,
       "test": "using/free_function_braces.sol"
@@ -16610,7 +16457,8 @@
       "category": "import-rejected",
       "features": [
         "free functions",
-        "using for"
+        "using for",
+        "using for with functions"
       ],
       "first": "free functions",
       "reason": "using/free_function_multi.sol: FunctionDefinition 51: unsupported source unit member FunctionDefinition",
@@ -16621,7 +16469,8 @@
       "category": "import-rejected",
       "features": [
         "free functions",
-        "using for"
+        "using for",
+        "using for with functions"
       ],
       "first": "free functions",
       "reason": "using/free_functions_individual.sol: FunctionDefinition 51: unsupported source unit member FunctionDefinition",
@@ -16633,7 +16482,8 @@
       "features": [
         "free functions",
         "source units without exactly one contract",
-        "using for"
+        "using for",
+        "using for with functions"
       ],
       "first": "free functions",
       "reason": "A: FunctionDefinition 12: unsupported source unit member FunctionDefinition",
@@ -16643,11 +16493,11 @@
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "using for"
+        "external library functions",
+        "using for with functions"
       ],
-      "first": "using for",
-      "reason": "using/library_functions_inside_contract.sol: UsingForDirective 40: unsupported contract member",
+      "first": "external library functions",
+      "reason": "using/library_functions_inside_contract.sol: FunctionDefinition 12: only internal library functions are supported",
       "scan_agrees": true,
       "test": "using/library_functions_inside_contract.sol"
     },
@@ -16655,9 +16505,7 @@
       "category": "import-rejected",
       "features": [
         "external calls and contract members",
-        "libraries",
-        "this",
-        "using for"
+        "this"
       ],
       "first": "external calls and contract members",
       "reason": "using/library_on_interface.sol: UserDefinedTypeName 32: only struct user-defined types are supported",
@@ -16667,12 +16515,11 @@
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
-        "source units without exactly one contract",
-        "using for"
+        "external library functions",
+        "source units without exactly one contract"
       ],
-      "first": "libraries",
-      "reason": "A: ContractDefinition 25: unsupported contract kind library",
+      "first": "external library functions",
+      "reason": "B: FunctionDefinition 20: only internal library functions are supported",
       "scan_agrees": true,
       "test": "using/library_through_module.sol"
     },
@@ -16681,7 +16528,8 @@
       "features": [
         "free functions",
         "source units without exactly one contract",
-        "using for"
+        "using for",
+        "using for with functions"
       ],
       "first": "free functions",
       "reason": "A: FunctionDefinition 24: unsupported source unit member FunctionDefinition",
@@ -16689,14 +16537,12 @@
       "test": "using/module_renamed.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "libraries",
-        "source units without exactly one contract",
-        "using for"
+        "source units without exactly one contract"
       ],
-      "first": "libraries",
-      "reason": "using/private_library_function.sol: ContractDefinition 30: unsupported contract kind library",
+      "first": null,
+      "reason": "using/private_library_function.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "using/private_library_function.sol"
     },
@@ -16706,7 +16552,7 @@
         "free functions",
         "source units without exactly one contract",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "free functions",
       "reason": "A: FunctionDefinition 56: unsupported source unit member FunctionDefinition",
@@ -16717,14 +16563,12 @@
       "category": "import-rejected",
       "features": [
         "enums",
-        "libraries",
         "source units without exactly one contract",
         "structs",
-        "user-defined value types",
-        "using for"
+        "user-defined value types"
       ],
-      "first": "libraries",
-      "reason": "A: ContractDefinition 61: unsupported contract kind library",
+      "first": "user-defined value types",
+      "reason": "A: UserDefinedValueTypeDefinition 8: unsupported source unit member UserDefinedValueTypeDefinition",
       "scan_agrees": true,
       "test": "using/using_global_all_the_types.sol"
     },
@@ -16734,7 +16578,7 @@
         "free functions",
         "source units without exactly one contract",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "free functions",
       "reason": "A: FunctionDefinition 26: unsupported source unit member FunctionDefinition",
@@ -16746,11 +16590,11 @@
       "features": [
         "contract creation (new C)",
         "external calls and contract members",
+        "external library functions",
         "free functions",
-        "libraries",
         "source units without exactly one contract",
         "user-defined value types",
-        "using for"
+        "using for with functions"
       ],
       "first": "free functions",
       "reason": "A: FunctionDefinition 65: unsupported source unit member FunctionDefinition",
@@ -16760,13 +16604,12 @@
     {
       "category": "import-rejected",
       "features": [
-        "libraries",
+        "external library functions",
         "source units without exactly one contract",
-        "user-defined value types",
-        "using for"
+        "user-defined value types"
       ],
-      "first": "libraries",
-      "reason": "A: ContractDefinition 47: unsupported contract kind library",
+      "first": "user-defined value types",
+      "reason": "A: UserDefinedValueTypeDefinition 2: unsupported source unit member UserDefinedValueTypeDefinition",
       "scan_agrees": true,
       "test": "using/using_global_library.sol"
     },

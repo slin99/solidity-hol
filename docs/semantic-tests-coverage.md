@@ -22,12 +22,12 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 | outcome | tests |
 | --- | ---: |
-| admitted | 485 |
-| elaboration-rejected | 52 |
-| import-rejected | 761 |
+| admitted | 502 |
+| elaboration-rejected | 54 |
+| import-rejected | 735 |
 | compile-failure | 0 |
 | malformed-input | 0 |
-| source-rejected | 272 |
+| source-rejected | 279 |
 | invalid-core | 0 |
 | skipped | 100 |
 | total | 1670 |
@@ -36,68 +36,69 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 Each rejected test is scanned for every construct the importer or the elaborator rejects. *tests* counts the rejected tests a feature occurs in; *only blocker* the tests in which it is the only feature found, which supporting it would admit as far as the scan can tell; *first* the tests the importer stopped at it.
 
-The scan disagrees with the HOL run on 11 tests, listed at the end.
+The scan disagrees with the HOL run on 13 tests, listed at the end.
 
 | feature | AST nodes | tests | only blocker | first |
 | --- | --- | ---: | ---: | ---: |
-| external calls and contract members | `FunctionCall`, `Identifier`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 226 | 1 | 104 |
+| external calls and contract members | `FunctionCall`, `Identifier`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 226 | 1 | 103 |
 | structs | `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 165 | 5 | 18 |
 | local reference bindings | `VariableDeclaration` | 158 | 0 | 0 |
 | this | `Identifier` | 140 | 1 | 5 |
-| arrays | `ArrayTypeName`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 130 | 3 | 6 |
-| source units without exactly one contract | `SourceUnit` | 129 | 4 | 0 |
-| function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 121 | 0 | 21 |
-| libraries | `ContractDefinition` | 116 | 1 | 42 |
+| source units without exactly one contract | `SourceUnit` | 129 | 5 | 0 |
+| arrays | `ArrayTypeName`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 125 | 3 | 6 |
+| function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 121 | 0 | 16 |
 | struct values and copying | `Identifier`, `IndexAccess`, `MemberAccess` | 108 | 2 | 0 |
-| library calls and contract-name members | `IndexAccess`, `MemberAccess` | 101 | 13 | 0 |
-| abi.* functions | `MemberAccess` | 100 | 13 | 58 |
-| function types | `FunctionTypeName` | 96 | 0 | 78 |
+| abi.* functions | `MemberAccess` | 100 | 13 | 56 |
+| function types | `FunctionTypeName` | 96 | 0 | 82 |
 | inline assembly memory references | `InlineAssembly` | 91 | 2 | 0 |
-| using for | `MemberAccess`, `UsingForDirective` | 81 | 0 | 47 |
 | contract creation (new C) | `NewExpression` | 80 | 0 | 0 |
 | operator delete | `UnaryOperation` | 75 | 13 | 0 |
 | free functions | `FunctionDefinition` | 73 | 10 | 37 |
 | array values | `Identifier`, `IndexAccess`, `MemberAccess` | 67 | 0 | 0 |
+| functions as values | `Identifier`, `MemberAccess` | 65 | 1 | 0 |
 | hash and signature built-ins | `Identifier` | 62 | 10 | 16 |
-| address members (balance, call, transfer, …) | `MemberAccess` | 58 | 14 | 19 |
-| functions as values | `Identifier` | 55 | 1 | 0 |
+| address members (balance, call, transfer, …) | `MemberAccess` | 56 | 14 | 19 |
 | type names as values | `ElementaryTypeNameExpression` | 55 | 1 | 8 |
-| user-defined value types | `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `UserDefinedValueTypeDefinition`, `VariableDeclaration` | 52 | 6 | 46 |
+| user-defined value types | `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `UserDefinedValueTypeDefinition`, `VariableDeclaration` | 52 | 7 | 48 |
 | inline assembly memory outside the scratch space | `InlineAssembly` | 50 | 7 | 0 |
 | inline arrays | `TupleExpression` | 47 | 13 | 36 |
+| external library functions | `FunctionDefinition` | 47 | 6 | 31 |
 | public state variables | `VariableDeclaration` | 46 | 5 | 0 |
 | transient storage | `VariableDeclaration` | 41 | 14 | 0 |
-| conditional expressions | `Conditional` | 40 | 12 | 23 |
-| mappings | `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 39 | 9 | 0 |
+| conditional expressions | `Conditional` | 40 | 12 | 25 |
+| mappings | `IndexAccess`, `TupleExpression`, `VariableDeclaration` | 39 | 9 | 0 |
 | string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 16 | 0 |
+| library calls and contract-name members | `IndexAccess`, `MemberAccess` | 37 | 13 | 0 |
 | aggregate array mutation | `MemberAccess` | 37 | 8 | 0 |
-| inline assembly | `InlineAssembly` | 32 | 11 | 19 |
+| inline assembly | `InlineAssembly` | 32 | 11 | 22 |
 | literals of non-integer types | `Assignment`, `BinaryOperation`, `FunctionCall`, `Literal`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 32 | 8 | 0 |
-| named arguments | `FunctionCall` | 32 | 4 | 25 |
-| bytes.concat and string.concat | `MemberAccess`, `TupleExpression` | 30 | 0 | 13 |
+| named arguments | `FunctionCall` | 32 | 5 | 25 |
+| bytes.concat and string.concat | `MemberAccess`, `TupleExpression` | 30 | 0 | 14 |
 | external calls to getters | `MemberAccess` | 30 | 0 | 0 |
-| enums | `EnumDefinition`, `EnumValue`, `FunctionCall`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 29 | 4 | 25 |
+| enums | `EnumDefinition`, `EnumValue`, `FunctionCall`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 29 | 4 | 23 |
+| using for with functions | `UsingForDirective` | 29 | 0 | 3 |
 | tuples of literals | `TupleExpression` | 28 | 4 | 0 |
-| conversions to non-elementary types | `Identifier`, `IndexAccess`, `MemberAccess` | 26 | 0 | 1 |
+| library structs and events | `EnumDefinition`, `EventDefinition`, `StructDefinition` | 26 | 1 | 26 |
+| conversions to non-elementary types | `Identifier`, `IndexAccess` | 25 | 0 | 1 |
 | memory arrays (new T[](n)) | `NewExpression` | 25 | 0 | 0 |
 | members of elementary type names | `IndexAccess`, `TupleExpression` | 24 | 0 | 0 |
 | bytes push and pop | `MemberAccess` | 23 | 13 | 0 |
 | call options ({value: …, gas: …}) | `FunctionCallOptions`, `IndexAccess`, `MemberAccess`, `NewExpression`, `TupleExpression` | 22 | 0 | 4 |
 | try/catch | `FunctionCall`, `TryCatchClause`, `TryStatement` | 20 | 0 | 17 |
-| array slices | `IndexRangeAccess` | 19 | 4 | 15 |
+| array slices | `IndexRangeAccess` | 19 | 5 | 16 |
 | require with a custom error | `FunctionCall` | 18 | 11 | 0 |
 | mapping values | `Identifier`, `IndexAccess`, `MemberAccess` | 17 | 0 | 0 |
 | constants | `VariableDeclaration` | 16 | 5 | 6 |
 | type(…) | `Identifier` | 16 | 3 | 10 |
-| fixed-size bytes members and indexing | `IndexAccess`, `MemberAccess` | 12 | 2 | 0 |
 | built-in erc7201 | `Identifier` | 12 | 1 | 7 |
 | event array parameters | `VariableDeclaration` | 11 | 6 | 0 |
 | literal subdenominations (ether, days, …) | `Literal` | 11 | 6 | 7 |
-| inline assembly calls, gas, return data and code | `InlineAssembly` | 10 | 4 | 0 |
-| bytes and string | `MemberAccess` | 10 | 0 | 0 |
+| inline assembly calls, gas, return data and code | `InlineAssembly` | 10 | 5 | 0 |
+| fixed-size bytes members and indexing | `IndexAccess`, `MemberAccess` | 10 | 2 | 0 |
 | custom errors with reference parameters | `VariableDeclaration` | 10 | 0 | 0 |
-| events named through a contract or library | `MemberAccess` | 8 | 3 | 5 |
+| events named through a contract or library | `MemberAccess` | 8 | 4 | 6 |
 | imports | `MemberAccess`, `TupleExpression` | 8 | 0 | 0 |
+| using for | `MemberAccess` | 7 | 0 | 0 |
 | msg/block/tx globals | `MemberAccess` | 6 | 5 | 6 |
 | virtual modifiers | `ModifierDefinition` | 6 | 5 | 5 |
 | array type expressions | `IndexAccess` | 6 | 0 | 3 |
@@ -107,13 +108,14 @@ The scan disagrees with the HOL run on 11 tests, listed at the end.
 | super calls | `Identifier`, `TupleExpression` | 5 | 1 | 2 |
 | tuple assignments to element or member targets | `Assignment` | 5 | 0 | 0 |
 | messages that are not literals | `FunctionCall` | 4 | 3 | 0 |
+| bound calls copying their receiver | `MemberAccess` | 4 | 2 | 0 |
 | built-in blobhash | `Identifier` | 3 | 2 | 3 |
 | built-in blockhash | `Identifier` | 3 | 2 | 3 |
 | return variables in modifier arguments | `Identifier` | 3 | 2 | 0 |
 | array members as values | `MemberAccess` | 3 | 1 | 0 |
 | overriding state variables | `VariableDeclaration` | 3 | 1 | 3 |
 | built-in selfdestruct | `Identifier` | 3 | 0 | 0 |
-| events | `MemberAccess` | 3 | 0 | 3 |
+| events | `MemberAccess` | 3 | 0 | 0 |
 | built-in gasleft | `Identifier` | 2 | 2 | 2 |
 | built-in addmod | `Identifier` | 2 | 1 | 2 |
 | custom errors | `MemberAccess`, `TupleExpression` | 2 | 0 | 1 |
@@ -133,23 +135,23 @@ Supporting the features in this order admits the most rejected tests at each ste
 | 1 | string literals as fixed-size bytes | 16 |
 | 2 | abi.* functions | 30 |
 | 3 | hash and signature built-ins | 50 |
-| 4 | address members (balance, call, transfer, …) | 67 |
-| 5 | transient storage | 82 |
-| 6 | operator delete | 104 |
-| 7 | bytes push and pop | 121 |
-| 8 | literals of non-integer types | 138 |
-| 9 | inline arrays | 154 |
-| 10 | conditional expressions | 168 |
-| 11 | library calls and contract-name members | 181 |
-| 12 | aggregate array mutation | 194 |
-| 13 | libraries | 206 |
-| 14 | free functions | 218 |
-| 15 | source units without exactly one contract | 230 |
-| 16 | using for | 243 |
-| 17 | user-defined value types | 265 |
-| 18 | struct values and copying | 276 |
-| 19 | structs | 305 |
-| 20 | local reference bindings | 340 |
+| 4 | address members (balance, call, transfer, …) | 68 |
+| 5 | transient storage | 83 |
+| 6 | operator delete | 105 |
+| 7 | bytes push and pop | 122 |
+| 8 | literals of non-integer types | 139 |
+| 9 | inline arrays | 155 |
+| 10 | conditional expressions | 169 |
+| 11 | aggregate array mutation | 182 |
+| 12 | library calls and contract-name members | 195 |
+| 13 | struct values and copying | 206 |
+| 14 | structs | 231 |
+| 15 | local reference bindings | 263 |
+| 16 | arrays | 283 |
+| 17 | array values | 312 |
+| 18 | inline assembly memory references | 332 |
+| 19 | inline assembly memory outside the scratch space | 354 |
+| 20 | inline assembly | 371 |
 
 ## Skipped and compile failures
 
@@ -309,6 +311,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `constructor/payable_constructor.sol`
 - `constructor/state_variable_initialization.sol`
 - `conversions/string_to_bytes.sol`
+- `errors/error_in_library_and_interface.sol`
 - `errors/simple.sol`
 - `errors/weird_name.sol`
 - `events/emit_three_identical_events.sol`
@@ -385,6 +388,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `inheritance/dataLocation/external_public_calldata.sol`
 - `inheritance/derived_overload_base_function_direct.sol`
 - `inheritance/derived_overload_base_function_indirect.sol`
+- `inheritance/inherited_function_from_a_library.sol`
 - `inheritance/overloaded_function_call_resolve_to_first.sol`
 - `inheritance/overloaded_function_call_resolve_to_second.sol`
 - `inheritance/overloaded_function_call_with_if_else.sol`
@@ -443,6 +447,21 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `isoltestTesting/format_raw_string_with_control_chars.sol`
 - `isoltestTesting/storage/storage_empty.sol`
 - `isoltestTesting/storage/storage_nonempty.sol`
+- `libraries/attached_internal_library_function_accepting_calldata_static_array_v2.sol`
+- `libraries/attached_internal_library_function_accepting_calldata_v2.sol`
+- `libraries/attached_internal_library_function_returning_calldata.sol`
+- `libraries/internal_library_function.sol`
+- `libraries/internal_library_function_attached_to_address.sol`
+- `libraries/internal_library_function_attached_to_address_named_send_transfer.sol`
+- `libraries/internal_library_function_attached_to_array_named_pop_push.sol`
+- `libraries/internal_library_function_attached_to_bool.sol`
+- `libraries/internal_library_function_attached_to_dynamic_array.sol`
+- `libraries/internal_library_function_attached_to_fixed_array.sol`
+- `libraries/internal_library_function_attached_to_fixed_bytes.sol`
+- `libraries/internal_library_function_attached_to_integer.sol`
+- `libraries/internal_library_function_attached_to_string_accepting_memory.sol`
+- `libraries/internal_library_function_calling_private.sol`
+- `libraries/stub_internal.sol`
 - `literals/denominations_in_array_sizes.sol`
 - `literals/hex_string_with_non_printable_characters.sol`
 - `literals/hex_string_with_underscore.sol`
@@ -791,6 +810,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `events/event_really_lots_of_data_from_storage.sol`: events/event_really_lots_of_data_from_storage.sol: valid_src_unit failed (source validation/subset restriction)
 - `events/event_static_calldata_uint_array_and_dynamic_array.sol`: events/event_static_calldata_uint_array_and_dynamic_array.sol: valid_src_unit failed (source validation/subset restriction)
 - `events/event_struct_storage_v2.sol`: events/event_struct_storage_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `functionCall/calldata_argument_internal_library_static_struct_v2.sol`: functionCall/calldata_argument_internal_library_static_struct_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `functionCall/calldata_argument_internal_struct_as_memory_v2.sol`: functionCall/calldata_argument_internal_struct_as_memory_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `functionCall/calldata_argument_internal_struct_v2.sol`: functionCall/calldata_argument_internal_struct_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `functionCall/inheritance/base_base_overload.sol`: functionCall/inheritance/base_base_overload.sol: valid_src_unit failed (source validation/subset restriction)
@@ -821,6 +841,12 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `inlineAssembly/inline_assembly_storage_access_via_pointer.sol`: inlineAssembly/inline_assembly_storage_access_via_pointer.sol: valid_src_unit failed (source validation/subset restriction)
 - `inlineAssembly/inline_assembly_transient_storage_access_inside_function.sol`: inlineAssembly/inline_assembly_transient_storage_access_inside_function.sol: valid_src_unit failed (source validation/subset restriction)
 - `inlineAssembly/slot_access_via_mapping_pointer.sol`: inlineAssembly/slot_access_via_mapping_pointer.sol: valid_src_unit failed (source validation/subset restriction)
+- `libraries/attached_internal_library_function_accepting_calldata_struct_v2.sol`: libraries/attached_internal_library_function_accepting_calldata_struct_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `libraries/internal_call_unattached_with_parentheses.sol`: libraries/internal_call_unattached_with_parentheses.sol: valid_src_unit failed (source validation/subset restriction)
+- `libraries/internal_library_function_attached_to_mapping.sol`: libraries/internal_library_function_attached_to_mapping.sol: valid_src_unit failed (source validation/subset restriction)
+- `libraries/mapping_arguments_in_library.sol`: libraries/mapping_arguments_in_library.sol: valid_src_unit failed (source validation/subset restriction)
+- `libraries/mapping_returns_in_library_named.sol`: libraries/mapping_returns_in_library_named.sol: valid_src_unit failed (source validation/subset restriction)
+- `libraries/using_for_storage_structs.sol`: libraries/using_for_storage_structs.sol: valid_src_unit failed (source validation/subset restriction)
 - `modifiers/function_modifier_return_reference.sol`: modifiers/function_modifier_return_reference.sol: valid_src_unit failed (source validation/subset restriction)
 - `modifiers/function_return_parameter.sol`: modifiers/function_return_parameter.sol: valid_src_unit failed (source validation/subset restriction)
 - `modifiers/function_return_parameter_complex.sol`: modifiers/function_return_parameter_complex.sol: valid_src_unit failed (source validation/subset restriction)
@@ -943,6 +969,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `cleanup/cleanup_bytes_types_shortening_newCodeGen.sol`: cleanup/cleanup_bytes_types_shortening_newCodeGen.sol: elaborate_unit returned NONE (unsupported lowering)
 - `cleanup/cleanup_bytes_types_v2.sol`: cleanup/cleanup_bytes_types_v2.sol: elaborate_unit returned NONE (unsupported lowering)
 - `constructor/functions_called_by_constructor.sol`: constructor/functions_called_by_constructor.sol: elaborate_unit returned NONE (unsupported lowering)
+- `deployedCodeExclusion/library_function.sol`: deployedCodeExclusion/library_function.sol: elaborate_unit returned NONE (unsupported lowering)
 - `deployedCodeExclusion/super_function.sol`: deployedCodeExclusion/super_function.sol: elaborate_unit returned NONE (unsupported lowering)
 - `deployedCodeExclusion/virtual_function.sol`: deployedCodeExclusion/virtual_function.sol: elaborate_unit returned NONE (unsupported lowering)
 - `errors/error_throw_from_module_via_member_access.sol`: A.sol: elaborate_unit returned NONE (unsupported lowering)
@@ -977,6 +1004,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `strings/constant_string_literal.sol`: strings/constant_string_literal.sol: elaborate_unit returned NONE (unsupported lowering)
 - `strings/string_escapes.sol`: strings/string_escapes.sol: elaborate_unit returned NONE (unsupported lowering)
 - `types/strings.sol`: types/strings.sol: elaborate_unit returned NONE (unsupported lowering)
+- `using/private_library_function.sol`: using/private_library_function.sol: elaborate_unit returned NONE (unsupported lowering)
 - `various/memory_overwrite.sol`: various/memory_overwrite.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/comparison.sol`: viaYul/comparison.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/dirty_memory_dynamic_array.sol`: viaYul/dirty_memory_dynamic_array.sol: elaborate_unit returned NONE (unsupported lowering)
@@ -994,6 +1022,8 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `array/copying/array_of_struct_memory_to_storage.sol` (source-rejected): array/copying/array_of_struct_memory_to_storage.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/create_memory_array.sol` (source-rejected): array/create_memory_array.sol: valid_src_unit failed (source validation/subset restriction)
 - `functionCall/external_call_at_construction_time.sol` (import-rejected): functionCall/external_call_at_construction_time.sol: FunctionCall 43: new takes one argument
+- `libraries/attached_internal_library_function_accepting_calldata.sol` (import-rejected): libraries/attached_internal_library_function_accepting_calldata.sol: FunctionCall 42: a bound call copying its receiver to memory is not supported
+- `libraries/internal_library_function_attached_to_string_accepting_storage.sol` (import-rejected): libraries/internal_library_function_attached_to_string_accepting_storage.sol: FunctionCall 41: a bound call copying its receiver to memory is not supported
 - `storageLayoutSpecifier/inheritance_constructor_order_calling_revert.sol` (import-rejected): storageLayoutSpecifier/inheritance_constructor_order_calling_revert.sol: FunctionCall 58: new takes one argument
 - `storageLayoutSpecifier/inheritance_constructors_with_different_number_of_arguments.sol` (import-rejected): storageLayoutSpecifier/inheritance_constructors_with_different_number_of_arguments.sol: FunctionCall 51: new takes one argument
 - `structs/copy_from_storage.sol` (source-rejected): structs/copy_from_storage.sol: valid_src_unit failed (source validation/subset restriction)
