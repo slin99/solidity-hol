@@ -1775,8 +1775,8 @@ val conversion_consts =
 fun residues tm =
   Lib.mk_set (List.filter (fn k => Lib.mem k conversion_consts) (consts_in tm))
 
-(* What a form may still be standing on: the call it left folded, and the
- * operations whose input is a value nobody has -- the frame and memory
+(* What a form may still be standing on: the call and the loop it left folded,
+ * and the operations whose input is a value nobody has -- the frame and memory
  * operations of `guarded_helper_defs` (a binding over a machine that holds a
  * call, an `FLOOKUP` of a scope that came out of the callee's frame), the scope
  * readers, which are unguarded and so always unfold, but whose read of a scope
@@ -1807,14 +1807,15 @@ fun is_closed_form tm =
  * catches a residue whose map or argument the conversion did not reach as
  * well as one it did.  The table reader is not in the set, so the function a
  * form names is not read again here. *)
-(* The table a form carries: the `fns` argument of a call it left folded.  A
- * form with no call in it names no table, and then there is nothing in it that
- * could unfold one. *)
+(* The table a form carries: the `fns` argument of a call or a loop it left
+ * folded.  A form with neither in it names no table, and then there is nothing
+ * in it that could unfold one. *)
 fun table_in tm =
   case dest_term tm of
     Term.COMB _ =>
       let val (f, args) = strip_comb tm in
-        if is_invoke f andalso List.length args = 5 then
+        if is_invoke f andalso List.length args = 5 orelse
+           same_const eval_yul_loop_c f andalso List.length args = 6 then
           SOME (List.nth (args, 1))
         else
           let val (x, y) = dest_comb tm in

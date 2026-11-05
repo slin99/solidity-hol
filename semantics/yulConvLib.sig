@@ -39,7 +39,9 @@ sig
   (* A loop is folded like a call: the form of a body with a loop in it stops
    * at the loop, as `eval_yul_loop n fns cond post body m` over the machine
    * it is entered with, and the rest of the body is left as an unevaluated
-   * block over the machine the loop returns.
+   * block over the machine the loop returns.  Such a form, with statements
+   * after its loop, is not closed (`is_closed_form`): the rest is evaluation
+   * still to do, once the loop's outcome is in, by `yul_eval_conv`.
    *
    * `yul_loop_conv defs` takes one iteration of such a loop: the loop's clause,
    * then the condition, the body and the post evaluated as in yul_invoke_conv,
@@ -63,7 +65,8 @@ sig
    *)
   val residues : term -> (string * string) list
 
-  (* The residues a form may have: the call it left folded; the operations
+  (* The residues a form may have: the call and the loop it left folded; the
+   * operations
    * whose input is a value nobody has -- the evaluator's own frame and memory
    * operations, FLOOKUP of a scope that came out of a callee's frame, and the
    * scope readers, which the conversion always unfolds but which have nothing
