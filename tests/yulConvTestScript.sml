@@ -7,23 +7,24 @@
  * use for their fixtures, one step further on: the conversion is not checked
  * on a hand-built tree but run over a whole real object.
  *
- * What is checked is that each function of the runtime object reaches a
- * closed form, and how long that takes.  All but one of the object's
- * functions are loop-free -- checked_exp_helper has a loop, and a loop is a
- * lemma about a loop head rather than a closed form -- and the build fails if
- * any of them does not close, or closes with the evaluator's own functions
- * still in it.  A form is a case tree over the body's guards and over the
- * calls it makes, so a function that calls nothing has nothing of its own
+ * What is checked is that each function of the runtime object reaches a closed
+ * form, and how long that takes.  All but one of the object's functions are
+ * loop-free -- checked_exp_helper has a loop, and a loop is a lemma about a
+ * loop head rather than a closed form, so its form stops at the loop and one
+ * iteration is converted on its own (at the end of this file) -- and the build
+ * fails if any of them does not close, or closes with the evaluator's own
+ * functions still in it.  A form is a case tree over the body's guards and over
+ * the calls it makes, so a function that calls nothing has nothing of its own
  * frame left -- only the memory read itself, whose own clauses want a length
  * that is a successor while the evaluator reads with a numeral, so it does not
  * reduce even where the machine is one the conversion has in hand (the note on
  * `memory_read_residue` below) -- and one that calls is left waiting on the
- * frame a callee returned and nothing else (see semantics/yulConvLib.sml).
- * The number the test asserts is the slowest of them, so that a conversion
- * that regressed to the simplifier's cost fails the build on the clock alone;
- * the total is printed to say what the suite costs, and every conversion runs
- * under a clock, so one that stops coming back fails the build instead of
- * leaving it at the heap cap.
+ * frame a callee returned and nothing else (see semantics/yulConvLib.sml).  The
+ * number the test asserts is the slowest of them, so that a conversion that
+ * regressed to the simplifier's cost fails the build on the clock alone; the
+ * total is printed to say what the suite costs, and every conversion runs under
+ * a clock, so one that stops coming back fails the build instead of leaving it
+ * at the heap cap.
  *
  * A few functions are not covered by that bound yet: each is named in
  * `excluded` below with the reason it is there, every name has to be a function
@@ -551,3 +552,169 @@ val () =
                      ^ "its line in the exclusion list is stale")
          end)
     excluded
+
+(* The loop.  `checked_exp_helper`'s form at a fuel nobody knows stops at its
+ * loop, which is left folded as a call is, and one iteration of that loop
+ * converts on its own at such a fuel, with the next iteration folded in its
+ * place.  Those are
+ * the two steps an induction on the fuel takes over a loop head.  The fuel is
+ * written `SUC k`: the body's calls test their fuel for zero, and on a bare
+ * `k` that test is a decision every step after the call is evaluated under,
+ * while a run at `0` is one a caller converts at that numeral.  Both forms are
+ * held to the suite's own checks -- nothing of the evaluation left standing
+ * but the folded loop and calls, a fixed point -- and to the size line the
+ * excluded list is drawn at. *)
+val loop_c = prim_mk_const {Thy = "yulEvaluator", Name = "eval_yul_loop"}
+
+fun is_loop_at n t =
+  let val (f, args) = strip_comb t in
+    same_const loop_c f andalso List.length args = 6 andalso
+    (case n of NONE => true | SOME n => aconv (hd args) n)
+  end
+
+fun loop_checked what t th =
+  let
+    val form = rhs (concl th)
+    val res = yulConvLib.residues form
+    val n = size_of form
+  in
+    if not (aconv (lhs (concl th)) t) then
+      fail (what ^ "'s theorem is about some other term")
+    else if not (List.all (fn k => Lib.mem k call_residues) res) then
+      fail ("the conversion left " ^ show_residues res ^ " in " ^ what)
+    else if not (yulConvLib.is_fixed_point table_defs form) then
+      fail ("the conversion left something to evaluate in " ^ what)
+    else if n >= 200000 then
+      fail (what ^ " is " ^ Int.toString n ^ " nodes, at or over the line")
+    else form
+  end
+
+val loop_entry =
+  let
+    val (_, args) =
+      strip_comb (call_term (valOf (List.find (fn (n, _, _) =>
+                                                 n = "checked_exp_helper")
+                                              functions)))
+    val n = mk_var ("n", numSyntax.num)
+    val t = list_mk_comb (invoke_c, numSyntax.mk_suc n :: tl args)
+    val form =
+      case under_clock 60.0 (fn () => yulConvLib.yul_invoke_conv table_defs t) of
+        NONE => fail "checked_exp_helper's entry did not come back within 60s"
+      | SOME th => loop_checked "checked_exp_helper's entry" t th
+  in
+    if can (find_term (is_loop_at NONE)) form then form
+    else fail "checked_exp_helper's entry does not stop at its loop"
+  end
+
+val loop_iteration =
+  let
+    val (_, args) = strip_comb (find_term (is_loop_at NONE) loop_entry)
+    val k = mk_var ("k", numSyntax.num)
+    val t = list_mk_comb (loop_c, numSyntax.mk_suc k :: tl args)
+    val th =
+      case under_clock 60.0 (fn () => yulConvLib.yul_loop_conv table_defs t) of
+        NONE => fail "an iteration of checked_exp_helper's loop did not come \
+                     \back within 60s"
+      | SOME th => th
+    val form = loop_checked "an iteration of checked_exp_helper's loop" t th
+  in
+    if not (can (find_term (is_loop_at (SOME k))) form) then
+      fail "the iteration's form does not fold the next iteration at k"
+    else th
+  end
+
+val () = print ("yulConvTest: checked_exp_helper's entry " ^ Int.toString
+                (size_of loop_entry) ^ " nodes; an iteration at SUC k "
+                ^ Int.toString (size_of (rhs (concl loop_iteration)))
+                ^ " nodes\n")
+
+(* A loop with statements after it.  `checked_exp_helper`'s loop is the last
+ * statement of its body, so the rest after it is empty; here it is not: `f`'s
+ * loop is followed by an assignment, and `g`'s is the same loop in a block of
+ * its own, so the block's result is decided over the machine the loop returns.
+ * An entry's form stops at the loop with the rest left unevaluated -- a form
+ * that is not closed, since that rest is evaluation still to do -- at a numeral
+ * fuel and at `SUC n` alike.  Taking the loop's iterations one at a time and
+ * then finishing the rest with `yul_eval_conv` gives what the evaluator itself
+ * gives.  On 2 the loop runs its post once before it exits. *)
+Definition loop_rest_object_def:
+  loop_rest_object =
+    let loop = YulFor [] (YulBuiltin YLt [YulName "x"; YulLit (LitNumber 3w)])
+                 [YulAssign ["x"]
+                    (YulBuiltin YAdd [YulName "x"; YulLit (LitNumber 1w)])]
+                 [];
+        rest = YulAssign ["r"]
+                 (YulBuiltin YAdd [YulName "x"; YulLit (LitNumber 1w)])
+    in
+      [YulFunction "f" ["x"] ["r"] [loop; rest];
+       YulFunction "g" ["x"] ["r"] [YulBlock [loop]; rest]]
+End
+
+Definition loop_rest_table_def:
+  loop_rest_table = yul_env loop_rest_object
+End
+
+val () =
+  let
+    val defs = [loop_rest_table_def, loop_rest_object_def]
+    fun call fuel nm arg =
+      list_mk_comb (invoke_c,
+        [fuel, ``loop_rest_table``, stringSyntax.fromMLstring nm,
+         listSyntax.mk_list ([arg], bytes32_ty), yul_conv_machine_term])
+    fun clocked what conv t =
+      case under_clock 60.0 (fn () => conv t) of
+        NONE => fail (what ^ " did not come back within 60s")
+      | SOME th => rhs (concl th)
+    fun entry what t =
+      let val form = clocked what (yulConvLib.yul_invoke_conv defs) t in
+        if not (can (find_term (is_loop_at NONE)) form) then
+          fail (what ^ " does not stop at its loop")
+        else if yulConvLib.is_closed_form form then
+          fail (what ^ " is closed, so the rest after its loop was dropped")
+        else form
+      end
+    (* the loop's iterations, one at a time, until it exits *)
+    fun run what i form =
+      case Lib.total (find_term (is_loop_at NONE)) form of
+        NONE => form
+      | SOME loop =>
+          if i > 3 then fail (what ^ "'s loop did not exit in 3 iterations")
+          else
+            run what (i + 1)
+              (subst [loop |-> clocked (what ^ "'s loop")
+                                 (yulConvLib.yul_loop_conv defs) loop] form)
+    fun check nm =
+      let
+        val t = call ``20n`` nm ``2w : bytes32``
+        val form = run nm 1 (entry (nm ^ "'s entry") t)
+        val fns = ``loop_rest_table``
+        val final = clocked ("the rest after " ^ nm ^ "'s loop")
+                      (yulConvLib.yul_eval_conv defs fns) form
+        (* EVAL also unfolds the frame's parameters, which the conversion
+         * keeps by name, so the two are compared with those unfolded on both
+         * sides. *)
+        val direct = rhs (concl (EVAL t))
+        val final' = rhs (concl (QCONV EVAL final))
+        val n = mk_var ("n", numSyntax.num)
+      in
+        (* f and g call nothing, so the rest is held to what a call-free
+         * body's form is: nothing left but a memory read, and a fixed
+         * point *)
+        if not (List.all (fn k => k = memory_read_residue)
+                         (yulConvLib.residues final)) then
+          fail ("the rest after " ^ nm ^ "'s loop left "
+                ^ show_residues (yulConvLib.residues final))
+        else if not (yulConvLib.is_fixed_point defs final) then
+          fail ("the conversion left something to evaluate in the rest after "
+                ^ nm ^ "'s loop")
+        else if not (aconv final' direct) then
+          fail ("the rest after " ^ nm ^ "'s loop gives "
+                ^ term_to_string final ^ ", but the evaluator gives "
+                ^ term_to_string direct)
+        else
+          ignore (entry (nm ^ "'s entry at SUC n")
+                    (call (numSyntax.mk_suc n) nm (hd arg_names)))
+      end
+  in
+    List.app check ["f", "g"]
+  end
