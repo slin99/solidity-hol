@@ -18,10 +18,10 @@
  * along its linearization (src_contract); its bases, the functions it calls
  * and the structs it uses may come from any source unit of the compilation
  * (unit_sources), since the AST refers to declarations by id across files.
- * The internal functions and constants of libraries it uses come with it:
- * L.f(args) and x.f(args), with f attached to x's type by a using directive,
- * are internal calls of f, the latter with x as the first argument, and L.c
- * names the constant c.
+ * The internal functions, modifiers and constants of libraries it uses come
+ * with it: L.f(args) and x.f(args), with f attached to x's type by a using
+ * directive, are internal calls of f, the latter with x as the first
+ * argument, and L.c names the constant c.
  *
  * Types are normalized from elementary, array and mapping type-name nodes; value
  * types are decoded from typeIdentifiers. Both yield only valid shapes (normalize_type_name_valid,

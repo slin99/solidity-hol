@@ -834,6 +834,16 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(coverage.scan(asts), {functions["twice"]["id"]: [coverage.Blocker(
             "FunctionDefinition", "external library functions", "import")]})
 
+    def test_bound_calls_copying_their_receiver_are_blocked(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        fill = next(n for ast in asts.values() for n in coverage.nodes(ast)
+                    if n.get("nodeType") == "MemberAccess" and n.get("memberName") == "fill")
+        fill["expression"]["typeDescriptions"]["typeIdentifier"] = \
+            "t_array$_t_uint256_$dyn_storage_ptr"
+        self.assertEqual(coverage.scan(asts), {fill["id"]: [coverage.Blocker(
+            "MemberAccess", "bound calls copying their receiver", "import")]})
+
     def test_compilation_retains_artifact_contract_for_preparation(self) -> None:
         metadata = {"storageLayout": {"storage": [{"astId": 3, "slot": "0"}]},
                     "evm": {"deployedBytecode": {"object": "00"}}}

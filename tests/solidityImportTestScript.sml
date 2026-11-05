@@ -21,7 +21,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/inheritance.json",
   "../testdata/differential/expected/imports.json",
   "../testdata/differential/expected/errors.json",
-  "../testdata/differential/expected/type_bounds.json"
+  "../testdata/differential/expected/type_bounds.json",
+  "../testdata/differential/expected/using_for.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -113,21 +114,23 @@ val contracts = artifact_part fixture ["contracts", source]
 fun is_node ty =
   JSONUtil.testField "nodeType" (fn JSON.STRING s => s = ty | _ => false)
 
-fun edit_first ty f v =
+fun edit_first_where p what f v =
   let
     val edited = ref false
     fun go v =
       if !edited then v
       else case v of
              JSON.OBJECT kvs =>
-               if is_node ty v then (edited := true; f v)
+               if p v then (edited := true; f v)
                else JSON.OBJECT (map (fn (k, x) => (k, go x)) kvs)
            | JSON.ARRAY vs => JSON.ARRAY (map go vs)
            | _ => v
     val result = go v
   in
-    if !edited then result else raise Fail ("no " ^ ty ^ " node")
+    if !edited then result else raise Fail ("no " ^ what)
   end
+
+fun edit_first ty = edit_first_where (is_node ty) (ty ^ " node")
 
 fun set_field k x (JSON.OBJECT kvs) =
       JSON.OBJECT (map (fn (k', y) => if k' = k then (k', x) else (k', y)) kvs)
@@ -831,4 +834,48 @@ Theorem type_bound_values:
   type_bound "interfaceId" (UintT 8) = NONE
 Proof
   EVAL_TAC
+QED
+
+(* Libraries: only internal functions, attached through a library name, with a
+ * receiver that is not copied, are imported; library functions are plain
+ * functions.
+ *)
+
+val using_fixture = "../testdata/differential/expected/using_for.json"
+val using_source = "testdata/differential/using_for.sol"
+val using_ast = artifact_part using_fixture ["sources", using_source, "ast"]
+val using_contracts = artifact_part using_fixture ["contracts", using_source]
+
+fun named ty name v =
+  is_node ty v andalso
+  JSONUtil.testField "name" (fn JSON.STRING s => s = name | _ => false) v
+
+val () = import_error_with Unsupported using_contracts "public library function"
+  (edit_first_where (named "FunctionDefinition" "addBonus") "addBonus"
+     (set_field "visibility" (JSON.STRING "public")) using_ast)
+val () = import_error_with Unsupported using_contracts "file-level using with functions"
+  (edit_first "UsingForDirective" (drop_field "libraryName") using_ast)
+val () = import_error_with Unsupported using_contracts "contract using with functions"
+  (edit_first_where
+     (fn v => is_node "UsingForDirective" v andalso
+              JSONUtil.testField "libraryName" (named "IdentifierPath" "Arrays") v)
+     "using Arrays" (drop_field "libraryName") using_ast)
+val () = import_error_with Unsupported using_contracts "receiver copied to memory"
+  (edit_first_where
+     (fn v => is_node "MemberAccess" v andalso
+              JSONUtil.testField "memberName" (fn JSON.STRING s => s = "fill" | _ => false) v)
+     "xs.fill"
+     (fn m => set_field "expression"
+                (type_identifier "t_array$_t_uint256_$dyn_storage_ptr"
+                   (JSONUtil.lookupField m "expression")) m)
+     using_ast)
+
+val () = edited_unit_with using_contracts "library_receive"
+  (edit_first_where (named "FunctionDefinition" "addBonus") "addBonus"
+     (set_field "kind" (JSON.STRING "receive")) using_ast)
+
+Theorem library_receive_rejected:
+  ¬valid_src_unit library_receive
+Proof
+  CONV_TAC cv_eval
 QED

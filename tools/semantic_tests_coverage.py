@@ -316,10 +316,11 @@ def deployable(unit: dict[str, Any]) -> list[dict[str, Any]]:
             and c["id"] not in inherited]
 
 
-def library_member(node: dict[str, Any] | None, by_id: dict[int, dict[str, Any]]) -> bool:
-    """Whether a declaration is a member of a library."""
-    scope = by_id.get((node or {}).get("scope"), {})
-    return scope.get("nodeType") == "ContractDefinition" and scope["contractKind"] == "library"
+def library_members(by_id: dict[int, dict[str, Any]]) -> dict[int, dict[str, Any]]:
+    """The members of the compilation's libraries, by id."""
+    return {m["id"]: m for n in by_id.values()
+            if n["nodeType"] == "ContractDefinition" and n["contractKind"] == "library"
+            for m in n["nodes"]}
 
 
 def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dict[str, Any]]:
@@ -327,8 +328,9 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
     unit's members other than pragmas, imports, file-level structs and errors,
     interfaces, libraries and contracts imported only as bases; the bases of
     the contracts imported; the file-level structs, library members other
-    than errors and external function parameters those refer to; and the
-    parameters of the errors their revert statements name."""
+    than errors and external function parameters those refer to, library
+    members only from the functions calls can reach; and the parameters of
+    the errors their revert statements name."""
     roots: list[dict[str, Any]] = []
     for ast in asts.values():
         contracts = {c["id"] for c in deployable(ast)}
@@ -344,6 +346,9 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
             roots.append(member)
     # Structs are found from every reference, read or not, as the importer
     # finds them from the whole of each base.
+    members = library_members(by_id)
+    based, live = live_functions(asts, by_id)
+    unreachable = {n["id"] for f in based - live for n in nodes(by_id[f])}
     seen: set[int] = set()
     rooted = {root["id"] for root in roots}
 
@@ -365,7 +370,8 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
             if (target is not None and target["nodeType"] == "StructDefinition"
                     and by_id.get(target.get("scope"), {}).get("nodeType") == "SourceUnit"):
                 add(target)
-            elif library_member(target, by_id) and target["nodeType"] != "ErrorDefinition":
+            elif (target is not None and target["id"] in members
+                  and target["nodeType"] != "ErrorDefinition" and node["id"] not in unreachable):
                 add(target)
     return roots
 
@@ -1070,7 +1076,11 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
             name = name["expression"]
         callee = by_id.get(name.get("referencedDeclaration"), {})
         if callee.get("nodeType") == "FunctionDefinition":
-            expected.extend(arguments(node, callee["parameters"]["parameters"]))
+            parameters = callee["parameters"]["parameters"]
+            # x.f(args): x is f's first argument
+            if "$attached_to$" in (name.get("typeDescriptions", {}).get("typeIdentifier") or ""):
+                parameters = parameters[1:]
+            expected.extend(arguments(node, parameters))
         member = node["expression"]
         if (member.get("nodeType") == "MemberAccess" and member["memberName"] == "push"
                 and len(node["arguments"]) == 1):
@@ -1118,6 +1128,15 @@ def arguments(call: dict[str, Any], parameters: list[dict[str, Any]]
     return [(a, named.get(n)) for a, n in zip(call["arguments"], call["names"])]
 
 
+def copies_receiver(member: dict[str, Any], function: dict[str, Any]) -> bool:
+    """Whether x.f converts x from storage or calldata to memory, which the
+    importer rejects (copies_receiver in solidityImportLib)."""
+    receiver = member["expression"]["typeDescriptions"].get("typeIdentifier") or ""
+    parameters = function["parameters"]["parameters"]
+    return (("_storage" in receiver or "_calldata" in receiver) and bool(parameters)
+            and (parameters[0]["typeDescriptions"].get("typeIdentifier") or "").endswith("_memory_ptr"))
+
+
 def unwrap(value: dict[str, Any] | None) -> dict[str, Any] | None:
     """A value without the parentheses around it."""
     while (value is not None and value["nodeType"] == "TupleExpression"
@@ -1143,19 +1162,22 @@ def special_forms(reached: dict[int, dict[str, Any]],
         found.setdefault(node["id"], []).append(Blocker(node["nodeType"], feature, stage))
 
     called = {n["expression"]["id"] for n in reached.values() if n["nodeType"] == "FunctionCall"}
+    members = library_members(by_id)
     for node in reached.values():
         kind = node["nodeType"]
-        if library_member(node, by_id):
+        if node["id"] in members:
             if kind == "FunctionDefinition" and node["visibility"] not in ("internal", "private"):
                 block(node, "external library functions", "import")
-            elif kind not in ("FunctionDefinition", "VariableDeclaration"):
+            elif kind not in ("FunctionDefinition", "VariableDeclaration", "ModifierDefinition"):
                 block(node, "library structs and events", "import")
-        if kind == "MemberAccess" and library_member(by_id.get(node.get("referencedDeclaration")), by_id):
+        if kind == "MemberAccess" and node.get("referencedDeclaration") in members:
             unread.add(node["id"])
-            target = by_id[node["referencedDeclaration"]]
+            target = members[node["referencedDeclaration"]]
             if "$attached_to$" in (node["typeDescriptions"].get("typeIdentifier") or ""):
                 if node["id"] not in called:
                     block(node, "using for", "import")
+                elif copies_receiver(node, target):
+                    block(node, "bound calls copying their receiver", "import")
             else:
                 unread.update(n["id"] for n in nodes(node["expression"]))
                 if target["nodeType"] == "FunctionDefinition" and node["id"] not in called:

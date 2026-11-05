@@ -44,6 +44,23 @@ library Arrays {
     }
 }
 
+library Guarded {
+    modifier nonZero(uint256 a) {
+        require(a != 0);
+        _;
+    }
+
+    function inverse(uint256 a) internal pure nonZero(a) returns (uint256) {
+        return 100 / a;
+    }
+}
+
+library Linked {
+    function identity(uint256 a) public pure returns (uint256) {
+        return a;
+    }
+}
+
 // Not used by the contract: its public function and struct are not imported.
 library Unused {
     struct Pair { uint256 a; uint256 b; }
@@ -55,9 +72,18 @@ library Unused {
 
 using Arith for uint256;
 
-contract UsingFor {
+// Its hook calls a public library function, but the contract overrides it.
+// Abstract, so that no bytecode calls the library.
+abstract contract Hooked {
+    function hook(uint256 a) public pure virtual returns (uint256) {
+        return Linked.identity(a);
+    }
+}
+
+contract UsingFor is Hooked {
     using Arrays for uint256[];
     using Arith for uint8;
+    using Guarded for uint256;
 
     uint256 public counter;
 
@@ -92,6 +118,10 @@ contract UsingFor {
     // The receiver is evaluated before the arguments.
     function order() external returns (uint256) {
         return next().combine(next());
+    }
+
+    function hook(uint256 a) public pure override returns (uint256) {
+        return a.inverse();
     }
 
     function literal() external pure returns (uint256) {
