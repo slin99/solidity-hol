@@ -271,6 +271,11 @@ val in_function = ref false
  * functions and constants are imported with the contracts that use them. *)
 val library_members : (IntInf.int * JSON.value) list ref = ref []
 
+(* The using directives of the libraries of the compilation, by library id:
+ * those of a library whose functions a contract reaches must name a library,
+ * as the contract's own must. *)
+val library_directives : (IntInf.int * JSON.value) list ref = ref []
+
 (* L.f or L.c, or x.f with f attached to the type of x by a using directive,
  * naming a member of library L. *)
 fun is_library_member v =
@@ -979,6 +984,14 @@ fun contract external_structs contracts declared v = within v (fn v =>
         | "ErrorDefinition" => ()
         | other => fail (describe m ^ ": unsupported library member " ^ other)))
         used_members
+    val () =
+      List.app (fn (l, d) =>
+                  if List.exists (fn f => int_field f "scope" = l) library_functions
+                  then within d (fn d =>
+                         require d (isSome (optional_field d "libraryName"))
+                           "using directives attaching functions are not supported")
+                  else ())
+        (!library_directives)
     val libraries =
       List.foldr (fn (m, ls) =>
                     if List.exists (fn l => l = int_field m "scope") ls then ls
@@ -1153,6 +1166,16 @@ fun import_source_unit units v contracts = within v (fn v =>
                   if string_field c "contractKind" = "library" then
                     map (fn m => (int_field m "id", m))
                       (JSONUtil.arrayMap I (field c "nodes"))
+                  else [])
+             declared)
+    val () =
+      library_directives :=
+        List.concat
+          (map (fn (_, c) =>
+                  if string_field c "contractKind" = "library" then
+                    map (fn m => (int_field c "id", m))
+                      (List.filter (fn m => node_type m = "UsingForDirective")
+                         (JSONUtil.arrayMap I (field c "nodes")))
                   else [])
              declared)
     val () =

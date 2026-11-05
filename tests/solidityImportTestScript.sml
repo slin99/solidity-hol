@@ -892,6 +892,22 @@ val () = import_error_with Unsupported using_contracts "contract using with func
      (fn v => is_node "UsingForDirective" v andalso
               JSONUtil.testField "libraryName" (named "IdentifierPath" "Arrays") v)
      "using Arrays" (drop_field "libraryName") using_ast)
+val () = import_error_with Unsupported using_contracts "reached library using functions"
+  (edit_first_where (named "ContractDefinition" "Arith") "Arith"
+     (fn JSON.OBJECT kvs =>
+           JSON.OBJECT
+             (map (fn ("nodes", JSON.ARRAY ns) =>
+                        ("nodes",
+                         JSON.ARRAY
+                           (ns @ [JSON.OBJECT
+                                    [("nodeType", JSON.STRING "UsingForDirective"),
+                                     ("id", JSON.INT 999998),
+                                     ("src", JSON.STRING "0:0:0"),
+                                     ("functionList", JSON.ARRAY []),
+                                     ("global", JSON.BOOL false)]]))
+                    | kv => kv) kvs)
+       | v => v)
+     using_ast)
 val () = import_error_with Unsupported using_contracts "receiver copied to memory"
   (edit_first_where
      (fn v => is_node "MemberAccess" v andalso

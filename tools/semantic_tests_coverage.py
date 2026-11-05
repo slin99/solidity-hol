@@ -379,6 +379,11 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
             elif (target is not None and target["id"] in members
                   and target["nodeType"] != "ErrorDefinition" and node["id"] not in unreachable):
                 add(target)
+                # The using directives of a library whose functions run.
+                if target["nodeType"] == "FunctionDefinition":
+                    for directive in by_id[target["scope"]]["nodes"]:
+                        if directive["nodeType"] == "UsingForDirective":
+                            add(directive)
     return roots
 
 
@@ -1174,7 +1179,8 @@ def special_forms(reached: dict[int, dict[str, Any]],
         if node["id"] in members:
             if kind == "FunctionDefinition" and node["visibility"] not in ("internal", "private"):
                 block(node, "external library functions", "import")
-            elif kind not in ("FunctionDefinition", "VariableDeclaration", "ModifierDefinition"):
+            elif kind not in ("FunctionDefinition", "VariableDeclaration", "ModifierDefinition",
+                              "UsingForDirective"):
                 block(node, "library structs and events", "import")
         if kind == "MemberAccess" and node.get("referencedDeclaration") in members:
             unread.add(node["id"])

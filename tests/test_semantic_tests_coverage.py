@@ -844,6 +844,17 @@ class ClassifyTests(unittest.TestCase):
         modifier["body"]["statements"].insert(0, code)
         self.assertIn(999999, coverage.scan(asts))
 
+    def test_using_directives_of_reached_libraries_are_read(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        arith = next(n for ast in asts.values() for n in coverage.nodes(ast)
+                     if n.get("nodeType") == "ContractDefinition" and n["name"] == "Arith")
+        directive = {"nodeType": "UsingForDirective", "id": 999998, "global": False,
+                     "functionList": [], "typeName": None}
+        arith["nodes"].append(directive)
+        self.assertEqual(coverage.scan(asts), {999998: [coverage.Blocker(
+            "UsingForDirective", "using for with functions", "import")]})
+
     def test_bound_calls_copying_their_receiver_are_blocked(self) -> None:
         artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
         asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
