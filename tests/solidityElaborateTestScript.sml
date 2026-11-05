@@ -247,12 +247,12 @@ Theorem asm_halt_rejected_in_constructor:
   ∀info.
     IS_SOME (elab_stmt
       <| functions := []; supers := []; structs := []; events := []; variables := [];
-         state := []; returns := []; placeholder := NONE;
+         state := []; constants := []; returns := []; placeholder := NONE;
          mode := CheckedArithmetic; creation := F |> 0
       (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] [])) ∧
     elab_stmt
       <| functions := []; supers := []; structs := []; events := []; variables := [];
-         state := []; returns := []; placeholder := NONE;
+         state := []; constants := []; returns := []; placeholder := NONE;
          mode := CheckedArithmetic; creation := T |> 0
       (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] []) = NONE
 Proof

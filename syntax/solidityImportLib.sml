@@ -189,6 +189,14 @@ fun type_name v = within v (fn v =>
 
 (* Declarations *)
 
+fun variable_record v =
+  record "src_variable"
+    [("var_info", info v), ("var_name", mk_str (string_field v "name")),
+     ("var_scope", mk_num (int_field v "scope")),
+     ("var_type_name", type_name (field v "typeName")),
+     ("var_type_id", type_id v),
+     ("var_location", mk_str (string_field v "storageLocation"))]
+
 (* A local, parameter or return variable, or, given state, a state variable. *)
 fun declaration state v = within v (fn v =>
   (expect v "VariableDeclaration";
@@ -202,14 +210,10 @@ fun declaration state v = within v (fn v =>
      "declaration values are not supported";
    require v (not (isSome (optional_field v "overrides")))
      "overriding state variables are not supported";
-   record "src_variable"
-     [("var_info", info v), ("var_name", mk_str (string_field v "name")),
-      ("var_scope", mk_num (int_field v "scope")),
-      ("var_type_name", type_name (field v "typeName")),
-      ("var_type_id", type_id v),
-      ("var_location", mk_str (string_field v "storageLocation"))]))
+   variable_record v))
 
 val variable = declaration false
+
 
 fun parameter_list v = within v (fn v =>
   (expect v "ParameterList";
@@ -765,13 +769,23 @@ fun references (JSON.OBJECT fields) =
   | references (JSON.ARRAY vs) = List.concat (map references vs)
   | references _ = []
 
+(* A contract's constant with its value. *)
+fun constant_declaration v = within v (fn v =>
+  (expect v "VariableDeclaration";
+   require v (bool_field v "constant" andalso bool_field v "stateVariable")
+     "expected a contract constant";
+   require v (not (isSome (optional_field v "overrides")))
+     "overriding state variables are not supported";
+   pairSyntax.mk_pair (variable_record v, expr (field v "value"))))
+
 (* A deployable contract, flattened along its linearization (most derived
  * first), whose contracts declared lists by id: the implemented functions of
  * its bases, most derived first, their events and structs, their state
  * variables base first, the order of the storage layout, with their
- * initializers, and the base constructor arguments each base gives, most
- * derived base first. The file-level structs it refers to come first, and
- * the layout also describes those referenced by its state variables.
+ * initializers, their constants with their values, and the base
+ * constructor arguments each base gives, most derived base first. The
+ * file-level structs it refers to come first, and the layout also describes
+ * those referenced by its state variables.
  *)
 fun contract external_structs contracts declared v = within v (fn v =>
   let
@@ -822,7 +836,9 @@ fun contract external_structs contracts declared v = within v (fn v =>
     val layout =
       JSONUtil.get (contracts,
         [JSONUtil.SEL name, JSONUtil.SEL "storageLayout"])
-    val state_variables = members_of "VariableDeclaration" (rev bases)
+    val variables = members_of "VariableDeclaration" (rev bases)
+    val state_variables =
+      List.filter (fn d => not (bool_field d "constant")) variables
     (* The base constructor arguments base x gives: those of its inheritance
      * specifiers and its constructor's base constructor specifiers, in the
      * order of x's own linearization. *)
@@ -872,6 +888,10 @@ fun contract external_structs contracts declared v = within v (fn v =>
                         (optional_field d "value"))
              state_variables,
            pairSyntax.mk_prod (numSyntax.num, expr_ty))),
+       ("contract_constants", listSyntax.mk_list
+          (map constant_declaration
+             (List.filter (fn d => bool_field d "constant") variables),
+           pairSyntax.mk_prod (variable_ty, expr_ty))),
        ("contract_base_arguments", listSyntax.mk_list
           (List.concat (map base_arguments bases),
            pairSyntax.list_mk_prod
@@ -901,7 +921,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
                           (mk_num (int_field d "id"),
                            mk_bytes d (string_field d "functionSelector")))
                       else NONE)
-             state_variables,
+             variables,
            pairSyntax.mk_prod (numSyntax.num,
              listSyntax.mk_list_type (wordsSyntax.mk_int_word_type 8))))]
   end)

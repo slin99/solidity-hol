@@ -22,12 +22,12 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 | outcome | tests |
 | --- | ---: |
-| admitted | 444 |
-| elaboration-rejected | 49 |
-| import-rejected | 785 |
+| admitted | 474 |
+| elaboration-rejected | 51 |
+| import-rejected | 775 |
 | compile-failure | 0 |
 | malformed-input | 0 |
-| source-rejected | 292 |
+| source-rejected | 270 |
 | invalid-core | 0 |
 | skipped | 100 |
 | total | 1670 |
@@ -40,17 +40,17 @@ The scan disagrees with the HOL run on 11 tests, listed at the end.
 
 | feature | AST nodes | tests | only blocker | first |
 | --- | --- | ---: | ---: | ---: |
-| external calls and contract members | `FunctionCall`, `Identifier`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 226 | 1 | 99 |
+| external calls and contract members | `FunctionCall`, `Identifier`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 226 | 1 | 100 |
 | structs | `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 165 | 5 | 18 |
 | local reference bindings | `VariableDeclaration` | 158 | 0 | 0 |
 | this | `Identifier` | 140 | 1 | 5 |
-| arrays | `ArrayTypeName`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 130 | 0 | 2 |
+| arrays | `ArrayTypeName`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 130 | 3 | 6 |
 | source units without exactly one contract | `SourceUnit` | 129 | 4 | 0 |
-| function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 121 | 0 | 20 |
+| function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 121 | 0 | 21 |
 | libraries | `ContractDefinition` | 116 | 1 | 42 |
 | struct values and copying | `Identifier`, `IndexAccess`, `MemberAccess` | 108 | 2 | 0 |
-| library calls and contract-name members | `IndexAccess`, `MemberAccess` | 101 | 11 | 0 |
-| abi.* functions | `MemberAccess` | 100 | 12 | 58 |
+| library calls and contract-name members | `IndexAccess`, `MemberAccess` | 101 | 12 | 0 |
+| abi.* functions | `MemberAccess` | 100 | 13 | 58 |
 | function types | `FunctionTypeName` | 96 | 0 | 76 |
 | inline assembly memory references | `InlineAssembly` | 91 | 2 | 0 |
 | using for | `MemberAccess`, `UsingForDirective` | 81 | 0 | 47 |
@@ -58,20 +58,18 @@ The scan disagrees with the HOL run on 11 tests, listed at the end.
 | operator delete | `UnaryOperation` | 75 | 12 | 0 |
 | free functions | `FunctionDefinition` | 73 | 10 | 37 |
 | array values | `Identifier`, `IndexAccess`, `MemberAccess` | 67 | 0 | 0 |
-| hash and signature built-ins | `Identifier` | 62 | 8 | 14 |
+| hash and signature built-ins | `Identifier` | 62 | 10 | 16 |
 | address members (balance, call, transfer, …) | `MemberAccess` | 58 | 14 | 19 |
-| constant expressions over literals | `BinaryOperation`, `UnaryOperation` | 57 | 26 | 0 |
 | functions as values | `Identifier` | 55 | 1 | 0 |
-| type names as values | `ElementaryTypeNameExpression` | 55 | 0 | 8 |
-| user-defined value types | `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `UserDefinedValueTypeDefinition`, `VariableDeclaration` | 52 | 6 | 42 |
+| type names as values | `ElementaryTypeNameExpression` | 55 | 1 | 8 |
+| user-defined value types | `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `UserDefinedValueTypeDefinition`, `VariableDeclaration` | 52 | 6 | 45 |
 | inline assembly memory outside the scratch space | `InlineAssembly` | 50 | 6 | 0 |
-| inline arrays | `TupleExpression` | 47 | 10 | 35 |
-| constants | `VariableDeclaration` | 47 | 8 | 36 |
+| inline arrays | `TupleExpression` | 47 | 12 | 35 |
 | public state variables | `VariableDeclaration` | 46 | 5 | 0 |
-| transient storage | `VariableDeclaration` | 41 | 13 | 0 |
+| transient storage | `VariableDeclaration` | 41 | 14 | 0 |
 | conditional expressions | `Conditional` | 40 | 12 | 23 |
 | mappings | `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 39 | 9 | 0 |
-| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 15 | 0 |
+| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 16 | 0 |
 | aggregate array mutation | `MemberAccess` | 37 | 8 | 0 |
 | inline assembly | `InlineAssembly` | 32 | 11 | 19 |
 | literals of non-integer types | `Assignment`, `BinaryOperation`, `FunctionCall`, `Literal`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 32 | 8 | 0 |
@@ -82,7 +80,7 @@ The scan disagrees with the HOL run on 11 tests, listed at the end.
 | tuples of literals | `TupleExpression` | 28 | 4 | 0 |
 | conversions to non-elementary types | `Identifier`, `IndexAccess`, `MemberAccess` | 26 | 0 | 1 |
 | memory arrays (new T[](n)) | `NewExpression` | 25 | 0 | 0 |
-| immutables | `VariableDeclaration` | 24 | 10 | 21 |
+| immutables | `VariableDeclaration` | 24 | 11 | 22 |
 | members of elementary type names | `IndexAccess`, `TupleExpression` | 24 | 0 | 0 |
 | bytes push and pop | `MemberAccess` | 23 | 13 | 0 |
 | call options ({value: …, gas: …}) | `FunctionCallOptions`, `IndexAccess`, `MemberAccess`, `NewExpression`, `TupleExpression` | 22 | 0 | 4 |
@@ -90,11 +88,12 @@ The scan disagrees with the HOL run on 11 tests, listed at the end.
 | array slices | `IndexRangeAccess` | 19 | 4 | 15 |
 | require with a custom error | `FunctionCall` | 18 | 11 | 0 |
 | mapping values | `Identifier`, `IndexAccess`, `MemberAccess` | 17 | 0 | 0 |
-| type(…) | `Identifier` | 16 | 3 | 9 |
+| constants | `VariableDeclaration` | 16 | 5 | 6 |
+| type(…) | `Identifier` | 16 | 3 | 10 |
 | fixed-size bytes members and indexing | `IndexAccess`, `MemberAccess` | 12 | 2 | 0 |
-| built-in erc7201 | `Identifier` | 12 | 1 | 5 |
+| built-in erc7201 | `Identifier` | 12 | 1 | 7 |
 | event array parameters | `VariableDeclaration` | 11 | 6 | 0 |
-| literal subdenominations (ether, days, …) | `Literal` | 11 | 1 | 2 |
+| literal subdenominations (ether, days, …) | `Literal` | 11 | 6 | 7 |
 | inline assembly calls, gas, return data and code | `InlineAssembly` | 10 | 4 | 0 |
 | bytes and string | `MemberAccess` | 10 | 0 | 0 |
 | custom errors with reference parameters | `VariableDeclaration` | 10 | 0 | 0 |
@@ -116,9 +115,10 @@ The scan disagrees with the HOL run on 11 tests, listed at the end.
 | built-in selfdestruct | `Identifier` | 3 | 0 | 0 |
 | events | `MemberAccess` | 3 | 0 | 3 |
 | built-in gasleft | `Identifier` | 2 | 2 | 2 |
-| built-in addmod | `Identifier` | 2 | 0 | 2 |
+| built-in addmod | `Identifier` | 2 | 1 | 2 |
 | custom errors | `MemberAccess`, `TupleExpression` | 2 | 0 | 1 |
 | inline assembly halts in a constructor | `InlineAssembly` | 2 | 0 | 0 |
+| constant expressions over literals | `BinaryOperation`, `UnaryOperation` | 1 | 1 | 0 |
 | static memory array returns under modifiers | `VariableDeclaration` | 1 | 1 | 0 |
 | FunctionCallOptions nodes | `FunctionCallOptions` | 1 | 0 | 0 |
 | built-in mulmod | `Identifier` | 1 | 0 | 0 |
@@ -130,26 +130,26 @@ Supporting the features in this order admits the most rejected tests at each ste
 
 | step | feature | admitted |
 | ---: | --- | ---: |
-| 1 | constant expressions over literals | 26 |
-| 2 | string literals as fixed-size bytes | 41 |
-| 3 | abi.* functions | 55 |
-| 4 | hash and signature built-ins | 73 |
-| 5 | address members (balance, call, transfer, …) | 90 |
-| 6 | transient storage | 105 |
-| 7 | operator delete | 126 |
-| 8 | bytes push and pop | 143 |
-| 9 | literals of non-integer types | 160 |
-| 10 | inline arrays | 175 |
-| 11 | conditional expressions | 189 |
-| 12 | constants | 202 |
-| 13 | aggregate array mutation | 215 |
-| 14 | immutables | 228 |
-| 15 | library calls and contract-name members | 241 |
-| 16 | libraries | 253 |
-| 17 | free functions | 265 |
-| 18 | source units without exactly one contract | 278 |
-| 19 | using for | 291 |
-| 20 | user-defined value types | 316 |
+| 1 | string literals as fixed-size bytes | 16 |
+| 2 | abi.* functions | 30 |
+| 3 | hash and signature built-ins | 50 |
+| 4 | address members (balance, call, transfer, …) | 67 |
+| 5 | transient storage | 82 |
+| 6 | operator delete | 103 |
+| 7 | bytes push and pop | 120 |
+| 8 | literals of non-integer types | 137 |
+| 9 | inline arrays | 152 |
+| 10 | conditional expressions | 166 |
+| 11 | aggregate array mutation | 179 |
+| 12 | immutables | 192 |
+| 13 | library calls and contract-name members | 205 |
+| 14 | libraries | 217 |
+| 15 | free functions | 229 |
+| 16 | source units without exactly one contract | 241 |
+| 17 | using for | 254 |
+| 18 | user-defined value types | 276 |
+| 19 | struct values and copying | 287 |
+| 20 | structs | 316 |
 
 ## Skipped and compile failures
 
@@ -184,6 +184,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `abicoder/cleanup/bool_v2.sol`
 - `abicoder/cleanup/cleanup_v2.sol`
 - `abicoder/validation/array_exceeds_calldatasize_no_revert_string.sol`
+- `accessor/accessor_for_const_state_variable.sol`
 - `accessor/accessor_for_state_variable.sol`
 - `arithmetics/block_inside_unchecked.sol`
 - `arithmetics/checked_add_v2.sol`
@@ -191,6 +192,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `arithmetics/checked_modifier_called_by_unchecked.sol`
 - `arithmetics/divisiod_by_zero.sol`
 - `arithmetics/exp_associativity.sol`
+- `arithmetics/signed_mod.sol`
 - `arithmetics/unchecked_called_by_checked.sol`
 - `arithmetics/unchecked_div_by_zero.sol`
 - `array/array_2d_assignment.sol`
@@ -221,6 +223,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `array/copying/array_copy_different_packing.sol`
 - `array/copying/array_copy_memory_to_storage.sol`
 - `array/copying/array_copy_nested_array.sol`
+- `array/copying/array_copy_storage_abi_signed.sol`
 - `array/copying/array_copy_storage_storage_different_base.sol`
 - `array/copying/array_copy_storage_storage_different_base_nested.sol`
 - `array/copying/array_copy_storage_storage_dyn_dyn.sol`
@@ -259,6 +262,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `array/copying/storage_memory_packed_dyn.sol`
 - `array/copying/string_calldata_to_bytes_calldata.sol`
 - `array/create_dynamic_array_with_zero_length.sol`
+- `array/create_memory_array_too_large.sol`
 - `array/create_multiple_dynamic_arrays.sol`
 - `array/dynamic_out_of_bounds_array_access.sol`
 - `array/external_array_args.sol`
@@ -285,6 +289,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `builtinFunctions/blockhash_shadow_resolution.sol`
 - `cleanup/bool_conversion_v2.sol`
 - `cleanup/cleanup_in_compound_assign.sol`
+- `cleanup/dirty_calldata_bytes.sol`
 - `cleanup/dirty_calldata_dynamic_array.sol`
 - `cleanup/exp_cleanup.sol`
 - `cleanup/exp_cleanup_direct.sol`
@@ -292,6 +297,9 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `cleanup/exp_cleanup_smaller_base.sol`
 - `cleanup/indexed_log_topic_during_explicit_downcast.sol`
 - `cleanup/indexed_log_topic_during_explicit_downcast_during_emissions.sol`
+- `constants/constant_public_getter_checked_unchecked.sol`
+- `constants/constant_string.sol`
+- `constants/simple_constant_variables_test.sol`
 - `constructor/base_constructor_arguments.sol`
 - `constructor/bytes_in_constructors_unpacker.sol`
 - `constructor/constructor_arguments_external.sol`
@@ -316,9 +324,15 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `events/event_string.sol`
 - `events/events_with_same_name.sol`
 - `events/events_with_same_name_inherited_emit.sol`
+- `exponentiation/literal_base.sol`
+- `exponentiation/signed_base.sol`
 - `exponentiation/small_exp.sol`
 - `expressions/bit_operators.sol`
+- `expressions/exp_operator_const.sol`
+- `expressions/exp_operator_const_signed.sol`
+- `expressions/exp_zero_literal.sol`
 - `expressions/inc_dec_operators.sol`
+- `expressions/unary_too_long_literal.sol`
 - `externalSource/multiple_equals_signs.sol`
 - `externalSource/multiple_external_source.sol`
 - `externalSource/multisource.sol`
@@ -404,8 +418,11 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `inlineAssembly/transient_storage_multiple_transactions.sol`
 - `inlineAssembly/transient_storage_reset_between_creation_runtime.sol`
 - `inlineAssembly/transient_storage_simple_reentrancy_lock.sol`
+- `integer/basic.sol`
+- `integer/int.sol`
 - `integer/many_local_variables.sol`
 - `integer/small_signed_types.sol`
+- `integer/uint.sol`
 - `isoltestTesting/account.sol`
 - `isoltestTesting/balance_with_balance.sol`
 - `isoltestTesting/balance_with_balance2.sol`
@@ -443,7 +460,9 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `operators/shifts/shift_bytes_cleanup_viaYul.sol`
 - `operators/shifts/shift_cleanup.sol`
 - `operators/shifts/shift_cleanup_garbled.sol`
+- `operators/shifts/shift_constant_left.sol`
 - `operators/shifts/shift_constant_left_assignment.sol`
+- `operators/shifts/shift_constant_right.sol`
 - `operators/shifts/shift_constant_right_assignment.sol`
 - `operators/shifts/shift_left.sol`
 - `operators/shifts/shift_left_assignment.sol`
@@ -451,11 +470,14 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `operators/shifts/shift_left_larger_type.sol`
 - `operators/shifts/shift_left_uint32.sol`
 - `operators/shifts/shift_left_uint8.sol`
+- `operators/shifts/shift_negative_constant_left.sol`
+- `operators/shifts/shift_negative_constant_right.sol`
 - `operators/shifts/shift_overflow.sol`
 - `operators/shifts/shift_right.sol`
 - `operators/shifts/shift_right_assignment.sol`
 - `operators/shifts/shift_right_garbled_signed_v2.sol`
 - `operators/shifts/shift_right_garbled_v2.sol`
+- `operators/shifts/shift_right_negative_literal.sol`
 - `operators/shifts/shift_right_negative_lvalue.sol`
 - `operators/shifts/shift_right_negative_lvalue_assignment.sol`
 - `operators/shifts/shift_right_negative_lvalue_int16.sol`
@@ -468,6 +490,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `operators/shifts/shift_right_uint8.sol`
 - `operators/shifts/shift_underflow_negative_rvalue.sol`
 - `operators/shifts/shifts.sol`
+- `optimizer/shift_bytes.sol`
 - `optimizer/unused_store_storage_removal_bug.sol`
 - `payable/no_nonpayable_circumvention_by_modifier.sol`
 - `receive/empty_calldata_calls_receive.sol`
@@ -498,6 +521,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `storage/accessors_mapping_for_array.sol`
 - `storage/empty_nonempty_empty.sol`
 - `storage/mapping_state.sol`
+- `storage/packed_storage_signed.sol`
 - `storage/packed_storage_structs_uint.sol`
 - `storage/simple_accessor.sol`
 - `storage/state_smoke_test.sol`
@@ -545,11 +569,13 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `types/type_conversion_cleanup.sol`
 - `userDefinedValueType/zero_cost_abstraction_comparison_elementary.sol`
 - `variables/storing_invalid_boolean.sol`
+- `various/assignment_to_const_var_involving_expression.sol`
 - `various/byte_optimization_bug.sol`
 - `various/create_calldata.sol`
 - `various/decayed_tuple.sol`
 - `various/empty_name_return_parameter.sol`
 - `various/erc20.sol`
+- `various/flipping_sign_tests.sol`
 - `various/gasleft_shadow_resolution.sol`
 - `various/inline_member_init.sol`
 - `various/inline_member_init_inheritence.sol`
@@ -580,6 +606,8 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `viaYul/detect_sub_overflow.sol`
 - `viaYul/detect_sub_overflow_signed.sol`
 - `viaYul/exp.sol`
+- `viaYul/exp_literals.sol`
+- `viaYul/exp_literals_success.sol`
 - `viaYul/exp_neg.sol`
 - `viaYul/exp_neg_overflow.sol`
 - `viaYul/exp_overflow.sol`
@@ -603,6 +631,8 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `viaYul/simple_assignment.sol`
 - `viaYul/simple_inline_asm.sol`
 - `viaYul/smoke_test.sol`
+- `viaYul/storage/dirty_storage_bytes.sol`
+- `viaYul/storage/dirty_storage_bytes_long.sol`
 - `viaYul/storage/dirty_storage_dynamic_array.sol`
 - `viaYul/storage/dirty_storage_static_array.sol`
 - `viaYul/storage/dirty_storage_struct.sol`
@@ -637,7 +667,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `abicoder/calldataDecoding/struct/simple_multiple_fields_v2.sol`: abicoder/calldataDecoding/struct/simple_multiple_fields_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/struct/struct_and_ints_v2.sol`: abicoder/calldataDecoding/struct/struct_and_ints_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/cleanup/struct2_v2.sol`: abicoder/cleanup/struct2_v2.sol: valid_src_unit failed (source validation/subset restriction)
-- `arithmetics/signed_mod.sol`: arithmetics/signed_mod.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/arrayMemoryAllocation/array_2d_zeroed_memory_index_access.sol`: array/arrayMemoryAllocation/array_2d_zeroed_memory_index_access.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/arrayMemoryAllocation/array_array_static.sol`: array/arrayMemoryAllocation/array_array_static.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/arrayMemoryAllocation/array_static_return_param_zeroed_memory_index_access.sol`: array/arrayMemoryAllocation/array_static_return_param_zeroed_memory_index_access.sol: valid_src_unit failed (source validation/subset restriction)
@@ -646,7 +675,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `array/byte_array_storage_layout.sol`: array/byte_array_storage_layout.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/byte_array_transitional_2.sol`: array/byte_array_transitional_2.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/copying/array_copy_including_array.sol`: array/copying/array_copy_including_array.sol: valid_src_unit failed (source validation/subset restriction)
-- `array/copying/array_copy_storage_abi_signed.sol`: array/copying/array_copy_storage_abi_signed.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/copying/array_copy_storage_storage_struct.sol`: array/copying/array_copy_storage_storage_struct.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/copying/array_copy_storage_to_memory_nested.sol`: array/copying/array_copy_storage_to_memory_nested.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/copying/array_elements_to_mapping.sol`: array/copying/array_elements_to_mapping.sol: valid_src_unit failed (source validation/subset restriction)
@@ -676,7 +704,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `array/copying/storage_memory_nested_from_pointer.sol`: array/copying/storage_memory_nested_from_pointer.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/copying/storage_memory_nested_struct.sol`: array/copying/storage_memory_nested_struct.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/create_memory_array.sol`: array/create_memory_array.sol: valid_src_unit failed (source validation/subset restriction)
-- `array/create_memory_array_too_large.sol`: array/create_memory_array_too_large.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/delete/bytes_delete_element.sol`: array/delete/bytes_delete_element.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/delete/delete_bytes_array.sol`: array/delete/delete_bytes_array.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/delete/delete_memory_array.sol`: array/delete/delete_memory_array.sol: valid_src_unit failed (source validation/subset restriction)
@@ -722,8 +749,8 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `cleanup/byte_array_to_storage_cleanup.sol`: cleanup/byte_array_to_storage_cleanup.sol: valid_src_unit failed (source validation/subset restriction)
 - `cleanup/cleanup_address_types_shortening.sol`: cleanup/cleanup_address_types_shortening.sol: valid_src_unit failed (source validation/subset restriction)
 - `cleanup/cleanup_address_types_v2.sol`: cleanup/cleanup_address_types_v2.sol: valid_src_unit failed (source validation/subset restriction)
-- `cleanup/dirty_calldata_bytes.sol`: cleanup/dirty_calldata_bytes.sol: valid_src_unit failed (source validation/subset restriction)
 - `constantEvaluator/negative_fractional_mod.sol`: constantEvaluator/negative_fractional_mod.sol: valid_src_unit failed (source validation/subset restriction)
+- `constants/asm_address_constant_regression.sol`: constants/asm_address_constant_regression.sol: valid_src_unit failed (source validation/subset restriction)
 - `constructor/function_usage_in_constructor_arguments.sol`: constructor/function_usage_in_constructor_arguments.sol: valid_src_unit failed (source validation/subset restriction)
 - `constructor/transient_state_variable_initialization.sol`: constructor/transient_state_variable_initialization.sol: valid_src_unit failed (source validation/subset restriction)
 - `deployedCodeExclusion/static_base_function.sol`: deployedCodeExclusion/static_base_function.sol: valid_src_unit failed (source validation/subset restriction)
@@ -753,12 +780,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `events/event_really_lots_of_data_from_storage.sol`: events/event_really_lots_of_data_from_storage.sol: valid_src_unit failed (source validation/subset restriction)
 - `events/event_static_calldata_uint_array_and_dynamic_array.sol`: events/event_static_calldata_uint_array_and_dynamic_array.sol: valid_src_unit failed (source validation/subset restriction)
 - `events/event_struct_storage_v2.sol`: events/event_struct_storage_v2.sol: valid_src_unit failed (source validation/subset restriction)
-- `exponentiation/literal_base.sol`: exponentiation/literal_base.sol: valid_src_unit failed (source validation/subset restriction)
-- `exponentiation/signed_base.sol`: exponentiation/signed_base.sol: valid_src_unit failed (source validation/subset restriction)
-- `expressions/exp_operator_const.sol`: expressions/exp_operator_const.sol: valid_src_unit failed (source validation/subset restriction)
-- `expressions/exp_operator_const_signed.sol`: expressions/exp_operator_const_signed.sol: valid_src_unit failed (source validation/subset restriction)
-- `expressions/exp_zero_literal.sol`: expressions/exp_zero_literal.sol: valid_src_unit failed (source validation/subset restriction)
-- `expressions/unary_too_long_literal.sol`: expressions/unary_too_long_literal.sol: valid_src_unit failed (source validation/subset restriction)
 - `functionCall/calldata_argument_internal_struct_as_memory_v2.sol`: functionCall/calldata_argument_internal_struct_as_memory_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `functionCall/calldata_argument_internal_struct_v2.sol`: functionCall/calldata_argument_internal_struct_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `functionCall/inheritance/base_base_overload.sol`: functionCall/inheritance/base_base_overload.sol: valid_src_unit failed (source validation/subset restriction)
@@ -776,29 +797,23 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `getters/struct_with_bytes_simple.sol`: getters/struct_with_bytes_simple.sol: valid_src_unit failed (source validation/subset restriction)
 - `getters/value_types.sol`: getters/value_types.sol: valid_src_unit failed (source validation/subset restriction)
 - `inheritance/explicit_base_class.sol`: inheritance/explicit_base_class.sol: valid_src_unit failed (source validation/subset restriction)
+- `inheritance/inherited_constant_state_var.sol`: inheritance/inherited_constant_state_var.sol: valid_src_unit failed (source validation/subset restriction)
 - `inheritance/inherited_function.sol`: inheritance/inherited_function.sol: valid_src_unit failed (source validation/subset restriction)
 - `inheritance/transient_storage_state_variable.sol`: inheritance/transient_storage_state_variable.sol: valid_src_unit failed (source validation/subset restriction)
 - `inheritance/transient_storage_state_variable_abstract_contract.sol`: inheritance/transient_storage_state_variable_abstract_contract.sol: valid_src_unit failed (source validation/subset restriction)
 - `inlineAssembly/calldata_struct_assign.sol`: inlineAssembly/calldata_struct_assign.sol: valid_src_unit failed (source validation/subset restriction)
+- `inlineAssembly/constant_access.sol`: inlineAssembly/constant_access.sol: valid_src_unit failed (source validation/subset restriction)
+- `inlineAssembly/constant_access_referencing.sol`: inlineAssembly/constant_access_referencing.sol: valid_src_unit failed (source validation/subset restriction)
 - `inlineAssembly/inline_assembly_storage_access_local_var.sol`: inlineAssembly/inline_assembly_storage_access_local_var.sol: valid_src_unit failed (source validation/subset restriction)
 - `inlineAssembly/inline_assembly_storage_access_via_pointer.sol`: inlineAssembly/inline_assembly_storage_access_via_pointer.sol: valid_src_unit failed (source validation/subset restriction)
 - `inlineAssembly/inline_assembly_transient_storage_access_inside_function.sol`: inlineAssembly/inline_assembly_transient_storage_access_inside_function.sol: valid_src_unit failed (source validation/subset restriction)
 - `inlineAssembly/slot_access_via_mapping_pointer.sol`: inlineAssembly/slot_access_via_mapping_pointer.sol: valid_src_unit failed (source validation/subset restriction)
-- `integer/basic.sol`: integer/basic.sol: valid_src_unit failed (source validation/subset restriction)
-- `integer/int.sol`: integer/int.sol: valid_src_unit failed (source validation/subset restriction)
-- `integer/uint.sol`: integer/uint.sol: valid_src_unit failed (source validation/subset restriction)
 - `modifiers/function_modifier_return_reference.sol`: modifiers/function_modifier_return_reference.sol: valid_src_unit failed (source validation/subset restriction)
 - `modifiers/function_return_parameter.sol`: modifiers/function_return_parameter.sol: valid_src_unit failed (source validation/subset restriction)
 - `modifiers/function_return_parameter_complex.sol`: modifiers/function_return_parameter_complex.sol: valid_src_unit failed (source validation/subset restriction)
 - `modifiers/transient_state_variable_value_type.sol`: modifiers/transient_state_variable_value_type.sol: valid_src_unit failed (source validation/subset restriction)
 - `operators/compound_assign_transient_storage.sol`: operators/compound_assign_transient_storage.sol: valid_src_unit failed (source validation/subset restriction)
-- `operators/shifts/shift_constant_left.sol`: operators/shifts/shift_constant_left.sol: valid_src_unit failed (source validation/subset restriction)
-- `operators/shifts/shift_constant_right.sol`: operators/shifts/shift_constant_right.sol: valid_src_unit failed (source validation/subset restriction)
-- `operators/shifts/shift_negative_constant_left.sol`: operators/shifts/shift_negative_constant_left.sol: valid_src_unit failed (source validation/subset restriction)
-- `operators/shifts/shift_negative_constant_right.sol`: operators/shifts/shift_negative_constant_right.sol: valid_src_unit failed (source validation/subset restriction)
-- `operators/shifts/shift_right_negative_literal.sol`: operators/shifts/shift_right_negative_literal.sol: valid_src_unit failed (source validation/subset restriction)
 - `operators/transient_storage_variable_increment_decrement.sol`: operators/transient_storage_variable_increment_decrement.sol: valid_src_unit failed (source validation/subset restriction)
-- `optimizer/shift_bytes.sol`: optimizer/shift_bytes.sol: valid_src_unit failed (source validation/subset restriction)
 - `smoke/basic.sol`: smoke/basic.sol: valid_src_unit failed (source validation/subset restriction)
 - `smoke/bytes_and_strings.sol`: smoke/bytes_and_strings.sol: valid_src_unit failed (source validation/subset restriction)
 - `smoke/failure.sol`: smoke/failure.sol: valid_src_unit failed (source validation/subset restriction)
@@ -814,7 +829,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `storage/mappings_array2d_pop_delete.sol`: storage/mappings_array2d_pop_delete.sol: valid_src_unit failed (source validation/subset restriction)
 - `storage/mappings_array_pop_delete.sol`: storage/mappings_array_pop_delete.sol: valid_src_unit failed (source validation/subset restriction)
 - `storage/packed_storage_overflow.sol`: storage/packed_storage_overflow.sol: valid_src_unit failed (source validation/subset restriction)
-- `storage/packed_storage_signed.sol`: storage/packed_storage_signed.sol: valid_src_unit failed (source validation/subset restriction)
 - `storage/storage_boundary_array_assignment.sol`: storage/storage_boundary_array_assignment.sol: valid_src_unit failed (source validation/subset restriction)
 - `storage/storage_boundary_array_delete.sol`: storage/storage_boundary_array_delete.sol: valid_src_unit failed (source validation/subset restriction)
 - `storage/storage_boundary_array_delete_overlapping_variable.sol`: storage/storage_boundary_array_delete_overlapping_variable.sol: valid_src_unit failed (source validation/subset restriction)
@@ -887,7 +901,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `variables/transient_state_variable_slots_and_offsets.sol`: variables/transient_state_variable_slots_and_offsets.sol: valid_src_unit failed (source validation/subset restriction)
 - `variables/transient_state_variable_tuple_assignment.sol`: variables/transient_state_variable_tuple_assignment.sol: valid_src_unit failed (source validation/subset restriction)
 - `various/destructuring_assignment.sol`: various/destructuring_assignment.sol: valid_src_unit failed (source validation/subset restriction)
-- `various/flipping_sign_tests.sol`: various/flipping_sign_tests.sol: valid_src_unit failed (source validation/subset restriction)
 - `various/state_variable_local_variable_mixture.sol`: various/state_variable_local_variable_mixture.sol: valid_src_unit failed (source validation/subset restriction)
 - `various/state_variable_under_contract_name.sol`: various/state_variable_under_contract_name.sol: valid_src_unit failed (source validation/subset restriction)
 - `various/storage_string_as_mapping_key_without_variable.sol`: various/storage_string_as_mapping_key_without_variable.sol: valid_src_unit failed (source validation/subset restriction)
@@ -897,17 +910,12 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `viaYul/assign_tuple_from_function_call.sol`: viaYul/assign_tuple_from_function_call.sol: valid_src_unit failed (source validation/subset restriction)
 - `viaYul/define_tuple_from_function_call.sol`: viaYul/define_tuple_from_function_call.sol: valid_src_unit failed (source validation/subset restriction)
 - `viaYul/dirty_calldata_struct.sol`: viaYul/dirty_calldata_struct.sol: valid_src_unit failed (source validation/subset restriction)
-- `viaYul/dirty_memory_int32.sol`: viaYul/dirty_memory_int32.sol: valid_src_unit failed (source validation/subset restriction)
 - `viaYul/dirty_memory_struct.sol`: viaYul/dirty_memory_struct.sol: valid_src_unit failed (source validation/subset restriction)
-- `viaYul/exp_literals.sol`: viaYul/exp_literals.sol: valid_src_unit failed (source validation/subset restriction)
-- `viaYul/exp_literals_success.sol`: viaYul/exp_literals_success.sol: valid_src_unit failed (source validation/subset restriction)
 - `viaYul/local_tuple_assignment.sol`: viaYul/local_tuple_assignment.sol: valid_src_unit failed (source validation/subset restriction)
 - `viaYul/mapping_string_key.sol`: viaYul/mapping_string_key.sol: valid_src_unit failed (source validation/subset restriction)
 - `viaYul/memory_struct_allow.sol`: viaYul/memory_struct_allow.sol: valid_src_unit failed (source validation/subset restriction)
 - `viaYul/require.sol`: viaYul/require.sol: valid_src_unit failed (source validation/subset restriction)
 - `viaYul/return_storage_pointers.sol`: viaYul/return_storage_pointers.sol: valid_src_unit failed (source validation/subset restriction)
-- `viaYul/storage/dirty_storage_bytes.sol`: viaYul/storage/dirty_storage_bytes.sol: valid_src_unit failed (source validation/subset restriction)
-- `viaYul/storage/dirty_storage_bytes_long.sol`: viaYul/storage/dirty_storage_bytes_long.sol: valid_src_unit failed (source validation/subset restriction)
 - `viaYul/storage/mappings.sol`: viaYul/storage/mappings.sol: valid_src_unit failed (source validation/subset restriction)
 - `viaYul/struct_member_access.sol`: viaYul/struct_member_access.sol: valid_src_unit failed (source validation/subset restriction)
 - `virtualFunctions/virtual_function_usage_in_constructor_arguments.sol`: virtualFunctions/virtual_function_usage_in_constructor_arguments.sol: valid_src_unit failed (source validation/subset restriction)
@@ -952,11 +960,13 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `storage/packed_storage_structs_bytes.sol`: storage/packed_storage_structs_bytes.sol: elaborate_unit returned NONE (unsupported lowering)
 - `storageLayoutSpecifier/variable_cleanup.sol`: storageLayoutSpecifier/variable_cleanup.sol: elaborate_unit returned NONE (unsupported lowering)
 - `storageLayoutSpecifier/variable_cleanup_sstore.sol`: storageLayoutSpecifier/variable_cleanup_sstore.sol: elaborate_unit returned NONE (unsupported lowering)
+- `strings/constant_string_literal.sol`: strings/constant_string_literal.sol: elaborate_unit returned NONE (unsupported lowering)
 - `strings/string_escapes.sol`: strings/string_escapes.sol: elaborate_unit returned NONE (unsupported lowering)
 - `types/strings.sol`: types/strings.sol: elaborate_unit returned NONE (unsupported lowering)
 - `various/memory_overwrite.sol`: various/memory_overwrite.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/comparison.sol`: viaYul/comparison.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/dirty_memory_dynamic_array.sol`: viaYul/dirty_memory_dynamic_array.sol: elaborate_unit returned NONE (unsupported lowering)
+- `viaYul/dirty_memory_int32.sol`: viaYul/dirty_memory_int32.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/dirty_memory_static_array.sol`: viaYul/dirty_memory_static_array.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/dirty_memory_uint32.sol`: viaYul/dirty_memory_uint32.sol: elaborate_unit returned NONE (unsupported lowering)
 - `viaYul/empty_return_corrupted_free_memory_pointer.sol`: viaYul/empty_return_corrupted_free_memory_pointer.sol: elaborate_unit returned NONE (unsupported lowering)

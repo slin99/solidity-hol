@@ -3,7 +3,7 @@
  *
  * solidityImportLib builds these terms from a compiler artifact and fails
  * closed: an unknown nodeType, a missing required field, or a feature outside
- * the subset (public, constant, immutable or initialised state variables,
+ * the subset (immutable or overriding state variables, file-level constants,
  * modifiers, super other than in calls, named or try calls, built-ins other than
  * require, assert, revert, members of msg, tx and block, address(this) and
  * type(T).max and .min for integer types T, literal subdenominations,
@@ -56,8 +56,13 @@
  *    the caller's, and modifier bodies make none;
  *    contracts are scoped by the unit, functions by a base of their contract,
  *    structs by a base or a source unit of the compilation;
+ *  - constants are of elementary value types or byte sequences, declared by
+ *    a base, and their values refer to other constants only; an
+ *    identifier may name a constant;
  *  - operators belong to the admitted set and every other expression
- *    annotation decodes to an elementary, rational literal or tuple type.
+ *    annotation decodes to an elementary, rational literal or tuple type;
+ *    an operation over literals the compiler types as an integer is that
+ *    integer.
  *
  * Left to elaboration: implicit conversions (operand and argument types
  * against commonType and parameter types, literal ranges), return value
@@ -284,7 +289,8 @@ End
  * linearizedBaseContracts, most derived first, which bases lists): the
  * members of all its bases, functions most derived first, state variables in
  * storage order. Declarations without a body are left out. Initializers
- * give state variables (by id) their declared values; base arguments are
+ * give state variables (by id) their declared values; constants come with
+ * their values; base arguments are
  * the base constructor arguments: the base giving them, the base whose
  * constructor takes them, and the arguments, in evaluation order.
  *)
@@ -296,13 +302,15 @@ Datatype:
     contract_bases : num list;
     contract_state_variables : src_variable list;
     contract_initializers : (num # src_expr) list;
+    contract_constants : (src_variable # src_expr) list;
     contract_base_arguments : (num # num # src_expr list) list;
     contract_storage : src_storage_entry list;
     contract_structs : src_struct list;
     contract_events : src_event list;
     contract_modifiers : src_modifier list;
     contract_functions : src_function list;
-    (* the public state variables, each with its getter's selector *)
+    (* the public state variables and constants, each with its getter's
+     * selector *)
     contract_getters : (num # byte list) list
   |>
 End
@@ -920,6 +928,7 @@ Definition contract_ids_def:
       FLAT (MAP variable_ids s.struct_members)) c.contract_structs) ++
     FLAT (MAP variable_ids c.contract_state_variables) ++
     FLAT (MAP (λ(_, e). expr_ids e) c.contract_initializers) ++
+    FLAT (MAP (λ(v, e). variable_ids v ++ expr_ids e) c.contract_constants) ++
     FLAT (MAP (λ(_, _, es). exprs_ids es) c.contract_base_arguments) ++
     FLAT (MAP (λe. e.event_info.node_id ::
       FLAT (MAP (variable_ids o FST) e.event_parameters)) c.contract_events) ++
@@ -969,6 +978,7 @@ Datatype:
     variables : (num # sol_type) list;
     state : (num # sol_type) list;
     locations : (num # sol_type) list;
+    constants : (num # sol_type) list;
     scope : num;
     returns_id : num;
     in_loop : bool;
@@ -1023,7 +1033,7 @@ End
 (* The decoded type of a checked expression. *)
 Definition check_expr_def:
   (check_expr (env : import_env) (SrcIdentifier _ _ x tid) =
-    case ALOOKUP (env.variables ++ env.state) x of
+    case ALOOKUP (env.variables ++ env.state ++ env.constants) x of
       SOME ty =>
         if source_type_matches ty tid then SOME (SrcType ty)
         else NONE
@@ -1092,6 +1102,7 @@ Definition check_expr_def:
     if unary_operator_ok op ∧ IS_SOME (check_expr env e) then
       case decode_type_identifier tid of
         SOME (SrcType ty) => SOME (SrcType ty)
+      | SOME (SrcRational i d) => if d = 1 then SOME (SrcRational i d) else NONE
       | _ => NONE
     else NONE) ∧
   (check_expr env (SrcBinaryOperation _ op l r common tid) =
@@ -1100,6 +1111,7 @@ Definition check_expr_def:
     then
       case (decode_type_identifier common, decode_type_identifier tid) of
         (SOME (SrcType _), SOME (SrcType ty)) => SOME (SrcType ty)
+      | (_, SOME (SrcRational i d)) => if d = 1 then SOME (SrcRational i d) else NONE
       | _ => NONE
     else NONE) ∧
   (check_expr env (SrcAssignment _ op l r tid) =
@@ -1362,6 +1374,25 @@ Definition state_variable_def:
     | NONE => NONE
 End
 
+(* A constant, declared by one of the contract's bases, at the type its
+ * references have: byte sequences are in memory. *)
+Definition constant_variable_def:
+  constant_variable bases (v : src_variable) =
+    if ¬MEM v.var_scope bases ∨ v.var_location ≠ "default" then NONE else
+    case normalize_type_name v.var_type_name of
+      SOME ty =>
+        let ty' = if byte_sequence_type ty then LocatedT MemoryLoc ty else ty in
+        if (is_elementary_type ty ∨ byte_sequence_type ty) ∧
+           source_type_matches ty' v.var_type_id
+        then SOME (v.var_info.node_id, ty') else NONE
+    | NONE => NONE
+End
+
+Definition constant_table_def:
+  constant_table (c : src_contract) =
+    all_some (MAP (constant_variable c.contract_bases o FST) c.contract_constants)
+End
+
 (* The function a call to each declaration runs: the most derived function
  * that is it or overrides it. Functions come most derived first; a
  * declaration without a body is reached through the functions overriding it.
@@ -1507,7 +1538,8 @@ End
  * of the return variables, which the elaborator does not model.
  *)
 Definition check_function_def:
-  check_function structs events functions fs modifiers state bases (f : src_function) ⇔
+  check_function structs events functions fs modifiers state constants bases
+                 (f : src_function) ⇔
     MEM f.fn_scope bases ∧
     (f.fn_kind = "function" ∨ f.fn_kind = "receive" ∨ f.fn_kind = "fallback" ∨
      f.fn_kind = "constructor") ∧
@@ -1524,7 +1556,7 @@ Definition check_function_def:
                      structs := structs; events := events;
                      variables := ps ++ rs;
                      state := if f.fn_mutability = "pure" then [] else state;
-                     locations := state;
+                     locations := state; constants := constants;
                      scope := info.node_id; returns_id := f.fn_returns_id;
                      in_loop := F; in_modifier := F |> in
         EVERY (check_modifier modifiers (env with variables := ps))
@@ -1568,16 +1600,24 @@ Definition check_event_def:
 End
 
 (* Initializers and base constructor arguments see the state variables and
- * call functions; base constructor arguments also see the parameters of the
- * constructor of the base giving them. *)
+ * constants and call functions; base constructor arguments also see the
+ * parameters of the constructor of the base giving them. *)
 Definition initializer_env_def:
-  initializer_env (c : src_contract) state =
+  initializer_env (c : src_contract) state constants =
     <| functions := call_table c.contract_functions; supers := [];
        structs := c.contract_structs;
        events := MAP (λe. (e.event_info.node_id, e)) c.contract_events;
-       variables := []; state := state; locations := state; scope := c.contract_info.node_id;
+       variables := []; state := state; locations := state;
+       constants := constants; scope := c.contract_info.node_id;
        returns_id := c.contract_info.node_id; in_loop := F;
        in_modifier := F |>
+End
+
+(* A constant's value sees only the other constants: the compiler requires
+ * it to be a compile-time constant. *)
+Definition constant_env_def:
+  constant_env (c : src_contract) constants =
+    initializer_env c [] constants with functions := []
 End
 
 Definition check_contract_def:
@@ -1588,32 +1628,34 @@ Definition check_contract_def:
     EVERY (check_struct sources c.contract_bases) c.contract_structs ∧
     EVERY check_event c.contract_events ∧
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
-    case all_some (MAP (state_variable c.contract_bases)
-                     c.contract_state_variables) of
-      SOME state =>
+    case (all_some (MAP (state_variable c.contract_bases)
+                      c.contract_state_variables), constant_table c) of
+      (SOME state, SOME constants) =>
         EVERY (check_function c.contract_structs
                  (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
                  (call_table c.contract_functions) c.contract_functions
                  (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
-                 state c.contract_bases)
+                 state constants c.contract_bases)
           (checked_functions c.contract_functions c.contract_bases) ∧
         EVERY (λ(x, e). IS_SOME (ALOOKUP state x) ∧
-                        IS_SOME (check_expr (initializer_env c state) e))
+                        IS_SOME (check_expr (initializer_env c state constants) e))
           c.contract_initializers ∧
+        EVERY (λ(_, e). IS_SOME (check_expr (constant_env c constants) e))
+          c.contract_constants ∧
         ALL_DISTINCT (MAP FST c.contract_getters) ∧
         EVERY (λ(x, selector).
                  LENGTH selector = 4 ∧
                  case ALOOKUP state x of
                    SOME ty => IS_SOME (getter_shape ty)
-                 | NONE => F)
+                 | NONE => IS_SOME (ALOOKUP constants x))
           c.contract_getters ∧
         EVERY (λ(x, b, args).
                  case constructor_parameters x c.contract_functions of
-                   SOME ps => check_exprs (initializer_env c state with
+                   SOME ps => check_exprs (initializer_env c state constants with
                                              variables := ps) args
                  | NONE => F)
           c.contract_base_arguments
-    | NONE => F
+    | _ => F
 End
 
 Definition valid_src_unit_def:
@@ -1728,6 +1770,8 @@ QED
 
 val () = cv_auto_trans scoped_variable_def;
 val () = cv_auto_trans state_variable_def;
+val () = cv_auto_trans constant_variable_def;
+val () = cv_auto_trans constant_table_def;
 val () = cv_auto_trans getter_shape_def;
 val () = cv_auto_trans call_table_def;
 val () = cv_auto_trans contract_constructor_def;
@@ -1746,5 +1790,6 @@ val () = cv_auto_trans check_function_def;
 val () = cv_auto_trans check_struct_def;
 val () = cv_auto_trans check_event_def;
 val () = cv_auto_trans initializer_env_def;
+val () = cv_auto_trans constant_env_def;
 val () = cv_auto_trans check_contract_def;
 val () = cv_auto_trans valid_src_unit_def;

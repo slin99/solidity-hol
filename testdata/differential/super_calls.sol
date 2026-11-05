@@ -114,6 +114,17 @@ contract SuperCalls is Pausable, Capped, Two, Three, PickWide, PickNarrow {
         _update(address(0), to, amount);
     }
 
+    modifier atLeast(uint256 floor, uint256 x) {
+        require(x >= floor);
+        _;
+    }
+
+    // A super call as a modifier argument, and in the body of a modified
+    // function.
+    function pickedAtLeast(uint256 x) public pure atLeast(super.pick(uint256(2)), x) returns (uint256) {
+        return super.pick(x);
+    }
+
     function mintTwice(address to, uint256 amount) public returns (uint256, uint256) {
         _update(address(0), to, amount);
         super._update(address(0), to, amount);

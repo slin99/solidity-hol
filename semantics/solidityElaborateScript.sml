@@ -21,6 +21,12 @@
  * and public ones among them, receive and fallback form the dispatch table.
  * The overridden functions super calls reach are elaborated too, but not
  * dispatched.
+ * Each constant is two procedures that return its value converted to its
+ * type, one with checked and one with wrapping arithmetic, and a reference
+ * to it calls the one of its own arithmetic, as the compiler's IR calls a
+ * function per constant; a public constant's getter is the checked one. An
+ * operation over literals that the compiler types as an integer is that
+ * integer, as the compiler folds it.
  * State-variable initializers, constructors and base-constructor arguments
  * (inheritance specifiers or constructor modifiers) form one creation
  * procedure.
@@ -71,6 +77,7 @@ Datatype:
     events : (num # src_event) list;
     variables : (num # sol_type) list;
     state : (num # sol_type) list;
+    constants : (num # sol_type # num) list;
     returns : (num # sol_type) list;
     placeholder : (num # (num # sol_type) list) option;
     mode : arithmetic_mode;
@@ -460,7 +467,13 @@ Definition elab_expr_def:
              let (read, n2) = read_destination n1 target in
              let (ss, a) = read in
              SOME ((ls ++ ss, a, ElabType (read_value_type ty)), n2)
-         | NONE => NONE)
+         | NONE =>
+             case ALOOKUP ctx.constants x of
+               SOME (ty, w) =>
+                 let p = if ctx.mode = CheckedArithmetic then x else w in
+                 let (ss, a) = bind_value n ty (InternalCallOperation (AstId p) []) in
+                 SOME ((ss, a, ElabType ty), n + 1)
+             | NONE => NONE)
     | SrcArrayLength _ root_expr _ =>
         (case elab_expr ctx n root_expr of
            SOME ((ss, ref, ElabType (LocatedT loc BytesT)), n1) =>
@@ -535,7 +548,10 @@ Definition elab_expr_def:
                else NONE
            | NONE => NONE)
     | SrcUnaryOperation _ op prefix e tid =>
-        (if op = "++" ∨ op = "--" then
+        (case identifier_integer tid of
+           SOME i => SOME (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
+         | NONE =>
+         if op = "++" ∨ op = "--" then
            case elab_destination ctx n e of
              SOME ((ls, target), n1) =>
                let ty = destination_type target in
@@ -563,7 +579,10 @@ Definition elab_expr_def:
                 | NONE => NONE)
            | _ => NONE)
     | SrcBinaryOperation _ op l r common tid =>
-        (case (identifier_type common, elab_expr ctx n l) of
+        (case identifier_integer tid of
+           SOME i => SOME (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
+         | NONE =>
+         case (identifier_type common, elab_expr ctx n l) of
            (SOME ty, SOME ((sl, al, vl), n1)) =>
              if op = "&&" ∨ op = "||" then
                (case coerce n1 BoolT al vl of
@@ -1382,14 +1401,16 @@ End
  * returns keep their declaration ids.
  *)
 Definition elab_function_def:
-  elab_function structs events functions fs bases modifiers state n (f : src_function) =
+  elab_function structs events functions fs bases modifiers state constants n
+                (f : src_function) =
     case (all_some (MAP variable_binding f.fn_parameters),
           all_some (MAP variable_binding f.fn_returns), f.fn_body,
           super_table fs bases f) of
       (SOME ps, SOME rs, SrcBlock _ ss, SOME supers) =>
         elab_levels <| functions := functions; supers := supers; structs := structs;
                        events := events; variables := ps ++ rs;
-                       state := state; returns := rs; placeholder := NONE;
+                       state := state; constants := constants;
+                       returns := rs; placeholder := NONE;
                        mode := CheckedArithmetic;
                        creation := (f.fn_kind = "constructor") |>
           modifiers ps rs f.fn_info.node_id n f.fn_modifiers ss
@@ -1397,12 +1418,14 @@ Definition elab_function_def:
 End
 
 Definition elab_functions_def:
-  (elab_functions structs events functions all bases modifiers state n [] =
+  (elab_functions structs events functions all bases modifiers state constants n [] =
     SOME ([], n)) ∧
-  (elab_functions structs events functions all bases modifiers state n (f :: fs) =
-    case elab_function structs events functions all bases modifiers state n f of
+  (elab_functions structs events functions all bases modifiers state constants n
+     (f :: fs) =
+    case elab_function structs events functions all bases modifiers state constants n f of
       SOME (ps, n1) =>
-        (case elab_functions structs events functions all bases modifiers state n1 fs of
+        (case elab_functions structs events functions all bases modifiers state
+                constants n1 fs of
            SOME (ps', n2) => SOME (ps ++ ps', n2)
          | NONE => NONE)
     | NONE => NONE)
@@ -1534,6 +1557,55 @@ Definition elab_getters_def:
     | NONE => NONE)
 End
 
+(* The procedures of a constant, as the compiler's IR has them: one
+ * evaluates its value with checked arithmetic, and is its getter if it is
+ * public; the other, which references in unchecked code call, wraps. Each
+ * returns the value converted to the constant's type. *)
+Definition constant_procedure_def:
+  constant_procedure ctx n p ty e =
+    case elab_expr ctx n e of
+      SOME ((ss, a, vt), n1) =>
+        (case coerce n1 ty a vt of
+           SOME ((cs, a'), n2) =>
+             SOME (<| procedure_id := AstId p; parameters := [];
+                      return_bindings := [(AstId n2, ty)];
+                      body := ss ++ cs ++ [ReturnStmt [a']] |>, n2 + 1)
+         | NONE => NONE)
+    | NONE => NONE
+End
+
+Definition elab_constant_def:
+  elab_constant ctx n ((v : src_variable), e) =
+    case ALOOKUP ctx.constants v.var_info.node_id of
+      SOME (ty, w) =>
+        (case constant_procedure (ctx with mode := CheckedArithmetic) n
+                v.var_info.node_id ty e of
+           SOME (checked, n1) =>
+             (case constant_procedure (ctx with mode := UncheckedArithmetic) n1 w ty e of
+                SOME (wrapping, n2) => SOME ([checked; wrapping], n2)
+              | NONE => NONE)
+         | NONE => NONE)
+    | NONE => NONE
+End
+
+Definition elab_constants_def:
+  (elab_constants ctx n [] = SOME ([], n)) ∧
+  (elab_constants ctx n (c :: cs) =
+    case elab_constant ctx n c of
+      SOME (ps, n1) =>
+        (case elab_constants ctx n1 cs of
+           SOME (ps', n2) => SOME (ps ++ ps', n2)
+         | NONE => NONE)
+    | NONE => NONE)
+End
+
+(* The constants with fresh ids from n for their wrapping procedures. *)
+Definition number_constants_def:
+  (number_constants n [] = []) ∧
+  (number_constants n ((x, ty) :: cs) =
+    (x, (ty : sol_type), (n : num)) :: number_constants (n + 1) cs)
+End
+
 (* The dispatch table: the functions with a selector, which the compiler
  * gives exactly the external and public ones. *)
 Definition external_functions_def:
@@ -1652,9 +1724,12 @@ Definition elaborate_unit_def:
     case u.unit_contracts of
       [c] =>
         let fs = live_functions c.contract_functions in
-        (case all_some (MAP (state_variable c.contract_bases) c.contract_state_variables) of
-           NONE => NONE
-         | SOME state =>
+        (case (all_some (MAP (state_variable c.contract_bases) c.contract_state_variables),
+               constant_table c) of
+           (NONE, _) => NONE
+         | (_, NONE) => NONE
+         | (SOME state, SOME table) =>
+             let constants = number_constants (MAX_LIST (unit_ids u) + 1) table in
              case (elab_type_declarations c.contract_structs,
                    elab_struct_layouts c.contract_structs,
                    core_state_variables state c.contract_storage,
@@ -1663,20 +1738,32 @@ Definition elaborate_unit_def:
                      (call_table c.contract_functions) c.contract_functions
                      c.contract_bases
                      (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
-                     state (MAX_LIST (unit_ids u) + 1)
+                     state constants (MAX_LIST (unit_ids u) + 1 + LENGTH table)
                      (checked_functions c.contract_functions c.contract_bases)) of
                (SOME decls, SOME layouts, SOME cvs, SOME (fps, n0)) =>
-                 (case elab_getters state n0 (MAP FST c.contract_getters) of
+                 (case elab_getters state n0
+                         (FILTER (λx. IS_SOME (ALOOKUP state x))
+                            (MAP FST c.contract_getters)) of
                     NONE => NONE
-                  | SOME (gps, n) =>
-                 let ps = fps ++ gps in
+                  | SOME (gps, n1) =>
+                 case elab_constants
+                        <| functions := []; supers := [];
+                           structs := c.contract_structs; events := [];
+                           variables := []; state := []; constants := constants;
+                           returns := []; placeholder := NONE;
+                           mode := CheckedArithmetic; creation := F |>
+                        n1 c.contract_constants of
+                   NONE => NONE
+                 | SOME (cps, n) =>
+                 let ps = fps ++ gps ++ cps in
                  (case elab_creation
                          <| functions := call_table c.contract_functions;
                             supers := [];
                             structs := c.contract_structs;
                             events := MAP (λe. (e.event_info.node_id, e))
                                         c.contract_events;
-                            variables := []; state := state; returns := [];
+                            variables := []; state := state;
+                            constants := constants; returns := [];
                             placeholder := NONE; mode := CheckedArithmetic;
                             creation := T |> c n of
                     NONE => NONE
@@ -1931,6 +2018,10 @@ val () = cv_auto_trans getter_result_def;
 val () = cv_auto_trans getter_parameters_def;
 val () = cv_auto_trans elab_getter_def;
 val () = cv_auto_trans elab_getters_def;
+val () = cv_auto_trans constant_procedure_def;
+val () = cv_auto_trans elab_constant_def;
+val () = cv_auto_trans elab_constants_def;
+val () = cv_auto_trans number_constants_def;
 val () = cv_auto_trans external_functions_def;
 val () = cv_auto_trans special_function_def;
 val elab_base_arguments_pre_def =
