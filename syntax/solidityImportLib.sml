@@ -276,6 +276,13 @@ val library_members : (IntInf.int * JSON.value) list ref = ref []
  * as the contract's own must. *)
 val library_directives : (IntInf.int * JSON.value) list ref = ref []
 
+(* A using directive is admitted only when it names a library: one with a
+ * function list (`using {f, ...} for T`) attaches free functions or defines
+ * operators. *)
+fun check_using d = within d (fn d =>
+  require d (isSome (optional_field d "libraryName"))
+    "using directives attaching functions are not supported")
+
 (* L.f or L.c, or x.f with f attached to the type of x by a using directive,
  * naming a member of library L. *)
 fun is_library_member v =
@@ -304,8 +311,8 @@ fun copies_receiver v =
         p :: _ => string_field (field p "typeDescriptions") "typeIdentifier"
       | [] => fail (describe v ^ ": an attached function takes a parameter")
   in
-    (String.isSubstring "_storage" receiver orelse
-     String.isSubstring "_calldata" receiver) andalso
+    (List.exists (fn l => String.isSuffix l receiver)
+       ["_storage", "_storage_ptr", "_calldata", "_calldata_ptr"]) andalso
     String.isSuffix "_memory_ptr" parameter
   end
 
@@ -828,7 +835,6 @@ fun struct_declaration types v = within v (fn v =>
          layout)]
   end)
 
-(* The declarations the nodes of v refer to. *)
 (* The super.f member accesses within a JSON value. *)
 fun super_members (v as JSON.OBJECT fields) =
       (if List.exists (fn (k, _) => k = "nodeType") fields andalso
@@ -837,6 +843,7 @@ fun super_members (v as JSON.OBJECT fields) =
   | super_members (JSON.ARRAY vs) = List.concat (map super_members vs)
   | super_members _ = []
 
+(* The declarations the nodes of v refer to. *)
 fun references (JSON.OBJECT fields) =
       List.concat
         (map (fn ("referencedDeclaration", JSON.INT i) => [i]
@@ -987,9 +994,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
     val () =
       List.app (fn (l, d) =>
                   if List.exists (fn f => int_field f "scope" = l) library_functions
-                  then within d (fn d =>
-                         require d (isSome (optional_field d "libraryName"))
-                           "using directives attaching functions are not supported")
+                  then check_using d
                   else ())
         (!library_directives)
     val libraries =
@@ -1014,15 +1019,16 @@ fun contract external_structs contracts declared v = within v (fn v =>
                     string_field c "contractKind" = "interface")
            ("unsupported contract kind " ^ string_field c "contractKind");
          List.app (fn m => within m (fn m =>
-                     require m (node_type m = "FunctionDefinition" orelse
+                    (require m (node_type m = "FunctionDefinition" orelse
                                 node_type m = "VariableDeclaration" orelse
                                 node_type m = "StructDefinition" orelse
                                 node_type m = "EventDefinition" orelse
                                 node_type m = "ErrorDefinition" orelse
                                 node_type m = "ModifierDefinition" orelse
-                                (node_type m = "UsingForDirective" andalso
-                                 isSome (optional_field m "libraryName")))
-                       "unsupported contract member"))
+                                node_type m = "UsingForDirective")
+                       "unsupported contract member";
+                     if node_type m = "UsingForDirective" then check_using m
+                     else ())))
            (nodes c))))
         bases
     val layout =
@@ -1195,16 +1201,16 @@ fun import_source_unit units v contracts = within v (fn v =>
                   _ :: bases => bases
                 | [] => [])
            (List.filter (fn m => node_type m = "ContractDefinition") members))
+    (* A file-level directive applies to the code of its own file, which the
+     * contracts may reach through any unit of the compilation. *)
+    val () = List.app check_using (all_members "UsingForDirective")
     fun member m acc =
       case node_type m of
         "PragmaDirective" => acc
       | "ImportDirective" => acc
       | "StructDefinition" => acc
       | "ErrorDefinition" => acc
-      | "UsingForDirective" =>
-          (require m (isSome (optional_field m "libraryName"))
-             "using directives attaching functions are not supported";
-           acc)
+      | "UsingForDirective" => acc
       | "ContractDefinition" =>
           if string_field m "contractKind" = "interface" orelse
              string_field m "contractKind" = "library" then acc

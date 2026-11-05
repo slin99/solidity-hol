@@ -1144,7 +1144,8 @@ def copies_receiver(member: dict[str, Any], function: dict[str, Any]) -> bool:
     importer rejects (copies_receiver in solidityImportLib)."""
     receiver = member["expression"]["typeDescriptions"].get("typeIdentifier") or ""
     parameters = function["parameters"]["parameters"]
-    return (("_storage" in receiver or "_calldata" in receiver) and bool(parameters)
+    return (receiver.endswith(("_storage", "_storage_ptr", "_calldata", "_calldata_ptr"))
+            and bool(parameters)
             and (parameters[0]["typeDescriptions"].get("typeIdentifier") or "").endswith("_memory_ptr"))
 
 

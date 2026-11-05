@@ -855,6 +855,23 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(coverage.scan(asts), {999998: [coverage.Blocker(
             "UsingForDirective", "using for with functions", "import")]})
 
+    def test_using_directives_of_other_files_are_read(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        (unit,) = asts.values()
+        arith = next(n for n in unit["nodes"] if n.get("name") == "Arith")
+        unit["nodes"].remove(arith)
+        other = {"nodeType": "SourceUnit", "id": 999990, "absolutePath": "arith.sol",
+                 "nodes": [arith]}
+        asts["arith.sol"] = other
+        # A file deploying no contract is a blocker of its own; the directive adds one.
+        alone = coverage.scan(asts)
+        self.assertEqual(set(alone), {999990})
+        other["nodes"].append({"nodeType": "UsingForDirective", "id": 999998, "global": False,
+                               "functionList": [], "typeName": None})
+        self.assertEqual(coverage.scan(asts), alone | {999998: [coverage.Blocker(
+            "UsingForDirective", "using for with functions", "import")]})
+
     def test_bound_calls_copying_their_receiver_are_blocked(self) -> None:
         artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
         asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}

@@ -217,7 +217,8 @@ arguments, while elaboration converts arguments after evaluating them all.
 Public and external library functions, which a contract calls with
 `DELEGATECALL`, every `using {f, ...} for T` with a function list (library
 functions included) and user-defined operators, and library structs and
-events are rejected. In the Yul the compiler emits, `linkersymbol`, a linked
+events are rejected; a file-level directive with a function list rejects the
+compilation, whichever file it is in. In the Yul the compiler emits, `linkersymbol`, a linked
 library's address, is not admitted.
 
 Memory arrays of elementary leaves or byte sequences, nested to any depth, are

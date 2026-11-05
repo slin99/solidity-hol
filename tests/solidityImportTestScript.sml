@@ -147,12 +147,14 @@ fun type_identifier tid =
 
 datatype import_failure = Unsupported | Malformed
 
-fun import_error_with expected contracts name v =
-  (import_source_unit [] v contracts; raise Fail (name ^ ": imported"))
+fun import_units_error_with expected units contracts name v =
+  (import_source_unit units v contracts; raise Fail (name ^ ": imported"))
   handle ImportError _ =>
            if expected = Unsupported then () else raise Fail (name ^ ": expected malformed input")
        | MalformedInput _ =>
            if expected = Malformed then () else raise Fail (name ^ ": expected unsupported input")
+
+fun import_error_with expected = import_units_error_with expected []
 
 val import_error = import_error_with Unsupported contracts
 val malformed_input = import_error_with Malformed contracts
@@ -892,6 +894,40 @@ val () = import_error_with Unsupported using_contracts "contract using with func
      (fn v => is_node "UsingForDirective" v andalso
               JSONUtil.testField "libraryName" (named "IdentifierPath" "Arrays") v)
      "using Arrays" (drop_field "libraryName") using_ast)
+(* A compilation of two files: the library Arith moves to a file of its own,
+ * whose file-level directives the contract reaches through Arith. *)
+fun using_unit_split directives =
+  case using_ast of
+    JSON.OBJECT kvs =>
+      let
+        val ns = JSONUtil.arrayMap I (JSONUtil.lookupField using_ast "nodes")
+        val (arith, rest) = List.partition (named "ContractDefinition" "Arith") ns
+      in
+        (JSON.OBJECT
+           [("nodeType", JSON.STRING "SourceUnit"), ("id", JSON.INT 999990),
+            ("src", JSON.STRING "0:0:1"), ("absolutePath", JSON.STRING "arith.sol"),
+            ("nodes", JSON.ARRAY (arith @ directives))],
+         JSON.OBJECT
+           (map (fn ("nodes", _) => ("nodes", JSON.ARRAY rest) | kv => kv) kvs))
+      end
+  | _ => raise Fail "using_ast: not an object"
+
+val using_functions_directive =
+  JSON.OBJECT [("nodeType", JSON.STRING "UsingForDirective"),
+               ("id", JSON.INT 999998), ("src", JSON.STRING "0:0:1"),
+               ("functionList", JSON.ARRAY []), ("global", JSON.BOOL false)]
+
+val _ =
+  let val (arith_unit, rest) = using_unit_split []
+  in import_source_unit [arith_unit] rest using_contracts end
+
+val () =
+  let val (arith_unit, rest) = using_unit_split [using_functions_directive]
+  in
+    import_units_error_with Unsupported [arith_unit] using_contracts
+      "using with functions in another file" rest
+  end
+
 val () = import_error_with Unsupported using_contracts "reached library using functions"
   (edit_first_where (named "ContractDefinition" "Arith") "Arith"
      (fn JSON.OBJECT kvs =>
