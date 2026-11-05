@@ -158,7 +158,7 @@ state variable, naming its declaration and type, and leaves the layout
 calculation itself, including that packed variables don't overlap, to the
 compiler. Elaboration copies slot and offset into the core program's
 `state_variables`. Initialisers are imported and run by the creation
-procedure; immutables are import errors. Mapping key/value types come from recursive type-name
+procedure, and so are immutables' (below). Mapping key/value types come from recursive type-name
 normalization. AST and layout type identifiers use different encodings; both
 are checked against the normalized type. The scalar leaf width determines
 its storage read/write, and aggregate root slots come from the layout. Fixed

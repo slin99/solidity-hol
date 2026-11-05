@@ -3,7 +3,7 @@
  *
  * solidityImportLib builds these terms from a compiler artifact and fails
  * closed: an unknown nodeType, a missing required field, or a feature outside
- * the subset (immutable or overriding state variables, file-level constants,
+ * the subset (overriding state variables, file-level constants,
  * modifiers, super other than in calls, named or try calls, built-ins other than
  * require, assert, revert, members of msg, tx and block, address(this) and
  * type(T).max and .min for integer types T, literal subdenominations,

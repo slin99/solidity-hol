@@ -1,0 +1,1296 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.methodIdentifiers",
+            "ir",
+            "irOptimized"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/immutables_creation.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.37;\n\n// Immutables during creation: read in a base constructor's argument before\n// the derived contract's initializer assigns it, in a constructor modifier\n// and in an internal function the constructor calls; a creation that reverts\n// after assigning; and a constructor argument whose allocation crosses the\n// memory limit only because creation reserves a word per immutable.\ncontract ImmutableBase {\n    uint256 public immutable fromArg;\n\n    constructor(uint256 x) {\n        fromArg = x;\n    }\n}\n\ncontract ImmutableCreation is ImmutableBase {\n    uint256 immutable size;\n    uint256 immutable later = 5;\n    uint256 public observed;\n    uint256 public inModifier;\n\n    modifier records() {\n        inModifier = later;\n        _;\n    }\n\n    constructor(bytes memory b, bool fail) ImmutableBase(later + 1) records {\n        size = b.length;\n        observed = helper();\n        require(!fail);\n    }\n\n    function helper() internal view returns (uint256) {\n        return size + later;\n    }\n\n    function sizes() external view returns (uint256, uint256) {\n        return (size, fromArg);\n    }\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/immutables_creation.sol": {
+        "ImmutableBase": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "x",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "constructor"
+            },
+            {
+              "inputs": [],
+              "name": "fromArg",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "60a060405234610035576100196100146100e6565b610107565b61002161003a565b60bb61010d8239608051816049015260bb90f35b610040565b60405190565b5f80fd5b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b9061006c90610044565b810190811060018060401b0382111761008457604052565b61004e565b9061009c61009561003a565b9283610062565b565b5f80fd5b90565b6100ae816100a2565b036100b557565b5f80fd5b905051906100c6826100a5565b565b906020828203126100e1576100de915f016100b9565b90565b61009e565b6101046101c8803803806100f981610089565b9283398101906100c8565b90565b60805256fe608060405260043610156011575b60b7565b60195f356026565b632b4759d303600d57608c565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f910312604357565b6036565b7f000000000000000000000000000000000000000000000000000000000000000090565b90565b607590606b565b9052565b9190608a905f60208501940190606e565b565b3460b3576099366004603a565b60af60a16047565b60a7602c565b918291826079565b0390f35b6032565b5f80fd"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {
+                "3": [
+                  {
+                    "length": 32,
+                    "start": 73
+                  }
+                ]
+              },
+              "object": "608060405260043610156011575b60b7565b60195f356026565b632b4759d303600d57608c565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f910312604357565b6036565b7f000000000000000000000000000000000000000000000000000000000000000090565b90565b607590606b565b9052565b9190608a905f60208501940190606e565b565b3460b3576099366004603a565b60af60a16047565b60a7602c565b918291826079565b0390f35b6032565b5f80fd"
+            },
+            "methodIdentifiers": {
+              "fromArg()": "2b4759d3"
+            }
+          },
+          "ir": "\n/// @use-src 0:\"testdata/differential/immutables_creation.sol\"\nobject \"ImmutableBase_14\" {\n    code {\n        /// @src 0:432:553  \"contract ImmutableBase {...\"\n        mstore(64, memoryguard(160))\n        if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n\n        let _1 := copy_arguments_for_constructor_13_object_ImmutableBase_14()\n        constructor_ImmutableBase_14(_1)\n\n        let _2 := allocate_unbounded()\n        codecopy(_2, dataoffset(\"ImmutableBase_14_deployed\"), datasize(\"ImmutableBase_14_deployed\"))\n\n        setimmutable(_2, \"3\", mload(128))\n\n        return(_2, datasize(\"ImmutableBase_14_deployed\"))\n\n        function allocate_unbounded() -> memPtr {\n            memPtr := mload(64)\n        }\n\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n            revert(0, 0)\n        }\n\n        function round_up_to_mul_of_32(value) -> result {\n            result := and(add(value, 31), not(31))\n        }\n\n        function panic_error_0x41() {\n            mstore(0, 35408467139433450592217433187231851964531694900788300625387963629091585785856)\n            mstore(4, 0x41)\n            revert(0, 0x24)\n        }\n\n        function finalize_allocation(memPtr, size) {\n            let newFreePtr := add(memPtr, round_up_to_mul_of_32(size))\n            // protect against overflow\n            if or(gt(newFreePtr, 0xffffffffffffffff), lt(newFreePtr, memPtr)) { panic_error_0x41() }\n            mstore(64, newFreePtr)\n        }\n\n        function allocate_memory(size) -> memPtr {\n            memPtr := allocate_unbounded()\n            finalize_allocation(memPtr, size)\n        }\n\n        function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() {\n            revert(0, 0)\n        }\n\n        function revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() {\n            revert(0, 0)\n        }\n\n        function cleanup_t_uint256(value) -> cleaned {\n            cleaned := value\n        }\n\n        function validator_revert_t_uint256(value) {\n            if iszero(eq(value, cleanup_t_uint256(value))) { revert(0, 0) }\n        }\n\n        function abi_decode_t_uint256_fromMemory(offset, end) -> value {\n            value := mload(offset)\n            validator_revert_t_uint256(value)\n        }\n\n        function abi_decode_tuple_t_uint256_fromMemory(headStart, dataEnd) -> value0 {\n            if slt(sub(dataEnd, headStart), 32) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n            {\n\n                let offset := 0\n\n                value0 := abi_decode_t_uint256_fromMemory(add(headStart, offset), dataEnd)\n            }\n\n        }\n\n        function copy_arguments_for_constructor_13_object_ImmutableBase_14() -> ret_param_0 {\n            let programSize := datasize(\"ImmutableBase_14\")\n            let argSize := sub(codesize(), programSize)\n\n            let memoryDataOffset := allocate_memory(argSize)\n            codecopy(memoryDataOffset, programSize, argSize)\n\n            ret_param_0 := abi_decode_tuple_t_uint256_fromMemory(memoryDataOffset, add(memoryDataOffset, argSize))\n        }\n\n        /// @ast-id 13\n        /// @src 0:500:551  \"constructor(uint256 x) {...\"\n        function constructor_ImmutableBase_14(var_x_5) {\n\n            /// @src 0:500:551  \"constructor(uint256 x) {...\"\n\n            /// @src 0:543:544  \"x\"\n            let _3 := var_x_5\n            let expr_9 := _3\n            /// @src 0:533:544  \"fromArg = x\"\n            let _4 := expr_9\n            mstore(128, _4)\n            let expr_10 := expr_9\n\n        }\n        /// @src 0:432:553  \"contract ImmutableBase {...\"\n\n    }\n    /// @use-src 0:\"testdata/differential/immutables_creation.sol\"\n    object \"ImmutableBase_14_deployed\" {\n        code {\n            /// @src 0:432:553  \"contract ImmutableBase {...\"\n            mstore(64, memoryguard(128))\n\n            if iszero(lt(calldatasize(), 4))\n            {\n                let selector := shift_right_224_unsigned(calldataload(0))\n                switch selector\n\n                case 0x2b4759d3\n                {\n                    // fromArg()\n\n                    external_fun_fromArg_3()\n                }\n\n                default {}\n            }\n\n            revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n\n            function shift_right_224_unsigned(value) -> newValue {\n                newValue :=\n\n                shr(224, value)\n\n            }\n\n            function allocate_unbounded() -> memPtr {\n                memPtr := mload(64)\n            }\n\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n                revert(0, 0)\n            }\n\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() {\n                revert(0, 0)\n            }\n\n            function abi_decode_tuple_(headStart, dataEnd)   {\n                if slt(sub(dataEnd, headStart), 0) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n            }\n\n            /// @ast-id 3\n            /// @src 0:461:493  \"uint256 public immutable fromArg\"\n            function getter_fun_fromArg_3() -> rval {\n                rval := loadimmutable(\"3\")\n            }\n            /// @src 0:432:553  \"contract ImmutableBase {...\"\n\n            function cleanup_t_uint256(value) -> cleaned {\n                cleaned := value\n            }\n\n            function abi_encode_t_uint256_to_t_uint256_fromStack(value, pos) {\n                mstore(pos, cleanup_t_uint256(value))\n            }\n\n            function abi_encode_tuple_t_uint256__to_t_uint256__fromStack(headStart , value0) -> tail {\n                tail := add(headStart, 32)\n\n                abi_encode_t_uint256_to_t_uint256_fromStack(value0,  add(headStart, 0))\n\n            }\n\n            function external_fun_fromArg_3() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                abi_decode_tuple_(4, calldatasize())\n                let ret_0 :=  getter_fun_fromArg_3()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_uint256__to_t_uint256__fromStack(memPos , ret_0)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74() {\n                revert(0, 0)\n            }\n\n        }\n\n        data \".metadata\" hex\"\"\n    }\n\n}\n\n",
+          "irOptimized": "/// @use-src 0:\"testdata/differential/immutables_creation.sol\"\nobject \"ImmutableBase_14\" {\n    code {\n        {\n            /// @src 0:432:553  \"contract ImmutableBase {...\"\n            mstore(64, memoryguard(0xa0))\n            if callvalue()\n            {\n                revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            }\n            let _1 := copy_arguments_for_constructor_object_ImmutableBase()\n            constructor_ImmutableBase(_1)\n            let _2 := allocate_unbounded()\n            codecopy(_2, dataoffset(\"ImmutableBase_14_deployed\"), datasize(\"ImmutableBase_14_deployed\"))\n            setimmutable(_2, \"3\", mload(128))\n            return(_2, datasize(\"ImmutableBase_14_deployed\"))\n        }\n        function allocate_unbounded() -> memPtr\n        { memPtr := mload(64) }\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n        { revert(0, 0) }\n        function round_up_to_mul_of(value) -> result\n        {\n            result := and(add(value, 31), not(31))\n        }\n        function panic_error_0x41()\n        {\n            mstore(0, shl(224, 0x4e487b71))\n            mstore(4, 0x41)\n            revert(0, 0x24)\n        }\n        function finalize_allocation(memPtr, size)\n        {\n            let newFreePtr := add(memPtr, round_up_to_mul_of(size))\n            if or(gt(newFreePtr, sub(shl(64, 1), 1)), lt(newFreePtr, memPtr)) { panic_error_0x41() }\n            mstore(64, newFreePtr)\n        }\n        function allocate_memory(size) -> memPtr\n        {\n            memPtr := allocate_unbounded()\n            finalize_allocation(memPtr, size)\n        }\n        function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n        { revert(0, 0) }\n        function cleanup_uint256(value) -> cleaned\n        { cleaned := value }\n        function validator_revert_uint256(value)\n        {\n            if iszero(eq(value, cleanup_uint256(value))) { revert(0, 0) }\n        }\n        function abi_decode_t_uint256_fromMemory(offset, end) -> value\n        {\n            value := mload(offset)\n            validator_revert_uint256(value)\n        }\n        function abi_decode_uint256_fromMemory(headStart, dataEnd) -> value0\n        {\n            if slt(sub(dataEnd, headStart), 32)\n            {\n                revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n            }\n            let offset := 0\n            value0 := abi_decode_t_uint256_fromMemory(add(headStart, offset), dataEnd)\n        }\n        function copy_arguments_for_constructor_object_ImmutableBase() -> ret_param\n        {\n            let programSize := datasize(\"ImmutableBase_14\")\n            let argSize := sub(codesize(), programSize)\n            let memoryDataOffset := allocate_memory(argSize)\n            codecopy(memoryDataOffset, programSize, argSize)\n            ret_param := abi_decode_uint256_fromMemory(memoryDataOffset, add(memoryDataOffset, argSize))\n        }\n        /// @ast-id 13 @src 0:500:551  \"constructor(uint256 x) {...\"\n        function constructor_ImmutableBase(var_x)\n        {\n            /// @src 0:543:544  \"x\"\n            let _1 := var_x\n            let expr := _1\n            /// @src 0:533:544  \"fromArg = x\"\n            let _2 := expr\n            mstore(128, _2)\n        }\n    }\n    /// @use-src 0:\"testdata/differential/immutables_creation.sol\"\n    object \"ImmutableBase_14_deployed\" {\n        code {\n            {\n                /// @src 0:432:553  \"contract ImmutableBase {...\"\n                mstore(64, memoryguard(0x80))\n                if iszero(lt(calldatasize(), 4))\n                {\n                    let selector := shift_right_unsigned(calldataload(0))\n                    switch selector\n                    case 0x2b4759d3 { external_fun_fromArg() }\n                    default { }\n                }\n                revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            }\n            function shift_right_unsigned(value) -> newValue\n            { newValue := shr(224, value) }\n            function allocate_unbounded() -> memPtr\n            { memPtr := mload(64) }\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            { revert(0, 0) }\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n            { revert(0, 0) }\n            function abi_decode(headStart, dataEnd)\n            {\n                if slt(sub(dataEnd, headStart), 0)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n            }\n            /// @ast-id 3 @src 0:461:493  \"uint256 public immutable fromArg\"\n            function getter_fun_fromArg() -> rval\n            { rval := loadimmutable(\"3\") }\n            /// @src 0:432:553  \"contract ImmutableBase {...\"\n            function cleanup_uint256(value) -> cleaned\n            { cleaned := value }\n            function abi_encode_uint256_to_uint256(value, pos)\n            {\n                mstore(pos, cleanup_uint256(value))\n            }\n            function abi_encode_uint256(headStart, value0) -> tail\n            {\n                tail := add(headStart, 32)\n                abi_encode_uint256_to_uint256(value0, add(headStart, 0))\n            }\n            function external_fun_fromArg()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                abi_decode(4, calldatasize())\n                let ret := getter_fun_fromArg()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_uint256(memPos, ret)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            { revert(0, 0) }\n        }\n        data \".metadata\" hex\"\"\n    }\n}\n",
+          "storageLayout": {
+            "storage": [],
+            "types": null
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        },
+        "ImmutableCreation": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "bytes",
+                  "name": "b",
+                  "type": "bytes"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "fail",
+                  "type": "bool"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "constructor"
+            },
+            {
+              "inputs": [],
+              "name": "fromArg",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "inModifier",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "observed",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "sizes",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "60e06040523461004e5761001a6100146101b7565b9061031d565b610022610053565b61026a61038e823960805181818160810152610248015260a05181610226015260c05181505061026a90f35b610059565b60405190565b5f80fd5b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b906100859061005d565b810190811060018060401b0382111761009d57604052565b610067565b906100b56100ae610053565b928361007b565b565b5f80fd5b5f80fd5b5f80fd5b5f80fd5b60018060401b0381116100e3576100df60209161005d565b0190565b610067565b90825f9392825e0152565b90929192610108610103826100c7565b6100a2565b9381855260208501908284011161012457610122926100e8565b565b6100c3565b9080601f8301121561014757816020610144935191016100f3565b90565b6100bf565b151590565b61015a8161014c565b0361016157565b5f80fd5b9050519061017282610151565b565b91906040838203126101b2575f8301519060018060401b0382116101ad576101a1816101aa938601610129565b93602001610165565b90565b6100bb565b6100b7565b6101d56105f8803803806101ca816100a2565b928339810190610174565b9091565b90565b6101e690516101d9565b90565b90565b90565b6102036101fe610208926101e9565b6101ec565b6101d9565b90565b634e487b7160e01b5f52601160045260245ffd5b61022e610234919392936101d9565b926101d9565b820180921161023f57565b61020b565b90565b61025b61025661026092610244565b6101ec565b6101d9565b90565b5f1b90565b906102745f1991610263565b9181191691161790565b61029261028d610297926101d9565b6101ec565b6101d9565b90565b90565b906102b26102ad6102b99261027e565b61029a565b8254610268565b9055565b906102db916102d66102cf60c06101dc565b600161029d565b6102ec565b565b5190565b156102e857565b5f80fd5b61031b916102fc610316926102dd565b60a05261031061030a610364565b5f61029d565b1561014c565b6102e1565b565b906103599161034761034261033260c06101dc565b61033c60016101ef565b9061021f565b61035b565b6103516005610247565b60c0526102bd565b565b608052565b5f90565b61036c610360565b5061038a61037a60a06101dc565b61038460c06101dc565b9061021f565b9056fe60806040526004361015610013575b61020a565b61001d5f3561005c565b80632b4759d314610057578063ba21070914610052578063e4da41a71461004d5763fdc085fa0361000e576101d5565b610190565b610138565b6100c8565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261007a57565b61006c565b7f000000000000000000000000000000000000000000000000000000000000000090565b90565b6100af906100a3565b9052565b91906100c6905f602085019401906100a6565b565b346100f8576100d8366004610070565b6100f46100e361007f565b6100eb610062565b918291826100b3565b0390f35b610068565b1c90565b90565b61011490600861011993026100fd565b610101565b90565b906101279154610104565b90565b6101355f5f9061011c565b90565b3461016857610148366004610070565b61016461015361012a565b61015b610062565b918291826100b3565b0390f35b610068565b91602061018e92949361018760408201965f8301906100a6565b01906100a6565b565b346101c1576101a0366004610070565b6101a8610212565b906101bd6101b4610062565b9283928361016d565b0390f35b610068565b6101d260015f9061011c565b90565b34610205576101e5366004610070565b6102016101f06101c6565b6101f8610062565b918291826100b3565b0390f35b610068565b5f80fd5b5f90565b61021a61020e565b5061022361020e565b507f0000000000000000000000000000000000000000000000000000000000000000907f00000000000000000000000000000000000000000000000000000000000000009056"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {
+                "18": [
+                  {
+                    "length": 32,
+                    "start": 550
+                  }
+                ],
+                "3": [
+                  {
+                    "length": 32,
+                    "start": 129
+                  },
+                  {
+                    "length": 32,
+                    "start": 584
+                  }
+                ]
+              },
+              "object": "60806040526004361015610013575b61020a565b61001d5f3561005c565b80632b4759d314610057578063ba21070914610052578063e4da41a71461004d5763fdc085fa0361000e576101d5565b610190565b610138565b6100c8565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261007a57565b61006c565b7f000000000000000000000000000000000000000000000000000000000000000090565b90565b6100af906100a3565b9052565b91906100c6905f602085019401906100a6565b565b346100f8576100d8366004610070565b6100f46100e361007f565b6100eb610062565b918291826100b3565b0390f35b610068565b1c90565b90565b61011490600861011993026100fd565b610101565b90565b906101279154610104565b90565b6101355f5f9061011c565b90565b3461016857610148366004610070565b61016461015361012a565b61015b610062565b918291826100b3565b0390f35b610068565b91602061018e92949361018760408201965f8301906100a6565b01906100a6565b565b346101c1576101a0366004610070565b6101a8610212565b906101bd6101b4610062565b9283928361016d565b0390f35b610068565b6101d260015f9061011c565b90565b34610205576101e5366004610070565b6102016101f06101c6565b6101f8610062565b918291826100b3565b0390f35b610068565b5f80fd5b5f90565b61021a61020e565b5061022361020e565b507f0000000000000000000000000000000000000000000000000000000000000000907f00000000000000000000000000000000000000000000000000000000000000009056"
+            },
+            "methodIdentifiers": {
+              "fromArg()": "2b4759d3",
+              "inModifier()": "fdc085fa",
+              "observed()": "ba210709",
+              "sizes()": "e4da41a7"
+            }
+          },
+          "ir": "\n/// @use-src 0:\"testdata/differential/immutables_creation.sol\"\nobject \"ImmutableCreation_86\" {\n    code {\n        /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n        mstore(64, memoryguard(224))\n        if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n\n        let _1, _2 := copy_arguments_for_constructor_63_object_ImmutableCreation_86()\n        constructor_ImmutableCreation_86(_1, _2)\n\n        let _3 := allocate_unbounded()\n        codecopy(_3, dataoffset(\"ImmutableCreation_86_deployed\"), datasize(\"ImmutableCreation_86_deployed\"))\n\n        setimmutable(_3, \"3\", mload(128))\n\n        setimmutable(_3, \"18\", mload(160))\n\n        setimmutable(_3, \"21\", mload(192))\n\n        return(_3, datasize(\"ImmutableCreation_86_deployed\"))\n\n        function allocate_unbounded() -> memPtr {\n            memPtr := mload(64)\n        }\n\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n            revert(0, 0)\n        }\n\n        function round_up_to_mul_of_32(value) -> result {\n            result := and(add(value, 31), not(31))\n        }\n\n        function panic_error_0x41() {\n            mstore(0, 35408467139433450592217433187231851964531694900788300625387963629091585785856)\n            mstore(4, 0x41)\n            revert(0, 0x24)\n        }\n\n        function finalize_allocation(memPtr, size) {\n            let newFreePtr := add(memPtr, round_up_to_mul_of_32(size))\n            // protect against overflow\n            if or(gt(newFreePtr, 0xffffffffffffffff), lt(newFreePtr, memPtr)) { panic_error_0x41() }\n            mstore(64, newFreePtr)\n        }\n\n        function allocate_memory(size) -> memPtr {\n            memPtr := allocate_unbounded()\n            finalize_allocation(memPtr, size)\n        }\n\n        function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() {\n            revert(0, 0)\n        }\n\n        function revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() {\n            revert(0, 0)\n        }\n\n        function revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d() {\n            revert(0, 0)\n        }\n\n        function revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae() {\n            revert(0, 0)\n        }\n\n        function array_allocation_size_t_bytes_memory_ptr(length) -> size {\n            // Make sure we can allocate memory without overflow\n            if gt(length, 0xffffffffffffffff) { panic_error_0x41() }\n\n            size := round_up_to_mul_of_32(length)\n\n            // add length slot\n            size := add(size, 0x20)\n\n        }\n\n        function copy_memory_to_memory_with_cleanup(src, dst, length) {\n\n            mcopy(dst, src, length)\n            mstore(add(dst, length), 0)\n\n        }\n\n        function abi_decode_available_length_t_bytes_memory_ptr_fromMemory(src, length, end) -> array {\n            array := allocate_memory(array_allocation_size_t_bytes_memory_ptr(length))\n            mstore(array, length)\n            let dst := add(array, 0x20)\n            if gt(add(src, length), end) { revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae() }\n            copy_memory_to_memory_with_cleanup(src, dst, length)\n        }\n\n        // bytes\n        function abi_decode_t_bytes_memory_ptr_fromMemory(offset, end) -> array {\n            if iszero(slt(add(offset, 0x1f), end)) { revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d() }\n            let length := mload(offset)\n            array := abi_decode_available_length_t_bytes_memory_ptr_fromMemory(add(offset, 0x20), length, end)\n        }\n\n        function cleanup_t_bool(value) -> cleaned {\n            cleaned := iszero(iszero(value))\n        }\n\n        function validator_revert_t_bool(value) {\n            if iszero(eq(value, cleanup_t_bool(value))) { revert(0, 0) }\n        }\n\n        function abi_decode_t_bool_fromMemory(offset, end) -> value {\n            value := mload(offset)\n            validator_revert_t_bool(value)\n        }\n\n        function abi_decode_tuple_t_bytes_memory_ptrt_bool_fromMemory(headStart, dataEnd) -> value0, value1 {\n            if slt(sub(dataEnd, headStart), 64) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n            {\n\n                let offset := mload(add(headStart, 0))\n                if gt(offset, 0xffffffffffffffff) { revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db() }\n\n                value0 := abi_decode_t_bytes_memory_ptr_fromMemory(add(headStart, offset), dataEnd)\n            }\n\n            {\n\n                let offset := 32\n\n                value1 := abi_decode_t_bool_fromMemory(add(headStart, offset), dataEnd)\n            }\n\n        }\n\n        function copy_arguments_for_constructor_63_object_ImmutableCreation_86() -> ret_param_0, ret_param_1 {\n            let programSize := datasize(\"ImmutableCreation_86\")\n            let argSize := sub(codesize(), programSize)\n\n            let memoryDataOffset := allocate_memory(argSize)\n            codecopy(memoryDataOffset, programSize, argSize)\n\n            ret_param_0, ret_param_1 := abi_decode_tuple_t_bytes_memory_ptrt_bool_fromMemory(memoryDataOffset, add(memoryDataOffset, argSize))\n        }\n\n        function cleanup_t_uint256(value) -> cleaned {\n            cleaned := value\n        }\n\n        function read_from_memoryt_uint256(ptr) -> returnValue {\n\n            let value := cleanup_t_uint256(mload(ptr))\n\n            returnValue :=\n\n            value\n\n        }\n\n        function cleanup_t_rational_1_by_1(value) -> cleaned {\n            cleaned := value\n        }\n\n        function identity(value) -> ret {\n            ret := value\n        }\n\n        function convert_t_rational_1_by_1_to_t_uint256(value) -> converted {\n            converted := cleanup_t_uint256(identity(cleanup_t_rational_1_by_1(value)))\n        }\n\n        function panic_error_0x11() {\n            mstore(0, 35408467139433450592217433187231851964531694900788300625387963629091585785856)\n            mstore(4, 0x11)\n            revert(0, 0x24)\n        }\n\n        function checked_add_t_uint256(x, y) -> sum {\n            x := cleanup_t_uint256(x)\n            y := cleanup_t_uint256(y)\n            sum := add(x, y)\n\n            if gt(x, sum) { panic_error_0x11() }\n\n        }\n\n        function cleanup_t_rational_5_by_1(value) -> cleaned {\n            cleaned := value\n        }\n\n        function convert_t_rational_5_by_1_to_t_uint256(value) -> converted {\n            converted := cleanup_t_uint256(identity(cleanup_t_rational_5_by_1(value)))\n        }\n\n        function shift_left_0(value) -> newValue {\n            newValue :=\n\n            shl(0, value)\n\n        }\n\n        function update_byte_slice_32_shift_0(value, toInsert) -> result {\n            let mask := 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff\n            toInsert := shift_left_0(toInsert)\n            value := and(value, not(mask))\n            result := or(value, and(toInsert, mask))\n        }\n\n        function convert_t_uint256_to_t_uint256(value) -> converted {\n            converted := cleanup_t_uint256(identity(cleanup_t_uint256(value)))\n        }\n\n        function prepare_store_t_uint256(value) -> ret {\n            ret := value\n        }\n\n        function update_storage_value_offset_0_t_uint256_to_t_uint256(slot, value_0) {\n            let convertedValue_0 := convert_t_uint256_to_t_uint256(value_0)\n            sstore(slot, update_byte_slice_32_shift_0(sload(slot), prepare_store_t_uint256(convertedValue_0)))\n        }\n\n        /// @ast-id 33\n        /// @src 0:727:792  \"modifier records() {...\"\n        function modifier_records_45(var_b_35_mpos, var_fail_37) {\n\n            /// @src 0:769:774  \"later\"\n            let _7 := read_from_memoryt_uint256(192)\n            let expr_28 := _7\n            /// @src 0:756:774  \"inModifier = later\"\n            update_storage_value_offset_0_t_uint256_to_t_uint256(0x01, expr_28)\n            let expr_29 := expr_28\n            /// @src 0:784:785  \"_\"\n            fun__63_inner(var_b_35_mpos, var_fail_37)\n\n        }\n        /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n\n        function array_length_t_bytes_memory_ptr(value) -> length {\n\n            length := mload(value)\n\n        }\n\n        function require_helper(condition) {\n            if iszero(condition) { revert(0, 0) }\n        }\n\n        /// @src 0:798:955  \"constructor(bytes memory b, bool fail) ImmutableBase(later + 1) records {...\"\n        function fun__63_inner(var_b_35_mpos, var_fail_37) {\n\n            /// @src 0:887:888  \"b\"\n            let _8_mpos := var_b_35_mpos\n            let expr_48_mpos := _8_mpos\n            /// @src 0:887:895  \"b.length\"\n            let expr_49 := array_length_t_bytes_memory_ptr(expr_48_mpos)\n            /// @src 0:880:895  \"size = b.length\"\n            let _9 := expr_49\n            mstore(160, _9)\n            let expr_50 := expr_49\n            /// @src 0:916:924  \"helper()\"\n            let expr_54 := fun_helper_73()\n            /// @src 0:905:924  \"observed = helper()\"\n            update_storage_value_offset_0_t_uint256_to_t_uint256(0x00, expr_54)\n            let expr_55 := expr_54\n            /// @src 0:943:947  \"fail\"\n            let _10 := var_fail_37\n            let expr_58 := _10\n            /// @src 0:942:947  \"!fail\"\n            let expr_59 := cleanup_t_bool(iszero(expr_58))\n            /// @src 0:934:948  \"require(!fail)\"\n            require_helper(expr_59)\n\n        }\n        /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n\n        /// @ast-id 63\n        /// @src 0:798:955  \"constructor(bytes memory b, bool fail) ImmutableBase(later + 1) records {...\"\n        function constructor_ImmutableCreation_86(var_b_35_mpos, var_fail_37) {\n            /// @src 0:851:856  \"later\"\n            let _4 := read_from_memoryt_uint256(192)\n            let expr_40 := _4\n            /// @src 0:859:860  \"1\"\n            let expr_41 := 0x01\n            /// @src 0:851:860  \"later + 1\"\n            let expr_42 := checked_add_t_uint256(expr_40, convert_t_rational_1_by_1_to_t_uint256(expr_41))\n\n            let _5 := expr_42\n\n            /// @src 0:798:955  \"constructor(bytes memory b, bool fail) ImmutableBase(later + 1) records {...\"\n            constructor_ImmutableBase_14(_5)\n            /// @src 0:659:660  \"5\"\n            let expr_20 := 0x05\n            let _6 := convert_t_rational_5_by_1_to_t_uint256(expr_20)\n            mstore(192, _6)\n\n            modifier_records_45(var_b_35_mpos, var_fail_37)\n        }\n        /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n\n        /// @ast-id 13\n        /// @src 0:500:551  \"constructor(uint256 x) {...\"\n        function constructor_ImmutableBase_14(var_x_5) {\n\n            /// @src 0:500:551  \"constructor(uint256 x) {...\"\n\n            /// @src 0:543:544  \"x\"\n            let _11 := var_x_5\n            let expr_9 := _11\n            /// @src 0:533:544  \"fromArg = x\"\n            let _12 := expr_9\n            mstore(128, _12)\n            let expr_10 := expr_9\n\n        }\n        /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n\n        function zero_value_for_split_t_uint256() -> ret {\n            ret := 0\n        }\n\n        /// @ast-id 73\n        /// @src 0:961:1047  \"function helper() internal view returns (uint256) {...\"\n        function fun_helper_73() -> var__66 {\n            /// @src 0:1002:1009  \"uint256\"\n            let zero_t_uint256_13 := zero_value_for_split_t_uint256()\n            var__66 := zero_t_uint256_13\n\n            /// @src 0:1028:1032  \"size\"\n            let _14 := read_from_memoryt_uint256(160)\n            let expr_68 := _14\n            /// @src 0:1035:1040  \"later\"\n            let _15 := read_from_memoryt_uint256(192)\n            let expr_69 := _15\n            /// @src 0:1028:1040  \"size + later\"\n            let expr_70 := checked_add_t_uint256(expr_68, expr_69)\n\n            /// @src 0:1021:1040  \"return size + later\"\n            var__66 := expr_70\n            leave\n\n        }\n        /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n\n    }\n    /// @use-src 0:\"testdata/differential/immutables_creation.sol\"\n    object \"ImmutableCreation_86_deployed\" {\n        code {\n            /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n            mstore(64, memoryguard(128))\n\n            if iszero(lt(calldatasize(), 4))\n            {\n                let selector := shift_right_224_unsigned(calldataload(0))\n                switch selector\n\n                case 0x2b4759d3\n                {\n                    // fromArg()\n\n                    external_fun_fromArg_3()\n                }\n\n                case 0xba210709\n                {\n                    // observed()\n\n                    external_fun_observed_23()\n                }\n\n                case 0xe4da41a7\n                {\n                    // sizes()\n\n                    external_fun_sizes_85()\n                }\n\n                case 0xfdc085fa\n                {\n                    // inModifier()\n\n                    external_fun_inModifier_25()\n                }\n\n                default {}\n            }\n\n            revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n\n            function shift_right_224_unsigned(value) -> newValue {\n                newValue :=\n\n                shr(224, value)\n\n            }\n\n            function allocate_unbounded() -> memPtr {\n                memPtr := mload(64)\n            }\n\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() {\n                revert(0, 0)\n            }\n\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() {\n                revert(0, 0)\n            }\n\n            function abi_decode_tuple_(headStart, dataEnd)   {\n                if slt(sub(dataEnd, headStart), 0) { revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b() }\n\n            }\n\n            /// @ast-id 3\n            /// @src 0:461:493  \"uint256 public immutable fromArg\"\n            function getter_fun_fromArg_3() -> rval {\n                rval := loadimmutable(\"3\")\n            }\n            /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n\n            function cleanup_t_uint256(value) -> cleaned {\n                cleaned := value\n            }\n\n            function abi_encode_t_uint256_to_t_uint256_fromStack(value, pos) {\n                mstore(pos, cleanup_t_uint256(value))\n            }\n\n            function abi_encode_tuple_t_uint256__to_t_uint256__fromStack(headStart , value0) -> tail {\n                tail := add(headStart, 32)\n\n                abi_encode_t_uint256_to_t_uint256_fromStack(value0,  add(headStart, 0))\n\n            }\n\n            function external_fun_fromArg_3() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                abi_decode_tuple_(4, calldatasize())\n                let ret_0 :=  getter_fun_fromArg_3()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_uint256__to_t_uint256__fromStack(memPos , ret_0)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function shift_right_unsigned_dynamic(bits, value) -> newValue {\n                newValue :=\n\n                shr(bits, value)\n\n            }\n\n            function cleanup_from_storage_t_uint256(value) -> cleaned {\n                cleaned := value\n            }\n\n            function extract_from_storage_value_dynamict_uint256(slot_value, offset) -> value {\n                value := cleanup_from_storage_t_uint256(shift_right_unsigned_dynamic(mul(offset, 8), slot_value))\n            }\n\n            function read_from_storage_split_dynamic_t_uint256(slot, offset) -> value {\n                value := extract_from_storage_value_dynamict_uint256(sload(slot), offset)\n\n            }\n\n            /// @ast-id 23\n            /// @src 0:666:689  \"uint256 public observed\"\n            function getter_fun_observed_23() -> ret {\n\n                let slot := 0\n                let offset := 0\n\n                ret := read_from_storage_split_dynamic_t_uint256(slot, offset)\n\n            }\n            /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n\n            function external_fun_observed_23() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                abi_decode_tuple_(4, calldatasize())\n                let ret_0 :=  getter_fun_observed_23()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_uint256__to_t_uint256__fromStack(memPos , ret_0)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function abi_encode_tuple_t_uint256_t_uint256__to_t_uint256_t_uint256__fromStack(headStart , value0, value1) -> tail {\n                tail := add(headStart, 64)\n\n                abi_encode_t_uint256_to_t_uint256_fromStack(value0,  add(headStart, 0))\n\n                abi_encode_t_uint256_to_t_uint256_fromStack(value1,  add(headStart, 32))\n\n            }\n\n            function external_fun_sizes_85() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                abi_decode_tuple_(4, calldatasize())\n                let ret_0, ret_1 :=  fun_sizes_85()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_uint256_t_uint256__to_t_uint256_t_uint256__fromStack(memPos , ret_0, ret_1)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            /// @ast-id 25\n            /// @src 0:695:720  \"uint256 public inModifier\"\n            function getter_fun_inModifier_25() -> ret {\n\n                let slot := 1\n                let offset := 0\n\n                ret := read_from_storage_split_dynamic_t_uint256(slot, offset)\n\n            }\n            /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n\n            function external_fun_inModifier_25() {\n\n                if callvalue() { revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb() }\n                abi_decode_tuple_(4, calldatasize())\n                let ret_0 :=  getter_fun_inModifier_25()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_tuple_t_uint256__to_t_uint256__fromStack(memPos , ret_0)\n                return(memPos, sub(memEnd, memPos))\n\n            }\n\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74() {\n                revert(0, 0)\n            }\n\n            function zero_value_for_split_t_uint256() -> ret {\n                ret := 0\n            }\n\n            /// @ast-id 85\n            /// @src 0:1053:1150  \"function sizes() external view returns (uint256, uint256) {...\"\n            function fun_sizes_85() -> var__76, var__78 {\n                /// @src 0:1093:1100  \"uint256\"\n                let zero_t_uint256_1 := zero_value_for_split_t_uint256()\n                var__76 := zero_t_uint256_1\n                /// @src 0:1102:1109  \"uint256\"\n                let zero_t_uint256_2 := zero_value_for_split_t_uint256()\n                var__78 := zero_t_uint256_2\n\n                /// @src 0:1129:1133  \"size\"\n                let _3 := loadimmutable(\"18\")\n                let expr_80 := _3\n                /// @src 0:1128:1143  \"(size, fromArg)\"\n                let expr_82_component_1 := expr_80\n                /// @src 0:1135:1142  \"fromArg\"\n                let _4 := loadimmutable(\"3\")\n                let expr_81 := _4\n                /// @src 0:1128:1143  \"(size, fromArg)\"\n                let expr_82_component_2 := expr_81\n                /// @src 0:1121:1143  \"return (size, fromArg)\"\n                var__76 := expr_82_component_1\n                var__78 := expr_82_component_2\n                leave\n\n            }\n            /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n\n        }\n\n        data \".metadata\" hex\"\"\n    }\n\n}\n\n",
+          "irOptimized": "/// @use-src 0:\"testdata/differential/immutables_creation.sol\"\nobject \"ImmutableCreation_86\" {\n    code {\n        {\n            /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n            mstore(64, memoryguard(0xe0))\n            if callvalue()\n            {\n                revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            }\n            let _1, _2 := copy_arguments_for_constructor_object_ImmutableCreation()\n            constructor_ImmutableCreation(_1, _2)\n            let _3 := allocate_unbounded()\n            codecopy(_3, dataoffset(\"ImmutableCreation_86_deployed\"), datasize(\"ImmutableCreation_86_deployed\"))\n            setimmutable(_3, \"3\", mload(128))\n            setimmutable(_3, \"18\", mload(160))\n            setimmutable(_3, \"21\", mload(192))\n            return(_3, datasize(\"ImmutableCreation_86_deployed\"))\n        }\n        function allocate_unbounded() -> memPtr\n        { memPtr := mload(64) }\n        function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n        { revert(0, 0) }\n        function round_up_to_mul_of(value) -> result\n        {\n            result := and(add(value, 31), not(31))\n        }\n        function panic_error_0x41()\n        {\n            mstore(0, shl(224, 0x4e487b71))\n            mstore(4, 0x41)\n            revert(0, 0x24)\n        }\n        function finalize_allocation(memPtr, size)\n        {\n            let newFreePtr := add(memPtr, round_up_to_mul_of(size))\n            if or(gt(newFreePtr, sub(shl(64, 1), 1)), lt(newFreePtr, memPtr)) { panic_error_0x41() }\n            mstore(64, newFreePtr)\n        }\n        function allocate_memory(size) -> memPtr\n        {\n            memPtr := allocate_unbounded()\n            finalize_allocation(memPtr, size)\n        }\n        function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n        { revert(0, 0) }\n        function revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db()\n        { revert(0, 0) }\n        function revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d()\n        { revert(0, 0) }\n        function revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae()\n        { revert(0, 0) }\n        function array_allocation_size_bytes(length) -> size\n        {\n            if gt(length, sub(shl(64, 1), 1)) { panic_error_0x41() }\n            size := round_up_to_mul_of(length)\n            size := add(size, 0x20)\n        }\n        function copy_memory_to_memory_with_cleanup(src, dst, length)\n        {\n            mcopy(dst, src, length)\n            mstore(add(dst, length), 0)\n        }\n        function abi_decode_available_length_bytes_fromMemory(src, length, end) -> array\n        {\n            array := allocate_memory(array_allocation_size_bytes(length))\n            mstore(array, length)\n            let dst := add(array, 0x20)\n            if gt(add(src, length), end)\n            {\n                revert_error_987264b3b1d58a9c7f8255e93e81c77d86d6299019c33110a076957a3e06e2ae()\n            }\n            copy_memory_to_memory_with_cleanup(src, dst, length)\n        }\n        function abi_decode_bytes_fromMemory(offset, end) -> array\n        {\n            if iszero(slt(add(offset, 0x1f), end))\n            {\n                revert_error_1b9f4a0a5773e33b91aa01db23bf8c55fce1411167c872835e7fa00a4f17d46d()\n            }\n            let length := mload(offset)\n            array := abi_decode_available_length_bytes_fromMemory(add(offset, 0x20), length, end)\n        }\n        function cleanup_bool(value) -> cleaned\n        {\n            cleaned := iszero(iszero(value))\n        }\n        function validator_revert_bool(value)\n        {\n            if iszero(eq(value, cleanup_bool(value))) { revert(0, 0) }\n        }\n        function abi_decode_bool_fromMemory(offset, end) -> value\n        {\n            value := mload(offset)\n            validator_revert_bool(value)\n        }\n        function abi_decode_bytest_bool_fromMemory(headStart, dataEnd) -> value0, value1\n        {\n            if slt(sub(dataEnd, headStart), 64)\n            {\n                revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n            }\n            let offset := mload(add(headStart, 0))\n            if gt(offset, sub(shl(64, 1), 1))\n            {\n                revert_error_c1322bf8034eace5e0b5c7295db60986aa89aae5e0ea0873e4689e076861a5db()\n            }\n            value0 := abi_decode_bytes_fromMemory(add(headStart, offset), dataEnd)\n            let offset_1 := 32\n            value1 := abi_decode_bool_fromMemory(add(headStart, offset_1), dataEnd)\n        }\n        function copy_arguments_for_constructor_object_ImmutableCreation() -> ret_param, ret_param_1\n        {\n            let programSize := datasize(\"ImmutableCreation_86\")\n            let argSize := sub(codesize(), programSize)\n            let memoryDataOffset := allocate_memory(argSize)\n            codecopy(memoryDataOffset, programSize, argSize)\n            ret_param, ret_param_1 := abi_decode_bytest_bool_fromMemory(memoryDataOffset, add(memoryDataOffset, argSize))\n        }\n        function cleanup_uint256(value) -> cleaned\n        { cleaned := value }\n        function read_from_memoryt_uint256(ptr) -> returnValue\n        {\n            let value := cleanup_uint256(mload(ptr))\n            returnValue := value\n        }\n        function cleanup_rational_by(value) -> cleaned\n        { cleaned := value }\n        function identity(value) -> ret\n        { ret := value }\n        function convert_rational_by_to_uint256(value) -> converted\n        {\n            converted := cleanup_uint256(identity(cleanup_rational_by(value)))\n        }\n        function panic_error_0x11()\n        {\n            mstore(0, shl(224, 0x4e487b71))\n            mstore(4, 0x11)\n            revert(0, 0x24)\n        }\n        function checked_add_uint256(x, y) -> sum\n        {\n            x := cleanup_uint256(x)\n            y := cleanup_uint256(y)\n            sum := add(x, y)\n            if gt(x, sum) { panic_error_0x11() }\n        }\n        function cleanup_t_rational_by(value) -> cleaned\n        { cleaned := value }\n        function convert_t_rational_by_to_t_uint256(value) -> converted\n        {\n            converted := cleanup_uint256(identity(cleanup_t_rational_by(value)))\n        }\n        function shift_left(value) -> newValue\n        { newValue := shl(0, value) }\n        function update_byte_slice_shift(value, toInsert) -> result\n        {\n            let mask := not(0)\n            toInsert := shift_left(toInsert)\n            value := and(value, not(mask))\n            result := or(value, and(toInsert, mask))\n        }\n        function convert_uint256_to_uint256(value) -> converted\n        {\n            converted := cleanup_uint256(identity(cleanup_uint256(value)))\n        }\n        function prepare_store_uint256(value) -> ret\n        { ret := value }\n        function update_storage_value_offset_uint256_to_uint256(slot, value)\n        {\n            let convertedValue := convert_uint256_to_uint256(value)\n            sstore(slot, update_byte_slice_shift(sload(slot), prepare_store_uint256(convertedValue)))\n        }\n        /// @ast-id 33 @src 0:727:792  \"modifier records() {...\"\n        function modifier_records(var_b_35_mpos, var_fail)\n        {\n            /// @src 0:769:774  \"later\"\n            let _1 := read_from_memoryt_uint256(192)\n            let expr := _1\n            /// @src 0:756:774  \"inModifier = later\"\n            update_storage_value_offset_uint256_to_uint256(0x01, expr)\n            /// @src 0:784:785  \"_\"\n            fun_inner(var_b_35_mpos, var_fail)\n        }\n        /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n        function array_length_bytes(value) -> length\n        { length := mload(value) }\n        function require_helper(condition)\n        {\n            if iszero(condition) { revert(0, 0) }\n        }\n        /// @src 0:798:955  \"constructor(bytes memory b, bool fail) ImmutableBase(later + 1) records {...\"\n        function fun_inner(var_b_mpos, var_fail)\n        {\n            /// @src 0:887:888  \"b\"\n            let _mpos := var_b_mpos\n            let expr_mpos := _mpos\n            /// @src 0:887:895  \"b.length\"\n            let expr := array_length_bytes(expr_mpos)\n            /// @src 0:880:895  \"size = b.length\"\n            let _1 := expr\n            mstore(160, _1)\n            /// @src 0:916:924  \"helper()\"\n            let expr_1 := fun_helper()\n            /// @src 0:905:924  \"observed = helper()\"\n            update_storage_value_offset_uint256_to_uint256(0x00, expr_1)\n            /// @src 0:943:947  \"fail\"\n            let _2 := var_fail\n            let expr_2 := _2\n            /// @src 0:942:947  \"!fail\"\n            let expr_3 := cleanup_bool(iszero(expr_2))\n            /// @src 0:934:948  \"require(!fail)\"\n            require_helper(expr_3)\n        }\n        /// @ast-id 63 @src 0:798:955  \"constructor(bytes memory b, bool fail) ImmutableBase(later + 1) records {...\"\n        function constructor_ImmutableCreation(var_b_mpos, var_fail)\n        {\n            /// @src 0:851:856  \"later\"\n            let _1 := read_from_memoryt_uint256(192)\n            let expr := _1\n            /// @src 0:859:860  \"1\"\n            let expr_1 := 0x01\n            /// @src 0:851:860  \"later + 1\"\n            let expr_2 := checked_add_uint256(expr, convert_rational_by_to_uint256(expr_1))\n            let _2 := expr_2\n            /// @src 0:798:955  \"constructor(bytes memory b, bool fail) ImmutableBase(later + 1) records {...\"\n            constructor_ImmutableBase(_2)\n            /// @src 0:659:660  \"5\"\n            let expr_3 := 0x05\n            let _3 := convert_t_rational_by_to_t_uint256(expr_3)\n            mstore(192, _3)\n            modifier_records(var_b_mpos, var_fail)\n        }\n        /// @ast-id 13 @src 0:500:551  \"constructor(uint256 x) {...\"\n        function constructor_ImmutableBase(var_x)\n        {\n            /// @src 0:543:544  \"x\"\n            let _1 := var_x\n            let expr := _1\n            /// @src 0:533:544  \"fromArg = x\"\n            let _2 := expr\n            mstore(128, _2)\n        }\n        /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n        function zero_value_for_split_uint256() -> ret\n        { ret := 0 }\n        /// @ast-id 73 @src 0:961:1047  \"function helper() internal view returns (uint256) {...\"\n        function fun_helper() -> var\n        {\n            /// @src 0:1002:1009  \"uint256\"\n            let zero_uint256 := zero_value_for_split_uint256()\n            var := zero_uint256\n            /// @src 0:1028:1032  \"size\"\n            let _1 := read_from_memoryt_uint256(160)\n            let expr := _1\n            /// @src 0:1035:1040  \"later\"\n            let _2 := read_from_memoryt_uint256(192)\n            let expr_1 := _2\n            /// @src 0:1028:1040  \"size + later\"\n            let expr_2 := checked_add_uint256(expr, expr_1)\n            /// @src 0:1021:1040  \"return size + later\"\n            var := expr_2\n            leave\n        }\n    }\n    /// @use-src 0:\"testdata/differential/immutables_creation.sol\"\n    object \"ImmutableCreation_86_deployed\" {\n        code {\n            {\n                /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n                mstore(64, memoryguard(0x80))\n                if iszero(lt(calldatasize(), 4))\n                {\n                    let selector := shift_right_unsigned(calldataload(0))\n                    switch selector\n                    case 0x2b4759d3 { external_fun_fromArg() }\n                    case 0xba210709 { external_fun_observed() }\n                    case 0xe4da41a7 { external_fun_sizes() }\n                    case 0xfdc085fa { external_fun_inModifier() }\n                    default { }\n                }\n                revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            }\n            function shift_right_unsigned(value) -> newValue\n            { newValue := shr(224, value) }\n            function allocate_unbounded() -> memPtr\n            { memPtr := mload(64) }\n            function revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n            { revert(0, 0) }\n            function revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n            { revert(0, 0) }\n            function abi_decode(headStart, dataEnd)\n            {\n                if slt(sub(dataEnd, headStart), 0)\n                {\n                    revert_error_dbdddcbe895c83990c08b3492a0e83918d802a52331272ac6fdb6a7c4aea3b1b()\n                }\n            }\n            /// @ast-id 3 @src 0:461:493  \"uint256 public immutable fromArg\"\n            function getter_fun_fromArg() -> rval\n            { rval := loadimmutable(\"3\") }\n            /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n            function cleanup_uint256(value) -> cleaned\n            { cleaned := value }\n            function abi_encode_uint256_to_uint256(value, pos)\n            {\n                mstore(pos, cleanup_uint256(value))\n            }\n            function abi_encode_uint256(headStart, value0) -> tail\n            {\n                tail := add(headStart, 32)\n                abi_encode_uint256_to_uint256(value0, add(headStart, 0))\n            }\n            function external_fun_fromArg()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                abi_decode(4, calldatasize())\n                let ret := getter_fun_fromArg()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_uint256(memPos, ret)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function shift_right_unsigned_dynamic(bits, value) -> newValue\n            { newValue := shr(bits, value) }\n            function cleanup_from_storage_uint256(value) -> cleaned\n            { cleaned := value }\n            function extract_from_storage_value_dynamict_uint256(slot_value, offset) -> value\n            {\n                value := cleanup_from_storage_uint256(shift_right_unsigned_dynamic(mul(offset, 8), slot_value))\n            }\n            function read_from_storage_split_dynamic_uint256(slot, offset) -> value\n            {\n                value := extract_from_storage_value_dynamict_uint256(sload(slot), offset)\n            }\n            /// @ast-id 23 @src 0:666:689  \"uint256 public observed\"\n            function getter_fun_observed() -> ret\n            {\n                let slot := 0\n                let offset := 0\n                ret := read_from_storage_split_dynamic_uint256(slot, offset)\n            }\n            /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n            function external_fun_observed()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                abi_decode(4, calldatasize())\n                let ret := getter_fun_observed()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_uint256(memPos, ret)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function abi_encode_uint256_uint256(headStart, value0, value1) -> tail\n            {\n                tail := add(headStart, 64)\n                abi_encode_uint256_to_uint256(value0, add(headStart, 0))\n                abi_encode_uint256_to_uint256(value1, add(headStart, 32))\n            }\n            function external_fun_sizes()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                abi_decode(4, calldatasize())\n                let ret, ret_1 := fun_sizes()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_uint256_uint256(memPos, ret, ret_1)\n                return(memPos, sub(memEnd, memPos))\n            }\n            /// @ast-id 25 @src 0:695:720  \"uint256 public inModifier\"\n            function getter_fun_inModifier() -> ret\n            {\n                let slot := 1\n                let offset := 0\n                ret := read_from_storage_split_dynamic_uint256(slot, offset)\n            }\n            /// @src 0:555:1152  \"contract ImmutableCreation is ImmutableBase {...\"\n            function external_fun_inModifier()\n            {\n                if callvalue()\n                {\n                    revert_error_ca66f745a3ce8ff40e2ccaf1ad45db7774001b90d25810abd9040049be7bf4bb()\n                }\n                abi_decode(4, calldatasize())\n                let ret := getter_fun_inModifier()\n                let memPos := allocate_unbounded()\n                let memEnd := abi_encode_uint256(memPos, ret)\n                return(memPos, sub(memEnd, memPos))\n            }\n            function revert_error_42b3090547df1d2001c96683413b8cf91c1b902ef5e3cb8d9f6f304cf7446f74()\n            { revert(0, 0) }\n            function zero_value_for_split_uint256() -> ret\n            { ret := 0 }\n            /// @ast-id 85 @src 0:1053:1150  \"function sizes() external view returns (uint256, uint256) {...\"\n            function fun_sizes() -> var, var_\n            {\n                /// @src 0:1093:1100  \"uint256\"\n                let zero_uint256 := zero_value_for_split_uint256()\n                var := zero_uint256\n                /// @src 0:1102:1109  \"uint256\"\n                let zero_t_uint256 := zero_value_for_split_uint256()\n                var_ := zero_t_uint256\n                /// @src 0:1129:1133  \"size\"\n                let _1 := loadimmutable(\"18\")\n                let expr := _1\n                /// @src 0:1128:1143  \"(size, fromArg)\"\n                let expr_component := expr\n                /// @src 0:1135:1142  \"fromArg\"\n                let _2 := loadimmutable(\"3\")\n                let expr_1 := _2\n                /// @src 0:1128:1143  \"(size, fromArg)\"\n                let expr_component_1 := expr_1\n                /// @src 0:1121:1143  \"return (size, fromArg)\"\n                var := expr_component\n                var_ := expr_component_1\n                leave\n            }\n        }\n        data \".metadata\" hex\"\"\n    }\n}\n",
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 23,
+                "contract": "testdata/differential/immutables_creation.sol:ImmutableCreation",
+                "label": "observed",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_uint256"
+              },
+              {
+                "astId": 25,
+                "contract": "testdata/differential/immutables_creation.sol:ImmutableCreation",
+                "label": "inModifier",
+                "offset": 0,
+                "slot": "1",
+                "type": "t_uint256"
+              }
+            ],
+            "types": {
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/immutables_creation.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/immutables_creation.sol",
+          "exportedSymbols": {
+            "ImmutableBase": [
+              14
+            ],
+            "ImmutableCreation": [
+              86
+            ]
+          },
+          "id": 87,
+          "license": "MIT",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "32:23:0"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "ImmutableBase",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 14,
+              "linearizedBaseContracts": [
+                14
+              ],
+              "name": "ImmutableBase",
+              "nameLocation": "441:13:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": false,
+                  "functionSelector": "2b4759d3",
+                  "id": 3,
+                  "mutability": "immutable",
+                  "name": "fromArg",
+                  "nameLocation": "486:7:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14,
+                  "src": "461:32:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 2,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "461:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 12,
+                    "nodeType": "Block",
+                    "src": "523:28:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 10,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 8,
+                            "name": "fromArg",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 3,
+                            "src": "533:7:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 9,
+                            "name": "x",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 5,
+                            "src": "543:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "533:11:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 11,
+                        "nodeType": "ExpressionStatement",
+                        "src": "533:11:0"
+                      }
+                    ]
+                  },
+                  "id": 13,
+                  "implemented": true,
+                  "kind": "constructor",
+                  "modifiers": [],
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 6,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 5,
+                        "mutability": "mutable",
+                        "name": "x",
+                        "nameLocation": "520:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 13,
+                        "src": "512:9:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 4,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "512:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "511:11:0"
+                  },
+                  "returnParameters": {
+                    "id": 7,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "523:0:0"
+                  },
+                  "scope": 14,
+                  "src": "500:51:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "public"
+                }
+              ],
+              "scope": 87,
+              "src": "432:121:0",
+              "usedErrors": [],
+              "usedEvents": []
+            },
+            {
+              "abstract": false,
+              "baseContracts": [
+                {
+                  "baseName": {
+                    "id": 15,
+                    "name": "ImmutableBase",
+                    "nameLocations": [
+                      "585:13:0"
+                    ],
+                    "nodeType": "IdentifierPath",
+                    "referencedDeclaration": 14,
+                    "src": "585:13:0"
+                  },
+                  "id": 16,
+                  "nodeType": "InheritanceSpecifier",
+                  "src": "585:13:0"
+                }
+              ],
+              "canonicalName": "ImmutableCreation",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 86,
+              "linearizedBaseContracts": [
+                86,
+                14
+              ],
+              "name": "ImmutableCreation",
+              "nameLocation": "564:17:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": false,
+                  "id": 18,
+                  "mutability": "immutable",
+                  "name": "size",
+                  "nameLocation": "623:4:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 86,
+                  "src": "605:22:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 17,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "605:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 21,
+                  "mutability": "immutable",
+                  "name": "later",
+                  "nameLocation": "651:5:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 86,
+                  "src": "633:27:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 19,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "633:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": {
+                    "hexValue": "35",
+                    "id": 20,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": true,
+                    "kind": "number",
+                    "lValueRequested": false,
+                    "nodeType": "Literal",
+                    "src": "659:1:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_rational_5_by_1",
+                      "typeString": "int_const 5"
+                    },
+                    "value": "5"
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "functionSelector": "ba210709",
+                  "id": 23,
+                  "mutability": "mutable",
+                  "name": "observed",
+                  "nameLocation": "681:8:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 86,
+                  "src": "666:23:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 22,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "666:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "constant": false,
+                  "functionSelector": "fdc085fa",
+                  "id": 25,
+                  "mutability": "mutable",
+                  "name": "inModifier",
+                  "nameLocation": "710:10:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 86,
+                  "src": "695:25:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 24,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "695:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 32,
+                    "nodeType": "Block",
+                    "src": "746:46:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 29,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 27,
+                            "name": "inModifier",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 25,
+                            "src": "756:10:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 28,
+                            "name": "later",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 21,
+                            "src": "769:5:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "756:18:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 30,
+                        "nodeType": "ExpressionStatement",
+                        "src": "756:18:0"
+                      },
+                      {
+                        "id": 31,
+                        "nodeType": "PlaceholderStatement",
+                        "src": "784:1:0"
+                      }
+                    ]
+                  },
+                  "id": 33,
+                  "name": "records",
+                  "nameLocation": "736:7:0",
+                  "nodeType": "ModifierDefinition",
+                  "parameters": {
+                    "id": 26,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "743:2:0"
+                  },
+                  "src": "727:65:0",
+                  "virtual": false,
+                  "visibility": "internal"
+                },
+                {
+                  "body": {
+                    "id": 62,
+                    "nodeType": "Block",
+                    "src": "870:85:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 50,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 47,
+                            "name": "size",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 18,
+                            "src": "880:4:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "expression": {
+                              "id": 48,
+                              "name": "b",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 35,
+                              "src": "887:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_bytes_memory_ptr",
+                                "typeString": "bytes memory"
+                              }
+                            },
+                            "id": 49,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "889:6:0",
+                            "memberName": "length",
+                            "nodeType": "MemberAccess",
+                            "src": "887:8:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "880:15:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 51,
+                        "nodeType": "ExpressionStatement",
+                        "src": "880:15:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 55,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 52,
+                            "name": "observed",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 23,
+                            "src": "905:8:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "arguments": [],
+                            "expression": {
+                              "argumentTypes": [],
+                              "id": 53,
+                              "name": "helper",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 73,
+                              "src": "916:6:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_function_internal_view$__$returns$_t_uint256_$",
+                                "typeString": "function () view returns (uint256)"
+                              }
+                            },
+                            "id": 54,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "kind": "functionCall",
+                            "lValueRequested": false,
+                            "nameLocations": [],
+                            "names": [],
+                            "nodeType": "FunctionCall",
+                            "src": "916:8:0",
+                            "tryCall": false,
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "905:19:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 56,
+                        "nodeType": "ExpressionStatement",
+                        "src": "905:19:0"
+                      },
+                      {
+                        "expression": {
+                          "arguments": [
+                            {
+                              "id": 59,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "nodeType": "UnaryOperation",
+                              "operator": "!",
+                              "prefix": true,
+                              "src": "942:5:0",
+                              "subExpression": {
+                                "id": 58,
+                                "name": "fail",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 37,
+                                "src": "943:4:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_bool",
+                                  "typeString": "bool"
+                                }
+                              },
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_bool",
+                                "typeString": "bool"
+                              }
+                            }
+                          ],
+                          "expression": {
+                            "argumentTypes": [
+                              {
+                                "typeIdentifier": "t_bool",
+                                "typeString": "bool"
+                              }
+                            ],
+                            "id": 57,
+                            "name": "require",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [
+                              -18,
+                              -18,
+                              -18
+                            ],
+                            "referencedDeclaration": -18,
+                            "src": "934:7:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_require_pure$_t_bool_$returns$__$",
+                              "typeString": "function (bool) pure"
+                            }
+                          },
+                          "id": 60,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "934:14:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$__$",
+                            "typeString": "tuple()"
+                          }
+                        },
+                        "id": 61,
+                        "nodeType": "ExpressionStatement",
+                        "src": "934:14:0"
+                      }
+                    ]
+                  },
+                  "id": 63,
+                  "implemented": true,
+                  "kind": "constructor",
+                  "modifiers": [
+                    {
+                      "arguments": [
+                        {
+                          "commonType": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          },
+                          "id": 42,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftExpression": {
+                            "id": 40,
+                            "name": "later",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 21,
+                            "src": "851:5:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "BinaryOperation",
+                          "operator": "+",
+                          "rightExpression": {
+                            "hexValue": "31",
+                            "id": 41,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "number",
+                            "lValueRequested": false,
+                            "nodeType": "Literal",
+                            "src": "859:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_rational_1_by_1",
+                              "typeString": "int_const 1"
+                            },
+                            "value": "1"
+                          },
+                          "src": "851:9:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        }
+                      ],
+                      "id": 43,
+                      "kind": "baseConstructorSpecifier",
+                      "modifierName": {
+                        "id": 39,
+                        "name": "ImmutableBase",
+                        "nameLocations": [
+                          "837:13:0"
+                        ],
+                        "nodeType": "IdentifierPath",
+                        "referencedDeclaration": 14,
+                        "src": "837:13:0"
+                      },
+                      "nodeType": "ModifierInvocation",
+                      "src": "837:24:0"
+                    },
+                    {
+                      "id": 45,
+                      "kind": "modifierInvocation",
+                      "modifierName": {
+                        "id": 44,
+                        "name": "records",
+                        "nameLocations": [
+                          "862:7:0"
+                        ],
+                        "nodeType": "IdentifierPath",
+                        "referencedDeclaration": 33,
+                        "src": "862:7:0"
+                      },
+                      "nodeType": "ModifierInvocation",
+                      "src": "862:7:0"
+                    }
+                  ],
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 38,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 35,
+                        "mutability": "mutable",
+                        "name": "b",
+                        "nameLocation": "823:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 63,
+                        "src": "810:14:0",
+                        "stateVariable": false,
+                        "storageLocation": "memory",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bytes_memory_ptr",
+                          "typeString": "bytes"
+                        },
+                        "typeName": {
+                          "id": 34,
+                          "name": "bytes",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "810:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bytes_storage_ptr",
+                            "typeString": "bytes"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 37,
+                        "mutability": "mutable",
+                        "name": "fail",
+                        "nameLocation": "831:4:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 63,
+                        "src": "826:9:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bool",
+                          "typeString": "bool"
+                        },
+                        "typeName": {
+                          "id": 36,
+                          "name": "bool",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "826:4:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "809:27:0"
+                  },
+                  "returnParameters": {
+                    "id": 46,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "870:0:0"
+                  },
+                  "scope": 86,
+                  "src": "798:157:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 72,
+                    "nodeType": "Block",
+                    "src": "1011:36:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "commonType": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          },
+                          "id": 70,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftExpression": {
+                            "id": 68,
+                            "name": "size",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 18,
+                            "src": "1028:4:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "BinaryOperation",
+                          "operator": "+",
+                          "rightExpression": {
+                            "id": 69,
+                            "name": "later",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 21,
+                            "src": "1035:5:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "1028:12:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 67,
+                        "id": 71,
+                        "nodeType": "Return",
+                        "src": "1021:19:0"
+                      }
+                    ]
+                  },
+                  "id": 73,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "helper",
+                  "nameLocation": "970:6:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 64,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "976:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 67,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 66,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 73,
+                        "src": "1002:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 65,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1002:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "1001:9:0"
+                  },
+                  "scope": 86,
+                  "src": "961:86:0",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "internal"
+                },
+                {
+                  "body": {
+                    "id": 84,
+                    "nodeType": "Block",
+                    "src": "1111:39:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "components": [
+                            {
+                              "id": 80,
+                              "name": "size",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 18,
+                              "src": "1129:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            {
+                              "id": 81,
+                              "name": "fromArg",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 3,
+                              "src": "1135:7:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            }
+                          ],
+                          "id": 82,
+                          "isConstant": false,
+                          "isInlineArray": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "nodeType": "TupleExpression",
+                          "src": "1128:15:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$_t_uint256_$_t_uint256_$",
+                            "typeString": "tuple(uint256,uint256)"
+                          }
+                        },
+                        "functionReturnParameters": 79,
+                        "id": 83,
+                        "nodeType": "Return",
+                        "src": "1121:22:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "e4da41a7",
+                  "id": 85,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "sizes",
+                  "nameLocation": "1062:5:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 74,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "1067:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 79,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 76,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 85,
+                        "src": "1093:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 75,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1093:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 78,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 85,
+                        "src": "1102:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 77,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1102:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "1092:18:0"
+                  },
+                  "scope": 86,
+                  "src": "1053:97:0",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 87,
+              "src": "555:597:0",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "32:1121:0"
+        },
+        "id": 0
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}

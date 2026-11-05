@@ -234,8 +234,9 @@ End
 (* Dispatch: external functions by selector; empty calldata reaches receive,
  * and any other unmatched calldata the fallback, given with whether it is
  * payable. Creation runs the creation procedure on the constructor's
- * arguments, given with whether it accepts value. The immutables are those
- * of value type the program reads, with their types. *)
+ * arguments, given with whether it accepts value. The immutables are all the
+ * contract's immutables, unread ones included, with their types: creation
+ * reserves a memory word for each. *)
 Datatype:
   core_program = <|
     procedures : core_procedure list;

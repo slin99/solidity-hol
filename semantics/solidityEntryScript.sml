@@ -128,7 +128,8 @@ End
  * is empty. A creation sent value reverts unless the constructor is payable,
  * and arguments the decoder rejects revert. The immutables start at zero, and
  * a successful creation yields their values. Memory above the scratch space
- * holds a word for each immutable, then the copied arguments.
+ * holds a word for each immutable, then the copied arguments, so both the
+ * decoder and the constructor allocate above them.
  *)
 Definition deploy_contract_def:
   deploy_contract fuel (prog : core_program) (fr : source_frame)
@@ -141,13 +142,14 @@ Definition deploy_contract_def:
         case lookup_procedure env f of
           NONE => ContractInvalid "unknown procedure"
         | SOME p =>
+            let reserved = 32 * LENGTH prog.immutables +
+                           32 * ((LENGTH fr.call_data + 31) DIV 32) in
             case decode_arguments (MAP SND p.parameters) fr.call_data 0
-              (128 + 32 * ((LENGTH fr.call_data + 31) DIV 32)) of
+              (128 + reserved) of
               INR (PanicCompletion n) => ContractReverted (panic_data n) w
             | INR _ => ContractReverted [] w
             | INL args => run_entry fuel env p args (fr with call_data := []) w
-                FEMPTY (32 * LENGTH prog.immutables +
-                        32 * ((LENGTH fr.call_data + 31) DIV 32)) T
+                FEMPTY reserved T
 End
 
 Theorem call_contract_revert_restores_world:

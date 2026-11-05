@@ -823,11 +823,12 @@ End
 
 (* The builtins an inline assembly block may not use. The source state keeps
  * no remaining gas, no return data buffer and no code, so gas, calls, return
- * data and the code and data builtins are left out. *)
+ * data and the code and data builtins are left out, and so is setimmutable,
+ * which only the compiler's creation code uses. *)
 Definition assembly_unsupported_def:
   assembly_unsupported =
     [YGas; YCall; YStaticCall; YReturnDataSize; YReturnDataCopy;
-     YCodeSize; YCodeCopy; YDataSize; YDataOffset]
+     YCodeSize; YCodeCopy; YDataSize; YDataOffset; YSetImmutable]
 End
 
 (* The builtins that change the world, which a static frame forbids. *)
