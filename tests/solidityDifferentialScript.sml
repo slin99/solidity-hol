@@ -130,7 +130,13 @@ Definition function_types_def:
                       OPTION_MAP (λ(keys, result). (keys, [getter_result result]))
                         (getter_shape ty)
                   | NONE => NONE)
-             | [] => NONE)
+             | [] =>
+               case FILTER (λv. v.var_name = name ∧
+                                MEM v.var_info.node_id (MAP FST c.contract_getters))
+                      (MAP FST c.contract_constants) of
+                 v :: _ =>
+                   OPTION_MAP (λ(_, ty). ([], [ty])) (constant_variable c.contract_bases v)
+               | [] => NONE)
         | [] => NONE
 End
 
