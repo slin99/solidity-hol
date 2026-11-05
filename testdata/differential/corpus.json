@@ -904,6 +904,7 @@
         {"name": "contract_comparisons", "function": "same", "args": [20480], "storage": {"0": 20480}, "immutables": {"fixedToken": 20480}, "expect": {"return": [true, true]}},
         {"name": "contract_comparisons_differ", "function": "same", "args": [24576], "storage": {"0": 20480}, "immutables": {"fixedToken": 20480}, "expect": {"return": [false, false]}},
         {"name": "state_contract_call_with_log", "function": "pay", "args": [12288, 20], "storage": {"0": 20480}, "peer_storage": {"105429781766569857922126575625563349147740172486500053377004878340415369987525": 50}, "expect": {"return": [true]}, "final_storage": {"0": 20480}, "logs": [{"logger": "0x5000", "topics": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", "0x0000000000000000000000000000000000000000000000000000000000001000", "0x0000000000000000000000000000000000000000000000000000000000003000"], "data": "0x0000000000000000000000000000000000000000000000000000000000000014"}]},
+        {"name": "self_addresses", "function": "selfAddresses", "args": [], "expect": {"return": [4096, 4096]}},
         {"name": "call_through_this", "function": "selfCall", "args": [5], "storage": {"3": 2}, "expect": {"return": [14]}, "final_storage": {"3": 7}}
       ]
     },

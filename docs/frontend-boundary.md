@@ -208,7 +208,8 @@ identifiers of expressions and in storage layouts. `I(a)` is a conversion to
 `address`, `this` is the contract's own address, and an external call
 `c.f{value: v}(args)` may name any contract-typed `c`. `new C`, `type(C)`,
 external calls to getters and the members of external functions, such as
-`c.f.selector`, are rejected.
+`c.f.selector`, are rejected, as are overloads that differ only in
+contract-typed parameters, which reading them as `address` would merge.
 
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,

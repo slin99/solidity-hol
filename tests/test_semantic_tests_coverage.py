@@ -160,6 +160,12 @@ class GetterTests(unittest.TestCase):
                                                      elementary(22, "t_uint256"))))
         self.assertFalse(coverage.has_getter({"nodeType": "UserDefinedTypeName", "id": 30,
                                               "typeDescriptions": {"typeIdentifier": "t_struct$_S_$1_storage_ptr"}}))
+        # A contract type is read as address.
+        contract_typed = {"nodeType": "UserDefinedTypeName", "id": 31,
+                          "typeDescriptions": {"typeIdentifier": "t_contract$_C_$2"}}
+        public_contract = dict(variable(5, state=True, visibility="public",
+                                        type_identifier="t_contract$_C_$2"), typeName=contract_typed)
+        self.assertEqual(coverage.scan({"t.sol": unit([public_contract, function(4, [])])}), {})
         state = dict(variable(3, state=True, visibility="public"), typeName=elementary(103, "t_uint256"))
         self.assertEqual(coverage.scan({"t.sol": unit([state, function(4, [])])}), {})
         overriding = dict(state, overrides={"nodeType": "OverrideSpecifier", "id": 104, "overrides": []})
@@ -888,6 +894,18 @@ class ClassifyTests(unittest.TestCase):
                     if n.get("nodeType") == "FunctionCall" and n["expression"] is fill)
         self.assertEqual(coverage.scan(asts), {call["id"]: [coverage.Blocker(
             "FunctionCall", "bound calls copying their receiver", "import")]})
+
+    def test_overloads_differing_only_in_contract_types_are_blocked(self) -> None:
+        def overload(node_id, type_identifier):
+            parameter = variable(node_id + 1, type_identifier=type_identifier)
+            return dict(function(node_id, []), name="f", parameters={
+                "nodeType": "ParameterList", "id": node_id + 100, "parameters": [parameter]})
+
+        blocker = coverage.Blocker("FunctionDefinition", "overloads differing only in contract types", "import")
+        found = coverage.scan({"t.sol": unit([overload(4, "t_contract$_C_$2"), overload(10, "t_address")])})
+        self.assertEqual((found[4], found[10]), ([blocker], [blocker]))
+        self.assertEqual(coverage.scan({"t.sol": unit([overload(4, "t_contract$_C_$2"),
+                                                       overload(10, "t_uint256")])}), {})
 
     def test_bound_call_receivers_are_coerced_to_the_first_parameter(self) -> None:
         artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())

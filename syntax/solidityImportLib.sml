@@ -116,13 +116,6 @@ fun environment_field v base member =
 fun builtin_identifier v id =
   node_type v = "Identifier" andalso int_field v "referencedDeclaration" = id
 
-(* address(this) *)
-fun self_address v args =
-  string_field v "kind" = "typeConversion" andalso
-  node_type (field v "expression") = "ElementaryTypeNameExpression" andalso
-  string_field (field (field v "expression") "typeName") "name" = "address" andalso
-  (case args of [a] => builtin_identifier a ~28 | _ => false)
-
 (* "start:length:source" *)
 fun location v =
   case String.fields (fn c => c = #":") (string_field v "src") of
@@ -148,7 +141,7 @@ fun erase_contracts s =
     fun at i p = String.isPrefix p (String.extract (s, i, NONE))
     fun digits i =
       if i < n andalso Char.isDigit (String.sub (s, i)) then digits (i + 1) else i
-    (* The end of "C_$n", where a "$" in C is escaped as "$$". *)
+    (* The end of "C_$n", where a "$" in C is escaped as "$$$". *)
     fun name_end i =
       if i + 2 >= n then fail ("malformed contract type identifier " ^ s)
       else if at i "_$" andalso Char.isDigit (String.sub (s, i + 2))
@@ -460,11 +453,6 @@ fun expr v = within v (fn v =>
              optionSyntax.mk_option expr_ty),
           type_id v])
   | "FunctionCall" =>
-      if self_address v (JSONUtil.arrayMap I (field v "arguments")) then
-        con "SrcEnvironment"
-          [info v, prim_mk_const {Thy = "solidityCore", Name = "SelfAddress"},
-           type_id v]
-      else
       let
         val args = JSONUtil.arrayMap expr (field v "arguments")
         val callee = field v "expression"
@@ -499,7 +487,9 @@ fun expr v = within v (fn v =>
                   mk_opt expr_ty condition, mk_opt expr_ty message, type_id v]
               end
             else if node_type callee = "NewExpression" then
-              (require v (length args = 1) "new takes one argument";
+              (require v (node_type (field callee "typeName") <> "UserDefinedTypeName")
+                 "contract creation (new C) is not supported";
+               require v (length args = 1) "new takes one argument";
                con "SrcNew"
                  [info v, type_name (field callee "typeName"), hd args,
                   type_id v])
@@ -946,6 +936,16 @@ fun contract external_structs contracts declared v = within v (fn v =>
       JSONUtil.arrayMap
         (fn p => string_field (field p "typeDescriptions") "typeIdentifier")
         (field (field f "parameters") "parameters")
+    (* Contract types are read as address, so overloads that differ only in
+     * contract-typed parameters could not be told apart where functions are
+     * matched by parameter types, as super targets are. *)
+    val () =
+      List.app (fn f => List.app (fn g =>
+        if string_field f "name" = string_field g "name" andalso
+           parameter_types f <> parameter_types g andalso
+           map erase_contracts (parameter_types f) = map erase_contracts (parameter_types g)
+        then fail (describe g ^ ": overloads differing only in contract types are not supported")
+        else ()) functions) functions
     fun after f =
       let
         fun go [] = []

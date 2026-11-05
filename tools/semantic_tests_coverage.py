@@ -750,7 +750,8 @@ def has_getter(type_name: dict[str, Any]) -> bool:
     if kind == "ArrayTypeName":
         return has_getter(type_name["baseType"])
     type_identifier = type_name["typeDescriptions"].get("typeIdentifier") or ""
-    return (kind == "ElementaryTypeName"
+    # A contract type name is read as address.
+    return (kind in ("ElementaryTypeName", "UserDefinedTypeName")
             and (VALUE_TYPE.fullmatch(type_identifier) is not None
                  or type_identifier in ("t_bytes_storage_ptr", "t_string_storage_ptr")))
 
@@ -1250,24 +1251,49 @@ def special_forms(reached: dict[int, dict[str, Any]],
               and node["expression"]["typeDescriptions"].get("typeIdentifier", "").startswith("t_type$_t_contract$_")):
             # I(a): the importer reads a conversion to address
             unread.add(node["expression"]["id"])
-        elif (kind == "FunctionCall" and node["kind"] == "typeConversion"
-              and len(node["arguments"]) == 1 and node["arguments"][0]["nodeType"] == "Identifier"
-              and node["arguments"][0].get("referencedDeclaration") == THIS
-              and node["expression"]["nodeType"] == "ElementaryTypeNameExpression"
-              and node["expression"]["typeName"]["name"] == "address"):
-            unread.add(node["arguments"][0]["id"])
     return unread, found
 
 
 # A contract type's identifier, other than within a type expression's: the
 # importer reads it as t_address (erase_contracts in solidityImportLib).
-CONTRACT_TYPE = re.compile(r'(?<!t_type\$_)t_contract\$_[^"]*?_\$[0-9]+')
+CONTRACT_TYPE = re.compile(r'(?<!t_type\$_)t_contract\$_.*?_\$[0-9]+')
+
+
+def erase_contracts(value: Any) -> Any:
+    """A copy of an AST with contract types read as t_address in its type
+    identifiers."""
+    if isinstance(value, dict):
+        return {k: (CONTRACT_TYPE.sub("t_address", v) if k == "typeIdentifier" and isinstance(v, str)
+                    else erase_contracts(v)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [erase_contracts(v) for v in value]
+    return value
+
+
+def contract_overloads(asts: dict[str, Any]) -> set[int]:
+    """The functions of an imported contract's bases with another of the same
+    name whose parameter types differ only in contract types, which the
+    importer rejects."""
+    by_id = {n["id"]: n for ast in asts.values() for n in nodes(ast)}
+    def types(f: dict[str, Any]) -> list[str]:
+        return [p.get("typeDescriptions", {}).get("typeIdentifier") or "" for p in f["parameters"]["parameters"]]
+    found: set[int] = set()
+    for ast in asts.values():
+        for contract in deployable(ast):
+            functions = [m for b in contract["linearizedBaseContracts"] if b in by_id
+                         for m in by_id[b]["nodes"] if m["nodeType"] == "FunctionDefinition"]
+            found.update(g["id"] for f in functions for g in functions
+                         if f.get("name") == g.get("name") and types(f) != types(g)
+                         and [CONTRACT_TYPE.sub("t_address", t) for t in types(f)]
+                         == [CONTRACT_TYPE.sub("t_address", t) for t in types(g)])
+    return found
 
 
 def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     """Every node the importer reads that the semantics rejects, by node id,
     the importer's reasons first."""
-    asts = json.loads(CONTRACT_TYPE.sub("t_address", json.dumps(asts)))
+    overloads = contract_overloads(asts)
+    asts = erase_contracts(asts)
     by_id = {n["id"]: n for ast in asts.values() for n in nodes(ast)}
     reached = {n["id"]: n for root in imported(asts, by_id) for n in nodes(root, skip=lambda n: not read(n))}
     reached.update((ast["id"], ast) for ast in asts.values())
@@ -1368,6 +1394,9 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                     found.setdefault(v["id"], []).append(Blocker(
                         "VariableDeclaration", "static memory array returns under modifiers",
                         "elaboration"))
+    for f in overloads:
+        found.setdefault(f, []).append(Blocker(
+            "FunctionDefinition", "overloads differing only in contract types", "import"))
     # The checker and the elaborator see only the functions nothing overrides.
     found = {i: [b for b in bs if not (i in dead and b.stage == "elaboration")]
              for i, bs in found.items() if i in reached}

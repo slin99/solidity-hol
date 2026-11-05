@@ -59,6 +59,13 @@ contract Holder {
         return calls;
     }
 
+    receive() external payable {}
+
+    // payable(this) needs the receive function.
+    function selfAddresses() external view returns (address, address payable) {
+        return (address(this), payable(this));
+    }
+
     // The call through this runs the deployed code, whose write is seen after.
     function selfCall(uint256 by) external returns (uint256) {
         return this.bump(by) + calls;
