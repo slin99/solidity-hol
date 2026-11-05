@@ -4,9 +4,14 @@ pragma solidity 0.8.37;
 // Constants: each reference evaluates the constant's value at the declared
 // type, with checked arithmetic, and a public constant has a getter.
 contract Units {
+    uint256 public base;
     uint256 internal constant RAY = 10 ** 27;
     uint256 internal constant HALF_RAY = RAY / 2;
     string public constant NAME = "Units";
+
+    constructor(uint256 b) {
+        base = b;
+    }
 }
 
 contract Constants is Units {
@@ -21,12 +26,29 @@ contract Constants is Units {
 
     uint256 public scaled = 3 * RAY;
 
+    constructor() Units(DECIMALS * 2) {}
+
     function rmul(uint256 x, uint256 y) public pure returns (uint256) {
         return (x * y + HALF_RAY) / RAY;
     }
 
     function overflows() public pure returns (uint8) {
         return OVER;
+    }
+
+    function wraps() public pure returns (uint8) {
+        unchecked {
+            return OVER;
+        }
+    }
+
+    modifier below(uint256 limit, uint256 x) {
+        require(x < limit);
+        _;
+    }
+
+    function capped(uint256 x) public pure below(DECIMALS, x) returns (uint256) {
+        return x;
     }
 
     function negated() public pure returns (int256) {

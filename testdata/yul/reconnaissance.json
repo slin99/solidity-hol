@@ -1278,18 +1278,18 @@
           "objects": [
             {
               "builtins": {
-                "and": 2,
+                "and": 3,
                 "callvalue": 1,
                 "codecopy": 1,
                 "dataoffset": 1,
                 "datasize": 2,
                 "div": 1,
-                "eq": 1,
-                "iszero": 2,
+                "eq": 2,
+                "iszero": 3,
                 "memoryguard": 1,
                 "mload": 1,
                 "mstore": 3,
-                "mul": 1,
+                "mul": 2,
                 "not": 1,
                 "or": 2,
                 "return": 1,
@@ -1300,18 +1300,18 @@
               },
               "dataSections": 0,
               "depth": 0,
-              "name": "Constants_180",
+              "name": "Constants_238",
               "nodeKinds": {
-                "assignment": 17,
-                "block": 21,
-                "expressionStatement": 13,
-                "functionCall": 52,
-                "functionDefinition": 18,
-                "identifier": 35,
-                "if": 2,
-                "literal:number": 16,
+                "assignment": 27,
+                "block": 30,
+                "expressionStatement": 15,
+                "functionCall": 75,
+                "functionDefinition": 26,
+                "identifier": 58,
+                "if": 3,
+                "literal:number": 20,
                 "literal:string": 3,
-                "variableDeclaration": 9
+                "variableDeclaration": 19
               },
               "role": "creation",
               "stage": "ir",
@@ -1323,48 +1323,48 @@
                 "and": 6,
                 "byte": 1,
                 "calldataload": 2,
-                "calldatasize": 15,
-                "callvalue": 14,
+                "calldatasize": 18,
+                "callvalue": 17,
                 "div": 2,
                 "eq": 5,
                 "gt": 3,
-                "iszero": 11,
-                "lt": 3,
+                "iszero": 12,
+                "lt": 4,
                 "mcopy": 1,
                 "memoryguard": 1,
                 "mload": 4,
                 "mstore": 22,
                 "mstore8": 1,
-                "mul": 5,
+                "mul": 6,
                 "not": 1,
                 "or": 4,
-                "return": 14,
-                "revert": 9,
+                "return": 17,
+                "revert": 10,
                 "sdiv": 1,
                 "shl": 2,
                 "shr": 3,
                 "sload": 2,
                 "slt": 8,
-                "sub": 18
+                "sub": 21
               },
               "dataSections": 1,
               "depth": 1,
-              "name": "Constants_180_deployed",
+              "name": "Constants_238_deployed",
               "nodeKinds": {
-                "assignment": 127,
-                "block": 184,
-                "case": 14,
+                "assignment": 139,
+                "block": 203,
+                "case": 17,
                 "default": 1,
-                "expressionStatement": 112,
-                "functionCall": 451,
-                "functionDefinition": 136,
-                "identifier": 347,
-                "if": 29,
-                "leave": 8,
-                "literal:number": 141,
+                "expressionStatement": 125,
+                "functionCall": 501,
+                "functionDefinition": 148,
+                "identifier": 399,
+                "if": 33,
+                "leave": 10,
+                "literal:number": 153,
                 "literal:string": 2,
                 "switch": 1,
-                "variableDeclaration": 137
+                "variableDeclaration": 172
               },
               "role": "runtime",
               "stage": "ir",
@@ -1372,18 +1372,18 @@
             },
             {
               "builtins": {
-                "and": 2,
+                "and": 3,
                 "callvalue": 1,
                 "codecopy": 1,
                 "dataoffset": 1,
                 "datasize": 2,
                 "div": 1,
-                "eq": 1,
-                "iszero": 2,
+                "eq": 2,
+                "iszero": 3,
                 "memoryguard": 1,
                 "mload": 1,
                 "mstore": 3,
-                "mul": 1,
+                "mul": 2,
                 "not": 2,
                 "or": 2,
                 "return": 1,
@@ -1394,18 +1394,18 @@
               },
               "dataSections": 0,
               "depth": 0,
-              "name": "Constants_180",
+              "name": "Constants_238",
               "nodeKinds": {
-                "assignment": 17,
-                "block": 21,
-                "expressionStatement": 12,
-                "functionCall": 53,
-                "functionDefinition": 17,
-                "identifier": 35,
-                "if": 2,
-                "literal:number": 17,
+                "assignment": 27,
+                "block": 31,
+                "expressionStatement": 15,
+                "functionCall": 77,
+                "functionDefinition": 26,
+                "identifier": 57,
+                "if": 3,
+                "literal:number": 21,
                 "literal:string": 3,
-                "variableDeclaration": 9
+                "variableDeclaration": 18
               },
               "role": "creation",
               "stage": "ir-optimized-off",
@@ -1417,48 +1417,48 @@
                 "and": 6,
                 "byte": 1,
                 "calldataload": 2,
-                "calldatasize": 15,
-                "callvalue": 14,
+                "calldatasize": 18,
+                "callvalue": 17,
                 "div": 2,
                 "eq": 5,
                 "gt": 3,
-                "iszero": 11,
-                "lt": 3,
+                "iszero": 12,
+                "lt": 4,
                 "mcopy": 1,
                 "memoryguard": 1,
                 "mload": 4,
                 "mstore": 22,
                 "mstore8": 1,
-                "mul": 5,
+                "mul": 6,
                 "not": 4,
                 "or": 4,
-                "return": 14,
-                "revert": 8,
+                "return": 17,
+                "revert": 9,
                 "sdiv": 1,
                 "shl": 9,
                 "shr": 3,
                 "sload": 2,
                 "slt": 8,
-                "sub": 18
+                "sub": 21
               },
               "dataSections": 1,
               "depth": 1,
-              "name": "Constants_180_deployed",
+              "name": "Constants_238_deployed",
               "nodeKinds": {
-                "assignment": 127,
-                "block": 181,
-                "case": 14,
+                "assignment": 139,
+                "block": 200,
+                "case": 17,
                 "default": 1,
-                "expressionStatement": 111,
-                "functionCall": 460,
-                "functionDefinition": 135,
-                "identifier": 346,
-                "if": 29,
-                "leave": 8,
-                "literal:number": 146,
+                "expressionStatement": 124,
+                "functionCall": 510,
+                "functionDefinition": 147,
+                "identifier": 398,
+                "if": 33,
+                "leave": 10,
+                "literal:number": 158,
                 "literal:string": 2,
                 "switch": 1,
-                "variableDeclaration": 136
+                "variableDeclaration": 171
               },
               "role": "runtime",
               "stage": "ir-optimized-off",
@@ -1474,18 +1474,18 @@
                 "mstore": 1,
                 "return": 1,
                 "revert": 1,
-                "sstore": 1
+                "sstore": 2
               },
               "dataSections": 0,
               "depth": 0,
-              "name": "Constants_180",
+              "name": "Constants_238",
               "nodeKinds": {
                 "block": 3,
-                "expressionStatement": 5,
-                "functionCall": 9,
+                "expressionStatement": 6,
+                "functionCall": 10,
                 "identifier": 5,
                 "if": 1,
-                "literal:number": 6,
+                "literal:number": 8,
                 "literal:string": 2,
                 "variableDeclaration": 2
               },
@@ -1495,48 +1495,48 @@
             },
             {
               "builtins": {
-                "add": 31,
+                "add": 34,
                 "and": 2,
-                "calldataload": 4,
-                "calldatasize": 15,
-                "callvalue": 14,
+                "calldataload": 5,
+                "calldatasize": 18,
+                "callvalue": 17,
                 "div": 4,
                 "eq": 3,
                 "gt": 4,
-                "iszero": 9,
-                "lt": 3,
+                "iszero": 10,
+                "lt": 4,
                 "mcopy": 1,
                 "memoryguard": 1,
-                "mload": 19,
-                "mstore": 44,
+                "mload": 22,
+                "mstore": 47,
                 "mstore8": 1,
                 "mul": 2,
-                "not": 16,
+                "not": 19,
                 "or": 5,
-                "return": 13,
-                "revert": 39,
+                "return": 16,
+                "revert": 46,
                 "shl": 16,
                 "shr": 1,
-                "sload": 2,
-                "slt": 14,
+                "sload": 3,
+                "slt": 17,
                 "sub": 3
               },
               "dataSections": 1,
               "depth": 1,
-              "name": "Constants_180_deployed",
+              "name": "Constants_238_deployed",
               "nodeKinds": {
                 "assignment": 9,
-                "block": 57,
-                "case": 14,
-                "expressionStatement": 98,
-                "functionCall": 273,
+                "block": 67,
+                "case": 17,
+                "expressionStatement": 111,
+                "functionCall": 308,
                 "functionDefinition": 3,
-                "identifier": 94,
-                "if": 38,
-                "literal:number": 258,
+                "identifier": 103,
+                "if": 45,
+                "literal:number": 291,
                 "literal:string": 2,
                 "switch": 1,
-                "variableDeclaration": 39
+                "variableDeclaration": 44
               },
               "role": "runtime",
               "stage": "ir-optimized-on",
@@ -1549,30 +1549,44 @@
           "objects": [
             {
               "builtins": {
+                "add": 4,
+                "and": 3,
                 "callvalue": 1,
-                "codecopy": 1,
+                "codecopy": 2,
+                "codesize": 1,
                 "dataoffset": 1,
-                "datasize": 2,
+                "datasize": 3,
+                "eq": 1,
+                "gt": 1,
+                "iszero": 1,
+                "lt": 1,
                 "memoryguard": 1,
-                "mload": 1,
-                "mstore": 1,
+                "mload": 2,
+                "mstore": 4,
+                "not": 2,
+                "or": 2,
                 "return": 1,
-                "revert": 1
+                "revert": 5,
+                "shl": 1,
+                "sload": 1,
+                "slt": 1,
+                "sstore": 1,
+                "sub": 2
               },
               "dataSections": 0,
               "depth": 0,
-              "name": "Units_15",
+              "name": "Units_27",
               "nodeKinds": {
-                "assignment": 1,
-                "block": 5,
-                "expressionStatement": 6,
-                "functionCall": 13,
-                "functionDefinition": 3,
-                "identifier": 2,
-                "if": 1,
-                "literal:number": 5,
-                "literal:string": 3,
-                "variableDeclaration": 1
+                "assignment": 14,
+                "block": 26,
+                "expressionStatement": 20,
+                "functionCall": 64,
+                "functionDefinition": 20,
+                "identifier": 48,
+                "if": 4,
+                "literal:number": 26,
+                "literal:string": 4,
+                "variableDeclaration": 12
               },
               "role": "creation",
               "stage": "ir",
@@ -1580,43 +1594,45 @@
             },
             {
               "builtins": {
-                "add": 11,
+                "add": 13,
                 "and": 1,
                 "calldataload": 1,
-                "calldatasize": 2,
-                "callvalue": 1,
+                "calldatasize": 3,
+                "callvalue": 2,
                 "gt": 2,
                 "iszero": 1,
                 "lt": 2,
                 "mcopy": 1,
                 "memoryguard": 1,
                 "mload": 2,
-                "mstore": 9,
+                "mstore": 10,
+                "mul": 1,
                 "not": 1,
                 "or": 1,
-                "return": 1,
+                "return": 2,
                 "revert": 4,
-                "shr": 1,
+                "shr": 2,
+                "sload": 1,
                 "slt": 1,
-                "sub": 3
+                "sub": 4
               },
               "dataSections": 1,
               "depth": 1,
-              "name": "Units_15_deployed",
+              "name": "Units_27_deployed",
               "nodeKinds": {
-                "assignment": 17,
-                "block": 31,
-                "case": 1,
+                "assignment": 24,
+                "block": 42,
+                "case": 2,
                 "default": 1,
-                "expressionStatement": 25,
-                "functionCall": 73,
-                "functionDefinition": 23,
-                "identifier": 51,
-                "if": 5,
-                "literal:number": 35,
+                "expressionStatement": 31,
+                "functionCall": 95,
+                "functionDefinition": 32,
+                "identifier": 71,
+                "if": 6,
+                "literal:number": 42,
                 "literal:string": 1,
                 "switch": 1,
-                "variableDeclaration": 8
+                "variableDeclaration": 13
               },
               "role": "runtime",
               "stage": "ir",
@@ -1624,30 +1640,44 @@
             },
             {
               "builtins": {
+                "add": 4,
+                "and": 3,
                 "callvalue": 1,
-                "codecopy": 1,
+                "codecopy": 2,
+                "codesize": 1,
                 "dataoffset": 1,
-                "datasize": 2,
+                "datasize": 3,
+                "eq": 1,
+                "gt": 1,
+                "iszero": 1,
+                "lt": 1,
                 "memoryguard": 1,
-                "mload": 1,
-                "mstore": 1,
+                "mload": 2,
+                "mstore": 4,
+                "not": 3,
+                "or": 2,
                 "return": 1,
-                "revert": 1
+                "revert": 4,
+                "shl": 3,
+                "sload": 1,
+                "slt": 1,
+                "sstore": 1,
+                "sub": 3
               },
               "dataSections": 0,
               "depth": 0,
-              "name": "Units_15",
+              "name": "Units_27",
               "nodeKinds": {
-                "assignment": 1,
-                "block": 5,
-                "expressionStatement": 5,
-                "functionCall": 12,
-                "functionDefinition": 2,
-                "identifier": 2,
-                "if": 1,
-                "literal:number": 5,
-                "literal:string": 3,
-                "variableDeclaration": 1
+                "assignment": 14,
+                "block": 25,
+                "expressionStatement": 19,
+                "functionCall": 67,
+                "functionDefinition": 19,
+                "identifier": 47,
+                "if": 4,
+                "literal:number": 27,
+                "literal:string": 4,
+                "variableDeclaration": 11
               },
               "role": "creation",
               "stage": "ir-optimized-off",
@@ -1655,44 +1685,46 @@
             },
             {
               "builtins": {
-                "add": 11,
+                "add": 13,
                 "and": 1,
                 "calldataload": 1,
-                "calldatasize": 2,
-                "callvalue": 1,
+                "calldatasize": 3,
+                "callvalue": 2,
                 "gt": 2,
                 "iszero": 1,
                 "lt": 2,
                 "mcopy": 1,
                 "memoryguard": 1,
                 "mload": 2,
-                "mstore": 9,
+                "mstore": 10,
+                "mul": 1,
                 "not": 1,
                 "or": 1,
-                "return": 1,
+                "return": 2,
                 "revert": 4,
                 "shl": 1,
-                "shr": 1,
+                "shr": 2,
+                "sload": 1,
                 "slt": 1,
-                "sub": 3
+                "sub": 4
               },
               "dataSections": 1,
               "depth": 1,
-              "name": "Units_15_deployed",
+              "name": "Units_27_deployed",
               "nodeKinds": {
-                "assignment": 17,
-                "block": 32,
-                "case": 1,
+                "assignment": 24,
+                "block": 43,
+                "case": 2,
                 "default": 1,
-                "expressionStatement": 25,
-                "functionCall": 74,
-                "functionDefinition": 23,
-                "identifier": 51,
-                "if": 5,
-                "literal:number": 36,
+                "expressionStatement": 31,
+                "functionCall": 96,
+                "functionDefinition": 32,
+                "identifier": 71,
+                "if": 6,
+                "literal:number": 43,
                 "literal:string": 1,
                 "switch": 1,
-                "variableDeclaration": 8
+                "variableDeclaration": 13
               },
               "role": "runtime",
               "stage": "ir-optimized-off",
@@ -1700,27 +1732,39 @@
             },
             {
               "builtins": {
+                "add": 3,
+                "and": 1,
                 "callvalue": 1,
-                "codecopy": 1,
+                "codecopy": 2,
+                "codesize": 1,
                 "dataoffset": 1,
-                "datasize": 1,
+                "datasize": 2,
+                "gt": 1,
+                "lt": 1,
                 "memoryguard": 1,
-                "mstore": 1,
+                "mload": 2,
+                "mstore": 3,
+                "not": 1,
+                "or": 1,
                 "return": 1,
-                "revert": 1
+                "revert": 3,
+                "shl": 2,
+                "slt": 1,
+                "sstore": 1,
+                "sub": 3
               },
               "dataSections": 0,
               "depth": 0,
-              "name": "Units_15",
+              "name": "Units_27",
               "nodeKinds": {
-                "block": 3,
-                "expressionStatement": 4,
-                "functionCall": 8,
-                "identifier": 5,
-                "if": 1,
-                "literal:number": 4,
-                "literal:string": 2,
-                "variableDeclaration": 2
+                "block": 5,
+                "expressionStatement": 10,
+                "functionCall": 32,
+                "identifier": 18,
+                "if": 3,
+                "literal:number": 21,
+                "literal:string": 3,
+                "variableDeclaration": 6
               },
               "role": "creation",
               "stage": "ir-optimized-on",
@@ -1728,40 +1772,42 @@
             },
             {
               "builtins": {
-                "add": 10,
+                "add": 11,
                 "and": 1,
                 "calldataload": 1,
-                "calldatasize": 2,
-                "callvalue": 1,
-                "eq": 1,
+                "calldatasize": 3,
+                "callvalue": 2,
                 "gt": 1,
                 "iszero": 1,
                 "lt": 2,
                 "mcopy": 1,
                 "memoryguard": 1,
-                "mload": 2,
-                "mstore": 8,
-                "not": 2,
+                "mload": 3,
+                "mstore": 10,
+                "not": 3,
                 "or": 1,
-                "return": 1,
-                "revert": 4,
+                "return": 2,
+                "revert": 6,
                 "shl": 1,
                 "shr": 1,
-                "slt": 1,
+                "sload": 1,
+                "slt": 2,
                 "sub": 1
               },
               "dataSections": 1,
               "depth": 1,
-              "name": "Units_15_deployed",
+              "name": "Units_27_deployed",
               "nodeKinds": {
-                "block": 7,
-                "expressionStatement": 14,
-                "functionCall": 44,
-                "identifier": 21,
-                "if": 5,
-                "literal:number": 34,
+                "block": 10,
+                "case": 2,
+                "expressionStatement": 19,
+                "functionCall": 55,
+                "identifier": 24,
+                "if": 6,
+                "literal:number": 45,
                 "literal:string": 1,
-                "variableDeclaration": 5
+                "switch": 1,
+                "variableDeclaration": 6
               },
               "role": "runtime",
               "stage": "ir-optimized-on",
@@ -1770,7 +1816,7 @@
           ]
         }
       ],
-      "sha256": "6cd975488118c77a4654923d3a4098112ae8361c2d16d0cd0cd4df8cfa65c5fe",
+      "sha256": "bc6e5afc91b96409125d8fb2c98df5ec9b79c89fa0c8db8ba3842561fc2b1588",
       "source": "testdata/differential/constants.sol"
     },
     {
@@ -14026,7 +14072,7 @@
     "ir": {
       "builtins": {
         "add": {
-          "creation": 107,
+          "creation": 111,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14075,7 +14121,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2338,
+          "runtime": 2340,
           "subobject": 0
         },
         "address": {
@@ -14088,7 +14134,7 @@
           "subobject": 0
         },
         "and": {
-          "creation": 55,
+          "creation": 59,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14279,7 +14325,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 541,
+          "runtime": 545,
           "subobject": 0
         },
         "caller": {
@@ -14347,7 +14393,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 463,
+          "runtime": 467,
           "subobject": 0
         },
         "chainid": {
@@ -14359,7 +14405,7 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 65,
+          "creation": 66,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14412,9 +14458,10 @@
           "subobject": 0
         },
         "codesize": {
-          "creation": 8,
+          "creation": 9,
           "fixtures": [
             "testdata/differential/calldata_bytes.sol",
+            "testdata/differential/constants.sol",
             "testdata/differential/constructors.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/inherited_payable.sol",
@@ -14486,7 +14533,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 122,
+          "creation": 123,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14572,7 +14619,7 @@
           "subobject": 0
         },
         "eq": {
-          "creation": 17,
+          "creation": 19,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14666,7 +14713,7 @@
           "subobject": 0
         },
         "gt": {
-          "creation": 43,
+          "creation": 44,
           "fixtures": [
             "testdata/differential/calldata_arrays.sol",
             "testdata/differential/calldata_arrays_peer.sol",
@@ -14717,7 +14764,7 @@
           "subobject": 0
         },
         "iszero": {
-          "creation": 30,
+          "creation": 32,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14764,7 +14811,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 577,
+          "runtime": 578,
           "subobject": 0
         },
         "keccak256": {
@@ -14845,7 +14892,7 @@
           "subobject": 0
         },
         "lt": {
-          "creation": 25,
+          "creation": 26,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -14891,7 +14938,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 389,
+          "runtime": 390,
           "subobject": 0
         },
         "mcopy": {
@@ -14964,7 +15011,7 @@
           "subobject": 0
         },
         "mload": {
-          "creation": 82,
+          "creation": 83,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15038,7 +15085,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 130,
+          "creation": 133,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15087,7 +15134,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 918,
+          "runtime": 919,
           "subobject": 0
         },
         "mstore8": {
@@ -15104,7 +15151,7 @@
           "subobject": 0
         },
         "mul": {
-          "creation": 16,
+          "creation": 17,
           "fixtures": [
             "testdata/differential/calldata_arrays.sol",
             "testdata/differential/calldata_arrays_peer.sol",
@@ -15139,11 +15186,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 322,
+          "runtime": 324,
           "subobject": 0
         },
         "not": {
-          "creation": 29,
+          "creation": 31,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15200,7 +15247,7 @@
           "subobject": 0
         },
         "or": {
-          "creation": 29,
+          "creation": 31,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15309,7 +15356,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 461,
+          "runtime": 465,
           "subobject": 0
         },
         "returndatacopy": {
@@ -15337,7 +15384,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 108,
+          "creation": 112,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15386,7 +15433,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 510,
+          "runtime": 511,
           "subobject": 0
         },
         "sar": {
@@ -15420,7 +15467,7 @@
           "subobject": 0
         },
         "shl": {
-          "creation": 13,
+          "creation": 14,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15513,7 +15560,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 147,
+          "runtime": 148,
           "subobject": 0
         },
         "signextend": {
@@ -15537,7 +15584,7 @@
           "subobject": 0
         },
         "sload": {
-          "creation": 27,
+          "creation": 28,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_bytes.sol",
@@ -15574,11 +15621,11 @@
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/storage_references.sol"
           ],
-          "runtime": 304,
+          "runtime": 305,
           "subobject": 0
         },
         "slt": {
-          "creation": 11,
+          "creation": 12,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15636,7 +15683,7 @@
           "subobject": 0
         },
         "sstore": {
-          "creation": 29,
+          "creation": 30,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_bytes.sol",
@@ -15701,7 +15748,7 @@
           "subobject": 0
         },
         "sub": {
-          "creation": 23,
+          "creation": 25,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15747,7 +15794,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 983,
+          "runtime": 987,
           "subobject": 0
         },
         "timestamp": {
@@ -15769,7 +15816,7 @@
       },
       "nodeKinds": {
         "assignment": {
-          "creation": 421,
+          "creation": 444,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15818,11 +15865,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6203,
+          "runtime": 6222,
           "subobject": 0
         },
         "block": {
-          "creation": 808,
+          "creation": 838,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -15871,7 +15918,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 8540,
+          "runtime": 8570,
           "subobject": 0
         },
         "break": {
@@ -15934,7 +15981,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 520,
+          "runtime": 524,
           "subobject": 0
         },
         "continue": {
@@ -15996,7 +16043,7 @@
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 677,
+          "creation": 693,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16045,7 +16092,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5422,
+          "runtime": 5441,
           "subobject": 0
         },
         "for": {
@@ -16072,7 +16119,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 2029,
+          "creation": 2103,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16121,11 +16168,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 22818,
+          "runtime": 22890,
           "subobject": 0
         },
         "functionDefinition": {
-          "creation": 579,
+          "creation": 604,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16174,11 +16221,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5404,
+          "runtime": 5425,
           "subobject": 0
         },
         "identifier": {
-          "creation": 1378,
+          "creation": 1447,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16227,11 +16274,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 25010,
+          "runtime": 25082,
           "subobject": 0
         },
         "if": {
-          "creation": 138,
+          "creation": 142,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16280,7 +16327,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1664,
+          "runtime": 1669,
           "subobject": 0
         },
         "leave": {
@@ -16328,11 +16375,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 403,
+          "runtime": 405,
           "subobject": 0
         },
         "literal:number": {
-          "creation": 806,
+          "creation": 831,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16381,11 +16428,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 8631,
+          "runtime": 8650,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 181,
+          "creation": 182,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16486,7 +16533,7 @@
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 458,
+          "creation": 479,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16535,7 +16582,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 11385,
+          "runtime": 11425,
           "subobject": 0
         }
       },
@@ -16653,7 +16700,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 122,
+          "creation": 123,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16770,7 +16817,7 @@
     "ir-optimized-off": {
       "builtins": {
         "add": {
-          "creation": 107,
+          "creation": 111,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -16819,7 +16866,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2327,
+          "runtime": 2329,
           "subobject": 0
         },
         "address": {
@@ -16832,7 +16879,7 @@
           "subobject": 0
         },
         "and": {
-          "creation": 55,
+          "creation": 59,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17023,7 +17070,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 541,
+          "runtime": 545,
           "subobject": 0
         },
         "caller": {
@@ -17091,7 +17138,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 463,
+          "runtime": 467,
           "subobject": 0
         },
         "chainid": {
@@ -17103,7 +17150,7 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 65,
+          "creation": 66,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17156,9 +17203,10 @@
           "subobject": 0
         },
         "codesize": {
-          "creation": 8,
+          "creation": 9,
           "fixtures": [
             "testdata/differential/calldata_bytes.sol",
+            "testdata/differential/constants.sol",
             "testdata/differential/constructors.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/inherited_payable.sol",
@@ -17230,7 +17278,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 122,
+          "creation": 123,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17314,7 +17362,7 @@
           "subobject": 0
         },
         "eq": {
-          "creation": 17,
+          "creation": 19,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17408,7 +17456,7 @@
           "subobject": 0
         },
         "gt": {
-          "creation": 43,
+          "creation": 44,
           "fixtures": [
             "testdata/differential/calldata_arrays.sol",
             "testdata/differential/calldata_arrays_peer.sol",
@@ -17459,7 +17507,7 @@
           "subobject": 0
         },
         "iszero": {
-          "creation": 30,
+          "creation": 32,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17506,7 +17554,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 577,
+          "runtime": 578,
           "subobject": 0
         },
         "keccak256": {
@@ -17585,7 +17633,7 @@
           "subobject": 0
         },
         "lt": {
-          "creation": 25,
+          "creation": 26,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17631,7 +17679,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 389,
+          "runtime": 390,
           "subobject": 0
         },
         "mcopy": {
@@ -17704,7 +17752,7 @@
           "subobject": 0
         },
         "mload": {
-          "creation": 82,
+          "creation": 83,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17775,7 +17823,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 124,
+          "creation": 127,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17824,7 +17872,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 906,
+          "runtime": 907,
           "subobject": 0
         },
         "mstore8": {
@@ -17841,7 +17889,7 @@
           "subobject": 0
         },
         "mul": {
-          "creation": 16,
+          "creation": 17,
           "fixtures": [
             "testdata/differential/calldata_arrays.sol",
             "testdata/differential/calldata_arrays_peer.sol",
@@ -17876,11 +17924,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 320,
+          "runtime": 322,
           "subobject": 0
         },
         "not": {
-          "creation": 42,
+          "creation": 45,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17940,7 +17988,7 @@
           "subobject": 0
         },
         "or": {
-          "creation": 29,
+          "creation": 31,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18059,7 +18107,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 461,
+          "runtime": 465,
           "subobject": 0
         },
         "returndatacopy": {
@@ -18087,7 +18135,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 99,
+          "creation": 102,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18136,7 +18184,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 474,
+          "runtime": 475,
           "subobject": 0
         },
         "sar": {
@@ -18170,7 +18218,7 @@
           "subobject": 0
         },
         "shl": {
-          "creation": 59,
+          "creation": 62,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18270,7 +18318,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 137,
+          "runtime": 138,
           "subobject": 0
         },
         "signextend": {
@@ -18294,7 +18342,7 @@
           "subobject": 0
         },
         "sload": {
-          "creation": 27,
+          "creation": 28,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_bytes.sol",
@@ -18331,11 +18379,11 @@
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/storage_references.sol"
           ],
-          "runtime": 303,
+          "runtime": 304,
           "subobject": 0
         },
         "slt": {
-          "creation": 11,
+          "creation": 12,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18393,7 +18441,7 @@
           "subobject": 0
         },
         "sstore": {
-          "creation": 29,
+          "creation": 30,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_bytes.sol",
@@ -18458,7 +18506,7 @@
           "subobject": 0
         },
         "sub": {
-          "creation": 44,
+          "creation": 47,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18504,7 +18552,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1009,
+          "runtime": 1013,
           "subobject": 0
         },
         "timestamp": {
@@ -18526,7 +18574,7 @@
       },
       "nodeKinds": {
         "assignment": {
-          "creation": 421,
+          "creation": 444,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18575,11 +18623,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6143,
+          "runtime": 6162,
           "subobject": 0
         },
         "block": {
-          "creation": 768,
+          "creation": 798,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18628,7 +18676,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 8136,
+          "runtime": 8166,
           "subobject": 0
         },
         "break": {
@@ -18691,7 +18739,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 520,
+          "runtime": 524,
           "subobject": 0
         },
         "continue": {
@@ -18753,7 +18801,7 @@
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 584,
+          "creation": 601,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18802,7 +18850,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5383,
+          "runtime": 5402,
           "subobject": 0
         },
         "for": {
@@ -18829,7 +18877,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 2016,
+          "creation": 2095,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18878,11 +18926,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 23002,
+          "runtime": 23074,
           "subobject": 0
         },
         "functionDefinition": {
-          "creation": 492,
+          "creation": 518,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18931,11 +18979,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5323,
+          "runtime": 5344,
           "subobject": 0
         },
         "identifier": {
-          "creation": 1357,
+          "creation": 1424,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18984,11 +19032,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 24588,
+          "runtime": 24660,
           "subobject": 0
         },
         "if": {
-          "creation": 138,
+          "creation": 142,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19037,7 +19085,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1664,
+          "runtime": 1669,
           "subobject": 0
         },
         "leave": {
@@ -19085,11 +19133,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 403,
+          "runtime": 405,
           "subobject": 0
         },
         "literal:number": {
-          "creation": 839,
+          "creation": 865,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19138,11 +19186,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 8658,
+          "runtime": 8677,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 181,
+          "creation": 182,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19243,7 +19291,7 @@
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 433,
+          "creation": 452,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19292,7 +19340,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 10950,
+          "runtime": 10990,
           "subobject": 0
         }
       },
@@ -19410,7 +19458,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 122,
+          "creation": 123,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19527,7 +19575,7 @@
     "ir-optimized-on": {
       "builtins": {
         "add": {
-          "creation": 127,
+          "creation": 130,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19575,7 +19623,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2071,
+          "runtime": 2075,
           "subobject": 0
         },
         "address": {
@@ -19588,7 +19636,7 @@
           "subobject": 0
         },
         "and": {
-          "creation": 35,
+          "creation": 36,
           "fixtures": [
             "testdata/differential/calldata_arrays.sol",
             "testdata/differential/calldata_arrays_peer.sol",
@@ -19721,7 +19769,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 426,
+          "runtime": 427,
           "subobject": 0
         },
         "calldatasize": {
@@ -19770,7 +19818,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 620,
+          "runtime": 624,
           "subobject": 0
         },
         "caller": {
@@ -19838,7 +19886,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 463,
+          "runtime": 467,
           "subobject": 0
         },
         "chainid": {
@@ -19850,7 +19898,7 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 65,
+          "creation": 66,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19903,9 +19951,10 @@
           "subobject": 0
         },
         "codesize": {
-          "creation": 8,
+          "creation": 9,
           "fixtures": [
             "testdata/differential/calldata_bytes.sol",
+            "testdata/differential/constants.sol",
             "testdata/differential/constructors.sol",
             "testdata/differential/dynamic_bytes.sol",
             "testdata/differential/inherited_payable.sol",
@@ -19977,7 +20026,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 65,
+          "creation": 66,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20093,7 +20142,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 228,
+          "runtime": 227,
           "subobject": 0
         },
         "exp": {
@@ -20142,7 +20191,7 @@
           "subobject": 0
         },
         "gt": {
-          "creation": 57,
+          "creation": 58,
           "fixtures": [
             "testdata/differential/calldata_arrays.sol",
             "testdata/differential/calldata_arrays_peer.sol",
@@ -20238,7 +20287,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 695,
+          "runtime": 696,
           "subobject": 0
         },
         "keccak256": {
@@ -20316,7 +20365,7 @@
           "subobject": 0
         },
         "lt": {
-          "creation": 29,
+          "creation": 30,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20362,7 +20411,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 382,
+          "runtime": 383,
           "subobject": 0
         },
         "mcopy": {
@@ -20435,7 +20484,7 @@
           "subobject": 0
         },
         "mload": {
-          "creation": 41,
+          "creation": 43,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20478,7 +20527,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 775,
+          "runtime": 779,
           "subobject": 0
         },
         "mod": {
@@ -20493,7 +20542,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 185,
+          "creation": 187,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20542,7 +20591,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2232,
+          "runtime": 2237,
           "subobject": 0
         },
         "mstore8": {
@@ -20580,7 +20629,7 @@
           "subobject": 0
         },
         "not": {
-          "creation": 29,
+          "creation": 30,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20626,7 +20675,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 752,
+          "runtime": 756,
           "subobject": 0
         },
         "number": {
@@ -20638,7 +20687,7 @@
           "subobject": 0
         },
         "or": {
-          "creation": 26,
+          "creation": 27,
           "fixtures": [
             "testdata/differential/calldata_arrays.sol",
             "testdata/differential/calldata_arrays_peer.sol",
@@ -20748,7 +20797,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 442,
+          "runtime": 446,
           "subobject": 0
         },
         "returndatacopy": {
@@ -20776,7 +20825,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 127,
+          "creation": 129,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20825,7 +20874,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1663,
+          "runtime": 1672,
           "subobject": 0
         },
         "sar": {
@@ -20858,7 +20907,7 @@
           "subobject": 0
         },
         "shl": {
-          "creation": 88,
+          "creation": 90,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21011,11 +21060,11 @@
             "testdata/frontend/evaluation_order.sol",
             "testdata/frontend/storage_references.sol"
           ],
-          "runtime": 604,
+          "runtime": 606,
           "subobject": 0
         },
         "slt": {
-          "creation": 11,
+          "creation": 12,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21061,7 +21110,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 481,
+          "runtime": 485,
           "subobject": 0
         },
         "smod": {
@@ -21073,7 +21122,7 @@
           "subobject": 0
         },
         "sstore": {
-          "creation": 61,
+          "creation": 63,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_bytes.sol",
@@ -21138,7 +21187,7 @@
           "subobject": 0
         },
         "sub": {
-          "creation": 39,
+          "creation": 42,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21247,7 +21296,7 @@
           "subobject": 0
         },
         "block": {
-          "creation": 319,
+          "creation": 321,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21296,7 +21345,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 3405,
+          "runtime": 3418,
           "subobject": 0
         },
         "break": {
@@ -21354,7 +21403,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 510,
+          "runtime": 515,
           "subobject": 0
         },
         "continue": {
@@ -21385,7 +21434,7 @@
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 499,
+          "creation": 506,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21434,7 +21483,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5225,
+          "runtime": 5243,
           "subobject": 0
         },
         "for": {
@@ -21461,7 +21510,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 1399,
+          "creation": 1424,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21510,7 +21559,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 17084,
+          "runtime": 17130,
           "subobject": 0
         },
         "functionDefinition": {
@@ -21558,7 +21607,7 @@
           "subobject": 0
         },
         "identifier": {
-          "creation": 817,
+          "creation": 830,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21607,11 +21656,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 8393,
+          "runtime": 8405,
           "subobject": 0
         },
         "if": {
-          "creation": 156,
+          "creation": 158,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21660,7 +21709,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1920,
+          "runtime": 1928,
           "subobject": 0
         },
         "leave": {
@@ -21679,7 +21728,7 @@
           "subobject": 0
         },
         "literal:number": {
-          "creation": 1074,
+          "creation": 1093,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21728,11 +21777,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 14413,
+          "runtime": 14457,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 124,
+          "creation": 125,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21826,11 +21875,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 83,
+          "runtime": 84,
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 286,
+          "creation": 290,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21879,7 +21928,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 3174,
+          "runtime": 3180,
           "subobject": 0
         }
       },
@@ -21997,7 +22046,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 65,
+          "creation": 66,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",

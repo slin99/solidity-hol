@@ -21,9 +21,10 @@
  * and public ones among them, receive and fallback form the dispatch table.
  * The overridden functions super calls reach are elaborated too, but not
  * dispatched.
- * Each constant is a procedure that returns its value converted to its type,
- * and a reference to it calls that procedure, as the compiler's IR calls a
- * function per constant; a public constant's getter is the procedure. An
+ * Each constant is two procedures that return its value converted to its
+ * type, one with checked and one with wrapping arithmetic, and a reference
+ * to it calls the one of its own arithmetic, as the compiler's IR calls a
+ * function per constant; a public constant's getter is the checked one. An
  * operation over literals that the compiler types as an integer is that
  * integer, as the compiler folds it.
  * State-variable initializers, constructors and base-constructor arguments
@@ -76,7 +77,7 @@ Datatype:
     events : (num # src_event) list;
     variables : (num # sol_type) list;
     state : (num # sol_type) list;
-    constants : (num # sol_type) list;
+    constants : (num # sol_type # num) list;
     returns : (num # sol_type) list;
     placeholder : (num # (num # sol_type) list) option;
     mode : arithmetic_mode;
@@ -468,8 +469,9 @@ Definition elab_expr_def:
              SOME ((ls ++ ss, a, ElabType (read_value_type ty)), n2)
          | NONE =>
              case ALOOKUP ctx.constants x of
-               SOME ty =>
-                 let (ss, a) = bind_value n ty (InternalCallOperation (AstId x) []) in
+               SOME (ty, w) =>
+                 let p = if ctx.mode = CheckedArithmetic then x else w in
+                 let (ss, a) = bind_value n ty (InternalCallOperation (AstId p) []) in
                  SOME ((ss, a, ElabType ty), n + 1)
              | NONE => NONE)
     | SrcArrayLength _ root_expr _ =>
@@ -1555,32 +1557,53 @@ Definition elab_getters_def:
     | NONE => NONE)
 End
 
-(* The procedure of a constant, its getter if it is public: it returns the
- * constant's value, converted to its type. References call it, as the
- * compiler's IR calls a function per constant. *)
-Definition elab_constant_def:
-  elab_constant ctx n ((v : src_variable), e) =
-    case (ALOOKUP ctx.constants v.var_info.node_id, elab_expr ctx n e) of
-      (SOME ty, SOME ((ss, a, vt), n1)) =>
+(* The procedures of a constant, as the compiler's IR has them: one
+ * evaluates its value with checked arithmetic, and is its getter if it is
+ * public; the other, which references in unchecked code call, wraps. Each
+ * returns the value converted to the constant's type. *)
+Definition constant_procedure_def:
+  constant_procedure ctx n p ty e =
+    case elab_expr ctx n e of
+      SOME ((ss, a, vt), n1) =>
         (case coerce n1 ty a vt of
            SOME ((cs, a'), n2) =>
-             SOME (<| procedure_id := AstId v.var_info.node_id;
-                      parameters := [];
+             SOME (<| procedure_id := AstId p; parameters := [];
                       return_bindings := [(AstId n2, ty)];
                       body := ss ++ cs ++ [ReturnStmt [a']] |>, n2 + 1)
          | NONE => NONE)
-    | _ => NONE
+    | NONE => NONE
+End
+
+Definition elab_constant_def:
+  elab_constant ctx n ((v : src_variable), e) =
+    case ALOOKUP ctx.constants v.var_info.node_id of
+      SOME (ty, w) =>
+        (case constant_procedure (ctx with mode := CheckedArithmetic) n
+                v.var_info.node_id ty e of
+           SOME (checked, n1) =>
+             (case constant_procedure (ctx with mode := UncheckedArithmetic) n1 w ty e of
+                SOME (wrapping, n2) => SOME ([checked; wrapping], n2)
+              | NONE => NONE)
+         | NONE => NONE)
+    | NONE => NONE
 End
 
 Definition elab_constants_def:
   (elab_constants ctx n [] = SOME ([], n)) ∧
   (elab_constants ctx n (c :: cs) =
     case elab_constant ctx n c of
-      SOME (p, n1) =>
+      SOME (ps, n1) =>
         (case elab_constants ctx n1 cs of
-           SOME (ps, n2) => SOME (p :: ps, n2)
+           SOME (ps', n2) => SOME (ps ++ ps', n2)
          | NONE => NONE)
     | NONE => NONE)
+End
+
+(* The constants with fresh ids from n for their wrapping procedures. *)
+Definition number_constants_def:
+  (number_constants n [] = []) ∧
+  (number_constants n ((x, ty) :: cs) =
+    (x, (ty : sol_type), (n : num)) :: number_constants (n + 1) cs)
 End
 
 (* The dispatch table: the functions with a selector, which the compiler
@@ -1705,7 +1728,8 @@ Definition elaborate_unit_def:
                constant_table c) of
            (NONE, _) => NONE
          | (_, NONE) => NONE
-         | (SOME state, SOME constants) =>
+         | (SOME state, SOME table) =>
+             let constants = number_constants (MAX_LIST (unit_ids u) + 1) table in
              case (elab_type_declarations c.contract_structs,
                    elab_struct_layouts c.contract_structs,
                    core_state_variables state c.contract_storage,
@@ -1714,7 +1738,7 @@ Definition elaborate_unit_def:
                      (call_table c.contract_functions) c.contract_functions
                      c.contract_bases
                      (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
-                     state constants (MAX_LIST (unit_ids u) + 1)
+                     state constants (MAX_LIST (unit_ids u) + 1 + LENGTH table)
                      (checked_functions c.contract_functions c.contract_bases)) of
                (SOME decls, SOME layouts, SOME cvs, SOME (fps, n0)) =>
                  (case elab_getters state n0
@@ -1994,8 +2018,10 @@ val () = cv_auto_trans getter_result_def;
 val () = cv_auto_trans getter_parameters_def;
 val () = cv_auto_trans elab_getter_def;
 val () = cv_auto_trans elab_getters_def;
+val () = cv_auto_trans constant_procedure_def;
 val () = cv_auto_trans elab_constant_def;
 val () = cv_auto_trans elab_constants_def;
+val () = cv_auto_trans number_constants_def;
 val () = cv_auto_trans external_functions_def;
 val () = cv_auto_trans special_function_def;
 val elab_base_arguments_pre_def =

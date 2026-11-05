@@ -176,13 +176,14 @@ array mutation of aggregates, local reference bindings and aggregate copies
 remain coverage work.
 
 Constants of elementary value types, `string` and `bytes`, declared in the
-contract or a base, are imported with their values. Each elaborates to a
-procedure without parameters that evaluates the value, with checked
-arithmetic, and converts it to the declared type; byte sequences are copied
-to fresh memory. Every reference to the constant calls that procedure, as the
-compiler's IR calls a function per constant, and a public constant's getter is
-the procedure. So a value that overflows its type panics with `0x11` when it
-is referenced. File-level constants and references through a contract name
+contract or a base, are imported with their values. Each elaborates to two
+procedures without parameters that evaluate the value and convert it to the
+declared type, one with checked and one with wrapping arithmetic; byte
+sequences are copied to fresh memory. Every reference to the constant calls
+the procedure of the arithmetic it is in, as the compiler's IR calls one of
+two functions per constant, and a public constant's getter is the checked
+one. So a value that overflows its type panics with `0x11` when it is
+referenced in checked code, and wraps inside `unchecked`. File-level constants and references through a contract name
 (`C.X`) are rejected. An operation over literals that the compiler types
 as an integer (`10 ** 27`, `-1`) elaborates to that integer, as the compiler
 folds it; one over other rational constants is still rejected.
