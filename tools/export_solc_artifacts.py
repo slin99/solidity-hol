@@ -27,6 +27,7 @@ OUTPUT_SELECTION: dict[str, dict[str, list[str]]] = {
             "transientStorageLayout",
             "evm.bytecode.object",
             "evm.deployedBytecode.object",
+            "evm.deployedBytecode.immutableReferences",
             "evm.methodIdentifiers",
             "ir",
             "irOptimized",

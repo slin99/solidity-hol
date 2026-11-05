@@ -3,7 +3,7 @@
  *
  * solidityImportLib builds these terms from a compiler artifact and fails
  * closed: an unknown nodeType, a missing required field, or a feature outside
- * the subset (immutable or overriding state variables, file-level constants,
+ * the subset (overriding state variables, file-level constants,
  * modifiers, super other than in calls, named or try calls, built-ins other than
  * require, assert, revert, members of msg, tx and block, address(this) and
  * type(T).max and .min for integer types T, literal subdenominations,
@@ -301,6 +301,7 @@ Datatype:
     contract_scope : num;
     contract_bases : num list;
     contract_state_variables : src_variable list;
+    contract_immutables : src_variable list;
     contract_initializers : (num # src_expr) list;
     contract_constants : (src_variable # src_expr) list;
     contract_base_arguments : (num # num # src_expr list) list;
@@ -309,8 +310,8 @@ Datatype:
     contract_events : src_event list;
     contract_modifiers : src_modifier list;
     contract_functions : src_function list;
-    (* the public state variables and constants, each with its getter's
-     * selector *)
+    (* the public state variables, immutables and constants, each with its
+     * getter's selector *)
     contract_getters : (num # byte list) list
   |>
 End
@@ -927,6 +928,7 @@ Definition contract_ids_def:
     FLAT (MAP (λs. s.struct_info.node_id ::
       FLAT (MAP variable_ids s.struct_members)) c.contract_structs) ++
     FLAT (MAP variable_ids c.contract_state_variables) ++
+    FLAT (MAP variable_ids c.contract_immutables) ++
     FLAT (MAP (λ(_, e). expr_ids e) c.contract_initializers) ++
     FLAT (MAP (λ(v, e). variable_ids v ++ expr_ids e) c.contract_constants) ++
     FLAT (MAP (λ(_, _, es). exprs_ids es) c.contract_base_arguments) ++
@@ -966,7 +968,8 @@ End
 
 (* Functions callable by id, and those super calls run, by the declaration
  * they name; variables in lexical scope; the contract's state
- * variables, if the function may read them; the innermost scope node; the
+ * variables, if the function may read them; the constants and immutables,
+ * which any function may read; the innermost scope node; the
  * enclosing function's return list; whether in a loop body.
  *)
 Datatype:
@@ -1393,6 +1396,19 @@ Definition constant_table_def:
     all_some (MAP (constant_variable c.contract_bases o FST) c.contract_constants)
 End
 
+(* An immutable, declared by one of the contract's bases, of elementary type. *)
+Definition immutable_variable_def:
+  immutable_variable bases (v : src_variable) =
+    case state_variable bases v of
+      SOME (x, ty) => if is_elementary_type ty then SOME (x, ty) else NONE
+    | NONE => NONE
+End
+
+Definition immutable_table_def:
+  immutable_table (c : src_contract) =
+    all_some (MAP (immutable_variable c.contract_bases) c.contract_immutables)
+End
+
 (* The function a call to each declaration runs: the most derived function
  * that is it or overrides it. Functions come most derived first; a
  * declaration without a body is reached through the functions overriding it.
@@ -1629,29 +1645,32 @@ Definition check_contract_def:
     EVERY check_event c.contract_events ∧
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
     case (all_some (MAP (state_variable c.contract_bases)
-                      c.contract_state_variables), constant_table c) of
-      (SOME state, SOME constants) =>
+                      c.contract_state_variables), constant_table c,
+          immutable_table c) of
+      (SOME state, SOME constants, SOME immutables) =>
         EVERY (check_function c.contract_structs
                  (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
                  (call_table c.contract_functions) c.contract_functions
                  (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
-                 state constants c.contract_bases)
+                 state (constants ++ immutables) c.contract_bases)
           (checked_functions c.contract_functions c.contract_bases) ∧
-        EVERY (λ(x, e). IS_SOME (ALOOKUP state x) ∧
-                        IS_SOME (check_expr (initializer_env c state constants) e))
+        EVERY (λ(x, e). IS_SOME (ALOOKUP (state ++ immutables) x) ∧
+                        IS_SOME (check_expr (initializer_env c state
+                                               (constants ++ immutables)) e))
           c.contract_initializers ∧
         EVERY (λ(_, e). IS_SOME (check_expr (constant_env c constants) e))
           c.contract_constants ∧
         ALL_DISTINCT (MAP FST c.contract_getters) ∧
         EVERY (λ(x, selector).
                  LENGTH selector = 4 ∧
-                 case ALOOKUP state x of
+                 case ALOOKUP (state ++ immutables) x of
                    SOME ty => IS_SOME (getter_shape ty)
                  | NONE => IS_SOME (ALOOKUP constants x))
           c.contract_getters ∧
         EVERY (λ(x, b, args).
                  case constructor_parameters x c.contract_functions of
-                   SOME ps => check_exprs (initializer_env c state constants with
+                   SOME ps => check_exprs (initializer_env c state
+                                             (constants ++ immutables) with
                                              variables := ps) args
                  | NONE => F)
           c.contract_base_arguments
@@ -1772,6 +1791,8 @@ val () = cv_auto_trans scoped_variable_def;
 val () = cv_auto_trans state_variable_def;
 val () = cv_auto_trans constant_variable_def;
 val () = cv_auto_trans constant_table_def;
+val () = cv_auto_trans immutable_variable_def;
+val () = cv_auto_trans immutable_table_def;
 val () = cv_auto_trans getter_shape_def;
 val () = cv_auto_trans call_table_def;
 val () = cv_auto_trans contract_constructor_def;

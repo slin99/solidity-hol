@@ -272,7 +272,7 @@ Definition programs_def:
       count_proc; nested_proc; fact_proc; fib_proc; divmod_proc; swap_proc;
       spin_proc; deep_proc; inner_proc; middle_proc; outer_proc];
     struct_layouts := []; type_declarations := [];
-    state_variables := [];
+    state_variables := []; immutables := [];
     entry_procedure := AstId 16;
     external_functions := []; receive_procedure := NONE;
     fallback_procedure := NONE; creation_procedure := NONE
@@ -303,7 +303,7 @@ Definition programs_state_def:
                   authRefund := 0 |> |>;
     scopes := [];
     heap := FEMPTY;
-    next_heap_id := 0;
+    next_heap_id := 0; immutables := FEMPTY;
     memory_allocated := 0;
     targets := FEMPTY
   |>

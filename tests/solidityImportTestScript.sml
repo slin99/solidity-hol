@@ -343,9 +343,25 @@ val () = import_error_with Unsupported storage_contracts "overriding state varia
 val () = import_error_with Malformed storage_contracts "constant without a value"
   (edit_first "VariableDeclaration" (set_field "constant" (JSON.BOOL true))
      storage_ast)
-val () = import_error_with Unsupported storage_contracts "immutable state variable"
-  (edit_first "VariableDeclaration"
-     (set_field "mutability" (JSON.STRING "immutable")) storage_ast)
+(* An immutable is imported apart from the state variables. *)
+val () =
+  let
+    val tm = import_source_unit []
+      (edit_first "VariableDeclaration"
+         (set_field "mutability" (JSON.STRING "immutable")) storage_ast)
+      storage_contracts
+    fun field name t = Lib.assoc name (snd (TypeBase.dest_record t))
+    fun names t =
+      map (stringSyntax.fromHOLstring o field "var_name")
+        (fst (listSyntax.dest_list t))
+    val c = hd (fst (listSyntax.dest_list (field "unit_contracts" tm)))
+    val immutables = names (field "contract_immutables" c)
+  in
+    if length immutables = 1 andalso
+       not (List.exists (fn n => n = hd immutables)
+              (names (field "contract_state_variables" c)))
+    then () else raise Fail "immutable state variable: not imported apart"
+  end
 val () = import_error_with Malformed (JSON.OBJECT []) "missing storage layout" storage_ast
 
 (* The contracts output with an edit to the layout entries; the first is

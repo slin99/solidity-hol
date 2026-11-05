@@ -77,6 +77,7 @@ Datatype:
     events : (num # src_event) list;
     variables : (num # sol_type) list;
     state : (num # sol_type) list;
+    immutables : (num # sol_type) list;
     constants : (num # sol_type # num) list;
     returns : (num # sol_type) list;
     placeholder : (num # (num # sol_type) list) option;
@@ -176,7 +177,12 @@ Definition variable_destination_def:
            SOME ty => SOME (([DefineStmt (AstId n) (ReferenceType ty)
                                 (StateReferenceOperation (AstId x))],
                              ReferenceDestination (BoundAtom (AstId n)) ty), n + 1)
-         | NONE => NONE)
+         | NONE =>
+             case ALOOKUP ctx.immutables x of
+               SOME ty => SOME (([DefineStmt (AstId n) (ReferenceType ty)
+                                    (ImmutableReferenceOperation (AstId x))],
+                                 ReferenceDestination (BoundAtom (AstId n)) ty), n + 1)
+             | NONE => NONE)
 End
 
 (* Reading a storage byte sequence or array yields a reference to it. *)
@@ -1401,7 +1407,8 @@ End
  * returns keep their declaration ids.
  *)
 Definition elab_function_def:
-  elab_function structs events functions fs bases modifiers state constants n
+  elab_function structs events functions fs bases modifiers state immutables
+                constants n
                 (f : src_function) =
     case (all_some (MAP variable_binding f.fn_parameters),
           all_some (MAP variable_binding f.fn_returns), f.fn_body,
@@ -1409,7 +1416,8 @@ Definition elab_function_def:
       (SOME ps, SOME rs, SrcBlock _ ss, SOME supers) =>
         elab_levels <| functions := functions; supers := supers; structs := structs;
                        events := events; variables := ps ++ rs;
-                       state := state; constants := constants;
+                       state := state; immutables := immutables;
+                       constants := constants;
                        returns := rs; placeholder := NONE;
                        mode := CheckedArithmetic;
                        creation := (f.fn_kind = "constructor") |>
@@ -1418,14 +1426,16 @@ Definition elab_function_def:
 End
 
 Definition elab_functions_def:
-  (elab_functions structs events functions all bases modifiers state constants n [] =
+  (elab_functions structs events functions all bases modifiers state immutables
+     constants n [] =
     SOME ([], n)) ∧
-  (elab_functions structs events functions all bases modifiers state constants n
-     (f :: fs) =
-    case elab_function structs events functions all bases modifiers state constants n f of
+  (elab_functions structs events functions all bases modifiers state immutables
+     constants n (f :: fs) =
+    case elab_function structs events functions all bases modifiers state
+           immutables constants n f of
       SOME (ps, n1) =>
         (case elab_functions structs events functions all bases modifiers state
-                constants n1 fs of
+                immutables constants n1 fs of
            SOME (ps', n2) => SOME (ps ++ ps', n2)
          | NONE => NONE)
     | NONE => NONE)
@@ -1518,12 +1528,12 @@ Definition getter_result_def:
   getter_result ty = if byte_sequence_type ty then LocatedT MemoryLoc ty else ty
 End
 
-(* The getter of the public state variable x of type ty, the procedure its
- * selector reaches: it returns the value at the location its arguments
- * name, a byte sequence copied to memory. *)
+(* The getter of the public state variable or immutable x of type ty, the
+ * procedure its selector reaches: it returns the value at the location its
+ * arguments name, a byte sequence copied to memory. *)
 Definition elab_getter_def:
-  elab_getter state n (x : num) =
-    case ALOOKUP state x of
+  elab_getter state immutables n (x : num) =
+    case ALOOKUP (state ++ immutables) x of
       NONE => NONE
     | SOME ty =>
         case getter_shape ty of
@@ -1542,16 +1552,18 @@ Definition elab_getter_def:
                          parameters := core_bindings params;
                          return_bindings := [(AstId n2, returned)];
                          body := [DefineStmt (AstId root) (ReferenceType ty)
-                                    (StateReferenceOperation (AstId x))] ++
+                                    (if IS_SOME (ALOOKUP state x)
+                                     then StateReferenceOperation (AstId x)
+                                     else ImmutableReferenceOperation (AstId x))] ++
                                  nav ++ rs ++ cs ++ [ReturnStmt [a']] |>, n2 + 1)
 End
 
 Definition elab_getters_def:
-  (elab_getters state n [] = SOME ([], n)) ∧
-  (elab_getters state n (x :: gs) =
-    case elab_getter state n x of
+  (elab_getters state immutables n [] = SOME ([], n)) ∧
+  (elab_getters state immutables n (x :: gs) =
+    case elab_getter state immutables n x of
       SOME (p, n1) =>
-        (case elab_getters state n1 gs of
+        (case elab_getters state immutables n1 gs of
            SOME (ps, n2) => SOME (p :: ps, n2)
          | NONE => NONE)
     | NONE => NONE)
@@ -1649,19 +1661,27 @@ Definition elab_base_arguments_def:
     | _ => NONE)
 End
 
-(* The initializers of the state variables base x declares. *)
+Definition variable_with_id_def:
+  (variable_with_id y [] = NONE) ∧
+  (variable_with_id y ((v : src_variable) :: vs) =
+    if v.var_info.node_id = y then SOME v else variable_with_id y vs)
+End
+
+(* The initializers of the state variables and immutables vs that base x
+ * declares, in declaration order. *)
 Definition elab_initializers_def:
-  (elab_initializers ctx n x inits [] = SOME ([], n)) ∧
-  (elab_initializers ctx n x inits ((v : src_variable) :: vs) =
-    case (if v.var_scope = x then ALOOKUP inits v.var_info.node_id else NONE) of
-      NONE => elab_initializers ctx n x inits vs
-    | SOME e =>
+  (elab_initializers ctx n x vs [] = SOME ([], n)) ∧
+  (elab_initializers ctx n x vs ((y, e) :: inits) =
+    case variable_with_id y vs of
+      NONE => NONE
+    | SOME v =>
+        if v.var_scope ≠ x then elab_initializers ctx n x vs inits else
         case elab_expr ctx n
                (SrcAssignment v.var_info "="
                   (SrcIdentifier v.var_info v.var_name v.var_info.node_id
                      v.var_type_id) e v.var_type_id) of
           SOME ((ss, _, _), n1) =>
-            (case elab_initializers ctx n1 x inits vs of
+            (case elab_initializers ctx n1 x vs inits of
                SOME (ss', n2) => SOME (ss ++ ss', n2)
              | NONE => NONE)
         | NONE => NONE)
@@ -1671,8 +1691,9 @@ End
 Definition elab_constructors_def:
   (elab_constructors ctx (c : src_contract) n [] = SOME ([], n)) ∧
   (elab_constructors ctx c n (x :: xs) =
-    case elab_initializers ctx n x c.contract_initializers
-           c.contract_state_variables of
+    case elab_initializers ctx n x
+           (c.contract_state_variables ++ c.contract_immutables)
+           c.contract_initializers of
       NONE => NONE
     | SOME (ss, n1) =>
         let call =
@@ -1725,12 +1746,10 @@ Definition elaborate_unit_def:
       [c] =>
         let fs = live_functions c.contract_functions in
         (case (all_some (MAP (state_variable c.contract_bases) c.contract_state_variables),
-               constant_table c) of
-           (NONE, _) => NONE
-         | (_, NONE) => NONE
-         | (SOME state, SOME table) =>
+               constant_table c, immutable_table c) of
+           (SOME state, SOME table, SOME immutables) =>
              let constants = number_constants (MAX_LIST (unit_ids u) + 1) table in
-             case (elab_type_declarations c.contract_structs,
+             (case (elab_type_declarations c.contract_structs,
                    elab_struct_layouts c.contract_structs,
                    core_state_variables state c.contract_storage,
                    elab_functions c.contract_structs
@@ -1738,18 +1757,20 @@ Definition elaborate_unit_def:
                      (call_table c.contract_functions) c.contract_functions
                      c.contract_bases
                      (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
-                     state constants (MAX_LIST (unit_ids u) + 1 + LENGTH table)
+                     state immutables constants
+                     (MAX_LIST (unit_ids u) + 1 + LENGTH table)
                      (checked_functions c.contract_functions c.contract_bases)) of
                (SOME decls, SOME layouts, SOME cvs, SOME (fps, n0)) =>
-                 (case elab_getters state n0
-                         (FILTER (λx. IS_SOME (ALOOKUP state x))
+                 (case elab_getters state immutables n0
+                         (FILTER (λx. IS_SOME (ALOOKUP (state ++ immutables) x))
                             (MAP FST c.contract_getters)) of
                     NONE => NONE
                   | SOME (gps, n1) =>
                  case elab_constants
                         <| functions := []; supers := [];
                            structs := c.contract_structs; events := [];
-                           variables := []; state := []; constants := constants;
+                           variables := []; state := []; immutables := [];
+                           constants := constants;
                            returns := []; placeholder := NONE;
                            mode := CheckedArithmetic; creation := F |>
                         n1 c.contract_constants of
@@ -1763,12 +1784,14 @@ Definition elaborate_unit_def:
                             events := MAP (λe. (e.event_info.node_id, e))
                                         c.contract_events;
                             variables := []; state := state;
+                            immutables := immutables;
                             constants := constants; returns := [];
                             placeholder := NONE; mode := CheckedArithmetic;
                             creation := T |> c n of
                     NONE => NONE
                   | SOME (creation, _) =>
                  SOME <| procedures := ps ++ [creation]; state_variables := cvs;
+                         immutables := MAP (λ(x, ty). (AstId x, ty)) immutables;
                          struct_layouts := layouts; type_declarations := decls;
                          entry_procedure :=
                            (case ps of
@@ -1786,7 +1809,8 @@ Definition elaborate_unit_def:
                            special_function "fallback" fs;
                          creation_procedure :=
                            SOME (creation.procedure_id, creation_payable c) |>))
-             | _ => NONE)
+              | _ => NONE)
+         | _ => NONE)
     | _ => NONE
 End
 
@@ -2035,7 +2059,16 @@ Proof
   Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"]
 QED
 
-val () = cv_auto_trans elab_initializers_def;
+val () = cv_auto_trans variable_with_id_def;
+val elab_initializers_pre_def =
+  cv_auto_trans_pre "elab_initializers_pre" elab_initializers_def;
+
+Theorem elab_initializers_pre[cv_pre,local]:
+  ∀ctx n x vs inits. elab_initializers_pre ctx n x vs inits
+Proof
+  ho_match_mp_tac elab_initializers_ind >> rw[] >>
+  simp[Once elab_initializers_pre_def] >> rw[] >> gvs[]
+QED
 val () = cv_auto_trans elab_constructors_def;
 val () = cv_auto_trans elab_creation_def;
 val () = cv_auto_trans creation_payable_def;

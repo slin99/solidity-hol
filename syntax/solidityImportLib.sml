@@ -197,14 +197,16 @@ fun variable_record v =
      ("var_type_id", type_id v),
      ("var_location", mk_str (string_field v "storageLocation"))]
 
-(* A local, parameter or return variable, or, given state, a state variable. *)
+(* A local, parameter or return variable, or, given state, a state variable
+ * or an immutable. *)
 fun declaration state v = within v (fn v =>
   (expect v "VariableDeclaration";
    require v (not (bool_field v "constant")) "constants are not supported";
    require v (bool_field v "stateVariable" = state)
      (if state then "expected a state variable"
       else "expected a local variable");
-   require v (string_field v "mutability" = "mutable")
+   require v (string_field v "mutability" = "mutable" orelse
+              state andalso string_field v "mutability" = "immutable")
      "immutable variables are not supported";
    require v (state orelse not (isSome (optional_field v "value")))
      "declaration values are not supported";
@@ -781,8 +783,9 @@ fun constant_declaration v = within v (fn v =>
 (* A deployable contract, flattened along its linearization (most derived
  * first), whose contracts declared lists by id: the implemented functions of
  * its bases, most derived first, their events and structs, their state
- * variables base first, the order of the storage layout, with their
- * initializers, their constants with their values, and the base
+ * variables base first, the order of the storage layout, their immutables,
+ * the initializers of both in declaration order, base first, their constants
+ * with their values, and the base
  * constructor arguments each base gives, most derived base first. The
  * file-level structs it refers to come first, and the layout also describes
  * those referenced by its state variables.
@@ -837,8 +840,11 @@ fun contract external_structs contracts declared v = within v (fn v =>
       JSONUtil.get (contracts,
         [JSONUtil.SEL name, JSONUtil.SEL "storageLayout"])
     val variables = members_of "VariableDeclaration" (rev bases)
-    val state_variables =
+    (* The state variables and immutables, in declaration order, base first. *)
+    val assigned =
       List.filter (fn d => not (bool_field d "constant")) variables
+    fun immutable d = string_field d "mutability" = "immutable"
+    val state_variables = List.filter (not o immutable) assigned
     (* The base constructor arguments base x gives: those of its inheritance
      * specifiers and its constructor's base constructor specifiers, in the
      * order of x's own linearization. *)
@@ -881,12 +887,15 @@ fun contract external_structs contracts declared v = within v (fn v =>
              (field v "linearizedBaseContracts"), numSyntax.num)),
        ("contract_state_variables",
         listSyntax.mk_list (map (declaration true) state_variables, variable_ty)),
+       ("contract_immutables",
+        listSyntax.mk_list
+          (map (declaration true) (List.filter immutable assigned), variable_ty)),
        ("contract_initializers", listSyntax.mk_list
           (List.mapPartial
              (fn d => Option.map (fn e => pairSyntax.mk_pair
                                     (mk_num (int_field d "id"), expr e))
                         (optional_field d "value"))
-             state_variables,
+             assigned,
            pairSyntax.mk_prod (numSyntax.num, expr_ty))),
        ("contract_constants", listSyntax.mk_list
           (map constant_declaration

@@ -62,7 +62,8 @@ fun read_pin root =
 val output_selection = JSON.OBJECT [("*", JSON.OBJECT [
   ("", JSON.ARRAY [JSON.STRING "ast"]),
   ("*", JSON.ARRAY (map JSON.STRING ["abi", "storageLayout", "transientStorageLayout",
-    "evm.bytecode.object", "evm.deployedBytecode.object", "evm.methodIdentifiers",
+    "evm.bytecode.object", "evm.deployedBytecode.object",
+    "evm.deployedBytecode.immutableReferences", "evm.methodIdentifiers",
     "ir", "irOptimized"]))])]
 
 fun read_artifact {root, path} = json_input (fn () =>

@@ -25,6 +25,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/storage_array_growth.json",
   "../testdata/differential/expected/super_calls.json",
   "../testdata/differential/expected/constants.json",
+  "../testdata/differential/expected/immutables.json",
+  "../testdata/differential/expected/immutables_creation.json",
   "../testdata/differential/expected/storage_bytes.json",
   "../testdata/differential/expected/dynamic_bytes.json",
   "../testdata/differential/expected/dynamic_bytes_peer.json",

@@ -12,6 +12,13 @@
  * the existing observation interface; agreement additionally checks exact
  * storage-function equality through Verifereum's sparse cv representation.
  *
+ * A contract's immutables live in its deployed code, at the offsets the
+ * compiler lists for those the code reads. A call case may give them values:
+ * the bytecode run's code holds them there, and the source run is given them.
+ * A creation is observed by the words its deployed code holds at those
+ * offsets, the immutables' values the source run's creation yields, encoded
+ * as ABI words.
+ *
  * Encoding convention: both runs are observed as ABI-encoded data. A return
  * is the encoding of the declared return types; a panic is the revert data
  * Panic(uint256), selector 0x4e487b71; any other revert is its raw data.
@@ -113,7 +120,8 @@ Definition unit_function_def:
     | [] => NONE
 End
 
-(* A function's types, or those of the getter of a public state variable. *)
+(* A function's types, or those of the getter of a public state variable,
+ * constant or immutable. *)
 Definition function_types_def:
   function_types u name =
     case unit_function u name of
@@ -136,8 +144,78 @@ Definition function_types_def:
                       (MAP FST c.contract_constants) of
                  v :: _ =>
                    OPTION_MAP (λ(_, ty). ([], [ty])) (constant_variable c.contract_bases v)
-               | [] => NONE)
+               | [] =>
+                 case FILTER (λv. v.var_name = name ∧
+                                  MEM v.var_info.node_id (MAP FST c.contract_getters))
+                        c.contract_immutables of
+                   v :: _ =>
+                     OPTION_MAP (λ(_, ty). ([], [ty]))
+                       (immutable_variable c.contract_bases v)
+                 | [] => NONE)
         | [] => NONE
+End
+
+(* Immutables *)
+
+Definition unit_immutables_def:
+  unit_immutables u =
+    case u.unit_contracts of
+      c :: _ => (case immutable_table c of SOME is => is | NONE => [])
+    | [] => []
+End
+
+(* An immutable's value as the deployed code holds it: its ABI word. *)
+Definition immutable_word_def:
+  immutable_word ty s = encoded_values [ty] [ScalarValue s]
+End
+
+(* The immutables imms a case gives, each with its value and word. *)
+Definition case_immutable_values_def:
+  case_immutable_values u imms =
+    all_some (MAP (λ(x, arg).
+      case ALOOKUP (unit_immutables u) x of
+        SOME ty =>
+          (case argument_value ty arg of
+             SOME (ScalarValue s) =>
+               OPTION_MAP (λw. (x, s, w)) (immutable_word ty s)
+           | _ => NONE)
+      | NONE => NONE) imms)
+End
+
+Definition patch_word_def:
+  patch_word w code i = TAKE i code ++ w ++ DROP (i + LENGTH w) code
+End
+
+(* The deployed code holding the immutables' words at their offsets. *)
+Definition patch_immutables_def:
+  (patch_immutables refs [] code = code) ∧
+  (patch_immutables refs ((x, _, w) :: vs) code =
+    patch_immutables refs vs
+      (FOLDL (patch_word w) code
+         (case ALOOKUP refs x of SOME offsets => offsets | NONE => [])))
+End
+
+(* The words a deployed code holds at the immutables' first offsets. *)
+Definition code_immutable_words_def:
+  code_immutable_words refs code =
+    FLAT (MAP (λ(_, offsets).
+                 case offsets of i :: _ => TAKE 32 (DROP i code) | [] => [])
+              refs)
+End
+
+(* The same words for the values a creation yields; one it did not assign
+ * is zero. *)
+Definition created_immutable_words_def:
+  created_immutable_words u refs imm =
+    FLAT (MAP (λ(x, _).
+      case ALOOKUP (unit_immutables u) x of
+        SOME ty =>
+          (case (case FLOOKUP imm x of
+                   SOME s => SOME s
+                 | NONE => default_elementary ty) of
+             SOME s => (case immutable_word ty s of SOME w => w | NONE => [])
+           | NONE => [])
+      | NONE => []) refs)
 End
 
 (* Storage *)
@@ -227,13 +305,16 @@ End
 (* A transaction from the sender to the contract, from the initial storage
  * of the contract and of the peer (no code for none), with its expected
  * outcome, final storage entries and logs, each log given by its logger,
- * topics and data.
+ * topics and data. A call gives values to immutables, by declaration; the
+ * deployed code holds each immutable it reads at the offsets listed.
  *)
 Datatype:
   differential_case = <|
     case_sender : address;
     case_value : num;
     case_input : call_input;
+    case_immutables : (num # argument) list;
+    case_immutable_refs : (num # num list) list;
     case_storage : (num # num) list;
     case_peer_code : byte list;
     case_peer_storage : (num # num) list;
@@ -362,12 +443,16 @@ Definition differential_world_def:
        : source_world)
 End
 
-(* The outcome, complete committed contract storage and logs of a run. *)
+(* The outcome, complete committed contract storage and logs of a run; a
+ * creation returns the words of its immutables at the references refs. *)
 Definition contract_observation_def:
-  contract_observation a r =
+  contract_observation u refs a r =
     case r of
       ContractReturned data w =>
         (Returned data, SOME (lookup_account a w.accounts).storage, w.logs)
+    | ContractCreated imm w =>
+        (Returned (created_immutable_words u refs imm),
+         SOME (lookup_account a w.accounts).storage, w.logs)
     | ContractReverted data w =>
         (Reverted data, SOME (lookup_account a w.accounts).storage, w.logs)
     | ContractInvalid _ => (Diagnostic InvalidCompletion, NONE, [])
@@ -376,20 +461,23 @@ End
 
 Definition source_execution_def:
   source_execution code u prog fuel c =
-    case input_call u c.case_input of
-      INL d => (Diagnostic d, NONE, [])
-    | INR (data, _) =>
+    case (input_call u c.case_input, case_immutable_values u c.case_immutables) of
+      (INL d, _) => (Diagnostic d, NONE, [])
+    | (_, NONE) => (Diagnostic UnencodableArguments, NONE, [])
+    | (INR (data, _), SOME imm) =>
         let a = case_address c in
         let fr = differential_frame c.case_sender c.case_value data with
                    <| self_address := a; code_address := a |> in
         let w = differential_world
                   (transfer_value c.case_sender a c.case_value
-                     (case_accounts code c.case_storage c.case_sender
+                     (case_accounts (patch_immutables c.case_immutable_refs imm code)
+                        c.case_storage c.case_sender
                         c.case_peer_code c.case_peer_storage)) in
-        contract_observation a
+        contract_observation u c.case_immutable_refs a
           (case c.case_input of
              Deploy _ _ => deploy_contract fuel prog fr w
-           | _ => call_contract fuel prog fr w)
+           | _ => call_contract fuel prog
+                    (FEMPTY |++ MAP (λ(x, s, _). (x, s)) imm) fr w)
 End
 
 Definition source_observation_def:
@@ -401,20 +489,25 @@ End
 
 Definition evm_execution_def:
   evm_execution code u c =
-    case input_call u c.case_input of
-      INL d => (Diagnostic d, NONE, [])
-    | INR (data, _) =>
+    case (input_call u c.case_input, case_immutable_values u c.case_immutables) of
+      (INL d, _) => (Diagnostic d, NONE, [])
+    | (_, NONE) => (Diagnostic UnencodableArguments, NONE, [])
+    | (INR (data, _), SOME imm) =>
         case run_transaction (Collect empty_domain) F differential_chain_id []
                differential_block
-               (case_accounts code c.case_storage c.case_sender c.case_peer_code
+               (case_accounts (patch_immutables c.case_immutable_refs imm code)
+                  c.case_storage c.case_sender c.case_peer_code
                   c.case_peer_storage)
                (case_tx c data) of
           SOME (r, accounts) =>
-            (let st = SOME (lookup_account (case_address c) accounts).storage in
+            (let account = lookup_account (case_address c) accounts in
+             let st = SOME account.storage in
              case r.result of
                NONE =>
                  (case c.case_input of
-                    Deploy _ _ => (Returned [], st, r.logs)
+                    Deploy _ _ =>
+                      (Returned (code_immutable_words c.case_immutable_refs
+                                   account.code), st, r.logs)
                   | _ => (Returned r.output, st, r.logs))
              | SOME Reverted => (Reverted r.output, st, r.logs)
              | SOME _ => (Diagnostic ExceptionalHalt, NONE, []))
@@ -587,6 +680,13 @@ val () = cv_auto_trans is_diagnostic_def;
 val () = cv_auto_trans returned_def;
 val () = cv_auto_trans unit_function_def;
 val () = cv_auto_trans function_types_def;
+val () = cv_auto_trans unit_immutables_def;
+val () = cv_auto_trans immutable_word_def;
+val () = cv_auto_trans case_immutable_values_def;
+val () = cv_auto_trans patch_word_def;
+val () = cv_auto_trans patch_immutables_def;
+val () = cv_auto_trans code_immutable_words_def;
+val () = cv_auto_trans created_immutable_words_def;
 val () = cv_auto_trans seed_storage_def;
 val () = cv_auto_trans contract_accounts_def;
 val () = cv_auto_trans differential_accounts_def;

@@ -19,13 +19,15 @@ End
 
 (* Captured locations, never source paths to reevaluate. The type identifies
  * the struct layout used by subsequent field navigation; layout_id preserves
- * the root declaration's identity through navigation.
+ * the root declaration's identity through navigation. An immutable is named
+ * by its declaration: its value lives in the deployed code, not in storage.
  *)
 Datatype:
   reference
   = StorageReference storage_backend address bytes32 num sol_type layout_id
   | MemoryReference heap_id num sol_type
   | CalldataReference num num sol_type
+  | ImmutableReference ast_id
 End
 
 Datatype:
@@ -122,6 +124,7 @@ Datatype:
   | TupleComponentOperation num core_atom
   | ReadOperation sol_type core_atom
   | StateReferenceOperation ast_id
+  | ImmutableReferenceOperation ast_id
   | NavigateOperation sol_type core_atom navigation
   | DefaultMemoryOperation sol_type
   | BytesLiteralOperation sol_type (byte list)
@@ -231,11 +234,14 @@ End
 (* Dispatch: external functions by selector; empty calldata reaches receive,
  * and any other unmatched calldata the fallback, given with whether it is
  * payable. Creation runs the creation procedure on the constructor's
- * arguments, given with whether it accepts value. *)
+ * arguments, given with whether it accepts value. The immutables are all the
+ * contract's immutables, unread ones included, with their types: creation
+ * reserves a memory word for each. *)
 Datatype:
   core_program = <|
     procedures : core_procedure list;
     state_variables : core_state_variable list;
+    immutables : (ast_id # sol_type) list;
     struct_layouts : core_struct_layout list;
     type_declarations : (ast_id # core_type_declaration) list;
     entry_procedure : ast_id;

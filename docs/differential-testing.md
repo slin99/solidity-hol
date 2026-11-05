@@ -34,8 +34,22 @@ program's creation procedure (`deploy_contract`) on the encoded arguments, at
 the address the transaction creates (`address_for_create` of the sender at
 nonce 0). Both observe that account, which starts with no code or storage,
 so `storage` must be empty and `logger` names that address. A successful
-creation is observed as returning no data, so its `return` expectation is
-`[]`; the deployed code is not compared. The HOL corpus theory proves one
+creation is observed as returning the values of the contract's immutables: on
+the bytecode side, the 32-byte words the created code holds at the first of
+each immutable's `immutableReferences` offsets, in the artifact's order; on
+the evaluator side, the ABI words of the values the creation left in its
+immutables table. A contract without immutables its runtime code reads
+returns no data, so its `return` expectation is `[]`. The rest of the
+deployed code is not compared. The words are compared as the code holds
+them, and the compiler writes an assigned value there without cleaning it,
+so a creation that assigns an immutable a value with dirty high bits (from
+inline assembly) shows as a disagreement even when every read of it agrees.
+
+A call case may give the immutables' values, by name, as an object
+`immutables` (not with `deploy`). They are patched into the runtime bytecode
+at the immutable's `immutableReferences` offsets, given to the evaluator as
+the immutables table `call_contract` takes, and to the Yul run by the names
+its `loadimmutable` reads; an immutable the case leaves out is zero. The HOL corpus theory proves one
 `differential_agrees` theorem per case. Diagnostic failures and exhausted fuel
 are inconclusive, never agreement.
 

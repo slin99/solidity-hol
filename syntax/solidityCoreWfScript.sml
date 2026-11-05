@@ -21,6 +21,7 @@ Datatype:
   core_environment = <|
     procedures : (ast_id # core_procedure) list;
     state_variables : (ast_id # core_state_variable) list;
+    immutables : (ast_id # sol_type) list;
     struct_layouts : (ast_id # core_struct_layout) list;
     type_declarations : (ast_id # core_type_declaration) list
   |>
@@ -30,6 +31,7 @@ Definition core_program_environment_def:
   core_program_environment (prog : core_program) = <|
     procedures := MAP (λp. (p.procedure_id, p)) prog.procedures;
     state_variables := MAP (λv. (v.state_id, v)) prog.state_variables;
+    immutables := prog.immutables;
     struct_layouts := MAP (λs. (s.struct_id, s)) prog.struct_layouts;
     type_declarations := prog.type_declarations
   |>
@@ -652,6 +654,10 @@ Definition wf_core_operation_def:
     case lookup_state_variable env x of
       SOME v => annotation = ReferenceType v.state_type
     | NONE => F) ∧
+  (wf_core_operation env ctx annotation (ImmutableReferenceOperation x) ⇔
+    case ALOOKUP env.immutables x of
+      SOME ty => annotation = ReferenceType ty
+    | NONE => F) ∧
   (wf_core_operation env ctx annotation (ReadOperation ty a) ⇔
     (if memory_object_type ty then
        annotation = SingleType (LocatedT StorageLoc ty)
@@ -817,11 +823,12 @@ End
 
 (* The builtins an inline assembly block may not use. The source state keeps
  * no remaining gas, no return data buffer and no code, so gas, calls, return
- * data and the code and data builtins are left out. *)
+ * data and the code and data builtins are left out, and so is setimmutable,
+ * which only the compiler's creation code uses. *)
 Definition assembly_unsupported_def:
   assembly_unsupported =
     [YGas; YCall; YStaticCall; YReturnDataSize; YReturnDataCopy;
-     YCodeSize; YCodeCopy; YDataSize; YDataOffset]
+     YCodeSize; YCodeCopy; YDataSize; YDataOffset; YSetImmutable]
 End
 
 (* The builtins that change the world, which a static frame forbids. *)
@@ -1205,6 +1212,9 @@ Definition wf_core_environment_def:
     ALL_DISTINCT (MAP FST env.state_variables) ∧
     EVERY (λ(x, v). v.state_id = x ∧ wf_core_state_variable env v)
       env.state_variables ∧
+    ALL_DISTINCT (MAP FST env.immutables) ∧
+    EVERY (λ(_, ty). core_scalar_type env ty ∧ IS_SOME (storage_bytes ty))
+      env.immutables ∧
     ALL_DISTINCT (MAP FST env.struct_layouts) ∧
     EVERY (λ(id, s). s.struct_id = id ∧ wf_core_struct_layout env s)
       env.struct_layouts ∧
@@ -1258,6 +1268,7 @@ Definition wf_core_program_def:
   wf_core_program env (prog : core_program) ⇔
     env.procedures = MAP (λp. (p.procedure_id, p)) prog.procedures ∧
     env.state_variables = MAP (λv. (v.state_id, v)) prog.state_variables ∧
+    env.immutables = prog.immutables ∧
     env.struct_layouts = MAP (λs. (s.struct_id, s)) prog.struct_layouts ∧
     wf_core_environment env ∧
     IS_SOME (lookup_procedure env prog.entry_procedure) ∧

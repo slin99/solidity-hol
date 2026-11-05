@@ -158,7 +158,7 @@ state variable, naming its declaration and type, and leaves the layout
 calculation itself, including that packed variables don't overlap, to the
 compiler. Elaboration copies slot and offset into the core program's
 `state_variables`. Initialisers are imported and run by the creation
-procedure; immutables are import errors. Mapping key/value types come from recursive type-name
+procedure, and so are immutables' (below). Mapping key/value types come from recursive type-name
 normalization. AST and layout type identifiers use different encodings; both
 are checked against the normalized type. The scalar leaf width determines
 its storage read/write, and aggregate root slots come from the layout. Fixed
@@ -187,6 +187,20 @@ referenced in checked code, and wraps inside `unchecked`. File-level constants a
 (`C.X`) are rejected. An operation over literals that the compiler types
 as an integer (`10 ** 27`, `-1`) elaborates to that integer, as the compiler
 folds it; one over other rational constants is still rejected.
+
+Immutables of elementary value types, declared in the contract or a base, are
+implemented, with getters for public ones. The source state holds a table of
+their values, which a missing entry reads as zero. During creation an
+immutable behaves like a zero-initialized variable: its inline initializer
+runs in declaration order with the state variables' initializers, and the
+constructor may read it and assign it, as the compiler allows. Creation
+reserves 32 bytes of memory per immutable above the free-memory pointer, as
+the compiler's creation code does, and `deploy_contract` returns the final
+table; `call_contract` takes the table, which with the program stands for the
+deployed code. The differential harness compares a creation's table with the
+words the compiler's created code holds at its `immutableReferences` offsets,
+and patches a call case's immutables into the runtime bytecode there.
+Other immutables are rejected.
 
 Memory arrays of elementary leaves or byte sequences, nested to any depth, are
 implemented: locals, parameters and returns, `new T[](n)`, `new bytes(n)` and

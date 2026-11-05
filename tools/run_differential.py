@@ -234,9 +234,18 @@ def load_corpus(path: Path) -> dict[str, Any]:
                     check_storage(case[key], f"{what}.{key}")
             if "peer_storage" in case and "peer" not in suite:
                 raise CorpusError(f"{what}: peer_storage without a peer")
+            if "immutables" in case:
+                # values a call gives the immutables, by name; a creation
+                # assigns its own
+                immutables = case["immutables"]
+                if "deploy" in case or not isinstance(immutables, dict) or not immutables:
+                    raise CorpusError(
+                        f"{what}: immutables must be a non-empty object, in a call")
+                for key, value in immutables.items():
+                    check_argument(value, f"{what}.immutables.{key}")
             unknown = set(case) - {"name", "function", "deploy", "args", "calldata", "sender",
                                    "value", "storage", "peer_storage", "expect",
-                                   "final_storage", "logs", "fuel"}
+                                   "final_storage", "logs", "fuel", "immutables"}
             if unknown:
                 raise CorpusError(f"{what}: unknown fields {sorted(unknown)}")
     return corpus

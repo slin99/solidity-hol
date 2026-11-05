@@ -553,7 +553,8 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
                 node.get("stateVariable") and node.get("value") is not None
                 and CONSTANT_TYPE.fullmatch(node["typeDescriptions"].get("typeIdentifier") or "")):
             found.append("constants")
-        if node["mutability"] == "immutable":
+        if node["mutability"] == "immutable" and not VALUE_TYPE.fullmatch(
+                node["typeDescriptions"].get("typeIdentifier") or ""):
             found.append("immutables")
     elif kind == "FunctionDefinition":
         if node["kind"] not in FUNCTION_KINDS:
