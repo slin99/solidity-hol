@@ -884,9 +884,10 @@ fun contract external_structs contracts declared v = within v (fn v =>
     (* The bases without what calls cannot reach: the functions another
      * function of the bases overrides, unless a super call runs them, and the
      * modifiers no reachable function invokes. A super call runs the first
-     * function, along the bases after the caller's, with the name and
-     * parameter types of the declaration it names (super_target in
-     * solidityImport). *)
+     * implemented function, along the bases after the caller's, with the name
+     * and parameter types of the declaration it names (super_target in
+     * solidityImport); an invocation runs the modifier it names, since
+     * modifiers that could be overridden are not supported. *)
     val functions = members_of "FunctionDefinition" bases
     val overriders = List.concat (map overridden functions)
     fun same_id f g = int_field f "id" = int_field g "id"
@@ -909,6 +910,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
            in
              List.find
                (fn g => List.exists (fn c => int_field c "id" = int_field g "scope") later andalso
+                        bool_field g "implemented" andalso
                         string_field g "kind" = "function" andalso
                         string_field g "name" = string_field d "name" andalso
                         parameter_types g = parameter_types d)
@@ -931,7 +933,8 @@ fun contract external_structs contracts declared v = within v (fn v =>
         (map (fn f => List.mapPartial
                         (fn i => case optional_field i "kind" of
                                    SOME (JSON.STRING "modifierInvocation") =>
-                                     SOME (string_field (field i "modifierName") "name")
+                                     SOME (int_field (field i "modifierName")
+                                             "referencedDeclaration")
                                  | _ => NONE)
                         (JSONUtil.arrayMap I (field f "modifiers")))
            live)
@@ -939,7 +942,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
       case node_type n of
         "FunctionDefinition" => List.exists (same_id n) live
       | "ModifierDefinition" =>
-          List.exists (fn m => m = string_field n "name") invoked
+          List.exists (fn i => i = int_field n "id") invoked
       | _ => true
     val reachable_bases =
       map (fn JSON.OBJECT kvs =>

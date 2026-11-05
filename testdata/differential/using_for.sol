@@ -32,6 +32,10 @@ library Arith {
     function narrow(uint8 a) internal pure returns (uint8) {
         return a + 1;
     }
+
+    function triple(uint256 a) internal pure returns (uint256) {
+        return a * 3;
+    }
 }
 
 library Arrays {
@@ -80,7 +84,18 @@ abstract contract Hooked {
     }
 }
 
-contract UsingFor is Hooked {
+// Only a super call reaches its scaled, past the interface's declaration.
+abstract contract Scaling {
+    function scaled(uint256 a) public pure virtual returns (uint256) {
+        return Arith.triple(a);
+    }
+}
+
+interface IScaled {
+    function scaled(uint256 a) external pure returns (uint256);
+}
+
+contract UsingFor is Hooked, Scaling, IScaled {
     using Arrays for uint256[];
     using Arith for uint8;
     using Guarded for uint256;
@@ -122,6 +137,10 @@ contract UsingFor is Hooked {
 
     function hook(uint256 a) public pure override returns (uint256) {
         return a.inverse();
+    }
+
+    function scaled(uint256 a) public pure override(Scaling, IScaled) returns (uint256) {
+        return super.scaled(a) + 1;
     }
 
     function literal() external pure returns (uint256) {

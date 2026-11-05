@@ -852,11 +852,12 @@ End
 
 val () = cv_auto_trans using_unit_def;
 
-(* The library functions the contract reaches, and only those: not Linked's
- * public identity, which only the overridden Hooked.hook calls. *)
+(* The library functions the contract reaches, and only those: Arith.triple,
+ * which only a super call past an interface's declaration reaches, but not
+ * Linked's public identity, which only the overridden Hooked.hook calls. *)
 Theorem using_unit_library_functions:
   MAP (λc. (c.contract_name, LENGTH c.contract_library_functions))
-    using_unit.unit_contracts = [("UsingFor", 9)]
+    using_unit.unit_contracts = [("UsingFor", 10)]
 Proof
   EVAL_TAC
 QED

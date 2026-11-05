@@ -350,10 +350,11 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
     based, live = live_functions(asts, by_id)
     unreachable = {n["id"] for f in based - live for n in nodes(by_id[f])}
     # Nor the modifiers of the bases that no live function invokes.
-    invoked = {m["modifierName"].get("name") for f in live for m in by_id[f].get("modifiers", [])}
+    invoked = {m["modifierName"].get("referencedDeclaration")
+               for f in live for m in by_id[f].get("modifiers", [])}
     unreachable.update(n["id"] for m in by_id.values()
                        if m["nodeType"] == "ModifierDefinition" and m["id"] not in members
-                       and m["name"] not in invoked for n in nodes(m))
+                       and m["id"] not in invoked for n in nodes(m))
     seen: set[int] = set()
     rooted = {root["id"] for root in roots}
 

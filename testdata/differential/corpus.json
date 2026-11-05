@@ -882,7 +882,8 @@
         {"name": "receiver_evaluated_before_arguments", "function": "order", "args": [], "expect": {"return": [10020]}, "final_storage": {"0": "2"}},
         {"name": "literal_receiver", "function": "literal", "args": [], "expect": {"return": [14]}},
         {"name": "library_modifier_and_override_not_calling_the_base_library", "function": "hook", "args": [4], "expect": {"return": [25]}},
-        {"name": "library_modifier_reverts", "function": "hook", "args": [0], "expect": {"revert": "0x"}}
+        {"name": "library_modifier_reverts", "function": "hook", "args": [0], "expect": {"revert": "0x"}},
+        {"name": "super_call_past_an_interface", "function": "scaled", "args": [4], "expect": {"return": [13]}}
       ]
     },
     {
