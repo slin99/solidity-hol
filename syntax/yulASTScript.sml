@@ -25,7 +25,9 @@
  * codecopy, datasize, dataoffset) read the running code or the object's
  * layout, which the evaluator does not model; the compiler emits them in
  * creation objects, and inline assembly can use codesize and codecopy
- * anywhere. They are here so the set is complete and the evaluator can
+ * anywhere. linkersymbol is a library's address, fixed only when the code is
+ * linked; unoptimized code evaluates it, unused, for L.f where L is a
+ * library. They are here so the set is complete and the evaluator can
  * reject them rather than misread them.
  *)
 Theory yulAST
@@ -60,6 +62,8 @@ Datatype:
   | YStop | YReturn | YRevert
     (* object level: the creation object only *)
   | YCodeSize | YCodeCopy | YDataSize | YDataOffset | YSetImmutable
+    (* linking *)
+  | YLinkerSymbol
 End
 
 Datatype:

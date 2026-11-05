@@ -27,6 +27,7 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/constants.json",
   "../testdata/differential/expected/immutables.json",
   "../testdata/differential/expected/immutables_creation.json",
+  "../testdata/differential/expected/using_for.json",
   "../testdata/differential/expected/storage_bytes.json",
   "../testdata/differential/expected/dynamic_bytes.json",
   "../testdata/differential/expected/dynamic_bytes_peer.json",

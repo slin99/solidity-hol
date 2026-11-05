@@ -4,7 +4,7 @@
  * solidityImportLib builds these terms from a compiler artifact and fails
  * closed: an unknown nodeType, a missing required field, or a feature outside
  * the subset (overriding state variables, file-level constants,
- * modifiers, super other than in calls, named or try calls, built-ins other than
+ * super other than in calls, named or try calls, built-ins other than
  * require, assert, revert, members of msg, tx and block, address(this) and
  * type(T).max and .min for integer types T, literal subdenominations,
  * inline arrays, type names other than elementary types, arrays and mappings, ...)
@@ -18,14 +18,19 @@
  * along its linearization (src_contract); its bases, the functions it calls
  * and the structs it uses may come from any source unit of the compilation
  * (unit_sources), since the AST refers to declarations by id across files.
+ * The internal functions, modifiers and constants of libraries it uses come
+ * with it: L.f(args) and x.f(args), with f attached to x's type by a using
+ * directive, are internal calls of f, the latter with x as the first
+ * argument, and L.c names the constant c.
  *
  * Types are normalized from elementary, array and mapping type-name nodes; value
  * types are decoded from typeIdentifiers. Both yield only valid shapes (normalize_type_name_valid,
  * decode_type_identifier_valid). Literals keep their exact rational type.
  *
  * valid_src_unit then establishes, for an imported unit:
- *  - all node ids are distinct, and the unit is among its compilation's
- *    source units;
+ *  - each contract's node ids, with the unit's, are distinct (contracts
+ *    share the declarations of a common base or library), and the unit is
+ *    among its compilation's source units;
  *  - every parameter, return, local and state variable has a normalized
  *    elementary, array or mapping type, the default data location, and a
  *    type identifier agreeing with that type, and the enclosing function,
@@ -37,7 +42,8 @@
  *    a slot below 2 ** 256;
  *  - every identifier resolves, within its lexical scope, to a variable of the
  *    annotated type, or, as the callee of a call, to a function of the same
- *    contract, the most derived override of the one it names (call_table);
+ *    contract, the most derived override of the one it names (call_table),
+ *    or to an internal library function;
  *    calls have matching arity and are annotated with the callee's
  *    return types; conversions are annotated with their normalized target type;
  *    environment reads with their member's type; type(T).max and .min an
@@ -56,8 +62,10 @@
  *    the caller's, and modifier bodies make none;
  *    contracts are scoped by the unit, functions by a base of their contract,
  *    structs by a base or a source unit of the compilation;
+ *  - library functions are internal or private, scoped by a library distinct
+ *    from the bases, and see no state variable;
  *  - constants are of elementary value types or byte sequences, declared by
- *    a base, and their values refer to other constants only; an
+ *    a base or a library, and their values refer to other constants only; an
  *    identifier may name a constant;
  *  - operators belong to the admitted set and every other expression
  *    annotation decodes to an elementary, rational literal or tuple type;
@@ -303,6 +311,8 @@ Datatype:
     contract_state_variables : src_variable list;
     contract_immutables : src_variable list;
     contract_initializers : (num # src_expr) list;
+    (* the libraries whose functions or constants it uses *)
+    contract_libraries : num list;
     contract_constants : (src_variable # src_expr) list;
     contract_base_arguments : (num # num # src_expr list) list;
     contract_storage : src_storage_entry list;
@@ -310,6 +320,8 @@ Datatype:
     contract_events : src_event list;
     contract_modifiers : src_modifier list;
     contract_functions : src_function list;
+    (* the internal library functions it calls, also through each other *)
+    contract_library_functions : src_function list;
     (* the public state variables, immutables and constants, each with its
      * getter's selector *)
     contract_getters : (num # byte list) list
@@ -937,7 +949,8 @@ Definition contract_ids_def:
     FLAT (MAP (λm. m.modifier_info.node_id :: m.modifier_parameters_id ::
       FLAT (MAP variable_ids m.modifier_parameters) ++ stmt_ids m.modifier_body)
       c.contract_modifiers) ++
-    FLAT (MAP function_ids c.contract_functions)
+    FLAT (MAP function_ids c.contract_functions) ++
+    FLAT (MAP function_ids c.contract_library_functions)
 End
 
 Definition unit_ids_def:
@@ -1377,8 +1390,8 @@ Definition state_variable_def:
     | NONE => NONE
 End
 
-(* A constant, declared by one of the contract's bases, at the type its
- * references have: byte sequences are in memory. *)
+(* A constant, declared by one of the given contracts or libraries, at the
+ * type its references have: byte sequences are in memory. *)
 Definition constant_variable_def:
   constant_variable bases (v : src_variable) =
     if ¬MEM v.var_scope bases ∨ v.var_location ≠ "default" then NONE else
@@ -1393,7 +1406,8 @@ End
 
 Definition constant_table_def:
   constant_table (c : src_contract) =
-    all_some (MAP (constant_variable c.contract_bases o FST) c.contract_constants)
+    all_some (MAP (constant_variable (c.contract_bases ++ c.contract_libraries) o FST)
+                c.contract_constants)
 End
 
 (* An immutable, declared by one of the contract's bases, of elementary type. *)
@@ -1620,7 +1634,9 @@ End
  * parameters of the constructor of the base giving them. *)
 Definition initializer_env_def:
   initializer_env (c : src_contract) state constants =
-    <| functions := call_table c.contract_functions; supers := [];
+    <| functions := call_table (c.contract_functions ++
+                                c.contract_library_functions);
+       supers := [];
        structs := c.contract_structs;
        events := MAP (λe. (e.event_info.node_id, e)) c.contract_events;
        variables := []; state := state; locations := state;
@@ -1640,7 +1656,7 @@ Definition check_contract_def:
   check_contract unit_id sources (c : src_contract) ⇔
     c.contract_scope = unit_id ∧
     (case c.contract_bases of x :: _ => x = c.contract_info.node_id | [] => F) ∧
-    ALL_DISTINCT c.contract_bases ∧
+    ALL_DISTINCT (c.contract_bases ++ c.contract_libraries) ∧
     EVERY (check_struct sources c.contract_bases) c.contract_structs ∧
     EVERY check_event c.contract_events ∧
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
@@ -1650,10 +1666,23 @@ Definition check_contract_def:
       (SOME state, SOME constants, SOME immutables) =>
         EVERY (check_function c.contract_structs
                  (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
-                 (call_table c.contract_functions) c.contract_functions
+                 (call_table (c.contract_functions ++
+                              c.contract_library_functions))
+                 c.contract_functions
                  (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
                  state (constants ++ immutables) c.contract_bases)
           (checked_functions c.contract_functions c.contract_bases) ∧
+        (* library functions see no state *)
+        EVERY (λf. f.fn_kind = "function" ∧
+                   (f.fn_visibility = "internal" ∨ f.fn_visibility = "private") ∧
+                   check_function c.contract_structs
+                     (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
+                     (call_table (c.contract_functions ++
+                                  c.contract_library_functions))
+                     c.contract_library_functions
+                     (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
+                     [] constants c.contract_libraries f)
+          c.contract_library_functions ∧
         EVERY (λ(x, e). IS_SOME (ALOOKUP (state ++ immutables) x) ∧
                         IS_SOME (check_expr (initializer_env c state
                                                (constants ++ immutables)) e))
@@ -1679,7 +1708,9 @@ End
 
 Definition valid_src_unit_def:
   valid_src_unit (u : src_unit) ⇔
-    ALL_DISTINCT (unit_ids u) ∧ MEM u.unit_info.node_id u.unit_sources ∧
+    EVERY (λc. ALL_DISTINCT (u.unit_info.node_id :: contract_ids c))
+      u.unit_contracts ∧
+    MEM u.unit_info.node_id u.unit_sources ∧
     EVERY (check_contract u.unit_info.node_id u.unit_sources) u.unit_contracts
 End
 

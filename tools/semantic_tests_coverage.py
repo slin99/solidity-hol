@@ -206,7 +206,6 @@ FEATURES = {
     "TryCatchClause": "try/catch",
     "TryStatement": "try/catch",
     "UserDefinedValueTypeDefinition": "user-defined value types",
-    "UsingForDirective": "using for",
 }
 FUNCTION_KINDS = {"function", "constructor", "receive", "fallback"}
 # By the leading part of a type identifier.
@@ -317,13 +316,21 @@ def deployable(unit: dict[str, Any]) -> list[dict[str, Any]]:
             and c["id"] not in inherited]
 
 
+def library_members(by_id: dict[int, dict[str, Any]]) -> dict[int, dict[str, Any]]:
+    """The members of the compilation's libraries, by id."""
+    return {m["id"]: m for n in by_id.values()
+            if n["nodeType"] == "ContractDefinition" and n["contractKind"] == "library"
+            for m in n["nodes"]}
+
+
 def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dict[str, Any]]:
     """The parts of the compilation the importer reads, as subtrees: each
     unit's members other than pragmas, imports, file-level structs and errors,
-    interfaces and contracts imported only as bases; the bases of the
-    contracts imported; the file-level structs and external function
-    parameters those refer to; and the parameters of the errors their revert
-    statements name."""
+    interfaces, libraries and contracts imported only as bases; the bases of
+    the contracts imported; the file-level structs, library members other
+    than errors and external function parameters those refer to, library
+    members only from the functions calls can reach; and the parameters of
+    the errors their revert statements name."""
     roots: list[dict[str, Any]] = []
     for ast in asts.values():
         contracts = {c["id"] for c in deployable(ast)}
@@ -333,14 +340,21 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
                         "ErrorDefinition"}:
                 continue
             if kind == "ContractDefinition":
-                if member["contractKind"] == "library":
-                    roots.append(member)
-                elif member["id"] in contracts:
+                if member["id"] in contracts:
                     roots.extend(by_id[b] for b in member["linearizedBaseContracts"] if b in by_id)
                 continue
             roots.append(member)
     # Structs are found from every reference, read or not, as the importer
     # finds them from the whole of each base.
+    members = library_members(by_id)
+    based, live = live_functions(asts, by_id)
+    unreachable = {n["id"] for f in based - live for n in nodes(by_id[f])}
+    # Nor the modifiers of the bases that no live function invokes.
+    invoked = {m["modifierName"].get("referencedDeclaration")
+               for f in live for m in by_id[f].get("modifiers", [])}
+    unreachable.update(n["id"] for m in by_id.values()
+                       if m["nodeType"] == "ModifierDefinition" and m["id"] not in members
+                       and m["id"] not in invoked for n in nodes(m))
     seen: set[int] = set()
     rooted = {root["id"] for root in roots}
 
@@ -362,6 +376,14 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
             if (target is not None and target["nodeType"] == "StructDefinition"
                     and by_id.get(target.get("scope"), {}).get("nodeType") == "SourceUnit"):
                 add(target)
+            elif (target is not None and target["id"] in members
+                  and target["nodeType"] != "ErrorDefinition" and node["id"] not in unreachable):
+                add(target)
+                # The using directives of a library whose functions run.
+                if target["nodeType"] == "FunctionDefinition":
+                    for directive in by_id[target["scope"]]["nodes"]:
+                        if directive["nodeType"] == "UsingForDirective":
+                            add(directive)
     return roots
 
 
@@ -560,9 +582,9 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
         if node["kind"] not in FUNCTION_KINDS:
             found.append("free functions" if node["kind"] == "freeFunction"
                          else f"{node['kind']} functions")
-    elif kind == "ContractDefinition":
-        if node["contractKind"] == "library":
-            found.append("libraries")
+    elif kind == "UsingForDirective":
+        if node.get("libraryName") is None:
+            found.append("using for with functions")
     elif kind not in EXPRESSIONS | STATEMENTS | STRUCTURAL:
         found.append(f"{kind} nodes")
     return [Blocker(kind, feature, "import") for feature in found]
@@ -1065,7 +1087,11 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
             name = name["expression"]
         callee = by_id.get(name.get("referencedDeclaration"), {})
         if callee.get("nodeType") == "FunctionDefinition":
-            expected.extend(arguments(node, callee["parameters"]["parameters"]))
+            parameters = callee["parameters"]["parameters"]
+            # x.f(args): x is f's first argument
+            if "$attached_to$" in (name.get("typeDescriptions", {}).get("typeIdentifier") or ""):
+                parameters = parameters[1:]
+            expected.extend(arguments(node, parameters))
         member = node["expression"]
         if (member.get("nodeType") == "MemberAccess" and member["memberName"] == "push"
                 and len(node["arguments"]) == 1):
@@ -1113,6 +1139,16 @@ def arguments(call: dict[str, Any], parameters: list[dict[str, Any]]
     return [(a, named.get(n)) for a, n in zip(call["arguments"], call["names"])]
 
 
+def copies_receiver(member: dict[str, Any], function: dict[str, Any]) -> bool:
+    """Whether x.f converts x from storage or calldata to memory, which the
+    importer rejects (copies_receiver in solidityImportLib)."""
+    receiver = member["expression"]["typeDescriptions"].get("typeIdentifier") or ""
+    parameters = function["parameters"]["parameters"]
+    return (receiver.endswith(("_storage", "_storage_ptr", "_calldata", "_calldata_ptr"))
+            and bool(parameters)
+            and (parameters[0]["typeDescriptions"].get("typeIdentifier") or "").endswith("_memory_ptr"))
+
+
 def unwrap(value: dict[str, Any] | None) -> dict[str, Any] | None:
     """A value without the parentheses around it."""
     while (value is not None and value["nodeType"] == "TupleExpression"
@@ -1127,7 +1163,8 @@ def special_forms(reached: dict[int, dict[str, Any]],
     expressions of their own, and what it and the checker reject in those
     forms: event and error names, the members and contract conversions of
     external calls, address(this), type(T), the members of msg, block and tx,
-    and the messages of require and revert. Only the reached nodes are
+    the messages of require and revert, and library members named through
+    their library or attached to a type, which the importer reads as names. Only the reached nodes are
     scanned; by_id indexes the whole compilation, where a call's target may
     be declared."""
     unread: set[int] = set()
@@ -1136,9 +1173,29 @@ def special_forms(reached: dict[int, dict[str, Any]],
     def block(node: dict[str, Any], feature: str, stage: str) -> None:
         found.setdefault(node["id"], []).append(Blocker(node["nodeType"], feature, stage))
 
+    called = {n["expression"]["id"] for n in reached.values() if n["nodeType"] == "FunctionCall"}
+    members = library_members(by_id)
     for node in reached.values():
         kind = node["nodeType"]
-        if kind == "EmitStatement":
+        if node["id"] in members:
+            if kind == "FunctionDefinition" and node["visibility"] not in ("internal", "private"):
+                block(node, "external library functions", "import")
+            elif kind not in ("FunctionDefinition", "VariableDeclaration", "ModifierDefinition",
+                              "UsingForDirective"):
+                block(node, "library structs and events", "import")
+        if kind == "MemberAccess" and node.get("referencedDeclaration") in members:
+            unread.add(node["id"])
+            target = members[node["referencedDeclaration"]]
+            if "$attached_to$" in (node["typeDescriptions"].get("typeIdentifier") or ""):
+                if node["id"] not in called:
+                    block(node, "using for", "import")
+                elif copies_receiver(node, target):
+                    block(node, "bound calls copying their receiver", "import")
+            else:
+                unread.update(n["id"] for n in nodes(node["expression"]))
+                if target["nodeType"] == "FunctionDefinition" and node["id"] not in called:
+                    block(node, "functions as values", "elaboration")
+        elif kind == "EmitStatement":
             callee = node["eventCall"]["expression"]
             unread.update({node["eventCall"]["id"], callee["id"]})
             unread.update(n["id"] for n in nodes(callee))
@@ -1216,9 +1273,14 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
               for v in n["members"]}
     based, live = live_functions(asts, by_id)
     dead = {n["id"] for f in based - live if f in reached for n in nodes(by_id[f])}
-    # A modifier is checked and elaborated where a live function invokes it.
+    # The checker and the elaborator see the live functions and the library
+    # functions the contracts reach.
+    members = library_members(by_id)
+    checked = live | {i for i, n in reached.items()
+                      if n["nodeType"] == "FunctionDefinition" and i in members}
+    # A modifier is checked and elaborated where such a function invokes it.
     invoked = {m["modifierName"].get("referencedDeclaration")
-               for f in live for m in by_id[f].get("modifiers", [])}
+               for f in checked for m in by_id[f].get("modifiers", [])}
     dead.update(n["id"] for m in reached.values()
                 if m["nodeType"] == "ModifierDefinition" and m["id"] not in invoked
                 for n in nodes(m))
@@ -1285,7 +1347,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
         if blockers:
             found.setdefault(node["id"], []).extend(blockers)
     # Modifier arguments see the function's parameters, not its returns.
-    for f in live:
+    for f in checked:
         returns = {v["id"] for v in by_id[f].get("returnParameters", {}).get("parameters", [])}
         for n in (n for m in by_id[f].get("modifiers", []) for a in m.get("arguments") or []
                   for n in nodes(a)):
@@ -1293,7 +1355,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                 found.setdefault(n["id"], []).append(
                     Blocker("Identifier", "return variables in modifier arguments", "elaboration"))
     # A static memory return array is shared across a modifier's placeholders.
-    for f in live:
+    for f in checked:
         if any(m.get("kind") == "modifierInvocation" for m in by_id[f].get("modifiers", [])):
             for v in by_id[f].get("returnParameters", {}).get("parameters", []):
                 tid = v["typeDescriptions"].get("typeIdentifier") or ""

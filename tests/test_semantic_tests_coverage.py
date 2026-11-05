@@ -822,6 +822,66 @@ class ClassifyTests(unittest.TestCase):
                 found = {i: bs for i, bs in coverage.scan(asts).items() if i not in others}
                 self.assertEqual(found, {})
 
+    def test_library_functions_are_read_only_where_used(self) -> None:
+        """A contract's library calls read the functions they reach, so only
+        those must be internal; libraries are not read whole."""
+        artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        self.assertEqual(coverage.scan(asts), {})
+        functions = {n["name"]: n for ast in asts.values() for n in coverage.nodes(ast)
+                     if n.get("nodeType") == "FunctionDefinition"}
+        functions["twice"]["visibility"] = "public"
+        self.assertEqual(coverage.scan(asts), {functions["twice"]["id"]: [coverage.Blocker(
+            "FunctionDefinition", "external library functions", "import")]})
+
+    def test_library_modifiers_are_checked_where_library_functions_invoke_them(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        modifier = next(n for ast in asts.values() for n in coverage.nodes(ast)
+                        if n.get("nodeType") == "ModifierDefinition" and n["name"] == "nonZero")
+        code = dict(assembly([{"nodeType": "YulExpressionStatement",
+                               "expression": yul_call("pop", yul_call("codesize"))}]), id=999999)
+        modifier["body"]["statements"].insert(0, code)
+        self.assertIn(999999, coverage.scan(asts))
+
+    def test_using_directives_of_reached_libraries_are_read(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        arith = next(n for ast in asts.values() for n in coverage.nodes(ast)
+                     if n.get("nodeType") == "ContractDefinition" and n["name"] == "Arith")
+        directive = {"nodeType": "UsingForDirective", "id": 999998, "global": False,
+                     "functionList": [], "typeName": None}
+        arith["nodes"].append(directive)
+        self.assertEqual(coverage.scan(asts), {999998: [coverage.Blocker(
+            "UsingForDirective", "using for with functions", "import")]})
+
+    def test_using_directives_of_other_files_are_read(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        (unit,) = asts.values()
+        arith = next(n for n in unit["nodes"] if n.get("name") == "Arith")
+        unit["nodes"].remove(arith)
+        other = {"nodeType": "SourceUnit", "id": 999990, "absolutePath": "arith.sol",
+                 "nodes": [arith]}
+        asts["arith.sol"] = other
+        # A file deploying no contract is a blocker of its own; the directive adds one.
+        alone = coverage.scan(asts)
+        self.assertEqual(set(alone), {999990})
+        other["nodes"].append({"nodeType": "UsingForDirective", "id": 999998, "global": False,
+                               "functionList": [], "typeName": None})
+        self.assertEqual(coverage.scan(asts), alone | {999998: [coverage.Blocker(
+            "UsingForDirective", "using for with functions", "import")]})
+
+    def test_bound_calls_copying_their_receiver_are_blocked(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        fill = next(n for ast in asts.values() for n in coverage.nodes(ast)
+                    if n.get("nodeType") == "MemberAccess" and n.get("memberName") == "fill")
+        fill["expression"]["typeDescriptions"]["typeIdentifier"] = \
+            "t_array$_t_uint256_$dyn_storage_ptr"
+        self.assertEqual(coverage.scan(asts), {fill["id"]: [coverage.Blocker(
+            "MemberAccess", "bound calls copying their receiver", "import")]})
+
     def test_compilation_retains_artifact_contract_for_preparation(self) -> None:
         metadata = {"storageLayout": {"storage": [{"astId": 3, "slot": "0"}]},
                     "evm": {"deployedBytecode": {"object": "00"}}}

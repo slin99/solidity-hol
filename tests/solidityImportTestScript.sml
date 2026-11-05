@@ -21,7 +21,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/inheritance.json",
   "../testdata/differential/expected/imports.json",
   "../testdata/differential/expected/errors.json",
-  "../testdata/differential/expected/type_bounds.json"
+  "../testdata/differential/expected/type_bounds.json",
+  "../testdata/differential/expected/using_for.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -113,21 +114,23 @@ val contracts = artifact_part fixture ["contracts", source]
 fun is_node ty =
   JSONUtil.testField "nodeType" (fn JSON.STRING s => s = ty | _ => false)
 
-fun edit_first ty f v =
+fun edit_first_where p what f v =
   let
     val edited = ref false
     fun go v =
       if !edited then v
       else case v of
              JSON.OBJECT kvs =>
-               if is_node ty v then (edited := true; f v)
+               if p v then (edited := true; f v)
                else JSON.OBJECT (map (fn (k, x) => (k, go x)) kvs)
            | JSON.ARRAY vs => JSON.ARRAY (map go vs)
            | _ => v
     val result = go v
   in
-    if !edited then result else raise Fail ("no " ^ ty ^ " node")
+    if !edited then result else raise Fail ("no " ^ what)
   end
+
+fun edit_first ty = edit_first_where (is_node ty) (ty ^ " node")
 
 fun set_field k x (JSON.OBJECT kvs) =
       JSON.OBJECT (map (fn (k', y) => if k' = k then (k', x) else (k', y)) kvs)
@@ -144,12 +147,14 @@ fun type_identifier tid =
 
 datatype import_failure = Unsupported | Malformed
 
-fun import_error_with expected contracts name v =
-  (import_source_unit [] v contracts; raise Fail (name ^ ": imported"))
+fun import_units_error_with expected units contracts name v =
+  (import_source_unit units v contracts; raise Fail (name ^ ": imported"))
   handle ImportError _ =>
            if expected = Unsupported then () else raise Fail (name ^ ": expected malformed input")
        | MalformedInput _ =>
            if expected = Malformed then () else raise Fail (name ^ ": expected unsupported input")
+
+fun import_error_with expected = import_units_error_with expected []
 
 val import_error = import_error_with Unsupported contracts
 val malformed_input = import_error_with Malformed contracts
@@ -831,4 +836,130 @@ Theorem type_bound_values:
   type_bound "interfaceId" (UintT 8) = NONE
 Proof
   EVAL_TAC
+QED
+
+(* Libraries: only internal functions, attached through a library name, with a
+ * receiver that is not copied, are imported; library functions are plain
+ * functions.
+ *)
+
+val using_fixture = "../testdata/differential/expected/using_for.json"
+val using_source = "testdata/differential/using_for.sol"
+val using_ast = artifact_part using_fixture ["sources", using_source, "ast"]
+val using_contracts = artifact_part using_fixture ["contracts", using_source]
+
+Definition using_unit_def:
+  using_unit = ^(import_artifact using_fixture using_source)
+End
+
+val () = cv_auto_trans using_unit_def;
+
+(* The library functions the contract reaches, and only those: Arith.triple,
+ * which only a super call past an interface's declaration reaches, but not
+ * Linked's public identity, which only the overridden Hooked.hook calls. *)
+Theorem using_unit_library_functions:
+  MAP (λc. (c.contract_name, LENGTH c.contract_library_functions))
+    using_unit.unit_contracts = [("UsingFor", 10)]
+Proof
+  EVAL_TAC
+QED
+
+(* Contracts of a unit may share library functions and constants, and so
+ * their node ids. *)
+Definition shared_library_unit_def:
+  shared_library_unit =
+    using_unit with unit_contracts :=
+      using_unit.unit_contracts ++ using_unit.unit_contracts
+End
+
+val () = cv_auto_trans shared_library_unit_def;
+
+Theorem shared_library_unit_valid:
+  valid_src_unit shared_library_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+fun named ty name v =
+  is_node ty v andalso
+  JSONUtil.testField "name" (fn JSON.STRING s => s = name | _ => false) v
+
+val () = import_error_with Unsupported using_contracts "public library function"
+  (edit_first_where (named "FunctionDefinition" "addBonus") "addBonus"
+     (set_field "visibility" (JSON.STRING "public")) using_ast)
+val () = import_error_with Unsupported using_contracts "file-level using with functions"
+  (edit_first "UsingForDirective" (drop_field "libraryName") using_ast)
+val () = import_error_with Unsupported using_contracts "contract using with functions"
+  (edit_first_where
+     (fn v => is_node "UsingForDirective" v andalso
+              JSONUtil.testField "libraryName" (named "IdentifierPath" "Arrays") v)
+     "using Arrays" (drop_field "libraryName") using_ast)
+(* A compilation of two files: the library Arith moves to a file of its own,
+ * whose file-level directives the contract reaches through Arith. *)
+fun using_unit_split directives =
+  case using_ast of
+    JSON.OBJECT kvs =>
+      let
+        val ns = JSONUtil.arrayMap I (JSONUtil.lookupField using_ast "nodes")
+        val (arith, rest) = List.partition (named "ContractDefinition" "Arith") ns
+      in
+        (JSON.OBJECT
+           [("nodeType", JSON.STRING "SourceUnit"), ("id", JSON.INT 999990),
+            ("src", JSON.STRING "0:0:1"), ("absolutePath", JSON.STRING "arith.sol"),
+            ("nodes", JSON.ARRAY (arith @ directives))],
+         JSON.OBJECT
+           (map (fn ("nodes", _) => ("nodes", JSON.ARRAY rest) | kv => kv) kvs))
+      end
+  | _ => raise Fail "using_ast: not an object"
+
+val using_functions_directive =
+  JSON.OBJECT [("nodeType", JSON.STRING "UsingForDirective"),
+               ("id", JSON.INT 999998), ("src", JSON.STRING "0:0:1"),
+               ("functionList", JSON.ARRAY []), ("global", JSON.BOOL false)]
+
+val _ =
+  let val (arith_unit, rest) = using_unit_split []
+  in import_source_unit [arith_unit] rest using_contracts end
+
+val () =
+  let val (arith_unit, rest) = using_unit_split [using_functions_directive]
+  in
+    import_units_error_with Unsupported [arith_unit] using_contracts
+      "using with functions in another file" rest
+  end
+
+val () = import_error_with Unsupported using_contracts "reached library using functions"
+  (edit_first_where (named "ContractDefinition" "Arith") "Arith"
+     (fn JSON.OBJECT kvs =>
+           JSON.OBJECT
+             (map (fn ("nodes", JSON.ARRAY ns) =>
+                        ("nodes",
+                         JSON.ARRAY
+                           (ns @ [JSON.OBJECT
+                                    [("nodeType", JSON.STRING "UsingForDirective"),
+                                     ("id", JSON.INT 999998),
+                                     ("src", JSON.STRING "0:0:0"),
+                                     ("functionList", JSON.ARRAY []),
+                                     ("global", JSON.BOOL false)]]))
+                    | kv => kv) kvs)
+       | v => v)
+     using_ast)
+val () = import_error_with Unsupported using_contracts "receiver copied to memory"
+  (edit_first_where
+     (fn v => is_node "MemberAccess" v andalso
+              JSONUtil.testField "memberName" (fn JSON.STRING s => s = "fill" | _ => false) v)
+     "xs.fill"
+     (fn m => set_field "expression"
+                (type_identifier "t_array$_t_uint256_$dyn_storage_ptr"
+                   (JSONUtil.lookupField m "expression")) m)
+     using_ast)
+
+val () = edited_unit_with using_contracts "library_receive"
+  (edit_first_where (named "FunctionDefinition" "addBonus") "addBonus"
+     (set_field "kind" (JSON.STRING "receive")) using_ast)
+
+Theorem library_receive_rejected:
+  ¬valid_src_unit library_receive
+Proof
+  CONV_TAC cv_eval
 QED

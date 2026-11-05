@@ -184,7 +184,7 @@ the procedure of the arithmetic it is in, as the compiler's IR calls one of
 two functions per constant, and a public constant's getter is the checked
 one. So a value that overflows its type panics with `0x11` when it is
 referenced in checked code, and wraps inside `unchecked`. File-level constants and references through a contract name
-(`C.X`) are rejected. An operation over literals that the compiler types
+other than a library (`C.X`) are rejected. An operation over literals that the compiler types
 as an integer (`10 ** 27`, `-1`) elaborates to that integer, as the compiler
 folds it; one over other rational constants is still rejected.
 
@@ -201,6 +201,25 @@ deployed code. The differential harness compares a creation's table with the
 words the compiler's created code holds at its `immutableReferences` offsets,
 and patches a call case's immutables into the runtime bytecode there.
 Other immutables are rejected.
+
+Internal and private library functions, their modifiers, and library
+constants come with the contracts that use them, also through each other,
+from the functions calls can reach (an overridden function counts only when
+a super call may run it): `L.f(args)` is an internal call of `f`,
+`x.f(args)`, with `f` attached to the type of `x` by `using L for T`, is one
+with `x` as the first argument, evaluated before the others, and `L.c` names
+the constant `c`. Library functions see no state variables. `using`
+directives naming a library are accepted, in a contract or at file level,
+since the compiler resolves which function a call names. A bound call whose
+receiver is in storage or calldata and whose first parameter is in memory is
+rejected: the compiler copies the receiver before evaluating the other
+arguments, while elaboration converts arguments after evaluating them all.
+Public and external library functions, which a contract calls with
+`DELEGATECALL`, every `using {f, ...} for T` with a function list (library
+functions included) and user-defined operators, and library structs and
+events are rejected; a file-level directive with a function list rejects the
+compilation, whichever file it is in. In the Yul the compiler emits, `linkersymbol`, a linked
+library's address, is not admitted.
 
 Memory arrays of elementary leaves or byte sequences, nested to any depth, are
 implemented: locals, parameters and returns, `new T[](n)`, `new bytes(n)` and

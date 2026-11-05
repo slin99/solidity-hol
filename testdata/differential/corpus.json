@@ -866,6 +866,27 @@
       ]
     },
     {
+      "name": "using_for",
+      "source": "testdata/differential/using_for.sol",
+      "contract": "UsingFor",
+      "artifact": "testdata/differential/expected/using_for.json",
+      "cases": [
+        {"name": "bound_call_passes_the_receiver_first", "function": "bound", "args": [5, 100], "expect": {"return": [112]}},
+        {"name": "bound_call_overflows", "function": "bound", "args": [115792089237316195423570985008687907853269984665640564039457584007913129639935, 1], "expect": {"panic": "0x11"}},
+        {"name": "direct_call_through_private_function_and_constants", "function": "direct", "args": [3], "expect": {"return": [47]}},
+        {"name": "library_error_reverts", "function": "direct", "args": [1001], "expect": {"revert": "0xe0a89a3a00000000000000000000000000000000000000000000000000000000000003e9"}},
+        {"name": "recursive_library_function", "function": "recursive", "args": [5], "expect": {"return": [120]}},
+        {"name": "narrow_receiver_overflows", "function": "narrowed", "args": [255], "expect": {"panic": "0x11"}},
+        {"name": "narrow_receiver", "function": "narrowed", "args": [41], "expect": {"return": [42]}},
+        {"name": "memory_array_receiver_is_shared", "function": "arrays", "args": [3, 4], "expect": {"return": [9, 3]}},
+        {"name": "receiver_evaluated_before_arguments", "function": "order", "args": [], "expect": {"return": [10020]}, "final_storage": {"0": "2"}},
+        {"name": "literal_receiver", "function": "literal", "args": [], "expect": {"return": [14]}},
+        {"name": "library_modifier_and_override_not_calling_the_base_library", "function": "hook", "args": [4], "expect": {"return": [25]}},
+        {"name": "library_modifier_reverts", "function": "hook", "args": [0], "expect": {"revert": "0x"}},
+        {"name": "super_call_past_an_interface", "function": "scaled", "args": [4], "expect": {"return": [13]}}
+      ]
+    },
+    {
       "name": "storage_bytes",
       "source": "testdata/differential/storage_bytes.sol",
       "contract": "StorageBytes",

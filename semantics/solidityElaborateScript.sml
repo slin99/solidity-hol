@@ -1754,12 +1754,14 @@ Definition elaborate_unit_def:
                    core_state_variables state c.contract_storage,
                    elab_functions c.contract_structs
                      (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
-                     (call_table c.contract_functions) c.contract_functions
-                     c.contract_bases
+                     (call_table (c.contract_functions ++
+                                  c.contract_library_functions))
+                     c.contract_functions c.contract_bases
                      (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
                      state immutables constants
                      (MAX_LIST (unit_ids u) + 1 + LENGTH table)
-                     (checked_functions c.contract_functions c.contract_bases)) of
+                     (checked_functions c.contract_functions c.contract_bases ++
+                      c.contract_library_functions)) of
                (SOME decls, SOME layouts, SOME cvs, SOME (fps, n0)) =>
                  (case elab_getters state immutables n0
                          (FILTER (λx. IS_SOME (ALOOKUP (state ++ immutables) x))
@@ -1778,7 +1780,8 @@ Definition elaborate_unit_def:
                  | SOME (cps, n) =>
                  let ps = fps ++ gps ++ cps in
                  (case elab_creation
-                         <| functions := call_table c.contract_functions;
+                         <| functions := call_table (c.contract_functions ++
+                                                     c.contract_library_functions);
                             supers := [];
                             structs := c.contract_structs;
                             events := MAP (λe. (e.event_info.node_id, e))
