@@ -204,11 +204,12 @@ val () =
  * million nodes at the far end -- on every run of this suite.
  *
  * The list was re-measured against this conversion, and it names two reasons.
- * Three are over the line: `fun_signedLess` (1 083 107) and `fun_boolLogic`
- * (1 008 029), whose calls sit inside a builtin's arguments
- * (`slt(cleanup_int8(x), cleanup_int8(y))`) and leave the arguments' own case
- * unsettled, and `checked_exp_signed` (903 697, in about 3s).  Two more are
- * under the line and inside the clock here, and are left out for the margin
+ * Three are over the line: `fun_signedLess` (1 083 107), `fun_boolLogic`
+ * (1 008 029) and `checked_exp_signed` (903 697, in about 3s); which decision
+ * their continuations are copied under has not been measured yet.  The first
+ * two call inside a builtin's arguments
+ * (`slt(cleanup_int8(x), cleanup_int8(y))`), which is a candidate.  Two more
+ * are under the line and inside the clock here, and are left out for the margin
  * the build machine needs: `fun_bitwise`'s conversion takes 7.2s there against
  * 2.4s on the box these numbers were measured on -- past the five-second
  * bound, and the first CI run that covered it is what said so -- and
@@ -438,7 +439,9 @@ val scalars_checked_sub_uint8 = save_thm ("scalars_checked_sub_uint8",
 
 (* A division by an argument stays the value it is: `wrapping_div_int8`'s
  * `sdiv(x, y)` comes out as `with_zero word_quot`, not as a test on `y` that
- * the rest of the body would be evaluated under. *)
+ * the rest of the body would be evaluated under.  A literal divisor, zero or
+ * not, is still unfolded: no function here divides by one, so it is asked of
+ * the set directly. *)
 val with_zero_c = prim_mk_const {Thy = "vfmExecution", Name = "with_zero"}
 
 val () =
@@ -446,6 +449,15 @@ val () =
          (rhs (concl (stated_form "wrapping_div_int8")))
   then ()
   else fail "wrapping_div_int8's division did not stay folded"
+
+val () =
+  List.app (fn (t, folded) =>
+      if yulConvLib.is_fixed_point [] t = folded then ()
+      else fail (term_to_string t ^ (if folded then " was unfolded"
+                                     else " was left folded")))
+    [(“with_zero word_div (a : bytes32) b”, true),
+     (“with_zero word_div (a : bytes32) 5w”, false),
+     (“with_zero word_div (a : bytes32) 0w”, false)]
 
 (* One function converted over the table *term* rather than over the constant it
  * is bound to.  A caller may give either, `defs` being what that term is folded
@@ -521,9 +533,8 @@ QED
  * a call inside another call's arguments: `wrapping_exp_uint8_uint8` closes now
  * -- its `exp` call is reached through the builtin dispatch rather than left to
  * the word library -- and the ones that carry a size above come back under a
- * longer clock.  One line is left in the class -- the one at the top of the
- * list, whose paragraph above says what it does come back as -- and the check
- * stays for the next body that stops coming back. *)
+ * longer clock.  No line is left in the class now, and the check stays for the
+ * next body that stops coming back. *)
 val () =
   List.app
     (fn (nm, why) =>
