@@ -158,8 +158,7 @@ state variable, naming its declaration and type, and leaves the layout
 calculation itself, including that packed variables don't overlap, to the
 compiler. Elaboration copies slot and offset into the core program's
 `state_variables`. Initialisers are imported and run by the creation
-procedure; public state variables, constants and immutables are import
-errors. Mapping key/value types come from recursive type-name
+procedure; immutables are import errors. Mapping key/value types come from recursive type-name
 normalization. AST and layout type identifiers use different encodings; both
 are checked against the normalized type. The scalar leaf width determines
 its storage read/write, and aggregate root slots come from the layout. Fixed
@@ -175,6 +174,18 @@ panic `0x41` at length >= `2^64`. Length reads and indexing retain the full
 existing bytes at the appended position, as the pinned compiler does. Dynamic
 array mutation of aggregates, local reference bindings and aggregate copies
 remain coverage work.
+
+Constants of elementary value types, `string` and `bytes`, declared in the
+contract or a base, are imported with their values. Each elaborates to a
+procedure without parameters that evaluates the value, with checked
+arithmetic, and converts it to the declared type; byte sequences are copied
+to fresh memory. Every reference to the constant calls that procedure, as the
+compiler's IR calls a function per constant, and a public constant's getter is
+the procedure. So a value that overflows its type panics with `0x11` when it
+is referenced. File-level constants and references through a contract name
+(`C.X`) are rejected. An operation over literals that the compiler types
+as an integer (`10 ** 27`, `-1`) elaborates to that integer, as the compiler
+folds it; one over other rational constants is still rejected.
 
 Memory arrays of elementary leaves or byte sequences, nested to any depth, are
 implemented: locals, parameters and returns, `new T[](n)`, `new bytes(n)` and

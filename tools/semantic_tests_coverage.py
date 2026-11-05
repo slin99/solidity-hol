@@ -549,7 +549,9 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
     elif kind == "VariableDeclaration":
         if node.get("overrides"):
             found.append("overriding state variables")
-        if node["constant"]:
+        if node["constant"] and not (
+                node.get("stateVariable") and node.get("value") is not None
+                and CONSTANT_TYPE.fullmatch(node["typeDescriptions"].get("typeIdentifier") or "")):
             found.append("constants")
         if node["mutability"] == "immutable":
             found.append("immutables")
@@ -570,7 +572,12 @@ VALUE_TYPE = re.compile(
     r"|128|136|144|152|160|168|176|184|192|200|208|216|224|232|240|248|256)"
     r"|bytes([1-9]|[12][0-9]|3[0-2]))(?=_\$_|_\$|$)"
 )
+# The types of constants: value types, and byte sequences, which references
+# see in memory.
+CONSTANT_TYPE = re.compile(rf"(?:{VALUE_TYPE.pattern})|t_(string|bytes)_memory_ptr")
 RATIONAL = re.compile(r"t_rational_(minus_)?[0-9]+_by_[0-9]+")
+# The type of an operation over literals that elaborates to its value.
+INTEGER_RATIONAL = re.compile(r"t_rational_(minus_)?[0-9]+_by_1")
 # bytes and string in storage, and references to them in each location
 # (decode_elementary_identifier).
 BYTE_SEQUENCE = re.compile(r"t_(bytes|string)_(storage|(memory|calldata|storage)_ptr)")
@@ -772,9 +779,11 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
         found.append("calldata locals without an initializer")
     elif kind == "UnaryOperation" and node["operator"] not in UNARY_OPERATORS:
         found.append(f"operator {node['operator']}")
-    elif ((kind == "UnaryOperation" and RATIONAL.fullmatch(node["typeDescriptions"]["typeIdentifier"]))
-          or (kind == "BinaryOperation"
-              and RATIONAL.fullmatch(node["commonType"]["typeIdentifier"]))):
+    elif (kind in ("UnaryOperation", "BinaryOperation")
+          and not INTEGER_RATIONAL.fullmatch(node["typeDescriptions"]["typeIdentifier"])
+          and (RATIONAL.fullmatch(node["typeDescriptions"]["typeIdentifier"])
+               or (kind == "BinaryOperation"
+                   and RATIONAL.fullmatch(node["commonType"]["typeIdentifier"])))):
         found.append("constant expressions over literals")
     elif kind == "Literal" and node["kind"] == "number" and not RATIONAL.fullmatch(
             node["typeDescriptions"].get("typeIdentifier") or ""):
@@ -1078,9 +1087,13 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
     for value, target in expected:
         value = unwrap(value)
         target_type = (target or {}).get("typeDescriptions", {}).get("typeIdentifier") or ""
-        if value is None or value["nodeType"] != "Literal" or not VALUE_TYPE.fullmatch(target_type):
+        if value is None or not VALUE_TYPE.fullmatch(target_type):
             continue
         value_type = value["typeDescriptions"].get("typeIdentifier") or ""
+        if not (value["nodeType"] == "Literal" or (
+                value["nodeType"] in ("UnaryOperation", "BinaryOperation")
+                and INTEGER_RATIONAL.fullmatch(value_type))):
+            continue
         conversion = kind == "FunctionCall" and node["kind"] == "typeConversion"
         if RATIONAL.fullmatch(value_type) and not INTEGER_TYPE.fullmatch(target_type) and not conversion:
             found.append("literals of non-integer types")

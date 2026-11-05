@@ -260,8 +260,38 @@ class ClassifyTests(unittest.TestCase):
         constant = dict(variable(3, state=True), constant=True, mutability="constant",
                         value={"nodeType": "Literal", "id": 4, "kind": "number",
                                "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}})
-        self.assertEqual({b.feature for b in coverage.scan({"t.sol": unit([constant])})[3]},
+        self.assertEqual(coverage.scan({"t.sol": unit([constant])}), {})
+        mapping = dict(constant, typeDescriptions={
+            "typeIdentifier": "t_mapping$_t_uint256_$_t_uint256_$"})
+        self.assertEqual({b.feature for b in coverage.scan({"t.sol": unit([mapping])})[3]},
                          {"constants"})
+
+    def test_operations_over_literals_fold_to_integers(self) -> None:
+        def literal(node_id, value):
+            return {"nodeType": "Literal", "id": node_id, "kind": "number", "value": value,
+                    "typeDescriptions": {"typeIdentifier": f"t_rational_{value}_by_1"}}
+
+        def power(node_id, type_identifier):
+            return {"nodeType": "BinaryOperation", "id": node_id, "operator": "**",
+                    "leftExpression": literal(node_id + 1, "10"),
+                    "rightExpression": literal(node_id + 2, "27"),
+                    "commonType": {"typeIdentifier": type_identifier},
+                    "typeDescriptions": {"typeIdentifier": type_identifier}}
+
+        folded = {"nodeType": "VariableDeclarationStatement", "id": 6,
+                  "declarations": [variable(7)],
+                  "initialValue": power(10, "t_rational_1000000000000000000000000000_by_1")}
+        half = {"nodeType": "VariableDeclarationStatement", "id": 20,
+                "declarations": [variable(21)],
+                "initialValue": power(30, "t_rational_1_by_2")}
+        found = coverage.scan({"t.sol": unit([function(4, [folded, half])])})
+        self.assertNotIn(10, found)
+        self.assertEqual(found[30], [coverage.Blocker(
+            "BinaryOperation", "constant expressions over literals", "elaboration")])
+        bytes4 = dict(folded, declarations=[variable(7, type_identifier="t_bytes4")])
+        found = coverage.scan({"t.sol": unit([function(4, [bytes4])])})
+        self.assertEqual(found[6], [coverage.Blocker(
+            "VariableDeclarationStatement", "literals of non-integer types", "elaboration")])
 
     def test_scan_finds_literals_of_non_integer_types(self) -> None:
         def literal(node_id, type_identifier):

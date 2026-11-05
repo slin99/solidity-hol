@@ -340,7 +340,7 @@ val () = import_error_with Unsupported storage_contracts "overriding state varia
                                  ("overrides", JSON.ARRAY [])]) :: kvs)
               | v' => v')
      storage_ast)
-val () = import_error_with Unsupported storage_contracts "constant state variable"
+val () = import_error_with Malformed storage_contracts "constant without a value"
   (edit_first "VariableDeclaration" (set_field "constant" (JSON.BOOL true))
      storage_ast)
 val () = import_error_with Unsupported storage_contracts "immutable state variable"

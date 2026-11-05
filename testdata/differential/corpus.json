@@ -799,7 +799,33 @@
         {"name": "capped_checks_after_base", "function": "mint", "args": [12288, 1001], "expect": {"revert": "0x"}},
         {"name": "sibling_bases_chain_through_super", "function": "digits", "args": [], "expect": {"return": [1234]}},
         {"name": "super_skips_a_later_overload", "function": "picked", "args": [], "expect": {"return": [257]}},
+        {"name": "super_call_as_modifier_argument", "function": "pickedAtLeast", "args": [300], "expect": {"return": [256]}},
+        {"name": "super_call_as_modifier_argument_reverts", "function": "pickedAtLeast", "args": [5], "expect": {"revert": "0x"}},
         {"name": "super_from_live_function_skips_own_override", "function": "mintTwice", "args": [12288, 3], "expect": {"return": [6, 2]}, "final_storage": {"68113724183316182233052564790125915752421945217496801851705428207216635038832": "6", "1": "2", "3": "6", "4": "3"}}
+      ]
+    },
+    {
+      "name": "constants",
+      "source": "testdata/differential/constants.sol",
+      "contract": "Constants",
+      "artifact": "testdata/differential/expected/constants.json",
+      "cases": [
+        {"name": "initializer_reads_constant", "deploy": true, "args": [], "expect": {"return": []}, "final_storage": {"0": "3000000000000000000000000000"}},
+        {"name": "folded_and_derived_constants", "function": "rmul", "args": [2000000000000000000000000000, 3000000000000000000000000000], "expect": {"return": [6000000000000000000000000000]}},
+        {"name": "derived_constant_rounds", "function": "rmul", "args": [1, 1], "expect": {"return": [0]}},
+        {"name": "operands_overflow_with_constants", "function": "rmul", "args": [57896044618658097711785492504343953926634992332820282019728792003956564819968, 2], "expect": {"panic": "0x11"}},
+        {"name": "constant_value_overflows_when_referenced", "function": "overflows", "args": [], "expect": {"panic": "0x11"}},
+        {"name": "negative_constant_and_literal", "function": "negated", "args": [], "expect": {"return": [24]}},
+        {"name": "string_constant_returned", "function": "greeting", "args": [], "expect": {"returned": "0x0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000568656c6c6f000000000000000000000000000000000000000000000000000000"}},
+        {"name": "bytes_constant_length", "function": "rawLength", "args": [], "expect": {"return": [6]}},
+        {"name": "each_reference_is_a_fresh_copy", "function": "fresh", "args": [], "expect": {"returned": "0x0100000000000000000000000000000000000000000000000000000000000000"}},
+        {"name": "operations_over_literals_fold", "function": "folded", "args": [], "expect": {"return": [39]}},
+        {"name": "state_and_constant", "function": "scaledPlus", "args": [5], "expect": {"return": [90]}},
+        {"name": "public_constant_getter", "function": "DECIMALS", "args": [], "expect": {"return": [18]}},
+        {"name": "negative_constant_getter", "function": "NEG", "args": [], "expect": {"returned": "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb"}},
+        {"name": "type_max_constant_getter", "function": "MAX_HALF", "args": [], "expect": {"return": [57896044618658097711785492504343953926634992332820282019728792003956564819967]}},
+        {"name": "converted_constant_getter", "function": "TAG", "args": [], "expect": {"returned": "0x0000000000000000000000000000000000000000000000000000000000000abc"}},
+        {"name": "inherited_string_constant_getter", "function": "NAME", "args": [], "expect": {"returned": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000005556e697473000000000000000000000000000000000000000000000000000000"}}
       ]
     },
     {
