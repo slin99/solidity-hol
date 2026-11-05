@@ -437,7 +437,9 @@ val scalars_checked_sub_uint8 = save_thm ("scalars_checked_sub_uint8",
 
 (* A division by an argument stays the value it is: `wrapping_div_int8`'s
  * `sdiv(x, y)` comes out as `with_zero word_quot`, not as a test on `y` that
- * the rest of the body would be evaluated under. *)
+ * the rest of the body would be evaluated under.  A literal divisor, zero or
+ * not, is still unfolded: no function here divides by one, so it is asked of
+ * the set directly. *)
 val with_zero_c = prim_mk_const {Thy = "vfmExecution", Name = "with_zero"}
 
 val () =
@@ -445,6 +447,15 @@ val () =
          (rhs (concl (stated_form "wrapping_div_int8")))
   then ()
   else fail "wrapping_div_int8's division did not stay folded"
+
+val () =
+  List.app (fn (t, folded) =>
+      if yulConvLib.is_fixed_point [] t = folded then ()
+      else fail (term_to_string t ^ (if folded then " was unfolded"
+                                     else " was left folded")))
+    [(“with_zero word_div (a : bytes32) b”, true),
+     (“with_zero word_div (a : bytes32) 5w”, false),
+     (“with_zero word_div (a : bytes32) 0w”, false)]
 
 (* One function converted over the table *term* rather than over the constant it
  * is bound to.  A caller may give either, `defs` being what that term is folded
