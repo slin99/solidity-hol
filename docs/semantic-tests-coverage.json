@@ -1,18 +1,18 @@
 {
   "counts": {
-    "admitted": 444,
+    "admitted": 474,
     "compile-failure": 0,
-    "elaboration-rejected": 49,
-    "import-rejected": 785,
+    "elaboration-rejected": 51,
+    "import-rejected": 775,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 292
+    "source-rejected": 270
   },
   "features": [
     {
       "feature": "external calls and contract members",
-      "first_rejection": 99,
+      "first_rejection": 100,
       "node_types": [
         "FunctionCall",
         "Identifier",
@@ -58,7 +58,7 @@
     },
     {
       "feature": "arrays",
-      "first_rejection": 2,
+      "first_rejection": 6,
       "node_types": [
         "ArrayTypeName",
         "IndexAccess",
@@ -66,7 +66,7 @@
         "TupleExpression",
         "VariableDeclaration"
       ],
-      "only_blocker": 0,
+      "only_blocker": 3,
       "tests": 130
     },
     {
@@ -80,7 +80,7 @@
     },
     {
       "feature": "function members (selector, address, \u2026)",
-      "first_rejection": 20,
+      "first_rejection": 21,
       "node_types": [
         "MemberAccess",
         "TupleExpression",
@@ -116,7 +116,7 @@
         "IndexAccess",
         "MemberAccess"
       ],
-      "only_blocker": 11,
+      "only_blocker": 12,
       "tests": 101
     },
     {
@@ -125,7 +125,7 @@
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 12,
+      "only_blocker": 13,
       "tests": 100
     },
     {
@@ -196,11 +196,11 @@
     },
     {
       "feature": "hash and signature built-ins",
-      "first_rejection": 14,
+      "first_rejection": 16,
       "node_types": [
         "Identifier"
       ],
-      "only_blocker": 8,
+      "only_blocker": 10,
       "tests": 62
     },
     {
@@ -211,16 +211,6 @@
       ],
       "only_blocker": 14,
       "tests": 58
-    },
-    {
-      "feature": "constant expressions over literals",
-      "first_rejection": 0,
-      "node_types": [
-        "BinaryOperation",
-        "UnaryOperation"
-      ],
-      "only_blocker": 26,
-      "tests": 57
     },
     {
       "feature": "functions as values",
@@ -237,12 +227,12 @@
       "node_types": [
         "ElementaryTypeNameExpression"
       ],
-      "only_blocker": 0,
+      "only_blocker": 1,
       "tests": 55
     },
     {
       "feature": "user-defined value types",
-      "first_rejection": 42,
+      "first_rejection": 45,
       "node_types": [
         "MemberAccess",
         "TupleExpression",
@@ -268,16 +258,7 @@
       "node_types": [
         "TupleExpression"
       ],
-      "only_blocker": 10,
-      "tests": 47
-    },
-    {
-      "feature": "constants",
-      "first_rejection": 36,
-      "node_types": [
-        "VariableDeclaration"
-      ],
-      "only_blocker": 8,
+      "only_blocker": 12,
       "tests": 47
     },
     {
@@ -295,7 +276,7 @@
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 13,
+      "only_blocker": 14,
       "tests": 41
     },
     {
@@ -331,7 +312,7 @@
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
-      "only_blocker": 15,
+      "only_blocker": 16,
       "tests": 38
     },
     {
@@ -441,11 +422,11 @@
     },
     {
       "feature": "immutables",
-      "first_rejection": 21,
+      "first_rejection": 22,
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 10,
+      "only_blocker": 11,
       "tests": 24
     },
     {
@@ -521,8 +502,17 @@
       "tests": 17
     },
     {
+      "feature": "constants",
+      "first_rejection": 6,
+      "node_types": [
+        "VariableDeclaration"
+      ],
+      "only_blocker": 5,
+      "tests": 16
+    },
+    {
       "feature": "type(\u2026)",
-      "first_rejection": 9,
+      "first_rejection": 10,
       "node_types": [
         "Identifier"
       ],
@@ -541,7 +531,7 @@
     },
     {
       "feature": "built-in erc7201",
-      "first_rejection": 5,
+      "first_rejection": 7,
       "node_types": [
         "Identifier"
       ],
@@ -559,11 +549,11 @@
     },
     {
       "feature": "literal subdenominations (ether, days, \u2026)",
-      "first_rejection": 2,
+      "first_rejection": 7,
       "node_types": [
         "Literal"
       ],
-      "only_blocker": 1,
+      "only_blocker": 6,
       "tests": 11
     },
     {
@@ -763,7 +753,7 @@
       "node_types": [
         "Identifier"
       ],
-      "only_blocker": 0,
+      "only_blocker": 1,
       "tests": 2
     },
     {
@@ -784,6 +774,16 @@
       ],
       "only_blocker": 0,
       "tests": 2
+    },
+    {
+      "feature": "constant expressions over literals",
+      "first_rejection": 0,
+      "node_types": [
+        "BinaryOperation",
+        "UnaryOperation"
+      ],
+      "only_blocker": 1,
+      "tests": 1
     },
     {
       "feature": "static memory array returns under modifiers",
@@ -825,84 +825,84 @@
   "format": "solidity-hol-semantic-tests-coverage-v1",
   "greedy_order": [
     {
-      "admitted": 26,
-      "feature": "constant expressions over literals"
-    },
-    {
-      "admitted": 41,
+      "admitted": 16,
       "feature": "string literals as fixed-size bytes"
     },
     {
-      "admitted": 55,
+      "admitted": 30,
       "feature": "abi.* functions"
     },
     {
-      "admitted": 73,
+      "admitted": 50,
       "feature": "hash and signature built-ins"
     },
     {
-      "admitted": 90,
+      "admitted": 67,
       "feature": "address members (balance, call, transfer, \u2026)"
     },
     {
-      "admitted": 105,
+      "admitted": 82,
       "feature": "transient storage"
     },
     {
-      "admitted": 126,
+      "admitted": 103,
       "feature": "operator delete"
     },
     {
-      "admitted": 143,
+      "admitted": 120,
       "feature": "bytes push and pop"
     },
     {
-      "admitted": 160,
+      "admitted": 137,
       "feature": "literals of non-integer types"
     },
     {
-      "admitted": 175,
+      "admitted": 152,
       "feature": "inline arrays"
     },
     {
-      "admitted": 189,
+      "admitted": 166,
       "feature": "conditional expressions"
     },
     {
-      "admitted": 202,
-      "feature": "constants"
-    },
-    {
-      "admitted": 215,
+      "admitted": 179,
       "feature": "aggregate array mutation"
     },
     {
-      "admitted": 228,
+      "admitted": 192,
       "feature": "immutables"
     },
     {
-      "admitted": 241,
+      "admitted": 205,
       "feature": "library calls and contract-name members"
     },
     {
-      "admitted": 253,
+      "admitted": 217,
       "feature": "libraries"
     },
     {
-      "admitted": 265,
+      "admitted": 229,
       "feature": "free functions"
     },
     {
-      "admitted": 278,
+      "admitted": 241,
       "feature": "source units without exactly one contract"
     },
     {
-      "admitted": 291,
+      "admitted": 254,
       "feature": "using for"
     },
     {
-      "admitted": 316,
+      "admitted": 276,
       "feature": "user-defined value types"
+    },
+    {
+      "admitted": 287,
+      "feature": "struct values and copying"
+    },
+    {
+      "admitted": 316,
+      "feature": "structs"
     }
   ],
   "profile": "solc-0.8.37-via-ir-osaka",
@@ -1050,7 +1050,6 @@
       "features": [
         "abi.* functions",
         "array slices",
-        "constant expressions over literals",
         "members of elementary type names",
         "type names as values"
       ],
@@ -1252,8 +1251,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "constant expressions over literals"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/abi_encode_rational.sol: MemberAccess 6: unsupported built-in member encode",
@@ -2427,12 +2425,10 @@
       "test": "abicoder/validation/static_struct_v2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "constants"
-      ],
-      "first": "constants",
-      "reason": "accessor/accessor_for_const_state_variable.sol: VariableDeclaration 3: constants are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "accessor/accessor_for_const_state_variable.sol"
     },
@@ -2447,8 +2443,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "built-in addmod",
-        "constant expressions over literals"
+        "built-in addmod"
       ],
       "first": "built-in addmod",
       "reason": "arithmetics/addmod_mulmod.sol: Identifier 15: unsupported built-in declaration ~2",
@@ -2537,12 +2532,10 @@
       "test": "arithmetics/exp_associativity.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "arithmetics/signed_mod.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "arithmetics/signed_mod.sol"
     },
@@ -2915,11 +2908,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
-        "constants"
+        "arrays"
       ],
-      "first": "constants",
-      "reason": "array/constant_var_as_array_length.sol: VariableDeclaration 3: constants are not supported",
+      "first": "arrays",
+      "reason": "array/constant_var_as_array_length.sol: ArrayTypeName 6: array length is not a positive integer constant",
       "scan_agrees": true,
       "test": "array/constant_var_as_array_length.sol"
     },
@@ -2999,12 +2991,10 @@
       "test": "array/copying/array_copy_nested_array.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/copying/array_copy_storage_abi_signed.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/copying/array_copy_storage_abi_signed.sol"
     },
@@ -3918,12 +3908,10 @@
       "test": "array/create_memory_array.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "array/create_memory_array_too_large.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "array/create_memory_array_too_large.sol"
     },
@@ -3984,7 +3972,6 @@
       "features": [
         "aggregate array mutation",
         "array values",
-        "constant expressions over literals",
         "local reference bindings",
         "operator delete",
         "structs"
@@ -4881,11 +4868,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "constants",
         "hash and signature built-ins"
       ],
-      "first": "constants",
-      "reason": "builtinFunctions/assignment_to_const_var_involving_keccak.sol: VariableDeclaration 5: constants are not supported",
+      "first": "hash and signature built-ins",
+      "reason": "builtinFunctions/assignment_to_const_var_involving_keccak.sol: Identifier 2: unsupported built-in declaration ~8",
       "scan_agrees": true,
       "test": "builtinFunctions/assignment_to_const_var_involving_keccak.sol"
     },
@@ -5008,13 +4994,12 @@
         "array slices",
         "built-in erc7201",
         "bytes.concat and string.concat",
-        "constants",
         "free functions",
         "hash and signature built-ins",
         "type names as values"
       ],
-      "first": "constants",
-      "reason": "builtinFunctions/erc7201_param_locations.sol: VariableDeclaration 47: constants are not supported",
+      "first": "built-in erc7201",
+      "reason": "builtinFunctions/erc7201_param_locations.sol: Identifier 52: unsupported built-in declaration ~30",
       "scan_agrees": true,
       "test": "builtinFunctions/erc7201_param_locations.sol"
     },
@@ -5051,13 +5036,12 @@
       "features": [
         "built-in erc7201",
         "bytes.concat and string.concat",
-        "constants",
         "free functions",
         "hash and signature built-ins",
         "type names as values"
       ],
-      "first": "constants",
-      "reason": "builtinFunctions/erc7201_param_string_literal_with_escaped_chars.sol: VariableDeclaration 44: constants are not supported",
+      "first": "built-in erc7201",
+      "reason": "builtinFunctions/erc7201_param_string_literal_with_escaped_chars.sol: Identifier 49: unsupported built-in declaration ~30",
       "scan_agrees": true,
       "test": "builtinFunctions/erc7201_param_string_literal_with_escaped_chars.sol"
     },
@@ -5435,12 +5419,10 @@
       "test": "cleanup/cleanup_in_compound_assign.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "cleanup/dirty_calldata_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "cleanup/dirty_calldata_bytes.sol"
     },
@@ -5513,23 +5495,21 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
-        "constants"
+        "arrays"
       ],
-      "first": "constants",
-      "reason": "constantEvaluator/rounding.sol: VariableDeclaration 3: constants are not supported",
+      "first": "arrays",
+      "reason": "constantEvaluator/rounding.sol: ArrayTypeName 33: array length is not a positive integer constant",
       "scan_agrees": true,
       "test": "constantEvaluator/rounding.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "constants",
         "inline assembly memory references",
         "literals of non-integer types"
       ],
-      "first": "constants",
-      "reason": "constants/asm_address_constant_regression.sol: VariableDeclaration 3: constants are not supported",
+      "first": null,
+      "reason": "constants/asm_address_constant_regression.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "constants/asm_address_constant_regression.sol"
     },
@@ -5548,12 +5528,11 @@
     {
       "category": "import-rejected",
       "features": [
-        "constants",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
-      "first": "constants",
-      "reason": "constants/assign_type_info.sol: VariableDeclaration 7: constants are not supported",
+      "first": "type(\u2026)",
+      "reason": "constants/assign_type_info.sol: Identifier 4: expected ElementaryTypeNameExpression",
       "scan_agrees": true,
       "test": "constants/assign_type_info.sol"
     },
@@ -5568,12 +5547,10 @@
       "test": "constants/constant_exponentiation_checked_unchecked.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "constants"
-      ],
-      "first": "constants",
-      "reason": "constants/constant_public_getter_checked_unchecked.sol: VariableDeclaration 8: constants are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "constants/constant_public_getter_checked_unchecked.sol"
     },
@@ -5620,12 +5597,10 @@
       "test": "constants/constant_referencing_constant_checked_unchecked.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "constants"
-      ],
-      "first": "constants",
-      "reason": "constants/constant_string.sol: VariableDeclaration 3: constants are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "constants/constant_string.sol"
     },
@@ -5643,7 +5618,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "constants"
       ],
       "first": "constants",
@@ -5678,23 +5652,21 @@
     {
       "category": "import-rejected",
       "features": [
-        "arrays",
-        "constants"
+        "arrays"
       ],
-      "first": "constants",
-      "reason": "constants/consteval_array_length.sol: VariableDeclaration 3: constants are not supported",
+      "first": "arrays",
+      "reason": "constants/consteval_array_length.sol: ArrayTypeName 22: array length is not a positive integer constant",
       "scan_agrees": true,
       "test": "constants/consteval_array_length.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "constants",
         "function members (selector, address, \u2026)",
         "library calls and contract-name members"
       ],
-      "first": "constants",
-      "reason": "constants/function_unreferenced.sol: VariableDeclaration 12: constants are not supported",
+      "first": "function members (selector, address, \u2026)",
+      "reason": "constants/function_unreferenced.sol: MemberAccess 11: unsupported built-in member",
       "scan_agrees": true,
       "test": "constants/function_unreferenced.sol"
     },
@@ -5712,12 +5684,10 @@
       "test": "constants/same_constants_different_files.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "constants"
-      ],
-      "first": "constants",
-      "reason": "constants/simple_constant_variables_test.sol: VariableDeclaration 11: constants are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "constants/simple_constant_variables_test.sol"
     },
@@ -7264,22 +7234,18 @@
       "test": "events/simple.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "exponentiation/literal_base.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "exponentiation/literal_base.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "exponentiation/signed_base.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "exponentiation/signed_base.sol"
     },
@@ -7406,32 +7372,26 @@
       "test": "expressions/conditional_expression_with_return_values.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "expressions/exp_operator_const.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "expressions/exp_operator_const.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "expressions/exp_operator_const_signed.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "expressions/exp_operator_const_signed.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "expressions/exp_zero_literal.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "expressions/exp_zero_literal.sol"
     },
@@ -7466,12 +7426,10 @@
       "test": "expressions/tuple_from_ternary_expression.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "expressions/unary_too_long_literal.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "expressions/unary_too_long_literal.sol"
     },
@@ -7489,7 +7447,6 @@
       "category": "import-rejected",
       "features": [
         "address members (balance, call, transfer, \u2026)",
-        "constants",
         "hash and signature built-ins",
         "literal subdenominations (ether, days, \u2026)",
         "literals of non-integer types",
@@ -7498,8 +7455,8 @@
         "struct values and copying",
         "structs"
       ],
-      "first": "constants",
-      "reason": "externalContracts/FixedFeeRegistrar.sol: VariableDeclaration 351: constants are not supported",
+      "first": "literal subdenominations (ether, days, \u2026)",
+      "reason": "externalContracts/FixedFeeRegistrar.sol: Literal 350: literal subdenominations are not supported",
       "scan_agrees": true,
       "test": "externalContracts/FixedFeeRegistrar.sol"
     },
@@ -7507,7 +7464,6 @@
       "category": "import-rejected",
       "features": [
         "conditional expressions",
-        "constants",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "libraries",
@@ -7526,14 +7482,13 @@
         "abi.* functions",
         "array slices",
         "arrays",
-        "constants",
         "fixed-size bytes members and indexing",
         "hash and signature built-ins",
         "literal subdenominations (ether, days, \u2026)",
         "type(\u2026)"
       ],
-      "first": "constants",
-      "reason": "externalContracts/deposit_contract.sol: VariableDeclaration 56: constants are not supported",
+      "first": "arrays",
+      "reason": "externalContracts/deposit_contract.sol: ArrayTypeName 66: array length is not a positive integer constant",
       "scan_agrees": true,
       "test": "externalContracts/deposit_contract.sol"
     },
@@ -7541,8 +7496,6 @@
       "category": "import-rejected",
       "features": [
         "conditional expressions",
-        "constant expressions over literals",
-        "constants",
         "inline assembly",
         "inline assembly memory references",
         "libraries",
@@ -7559,8 +7512,6 @@
       "category": "import-rejected",
       "features": [
         "conditional expressions",
-        "constant expressions over literals",
-        "constants",
         "inline assembly",
         "inline assembly memory references",
         "libraries",
@@ -7577,8 +7528,6 @@
       "category": "import-rejected",
       "features": [
         "conditional expressions",
-        "constant expressions over literals",
-        "constants",
         "free functions",
         "inline assembly",
         "inline assembly memory references",
@@ -7623,7 +7572,6 @@
         "arrays",
         "bytes and string",
         "conditional expressions",
-        "constant expressions over literals",
         "fixed-size bytes members and indexing",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
@@ -8626,8 +8574,8 @@
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "constants",
-      "reason": "functionCall/precompile_extcodesize_check.sol: VariableDeclaration 29: constants are not supported",
+      "first": "external calls and contract members",
+      "reason": "functionCall/precompile_extcodesize_check.sol: UserDefinedTypeName 22: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "functionCall/precompile_extcodesize_check.sol"
     },
@@ -9258,7 +9206,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "external calls and contract members",
         "external calls to getters",
         "this",
@@ -9272,7 +9219,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "external calls and contract members",
         "external calls to getters",
         "this",
@@ -9363,7 +9309,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
@@ -9628,13 +9573,12 @@
       "test": "inheritance/explicit_base_class.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "constants",
         "library calls and contract-name members"
       ],
-      "first": "constants",
-      "reason": "inheritance/inherited_constant_state_var.sol: VariableDeclaration 3: constants are not supported",
+      "first": null,
+      "reason": "inheritance/inherited_constant_state_var.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "inheritance/inherited_constant_state_var.sol"
     },
@@ -10060,28 +10004,26 @@
       "test": "inlineAssembly/clz_pre_osaka.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "constants",
         "inline assembly memory references",
         "literals of non-integer types",
         "string literals as fixed-size bytes"
       ],
-      "first": "constants",
-      "reason": "inlineAssembly/constant_access.sol: VariableDeclaration 3: constants are not supported",
+      "first": null,
+      "reason": "inlineAssembly/constant_access.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "inlineAssembly/constant_access.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "constants",
         "inline assembly memory references",
         "literals of non-integer types",
         "string literals as fixed-size bytes"
       ],
-      "first": "constants",
-      "reason": "inlineAssembly/constant_access_referencing.sol: VariableDeclaration 3: constants are not supported",
+      "first": null,
+      "reason": "inlineAssembly/constant_access_referencing.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "inlineAssembly/constant_access_referencing.sol"
     },
@@ -10124,7 +10066,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "external calls and contract members",
         "function members (selector, address, \u2026)",
         "function types",
@@ -10674,22 +10615,18 @@
       "test": "inlineAssembly/tstore_hidden_staticcall.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "integer/basic.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "integer/basic.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "integer/int.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "integer/int.sol"
     },
@@ -10710,12 +10647,10 @@
       "test": "integer/small_signed_types.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "integer/uint.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "integer/uint.sol"
     },
@@ -11823,12 +11758,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
-        "constants",
         "literal subdenominations (ether, days, \u2026)"
       ],
-      "first": "constants",
-      "reason": "literals/denominations.sol: VariableDeclaration 7: constants are not supported",
+      "first": "literal subdenominations (ether, days, \u2026)",
+      "reason": "literals/denominations.sol: Literal 2: literal subdenominations are not supported",
       "scan_agrees": true,
       "test": "literals/denominations.sol"
     },
@@ -11853,11 +11786,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "constants",
         "literal subdenominations (ether, days, \u2026)"
       ],
-      "first": "constants",
-      "reason": "literals/ether.sol: VariableDeclaration 3: constants are not supported",
+      "first": "literal subdenominations (ether, days, \u2026)",
+      "reason": "literals/ether.sol: Literal 2: literal subdenominations are not supported",
       "scan_agrees": true,
       "test": "literals/ether.sol"
     },
@@ -11874,11 +11806,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "constants",
         "literal subdenominations (ether, days, \u2026)"
       ],
-      "first": "constants",
-      "reason": "literals/gwei.sol: VariableDeclaration 3: constants are not supported",
+      "first": "literal subdenominations (ether, days, \u2026)",
+      "reason": "literals/gwei.sol: Literal 2: literal subdenominations are not supported",
       "scan_agrees": true,
       "test": "literals/gwei.sol"
     },
@@ -11901,7 +11832,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "literal subdenominations (ether, days, \u2026)"
       ],
       "first": "literal subdenominations (ether, days, \u2026)",
@@ -11922,11 +11852,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "constants",
         "literal subdenominations (ether, days, \u2026)"
       ],
-      "first": "constants",
-      "reason": "literals/wei.sol: VariableDeclaration 3: constants are not supported",
+      "first": "literal subdenominations (ether, days, \u2026)",
+      "reason": "literals/wei.sol: Literal 2: literal subdenominations are not supported",
       "scan_agrees": true,
       "test": "literals/wei.sol"
     },
@@ -12506,12 +12435,10 @@
       "test": "operators/shifts/shift_cleanup_garbled.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "operators/shifts/shift_constant_left.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "operators/shifts/shift_constant_left.sol"
     },
@@ -12524,12 +12451,10 @@
       "test": "operators/shifts/shift_constant_left_assignment.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "operators/shifts/shift_constant_right.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "operators/shifts/shift_constant_right.sol"
     },
@@ -12590,22 +12515,18 @@
       "test": "operators/shifts/shift_left_uint8.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "operators/shifts/shift_negative_constant_left.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "operators/shifts/shift_negative_constant_left.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "operators/shifts/shift_negative_constant_right.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "operators/shifts/shift_negative_constant_right.sol"
     },
@@ -12666,12 +12587,10 @@
       "test": "operators/shifts/shift_right_garbled_v2.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "operators/shifts/shift_right_negative_literal.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "operators/shifts/shift_right_negative_literal.sol"
     },
@@ -12808,21 +12727,19 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "constants",
         "free functions",
         "user-defined value types",
         "using for"
       ],
-      "first": "constants",
-      "reason": "operators/userDefined/all_possible_operators.sol: VariableDeclaration 406: constants are not supported",
+      "first": "user-defined value types",
+      "reason": "operators/userDefined/all_possible_operators.sol: UserDefinedTypeName 401: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "operators/userDefined/all_possible_operators.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "free functions",
         "user-defined value types",
         "using for"
@@ -12872,7 +12789,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "constants",
         "free functions",
         "user-defined value types",
@@ -12996,14 +12912,13 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "constants",
         "free functions",
         "user-defined value types",
         "using for"
       ],
-      "first": "constants",
-      "reason": "operators/userDefined/operator_precendence.sol: VariableDeclaration 268: constants are not supported",
+      "first": "user-defined value types",
+      "reason": "operators/userDefined/operator_precendence.sol: UserDefinedTypeName 263: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "operators/userDefined/operator_precendence.sol"
     },
@@ -13045,12 +12960,10 @@
       "test": "operators/userDefined/unchecked_operators.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "optimizer/shift_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "optimizer/shift_bytes.sol"
     },
@@ -13584,11 +13497,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "constants",
         "hash and signature built-ins"
       ],
-      "first": "constants",
-      "reason": "specialFunctions/keccak256_optimized.sol: VariableDeclaration 27: constants are not supported",
+      "first": "hash and signature built-ins",
+      "reason": "specialFunctions/keccak256_optimized.sol: Identifier 24: unsupported built-in declaration ~8",
       "scan_agrees": true,
       "test": "specialFunctions/keccak256_optimized.sol"
     },
@@ -13834,7 +13746,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "inline arrays"
       ],
       "first": "inline arrays",
@@ -14068,12 +13979,10 @@
       "test": "storage/packed_storage_overflow.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "storage/packed_storage_signed.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "storage/packed_storage_signed.sol"
     },
@@ -14617,11 +14526,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "constants",
         "immutables"
       ],
-      "first": "constants",
-      "reason": "storageLayoutSpecifier/state_variable_constant_and_immutable.sol: VariableDeclaration 5: constants are not supported",
+      "first": "immutables",
+      "reason": "storageLayoutSpecifier/state_variable_constant_and_immutable.sol: VariableDeclaration 8: immutable variables are not supported",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/state_variable_constant_and_immutable.sol"
     },
@@ -14684,7 +14592,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "constant expressions over literals",
         "transient storage"
       ],
       "first": null,
@@ -14826,13 +14733,12 @@
       "test": "strings/concat/string_concat_nested.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "constants",
         "string literals as fixed-size bytes"
       ],
-      "first": "constants",
-      "reason": "strings/constant_string_literal.sol: VariableDeclaration 3: constants are not supported",
+      "first": null,
+      "reason": "strings/constant_string_literal.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "strings/constant_string_literal.sol"
     },
@@ -16349,7 +16255,6 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "constant expressions over literals",
         "external calls and contract members",
         "function members (selector, address, \u2026)",
         "members of elementary type names",
@@ -16447,8 +16352,8 @@
         "public state variables",
         "user-defined value types"
       ],
-      "first": "constants",
-      "reason": "userDefinedValueType/constant.sol: VariableDeclaration 13: constants are not supported",
+      "first": "user-defined value types",
+      "reason": "userDefinedValueType/constant.sol: UserDefinedTypeName 5: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "userDefinedValueType/constant.sol"
     },
@@ -16485,7 +16390,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "inline assembly memory references",
         "public state variables",
         "user-defined value types"
@@ -16511,8 +16415,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
-        "constants",
         "libraries",
         "library calls and contract-name members",
         "user-defined value types"
@@ -16525,7 +16427,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
@@ -16644,7 +16545,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "public state variables",
@@ -16661,7 +16561,6 @@
       "category": "import-rejected",
       "features": [
         "arrays",
-        "constant expressions over literals",
         "inline arrays",
         "inline assembly memory references",
         "public state variables",
@@ -17159,13 +17058,10 @@
       "test": "various/address_code_complex.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "constant expressions over literals",
-        "constants"
-      ],
-      "first": "constants",
-      "reason": "various/assignment_to_const_var_involving_expression.sol: VariableDeclaration 5: constants are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "various/assignment_to_const_var_involving_expression.sol"
     },
@@ -17317,7 +17213,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "type names as values"
       ],
       "first": "type names as values",
@@ -17431,12 +17326,10 @@
       "test": "various/external_types_in_calls.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "various/flipping_sign_tests.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "various/flipping_sign_tests.sol"
     },
@@ -17477,7 +17370,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "constant expressions over literals",
         "inline arrays"
       ],
       "first": "inline arrays",
@@ -18201,14 +18093,13 @@
       "test": "viaYul/dirty_memory_dynamic_array.sol"
     },
     {
-      "category": "source-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "constant expressions over literals",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references"
       ],
       "first": null,
-      "reason": "viaYul/dirty_memory_int32.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": "viaYul/dirty_memory_int32.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "viaYul/dirty_memory_int32.sol"
     },
@@ -18265,22 +18156,18 @@
       "test": "viaYul/exp.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "viaYul/exp_literals.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/exp_literals.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "viaYul/exp_literals_success.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/exp_literals_success.sol"
     },
@@ -18593,22 +18480,18 @@
       "test": "viaYul/stack_limit_evader_mutual_recursion.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "viaYul/storage/dirty_storage_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/storage/dirty_storage_bytes.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "constant expressions over literals"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "viaYul/storage/dirty_storage_bytes_long.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/storage/dirty_storage_bytes_long.sol"
     },
