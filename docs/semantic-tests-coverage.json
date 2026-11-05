@@ -1,30 +1,15 @@
 {
   "counts": {
-    "admitted": 502,
+    "admitted": 526,
     "compile-failure": 0,
-    "elaboration-rejected": 54,
-    "import-rejected": 735,
+    "elaboration-rejected": 59,
+    "import-rejected": 693,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 279
+    "source-rejected": 292
   },
   "features": [
-    {
-      "feature": "external calls and contract members",
-      "first_rejection": 103,
-      "node_types": [
-        "FunctionCall",
-        "Identifier",
-        "IndexAccess",
-        "MemberAccess",
-        "TupleExpression",
-        "UserDefinedTypeName",
-        "VariableDeclaration"
-      ],
-      "only_blocker": 1,
-      "tests": 226
-    },
     {
       "feature": "structs",
       "first_rejection": 18,
@@ -46,15 +31,6 @@
       ],
       "only_blocker": 0,
       "tests": 158
-    },
-    {
-      "feature": "this",
-      "first_rejection": 5,
-      "node_types": [
-        "Identifier"
-      ],
-      "only_blocker": 1,
-      "tests": 140
     },
     {
       "feature": "source units without exactly one contract",
@@ -80,7 +56,7 @@
     },
     {
       "feature": "function members (selector, address, \u2026)",
-      "first_rejection": 16,
+      "first_rejection": 17,
       "node_types": [
         "MemberAccess",
         "TupleExpression",
@@ -88,6 +64,15 @@
       ],
       "only_blocker": 0,
       "tests": 121
+    },
+    {
+      "feature": "address members (balance, call, transfer, \u2026)",
+      "first_rejection": 19,
+      "node_types": [
+        "MemberAccess"
+      ],
+      "only_blocker": 14,
+      "tests": 114
     },
     {
       "feature": "struct values and copying",
@@ -102,16 +87,16 @@
     },
     {
       "feature": "abi.* functions",
-      "first_rejection": 56,
+      "first_rejection": 57,
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 13,
+      "only_blocker": 19,
       "tests": 100
     },
     {
       "feature": "function types",
-      "first_rejection": 82,
+      "first_rejection": 85,
       "node_types": [
         "FunctionTypeName"
       ],
@@ -125,16 +110,16 @@
         "InlineAssembly"
       ],
       "only_blocker": 2,
-      "tests": 91
+      "tests": 87
     },
     {
       "feature": "contract creation (new C)",
-      "first_rejection": 0,
+      "first_rejection": 49,
       "node_types": [
-        "NewExpression"
+        "FunctionCall"
       ],
       "only_blocker": 0,
-      "tests": 80
+      "tests": 78
     },
     {
       "feature": "operator delete",
@@ -147,23 +132,12 @@
     },
     {
       "feature": "free functions",
-      "first_rejection": 37,
+      "first_rejection": 31,
       "node_types": [
         "FunctionDefinition"
       ],
       "only_blocker": 10,
       "tests": 73
-    },
-    {
-      "feature": "array values",
-      "first_rejection": 0,
-      "node_types": [
-        "Identifier",
-        "IndexAccess",
-        "MemberAccess"
-      ],
-      "only_blocker": 0,
-      "tests": 67
     },
     {
       "feature": "functions as values",
@@ -176,6 +150,17 @@
       "tests": 65
     },
     {
+      "feature": "array values",
+      "first_rejection": 0,
+      "node_types": [
+        "Identifier",
+        "IndexAccess",
+        "MemberAccess"
+      ],
+      "only_blocker": 0,
+      "tests": 65
+    },
+    {
       "feature": "hash and signature built-ins",
       "first_rejection": 16,
       "node_types": [
@@ -183,15 +168,6 @@
       ],
       "only_blocker": 10,
       "tests": 62
-    },
-    {
-      "feature": "address members (balance, call, transfer, \u2026)",
-      "first_rejection": 19,
-      "node_types": [
-        "MemberAccess"
-      ],
-      "only_blocker": 14,
-      "tests": 56
     },
     {
       "feature": "type names as values",
@@ -204,7 +180,7 @@
     },
     {
       "feature": "user-defined value types",
-      "first_rejection": 48,
+      "first_rejection": 30,
       "node_types": [
         "MemberAccess",
         "TupleExpression",
@@ -221,12 +197,12 @@
       "node_types": [
         "InlineAssembly"
       ],
-      "only_blocker": 7,
+      "only_blocker": 8,
       "tests": 50
     },
     {
       "feature": "inline arrays",
-      "first_rejection": 36,
+      "first_rejection": 38,
       "node_types": [
         "TupleExpression"
       ],
@@ -239,17 +215,8 @@
       "node_types": [
         "FunctionDefinition"
       ],
-      "only_blocker": 6,
+      "only_blocker": 7,
       "tests": 47
-    },
-    {
-      "feature": "public state variables",
-      "first_rejection": 0,
-      "node_types": [
-        "VariableDeclaration"
-      ],
-      "only_blocker": 5,
-      "tests": 46
     },
     {
       "feature": "transient storage",
@@ -257,7 +224,7 @@
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 14,
+      "only_blocker": 16,
       "tests": 41
     },
     {
@@ -270,15 +237,13 @@
       "tests": 40
     },
     {
-      "feature": "mappings",
+      "feature": "public state variables",
       "first_rejection": 0,
       "node_types": [
-        "IndexAccess",
-        "TupleExpression",
         "VariableDeclaration"
       ],
-      "only_blocker": 9,
-      "tests": 39
+      "only_blocker": 5,
+      "tests": 40
     },
     {
       "feature": "string literals as fixed-size bytes",
@@ -292,7 +257,7 @@
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
-      "only_blocker": 16,
+      "only_blocker": 17,
       "tests": 38
     },
     {
@@ -303,6 +268,17 @@
         "MemberAccess"
       ],
       "only_blocker": 13,
+      "tests": 37
+    },
+    {
+      "feature": "mappings",
+      "first_rejection": 0,
+      "node_types": [
+        "IndexAccess",
+        "TupleExpression",
+        "VariableDeclaration"
+      ],
+      "only_blocker": 9,
       "tests": 37
     },
     {
@@ -335,7 +311,7 @@
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
-      "only_blocker": 8,
+      "only_blocker": 10,
       "tests": 32
     },
     {
@@ -348,20 +324,20 @@
       "tests": 32
     },
     {
+      "feature": "external calls to getters",
+      "first_rejection": 3,
+      "node_types": [
+        "MemberAccess"
+      ],
+      "only_blocker": 1,
+      "tests": 30
+    },
+    {
       "feature": "bytes.concat and string.concat",
       "first_rejection": 14,
       "node_types": [
         "MemberAccess",
         "TupleExpression"
-      ],
-      "only_blocker": 0,
-      "tests": 30
-    },
-    {
-      "feature": "external calls to getters",
-      "first_rejection": 0,
-      "node_types": [
-        "MemberAccess"
       ],
       "only_blocker": 0,
       "tests": 30
@@ -383,7 +359,7 @@
     },
     {
       "feature": "using for with functions",
-      "first_rejection": 3,
+      "first_rejection": 27,
       "node_types": [
         "UsingForDirective"
       ],
@@ -396,7 +372,7 @@
       "node_types": [
         "TupleExpression"
       ],
-      "only_blocker": 4,
+      "only_blocker": 5,
       "tests": 28
     },
     {
@@ -409,25 +385,6 @@
       ],
       "only_blocker": 1,
       "tests": 26
-    },
-    {
-      "feature": "conversions to non-elementary types",
-      "first_rejection": 1,
-      "node_types": [
-        "Identifier",
-        "IndexAccess"
-      ],
-      "only_blocker": 0,
-      "tests": 25
-    },
-    {
-      "feature": "memory arrays (new T[](n))",
-      "first_rejection": 0,
-      "node_types": [
-        "NewExpression"
-      ],
-      "only_blocker": 0,
-      "tests": 25
     },
     {
       "feature": "members of elementary type names",
@@ -449,8 +406,17 @@
       "tests": 23
     },
     {
+      "feature": "memory arrays (new T[](n))",
+      "first_rejection": 0,
+      "node_types": [
+        "NewExpression"
+      ],
+      "only_blocker": 0,
+      "tests": 23
+    },
+    {
       "feature": "call options ({value: \u2026, gas: \u2026})",
-      "first_rejection": 4,
+      "first_rejection": 14,
       "node_types": [
         "FunctionCallOptions",
         "IndexAccess",
@@ -469,7 +435,7 @@
         "TryCatchClause",
         "TryStatement"
       ],
-      "only_blocker": 0,
+      "only_blocker": 4,
       "tests": 20
     },
     {
@@ -502,15 +468,6 @@
       "tests": 17
     },
     {
-      "feature": "constants",
-      "first_rejection": 6,
-      "node_types": [
-        "VariableDeclaration"
-      ],
-      "only_blocker": 5,
-      "tests": 16
-    },
-    {
       "feature": "type(\u2026)",
       "first_rejection": 10,
       "node_types": [
@@ -518,6 +475,15 @@
       ],
       "only_blocker": 3,
       "tests": 16
+    },
+    {
+      "feature": "constants",
+      "first_rejection": 7,
+      "node_types": [
+        "VariableDeclaration"
+      ],
+      "only_blocker": 6,
+      "tests": 15
     },
     {
       "feature": "built-in erc7201",
@@ -539,7 +505,7 @@
     },
     {
       "feature": "literal subdenominations (ether, days, \u2026)",
-      "first_rejection": 7,
+      "first_rejection": 9,
       "node_types": [
         "Literal"
       ],
@@ -622,18 +588,9 @@
     },
     {
       "feature": "array type expressions",
-      "first_rejection": 3,
+      "first_rejection": 5,
       "node_types": [
         "IndexAccess"
-      ],
-      "only_blocker": 0,
-      "tests": 6
-    },
-    {
-      "feature": "immutables",
-      "first_rejection": 0,
-      "node_types": [
-        "VariableDeclaration"
       ],
       "only_blocker": 0,
       "tests": 6
@@ -686,11 +643,21 @@
     },
     {
       "feature": "bound calls copying their receiver",
-      "first_rejection": 0,
+      "first_rejection": 2,
       "node_types": [
-        "MemberAccess"
+        "FunctionCall"
       ],
       "only_blocker": 2,
+      "tests": 4
+    },
+    {
+      "feature": "conversions to non-elementary types",
+      "first_rejection": 0,
+      "node_types": [
+        "Identifier",
+        "IndexAccess"
+      ],
+      "only_blocker": 0,
       "tests": 4
     },
     {
@@ -752,6 +719,15 @@
       "first_rejection": 0,
       "node_types": [
         "MemberAccess"
+      ],
+      "only_blocker": 0,
+      "tests": 3
+    },
+    {
+      "feature": "immutables",
+      "first_rejection": 0,
+      "node_types": [
+        "VariableDeclaration"
       ],
       "only_blocker": 0,
       "tests": 3
@@ -843,84 +819,84 @@
   "format": "solidity-hol-semantic-tests-coverage-v1",
   "greedy_order": [
     {
-      "admitted": 16,
-      "feature": "string literals as fixed-size bytes"
-    },
-    {
-      "admitted": 30,
+      "admitted": 19,
       "feature": "abi.* functions"
     },
     {
-      "admitted": 50,
+      "admitted": 39,
       "feature": "hash and signature built-ins"
     },
     {
-      "admitted": 68,
+      "admitted": 58,
+      "feature": "string literals as fixed-size bytes"
+    },
+    {
+      "admitted": 76,
       "feature": "address members (balance, call, transfer, \u2026)"
     },
     {
-      "admitted": 83,
+      "admitted": 93,
       "feature": "transient storage"
     },
     {
-      "admitted": 105,
+      "admitted": 115,
       "feature": "operator delete"
     },
     {
-      "admitted": 122,
-      "feature": "bytes push and pop"
-    },
-    {
-      "admitted": 139,
+      "admitted": 133,
       "feature": "literals of non-integer types"
     },
     {
-      "admitted": 155,
+      "admitted": 151,
+      "feature": "bytes push and pop"
+    },
+    {
+      "admitted": 167,
       "feature": "inline arrays"
     },
     {
-      "admitted": 169,
+      "admitted": 181,
       "feature": "conditional expressions"
     },
     {
-      "admitted": 182,
+      "admitted": 194,
       "feature": "aggregate array mutation"
     },
     {
-      "admitted": 195,
+      "admitted": 207,
       "feature": "library calls and contract-name members"
     },
     {
-      "admitted": 206,
-      "feature": "struct values and copying"
+      "admitted": 220,
+      "feature": "require with a custom error"
     },
     {
       "admitted": 231,
+      "feature": "struct values and copying"
+    },
+    {
+      "admitted": 257,
       "feature": "structs"
     },
     {
-      "admitted": 263,
+      "admitted": 292,
       "feature": "local reference bindings"
     },
     {
-      "admitted": 283,
+      "admitted": 316,
       "feature": "arrays"
     },
     {
-      "admitted": 312,
+      "admitted": 351,
       "feature": "array values"
     },
     {
-      "admitted": 332,
+      "admitted": 371,
       "feature": "inline assembly memory references"
     },
     {
-      "admitted": 354,
+      "admitted": 398,
       "feature": "inline assembly memory outside the scratch space"
-    },
-    {
-      "admitted": 371,
-      "feature": "inline assembly"
     }
   ],
   "profile": "solc-0.8.37-via-ir-osaka",
@@ -1115,11 +1091,9 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "external calls and contract members",
         "library calls and contract-name members",
         "members of elementary type names",
         "source units without exactly one contract",
-        "this",
         "type names as values"
       ],
       "first": "abi.* functions",
@@ -1131,11 +1105,10 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types",
         "hash and signature built-ins",
-        "this",
         "tuples of literals"
       ],
       "first": "function types",
@@ -1147,13 +1120,12 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
+        "address members (balance, call, transfer, \u2026)",
         "arrays",
         "contract creation (new C)",
-        "external calls and contract members",
         "function members (selector, address, \u2026)",
         "function types",
-        "source units without exactly one contract",
-        "this"
+        "source units without exactly one contract"
       ],
       "first": "function types",
       "reason": "abicoder/abi_encode_call_memory_v2.sol: FunctionTypeName 17: unsupported type name FunctionTypeName",
@@ -1164,9 +1136,8 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "hash and signature built-ins",
-        "this",
         "tuples of literals"
       ],
       "first": "abi.* functions",
@@ -1178,10 +1149,9 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
+        "address members (balance, call, transfer, \u2026)",
         "array slices",
-        "external calls and contract members",
         "literals of non-integer types",
-        "this",
         "tuples of literals"
       ],
       "first": "array slices",
@@ -1197,13 +1167,11 @@
         "array values",
         "arrays",
         "enums",
-        "external calls and contract members",
         "hash and signature built-ins",
         "local reference bindings",
         "memory arrays (new T[](n))",
         "struct values and copying",
         "structs",
-        "this",
         "tuples of literals",
         "user-defined value types"
       ],
@@ -1217,9 +1185,7 @@
       "features": [
         "abi.* functions",
         "array slices",
-        "external calls and contract members",
-        "literals of non-integer types",
-        "this"
+        "literals of non-integer types"
       ],
       "first": "array slices",
       "reason": "abicoder/abi_encode_calldata_slice.sol: IndexRangeAccess 16: unsupported expression IndexRangeAccess",
@@ -1302,13 +1268,12 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "inline arrays",
         "source units without exactly one contract",
         "structs"
       ],
-      "first": "external calls and contract members",
-      "reason": "A: UserDefinedTypeName 31: only struct user-defined types are supported",
+      "first": "inline arrays",
+      "reason": "A: TupleExpression 23: inline arrays are not supported",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_v2_in_function_inherited_in_v1_contract.sol"
     },
@@ -1316,12 +1281,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract",
         "structs"
       ],
-      "first": "external calls and contract members",
-      "reason": "A: UserDefinedTypeName 25: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "A: FunctionCall 30: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_v2_in_modifier_used_in_v1_contract.sol"
     },
@@ -1392,27 +1356,22 @@
       "test": "abicoder/calldataDecoding/array/byte_arrays.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_2d_dynamic_dynamic_v2.sol: Identifier 64: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_2d_dynamic_dynamic_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "external calls and contract members",
-        "local reference bindings",
-        "this"
+        "local reference bindings"
       ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_2d_dynamic_static_v2.sol: Identifier 68: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_array_2d_dynamic_static_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_2d_dynamic_static_v2.sol"
     },
@@ -1425,24 +1384,20 @@
       "test": "abicoder/calldataDecoding/array/calldata_array_bytes_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "arrays",
-        "external calls and contract members",
-        "local reference bindings",
-        "this"
+        "local reference bindings"
       ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_dynamic_of_uint_v2.sol: Identifier 25: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_array_dynamic_of_uint_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_dynamic_of_uint_v2.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "external calls and contract members",
-        "this"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/array/calldata_array_dynamic_of_value_types_v2.sol: MemberAccess 10: unsupported built-in member encode",
@@ -1450,16 +1405,14 @@
       "test": "abicoder/calldataDecoding/array/calldata_array_dynamic_of_value_types_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "external calls and contract members",
-        "local reference bindings",
-        "this"
+        "local reference bindings"
       ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_dynamic_static_dynamic_v2.sol: Identifier 42: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_array_dynamic_static_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_dynamic_static_dynamic_v2.sol"
     },
@@ -1486,30 +1439,27 @@
       "test": "abicoder/calldataDecoding/array/calldata_array_dynamic_static_short_decode_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "external calls and contract members",
-        "local reference bindings",
-        "this"
+        "local reference bindings"
       ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_dynamic_static_short_reencode_v2.sol: Identifier 26: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_array_dynamic_static_short_reencode_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_dynamic_static_short_reencode_v2.sol"
     },
     {
       "category": "import-rejected",
       "features": [
+        "address members (balance, call, transfer, \u2026)",
         "array values",
         "arrays",
         "conditional expressions",
-        "external calls and contract members",
         "function types",
         "local reference bindings",
-        "memory arrays (new T[](n))",
-        "this"
+        "memory arrays (new T[](n))"
       ],
       "first": "function types",
       "reason": "abicoder/calldataDecoding/array/calldata_array_function_types_v2.sol: FunctionTypeName 6: unsupported type name FunctionTypeName",
@@ -1560,9 +1510,7 @@
       "features": [
         "abi.* functions",
         "arrays",
-        "external calls and contract members",
-        "local reference bindings",
-        "this"
+        "local reference bindings"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/array/calldata_array_indexing_dynamic_v2.sol: MemberAccess 10: unsupported built-in member encode",
@@ -1572,9 +1520,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "external calls and contract members",
-        "this"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/array/calldata_array_indexing_static_v2.sol: MemberAccess 11: unsupported built-in member encode",
@@ -1592,9 +1538,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "external calls and contract members",
-        "this"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/array/calldata_array_multi_dynamic_v2.sol: MemberAccess 11: unsupported built-in member encode",
@@ -1621,13 +1565,11 @@
       "features": [
         "array values",
         "arrays",
-        "external calls and contract members",
         "inline arrays",
-        "local reference bindings",
-        "this"
+        "local reference bindings"
       ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_static_dynamic_static_v2.sol: Identifier 45: calls only on an address converted to a contract type",
+      "first": "inline arrays",
+      "reason": "abicoder/calldataDecoding/array/calldata_array_static_dynamic_static_v2.sol: TupleExpression 90: inline arrays are not supported",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_static_dynamic_static_v2.sol"
     },
@@ -1642,9 +1584,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "external calls and contract members",
-        "this"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/array/calldata_array_static_of_value_types_v2.sol: MemberAccess 11: unsupported built-in member encode",
@@ -1657,9 +1597,7 @@
         "abi.* functions",
         "array values",
         "arrays",
-        "external calls and contract members",
-        "local reference bindings",
-        "this"
+        "local reference bindings"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/array/calldata_array_struct_dynamic_v2.sol: MemberAccess 15: unsupported built-in member encode",
@@ -1681,9 +1619,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "external calls and contract members",
-        "this"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/array/calldata_array_two_dynamic_v2.sol: MemberAccess 16: unsupported built-in member encode",
@@ -1693,9 +1629,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "external calls and contract members",
-        "this"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/array/calldata_array_two_static_v2.sol: MemberAccess 18: unsupported built-in member encode",
@@ -1819,24 +1753,18 @@
       "test": "abicoder/calldataDecoding/array/memory_dynamic_arrays.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/calldataDecoding/array/memory_dynamic_nested_arrays_v2.sol: Identifier 212: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/memory_dynamic_nested_arrays_v2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/calldataDecoding/array/memory_params_in_external_function.sol: Identifier 72: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/memory_params_in_external_function.sol"
     },
@@ -1851,26 +1779,24 @@
       "test": "abicoder/calldataDecoding/copy_from_calldata_removes_bytes_data.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "arrays",
-        "external calls and contract members",
         "structs"
       ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/calldataDecoding/struct/mediocre_dynamic_v2.sol: UserDefinedTypeName 3: only struct user-defined types are supported",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/struct/mediocre_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/struct/mediocre_dynamic_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "arrays",
-        "external calls and contract members",
         "structs"
       ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/calldataDecoding/struct/mediocre_static_v2.sol: UserDefinedTypeName 3: only struct user-defined types are supported",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/struct/mediocre_static_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/struct/mediocre_static_v2.sol"
     },
@@ -1900,11 +1826,9 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "external calls and contract members",
         "local reference bindings",
         "struct values and copying",
-        "structs",
-        "this"
+        "structs"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/struct/member_array_dynamic_v2.sol: MemberAccess 14: unsupported built-in member encode",
@@ -1925,12 +1849,11 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
-        "structs",
-        "this"
+        "structs"
       ],
       "first": "function types",
       "reason": "abicoder/calldataDecoding/struct/member_external_function_v2.sol: FunctionTypeName 6: unsupported type name FunctionTypeName",
@@ -1940,11 +1863,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "local reference bindings",
         "struct values and copying",
-        "structs",
-        "this"
+        "structs"
       ],
       "first": "structs",
       "reason": "abicoder/calldataDecoding/struct/member_offset_v2.sol: FunctionCall 62: unsupported call kind structConstructorCall",
@@ -2056,11 +1977,9 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "external calls and contract members",
         "local reference bindings",
         "struct values and copying",
-        "structs",
-        "this"
+        "structs"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/calldataDecoding/struct/simple_single_field_v2.sol: MemberAccess 13: unsupported built-in member encode",
@@ -2079,13 +1998,10 @@
       "test": "abicoder/calldataDecoding/struct/struct_and_ints_v2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/cleanup/address_v2.sol: Identifier 21: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/cleanup/address_v2.sol"
     },
@@ -2106,24 +2022,18 @@
       "test": "abicoder/cleanup/bool_v2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/cleanup/bool_with_sanity_check_v2.sol: Identifier 23: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/cleanup/bool_with_sanity_check_v2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/cleanup/bytesx_v2.sol: Identifier 22: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/cleanup/bytesx_v2.sol"
     },
@@ -2144,15 +2054,13 @@
       "test": "abicoder/cleanup/cleanup_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "external calls and contract members",
         "inline assembly memory outside the scratch space",
-        "inline assembly memory references",
-        "this"
+        "inline assembly memory references"
       ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/cleanup/dynamic_array_v2.sol: Identifier 38: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "abicoder/cleanup/dynamic_array_v2.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "abicoder/cleanup/dynamic_array_v2.sol"
     },
@@ -2178,15 +2086,14 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "local reference bindings",
         "struct values and copying",
-        "structs",
-        "this"
+        "structs"
       ],
       "first": "function types",
       "reason": "abicoder/cleanup/function_v2.sol: FunctionTypeName 4: unsupported type name FunctionTypeName",
@@ -2194,13 +2101,10 @@
       "test": "abicoder/cleanup/function_v2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/cleanup/intx_v2.sol: Identifier 63: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/cleanup/intx_v2.sol"
     },
@@ -2208,10 +2112,8 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "external calls and contract members",
         "inline assembly memory outside the scratch space",
-        "inline assembly memory references",
-        "this"
+        "inline assembly memory references"
       ],
       "first": "abi.* functions",
       "reason": "abicoder/cleanup/reencoded_calldata_string.sol: MemberAccess 13: unsupported built-in member encode",
@@ -2221,11 +2123,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "inline arrays",
         "inline assembly memory outside the scratch space",
-        "inline assembly memory references",
-        "this"
+        "inline assembly memory references"
       ],
       "first": "inline arrays",
       "reason": "abicoder/cleanup/static_array_v2.sol: TupleExpression 35: inline arrays are not supported",
@@ -2246,13 +2146,11 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "local reference bindings",
         "struct values and copying",
-        "structs",
-        "this"
+        "structs"
       ],
       "first": "structs",
       "reason": "abicoder/cleanup/struct_v2.sol: FunctionCall 41: unsupported call kind structConstructorCall",
@@ -2260,13 +2158,10 @@
       "test": "abicoder/cleanup/struct_v2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/cleanup/uintx_v2.sol: Identifier 63: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/cleanup/uintx_v2.sol"
     },
@@ -2275,15 +2170,11 @@
       "features": [
         "abi.* functions",
         "array type expressions",
-        "array values",
         "arrays",
-        "conversions to non-elementary types",
-        "external calls and contract members",
-        "library calls and contract-name members",
-        "memory arrays (new T[](n))"
+        "library calls and contract-name members"
       ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/contract_array.sol: UserDefinedTypeName 5: only struct user-defined types are supported",
+      "first": "array type expressions",
+      "reason": "abicoder/contract_array.sol: IndexAccess 13: array type expressions are not supported",
       "scan_agrees": true,
       "test": "abicoder/contract_array.sol"
     },
@@ -2292,15 +2183,11 @@
       "features": [
         "abi.* functions",
         "array type expressions",
-        "array values",
         "arrays",
-        "conversions to non-elementary types",
-        "external calls and contract members",
-        "library calls and contract-name members",
-        "memory arrays (new T[](n))"
+        "library calls and contract-name members"
       ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/contract_array_v2.sol: UserDefinedTypeName 6: only struct user-defined types are supported",
+      "first": "array type expressions",
+      "reason": "abicoder/contract_array_v2.sol: IndexAccess 14: array type expressions are not supported",
       "scan_agrees": true,
       "test": "abicoder/contract_array_v2.sol"
     },
@@ -2320,13 +2207,10 @@
       "test": "abicoder/libraryABI/storage_ptr.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/return_dynamic_types_cross_call_advanced.sol: Identifier 73: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/return_dynamic_types_cross_call_advanced.sol"
     },
@@ -2339,25 +2223,20 @@
       "test": "abicoder/return_dynamic_types_cross_call_out_of_range_homestead.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "external calls and contract members",
-        "inline assembly memory outside the scratch space",
-        "this"
+        "inline assembly memory outside the scratch space"
       ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/return_dynamic_types_cross_call_out_of_range_post_homestead.sol: Identifier 16: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "abicoder/return_dynamic_types_cross_call_out_of_range_post_homestead.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "abicoder/return_dynamic_types_cross_call_out_of_range_post_homestead.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "abicoder/return_dynamic_types_cross_call_simple.sol: Identifier 13: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/return_dynamic_types_cross_call_simple.sol"
     },
@@ -2491,13 +2370,12 @@
       "features": [
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "source units without exactly one contract"
       ],
-      "first": "unclassified",
-      "reason": "arithmetics/check_var_init.sol: FunctionCall 17: new takes one argument",
-      "scan_agrees": false,
+      "first": "contract creation (new C)",
+      "reason": "arithmetics/check_var_init.sol: FunctionCall 17: contract creation (new C) is not supported",
+      "scan_agrees": true,
       "test": "arithmetics/check_var_init.sol"
     },
     {
@@ -3149,15 +3027,14 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
+        "address members (balance, call, transfer, \u2026)",
         "array values",
         "arrays",
-        "external calls and contract members",
         "function types",
         "functions as values",
         "hash and signature built-ins",
         "inline arrays",
-        "memory arrays (new T[](n))",
-        "this"
+        "memory arrays (new T[](n))"
       ],
       "first": "function types",
       "reason": "array/copying/array_of_function_external_storage_to_storage_dynamic.sol: FunctionTypeName 15: unsupported type name FunctionTypeName",
@@ -3168,15 +3045,14 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
+        "address members (balance, call, transfer, \u2026)",
         "array values",
         "arrays",
-        "external calls and contract members",
         "function types",
         "functions as values",
         "hash and signature built-ins",
         "inline arrays",
-        "memory arrays (new T[](n))",
-        "this"
+        "memory arrays (new T[](n))"
       ],
       "first": "function types",
       "reason": "array/copying/array_of_function_external_storage_to_storage_dynamic_different_mutability.sol: FunctionTypeName 15: unsupported type name FunctionTypeName",
@@ -3333,12 +3209,10 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
-        "immutables",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "array/copying/calldata_1d_array_into_2d_memory_array_element.sol: UserDefinedTypeName 36: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "array/copying/calldata_1d_array_into_2d_memory_array_element.sol: FunctionCall 40: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "array/copying/calldata_1d_array_into_2d_memory_array_element.sol"
     },
@@ -3530,13 +3404,12 @@
       "features": [
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "operator delete",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "array/copying/copying_bytes_multiassign.sol: UserDefinedTypeName 93: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "array/copying/copying_bytes_multiassign.sol: FunctionCall 30: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "array/copying/copying_bytes_multiassign.sol"
     },
@@ -3597,14 +3470,13 @@
     {
       "category": "import-rejected",
       "features": [
+        "address members (balance, call, transfer, \u2026)",
         "array values",
         "arrays",
         "bytes.concat and string.concat",
-        "external calls and contract members",
         "function types",
         "local reference bindings",
         "memory arrays (new T[](n))",
-        "this",
         "type names as values"
       ],
       "first": "function types",
@@ -4127,13 +3999,10 @@
       "test": "array/dynamic_out_of_bounds_array_access.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "array/evm_exceptions_out_of_band_access.sol: Identifier 26: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/evm_exceptions_out_of_band_access.sol"
     },
@@ -4159,11 +4028,10 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "array/fixed_arrays_as_return_type.sol: UserDefinedTypeName 57: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "array/fixed_arrays_as_return_type.sol: FunctionCall 62: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "array/fixed_arrays_as_return_type.sol"
     },
@@ -4204,16 +4072,15 @@
     {
       "category": "import-rejected",
       "features": [
+        "address members (balance, call, transfer, \u2026)",
         "array values",
         "arrays",
         "conditional expressions",
         "contract creation (new C)",
-        "external calls and contract members",
         "function members (selector, address, \u2026)",
         "function types",
         "memory arrays (new T[](n))",
-        "source units without exactly one contract",
-        "this"
+        "source units without exactly one contract"
       ],
       "first": "function types",
       "reason": "array/function_array_cross_calls.sol: FunctionTypeName 68: unsupported type name FunctionTypeName",
@@ -4417,13 +4284,10 @@
       "test": "array/long_byte_array_cleanup_after_overwrite_with_long.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "array/memory.sol: Identifier 36: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "array/memory.sol"
     },
@@ -4741,14 +4605,12 @@
       "features": [
         "abi.* functions",
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "hash and signature built-ins",
-        "source units without exactly one contract",
-        "this"
+        "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "array/reusing_memory.sol: TupleExpression 48: calls only on an address converted to a contract type",
+      "first": "abi.* functions",
+      "reason": "array/reusing_memory.sol: MemberAccess 37: unsupported built-in member encodePacked",
       "scan_agrees": true,
       "test": "array/reusing_memory.sol"
     },
@@ -5138,10 +5000,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
-        "function types",
-        "this"
+        "function types"
       ],
       "first": "function members (selector, address, \u2026)",
       "reason": "builtinFunctions/function_types_sig.sol: MemberAccess 9: unsupported built-in member",
@@ -5229,8 +5090,6 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "conversions to non-elementary types",
-        "external calls and contract members",
         "hash and signature built-ins"
       ],
       "first": "abi.* functions",
@@ -5594,12 +5453,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "constants",
-        "external calls and contract members",
-        "this"
+        "constants"
       ],
-      "first": "external calls and contract members",
-      "reason": "constants/constant_read_via_external_call_from_unchecked.sol: Identifier 30: calls only on an address converted to a contract type",
+      "first": "constants",
+      "reason": "constants/constant_read_via_external_call_from_unchecked.sol: VariableDeclaration 8: unsupported source unit member VariableDeclaration",
       "scan_agrees": true,
       "test": "constants/constant_read_via_external_call_from_unchecked.sol"
     },
@@ -5712,12 +5569,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "constructor/arrays_in_constructors.sol: UserDefinedTypeName 78: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "constructor/arrays_in_constructors.sol: FunctionCall 85: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "constructor/arrays_in_constructors.sol"
     },
@@ -5733,12 +5589,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "constructor/bytes_in_constructors_packer.sol: UserDefinedTypeName 72: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "constructor/bytes_in_constructors_packer.sol: FunctionCall 79: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "constructor/bytes_in_constructors_packer.sol"
     },
@@ -5776,11 +5631,10 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "constructor/constructor_arguments_internal.sol: UserDefinedTypeName 39: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "constructor/constructor_arguments_internal.sol: FunctionCall 49: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "constructor/constructor_arguments_internal.sol"
     },
@@ -5798,16 +5652,15 @@
     {
       "category": "import-rejected",
       "features": [
+        "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
-        "source units without exactly one contract",
-        "this"
+        "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "constructor/constructor_function_complex.sol: UserDefinedTypeName 24: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "constructor/constructor_function_complex.sol: FunctionCall 31: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "constructor/constructor_function_complex.sol"
     },
@@ -5824,11 +5677,10 @@
       "features": [
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "constructor/evm_exceptions_in_constructor_call_fail.sol: UserDefinedTypeName 20: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "constructor/evm_exceptions_in_constructor_call_fail.sol: FunctionCall 25: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "constructor/evm_exceptions_in_constructor_call_fail.sol"
     },
@@ -5877,7 +5729,6 @@
       "features": [
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
       "first": "call options ({value: \u2026, gas: \u2026})",
@@ -5990,13 +5841,12 @@
     {
       "category": "import-rejected",
       "features": [
+        "address members (balance, call, transfer, \u2026)",
         "array values",
         "arrays",
-        "external calls and contract members",
         "function types",
         "functions as values",
-        "inline arrays",
-        "this"
+        "inline arrays"
       ],
       "first": "function types",
       "reason": "conversions/function_type_array_to_storage.sol: FunctionTypeName 5: unsupported type name FunctionTypeName",
@@ -6105,7 +5955,6 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "inline assembly calls, gas, return data and code",
         "source units without exactly one contract",
         "type(\u2026)"
@@ -6379,8 +6228,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "conversions to non-elementary types",
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "require with a custom error",
         "structs"
       ],
@@ -6542,14 +6390,13 @@
       "test": "errors/require_error_function_join_control_flow.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "conversions to non-elementary types",
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "require with a custom error"
       ],
-      "first": "conversions to non-elementary types",
-      "reason": "errors/require_error_function_pointer_parameter.sol: Identifier 26: expected ElementaryTypeNameExpression",
+      "first": null,
+      "reason": "errors/require_error_function_pointer_parameter.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "errors/require_error_function_pointer_parameter.sol"
     },
@@ -6608,14 +6455,13 @@
       "test": "errors/require_error_named_parameters_stack_misalignment.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "external calls and contract members",
-        "require with a custom error",
-        "this"
+        "address members (balance, call, transfer, \u2026)",
+        "require with a custom error"
       ],
-      "first": "this",
-      "reason": "errors/require_error_stack_check.sol: Identifier 45: built-in this is not supported",
+      "first": null,
+      "reason": "errors/require_error_stack_check.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "errors/require_error_stack_check.sol"
     },
@@ -6739,11 +6585,10 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "errors/small_error_optimization.sol: TupleExpression 40: calls only on an address converted to a contract type",
+      "first": "contract creation (new C)",
+      "reason": "errors/small_error_optimization.sol: FunctionCall 39: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "errors/small_error_optimization.sol"
     },
@@ -6986,11 +6831,10 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "events/event_emit_from_other_contract.sol: UserDefinedTypeName 25: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "events/event_emit_from_other_contract.sol: FunctionCall 33: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "events/event_emit_from_other_contract.sol"
     },
@@ -7027,8 +6871,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "conversions to non-elementary types",
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types"
       ],
@@ -7040,8 +6883,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "conversions to non-elementary types",
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types"
       ],
@@ -7653,12 +7495,10 @@
       "test": "externalSource/source_name_starting_with_dots.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members"
-      ],
-      "first": "external calls and contract members",
-      "reason": "externalSource/source_remapping.sol: UserDefinedTypeName 8: only struct user-defined types are supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "externalSource/source_remapping.sol"
     },
@@ -7667,13 +7507,12 @@
       "features": [
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "operator delete",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "fallback/call_forward_bytes.sol: UserDefinedTypeName 82: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "fallback/call_forward_bytes.sol: FunctionCall 30: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "fallback/call_forward_bytes.sol"
     },
@@ -7831,7 +7670,6 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "free functions",
         "source units without exactly one contract"
@@ -7970,11 +7808,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "this"
+        "functions as values"
       ],
       "first": "function types",
       "reason": "functionCall/call_internal_function_with_multislot_arguments_via_pointer.sol: FunctionTypeName 5: unsupported type name FunctionTypeName",
@@ -7985,35 +7822,28 @@
       "category": "import-rejected",
       "features": [
         "address members (balance, call, transfer, \u2026)",
-        "call options ({value: \u2026, gas: \u2026})",
-        "external calls and contract members",
-        "this"
+        "call options ({value: \u2026, gas: \u2026})"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/call_options_overload.sol: Identifier 34: calls only on an address converted to a contract type",
+      "first": "call options ({value: \u2026, gas: \u2026})",
+      "reason": "functionCall/call_options_overload.sol: FunctionCallOptions 46: only the value call option is supported",
       "scan_agrees": true,
       "test": "functionCall/call_options_overload.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "external calls and contract members",
-        "literals of non-integer types",
-        "this"
+        "literals of non-integer types"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/calldata_and_memory_arguments.sol: Identifier 87: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "functionCall/calldata_and_memory_arguments.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "functionCall/calldata_and_memory_arguments.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/calldata_argument_external_bytes.sol: Identifier 17: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "functionCall/calldata_argument_external_bytes.sol"
     },
@@ -8036,14 +7866,12 @@
       "test": "functionCall/calldata_argument_internal_dynamic_array_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "external calls and contract members",
-        "literals of non-integer types",
-        "this"
+        "literals of non-integer types"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/calldata_argument_internal_library_bytes.sol: Identifier 50: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "functionCall/calldata_argument_internal_library_bytes.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "functionCall/calldata_argument_internal_library_bytes.sol"
     },
@@ -8073,27 +7901,22 @@
       "test": "functionCall/calldata_argument_internal_library_static_struct_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "array values",
         "arrays",
-        "external calls and contract members",
-        "local reference bindings",
-        "this"
+        "local reference bindings"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/calldata_argument_internal_multi_array_v2.sol: Identifier 108: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "functionCall/calldata_argument_internal_multi_array_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "functionCall/calldata_argument_internal_multi_array_v2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/calldata_argument_internal_multi_static_array_v2.sol: Identifier 92: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "functionCall/calldata_argument_internal_multi_static_array_v2.sol"
     },
@@ -8125,12 +7948,10 @@
       "category": "import-rejected",
       "features": [
         "address members (balance, call, transfer, \u2026)",
-        "call options ({value: \u2026, gas: \u2026})",
-        "conversions to non-elementary types",
-        "external calls and contract members"
+        "call options ({value: \u2026, gas: \u2026})"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/calling_nonexisting_contract_throws.sol: UserDefinedTypeName 6: only struct user-defined types are supported",
+      "first": "call options ({value: \u2026, gas: \u2026})",
+      "reason": "functionCall/calling_nonexisting_contract_throws.sol: FunctionCallOptions 35: only the value call option is supported",
       "scan_agrees": true,
       "test": "functionCall/calling_nonexisting_contract_throws.sol"
     },
@@ -8191,12 +8012,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/creation_function_call_no_args.sol: FunctionCall 19: calls only on an address converted to a contract type",
+      "first": "contract creation (new C)",
+      "reason": "functionCall/creation_function_call_no_args.sol: FunctionCall 19: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "functionCall/creation_function_call_no_args.sol"
     },
@@ -8204,12 +8024,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/creation_function_call_with_args.sol: UserDefinedTypeName 15: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "functionCall/creation_function_call_with_args.sol: FunctionCall 26: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "functionCall/creation_function_call_with_args.sol"
     },
@@ -8218,12 +8037,11 @@
       "features": [
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/creation_function_call_with_salt.sol: UserDefinedTypeName 15: only struct user-defined types are supported",
+      "first": "call options ({value: \u2026, gas: \u2026})",
+      "reason": "functionCall/creation_function_call_with_salt.sol: FunctionCallOptions 26: only the value call option is supported",
       "scan_agrees": true,
       "test": "functionCall/creation_function_call_with_salt.sol"
     },
@@ -8257,13 +8075,10 @@
       "test": "functionCall/disordered_named_args.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/external_call.sol: Identifier 20: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "functionCall/external_call.sol"
     },
@@ -8271,34 +8086,26 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
-        "source units without exactly one contract",
-        "this"
+        "source units without exactly one contract"
       ],
-      "first": "unclassified",
-      "reason": "functionCall/external_call_at_construction_time.sol: FunctionCall 43: new takes one argument",
-      "scan_agrees": false,
+      "first": "contract creation (new C)",
+      "reason": "functionCall/external_call_at_construction_time.sol: FunctionCall 43: contract creation (new C) is not supported",
+      "scan_agrees": true,
       "test": "functionCall/external_call_at_construction_time.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/external_call_dynamic_returndata.sol: Identifier 53: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "functionCall/external_call_dynamic_returndata.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conversions to non-elementary types",
-        "external calls and contract members"
-      ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/external_call_to_nonexisting.sol: UserDefinedTypeName 22: only struct user-defined types are supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "functionCall/external_call_to_nonexisting.sol"
     },
@@ -8311,13 +8118,10 @@
       "test": "functionCall/external_call_to_nonexisting_debugstrings.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/external_call_value.sol: Identifier 27: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "functionCall/external_call_value.sol"
     },
@@ -8341,11 +8145,8 @@
       "category": "import-rejected",
       "features": [
         "call options ({value: \u2026, gas: \u2026})",
-        "contract creation (new C)",
-        "external calls and contract members",
         "function members (selector, address, \u2026)",
-        "source units without exactly one contract",
-        "this"
+        "source units without exactly one contract"
       ],
       "first": "call options ({value: \u2026, gas: \u2026})",
       "reason": "functionCall/failed_create.sol: FunctionCallOptions 28: only the value call option is supported",
@@ -8370,11 +8171,10 @@
         "address members (balance, call, transfer, \u2026)",
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/gas_and_value_basic.sol: UserDefinedTypeName 33: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "functionCall/gas_and_value_basic.sol: FunctionCall 41: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "functionCall/gas_and_value_basic.sol"
     },
@@ -8546,16 +8346,13 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "constants",
-        "conversions to non-elementary types",
-        "external calls and contract members",
         "function members (selector, address, \u2026)",
         "library calls and contract-name members",
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/precompile_extcodesize_check.sol: UserDefinedTypeName 22: only struct user-defined types are supported",
+      "first": "function members (selector, address, \u2026)",
+      "reason": "functionCall/precompile_extcodesize_check.sol: MemberAccess 81: unsupported built-in member",
       "scan_agrees": true,
       "test": "functionCall/precompile_extcodesize_check.sol"
     },
@@ -8563,12 +8360,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "inline assembly memory outside the scratch space",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/return_size_bigger_than_expected.sol: UserDefinedTypeName 21: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "functionCall/return_size_bigger_than_expected.sol: FunctionCall 26: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "functionCall/return_size_bigger_than_expected.sol"
     },
@@ -8584,12 +8380,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "inline assembly memory outside the scratch space",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/return_size_shorter_than_expected_evm_version_after_homestead.sol: UserDefinedTypeName 21: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "functionCall/return_size_shorter_than_expected_evm_version_after_homestead.sol: FunctionCall 26: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "functionCall/return_size_shorter_than_expected_evm_version_after_homestead.sol"
     },
@@ -8598,11 +8393,10 @@
       "features": [
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionCall/send_zero_ether.sol: UserDefinedTypeName 15: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "functionCall/send_zero_ether.sol: FunctionCall 20: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "functionCall/send_zero_ether.sol"
     },
@@ -8625,7 +8419,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "library calls and contract-name members",
         "source units without exactly one contract"
@@ -8638,8 +8432,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "conversions to non-elementary types",
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "inline arrays"
       ],
@@ -8651,12 +8444,11 @@
     {
       "category": "import-rejected",
       "features": [
+        "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
-        "external calls and contract members",
         "function members (selector, address, \u2026)",
         "function types",
-        "source units without exactly one contract",
-        "this"
+        "source units without exactly one contract"
       ],
       "first": "function types",
       "reason": "functionTypes/call_to_zero_initialized_function_type_ir.sol: FunctionTypeName 26: unsupported type name FunctionTypeName",
@@ -8674,11 +8466,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types",
-        "inline assembly",
-        "this"
+        "inline assembly"
       ],
       "first": "function types",
       "reason": "functionTypes/comparison_operator_for_external_function_cleans_dirty_bits.sol: FunctionTypeName 11: unsupported type name FunctionTypeName",
@@ -8688,13 +8479,12 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
-        "function types",
-        "this"
+        "function types"
       ],
-      "first": "this",
-      "reason": "functionTypes/comparison_operators_for_external_functions.sol: Identifier 22: built-in this is not supported",
+      "first": "function types",
+      "reason": "functionTypes/comparison_operators_for_external_functions.sol: FunctionTypeName 93: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "functionTypes/comparison_operators_for_external_functions.sol"
     },
@@ -8713,10 +8503,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
-        "function types",
-        "this"
+        "function types"
       ],
       "first": "function types",
       "reason": "functionTypes/external_functions_with_calldata_args_assigned_to_function_pointers_with_memory_type.sol: FunctionTypeName 21: unsupported type name FunctionTypeName",
@@ -8752,12 +8541,11 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types",
         "operator delete",
-        "public state variables",
-        "this"
+        "public state variables"
       ],
       "first": "function types",
       "reason": "functionTypes/function_external_delete_storage.sol: FunctionTypeName 3: unsupported type name FunctionTypeName",
@@ -8779,11 +8567,10 @@
     {
       "category": "import-rejected",
       "features": [
+        "address members (balance, call, transfer, \u2026)",
         "arrays",
         "call options ({value: \u2026, gas: \u2026})",
-        "external calls and contract members",
-        "inline arrays",
-        "this"
+        "inline arrays"
       ],
       "first": "call options ({value: \u2026, gas: \u2026})",
       "reason": "functionTypes/inline_array_with_value_call_option.sol: IndexAccess 41: unsupported call options",
@@ -8793,11 +8580,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "this"
+        "functions as values"
       ],
       "first": "function types",
       "reason": "functionTypes/internal_function_pointer_with_calldata_args.sol: FunctionTypeName 7: unsupported type name FunctionTypeName",
@@ -8819,13 +8604,12 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
-        "function types",
-        "this"
+        "function types"
       ],
-      "first": "this",
-      "reason": "functionTypes/pass_function_types_externally.sol: Identifier 9: built-in this is not supported",
+      "first": "function types",
+      "reason": "functionTypes/pass_function_types_externally.sol: FunctionTypeName 36: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "functionTypes/pass_function_types_externally.sol"
     },
@@ -8864,11 +8648,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "functions as values",
-        "library calls and contract-name members",
-        "this"
+        "library calls and contract-name members"
       ],
       "first": "function members (selector, address, \u2026)",
       "reason": "functionTypes/selector_1.sol: MemberAccess 24: unsupported built-in member",
@@ -8890,10 +8673,9 @@
     {
       "category": "import-rejected",
       "features": [
+        "address members (balance, call, transfer, \u2026)",
         "conditional expressions",
-        "external calls and contract members",
-        "function members (selector, address, \u2026)",
-        "this"
+        "function members (selector, address, \u2026)"
       ],
       "first": "function members (selector, address, \u2026)",
       "reason": "functionTypes/selector_assignment_expression.sol: MemberAccess 15: unsupported built-in member",
@@ -8903,9 +8685,8 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "function members (selector, address, \u2026)",
-        "this"
+        "address members (balance, call, transfer, \u2026)",
+        "function members (selector, address, \u2026)"
       ],
       "first": "function members (selector, address, \u2026)",
       "reason": "functionTypes/selector_expression_side_effect.sol: MemberAccess 10: unsupported built-in member",
@@ -8915,10 +8696,9 @@
     {
       "category": "import-rejected",
       "features": [
+        "address members (balance, call, transfer, \u2026)",
         "conditional expressions",
-        "external calls and contract members",
-        "function members (selector, address, \u2026)",
-        "this"
+        "function members (selector, address, \u2026)"
       ],
       "first": "function members (selector, address, \u2026)",
       "reason": "functionTypes/selector_ternary.sol: MemberAccess 22: unsupported built-in member",
@@ -8928,14 +8708,14 @@
     {
       "category": "import-rejected",
       "features": [
+        "address members (balance, call, transfer, \u2026)",
         "conditional expressions",
         "contract creation (new C)",
-        "external calls and contract members",
         "function members (selector, address, \u2026)",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "functionTypes/selector_ternary_function_pointer_from_function_call.sol: UserDefinedTypeName 11: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "functionTypes/selector_ternary_function_pointer_from_function_call.sol: FunctionCall 15: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "functionTypes/selector_ternary_function_pointer_from_function_call.sol"
     },
@@ -8943,9 +8723,8 @@
       "category": "import-rejected",
       "features": [
         "FunctionCallOptions nodes",
-        "external calls and contract members",
-        "function members (selector, address, \u2026)",
-        "this"
+        "address members (balance, call, transfer, \u2026)",
+        "function members (selector, address, \u2026)"
       ],
       "first": "function members (selector, address, \u2026)",
       "reason": "functionTypes/stack_height_check_on_adding_gas_variable_to_function.sol: MemberAccess 16: unsupported built-in member",
@@ -8955,13 +8734,12 @@
     {
       "category": "import-rejected",
       "features": [
+        "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
-        "external calls and contract members",
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
-        "source units without exactly one contract",
-        "this"
+        "source units without exactly one contract"
       ],
       "first": "function types",
       "reason": "functionTypes/store_function.sol: FunctionTypeName 26: unsupported type name FunctionTypeName",
@@ -8971,11 +8749,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "external calls to getters",
         "function members (selector, address, \u2026)",
-        "function types",
-        "this"
+        "function types"
       ],
       "first": "function types",
       "reason": "functionTypes/struct_with_external_function.sol: FunctionTypeName 7: unsupported type name FunctionTypeName",
@@ -9185,26 +8962,22 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "external calls to getters",
-        "this",
         "transient storage"
       ],
-      "first": "external calls and contract members",
-      "reason": "getters/transient_value_types.sol: Identifier 12: calls only on an address converted to a contract type",
+      "first": "external calls to getters",
+      "reason": "getters/transient_value_types.sol: MemberAccess 13: calls only functions declared in the compilation",
       "scan_agrees": true,
       "test": "getters/transient_value_types.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "external calls to getters",
-        "this",
         "transient storage"
       ],
-      "first": "external calls and contract members",
-      "reason": "getters/transient_value_types_multi_frame_call.sol: Identifier 12: calls only on an address converted to a contract type",
+      "first": "external calls to getters",
+      "reason": "getters/transient_value_types_multi_frame_call.sol: MemberAccess 38: calls only functions declared in the compilation",
       "scan_agrees": true,
       "test": "getters/transient_value_types_multi_frame_call.sol"
     },
@@ -9264,10 +9037,8 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "source units without exactly one contract",
-        "this",
         "try/catch"
       ],
       "first": "try/catch",
@@ -9333,11 +9104,10 @@
       "features": [
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "immutable/multi_creation.sol: TupleExpression 58: calls only on an address converted to a contract type",
+      "first": "call options ({value: \u2026, gas: \u2026})",
+      "reason": "immutable/multi_creation.sol: FunctionCallOptions 56: only the value call option is supported",
       "scan_agrees": true,
       "test": "immutable/multi_creation.sol"
     },
@@ -9406,11 +9176,10 @@
       "features": [
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "inheritance/address_overload_resolution.sol: TupleExpression 30: calls only on an address converted to a contract type",
+      "first": "call options ({value: \u2026, gas: \u2026})",
+      "reason": "inheritance/address_overload_resolution.sol: FunctionCallOptions 28: only the value call option is supported",
       "scan_agrees": true,
       "test": "inheritance/address_overload_resolution.sol"
     },
@@ -9549,22 +9318,18 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "conversions to non-elementary types",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "inheritance/inherited_function_calldata_calldata_interface.sol: UserDefinedTypeName 43: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "inheritance/inherited_function_calldata_calldata_interface.sol: FunctionCall 49: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "inheritance/inherited_function_calldata_calldata_interface.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "this"
-      ],
-      "first": "this",
-      "reason": "inheritance/inherited_function_calldata_memory.sol: Identifier 59: built-in this is not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/inherited_function_calldata_memory.sol"
     },
@@ -9572,12 +9337,10 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "conversions to non-elementary types",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "inheritance/inherited_function_calldata_memory_interface.sol: UserDefinedTypeName 43: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "inheritance/inherited_function_calldata_memory_interface.sol: FunctionCall 49: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "inheritance/inherited_function_calldata_memory_interface.sol"
     },
@@ -9613,13 +9376,10 @@
       "test": "inheritance/inherited_function_through_dispatch.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "inheritance/interface_inheritance_conversions.sol: Identifier 58: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inheritance/interface_inheritance_conversions.sol"
     },
@@ -9628,11 +9388,10 @@
       "features": [
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "B: UserDefinedTypeName 43: only struct user-defined types are supported",
+      "first": "call options ({value: \u2026, gas: \u2026})",
+      "reason": "B: FunctionCallOptions 55: only the value call option is supported",
       "scan_agrees": true,
       "test": "inheritance/member_notation_ctor.sol"
     },
@@ -9761,13 +9520,11 @@
       "features": [
         "address members (balance, call, transfer, \u2026)",
         "call options ({value: \u2026, gas: \u2026})",
-        "contract creation (new C)",
-        "external calls and contract members",
         "function members (selector, address, \u2026)",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "inheritance/value_for_constructor.sol: UserDefinedTypeName 39: only struct user-defined types are supported",
+      "first": "call options ({value: \u2026, gas: \u2026})",
+      "reason": "inheritance/value_for_constructor.sol: TupleExpression 47: unsupported call options",
       "scan_agrees": true,
       "test": "inheritance/value_for_constructor.sol"
     },
@@ -9988,8 +9745,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "conversions to non-elementary types",
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types",
         "inline assembly"
@@ -10002,11 +9758,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types",
-        "inline assembly",
-        "this"
+        "inline assembly"
       ],
       "first": "function types",
       "reason": "inlineAssembly/external_function_pointer_address_assignment.sol: FunctionTypeName 13: unsupported type name FunctionTypeName",
@@ -10016,11 +9771,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types",
-        "inline assembly",
-        "this"
+        "inline assembly"
       ],
       "first": "function types",
       "reason": "inlineAssembly/external_function_pointer_selector.sol: FunctionTypeName 11: unsupported type name FunctionTypeName",
@@ -10030,11 +9784,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types",
-        "inline assembly",
-        "this"
+        "inline assembly"
       ],
       "first": "function types",
       "reason": "inlineAssembly/external_function_pointer_selector_assignment.sol: FunctionTypeName 13: unsupported type name FunctionTypeName",
@@ -10469,25 +10222,20 @@
         "address members (balance, call, transfer, \u2026)",
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "members of elementary type names",
         "source units without exactly one contract",
-        "this",
         "type names as values"
       ],
-      "first": "external calls and contract members",
-      "reason": "inlineAssembly/transient_storage_low_level_calls.sol: Identifier 32: calls only on an address converted to a contract type",
+      "first": "call options ({value: \u2026, gas: \u2026})",
+      "reason": "inlineAssembly/transient_storage_low_level_calls.sol: FunctionCallOptions 45: only the value call option is supported",
       "scan_agrees": true,
       "test": "inlineAssembly/transient_storage_low_level_calls.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "inlineAssembly/transient_storage_multiple_calls_different_transactions.sol: Identifier 22: calls only on an address converted to a contract type",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "inlineAssembly/transient_storage_multiple_calls_different_transactions.sol"
     },
@@ -10522,12 +10270,10 @@
       "features": [
         "built-in selfdestruct",
         "contract creation (new C)",
-        "external calls and contract members",
-        "public state variables",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "inlineAssembly/transient_storage_selfdestruct.sol: UserDefinedTypeName 27: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "inlineAssembly/transient_storage_selfdestruct.sol: FunctionCall 35: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "inlineAssembly/transient_storage_selfdestruct.sol"
     },
@@ -10552,12 +10298,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
-        "inline assembly memory references",
-        "this"
+        "inline assembly memory references"
       ],
       "first": "function types",
       "reason": "inlineAssembly/tstore_hidden_staticcall.sol: FunctionTypeName 10: unsupported type name FunctionTypeName",
@@ -10607,9 +10351,8 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "function members (selector, address, \u2026)",
-        "this"
+        "address members (balance, call, transfer, \u2026)",
+        "function members (selector, address, \u2026)"
       ],
       "first": "function members (selector, address, \u2026)",
       "reason": "interfaceID/homer.sol: MemberAccess 35: unsupported built-in member",
@@ -10639,7 +10382,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "literals of non-integer types",
         "type(\u2026)"
@@ -10652,9 +10395,8 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "function members (selector, address, \u2026)",
-        "this"
+        "address members (balance, call, transfer, \u2026)",
+        "function members (selector, address, \u2026)"
       ],
       "first": "function members (selector, address, \u2026)",
       "reason": "interfaceID/lisa.sol: MemberAccess 63: unsupported built-in member",
@@ -10664,9 +10406,8 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
-        "this",
         "type(\u2026)"
       ],
       "first": "type(\u2026)",
@@ -10798,9 +10539,9 @@
       "features": [
         "bound calls copying their receiver"
       ],
-      "first": "unclassified",
+      "first": "bound calls copying their receiver",
       "reason": "libraries/attached_internal_library_function_accepting_calldata.sol: FunctionCall 42: a bound call copying its receiver to memory is not supported",
-      "scan_agrees": false,
+      "scan_agrees": true,
       "test": "libraries/attached_internal_library_function_accepting_calldata.sol"
     },
     {
@@ -10872,11 +10613,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "external library functions",
         "function members (selector, address, \u2026)",
-        "function types",
-        "this"
+        "function types"
       ],
       "first": "external library functions",
       "reason": "libraries/external_call_with_function_pointer_parameter.sol: FunctionDefinition 20: only internal library functions are supported",
@@ -10976,11 +10716,10 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "libraries/internal_library_function_attached_to_contract.sol: UserDefinedTypeName 23: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "libraries/internal_library_function_attached_to_contract.sol: FunctionCall 28: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_contract.sol"
     },
@@ -11006,13 +10745,12 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
-        "function types",
-        "this"
+        "function types"
       ],
-      "first": "this",
-      "reason": "libraries/internal_library_function_attached_to_external_function_type.sol: Identifier 49: built-in this is not supported",
+      "first": "function types",
+      "reason": "libraries/internal_library_function_attached_to_external_function_type.sol: FunctionTypeName 7: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_external_function_type.sol"
     },
@@ -11044,12 +10782,10 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "conversions to non-elementary types",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "libraries/internal_library_function_attached_to_interface.sol: UserDefinedTypeName 26: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "libraries/internal_library_function_attached_to_interface.sol: FunctionCall 31: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_interface.sol"
     },
@@ -11112,9 +10848,9 @@
       "features": [
         "bound calls copying their receiver"
       ],
-      "first": "unclassified",
+      "first": "bound calls copying their receiver",
       "reason": "libraries/internal_library_function_attached_to_string_accepting_storage.sol: FunctionCall 41: a bound call copying its receiver to memory is not supported",
-      "scan_agrees": false,
+      "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_string_accepting_storage.sol"
     },
     {
@@ -11286,7 +11022,6 @@
         "address members (balance, call, transfer, \u2026)",
         "conditional expressions",
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "external library functions",
         "function members (selector, address, \u2026)",
@@ -11365,12 +11100,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external library functions",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "libraries/library_references_preserve.sol: UserDefinedTypeName 82: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "libraries/library_references_preserve.sol: FunctionCall 86: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "libraries/library_references_preserve.sol"
     },
@@ -11391,9 +11125,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "external library functions",
-        "this"
+        "external library functions"
       ],
       "first": "external library functions",
       "reason": "libraries/library_staticcall_delegatecall.sol: FunctionDefinition 8: only internal library functions are supported",
@@ -12561,8 +12293,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/all_possible_operators.sol: UserDefinedTypeName 401: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/all_possible_operators.sol: UsingForDirective 21: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/all_possible_operators.sol"
     },
@@ -12573,8 +12305,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/all_possible_user_defined_value_types_with_operators.sol: MemberAccess 5304: unsupported built-in member",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/all_possible_user_defined_value_types_with_operators.sol: UsingForDirective 207: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/all_possible_user_defined_value_types_with_operators.sol"
     },
@@ -12585,8 +12317,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/attaching_and_defining_operator_with_same_function.sol: UserDefinedTypeName 36: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/attaching_and_defining_operator_with_same_function.sol: UsingForDirective 7: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/attaching_and_defining_operator_with_same_function.sol"
     },
@@ -12597,8 +12329,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/checked_operators.sol: UserDefinedTypeName 35: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/checked_operators.sol: UsingForDirective 32: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/checked_operators.sol"
     },
@@ -12610,8 +12342,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/consecutive_operator_invocations.sol: UserDefinedTypeName 44: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/consecutive_operator_invocations.sol: UsingForDirective 6: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/consecutive_operator_invocations.sol"
     },
@@ -12623,8 +12355,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/fixed_point_udvt_with_operators.sol: UserDefinedTypeName 94: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/fixed_point_udvt_with_operators.sol: UsingForDirective 7: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/fixed_point_udvt_with_operators.sol"
     },
@@ -12635,8 +12367,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/multiple_operator_definitions_different_types_different_functions_separate_directives.sol: UserDefinedTypeName 70: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/multiple_operator_definitions_different_types_different_functions_separate_directives.sol: UsingForDirective 8: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/multiple_operator_definitions_different_types_different_functions_separate_directives.sol"
     },
@@ -12647,8 +12379,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/multiple_operator_definitions_same_type_same_function_same_directive.sol: UserDefinedTypeName 36: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/multiple_operator_definitions_same_type_same_function_same_directive.sol: UsingForDirective 7: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/multiple_operator_definitions_same_type_same_function_same_directive.sol"
     },
@@ -12659,8 +12391,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/operator_definition_shadowing_builtin_keccak256.sol: UserDefinedTypeName 35: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/operator_definition_shadowing_builtin_keccak256.sol: UsingForDirective 6: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/operator_definition_shadowing_builtin_keccak256.sol"
     },
@@ -12671,8 +12403,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/operator_evaluation_order.sol: UserDefinedTypeName 85: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/operator_evaluation_order.sol: UsingForDirective 8: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/operator_evaluation_order.sol"
     },
@@ -12681,16 +12413,14 @@
       "features": [
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "free functions",
         "inline assembly memory outside the scratch space",
-        "inline assembly memory references",
         "source units without exactly one contract",
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/operator_making_pure_external_call.sol: UserDefinedTypeName 134: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/operator_making_pure_external_call.sol: UsingForDirective 7: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/operator_making_pure_external_call.sol"
     },
@@ -12699,16 +12429,14 @@
       "features": [
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "free functions",
         "inline assembly memory outside the scratch space",
-        "inline assembly memory references",
         "source units without exactly one contract",
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/operator_making_view_external_call.sol: UserDefinedTypeName 156: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/operator_making_view_external_call.sol: UsingForDirective 7: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/operator_making_view_external_call.sol"
     },
@@ -12720,8 +12448,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/operator_parameter_and_return_cleanup_between_calls.sol: UserDefinedTypeName 37: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/operator_parameter_and_return_cleanup_between_calls.sol: UsingForDirective 7: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/operator_parameter_and_return_cleanup_between_calls.sol"
     },
@@ -12733,8 +12461,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/operator_parameter_cleanup.sol: UserDefinedTypeName 35: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/operator_parameter_cleanup.sol: UsingForDirective 7: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/operator_parameter_cleanup.sol"
     },
@@ -12746,8 +12474,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/operator_precendence.sol: UserDefinedTypeName 263: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/operator_precendence.sol: UsingForDirective 15: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/operator_precendence.sol"
     },
@@ -12759,8 +12487,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/operator_return_parameter_cleanup.sol: UserDefinedTypeName 40: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/operator_return_parameter_cleanup.sol: UsingForDirective 7: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/operator_return_parameter_cleanup.sol"
     },
@@ -12771,8 +12499,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/recursive_operator.sol: UserDefinedTypeName 120: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/recursive_operator.sol: UsingForDirective 8: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/recursive_operator.sol"
     },
@@ -12783,8 +12511,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "user-defined value types",
-      "reason": "operators/userDefined/unchecked_operators.sol: UserDefinedTypeName 36: only struct user-defined types are supported",
+      "first": "using for with functions",
+      "reason": "operators/userDefined/unchecked_operators.sol: UsingForDirective 33: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "operators/userDefined/unchecked_operators.sol"
     },
@@ -13048,9 +12776,7 @@
       "category": "import-rejected",
       "features": [
         "enums",
-        "external calls and contract members",
-        "inline assembly memory references",
-        "this"
+        "inline assembly memory references"
       ],
       "first": "enums",
       "reason": "reverts/invalid_enum_as_external_arg.sol: EnumDefinition 3: unsupported contract member",
@@ -13133,7 +12859,6 @@
         "abi.* functions",
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "hash and signature built-ins",
         "source units without exactly one contract",
         "type(\u2026)"
@@ -13148,12 +12873,11 @@
       "features": [
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract",
         "try/catch"
       ],
-      "first": "external calls and contract members",
-      "reason": "saltedCreate/salted_create.sol: UserDefinedTypeName 7: only struct user-defined types are supported",
+      "first": "call options ({value: \u2026, gas: \u2026})",
+      "reason": "saltedCreate/salted_create.sol: FunctionCallOptions 13: only the value call option is supported",
       "scan_agrees": true,
       "test": "saltedCreate/salted_create.sol"
     },
@@ -13163,11 +12887,10 @@
         "address members (balance, call, transfer, \u2026)",
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "saltedCreate/salted_create_with_value.sol: UserDefinedTypeName 39: only struct user-defined types are supported",
+      "first": "call options ({value: \u2026, gas: \u2026})",
+      "reason": "saltedCreate/salted_create_with_value.sol: FunctionCallOptions 46: only the value call option is supported",
       "scan_agrees": true,
       "test": "saltedCreate/salted_create_with_value.sol"
     },
@@ -13184,13 +12907,11 @@
       "features": [
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
-        "external calls and contract members",
-        "immutables",
         "inline assembly halts in a constructor",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "shanghai/evmone_support.sol: UserDefinedTypeName 14: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "shanghai/evmone_support.sol: FunctionCall 18: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "shanghai/evmone_support.sol"
     },
@@ -13206,13 +12927,12 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "source units without exactly one contract",
         "string literals as fixed-size bytes"
       ],
-      "first": "external calls and contract members",
-      "reason": "smoke/alignment.sol: TupleExpression 22: calls only on an address converted to a contract type",
+      "first": "contract creation (new C)",
+      "reason": "smoke/alignment.sol: FunctionCall 21: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "smoke/alignment.sol"
     },
@@ -13786,11 +13506,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "this"
+        "functions as values"
       ],
       "first": "function types",
       "reason": "storage/packed_functions.sol: FunctionTypeName 5: unsupported type name FunctionTypeName",
@@ -14132,24 +13851,22 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "unclassified",
-      "reason": "storageLayoutSpecifier/inheritance_constructor_order_calling_revert.sol: FunctionCall 58: new takes one argument",
-      "scan_agrees": false,
+      "first": "contract creation (new C)",
+      "reason": "storageLayoutSpecifier/inheritance_constructor_order_calling_revert.sol: FunctionCall 58: contract creation (new C) is not supported",
+      "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_constructor_order_calling_revert.sol"
     },
     {
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "storageLayoutSpecifier/inheritance_constructor_order_setting_storage_var.sol: FunctionCall 66: calls only on an address converted to a contract type",
+      "first": "contract creation (new C)",
+      "reason": "storageLayoutSpecifier/inheritance_constructor_order_setting_storage_var.sol: FunctionCall 66: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_constructor_order_setting_storage_var.sol"
     },
@@ -14157,12 +13874,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "unclassified",
-      "reason": "storageLayoutSpecifier/inheritance_constructors_with_different_number_of_arguments.sol: FunctionCall 51: new takes one argument",
-      "scan_agrees": false,
+      "first": "contract creation (new C)",
+      "reason": "storageLayoutSpecifier/inheritance_constructors_with_different_number_of_arguments.sol: FunctionCall 51: contract creation (new C) is not supported",
+      "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_constructors_with_different_number_of_arguments.sol"
     },
     {
@@ -14172,7 +13888,6 @@
         "address members (balance, call, transfer, \u2026)",
         "bytes.concat and string.concat",
         "contract creation (new C)",
-        "external calls and contract members",
         "inline assembly memory references",
         "source units without exactly one contract",
         "type names as values"
@@ -14202,11 +13917,10 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "storageLayoutSpecifier/inheritance_from_same_base_state_var_slots.sol: UserDefinedTypeName 44: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "storageLayoutSpecifier/inheritance_from_same_base_state_var_slots.sol: FunctionCall 48: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_from_same_base_state_var_slots.sol"
     },
@@ -14214,12 +13928,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "storageLayoutSpecifier/inheritance_immutables.sol: UserDefinedTypeName 40: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "storageLayoutSpecifier/inheritance_immutables.sol: FunctionCall 45: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_immutables.sol"
     },
@@ -14227,12 +13940,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract",
         "virtual modifiers"
       ],
-      "first": "external calls and contract members",
-      "reason": "storageLayoutSpecifier/inheritance_modifier_calling_revert.sol: FunctionCall 73: calls only on an address converted to a contract type",
+      "first": "contract creation (new C)",
+      "reason": "storageLayoutSpecifier/inheritance_modifier_calling_revert.sol: FunctionCall 73: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_modifier_calling_revert.sol"
     },
@@ -14240,11 +13952,10 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "storageLayoutSpecifier/inheritance_multiple_parents_constructors_with_arguments.sol: UserDefinedTypeName 52: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "storageLayoutSpecifier/inheritance_multiple_parents_constructors_with_arguments.sol: FunctionCall 55: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_multiple_parents_constructors_with_arguments.sol"
     },
@@ -14256,7 +13967,6 @@
         "bytes.concat and string.concat",
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "inline assembly memory references",
         "source units without exactly one contract",
         "type names as values"
@@ -14286,12 +13996,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "storageLayoutSpecifier/inheritance_storage_vars_initialization.sol: UserDefinedTypeName 46: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "storageLayoutSpecifier/inheritance_storage_vars_initialization.sol: FunctionCall 51: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/inheritance_storage_vars_initialization.sol"
     },
@@ -14829,21 +14538,19 @@
     {
       "category": "import-rejected",
       "features": [
+        "address members (balance, call, transfer, \u2026)",
         "array values",
         "arrays",
         "contract creation (new C)",
-        "external calls and contract members",
         "function types",
-        "immutables",
         "local reference bindings",
         "memory arrays (new T[](n))",
         "source units without exactly one contract",
         "struct values and copying",
-        "structs",
-        "this"
+        "structs"
       ],
-      "first": "external calls and contract members",
-      "reason": "structs/function_type_copy.sol: UserDefinedTypeName 34: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "structs/function_type_copy.sol: FunctionCall 38: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "structs/function_type_copy.sol"
     },
@@ -14929,11 +14636,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "struct values and copying",
-        "structs",
-        "this"
+        "structs"
       ],
       "first": "function members (selector, address, \u2026)",
       "reason": "structs/msg_data_to_struct_member_copy.sol: MemberAccess 57: unsupported built-in member",
@@ -14943,12 +14649,11 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
-        "structs",
-        "this"
+        "structs"
       ],
       "first": "function types",
       "reason": "structs/multislot_struct_allocation.sol: FunctionTypeName 11: unsupported type name FunctionTypeName",
@@ -15379,8 +15084,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "this",
         "try/catch"
       ],
       "first": "try/catch",
@@ -15400,7 +15103,6 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract",
         "try/catch"
       ],
@@ -15413,11 +15115,9 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "external calls and contract members",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "string literals as fixed-size bytes",
-        "this",
         "try/catch"
       ],
       "first": "try/catch",
@@ -15428,8 +15128,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "this",
         "try/catch",
         "tuples of literals"
       ],
@@ -15441,9 +15139,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "inline assembly memory outside the scratch space",
-        "this",
         "try/catch"
       ],
       "first": "try/catch",
@@ -15454,9 +15150,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "inline assembly memory outside the scratch space",
-        "this",
         "try/catch"
       ],
       "first": "try/catch",
@@ -15467,9 +15161,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "inline assembly memory outside the scratch space",
-        "this",
         "try/catch"
       ],
       "first": "try/catch",
@@ -15480,9 +15172,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "inline assembly memory outside the scratch space",
-        "this",
         "try/catch"
       ],
       "first": "try/catch",
@@ -15493,9 +15183,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "inline assembly memory outside the scratch space",
-        "this",
         "try/catch"
       ],
       "first": "try/catch",
@@ -15506,8 +15194,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "this",
         "try/catch",
         "tuples of literals"
       ],
@@ -15519,8 +15205,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "this",
         "try/catch"
       ],
       "first": "try/catch",
@@ -15531,8 +15215,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "this",
         "try/catch"
       ],
       "first": "try/catch",
@@ -15551,11 +15233,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "conversions to non-elementary types",
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types",
-        "this",
         "try/catch",
         "tuples with empty components"
       ],
@@ -15567,8 +15247,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "this",
         "try/catch",
         "tuples of literals"
       ],
@@ -15580,8 +15258,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "this",
         "try/catch"
       ],
       "first": "try/catch",
@@ -15592,8 +15268,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "this",
         "try/catch",
         "tuples of literals"
       ],
@@ -15605,8 +15279,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "this",
         "try/catch",
         "tuples of literals"
       ],
@@ -15741,10 +15413,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
-        "function types",
-        "this"
+        "function types"
       ],
       "first": "function members (selector, address, \u2026)",
       "reason": "types/external_function_to_address.sol: MemberAccess 7: unsupported built-in member",
@@ -15807,34 +15478,26 @@
       "test": "types/mapping_abstract_constructor_param.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "mappings"
-      ],
-      "first": "external calls and contract members",
-      "reason": "types/mapping_contract_key.sol: UserDefinedTypeName 3: only struct user-defined types are supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "types/mapping_contract_key.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
-        "external calls to getters",
-        "mappings",
-        "public state variables",
-        "this"
+        "external calls to getters"
       ],
-      "first": "external calls and contract members",
-      "reason": "types/mapping_contract_key_getter.sol: UserDefinedTypeName 3: only struct user-defined types are supported",
+      "first": "external calls to getters",
+      "reason": "types/mapping_contract_key_getter.sol: MemberAccess 30: calls only functions declared in the compilation",
       "scan_agrees": true,
       "test": "types/mapping_contract_key_getter.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "external library functions",
         "local reference bindings",
         "mapping values",
@@ -15857,11 +15520,9 @@
       "category": "import-rejected",
       "features": [
         "enums",
-        "external calls and contract members",
         "external calls to getters",
         "mappings",
-        "public state variables",
-        "this"
+        "public state variables"
       ],
       "first": "enums",
       "reason": "types/mapping_enum_key_getter_v2.sol: EnumDefinition 5: unsupported contract member",
@@ -16000,30 +15661,28 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
         "source units without exactly one contract"
       ],
-      "first": "unclassified",
-      "reason": "uninitializedFunctionPointer/invalidInConstructor.sol: FunctionCall 41: new takes one argument",
-      "scan_agrees": false,
+      "first": "contract creation (new C)",
+      "reason": "uninitializedFunctionPointer/invalidInConstructor.sol: FunctionCall 41: contract creation (new C) is not supported",
+      "scan_agrees": true,
       "test": "uninitializedFunctionPointer/invalidInConstructor.sol"
     },
     {
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
         "source units without exactly one contract"
       ],
-      "first": "unclassified",
-      "reason": "uninitializedFunctionPointer/invalidStoredInConstructor.sol: FunctionCall 41: new takes one argument",
-      "scan_agrees": false,
+      "first": "contract creation (new C)",
+      "reason": "uninitializedFunctionPointer/invalidStoredInConstructor.sol: FunctionCall 41: contract creation (new C) is not supported",
+      "scan_agrees": true,
       "test": "uninitializedFunctionPointer/invalidStoredInConstructor.sol"
     },
     {
@@ -16076,10 +15735,8 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "external calls and contract members",
         "function members (selector, address, \u2026)",
         "members of elementary type names",
-        "this",
         "type names as values",
         "user-defined value types"
       ],
@@ -16113,12 +15770,10 @@
         "address members (balance, call, transfer, \u2026)",
         "array values",
         "arrays",
-        "external calls and contract members",
         "local reference bindings",
         "memory arrays (new T[](n))",
         "operator delete",
         "public state variables",
-        "this",
         "user-defined value types"
       ],
       "first": "user-defined value types",
@@ -16449,7 +16104,7 @@
         "using for with functions"
       ],
       "first": "using for with functions",
-      "reason": "using/free_function_braces.sol: UsingForDirective 48: unsupported contract member",
+      "reason": "using/free_function_braces.sol: UsingForDirective 48: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "using/free_function_braces.sol"
     },
@@ -16472,8 +16127,8 @@
         "using for",
         "using for with functions"
       ],
-      "first": "free functions",
-      "reason": "using/free_functions_individual.sol: FunctionDefinition 51: unsupported source unit member FunctionDefinition",
+      "first": "using for with functions",
+      "reason": "using/free_functions_individual.sol: UsingForDirective 3: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "using/free_functions_individual.sol"
     },
@@ -16485,8 +16140,8 @@
         "using for",
         "using for with functions"
       ],
-      "first": "free functions",
-      "reason": "A: FunctionDefinition 12: unsupported source unit member FunctionDefinition",
+      "first": "using for with functions",
+      "reason": "A: UsingForDirective 34: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "using/imported_functions.sol"
     },
@@ -16502,13 +16157,10 @@
       "test": "using/library_functions_inside_contract.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "external calls and contract members",
-        "this"
-      ],
-      "first": "external calls and contract members",
-      "reason": "using/library_on_interface.sol: UserDefinedTypeName 32: only struct user-defined types are supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "using/library_on_interface.sol"
     },
@@ -16531,8 +16183,8 @@
         "using for",
         "using for with functions"
       ],
-      "first": "free functions",
-      "reason": "A: FunctionDefinition 24: unsupported source unit member FunctionDefinition",
+      "first": "using for with functions",
+      "reason": "A: UsingForDirective 54: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "using/module_renamed.sol"
     },
@@ -16554,8 +16206,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "free functions",
-      "reason": "A: FunctionDefinition 56: unsupported source unit member FunctionDefinition",
+      "first": "using for with functions",
+      "reason": "A: UsingForDirective 45: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "using/recursive_import.sol"
     },
@@ -16580,8 +16232,8 @@
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "free functions",
-      "reason": "A: FunctionDefinition 26: unsupported source unit member FunctionDefinition",
+      "first": "using for with functions",
+      "reason": "A: UsingForDirective 6: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "using/using_global_for_global.sol"
     },
@@ -16589,15 +16241,14 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external library functions",
         "free functions",
         "source units without exactly one contract",
         "user-defined value types",
         "using for with functions"
       ],
-      "first": "free functions",
-      "reason": "A: FunctionDefinition 65: unsupported source unit member FunctionDefinition",
+      "first": "using for with functions",
+      "reason": "A: UsingForDirective 51: using directives attaching functions are not supported",
       "scan_agrees": true,
       "test": "using/using_global_invisible.sol"
     },
@@ -16736,10 +16387,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types",
-        "this",
         "transient storage"
       ],
       "first": "function types",
@@ -16762,8 +16412,6 @@
       "category": "import-rejected",
       "features": [
         "enums",
-        "external calls and contract members",
-        "this",
         "transient storage"
       ],
       "first": "enums",
@@ -16772,14 +16420,12 @@
       "test": "variables/transient_state_enum_variable.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "external calls and contract members",
-        "this",
         "transient storage"
       ],
-      "first": "external calls and contract members",
-      "reason": "variables/transient_state_variable.sol: Identifier 19: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "variables/transient_state_variable.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "variables/transient_state_variable.sol"
     },
@@ -16836,9 +16482,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "public state variables",
-        "this",
         "transient storage",
         "user-defined value types"
       ],
@@ -16862,7 +16506,6 @@
       "features": [
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
-        "external calls and contract members",
         "inline assembly halts in a constructor",
         "source units without exactly one contract"
       ],
@@ -16901,25 +16544,22 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "hash and signature built-ins",
         "inline assembly",
         "inline assembly calls, gas, return data and code",
         "inline assembly memory outside the scratch space",
-        "inline assembly memory references",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/code_access_content.sol: UserDefinedTypeName 21: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "various/code_access_content.sol: FunctionCall 26: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "various/code_access_content.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "inline assembly",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
@@ -16947,15 +16587,13 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "hash and signature built-ins",
         "inline assembly",
-        "inline assembly memory references",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/code_access_runtime.sol: UserDefinedTypeName 25: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "various/code_access_runtime.sol: FunctionCall 30: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "various/code_access_runtime.sol"
     },
@@ -17016,12 +16654,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "unclassified",
-      "reason": "various/contract_binary_dependencies.sol: FunctionCall 21: new takes one argument",
-      "scan_agrees": false,
+      "first": "contract creation (new C)",
+      "reason": "various/contract_binary_dependencies.sol: FunctionCall 21: contract creation (new C) is not supported",
+      "scan_agrees": true,
       "test": "various/contract_binary_dependencies.sol"
     },
     {
@@ -17097,13 +16734,12 @@
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
         "source units without exactly one contract",
         "transient storage"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/different_call_type_transient.sol: UserDefinedTypeName 87: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "various/different_call_type_transient.sol: FunctionCall 91: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "various/different_call_type_transient.sol"
     },
@@ -17127,15 +16763,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "conversions to non-elementary types",
-        "external calls and contract members",
         "external calls to getters",
-        "public state variables",
-        "source units without exactly one contract",
-        "this"
+        "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/external_types_in_calls.sol: UserDefinedTypeName 18: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "various/external_types_in_calls.sol: FunctionCall 36: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "various/external_types_in_calls.sol"
     },
@@ -17200,14 +16832,12 @@
       "test": "various/iszero_bnot_correct.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "external calls and contract members",
-        "string literals as fixed-size bytes",
-        "this"
+        "string literals as fixed-size bytes"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/literal_empty_string.sol: Identifier 23: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "various/literal_empty_string.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "various/literal_empty_string.sol"
     },
@@ -17216,7 +16846,6 @@
       "features": [
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
       "first": "call options ({value: \u2026, gas: \u2026})",
@@ -17273,13 +16902,11 @@
         "built-in selfdestruct",
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "literal subdenominations (ether, days, \u2026)",
-        "public state variables",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/selfdestruct_post_cancun.sol: UserDefinedTypeName 23: only struct user-defined types are supported",
+      "first": "literal subdenominations (ether, days, \u2026)",
+      "reason": "various/selfdestruct_post_cancun.sol: Literal 35: literal subdenominations are not supported",
       "scan_agrees": true,
       "test": "various/selfdestruct_post_cancun.sol"
     },
@@ -17290,14 +16917,12 @@
         "built-in selfdestruct",
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "external calls and contract members",
         "literal subdenominations (ether, days, \u2026)",
         "literals of non-integer types",
-        "public state variables",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/selfdestruct_post_cancun_multiple_beneficiaries.sol: UserDefinedTypeName 36: only struct user-defined types are supported",
+      "first": "literal subdenominations (ether, days, \u2026)",
+      "reason": "various/selfdestruct_post_cancun_multiple_beneficiaries.sol: Literal 48: literal subdenominations are not supported",
       "scan_agrees": true,
       "test": "various/selfdestruct_post_cancun_multiple_beneficiaries.sol"
     },
@@ -17307,19 +16932,16 @@
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
-        "conversions to non-elementary types",
-        "external calls and contract members",
         "hash and signature built-ins",
         "inline assembly",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "literal subdenominations (ether, days, \u2026)",
-        "public state variables",
         "source units without exactly one contract",
         "string literals as fixed-size bytes"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/selfdestruct_post_cancun_redeploy.sol: UserDefinedTypeName 72: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "various/selfdestruct_post_cancun_redeploy.sol: FunctionCall 76: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "various/selfdestruct_post_cancun_redeploy.sol"
     },
@@ -17352,11 +16974,10 @@
       "features": [
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/senders_balance.sol: UserDefinedTypeName 13: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "various/senders_balance.sol: FunctionCall 17: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "various/senders_balance.sol"
     },
@@ -17369,14 +16990,12 @@
       "test": "various/single_copy_with_multiple_inheritance.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "external calls and contract members",
-        "this",
         "tuples of literals"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/skip_dynamic_types.sol: Identifier 31: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "various/skip_dynamic_types.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "various/skip_dynamic_types.sol"
     },
@@ -17384,10 +17003,8 @@
       "category": "import-rejected",
       "features": [
         "arrays",
-        "external calls and contract members",
         "inline arrays",
         "structs",
-        "this",
         "tuples of literals"
       ],
       "first": "inline arrays",
@@ -17398,11 +17015,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
         "external calls to getters",
         "inline arrays",
-        "public state variables",
-        "this"
+        "public state variables"
       ],
       "first": "inline arrays",
       "reason": "various/skip_dynamic_types_for_structs.sol: TupleExpression 38: inline arrays are not supported",
@@ -17433,12 +17048,10 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "conversions to non-elementary types",
-        "external calls and contract members",
         "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/staticcall_for_view_and_pure.sol: TupleExpression 36: calls only on an address converted to a contract type",
+      "first": "contract creation (new C)",
+      "reason": "various/staticcall_for_view_and_pure.sol: FunctionCall 35: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "various/staticcall_for_view_and_pure.sol"
     },
@@ -17530,29 +17143,25 @@
       "test": "various/test_underscore_in_hex.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "external calls and contract members",
-        "this",
         "transient storage"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/transient_storage_reentrancy_lock.sol: Identifier 41: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "various/transient_storage_reentrancy_lock.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "various/transient_storage_reentrancy_lock.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "arrays",
-        "external calls and contract members",
         "local reference bindings",
-        "this",
         "tuples of literals",
         "tuples with empty components"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/tuples.sol: Identifier 54: calls only on an address converted to a contract type",
+      "first": null,
+      "reason": "various/tuples.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "various/tuples.sol"
     },
@@ -17573,13 +17182,11 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "external calls and contract members",
         "external calls to getters",
-        "source units without exactly one contract",
-        "this"
+        "source units without exactly one contract"
       ],
-      "first": "external calls and contract members",
-      "reason": "various/write_storage_external.sol: UserDefinedTypeName 35: only struct user-defined types are supported",
+      "first": "contract creation (new C)",
+      "reason": "various/write_storage_external.sol: FunctionCall 39: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "various/write_storage_external.sol"
     },
@@ -17737,11 +17344,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "conversions to non-elementary types",
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
-        "function types",
-        "this"
+        "function types"
       ],
       "first": "function types",
       "reason": "viaYul/conversion/function_cast.sol: FunctionTypeName 20: unsupported type name FunctionTypeName",
@@ -17775,14 +17380,13 @@
     {
       "category": "import-rejected",
       "features": [
+        "address members (balance, call, transfer, \u2026)",
         "aggregate array mutation",
-        "external calls and contract members",
         "external calls to getters",
         "function members (selector, address, \u2026)",
         "function types",
         "struct values and copying",
-        "structs",
-        "this"
+        "structs"
       ],
       "first": "function types",
       "reason": "viaYul/copy_struct_invalid_ir_bug.sol: FunctionTypeName 3: unsupported type name FunctionTypeName",
@@ -18020,11 +17624,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "conversions to non-elementary types",
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
-        "function types",
-        "this"
+        "function types"
       ],
       "first": "function members (selector, address, \u2026)",
       "reason": "viaYul/function_address.sol: MemberAccess 12: unsupported built-in member",
@@ -18053,10 +17655,9 @@
     {
       "category": "import-rejected",
       "features": [
-        "external calls and contract members",
+        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
-        "function types",
-        "this"
+        "function types"
       ],
       "first": "function members (selector, address, \u2026)",
       "reason": "viaYul/function_selector.sol: MemberAccess 7: unsupported built-in member",

@@ -116,13 +116,6 @@ fun environment_field v base member =
 fun builtin_identifier v id =
   node_type v = "Identifier" andalso int_field v "referencedDeclaration" = id
 
-(* address(this) *)
-fun self_address v args =
-  string_field v "kind" = "typeConversion" andalso
-  node_type (field v "expression") = "ElementaryTypeNameExpression" andalso
-  string_field (field (field v "expression") "typeName") "name" = "address" andalso
-  (case args of [a] => builtin_identifier a ~28 | _ => false)
-
 (* "start:length:source" *)
 fun location v =
   case String.fields (fn c => c = #":") (string_field v "src") of
@@ -139,7 +132,40 @@ fun info v =
   record "node_info"
     [("node_id", mk_num (int_field v "id")), ("node_location", location v)]
 
-fun type_id v = mk_str (string_field (field v "typeDescriptions") "typeIdentifier")
+(* A contract or interface type is an address at run time, stored and ABI
+ * encoded as one: its type identifier, t_contract$_C_$n in the AST and
+ * t_contract(C)n in a storage layout, is read as t_address. *)
+fun erase_contracts s =
+  let
+    val n = size s
+    fun at i p = String.isPrefix p (String.extract (s, i, NONE))
+    fun digits i =
+      if i < n andalso Char.isDigit (String.sub (s, i)) then digits (i + 1) else i
+    (* The end of "C_$n", where a "$" in C is escaped as "$$$". *)
+    fun name_end i =
+      if i + 2 >= n then fail ("malformed contract type identifier " ^ s)
+      else if at i "_$" andalso Char.isDigit (String.sub (s, i + 2))
+      then digits (i + 2)
+      else name_end (i + 1)
+    fun paren_end i =
+      if i >= n then fail ("malformed contract type identifier " ^ s)
+      else if String.sub (s, i) = #")" then digits (i + 1)
+      else paren_end (i + 1)
+    fun go i acc =
+      if i >= n then String.concat (rev acc)
+      else if at i "t_contract$_" then go (name_end (i + 12)) ("t_address" :: acc)
+      else if at i "t_contract(" then go (paren_end (i + 11)) ("t_address" :: acc)
+      else go (i + 1) (String.str (String.sub (s, i)) :: acc)
+  in
+    go 0 []
+  end
+
+fun raw_type_id v = string_field (field v "typeDescriptions") "typeIdentifier"
+fun type_id v = mk_str (erase_contracts (raw_type_id v))
+
+fun address_type_name v =
+  con "SrcElementaryTypeName"
+    [info v, mk_str "address", mk_opt stringSyntax.string_ty (SOME (mk_str "nonpayable"))]
 
 (* Type names *)
 
@@ -148,11 +174,13 @@ fun type_name v = within v (fn v =>
     "UserDefinedTypeName" =>
       let
         val declaration = int_field v "referencedDeclaration"
-        val tid = string_field (field v "typeDescriptions") "typeIdentifier"
+        val tid = raw_type_id v
       in
-        require v (declaration >= 0 andalso String.isPrefix "t_struct$_" tid)
-          "only struct user-defined types are supported";
-        con "SrcStructTypeName" [info v, mk_num declaration, mk_str tid]
+        if String.isPrefix "t_contract$_" tid then address_type_name v
+        else
+          (require v (declaration >= 0 andalso String.isPrefix "t_struct$_" tid)
+             "only struct user-defined types are supported";
+           con "SrcStructTypeName" [info v, mk_num declaration, mk_str tid])
       end
   | "Mapping" => con "SrcMappingTypeName"
       [info v, type_name (field v "keyType"), type_name (field v "valueType")]
@@ -321,6 +349,12 @@ fun copies_receiver v =
 fun expr v = within v (fn v =>
   case node_type v of
     "Identifier" =>
+      if builtin_identifier v ~28 then
+        (* this, the contract's own address *)
+        con "SrcEnvironment"
+          [info v, prim_mk_const {Thy = "solidityCore", Name = "SelfAddress"},
+           type_id v]
+      else
       let val declaration = int_field v "referencedDeclaration" in
         require v (declaration >= 0)
           ("built-in " ^ string_field v "name" ^ " is not supported");
@@ -393,7 +427,7 @@ fun expr v = within v (fn v =>
       con "SrcBinaryOperation"
         [info v, mk_str (string_field v "operator"),
          expr (field v "leftExpression"), expr (field v "rightExpression"),
-         mk_str (string_field (field v "commonType") "typeIdentifier"),
+         mk_str (erase_contracts (string_field (field v "commonType") "typeIdentifier")),
          type_id v]
   | "Assignment" =>
       con "SrcAssignment"
@@ -419,11 +453,6 @@ fun expr v = within v (fn v =>
              optionSyntax.mk_option expr_ty),
           type_id v])
   | "FunctionCall" =>
-      if self_address v (JSONUtil.arrayMap I (field v "arguments")) then
-        con "SrcEnvironment"
-          [info v, prim_mk_const {Thy = "solidityCore", Name = "SelfAddress"},
-           type_id v]
-      else
       let
         val args = JSONUtil.arrayMap expr (field v "arguments")
         val callee = field v "expression"
@@ -458,7 +487,9 @@ fun expr v = within v (fn v =>
                   mk_opt expr_ty condition, mk_opt expr_ty message, type_id v]
               end
             else if node_type callee = "NewExpression" then
-              (require v (length args = 1) "new takes one argument";
+              (require v (node_type (field callee "typeName") <> "UserDefinedTypeName")
+                 "contract creation (new C) is not supported";
+               require v (length args = 1) "new takes one argument";
                con "SrcNew"
                  [info v, type_name (field callee "typeName"), hd args,
                   type_id v])
@@ -494,16 +525,19 @@ fun expr v = within v (fn v =>
               [info v, expr callee, listSyntax.mk_list (args, expr_ty), type_id v]
         | "typeConversion" =>
             (require v (length args = 1) "a conversion takes one argument";
-             within callee (fn c => expect c "ElementaryTypeNameExpression");
-             con "SrcTypeConversion"
-               [info v, type_name (field callee "typeName"), hd args,
-                type_id v])
+             if String.isPrefix "t_type$_t_contract$_" (raw_type_id callee) then
+               (* I(a), a conversion to a contract type *)
+               con "SrcTypeConversion" [info v, address_type_name callee, hd args, type_id v]
+             else
+               (within callee (fn c => expect c "ElementaryTypeNameExpression");
+                con "SrcTypeConversion"
+                  [info v, type_name (field callee "typeName"), hd args,
+                   type_id v]))
         | kind => fail (describe v ^ ": unsupported call kind " ^ kind)
       end
   | other => fail (describe v ^ ": unsupported expression " ^ other))
 
-(* I(target).f{value: v}(args): the target is an address converted to a
- * contract type; other contract-typed values are not supported. *)
+(* c.f{value: v}(args), with c of a contract type. *)
 and external_call v callee args =
   let
     val (member, value) =
@@ -521,15 +555,9 @@ and external_call v callee args =
     val base = field member "expression"
     val () =
       within base (fn b =>
-        require b (node_type b = "FunctionCall" andalso
-                   string_field b "kind" = "typeConversion" andalso
-                   String.isPrefix "t_contract$_"
-                     (string_field (field b "typeDescriptions") "typeIdentifier"))
-          "calls only on an address converted to a contract type")
-    val target =
-      case JSONUtil.arrayMap I (field base "arguments") of
-        [t] => expr t
-      | _ => fail (describe base ^ ": a conversion takes one argument")
+        require b (String.isPrefix "t_contract$_" (raw_type_id b))
+          "external calls only on contract-typed values")
+    val target = expr base
   in
     con "SrcExternalCall"
       [info v,
@@ -804,7 +832,7 @@ fun storage_entry v = within v (fn v =>
         SOME i => mk_num i
       | NONE => fail "malformed storage slot"),
      ("storage_offset", mk_num (int_field v "offset")),
-     ("storage_type_id", mk_str (string_field v "type"))])
+     ("storage_type_id", mk_str (erase_contracts (string_field v "type")))])
 
 fun struct_declaration types v = within v (fn v =>
   let
@@ -908,6 +936,19 @@ fun contract external_structs contracts declared v = within v (fn v =>
       JSONUtil.arrayMap
         (fn p => string_field (field p "typeDescriptions") "typeIdentifier")
         (field (field f "parameters") "parameters")
+    (* Contract types are read as address, so implemented functions that
+     * differ only in contract-typed parameters could not be told apart where
+     * they are matched by parameter types, as super targets are. *)
+    val overloadable =
+      List.filter (fn f => string_field f "kind" = "function" andalso bool_field f "implemented")
+        functions
+    val () =
+      List.app (fn f => List.app (fn g =>
+        if string_field f "name" = string_field g "name" andalso
+           parameter_types f <> parameter_types g andalso
+           map erase_contracts (parameter_types f) = map erase_contracts (parameter_types g)
+        then fail (describe g ^ ": overloads differing only in contract types are not supported")
+        else ()) overloadable) overloadable
     fun after f =
       let
         fun go [] = []

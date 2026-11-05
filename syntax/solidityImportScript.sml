@@ -5,9 +5,10 @@
  * closed: an unknown nodeType, a missing required field, or a feature outside
  * the subset (overriding state variables, file-level constants,
  * super other than in calls, named or try calls, built-ins other than
- * require, assert, revert, members of msg, tx and block, address(this) and
+ * require, assert, revert, members of msg, tx and block, this and
  * type(T).max and .min for integer types T, literal subdenominations,
- * inline arrays, type names other than elementary types, arrays and mappings, ...)
+ * inline arrays, type names other than elementary, contract and struct types,
+ * arrays and mappings, ...)
  * raises ImportError. Semantic nodes keep their compiler id and source range;
  * declarations are referred to by id, and names are diagnostic only. Type
  * annotations are kept as the compiler's encoded typeIdentifier and decoded
@@ -22,6 +23,11 @@
  * with it: L.f(args) and x.f(args), with f attached to x's type by a using
  * directive, are internal calls of f, the latter with x as the first
  * argument, and L.c names the constant c.
+ *
+ * A contract or interface type is read as address, its value at run time,
+ * stored and ABI encoded as one: in type names, type identifiers and storage
+ * layouts, and as the target of a conversion I(a). this is the contract's
+ * own address.
  *
  * Types are normalized from elementary, array and mapping type-name nodes; value
  * types are decoded from typeIdentifiers. Both yield only valid shapes (normalize_type_name_valid,
@@ -132,9 +138,9 @@ End
  * SuperCall (super.f(args)): the declaration of f the compiler resolved
  * from the caller's contract, positional arguments.
  * FunctionCall (kind typeConversion): target type name, argument.
- * Environment: a member of msg, tx or block, or address(this).
+ * Environment: a member of msg, tx or block, this or address(this).
  * New (new T(n)): the type name of T, the length.
- * ExternalCall (I(target).f{value: v}(args)): the declaration of f, whether
+ * ExternalCall (c.f{value: v}(args), c of a contract type): the declaration of f, whether
  * a value is given, and the operands in evaluation order: the target, the
  * value if given, the positional arguments.
  *)

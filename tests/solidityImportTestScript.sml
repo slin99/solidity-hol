@@ -22,7 +22,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/imports.json",
   "../testdata/differential/expected/errors.json",
   "../testdata/differential/expected/type_bounds.json",
-  "../testdata/differential/expected/using_for.json"
+  "../testdata/differential/expected/using_for.json",
+  "../testdata/differential/expected/contract_types.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -963,3 +964,15 @@ Theorem library_receive_rejected:
 Proof
   CONV_TAC cv_eval
 QED
+
+(* Contract types are read as address, so overloads that differ only in them
+ * are rejected: here balanceVia(address) and a renamed same(IToken). *)
+
+val contracts_fixture = "../testdata/differential/expected/contract_types.json"
+val contracts_source = "testdata/differential/contract_types.sol"
+val contracts_ast = artifact_part contracts_fixture ["sources", contracts_source, "ast"]
+val contracts_contracts = artifact_part contracts_fixture ["contracts", contracts_source]
+
+val () = import_error_with Unsupported contracts_contracts "overloads differing only in contract types"
+  (edit_first_where (named "FunctionDefinition" "same") "same"
+     (set_field "name" (JSON.STRING "balanceVia")) contracts_ast)

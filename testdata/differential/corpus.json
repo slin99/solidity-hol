@@ -887,6 +887,28 @@
       ]
     },
     {
+      "name": "contract_types",
+      "source": "testdata/differential/contract_types.sol",
+      "contract": "Holder",
+      "artifact": "testdata/differential/expected/contract_types.json",
+      "peer": {"source": "testdata/differential/token.sol", "contract": "Token", "artifact": "testdata/differential/expected/token.json"},
+      "cases": [
+        {"name": "set_token_stores_and_pushes", "function": "setToken", "args": [20480], "expect": {"return": []}, "final_storage": {"0": 20480, "2": 1, "29102676481673041902632991033461445430619272659676223336789171408008386403022": 20480}},
+        {"name": "contract_typed_return", "function": "current", "args": [], "storage": {"0": 20480}, "expect": {"return": [20480]}},
+        {"name": "call_through_a_local", "function": "balanceVia", "args": [12288], "storage": {"0": 20480}, "peer_storage": {"68113724183316182233052564790125915752421945217496801851705428207216635038832": 7}, "expect": {"return": [7]}},
+        {"name": "call_to_an_address_without_code_reverts", "function": "balanceVia", "args": [12288], "expect": {"revert": "0x"}},
+        {"name": "call_through_an_immutable", "function": "fixedBalance", "args": [12288], "immutables": {"fixedToken": 20480}, "peer_storage": {"68113724183316182233052564790125915752421945217496801851705428207216635038832": 9}, "expect": {"return": [9]}},
+        {"name": "call_through_an_array_element", "function": "listedBalance", "args": [0, 12288], "storage": {"2": 1, "29102676481673041902632991033461445430619272659676223336789171408008386403022": 20480}, "peer_storage": {"68113724183316182233052564790125915752421945217496801851705428207216635038832": 5}, "expect": {"return": [5]}},
+        {"name": "array_element_out_of_range", "function": "listedBalance", "args": [1, 12288], "storage": {"2": 1, "29102676481673041902632991033461445430619272659676223336789171408008386403022": 20480}, "expect": {"panic": "0x32"}},
+        {"name": "contract_typed_mapping_key", "function": "record", "args": [20480, 12288], "peer_storage": {"68113724183316182233052564790125915752421945217496801851705428207216635038832": 4}, "expect": {"return": [5]}, "final_storage": {"35888967728248683820090931350251062696810018539421351293469808649448687801040": 5}},
+        {"name": "contract_comparisons", "function": "same", "args": [20480], "storage": {"0": 20480}, "immutables": {"fixedToken": 20480}, "expect": {"return": [true, true]}},
+        {"name": "contract_comparisons_differ", "function": "same", "args": [24576], "storage": {"0": 20480}, "immutables": {"fixedToken": 20480}, "expect": {"return": [false, false]}},
+        {"name": "state_contract_call_with_log", "function": "pay", "args": [12288, 20], "storage": {"0": 20480}, "peer_storage": {"105429781766569857922126575625563349147740172486500053377004878340415369987525": 50}, "expect": {"return": [true]}, "final_storage": {"0": 20480}, "logs": [{"logger": "0x5000", "topics": ["0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef", "0x0000000000000000000000000000000000000000000000000000000000001000", "0x0000000000000000000000000000000000000000000000000000000000003000"], "data": "0x0000000000000000000000000000000000000000000000000000000000000014"}]},
+        {"name": "self_addresses", "function": "selfAddresses", "args": [], "expect": {"return": [4096, 4096]}},
+        {"name": "call_through_this", "function": "selfCall", "args": [5], "storage": {"3": 2}, "expect": {"return": [14]}, "final_storage": {"3": 7}}
+      ]
+    },
+    {
       "name": "storage_bytes",
       "source": "testdata/differential/storage_bytes.sol",
       "contract": "StorageBytes",
