@@ -82,7 +82,8 @@ Definition builtin_name_def:
   builtin_name YCodeSize = "codesize" ∧
   builtin_name YCodeCopy = "codecopy" ∧
   builtin_name YDataSize = "datasize" ∧
-  builtin_name YDataOffset = "dataoffset"
+  builtin_name YDataOffset = "dataoffset" ∧
+  builtin_name YSetImmutable = "setimmutable"
 End
 
 Definition builtin_of_name_def:
@@ -154,6 +155,7 @@ Definition builtin_of_name_def:
     else if name = "codecopy" then SOME YCodeCopy
     else if name = "datasize" then SOME YDataSize
     else if name = "dataoffset" then SOME YDataOffset
+    else if name = "setimmutable" then SOME YSetImmutable
     else NONE
 End
 
@@ -250,7 +252,8 @@ Definition builtin_effect_def:
   builtin_effect YCodeSize = EffectObject ∧
   builtin_effect YCodeCopy = EffectObject ∧
   builtin_effect YDataSize = EffectObject ∧
-  builtin_effect YDataOffset = EffectObject
+  builtin_effect YDataOffset = EffectObject ∧
+  builtin_effect YSetImmutable = EffectObject
 End
 
 Theorem builtin_of_name_name:
@@ -259,12 +262,14 @@ Proof
   Cases_on ‘b’ >> EVAL_TAC
 QED
 
-(* The four object-level builtins read the running code or the object's
- * layout, which the evaluator does not model, and it rejects them.
+(* The object-level builtins read the running code or the object's layout,
+ * or, setimmutable, write the deployed code's immutables into its copy in
+ * memory; the evaluator does not model these, and it rejects them.
  *)
 Theorem builtin_effect_object:
   ∀b. builtin_effect b = EffectObject ⇔
-      b = YCodeSize ∨ b = YCodeCopy ∨ b = YDataSize ∨ b = YDataOffset
+      b = YCodeSize ∨ b = YCodeCopy ∨ b = YDataSize ∨ b = YDataOffset ∨
+      b = YSetImmutable
 Proof
   Cases_on ‘b’ >> EVAL_TAC
 QED

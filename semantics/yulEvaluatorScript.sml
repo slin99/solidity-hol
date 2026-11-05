@@ -517,6 +517,7 @@ Definition eval_yul_builtin_def:
     | (YCodeCopy, _) => EvalAbrupt (YulInvalid "object-level builtin") m
     | (YDataSize, _) => EvalAbrupt (YulInvalid "object-level builtin") m
     | (YDataOffset, _) => EvalAbrupt (YulInvalid "object-level builtin") m
+    | (YSetImmutable, _) => EvalAbrupt (YulInvalid "object-level builtin") m
     | _ => EvalAbrupt (YulInvalid "bad builtin call") m
 End
 

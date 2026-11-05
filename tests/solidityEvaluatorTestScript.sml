@@ -25,7 +25,7 @@ Definition initial_state_def:
                   authRefund := 0 |> |>;
     scopes := [];
     heap := FEMPTY;
-    next_heap_id := 0;
+    next_heap_id := 0; immutables := FEMPTY;
     memory_allocated := 0;
     targets := FEMPTY
   |>
@@ -189,7 +189,7 @@ Definition test_program_def:
                    spin_proc; fail_proc; call_fail_proc; callee_proc;
                    caller_proc];
     struct_layouts := []; type_declarations := [];
-    state_variables := [];
+    state_variables := []; immutables := [];
     entry_procedure := AstId 1;
     external_functions := []; receive_procedure := NONE;
     fallback_procedure := NONE; creation_procedure := NONE
@@ -303,7 +303,7 @@ Definition storage_program_def:
   storage_program vs = <|
     procedures := [store_proc];
     struct_layouts := []; type_declarations := [];
-    state_variables := vs;
+    state_variables := vs; immutables := [];
     entry_procedure := AstId 20;
     external_functions := []; receive_procedure := NONE;
     fallback_procedure := NONE; creation_procedure := NONE
@@ -472,7 +472,7 @@ Definition asm_env_def:
   asm_env code = core_program_environment <|
     procedures := [asm_proc code; asm_caller; halt_proc];
     struct_layouts := []; type_declarations := [];
-    state_variables := [];
+    state_variables := []; immutables := [];
     entry_procedure := AstId 110;
     external_functions := []; receive_procedure := NONE;
     fallback_procedure := NONE; creation_procedure := NONE
@@ -491,7 +491,7 @@ End
 Definition run_halt_def:
   run_halt creating =
     run_entry 20 (asm_env []) halt_proc [] initial_state.frame
-      initial_state.world 0 creating
+      initial_state.world FEMPTY 0 creating
 End
 
 val () = cv_auto_trans asm_env_def;

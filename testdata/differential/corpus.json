@@ -832,6 +832,27 @@
       ]
     },
     {
+      "name": "immutables",
+      "source": "testdata/differential/immutables.sol",
+      "contract": "Immutables",
+      "artifact": "testdata/differential/expected/immutables.json",
+      "cases": [
+        {"name": "creation_assigns_and_reads_immutables", "deploy": true, "args": [-3, "0x01020304"], "expect": {"returned": "0x0000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000bfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffd0102030400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000003"}, "final_storage": {"1": 1, "2": 31, "3": 24}},
+        {"name": "creation_takes_the_other_branch", "deploy": true, "args": [4, "0xffffffff"], "expect": {"returned": "0x0000000000000000000000000000000000000000000000000000000000000008000000000000000000000000000000000000000000000000000000000000000b0000000000000000000000000000000000000000000000000000000000000004ffffffff00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003"}, "final_storage": {"1": 1, "2": 31, "3": 24}},
+        {"name": "unset_immutables_read_zero", "function": "total", "args": [], "expect": {"return": [0]}},
+        {"name": "immutables_read_from_the_code", "function": "total", "args": [], "immutables": {"scale": 3, "offset": 4}, "expect": {"return": [7]}},
+        {"name": "immutable_sum_overflows", "function": "total", "args": [], "immutables": {"scale": "115792089237316195423570985008687907853269984665640564039457584007913129639935", "offset": 1}, "expect": {"panic": "0x11"}},
+        {"name": "pure_function_reads_immutable", "function": "scaled", "args": [5], "immutables": {"factor": 3}, "expect": {"return": [15]}},
+        {"name": "bool_immutable", "function": "isNegative", "args": [], "immutables": {"negative": true}, "expect": {"return": [true]}},
+        {"name": "signed_immutable", "function": "shifted", "args": [3], "immutables": {"delta": -5}, "expect": {"returned": "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe"}},
+        {"name": "signed_immutable_overflows", "function": "shifted", "args": [-100], "immutables": {"delta": -100}, "expect": {"panic": "0x11"}},
+        {"name": "immutable_getter", "function": "scale", "args": [], "immutables": {"scale": 9}, "expect": {"return": [9]}},
+        {"name": "signed_immutable_getter", "function": "delta", "args": [], "immutables": {"delta": -7}, "expect": {"returned": "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff9"}},
+        {"name": "fixed_bytes_immutable_getter", "function": "tag", "args": [], "immutables": {"tag": "0x0a0b0c0d"}, "expect": {"returned": "0x0a0b0c0d00000000000000000000000000000000000000000000000000000000"}},
+        {"name": "address_immutable_getter", "function": "deployer", "args": [], "immutables": {"deployer": 4660}, "expect": {"returned": "0x0000000000000000000000000000000000000000000000000000000000001234"}}
+      ]
+    },
+    {
       "name": "storage_bytes",
       "source": "testdata/differential/storage_bytes.sol",
       "contract": "StorageBytes",

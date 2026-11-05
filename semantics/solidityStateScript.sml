@@ -48,12 +48,15 @@ End
 
 (* Scopes, heap and targets are num-keyed finite maps (scopes and targets keyed
  * by the ast_id's number), which cv encodes as sptrees. Scopes are innermost
- * first.
+ * first. The immutables are the values of the contract's immutables, keyed by
+ * their declarations: those the deployed code holds, or, during creation, those
+ * the constructor has assigned so far; one not there is zero.
  *)
 Datatype:
   source_state = <|
     world : source_world;
     frame : source_frame;
+    immutables : num |-> scalar;
     scopes : (num |-> source_binding) list;
     heap : num |-> heap_object;
     next_heap_id : num;

@@ -266,6 +266,14 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual({b.feature for b in coverage.scan({"t.sol": unit([mapping])})[3]},
                          {"constants"})
 
+    def test_immutables_of_value_type_are_admitted(self) -> None:
+        immutable = dict(variable(3, state=True), mutability="immutable")
+        self.assertEqual(coverage.scan({"t.sol": unit([immutable])}), {})
+        contract_typed = dict(immutable, typeDescriptions={
+            "typeIdentifier": "t_contract$_C_$2"})
+        self.assertIn("immutables", {b.feature for b in
+                                     coverage.scan({"t.sol": unit([contract_typed])})[3]})
+
     def test_operations_over_literals_fold_to_integers(self) -> None:
         def literal(node_id, value):
             return {"nodeType": "Literal", "id": node_id, "kind": "number", "value": value,

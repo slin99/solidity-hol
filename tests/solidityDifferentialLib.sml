@@ -285,6 +285,42 @@ fun peer_code root prefix s =
            (string_field p "contract"))
       handle solidityImportLib.ImportError msg => fail msg
 
+(* The contract's immutables, by name, and, from the artifact, the offsets in
+ * its deployed code of each immutable the code reads. An artifact exported
+ * without the offsets serves only a contract without immutables. *)
+fun record_field name tm = Lib.assoc name (snd (TypeBase.dest_record tm))
+
+fun unit_immutables unit artifact source contract =
+  let
+    val names =
+      case fst (listSyntax.dest_list (record_field "unit_contracts" unit)) of
+        c :: _ =>
+          map (fn v =>
+                 (stringSyntax.fromHOLstring (record_field "var_name" v),
+                  IntInf.fromInt (numSyntax.int_of_term
+                    (record_field "node_id" (record_field "var_info" v)))))
+            (fst (listSyntax.dest_list (record_field "contract_immutables" c)))
+      | [] => []
+    val path = map JSONUtil.SEL ["output", "contracts", source, contract, "evm",
+                                 "deployedBytecode", "immutableReferences"]
+    val kvs =
+      case (SOME (JSONUtil.get (artifact, path)) handle _ => NONE) of
+        SOME (JSON.OBJECT kvs) => kvs
+      | SOME _ => fail "immutableReferences is not an object"
+      | NONE =>
+          if null names then []
+          else fail "the artifact lists no immutableReferences"
+    fun entry (k, JSON.ARRAY rs) =
+          pairSyntax.mk_pair (num_term (decimal k),
+            listSyntax.mk_list
+              (map (fn r => num_term (integer (field r "start"))) rs,
+               numSyntax.num))
+      | entry _ = fail "an immutable's references are a list"
+  in
+    {names = names,
+     refs = listSyntax.mk_list (map entry kvs, “:num # num list”)}
+  end
+
 (* Cases *)
 
 fun is_con name tm =
@@ -292,11 +328,30 @@ fun is_con name tm =
     is_const f andalso fst (dest_const f) = name
   end
 
+(* The values a call case gives the immutables, by name ("immutables": an
+ * object from name to argument), as their declarations; names is the
+ * contract's immutables, by name. *)
+fun case_immutables names c =
+  case JSONUtil.findField c "immutables" of
+    NONE => listSyntax.mk_list ([], “:num # argument”)
+  | SOME (JSON.OBJECT kvs) =>
+      listSyntax.mk_list
+        (map (fn (k, v) =>
+                case List.find (fn (n, _) => n = k) names of
+                  SOME (_, id) => pairSyntax.mk_pair (num_term id, argument v)
+                | NONE => fail ("no immutable named " ^ k))
+           kvs,
+         “:num # argument”)
+  | SOME _ => fail "immutables is an object from name to value"
+
 (* A corpus case as solidityDifferential's differential_case record, which is
  * what both the bytecode run and the Yul run are given. peer is the peer
- * contract's code, empty for a suite that declares no peer.
+ * contract's code, empty for a suite that declares no peer; immutables
+ * gives the contract's immutables, by name, and refs the offsets of those
+ * its deployed code reads.
  *)
-fun case_term peer input c =
+fun case_term peer (immutables : {names : (string * IntInf.int) list,
+                                  refs : term}) input c =
   TypeBase.mk_record
     (mk_thy_type {Thy = "solidityDifferential", Tyop = "differential_case",
                   Args = []},
@@ -309,6 +364,8 @@ fun case_term peer input c =
                    SOME v => integer v
                  | NONE => 0)),
       ("case_input", input),
+      ("case_immutables", case_immutables (#names immutables) c),
+      ("case_immutable_refs", #refs immutables),
       ("case_storage", storage (JSONUtil.findField c "storage")),
       ("case_peer_code", peer),
       ("case_peer_storage", storage (JSONUtil.findField c "peer_storage")),
@@ -323,7 +380,7 @@ fun case_term peer input c =
 fun case_fuel c fuel =
   case JSONUtil.findField c "fuel" of SOME v => integer v | NONE => fuel
 
-fun run_case {suite, code, initcode, peer, unit, program, fuel} c =
+fun run_case {suite, code, initcode, peer, immutables, unit, program, fuel} c =
   let
     val case_name = name_field c "name"
     val theorem = suite ^ "_" ^ case_name
@@ -331,7 +388,7 @@ fun run_case {suite, code, initcode, peer, unit, program, fuel} c =
     val input = call_input initcode c
 
     val expect = expectation (field c "expect")
-    val case_tm = case_term peer input c
+    val case_tm = case_term peer immutables input c
     val verdict_tm =
       list_mk_comb (prim_mk_const {Thy = "solidityDifferential",
                                    Name = "differential_verdict"},
@@ -428,7 +485,6 @@ fun suite_failure suite status message =
 (* The importer keeps the one contract no other inherits; the bytecode
  * compared must be that contract's, on both sides of the comparison.
  *)
-fun record_field name tm = Lib.assoc name (snd (TypeBase.dest_record tm))
 
 fun check_unit_contracts prepared contract =
   let
@@ -473,8 +529,11 @@ fun run_suite root fuel s =
                      ("status", json_string "ok"),
                      ("theorems", json_array (map json_string
                        [prefix ^ "_elaborates", prefix ^ "_program_wf"]))]
+      val immutables = unit_immutables (#unit (#prepared checked))
+                         (#artifact checked) source contract
       val env = {suite = suite, code = code, initcode = initcode, peer = peer,
-                 unit = unit, program = program, fuel = fuel}
+                 immutables = immutables, unit = unit, program = program,
+                 fuel = fuel}
     in
       List.foldl (fn (c, ok) => run_case env c andalso ok) true cases
     end
@@ -687,7 +746,7 @@ fun run_case_three_way suite_name env c =
     val input = call_input (fn () => fail "Yul deployment is unsupported") c
     val case_env =
       {suite = suite_name, case_name = name_field c "name",
-       case_tm = case_term (#peer env) input c, input = input,
+       case_tm = case_term (#peer env) (#immutables env) input c, input = input,
        expect = expectation (field c "expect"),
        unit = #unit env, code = #code env, program = #program env}
   in
@@ -718,8 +777,10 @@ fun run_suite_three_way root yul_root s =
     val peer = peer_code root prefix s
     val stages = List.mapPartial (yul_stage_code prefix suite source contract)
                    (yul_stages yul_root suite)
-    val env = {unit = unit, code = code, peer = peer, program = program,
-               stages = stages}
+    val immutables = unit_immutables (#unit (#prepared checked))
+                       (#artifact checked) source contract
+    val env = {unit = unit, code = code, peer = peer, immutables = immutables,
+               program = program, stages = stages}
   in
     emit_yul [("kind", json_string "suite"), ("suite", json_string suite),
               ("status", json_string "ok"),

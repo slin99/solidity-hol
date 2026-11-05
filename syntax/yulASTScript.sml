@@ -59,7 +59,7 @@ Datatype:
     (* halting *)
   | YStop | YReturn | YRevert
     (* object level: the creation object only *)
-  | YCodeSize | YCodeCopy | YDataSize | YDataOffset
+  | YCodeSize | YCodeCopy | YDataSize | YDataOffset | YSetImmutable
 End
 
 Datatype:

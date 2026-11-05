@@ -208,10 +208,21 @@ Definition eval_operation_def:
         (case state_reference env st.frame.self_address x of
            SOME r => ValueOk (ReferenceValue r)
          | _ => ValueAbrupt (InvalidCompletion "bad state reference"))
+    | ImmutableReferenceOperation x =>
+        if IS_SOME (ALOOKUP env.immutables x)
+        then ValueOk (ReferenceValue (ImmutableReference x))
+        else ValueAbrupt (InvalidCompletion "bad immutable reference")
     | ReadOperation ty a =>
         (case eval_atom st.scopes a of
            SOME (ReferenceValue (MemoryReference h i rty)) =>
              read_memory_reference st ty (MemoryReference h i rty)
+         | SOME (ReferenceValue (ImmutableReference x)) =>
+             (case FLOOKUP st.immutables (ast_key x) of
+                SOME s => ValueOk (ScalarValue s)
+              | NONE =>
+                  case default_elementary ty of
+                    SOME s => ValueOk (ScalarValue s)
+                  | NONE => ValueAbrupt (InvalidCompletion "bad immutable type"))
          | SOME (ReferenceValue r) => read_storage_reference st.world.accounts ty r
          | _ => ValueAbrupt (InvalidCompletion "bad storage reference"))
     | ByteIndexOperation a index =>
@@ -389,6 +400,8 @@ Definition write_target_def:
         write_memory_byte (MemoryReference h i ty) s st
     | (SOME (ReferenceFieldTarget (HeapId id) i _), SOME v) =>
         write_memory_element id i v st
+    | (SOME (ValueTarget (ImmutableReference x)), SOME (ScalarValue s)) =>
+        SOME (st with immutables := st.immutables |+ (ast_key x, s))
     | (SOME (ValueTarget (StorageReference PersistentStorage addr slot offset
                             ty _)), SOME (ScalarValue s)) =>
         if st.frame.static_context then NONE else

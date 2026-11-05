@@ -44,15 +44,17 @@ Libs
  * transaction and block the bytecode run is given -- its own frame's
  * transaction parameters, so that origin, gasprice, chainid and the block
  * builtins read on both sides what the corpus's transaction says, rather than
- * a second copy of it that could drift from the corpus's. There are no
- * immutables to load: no corpus suite is compiled with any. The frame's gas
+ * a second copy of it that could drift from the corpus's. The immutables are
+ * the ones the case gives, and zero for the others the code loads, by the
+ * names the compiler's Yul loads them by (their declarations' ids); the
+ * deployed code holds the same values, as in the bytecode run. The frame's gas
  * limit is that transaction's own -- the number the bytecode run starts with --
  * so a callee of the Yul frame gets the same order of budget as the bytecode
  * run's, and the return data buffer and transient storage start empty as a
  * fresh transaction's do.
  *)
 Definition yul_differential_machine_def:
-  yul_differential_machine code c data =
+  yul_differential_machine code imm c data =
     <| accounts :=
          (* the same world the source run starts from: the case's value has
           * already moved to the contract, so a call the frame makes with part
@@ -62,7 +64,8 @@ Definition yul_differential_machine_def:
           * that such a call runs the bytecode the real transaction would.
           *)
          transfer_value c.case_sender contract_address c.case_value
-           (case_accounts code c.case_storage c.case_sender c.case_peer_code
+           (case_accounts (patch_immutables c.case_immutable_refs imm code)
+              c.case_storage c.case_sender c.case_peer_code
               c.case_peer_storage);
        transient := empty_transient_storage;
        logs := [];
@@ -71,7 +74,11 @@ Definition yul_differential_machine_def:
        call_value := n2w c.case_value;
        call_data := data;
        return_data := [];
-       immutables := (FEMPTY : string |-> bytes32);
+       (* the compiler's Yul names an immutable by its declaration's id *)
+       immutables :=
+         FEMPTY |++ MAP (λ(x, _). (toString x, 0w : bytes32)) c.case_immutable_refs
+                |++ MAP (λ(x, _, w). (toString x, n2w (num_of_be_bytes w) : bytes32))
+                      imm;
        memory := (FEMPTY : num |-> word8);
        memory_size := 0;
        gas_limit := (differential_tx c.case_sender c.case_value data).gasLimit;
@@ -103,10 +110,11 @@ End
  *)
 Definition yul_case_execution_def:
   yul_case_execution evm_code ycode u c fuel =
-    case input_call u c.case_input of
-      INL d => (Diagnostic d, NONE, [])
-    | INR (data, _) =>
-        let m = yul_differential_machine evm_code c data in
+    case (input_call u c.case_input, case_immutable_values u c.case_immutables) of
+      (INL d, _) => (Diagnostic d, NONE, [])
+    | (_, NONE) => (Diagnostic UnencodableArguments, NONE, [])
+    | (INR (data, _), SOME imm) =>
+        let m = yul_differential_machine evm_code imm c data in
         let r = run_yul fuel ycode m in
         yul_frame_observation (finish_yul_frame m r.machine r.completion)
 End
