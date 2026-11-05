@@ -544,13 +544,13 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
         elif created["nodeType"] == "ArrayTypeName" and not located_array(result.removesuffix("_$")):
             found.append("memory arrays (new T[](n))")
     elif kind == "UserDefinedTypeName":
-        if not node["typeDescriptions"].get("typeIdentifier", "").startswith("t_struct$_"):
+        if not node["typeDescriptions"].get("typeIdentifier", "").startswith(("t_struct$_", "t_address")):
             found.append(type_feature(node["typeDescriptions"].get("typeIdentifier")))
     elif kind == "Literal":
         if node.get("subdenomination") is not None:
             found.append("literal subdenominations (ether, days, …)")
     elif kind == "Identifier":
-        if node.get("referencedDeclaration", 0) < 0 and not builtin_callee:
+        if node.get("referencedDeclaration", 0) < 0 and node["referencedDeclaration"] != THIS and not builtin_callee:
             found.append(BUILTINS.get(node["name"], f"built-in {node['name']}"))
     elif kind == "TupleExpression":
         if node["isInlineArray"]:
@@ -1089,7 +1089,8 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
         if callee.get("nodeType") == "FunctionDefinition":
             parameters = callee["parameters"]["parameters"]
             # x.f(args): x is f's first argument
-            if "$attached_to$" in (name.get("typeDescriptions", {}).get("typeIdentifier") or ""):
+            if "$attached_to$" in (name.get("typeDescriptions", {}).get("typeIdentifier") or "") and parameters:
+                expected.append((name["expression"], parameters[0]))
                 parameters = parameters[1:]
             expected.extend(arguments(node, parameters))
         member = node["expression"]
@@ -1173,7 +1174,7 @@ def special_forms(reached: dict[int, dict[str, Any]],
     def block(node: dict[str, Any], feature: str, stage: str) -> None:
         found.setdefault(node["id"], []).append(Blocker(node["nodeType"], feature, stage))
 
-    called = {n["expression"]["id"] for n in reached.values() if n["nodeType"] == "FunctionCall"}
+    called = {n["expression"]["id"]: n for n in reached.values() if n["nodeType"] == "FunctionCall"}
     members = library_members(by_id)
     for node in reached.values():
         kind = node["nodeType"]
@@ -1190,7 +1191,7 @@ def special_forms(reached: dict[int, dict[str, Any]],
                 if node["id"] not in called:
                     block(node, "using for", "import")
                 elif copies_receiver(node, target):
-                    block(node, "bound calls copying their receiver", "import")
+                    block(called[node["id"]], "bound calls copying their receiver", "import")
             else:
                 unread.update(n["id"] for n in nodes(node["expression"]))
                 if target["nodeType"] == "FunctionDefinition" and node["id"] not in called:
@@ -1235,12 +1236,6 @@ def special_forms(reached: dict[int, dict[str, Any]],
                 unread.add(member["id"])
                 if by_id.get(member.get("referencedDeclaration"), {}).get("nodeType") == "VariableDeclaration":
                     block(member, "external calls to getters", "import")
-                target = member["expression"]
-                if (target["nodeType"] == "FunctionCall" and target["kind"] == "typeConversion"
-                        and target["typeDescriptions"].get("typeIdentifier", "").startswith("t_contract$_")):
-                    unread.update({target["id"], target["expression"]["id"]})
-                else:
-                    block(target, "external calls and contract members", "import")
             elif (callee["nodeType"] == "Identifier"
                   and callee.get("referencedDeclaration") in {REQUIRE, REVERT}):
                 message = node["arguments"][-1] if node["arguments"] else None
@@ -1252,6 +1247,10 @@ def special_forms(reached: dict[int, dict[str, Any]],
                     block(node, "require with a custom error" if error else "messages that are not literals",
                           "elaboration")
         elif (kind == "FunctionCall" and node["kind"] == "typeConversion"
+              and node["expression"]["typeDescriptions"].get("typeIdentifier", "").startswith("t_type$_t_contract$_")):
+            # I(a): the importer reads a conversion to address
+            unread.add(node["expression"]["id"])
+        elif (kind == "FunctionCall" and node["kind"] == "typeConversion"
               and len(node["arguments"]) == 1 and node["arguments"][0]["nodeType"] == "Identifier"
               and node["arguments"][0].get("referencedDeclaration") == THIS
               and node["expression"]["nodeType"] == "ElementaryTypeNameExpression"
@@ -1260,9 +1259,15 @@ def special_forms(reached: dict[int, dict[str, Any]],
     return unread, found
 
 
+# A contract type's identifier, other than within a type expression's: the
+# importer reads it as t_address (erase_contracts in solidityImportLib).
+CONTRACT_TYPE = re.compile(r'(?<!t_type\$_)t_contract\$_[^"]*?_\$[0-9]+')
+
+
 def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     """Every node the importer reads that the semantics rejects, by node id,
     the importer's reasons first."""
+    asts = json.loads(CONTRACT_TYPE.sub("t_address", json.dumps(asts)))
     by_id = {n["id"]: n for ast in asts.values() for n in nodes(ast)}
     reached = {n["id"]: n for root in imported(asts, by_id) for n in nodes(root, skip=lambda n: not read(n))}
     reached.update((ast["id"], ast) for ast in asts.values())

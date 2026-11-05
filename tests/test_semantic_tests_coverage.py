@@ -269,10 +269,14 @@ class ClassifyTests(unittest.TestCase):
     def test_immutables_of_value_type_are_admitted(self) -> None:
         immutable = dict(variable(3, state=True), mutability="immutable")
         self.assertEqual(coverage.scan({"t.sol": unit([immutable])}), {})
+        # A contract type is an address.
         contract_typed = dict(immutable, typeDescriptions={
             "typeIdentifier": "t_contract$_C_$2"})
+        self.assertEqual(coverage.scan({"t.sol": unit([contract_typed])}), {})
+        string_typed = dict(immutable, typeDescriptions={
+            "typeIdentifier": "t_string_storage"})
         self.assertIn("immutables", {b.feature for b in
-                                     coverage.scan({"t.sol": unit([contract_typed])})[3]})
+                                     coverage.scan({"t.sol": unit([string_typed])})[3]})
 
     def test_operations_over_literals_fold_to_integers(self) -> None:
         def literal(node_id, value):
@@ -879,8 +883,28 @@ class ClassifyTests(unittest.TestCase):
                     if n.get("nodeType") == "MemberAccess" and n.get("memberName") == "fill")
         fill["expression"]["typeDescriptions"]["typeIdentifier"] = \
             "t_array$_t_uint256_$dyn_storage_ptr"
-        self.assertEqual(coverage.scan(asts), {fill["id"]: [coverage.Blocker(
-            "MemberAccess", "bound calls copying their receiver", "import")]})
+        # The importer rejects the call, where the copy happens.
+        call = next(n for ast in asts.values() for n in coverage.nodes(ast)
+                    if n.get("nodeType") == "FunctionCall" and n["expression"] is fill)
+        self.assertEqual(coverage.scan(asts), {call["id"]: [coverage.Blocker(
+            "FunctionCall", "bound calls copying their receiver", "import")]})
+
+    def test_bound_call_receivers_are_coerced_to_the_first_parameter(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        by_id = {n["id"]: n for ast in asts.values() for n in coverage.nodes(ast)}
+        # uint256(3).addBonus(4), made ("abc").addBonus(4) with addBonus taking bytes32 first
+        member, call = next((n["expression"], n) for n in by_id.values()
+                            if n.get("nodeType") == "FunctionCall"
+                            and n["expression"].get("memberName") == "addBonus"
+                            and n["expression"]["expression"].get("nodeType") == "FunctionCall")
+        member["expression"] = {"nodeType": "Literal", "id": 999997, "kind": "string",
+                                "value": "abc", "subdenomination": None,
+                                "typeDescriptions": {"typeIdentifier": "t_stringliteral_abc"}}
+        target = by_id[member["referencedDeclaration"]]
+        target["parameters"]["parameters"][0]["typeDescriptions"]["typeIdentifier"] = "t_bytes32"
+        self.assertIn(coverage.Blocker("FunctionCall", "string literals as fixed-size bytes",
+                                       "elaboration"), coverage.scan(asts).get(call["id"], []))
 
     def test_compilation_retains_artifact_contract_for_preparation(self) -> None:
         metadata = {"storageLayout": {"storage": [{"astId": 3, "slot": "0"}]},

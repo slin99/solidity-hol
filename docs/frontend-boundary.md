@@ -202,6 +202,14 @@ words the compiler's created code holds at its `immutableReferences` offsets,
 and patches a call case's immutables into the runtime bytecode there.
 Other immutables are rejected.
 
+A contract or interface type is read as `address`, which is its value at
+run time, stored and ABI encoded as one: in type names, in the type
+identifiers of expressions and in storage layouts. `I(a)` is a conversion to
+`address`, `this` is the contract's own address, and an external call
+`c.f{value: v}(args)` may name any contract-typed `c`. `new C`, `type(C)`,
+external calls to getters and the members of external functions, such as
+`c.f.selector`, are rejected.
+
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
 from the functions calls can reach (an overridden function counts only when
