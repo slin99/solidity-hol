@@ -936,16 +936,19 @@ fun contract external_structs contracts declared v = within v (fn v =>
       JSONUtil.arrayMap
         (fn p => string_field (field p "typeDescriptions") "typeIdentifier")
         (field (field f "parameters") "parameters")
-    (* Contract types are read as address, so overloads that differ only in
-     * contract-typed parameters could not be told apart where functions are
-     * matched by parameter types, as super targets are. *)
+    (* Contract types are read as address, so implemented functions that
+     * differ only in contract-typed parameters could not be told apart where
+     * they are matched by parameter types, as super targets are. *)
+    val overloadable =
+      List.filter (fn f => string_field f "kind" = "function" andalso bool_field f "implemented")
+        functions
     val () =
       List.app (fn f => List.app (fn g =>
         if string_field f "name" = string_field g "name" andalso
            parameter_types f <> parameter_types g andalso
            map erase_contracts (parameter_types f) = map erase_contracts (parameter_types g)
         then fail (describe g ^ ": overloads differing only in contract types are not supported")
-        else ()) functions) functions
+        else ()) overloadable) overloadable
     fun after f =
       let
         fun go [] = []

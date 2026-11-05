@@ -906,6 +906,25 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual((found[4], found[10]), ([blocker], [blocker]))
         self.assertEqual(coverage.scan({"t.sol": unit([overload(4, "t_contract$_C_$2"),
                                                        overload(10, "t_uint256")])}), {})
+        # Constructors and declarations are never matched by parameter types.
+        constructors = [dict(overload(i, t), name="", kind="constructor")
+                        for i, t in ((4, "t_contract$_C_$2"), (10, "t_address"))]
+        self.assertNotIn(4, coverage.scan({"t.sol": unit(constructors)}))
+        declared = dict(overload(4, "t_contract$_C_$2"), implemented=False, body=None)
+        self.assertEqual(coverage.scan({"t.sol": unit([declared, overload(10, "t_address")])}), {})
+
+    def test_contract_creation_is_blocked_at_the_call(self) -> None:
+        new = {"nodeType": "NewExpression", "id": 21,
+               "typeName": {"nodeType": "UserDefinedTypeName", "id": 22,
+                            "typeDescriptions": {"typeIdentifier": "t_contract$_C_$2"}},
+               "typeDescriptions": {"typeIdentifier": "t_function_creation_nonpayable$__$returns$_t_contract$_C_$2_$"}}
+        call = {"nodeType": "FunctionCall", "id": 20, "kind": "functionCall", "names": [],
+                "tryCall": False, "expression": new, "arguments": [],
+                "typeDescriptions": {"typeIdentifier": "t_contract$_C_$2"}}
+        statement = {"nodeType": "ExpressionStatement", "id": 6, "expression": call}
+        found = coverage.scan({"t.sol": unit([function(4, [statement])])})
+        self.assertIn("contract creation (new C)", {b.feature for b in found[20]})
+        self.assertNotIn(21, found)
 
     def test_bound_call_receivers_are_coerced_to_the_first_parameter(self) -> None:
         artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())

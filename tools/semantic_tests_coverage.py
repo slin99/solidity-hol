@@ -539,9 +539,7 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
     elif kind == "NewExpression":
         created = node["typeName"]
         result = (node["typeDescriptions"].get("typeIdentifier") or "").partition("$returns$_")[2]
-        if created["nodeType"] == "UserDefinedTypeName":
-            found.append("contract creation (new C)")
-        elif created["nodeType"] == "ArrayTypeName" and not located_array(result.removesuffix("_$")):
+        if created["nodeType"] == "ArrayTypeName" and not located_array(result.removesuffix("_$")):
             found.append("memory arrays (new T[](n))")
     elif kind == "UserDefinedTypeName":
         if not node["typeDescriptions"].get("typeIdentifier", "").startswith(("t_struct$_", "t_address")):
@@ -562,6 +560,12 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
             found.append("try/catch")
         if node["kind"] == "structConstructorCall":
             found.append("structs")
+        # The importer rejects new C at the call.
+        callee = node["expression"]
+        if callee["nodeType"] == "FunctionCallOptions":
+            callee = callee["expression"]
+        if callee["nodeType"] == "NewExpression" and callee["typeName"]["nodeType"] == "UserDefinedTypeName":
+            found.append("contract creation (new C)")
     elif kind == "ModifierDefinition":
         if node["virtual"] or node.get("overrides"):
             found.append("virtual modifiers")
@@ -1250,7 +1254,7 @@ def special_forms(reached: dict[int, dict[str, Any]],
         elif (kind == "FunctionCall" and node["kind"] == "typeConversion"
               and node["expression"]["typeDescriptions"].get("typeIdentifier", "").startswith("t_type$_t_contract$_")):
             # I(a): the importer reads a conversion to address
-            unread.add(node["expression"]["id"])
+            unread.update(n["id"] for n in nodes(node["expression"]))
     return unread, found
 
 
@@ -1271,9 +1275,9 @@ def erase_contracts(value: Any) -> Any:
 
 
 def contract_overloads(asts: dict[str, Any]) -> set[int]:
-    """The functions of an imported contract's bases with another of the same
-    name whose parameter types differ only in contract types, which the
-    importer rejects."""
+    """The implemented functions of an imported contract's bases with another
+    of the same name whose parameter types differ only in contract types,
+    which the importer rejects."""
     by_id = {n["id"]: n for ast in asts.values() for n in nodes(ast)}
     def types(f: dict[str, Any]) -> list[str]:
         return [p.get("typeDescriptions", {}).get("typeIdentifier") or "" for p in f["parameters"]["parameters"]]
@@ -1281,7 +1285,8 @@ def contract_overloads(asts: dict[str, Any]) -> set[int]:
     for ast in asts.values():
         for contract in deployable(ast):
             functions = [m for b in contract["linearizedBaseContracts"] if b in by_id
-                         for m in by_id[b]["nodes"] if m["nodeType"] == "FunctionDefinition"]
+                         for m in by_id[b]["nodes"] if m["nodeType"] == "FunctionDefinition"
+                         and m.get("kind") == "function" and m.get("implemented")]
             found.update(g["id"] for f in functions for g in functions
                          if f.get("name") == g.get("name") and types(f) != types(g)
                          and [CONTRACT_TYPE.sub("t_address", t) for t in types(f)]
