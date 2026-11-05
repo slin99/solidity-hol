@@ -349,6 +349,11 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
     members = library_members(by_id)
     based, live = live_functions(asts, by_id)
     unreachable = {n["id"] for f in based - live for n in nodes(by_id[f])}
+    # Nor the modifiers of the bases that no live function invokes.
+    invoked = {m["modifierName"].get("name") for f in live for m in by_id[f].get("modifiers", [])}
+    unreachable.update(n["id"] for m in by_id.values()
+                       if m["nodeType"] == "ModifierDefinition" and m["id"] not in members
+                       and m["name"] not in invoked for n in nodes(m))
     seen: set[int] = set()
     rooted = {root["id"] for root in roots}
 
@@ -1260,9 +1265,14 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
               for v in n["members"]}
     based, live = live_functions(asts, by_id)
     dead = {n["id"] for f in based - live if f in reached for n in nodes(by_id[f])}
-    # A modifier is checked and elaborated where a live function invokes it.
+    # The checker and the elaborator see the live functions and the library
+    # functions the contracts reach.
+    members = library_members(by_id)
+    checked = live | {i for i, n in reached.items()
+                      if n["nodeType"] == "FunctionDefinition" and i in members}
+    # A modifier is checked and elaborated where such a function invokes it.
     invoked = {m["modifierName"].get("referencedDeclaration")
-               for f in live for m in by_id[f].get("modifiers", [])}
+               for f in checked for m in by_id[f].get("modifiers", [])}
     dead.update(n["id"] for m in reached.values()
                 if m["nodeType"] == "ModifierDefinition" and m["id"] not in invoked
                 for n in nodes(m))
@@ -1329,7 +1339,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
         if blockers:
             found.setdefault(node["id"], []).extend(blockers)
     # Modifier arguments see the function's parameters, not its returns.
-    for f in live:
+    for f in checked:
         returns = {v["id"] for v in by_id[f].get("returnParameters", {}).get("parameters", [])}
         for n in (n for m in by_id[f].get("modifiers", []) for a in m.get("arguments") or []
                   for n in nodes(a)):
@@ -1337,7 +1347,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                 found.setdefault(n["id"], []).append(
                     Blocker("Identifier", "return variables in modifier arguments", "elaboration"))
     # A static memory return array is shared across a modifier's placeholders.
-    for f in live:
+    for f in checked:
         if any(m.get("kind") == "modifierInvocation" for m in by_id[f].get("modifiers", [])):
             for v in by_id[f].get("returnParameters", {}).get("parameters", []):
                 tid = v["typeDescriptions"].get("typeIdentifier") or ""

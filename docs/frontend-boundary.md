@@ -215,8 +215,10 @@ receiver is in storage or calldata and whose first parameter is in memory is
 rejected: the compiler copies the receiver before evaluating the other
 arguments, while elaboration converts arguments after evaluating them all.
 Public and external library functions, which a contract calls with
-`DELEGATECALL`, `using {f} for T` with free functions or operators, and
-library structs and events are rejected.
+`DELEGATECALL`, every `using {f, ...} for T` with a function list (library
+functions included) and user-defined operators, and library structs and
+events are rejected. In the Yul the compiler emits, `linkersymbol`, a linked
+library's address, is not admitted.
 
 Memory arrays of elementary leaves or byte sequences, nested to any depth, are
 implemented: locals, parameters and returns, `new T[](n)`, `new bytes(n)` and

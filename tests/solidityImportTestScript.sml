@@ -846,6 +846,37 @@ val using_source = "testdata/differential/using_for.sol"
 val using_ast = artifact_part using_fixture ["sources", using_source, "ast"]
 val using_contracts = artifact_part using_fixture ["contracts", using_source]
 
+Definition using_unit_def:
+  using_unit = ^(import_artifact using_fixture using_source)
+End
+
+val () = cv_auto_trans using_unit_def;
+
+(* The library functions the contract reaches, and only those: not Linked's
+ * public identity, which only the overridden Hooked.hook calls. *)
+Theorem using_unit_library_functions:
+  MAP (λc. (c.contract_name, LENGTH c.contract_library_functions))
+    using_unit.unit_contracts = [("UsingFor", 9)]
+Proof
+  EVAL_TAC
+QED
+
+(* Contracts of a unit may share library functions and constants, and so
+ * their node ids. *)
+Definition shared_library_unit_def:
+  shared_library_unit =
+    using_unit with unit_contracts :=
+      using_unit.unit_contracts ++ using_unit.unit_contracts
+End
+
+val () = cv_auto_trans shared_library_unit_def;
+
+Theorem shared_library_unit_valid:
+  valid_src_unit shared_library_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
 fun named ty name v =
   is_node ty v andalso
   JSONUtil.testField "name" (fn JSON.STRING s => s = name | _ => false) v

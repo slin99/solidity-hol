@@ -191,6 +191,10 @@ fun import_call defined v =
     val args = expr_list (map (import_expr defined) (array_field v "arguments"))
   in
     if List.exists (fn n => n = name) defined then yul "YulApply" [mk_str name, args]
+    (* A library's address is fixed only when the code is linked, which no
+     * run does, so code that names one is not admitted. *)
+    else if name = "linkersymbol" then
+      fail (describe v ^ ": linkersymbol, the address of a linked library")
     else case builtin_of name of
            SOME b => yul "YulBuiltin" [b, args]
          | NONE =>

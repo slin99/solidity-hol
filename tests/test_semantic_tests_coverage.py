@@ -834,6 +834,16 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(coverage.scan(asts), {functions["twice"]["id"]: [coverage.Blocker(
             "FunctionDefinition", "external library functions", "import")]})
 
+    def test_library_modifiers_are_checked_where_library_functions_invoke_them(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        modifier = next(n for ast in asts.values() for n in coverage.nodes(ast)
+                        if n.get("nodeType") == "ModifierDefinition" and n["name"] == "nonZero")
+        code = dict(assembly([{"nodeType": "YulExpressionStatement",
+                               "expression": yul_call("pop", yul_call("codesize"))}]), id=999999)
+        modifier["body"]["statements"].insert(0, code)
+        self.assertIn(999999, coverage.scan(asts))
+
     def test_bound_calls_copying_their_receiver_are_blocked(self) -> None:
         artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
         asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}

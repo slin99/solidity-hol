@@ -4,7 +4,7 @@
  * solidityImportLib builds these terms from a compiler artifact and fails
  * closed: an unknown nodeType, a missing required field, or a feature outside
  * the subset (overriding state variables, file-level constants,
- * modifiers, super other than in calls, named or try calls, built-ins other than
+ * super other than in calls, named or try calls, built-ins other than
  * require, assert, revert, members of msg, tx and block, address(this) and
  * type(T).max and .min for integer types T, literal subdenominations,
  * inline arrays, type names other than elementary types, arrays and mappings, ...)
@@ -28,8 +28,9 @@
  * decode_type_identifier_valid). Literals keep their exact rational type.
  *
  * valid_src_unit then establishes, for an imported unit:
- *  - all node ids are distinct, and the unit is among its compilation's
- *    source units;
+ *  - each contract's node ids, with the unit's, are distinct (contracts
+ *    share the declarations of a common base or library), and the unit is
+ *    among its compilation's source units;
  *  - every parameter, return, local and state variable has a normalized
  *    elementary, array or mapping type, the default data location, and a
  *    type identifier agreeing with that type, and the enclosing function,
@@ -1707,7 +1708,9 @@ End
 
 Definition valid_src_unit_def:
   valid_src_unit (u : src_unit) ⇔
-    ALL_DISTINCT (unit_ids u) ∧ MEM u.unit_info.node_id u.unit_sources ∧
+    EVERY (λc. ALL_DISTINCT (u.unit_info.node_id :: contract_ids c))
+      u.unit_contracts ∧
+    MEM u.unit_info.node_id u.unit_sources ∧
     EVERY (check_contract u.unit_info.node_id u.unit_sources) u.unit_contracts
 End
 

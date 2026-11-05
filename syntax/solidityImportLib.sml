@@ -881,27 +881,71 @@ fun contract external_structs contracts declared v = within v (fn v =>
     fun members_of ty cs =
       List.concat
         (map (fn c => List.filter (fn m => node_type m = ty) (nodes c)) cs)
-    (* The bases without the functions calls cannot reach: those another
-     * function of the bases overrides, unless a super call may run them. *)
+    (* The bases without what calls cannot reach: the functions another
+     * function of the bases overrides, unless a super call runs them, and the
+     * modifiers no reachable function invokes. A super call runs the first
+     * function, along the bases after the caller's, with the name and
+     * parameter types of the declaration it names (super_target in
+     * solidityImport). *)
     val functions = members_of "FunctionDefinition" bases
     val overriders = List.concat (map overridden functions)
-    val super_names =
-      map (fn m => string_field
-                     (function_declaration m (int_field m "referencedDeclaration"))
-                     "name")
-        (List.concat (map super_members bases))
-    fun unreachable f =
-      List.exists (fn i => i = int_field f "id") overriders andalso
-      not (List.exists (fn n => n = string_field f "name") super_names)
+    fun same_id f g = int_field f "id" = int_field g "id"
+    fun is_overridden f = List.exists (fn i => i = int_field f "id") overriders
+    fun parameter_types f =
+      JSONUtil.arrayMap
+        (fn p => string_field (field p "typeDescriptions") "typeIdentifier")
+        (field (field f "parameters") "parameters")
+    fun after f =
+      let
+        fun go [] = []
+          | go (c :: cs) = if int_field c "id" = int_field f "scope" then cs else go cs
+      in go bases end
+    fun super_targets f =
+      List.mapPartial
+        (fn m =>
+           let
+             val d = function_declaration m (int_field m "referencedDeclaration")
+             val later = after f
+           in
+             List.find
+               (fn g => List.exists (fn c => int_field c "id" = int_field g "scope") later andalso
+                        string_field g "kind" = "function" andalso
+                        string_field g "name" = string_field d "name" andalso
+                        parameter_types g = parameter_types d)
+               functions
+           end)
+        (super_members f)
+    fun close live [] = live
+      | close live (f :: fs) =
+          let
+            val new = List.foldl
+                        (fn (g, acc) =>
+                           if List.exists (same_id g) (live @ acc) then acc else acc @ [g])
+                        [] (super_targets f)
+          in close (live @ new) (fs @ new) end
+    val live =
+      let val start = List.filter (not o is_overridden) functions
+      in close start start end
+    val invoked =
+      List.concat
+        (map (fn f => List.mapPartial
+                        (fn i => case optional_field i "kind" of
+                                   SOME (JSON.STRING "modifierInvocation") =>
+                                     SOME (string_field (field i "modifierName") "name")
+                                 | _ => NONE)
+                        (JSONUtil.arrayMap I (field f "modifiers")))
+           live)
+    fun reachable n =
+      case node_type n of
+        "FunctionDefinition" => List.exists (same_id n) live
+      | "ModifierDefinition" =>
+          List.exists (fn m => m = string_field n "name") invoked
+      | _ => true
     val reachable_bases =
       map (fn JSON.OBJECT kvs =>
                 JSON.OBJECT
                   (map (fn ("nodes", JSON.ARRAY ns) =>
-                             ("nodes",
-                              JSON.ARRAY
-                                (List.filter
-                                   (fn n => not (node_type n = "FunctionDefinition"
-                                                 andalso unreachable n)) ns))
+                             ("nodes", JSON.ARRAY (List.filter reachable ns))
                          | kv => kv) kvs)
             | c => c) bases
     (* The library members those bases refer to, also through other library
