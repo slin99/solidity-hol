@@ -25,10 +25,12 @@ sig
    *
    * The table is read once per distinct fns term.
    *
-   * The fuel is a numeral or a successor `SUC n`.  Fuel is tested for zero on
-   * entering a call, and on a successor that test and the decrement reduce,
-   * so the body's calls are left folded at `n`; a bare variable would leave
-   * the tests in the form.  A caller that wants `invoke_yul n ...` at any n
+   * The fuel is a numeral or a successor.  Fuel is tested for zero on
+   * entering a call, and on a successor that test and the decrement reduce:
+   * at `SUC n` the entry's do, and the body runs at `n`, so a call the body
+   * makes stays under its own test on `n`; at `SUC (SUC n)` the body's calls
+   * are left folded at `n`.  A bare variable would leave the entry's test in
+   * the form.  A caller that wants `invoke_yul n ...` at any n
    * uses yulEvaluatorProps's fuel stability at a numeral large enough for
    * the run.
    *

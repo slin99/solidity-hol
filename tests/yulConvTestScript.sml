@@ -697,9 +697,16 @@ val () =
         val final' = rhs (concl (QCONV EVAL final))
         val n = mk_var ("n", numSyntax.num)
       in
-        if not (yulConvLib.is_closed_form final) then
+        (* f and g call nothing, so the rest is held to what a call-free
+         * body's form is: nothing left but a memory read, and a fixed
+         * point *)
+        if not (List.all (fn k => k = memory_read_residue)
+                         (yulConvLib.residues final)) then
           fail ("the rest after " ^ nm ^ "'s loop left "
                 ^ show_residues (yulConvLib.residues final))
+        else if not (yulConvLib.is_fixed_point defs final) then
+          fail ("the conversion left something to evaluate in the rest after "
+                ^ nm ^ "'s loop")
         else if not (aconv final' direct) then
           fail ("the rest after " ^ nm ^ "'s loop gives "
                 ^ term_to_string final ^ ", but the evaluator gives "
