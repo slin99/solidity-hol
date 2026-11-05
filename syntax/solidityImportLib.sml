@@ -267,6 +267,23 @@ fun is_super_member callee =
 val super_calls = ref ([] : IntInf.int list)
 val in_function = ref false
 
+(* The members of the libraries of the compilation, by id: their internal
+ * functions and constants are imported with the contracts that use them. *)
+val library_members : (IntInf.int * JSON.value) list ref = ref []
+
+(* L.f or L.c, or x.f with f attached to the type of x by a using directive,
+ * naming a member of library L. *)
+fun is_library_member v =
+  node_type v = "MemberAccess" andalso
+  (case optional_field v "referencedDeclaration" of
+     SOME d =>
+       List.exists (fn (i, _) => i = JSONUtil.asIntInf d) (!library_members)
+   | NONE => false)
+
+fun is_attached v =
+  String.isSubstring "$attached_to$"
+    (string_field (field v "typeDescriptions") "typeIdentifier")
+
 (* Expressions *)
 
 fun expr v = within v (fn v =>
@@ -282,6 +299,13 @@ fun expr v = within v (fn v =>
   | "MemberAccess" =>
       (case optional_field v "referencedDeclaration" of
          SOME declaration =>
+           if is_library_member v then
+             (require v (not (is_attached v))
+                "an attached function is supported only as a callee";
+              con "SrcIdentifier"
+                [info v, mk_str (string_field v "memberName"),
+                 mk_num (JSONUtil.asIntInf declaration), type_id v])
+           else
            con "SrcMemberAccess"
              [info v, expr (field v "expression"),
               mk_num (JSONUtil.asIntInf declaration), type_id v]
@@ -418,6 +442,17 @@ fun expr v = within v (fn v =>
                   [info v, mk_num r, listSyntax.mk_list (args, expr_ty),
                    type_id v]
               end
+            else if is_library_member callee andalso is_attached callee then
+              (* x.f(args) calls f with x as its first argument *)
+              con "SrcFunctionCall"
+                [info v,
+                 con "SrcIdentifier"
+                   [info callee, mk_str (string_field callee "memberName"),
+                    mk_num (int_field callee "referencedDeclaration"),
+                    type_id callee],
+                 listSyntax.mk_list (expr (field callee "expression") :: args,
+                                     expr_ty),
+                 type_id v]
             else con "SrcFunctionCall"
               [info v, expr callee, listSyntax.mk_list (args, expr_ty), type_id v]
         | "typeConversion" =>
@@ -788,7 +823,9 @@ fun constant_declaration v = within v (fn v =>
  * with their values, and the base
  * constructor arguments each base gives, most derived base first. The
  * file-level structs it refers to come first, and the layout also describes
- * those referenced by its state variables.
+ * those referenced by its state variables. The library functions and
+ * constants it refers to, also through each other, come with it, the
+ * constants after its own.
  *)
 fun contract external_structs contracts declared v = within v (fn v =>
   let
@@ -811,10 +848,42 @@ fun contract external_structs contracts declared v = within v (fn v =>
     fun members_of ty cs =
       List.concat
         (map (fn c => List.filter (fn m => node_type m = ty) (nodes c)) cs)
+    (* The library members the bases refer to, also through other library
+     * members. *)
+    fun reached picked =
+      let
+        val ids = List.concat (map references (bases @ picked))
+        val picked' =
+          map #2 (List.filter (fn (i, _) => List.exists (fn j => j = i) ids)
+                    (!library_members))
+      in
+        if length picked' = length picked then picked else reached picked'
+      end
+    val used_members = reached []
+    val library_functions =
+      List.filter (fn m => node_type m = "FunctionDefinition") used_members
+    val () =
+      List.app (fn m => within m (fn m =>
+        case node_type m of
+          "FunctionDefinition" =>
+            require m (string_field m "visibility" = "internal" orelse
+                       string_field m "visibility" = "private")
+              "only internal library functions are supported"
+        | "VariableDeclaration" =>
+            require m (bool_field m "constant")
+              "library variables are not supported"
+        | "ErrorDefinition" => ()
+        | other => fail (describe m ^ ": unsupported library member " ^ other)))
+        used_members
+    val libraries =
+      List.foldr (fn (m, ls) =>
+                    if List.exists (fn l => l = int_field m "scope") ls then ls
+                    else int_field m "scope" :: ls)
+        [] (List.filter (fn m => node_type m <> "ErrorDefinition") used_members)
     (* The file-level structs the bases refer to, also through other structs. *)
     fun used picked =
       let
-        val ids = List.concat (map references (bases @ picked))
+        val ids = List.concat (map references (bases @ used_members @ picked))
         val picked' =
           List.filter (fn s => List.exists (fn i => i = int_field s "id") ids)
             external_structs
@@ -832,7 +901,9 @@ fun contract external_structs contracts declared v = within v (fn v =>
                                 node_type m = "StructDefinition" orelse
                                 node_type m = "EventDefinition" orelse
                                 node_type m = "ErrorDefinition" orelse
-                                node_type m = "ModifierDefinition")
+                                node_type m = "ModifierDefinition" orelse
+                                (node_type m = "UsingForDirective" andalso
+                                 isSome (optional_field m "libraryName")))
                        "unsupported contract member"))
            (nodes c))))
         bases
@@ -897,9 +968,13 @@ fun contract external_structs contracts declared v = within v (fn v =>
                         (optional_field d "value"))
              assigned,
            pairSyntax.mk_prod (numSyntax.num, expr_ty))),
+       ("contract_libraries", listSyntax.mk_list
+          (map mk_num libraries, numSyntax.num)),
        ("contract_constants", listSyntax.mk_list
           (map constant_declaration
-             (List.filter (fn d => bool_field d "constant") variables),
+             (List.filter (fn d => bool_field d "constant") variables @
+              List.filter (fn d => node_type d = "VariableDeclaration")
+                used_members),
            pairSyntax.mk_prod (variable_ty, expr_ty))),
        ("contract_base_arguments", listSyntax.mk_list
           (List.concat (map base_arguments bases),
@@ -923,6 +998,8 @@ fun contract external_structs contracts declared v = within v (fn v =>
              (List.filter (fn f => bool_field f "implemented")
                 (members_of "FunctionDefinition" bases)),
            function_ty)),
+       ("contract_library_functions",
+        listSyntax.mk_list (map function library_functions, function_ty)),
        ("contract_getters", listSyntax.mk_list
           (List.mapPartial
              (fn d => if string_field d "visibility" = "public" then
@@ -963,6 +1040,15 @@ fun import_source_unit units v contracts = within v (fn v =>
                     (JSONUtil.arrayMap I (field c "nodes")))
              declared)
     val () =
+      library_members :=
+        List.concat
+          (map (fn (_, c) =>
+                  if string_field c "contractKind" = "library" then
+                    map (fn m => (int_field m "id", m))
+                      (JSONUtil.arrayMap I (field c "nodes"))
+                  else [])
+             declared)
+    val () =
       error_declarations :=
         map (fn e => (int_field e "id", e))
           (all_members "ErrorDefinition" @
@@ -985,8 +1071,13 @@ fun import_source_unit units v contracts = within v (fn v =>
       | "ImportDirective" => acc
       | "StructDefinition" => acc
       | "ErrorDefinition" => acc
+      | "UsingForDirective" =>
+          (require m (isSome (optional_field m "libraryName"))
+             "using directives attaching functions are not supported";
+           acc)
       | "ContractDefinition" =>
-          if string_field m "contractKind" = "interface" then acc
+          if string_field m "contractKind" = "interface" orelse
+             string_field m "contractKind" = "library" then acc
           else
             (require m (string_field m "contractKind" = "contract")
                ("unsupported contract kind " ^ string_field m "contractKind");

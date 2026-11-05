@@ -206,7 +206,6 @@ FEATURES = {
     "TryCatchClause": "try/catch",
     "TryStatement": "try/catch",
     "UserDefinedValueTypeDefinition": "user-defined value types",
-    "UsingForDirective": "using for",
 }
 FUNCTION_KINDS = {"function", "constructor", "receive", "fallback"}
 # By the leading part of a type identifier.
@@ -317,13 +316,19 @@ def deployable(unit: dict[str, Any]) -> list[dict[str, Any]]:
             and c["id"] not in inherited]
 
 
+def library_member(node: dict[str, Any] | None, by_id: dict[int, dict[str, Any]]) -> bool:
+    """Whether a declaration is a member of a library."""
+    scope = by_id.get((node or {}).get("scope"), {})
+    return scope.get("nodeType") == "ContractDefinition" and scope["contractKind"] == "library"
+
+
 def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dict[str, Any]]:
     """The parts of the compilation the importer reads, as subtrees: each
     unit's members other than pragmas, imports, file-level structs and errors,
-    interfaces and contracts imported only as bases; the bases of the
-    contracts imported; the file-level structs and external function
-    parameters those refer to; and the parameters of the errors their revert
-    statements name."""
+    interfaces, libraries and contracts imported only as bases; the bases of
+    the contracts imported; the file-level structs, library members other
+    than errors and external function parameters those refer to; and the
+    parameters of the errors their revert statements name."""
     roots: list[dict[str, Any]] = []
     for ast in asts.values():
         contracts = {c["id"] for c in deployable(ast)}
@@ -333,9 +338,7 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
                         "ErrorDefinition"}:
                 continue
             if kind == "ContractDefinition":
-                if member["contractKind"] == "library":
-                    roots.append(member)
-                elif member["id"] in contracts:
+                if member["id"] in contracts:
                     roots.extend(by_id[b] for b in member["linearizedBaseContracts"] if b in by_id)
                 continue
             roots.append(member)
@@ -361,6 +364,8 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
             target = by_id.get(node.get("referencedDeclaration"))
             if (target is not None and target["nodeType"] == "StructDefinition"
                     and by_id.get(target.get("scope"), {}).get("nodeType") == "SourceUnit"):
+                add(target)
+            elif library_member(target, by_id) and target["nodeType"] != "ErrorDefinition":
                 add(target)
     return roots
 
@@ -560,9 +565,9 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
         if node["kind"] not in FUNCTION_KINDS:
             found.append("free functions" if node["kind"] == "freeFunction"
                          else f"{node['kind']} functions")
-    elif kind == "ContractDefinition":
-        if node["contractKind"] == "library":
-            found.append("libraries")
+    elif kind == "UsingForDirective":
+        if node.get("libraryName") is None:
+            found.append("using for with functions")
     elif kind not in EXPRESSIONS | STATEMENTS | STRUCTURAL:
         found.append(f"{kind} nodes")
     return [Blocker(kind, feature, "import") for feature in found]
@@ -1127,7 +1132,8 @@ def special_forms(reached: dict[int, dict[str, Any]],
     expressions of their own, and what it and the checker reject in those
     forms: event and error names, the members and contract conversions of
     external calls, address(this), type(T), the members of msg, block and tx,
-    and the messages of require and revert. Only the reached nodes are
+    the messages of require and revert, and library members named through
+    their library or attached to a type, which the importer reads as names. Only the reached nodes are
     scanned; by_id indexes the whole compilation, where a call's target may
     be declared."""
     unread: set[int] = set()
@@ -1136,9 +1142,25 @@ def special_forms(reached: dict[int, dict[str, Any]],
     def block(node: dict[str, Any], feature: str, stage: str) -> None:
         found.setdefault(node["id"], []).append(Blocker(node["nodeType"], feature, stage))
 
+    called = {n["expression"]["id"] for n in reached.values() if n["nodeType"] == "FunctionCall"}
     for node in reached.values():
         kind = node["nodeType"]
-        if kind == "EmitStatement":
+        if library_member(node, by_id):
+            if kind == "FunctionDefinition" and node["visibility"] not in ("internal", "private"):
+                block(node, "external library functions", "import")
+            elif kind not in ("FunctionDefinition", "VariableDeclaration"):
+                block(node, "library structs and events", "import")
+        if kind == "MemberAccess" and library_member(by_id.get(node.get("referencedDeclaration")), by_id):
+            unread.add(node["id"])
+            target = by_id[node["referencedDeclaration"]]
+            if "$attached_to$" in (node["typeDescriptions"].get("typeIdentifier") or ""):
+                if node["id"] not in called:
+                    block(node, "using for", "import")
+            else:
+                unread.update(n["id"] for n in nodes(node["expression"]))
+                if target["nodeType"] == "FunctionDefinition" and node["id"] not in called:
+                    block(node, "functions as values", "elaboration")
+        elif kind == "EmitStatement":
             callee = node["eventCall"]["expression"]
             unread.update({node["eventCall"]["id"], callee["id"]})
             unread.update(n["id"] for n in nodes(callee))

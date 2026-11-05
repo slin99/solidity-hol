@@ -822,6 +822,18 @@ class ClassifyTests(unittest.TestCase):
                 found = {i: bs for i, bs in coverage.scan(asts).items() if i not in others}
                 self.assertEqual(found, {})
 
+    def test_library_functions_are_read_only_where_used(self) -> None:
+        """A contract's library calls read the functions they reach, so only
+        those must be internal; libraries are not read whole."""
+        artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        self.assertEqual(coverage.scan(asts), {})
+        functions = {n["name"]: n for ast in asts.values() for n in coverage.nodes(ast)
+                     if n.get("nodeType") == "FunctionDefinition"}
+        functions["twice"]["visibility"] = "public"
+        self.assertEqual(coverage.scan(asts), {functions["twice"]["id"]: [coverage.Blocker(
+            "FunctionDefinition", "external library functions", "import")]})
+
     def test_compilation_retains_artifact_contract_for_preparation(self) -> None:
         metadata = {"storageLayout": {"storage": [{"astId": 3, "slot": "0"}]},
                     "evm": {"deployedBytecode": {"object": "00"}}}

@@ -184,7 +184,7 @@ the procedure of the arithmetic it is in, as the compiler's IR calls one of
 two functions per constant, and a public constant's getter is the checked
 one. So a value that overflows its type panics with `0x11` when it is
 referenced in checked code, and wraps inside `unchecked`. File-level constants and references through a contract name
-(`C.X`) are rejected. An operation over literals that the compiler types
+other than a library (`C.X`) are rejected. An operation over literals that the compiler types
 as an integer (`10 ** 27`, `-1`) elaborates to that integer, as the compiler
 folds it; one over other rational constants is still rejected.
 
@@ -201,6 +201,17 @@ deployed code. The differential harness compares a creation's table with the
 words the compiler's created code holds at its `immutableReferences` offsets,
 and patches a call case's immutables into the runtime bytecode there.
 Other immutables are rejected.
+
+Internal and private library functions, and library constants, come with
+the contracts that use them, also through each other: `L.f(args)` is an
+internal call of `f`, `x.f(args)`, with `f` attached to the type of `x` by
+`using L for T`, is one with `x` as the first argument, evaluated before the
+others, and `L.c` names the constant `c`. Library functions see no state
+variables. `using` directives naming a library are accepted, in a contract
+or at file level, since the compiler resolves which function a call names.
+Public and external library functions, which a contract calls with
+`DELEGATECALL`, `using {f} for T` with free functions or operators, and
+library structs and events are rejected.
 
 Memory arrays of elementary leaves or byte sequences, nested to any depth, are
 implemented: locals, parameters and returns, `new T[](n)`, `new bytes(n)` and
