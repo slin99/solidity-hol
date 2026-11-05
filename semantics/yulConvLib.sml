@@ -1334,6 +1334,19 @@ fun block_conv tm =
         th
       end
 
+(* A division by a divisor that is not a literal stays the value it is,
+ * `with_zero word_div a b`.  Unfolded, its zero test is a decision on a value
+ * rather than a guard the body branches on, and nothing takes it apart: every
+ * step after it is evaluated over a result the conversion cannot read, once
+ * per branch of everything that follows.  A literal divisor decides the test,
+ * so that one is unfolded. *)
+val with_zero_c = prim_mk_const {Thy = "vfmExecution", Name = "with_zero"}
+
+fun with_zero_conv tm =
+  if wordsSyntax.is_word_literal (rand tm)
+  then Conv.REWR_CONV vfmExecutionTheory.with_zero_def tm
+  else raise Conv.UNCHANGED
+
 (* The base is EVAL's own compute set rather than the boolean one: an
  * evaluator clause is full of `case` over the Yul datatypes, and a datatype's
  * case equations are put where its definition registered them, not into the
@@ -1374,6 +1387,8 @@ val eval_compset =
             (computeLib.scrub_const cs2 word_exp_c)
             word_exp_tailrec_c
         val cs4 = computeLib.add_conv (word_exp_c, 2, word_exp_conv) cs3
+        val cs4 = computeLib.add_conv (with_zero_c, 3, with_zero_conv)
+                    (computeLib.scrub_const cs4 with_zero_c)
       in
         computeLib.add_conv (flookup_tm, 2, flookup_conv) cs4
       end
