@@ -1,18 +1,18 @@
 {
   "counts": {
-    "admitted": 474,
+    "admitted": 485,
     "compile-failure": 0,
-    "elaboration-rejected": 51,
-    "import-rejected": 775,
+    "elaboration-rejected": 52,
+    "import-rejected": 761,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 270
+    "source-rejected": 272
   },
   "features": [
     {
       "feature": "external calls and contract members",
-      "first_rejection": 100,
+      "first_rejection": 104,
       "node_types": [
         "FunctionCall",
         "Identifier",
@@ -116,7 +116,7 @@
         "IndexAccess",
         "MemberAccess"
       ],
-      "only_blocker": 12,
+      "only_blocker": 13,
       "tests": 101
     },
     {
@@ -130,7 +130,7 @@
     },
     {
       "feature": "function types",
-      "first_rejection": 76,
+      "first_rejection": 78,
       "node_types": [
         "FunctionTypeName"
       ],
@@ -171,7 +171,7 @@
       "node_types": [
         "UnaryOperation"
       ],
-      "only_blocker": 12,
+      "only_blocker": 13,
       "tests": 75
     },
     {
@@ -232,7 +232,7 @@
     },
     {
       "feature": "user-defined value types",
-      "first_rejection": 45,
+      "first_rejection": 46,
       "node_types": [
         "MemberAccess",
         "TupleExpression",
@@ -249,16 +249,16 @@
       "node_types": [
         "InlineAssembly"
       ],
-      "only_blocker": 6,
+      "only_blocker": 7,
       "tests": 50
     },
     {
       "feature": "inline arrays",
-      "first_rejection": 35,
+      "first_rejection": 36,
       "node_types": [
         "TupleExpression"
       ],
-      "only_blocker": 12,
+      "only_blocker": 13,
       "tests": 47
     },
     {
@@ -419,15 +419,6 @@
       ],
       "only_blocker": 0,
       "tests": 25
-    },
-    {
-      "feature": "immutables",
-      "first_rejection": 22,
-      "node_types": [
-        "VariableDeclaration"
-      ],
-      "only_blocker": 11,
-      "tests": 24
     },
     {
       "feature": "members of elementary type names",
@@ -625,6 +616,15 @@
       "first_rejection": 3,
       "node_types": [
         "IndexAccess"
+      ],
+      "only_blocker": 0,
+      "tests": 6
+    },
+    {
+      "feature": "immutables",
+      "first_rejection": 0,
+      "node_types": [
+        "VariableDeclaration"
       ],
       "only_blocker": 0,
       "tests": 6
@@ -845,64 +845,64 @@
       "feature": "transient storage"
     },
     {
-      "admitted": 103,
+      "admitted": 104,
       "feature": "operator delete"
     },
     {
-      "admitted": 120,
+      "admitted": 121,
       "feature": "bytes push and pop"
     },
     {
-      "admitted": 137,
+      "admitted": 138,
       "feature": "literals of non-integer types"
     },
     {
-      "admitted": 152,
+      "admitted": 154,
       "feature": "inline arrays"
     },
     {
-      "admitted": 166,
+      "admitted": 168,
       "feature": "conditional expressions"
     },
     {
-      "admitted": 179,
-      "feature": "aggregate array mutation"
-    },
-    {
-      "admitted": 192,
-      "feature": "immutables"
-    },
-    {
-      "admitted": 205,
+      "admitted": 181,
       "feature": "library calls and contract-name members"
     },
     {
-      "admitted": 217,
+      "admitted": 194,
+      "feature": "aggregate array mutation"
+    },
+    {
+      "admitted": 206,
       "feature": "libraries"
     },
     {
-      "admitted": 229,
+      "admitted": 218,
       "feature": "free functions"
     },
     {
-      "admitted": 241,
+      "admitted": 230,
       "feature": "source units without exactly one contract"
     },
     {
-      "admitted": 254,
+      "admitted": 243,
       "feature": "using for"
     },
     {
-      "admitted": 276,
+      "admitted": 265,
       "feature": "user-defined value types"
     },
     {
-      "admitted": 287,
+      "admitted": 276,
       "feature": "struct values and copying"
     },
     {
-      "admitted": 316,
+      "admitted": 305,
       "feature": "structs"
+    },
+    {
+      "admitted": 340,
+      "feature": "local reference bindings"
     }
   ],
   "profile": "solc-0.8.37-via-ir-osaka",
@@ -3320,8 +3320,8 @@
         "immutables",
         "source units without exactly one contract"
       ],
-      "first": "immutables",
-      "reason": "array/copying/calldata_1d_array_into_2d_memory_array_element.sol: VariableDeclaration 41: immutable variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "array/copying/calldata_1d_array_into_2d_memory_array_element.sol: UserDefinedTypeName 36: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "array/copying/calldata_1d_array_into_2d_memory_array_element.sol"
     },
@@ -9240,53 +9240,44 @@
       "test": "getters/value_types.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "immutables"
-      ],
-      "first": "immutables",
-      "reason": "immutable/assign_at_declaration.sol: VariableDeclaration 3: immutable variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "immutable/assign_at_declaration.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "immutables"
-      ],
-      "first": "immutables",
-      "reason": "immutable/assign_from_immutables.sol: VariableDeclaration 2: immutable variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "immutable/assign_from_immutables.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "immutables",
         "operator delete"
       ],
-      "first": "immutables",
-      "reason": "immutable/delete.sol: VariableDeclaration 2: immutable variables are not supported",
+      "first": null,
+      "reason": "immutable/delete.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "immutable/delete.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "immutables"
-      ],
-      "first": "immutables",
-      "reason": "immutable/fun_read_in_ctor.sol: VariableDeclaration 2: immutable variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "immutable/fun_read_in_ctor.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "immutables"
-      ],
-      "first": "immutables",
-      "reason": "immutable/getter.sol: VariableDeclaration 3: immutable variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "immutable/getter.sol"
     },
@@ -9296,7 +9287,6 @@
         "contract creation (new C)",
         "external calls and contract members",
         "external calls to getters",
-        "immutables",
         "source units without exactly one contract",
         "this",
         "try/catch"
@@ -9315,39 +9305,34 @@
         "immutables",
         "string literals as fixed-size bytes"
       ],
-      "first": "immutables",
-      "reason": "immutable/immutable_signed.sol: VariableDeclaration 4: immutable variables are not supported",
+      "first": "function types",
+      "reason": "immutable/immutable_signed.sol: FunctionTypeName 12: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "immutable/immutable_signed.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "immutables",
         "inline assembly memory outside the scratch space"
       ],
-      "first": "immutables",
-      "reason": "immutable/immutable_tag_too_large_bug.sol: VariableDeclaration 3: immutable variables are not supported",
+      "first": null,
+      "reason": "immutable/immutable_tag_too_large_bug.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "immutable/immutable_tag_too_large_bug.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "immutables"
-      ],
-      "first": "immutables",
-      "reason": "immutable/increment_decrement.sol: VariableDeclaration 3: immutable variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "immutable/increment_decrement.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "immutables"
-      ],
-      "first": "immutables",
-      "reason": "immutable/inheritance.sol: VariableDeclaration 2: immutable variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "immutable/inheritance.sol"
     },
@@ -9359,8 +9344,8 @@
         "functions as values",
         "immutables"
       ],
-      "first": "immutables",
-      "reason": "immutable/internal_function_pointer.sol: VariableDeclaration 6: immutable variables are not supported",
+      "first": "function types",
+      "reason": "immutable/internal_function_pointer.sol: FunctionTypeName 5: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "immutable/internal_function_pointer.sol"
     },
@@ -9370,73 +9355,62 @@
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
         "external calls and contract members",
-        "immutables",
         "source units without exactly one contract"
       ],
-      "first": "immutables",
-      "reason": "immutable/multi_creation.sol: VariableDeclaration 40: immutable variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "immutable/multi_creation.sol: TupleExpression 58: calls only on an address converted to a contract type",
       "scan_agrees": true,
       "test": "immutable/multi_creation.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "immutables",
         "library calls and contract-name members"
       ],
-      "first": "immutables",
-      "reason": "immutable/multiple_initializations.sol: VariableDeclaration 5: immutable variables are not supported",
+      "first": null,
+      "reason": "immutable/multiple_initializations.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "immutable/multiple_initializations.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "immutables"
-      ],
-      "first": "immutables",
-      "reason": "immutable/read_in_ctor.sol: VariableDeclaration 2: immutable variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "immutable/read_in_ctor.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "immutables",
         "inline arrays"
       ],
-      "first": "immutables",
-      "reason": "immutable/small_types_in_reverse.sol: VariableDeclaration 2: immutable variables are not supported",
+      "first": "inline arrays",
+      "reason": "immutable/small_types_in_reverse.sol: TupleExpression 29: inline arrays are not supported",
       "scan_agrees": true,
       "test": "immutable/small_types_in_reverse.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "immutables"
-      ],
-      "first": "immutables",
-      "reason": "immutable/stub.sol: VariableDeclaration 2: immutable variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "immutable/stub.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "immutables"
-      ],
-      "first": "immutables",
-      "reason": "immutable/uninitialized.sol: VariableDeclaration 2: immutable variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "immutable/uninitialized.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "immutables"
-      ],
-      "first": "immutables",
-      "reason": "immutable/use_scratch.sol: VariableDeclaration 2: immutable variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "immutable/use_scratch.sol"
     },
@@ -13360,8 +13334,8 @@
         "inline assembly halts in a constructor",
         "source units without exactly one contract"
       ],
-      "first": "immutables",
-      "reason": "shanghai/evmone_support.sol: VariableDeclaration 19: immutable variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "shanghai/evmone_support.sol: UserDefinedTypeName 14: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "shanghai/evmone_support.sol"
     },
@@ -14387,7 +14361,6 @@
         "contract creation (new C)",
         "external calls and contract members",
         "external calls to getters",
-        "immutables",
         "source units without exactly one contract"
       ],
       "first": "external calls and contract members",
@@ -14524,12 +14497,10 @@
       "test": "storageLayoutSpecifier/state_variable_arithmetic_expression.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "immutables"
-      ],
-      "first": "immutables",
-      "reason": "storageLayoutSpecifier/state_variable_constant_and_immutable.sol: VariableDeclaration 8: immutable variables are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/state_variable_constant_and_immutable.sol"
     },
@@ -15017,8 +14988,8 @@
         "structs",
         "this"
       ],
-      "first": "immutables",
-      "reason": "structs/function_type_copy.sol: VariableDeclaration 39: immutable variables are not supported",
+      "first": "external calls and contract members",
+      "reason": "structs/function_type_copy.sol: UserDefinedTypeName 34: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "structs/function_type_copy.sol"
     },
@@ -16434,8 +16405,8 @@
         "inline assembly memory references",
         "user-defined value types"
       ],
-      "first": "immutables",
-      "reason": "userDefinedValueType/immutable_signed.sol: VariableDeclaration 12: immutable variables are not supported",
+      "first": "user-defined value types",
+      "reason": "userDefinedValueType/immutable_signed.sol: UserDefinedTypeName 6: only struct user-defined types are supported",
       "scan_agrees": true,
       "test": "userDefinedValueType/immutable_signed.sol"
     },

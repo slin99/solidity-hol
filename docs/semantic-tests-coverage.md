@@ -22,12 +22,12 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 | outcome | tests |
 | --- | ---: |
-| admitted | 474 |
-| elaboration-rejected | 51 |
-| import-rejected | 775 |
+| admitted | 485 |
+| elaboration-rejected | 52 |
+| import-rejected | 761 |
 | compile-failure | 0 |
 | malformed-input | 0 |
-| source-rejected | 270 |
+| source-rejected | 272 |
 | invalid-core | 0 |
 | skipped | 100 |
 | total | 1670 |
@@ -40,7 +40,7 @@ The scan disagrees with the HOL run on 11 tests, listed at the end.
 
 | feature | AST nodes | tests | only blocker | first |
 | --- | --- | ---: | ---: | ---: |
-| external calls and contract members | `FunctionCall`, `Identifier`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 226 | 1 | 100 |
+| external calls and contract members | `FunctionCall`, `Identifier`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `VariableDeclaration` | 226 | 1 | 104 |
 | structs | `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 165 | 5 | 18 |
 | local reference bindings | `VariableDeclaration` | 158 | 0 | 0 |
 | this | `Identifier` | 140 | 1 | 5 |
@@ -49,22 +49,22 @@ The scan disagrees with the HOL run on 11 tests, listed at the end.
 | function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 121 | 0 | 21 |
 | libraries | `ContractDefinition` | 116 | 1 | 42 |
 | struct values and copying | `Identifier`, `IndexAccess`, `MemberAccess` | 108 | 2 | 0 |
-| library calls and contract-name members | `IndexAccess`, `MemberAccess` | 101 | 12 | 0 |
+| library calls and contract-name members | `IndexAccess`, `MemberAccess` | 101 | 13 | 0 |
 | abi.* functions | `MemberAccess` | 100 | 13 | 58 |
-| function types | `FunctionTypeName` | 96 | 0 | 76 |
+| function types | `FunctionTypeName` | 96 | 0 | 78 |
 | inline assembly memory references | `InlineAssembly` | 91 | 2 | 0 |
 | using for | `MemberAccess`, `UsingForDirective` | 81 | 0 | 47 |
 | contract creation (new C) | `NewExpression` | 80 | 0 | 0 |
-| operator delete | `UnaryOperation` | 75 | 12 | 0 |
+| operator delete | `UnaryOperation` | 75 | 13 | 0 |
 | free functions | `FunctionDefinition` | 73 | 10 | 37 |
 | array values | `Identifier`, `IndexAccess`, `MemberAccess` | 67 | 0 | 0 |
 | hash and signature built-ins | `Identifier` | 62 | 10 | 16 |
 | address members (balance, call, transfer, …) | `MemberAccess` | 58 | 14 | 19 |
 | functions as values | `Identifier` | 55 | 1 | 0 |
 | type names as values | `ElementaryTypeNameExpression` | 55 | 1 | 8 |
-| user-defined value types | `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `UserDefinedValueTypeDefinition`, `VariableDeclaration` | 52 | 6 | 45 |
-| inline assembly memory outside the scratch space | `InlineAssembly` | 50 | 6 | 0 |
-| inline arrays | `TupleExpression` | 47 | 12 | 35 |
+| user-defined value types | `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `UserDefinedValueTypeDefinition`, `VariableDeclaration` | 52 | 6 | 46 |
+| inline assembly memory outside the scratch space | `InlineAssembly` | 50 | 7 | 0 |
+| inline arrays | `TupleExpression` | 47 | 13 | 36 |
 | public state variables | `VariableDeclaration` | 46 | 5 | 0 |
 | transient storage | `VariableDeclaration` | 41 | 14 | 0 |
 | conditional expressions | `Conditional` | 40 | 12 | 23 |
@@ -80,7 +80,6 @@ The scan disagrees with the HOL run on 11 tests, listed at the end.
 | tuples of literals | `TupleExpression` | 28 | 4 | 0 |
 | conversions to non-elementary types | `Identifier`, `IndexAccess`, `MemberAccess` | 26 | 0 | 1 |
 | memory arrays (new T[](n)) | `NewExpression` | 25 | 0 | 0 |
-| immutables | `VariableDeclaration` | 24 | 11 | 22 |
 | members of elementary type names | `IndexAccess`, `TupleExpression` | 24 | 0 | 0 |
 | bytes push and pop | `MemberAccess` | 23 | 13 | 0 |
 | call options ({value: …, gas: …}) | `FunctionCallOptions`, `IndexAccess`, `MemberAccess`, `NewExpression`, `TupleExpression` | 22 | 0 | 4 |
@@ -102,6 +101,7 @@ The scan disagrees with the HOL run on 11 tests, listed at the end.
 | msg/block/tx globals | `MemberAccess` | 6 | 5 | 6 |
 | virtual modifiers | `ModifierDefinition` | 6 | 5 | 5 |
 | array type expressions | `IndexAccess` | 6 | 0 | 3 |
+| immutables | `VariableDeclaration` | 6 | 0 | 0 |
 | tuples with empty components | `TupleExpression` | 6 | 0 | 0 |
 | file-level events | `EventDefinition` | 5 | 2 | 3 |
 | super calls | `Identifier`, `TupleExpression` | 5 | 1 | 2 |
@@ -135,21 +135,21 @@ Supporting the features in this order admits the most rejected tests at each ste
 | 3 | hash and signature built-ins | 50 |
 | 4 | address members (balance, call, transfer, …) | 67 |
 | 5 | transient storage | 82 |
-| 6 | operator delete | 103 |
-| 7 | bytes push and pop | 120 |
-| 8 | literals of non-integer types | 137 |
-| 9 | inline arrays | 152 |
-| 10 | conditional expressions | 166 |
-| 11 | aggregate array mutation | 179 |
-| 12 | immutables | 192 |
-| 13 | library calls and contract-name members | 205 |
-| 14 | libraries | 217 |
-| 15 | free functions | 229 |
-| 16 | source units without exactly one contract | 241 |
-| 17 | using for | 254 |
-| 18 | user-defined value types | 276 |
-| 19 | struct values and copying | 287 |
-| 20 | structs | 316 |
+| 6 | operator delete | 104 |
+| 7 | bytes push and pop | 121 |
+| 8 | literals of non-integer types | 138 |
+| 9 | inline arrays | 154 |
+| 10 | conditional expressions | 168 |
+| 11 | library calls and contract-name members | 181 |
+| 12 | aggregate array mutation | 194 |
+| 13 | libraries | 206 |
+| 14 | free functions | 218 |
+| 15 | source units without exactly one contract | 230 |
+| 16 | using for | 243 |
+| 17 | user-defined value types | 265 |
+| 18 | struct values and copying | 276 |
+| 19 | structs | 305 |
+| 20 | local reference bindings | 340 |
 
 ## Skipped and compile failures
 
@@ -364,6 +364,16 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `getters/mapping.sol`
 - `getters/mapping_with_names.sol`
 - `getters/string_and_bytes.sol`
+- `immutable/assign_at_declaration.sol`
+- `immutable/assign_from_immutables.sol`
+- `immutable/fun_read_in_ctor.sol`
+- `immutable/getter.sol`
+- `immutable/increment_decrement.sol`
+- `immutable/inheritance.sol`
+- `immutable/read_in_ctor.sol`
+- `immutable/stub.sol`
+- `immutable/uninitialized.sol`
+- `immutable/use_scratch.sol`
 - `inheritance/access_base_storage.sol`
 - `inheritance/constructor_inheritance_init_order.sol`
 - `inheritance/constructor_inheritance_init_order_2.sol`
@@ -541,6 +551,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `storageLayoutSpecifier/multiple_inheritance.sol`
 - `storageLayoutSpecifier/multiple_inheritance_state_var_slots.sol`
 - `storageLayoutSpecifier/state_variable_arithmetic_expression.sol`
+- `storageLayoutSpecifier/state_variable_constant_and_immutable.sol`
 - `storageLayoutSpecifier/state_variable_dynamic_array.sol`
 - `storageLayoutSpecifier/state_variable_mapping.sol`
 - `storageLayoutSpecifier/state_variable_slot_offset.sol`
@@ -796,6 +807,8 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `getters/struct_with_bytes.sol`: getters/struct_with_bytes.sol: valid_src_unit failed (source validation/subset restriction)
 - `getters/struct_with_bytes_simple.sol`: getters/struct_with_bytes_simple.sol: valid_src_unit failed (source validation/subset restriction)
 - `getters/value_types.sol`: getters/value_types.sol: valid_src_unit failed (source validation/subset restriction)
+- `immutable/delete.sol`: immutable/delete.sol: valid_src_unit failed (source validation/subset restriction)
+- `immutable/multiple_initializations.sol`: immutable/multiple_initializations.sol: valid_src_unit failed (source validation/subset restriction)
 - `inheritance/explicit_base_class.sol`: inheritance/explicit_base_class.sol: valid_src_unit failed (source validation/subset restriction)
 - `inheritance/inherited_constant_state_var.sol`: inheritance/inherited_constant_state_var.sol: valid_src_unit failed (source validation/subset restriction)
 - `inheritance/inherited_function.sol`: inheritance/inherited_function.sol: valid_src_unit failed (source validation/subset restriction)
@@ -942,6 +955,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `expressions/bytes_comparison.sol`: expressions/bytes_comparison.sol: elaborate_unit returned NONE (unsupported lowering)
 - `externalSource/source_import_subdir.sol`: _external/import_with_subdir.sol: elaborate_unit returned NONE (unsupported lowering)
 - `externalSource/source_name_starting_with_dots.sol`: _sourceNameStartingWithDots/dir/contract.sol: elaborate_unit returned NONE (unsupported lowering)
+- `immutable/immutable_tag_too_large_bug.sol`: immutable/immutable_tag_too_large_bug.sol: elaborate_unit returned NONE (unsupported lowering)
 - `inlineAssembly/calldata_array_assign_static.sol`: inlineAssembly/calldata_array_assign_static.sol: elaborate_unit returned NONE (unsupported lowering)
 - `inlineAssembly/inline_assembly_memory_access.sol`: inlineAssembly/inline_assembly_memory_access.sol: elaborate_unit returned NONE (unsupported lowering)
 - `inlineAssembly/keccak_optimization_bug_string.sol`: inlineAssembly/keccak_optimization_bug_string.sol: elaborate_unit returned NONE (unsupported lowering)
