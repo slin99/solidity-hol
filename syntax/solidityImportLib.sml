@@ -556,6 +556,10 @@ fun expr v = within v (fn v =>
                int_field callee "referencedDeclaration" = ~8 then
               (require v (length args = 1) "keccak256 takes one argument";
                con "SrcKeccak256" [info v, info callee, hd args, type_id v])
+            else if node_type callee = "MemberAccess" andalso
+               node_type (field callee "expression") = "Identifier" andalso
+               int_field (field callee "expression") "referencedDeclaration" = ~1 then
+              abi_encode v callee args
             else if node_type callee = "Identifier" andalso
                int_field callee "referencedDeclaration" < 0 then
               let
@@ -634,6 +638,34 @@ fun expr v = within v (fn v =>
         | kind => fail (describe v ^ ": unsupported call kind " ^ kind)
       end
   | other => fail (describe v ^ ": unsupported expression " ^ other))
+
+(* abi.encode, abi.encodePacked, abi.encodeWithSelector and
+ * abi.encodeWithSignature of a literal signature; the signature's bytes are
+ * taken from the literal, which is not kept as an argument. *)
+and abi_encode v callee args =
+  let
+    val form =
+      case string_field callee "memberName" of
+        "encode" => con "AbiPlain" []
+      | "encodePacked" => con "AbiPacked" []
+      | "encodeWithSelector" => con "AbiWithSelector" []
+      | "encodeWithSignature" =>
+          let
+            val sig_node = hd (JSONUtil.arrayMap I (field v "arguments"))
+              handle Empty => fail (describe v ^ ": encodeWithSignature takes a signature")
+          in
+            require v (node_type sig_node = "Literal" andalso
+                       string_field sig_node "kind" = "string")
+              "abi.encodeWithSignature of a non-literal signature is not supported";
+            con "AbiWithSignature" [mk_bytes sig_node (string_field sig_node "hexValue")]
+          end
+      | member => fail (describe v ^ ": unsupported abi." ^ member)
+    val args =
+      if string_field callee "memberName" = "encodeWithSignature" then tl args else args
+  in
+    con "SrcAbiEncode"
+      [info v, info callee, form, listSyntax.mk_list (args, expr_ty), type_id v]
+  end
 
 (* c.f{value: v}(args), with c of a contract type. *)
 and external_call v callee args =

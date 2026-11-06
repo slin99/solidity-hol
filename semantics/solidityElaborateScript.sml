@@ -332,6 +332,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcExternalCall _ _ _ operands _) ⇔ exprs_assign operands) ∧
   (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcKeccak256 _ _ e _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcSuperCall _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns _ ⇔ F) ∧
   (components_assign [] ⇔ F) ∧
@@ -461,6 +462,66 @@ Definition coerce_abi_values_def:
          | NONE => NONE)
     | NONE => NONE) ∧
   (coerce_abi_values n _ _ = NONE)
+End
+
+(* An argument of abi.encode*, with the ABI type it is encoded as: a scalar
+ * as its type; a byte sequence, or a string literal, where it is, as the
+ * compiler encodes it in place; an integer literal (unpacked only) as its
+ * mobile type, whose encoding is that of int256 or uint256. *)
+Definition abi_argument_def:
+  abi_argument packed a vt =
+    case vt of
+      ElabType ty =>
+        if is_stored_scalar_type ty then SOME (ty, a) else
+        (case ty of
+           LocatedT _ element =>
+             if byte_sequence_type element
+             then SOME (LocatedT MemoryLoc element, a) else NONE
+         | _ => NONE)
+    | ElabBytesLiteral => SOME (LocatedT MemoryLoc StringT, a)
+    | ElabLiteral =>
+        (case a of
+           ConstantAtom (IntegerValue i) =>
+             if packed then NONE
+             else SOME ((if i < 0 then IntT 256 else UintT 256), a)
+         | _ => NONE)
+    | _ => NONE
+End
+
+Definition abi_arguments_def:
+  (abi_arguments packed [] = SOME ([], [])) ∧
+  (abi_arguments packed ((a, vt) :: vs) =
+    case (abi_argument packed a vt, abi_arguments packed vs) of
+      (SOME (ty, a'), SOME (tys, args)) => SOME (ty :: tys, a' :: args)
+    | _ => NONE)
+End
+
+(* The operation of abi.encode* on the values of its arguments, after any
+ * statements converting the selector. *)
+Definition abi_encoding_def:
+  abi_encoding n form vs =
+    case (form, vs) of
+      (AbiWithSelector, (s, svt) :: rest) =>
+        (case (coerce n (FixedBytesT 4) s svt, abi_arguments F rest) of
+           (SOME ((cs, s'), n1), SOME (tys, args)) =>
+             SOME ((cs, AbiEncodeOperation (SOME s') tys args), n1)
+         | _ => NONE)
+    | (AbiWithSelector, []) => NONE
+    | (AbiPacked, _) =>
+        (case abi_arguments T vs of
+           SOME (tys, args) => SOME (([], AbiEncodePackedOperation tys args), n)
+         | NONE => NONE)
+    | (AbiPlain, _) =>
+        (case abi_arguments F vs of
+           SOME (tys, args) => SOME (([], AbiEncodeOperation NONE tys args), n)
+         | NONE => NONE)
+    | (AbiWithSignature signature, _) =>
+        (case abi_arguments F vs of
+           SOME (tys, args) =>
+             SOME (([], AbiEncodeOperation
+                          (SOME (ConstantAtom (BytesValue (TAKE 4 (Keccak_256_w64 signature)))))
+                          tys args), n)
+         | NONE => NONE)
 End
 
 Definition elab_expr_def:
@@ -820,6 +881,16 @@ Definition elab_expr_def:
                 SOME ((cs, b), n2) =>
                   let (hs, h) = bind_value n2 (FixedBytesT 32) (Keccak256Operation b) in
                   SOME ((ss ++ cs ++ hs, h, ElabType (FixedBytesT 32)), n2 + 1)
+              | NONE => NONE)
+         | NONE => NONE)
+    | SrcAbiEncode _ _ form args _ =>
+        (case elab_arg_values ctx n args of
+           SOME ((ss, vs), n1) =>
+             (case abi_encoding n1 form vs of
+                SOME ((cs, op), n2) =>
+                  let ty = LocatedT MemoryLoc BytesT in
+                  let (es, r) = bind_value n2 ty op in
+                  SOME ((ss ++ cs ++ es, r, ElabType ty), n2 + 1)
               | NONE => NONE)
          | NONE => NONE)
     | SrcSelector _ bs _ =>
@@ -1905,6 +1976,10 @@ Proof
   ho_match_mp_tac coerce_abi_values_ind >> rpt strip_tac >>
   simp[Once coerce_abi_values_pre_def] >> rw[] >> fs[]
 QED
+
+val () = cv_auto_trans abi_argument_def;
+val () = cv_auto_trans abi_arguments_def;
+val () = cv_auto_trans abi_encoding_def;
 
 val elab_expr_pre_def = cv_auto_trans_pre_rec
   "elab_expr_pre elab_args_pre elab_values_pre elab_components_pre elab_location_pre elab_destination_pre elab_arg_values_pre"

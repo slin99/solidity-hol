@@ -170,6 +170,14 @@ Datatype:
   |>
 End
 
+(* abi.encode, abi.encodePacked, abi.encodeWithSelector (the selector is the
+ * first argument) and abi.encodeWithSignature (of the bytes of a literal
+ * signature, which is not among the arguments).
+ *)
+Datatype:
+  abi_form = AbiPlain | AbiPacked | AbiWithSelector | AbiWithSignature (byte list)
+End
+
 Datatype:
   src_expr
   = SrcIdentifier node_info string num string
@@ -194,6 +202,7 @@ Datatype:
   | SrcEnumValue node_info src_type_name num string
   | SrcKeccak256 node_info node_info src_expr string
   | SrcSelector node_info (byte list) string
+  | SrcAbiEncode node_info node_info abi_form (src_expr list) string
 End
 
 (* VariableDeclarationStatement: assignments, declarations (NONE for a hole),
@@ -899,6 +908,8 @@ Definition expr_ids_def:
   (expr_ids (SrcKeccak256 info callee e _) =
     info.node_id :: callee.node_id :: expr_ids e) ∧
   (expr_ids (SrcSelector info _ _) = [info.node_id]) ∧
+  (expr_ids (SrcAbiEncode info callee _ args _) =
+    info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcExternalCall info _ _ operands _) =
     info.node_id :: exprs_ids operands) ∧
   (expr_ids (SrcNew info tn e _) =
@@ -1071,6 +1082,19 @@ Definition type_bound_def:
 End
 
 (* The decoded type of a checked expression. *)
+(* An argument abi.encode* takes: a scalar or a byte sequence in any
+ * location, or a literal; an integer literal only when not packed. *)
+Definition abi_argument_type_def:
+  abi_argument_type packed t ⇔
+    case t of
+      SrcType ty =>
+        is_stored_scalar_type ty ∨ byte_sequence_type ty ∨
+        (case ty of LocatedT _ element => byte_sequence_type element | _ => F)
+    | SrcByteLiteral => T
+    | SrcRational _ d => ¬packed ∧ d = 1
+    | _ => F
+End
+
 Definition check_expr_def:
   (check_expr (env : import_env) (SrcIdentifier _ _ x tid) =
     case ALOOKUP (env.variables ++ env.state ++ env.constants) x of
@@ -1276,13 +1300,32 @@ Definition check_expr_def:
            source_type_matches (LocatedT MemoryLoc ty) tid
         then SOME (SrcType (LocatedT MemoryLoc ty)) else NONE
     | _ => NONE) ∧
+  (* abi.encode* to memory bytes; a selector given as an argument is a bytes4,
+     and the other arguments are scalars or byte sequences (integer literals
+     only unpacked, as the compiler requires). *)
+  (check_expr env (SrcAbiEncode _ _ form args tid) =
+    if source_type_matches (LocatedT MemoryLoc BytesT) tid ∧
+       (case (form, args) of
+          (AbiWithSelector, s :: rest) =>
+            check_expr env s = SOME (SrcType (FixedBytesT 4)) ∧
+            check_abi_args env F rest
+        | (AbiWithSelector, []) => F
+        | (AbiPacked, _) => check_abi_args env T args
+        | _ => check_abi_args env F args)
+    then SOME (SrcType (LocatedT MemoryLoc BytesT)) else NONE) ∧
   (check_components env [] ⇔ T) ∧
   (check_components env (NONE :: cs) ⇔ check_components env cs) ∧
   (check_components env (SOME e :: cs) ⇔
     IS_SOME (check_expr env e) ∧ check_components env cs) ∧
   (check_exprs env [] ⇔ T) ∧
   (check_exprs env (e :: es) ⇔
-    IS_SOME (check_expr env e) ∧ check_exprs env es)
+    IS_SOME (check_expr env e) ∧ check_exprs env es) ∧
+  (check_abi_args env packed [] ⇔ T) ∧
+  (check_abi_args env packed (e :: es) ⇔
+    (case check_expr env e of
+       SOME t => abi_argument_type packed t
+     | NONE => F) ∧
+    check_abi_args env packed es)
 End
 
 Definition check_condition_def:
@@ -1829,17 +1872,18 @@ val () = cv_auto_trans builtin_shape_def;
 val () = cv_auto_trans type_bound_def;
 
 val check_expr_pre_def = cv_auto_trans_pre_rec
-  "check_expr_pre check_components_pre check_exprs_pre" check_expr_def (
+  "check_expr_pre check_components_pre check_exprs_pre check_abi_args_pre" check_expr_def (
   WF_REL_TAC ‘measure (λx. case x of
                  INL (env, e) => cv_size e
                | INR (INL (env, cs)) => cv_size cs
-               | INR (INR (env, es)) => cv_size es)’ >>
+               | INR (INR (INL (env, es))) => cv_size es
+               | INR (INR (INR (env, packed, es))) => cv_size es)’ >>
   cv_termination_tac
 );
 
 Theorem check_expr_pre[cv_pre,local]:
   (∀env e. check_expr_pre env e) ∧ (∀env cs. check_components_pre env cs) ∧
-  (∀env es. check_exprs_pre env es)
+  (∀env es. check_exprs_pre env es) ∧ (∀env packed es. check_abi_args_pre env packed es)
 Proof
   ho_match_mp_tac check_expr_ind >> rpt strip_tac >>
   simp[Once check_expr_pre_def] >> rw[] >> fs[]

@@ -367,6 +367,39 @@ Definition encoded_runtime_values_def:
     | INR c => INR c
 End
 
+(* abi.encodePacked: a value in its own width, a bytesN left-aligned and the
+ * others right-aligned in their word; a byte sequence as its contents,
+ * wherever it is. *)
+Definition packed_value_def:
+  packed_value st ty v =
+    case ty of
+      LocatedT _ _ =>
+        (case v of
+           ReferenceValue r => byte_contents st r
+         | ScalarValue (BytesValue bs) => INL bs
+         | _ => INR (InvalidCompletion "bad packed value"))
+    | _ =>
+      case (abi_value ty v, storage_bytes ty) of
+        (SOME a, SOME width) =>
+          let word = enc (abi_type ty) a in
+          INL (case ty of
+                 FixedBytesT _ => TAKE width word
+               | _ => DROP (32 - width) word)
+      | _ => INR (InvalidCompletion "bad packed value")
+End
+
+Definition packed_values_def:
+  (packed_values st [] [] = (INL [] : byte list + source_completion)) ∧
+  (packed_values st (ty :: tys) (v :: vs) =
+    case packed_value st ty v of
+      INR c => INR c
+    | INL bs =>
+      case packed_values st tys vs of
+        INL rest => INL (bs ++ rest)
+      | INR c => INR c) ∧
+  (packed_values _ _ _ = INR (InvalidCompletion "bad packed values"))
+End
+
 Definition abi_runtime_values_def:
   (abi_runtime_values [] [] = SOME []) ∧
   (abi_runtime_values (ty :: tys) (a :: as) =
@@ -721,6 +754,16 @@ Proof
 QED
 
 val () = cv_auto_trans encoded_runtime_values_def;
+val () = cv_auto_trans packed_value_def;
+val packed_values_pre_def =
+  cv_auto_trans_pre "packed_values_pre" packed_values_def;
+
+Theorem packed_values_pre[cv_pre]:
+  ∀st tys vs. packed_values_pre st tys vs
+Proof
+  ho_match_mp_tac packed_values_ind >> rpt strip_tac >>
+  simp[Once packed_values_pre_def] >> rw[] >> gvs[]
+QED
 val () = cv_auto_trans memory_free_pointer_def;
 val decode_memory_value_pre_def = cv_auto_trans_pre_rec "decode_memory_value_pre decode_memory_elements_pre" decode_memory_value_def (
   WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of

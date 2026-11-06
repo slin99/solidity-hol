@@ -234,8 +234,21 @@ for an event), also of a library's public function or event, and
 `x.f.selector` must be `this` or a contract, interface or library name,
 possibly qualified by an imported module's, which the compiler does not
 evaluate. A selector of any other function-typed value is rejected, and so are
-`sha256`, `ripemd160`, `ecrecover`, the `abi.*` functions and
+`sha256`, `ripemd160`, `ecrecover`, `abi.decode`, `abi.encodeCall` and
 `type(I).interfaceId`.
+
+`abi.encode`, `abi.encodePacked`, `abi.encodeWithSelector` and
+`abi.encodeWithSignature` give a new memory `bytes`, allocated as the
+compiler allocates it. Their arguments are evaluated in order and may be
+scalars, byte sequences in any location, which are encoded where they are,
+and string literals; `abi.encode` also takes integer literals, encoded as
+their smallest type, which has the encoding of `int256` or `uint256`.
+`abi.encode` gives the standard ABI encoding of the arguments, after the four
+bytes of a `bytes4` selector for `encodeWithSelector`, or of the Keccak-256
+hash of a literal signature for `encodeWithSignature`; `abi.encodePacked`
+gives each scalar in its own width, a `bytesN` as its N bytes, and a byte
+sequence as its contents. Arrays and structs as arguments, and a signature
+that is not a literal, are rejected.
 
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,

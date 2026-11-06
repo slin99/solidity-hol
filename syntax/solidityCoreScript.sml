@@ -113,6 +113,11 @@ End
  * or calldata array a. CopyToMemoryOperation a: a new memory copy of the
  * calldata array a. Keccak256Operation a: the Keccak-256 hash of the memory
  * byte sequence a, as bytes32.
+ * AbiEncodeOperation selector types arguments: abi.encode(arguments) of the
+ * arguments as those ABI types, after the four bytes of the selector if any,
+ * as a new memory bytes. AbiEncodePackedOperation types arguments:
+ * abi.encodePacked(arguments), each value in its own width and each byte
+ * sequence as its contents, as a new memory bytes.
  * ExternalCallOperation kind selector parameter_types return_types target
  * value arguments: a high-level call I(target).f{value: value}(arguments) of
  * the function with that selector and those ABI types.
@@ -135,6 +140,8 @@ Datatype:
   | CopyToMemoryOperation core_atom
   | ArrayLengthOperation core_atom
   | Keccak256Operation core_atom
+  | AbiEncodeOperation (core_atom option) (sol_type list) (core_atom list)
+  | AbiEncodePackedOperation (sol_type list) (core_atom list)
   | ArrayPushOperation core_atom (core_atom option)
   | ArrayPopOperation core_atom
   | InternalCallOperation ast_id (core_atom list)

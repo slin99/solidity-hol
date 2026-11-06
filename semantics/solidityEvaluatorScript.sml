@@ -574,6 +574,47 @@ Definition call_external_def:
     | _ => abrupt_result (InvalidCompletion "bad call operands") st gas
 End
 
+(* The selector an ABI encoding starts with: none, or four bytes. *)
+Definition selector_bytes_def:
+  selector_bytes scopes selector =
+    case selector of
+      NONE => SOME []
+    | SOME s =>
+        case eval_atom scopes s of
+          SOME (ScalarValue (BytesValue bs)) => if LENGTH bs = 4 then SOME bs else NONE
+        | _ => NONE
+End
+
+(* An ABI encoding as a new memory bytes, allocated as the compiler does:
+ * Panic(0x41) when the free memory pointer would pass 2^64. *)
+Definition allocate_encoding_def:
+  allocate_encoding x ty bs st gas =
+    if 2 ** 64 ≤ 128 + st.memory_allocated + 32 + 32 * ((LENGTH bs + 31) DIV 32)
+    then abrupt_result (PanicCompletion 65) st gas
+    else let (v, st') = allocate_bytes BytesT bs st in
+         normal_result (define_binding x ty v st') gas
+End
+
+Definition abi_encode_def:
+  abi_encode env x ty selector tys args st gas =
+    case (selector_bytes st.scopes selector, eval_atoms st.scopes args) of
+      (SOME prefix, SOME vs) =>
+        (case encoded_runtime_values env st tys vs of
+           INL bs => allocate_encoding x ty (prefix ++ bs) st gas
+         | INR c => abrupt_result c st gas)
+    | _ => abrupt_result (InvalidCompletion "bad abi.encode operands") st gas
+End
+
+Definition abi_encode_packed_def:
+  abi_encode_packed x ty tys args st gas =
+    case eval_atoms st.scopes args of
+      SOME vs =>
+        (case packed_values st tys vs of
+           INL bs => allocate_encoding x ty bs st gas
+         | INR c => abrupt_result c st gas)
+    | NONE => abrupt_result (InvalidCompletion "bad abi.encodePacked operands") st gas
+End
+
 (* Every statement except internal calls, if and while. *)
 Definition simple_stmt_def:
   simple_stmt env s st gas =
@@ -621,6 +662,10 @@ Definition simple_stmt_def:
                      | NONE => abrupt_result (InvalidCompletion "bad storage array copy") st gas)
               | INR c => abrupt_result c st gas)
          | _ => abrupt_result (InvalidCompletion "bad array copy") st gas)
+    | DefineStmt x ty (AbiEncodeOperation selector tys args) =>
+        abi_encode env x ty selector tys args st gas
+    | DefineStmt x ty (AbiEncodePackedOperation tys args) =>
+        abi_encode_packed x ty tys args st gas
     | DefineStmt x ty (ArrayPushOperation a value) =>
         push_storage_array env x ty a value st gas
     | DefineStmt x ty (ArrayPopOperation a) =>
@@ -995,6 +1040,8 @@ End
  * strictly decreasing on every cv input.
  *)
 
+val () = cv_auto_trans abi_encode_def;
+val () = cv_auto_trans abi_encode_packed_def;
 val () = cv_auto_trans simple_stmt_def;
 val () = cv_auto_trans assembly_word_def;
 val () = cv_auto_trans assembly_value_def;
