@@ -1016,6 +1016,18 @@ class ClassifyTests(unittest.TestCase):
         receiver["typeDescriptions"]["typeIdentifier"] = "t_contract$_IReceiver_$1"
         self.assertIsNone(coverage.selector_declaration(selector, by_id))
 
+    def test_conditionals_of_values_and_memory_only(self) -> None:
+        def blockers(tid: str) -> list[tuple[str, str]]:
+            node = {"nodeType": "Conditional", "typeDescriptions": {"typeIdentifier": tid}}
+            return [(b.feature, b.stage) for b in
+                    coverage.node_blockers(node) + coverage.elaboration_blockers(node)]
+        for tid in ("t_uint16", "t_bool", "t_string_memory_ptr", "t_array$_t_uint256_$dyn_memory_ptr"):
+            self.assertEqual(blockers(tid), [], tid)
+        for tid in ("t_tuple$_t_uint256_$_t_uint256_$", "t_function_internal_pure$__$returns$__$"):
+            self.assertEqual(blockers(tid), [("conditional expressions", "import")], tid)
+        for tid in ("t_bytes_storage", "t_bytes_storage_ptr", "t_array$_t_uint256_$dyn_calldata_ptr"):
+            self.assertEqual(blockers(tid), [("conditional expressions", "elaboration")], tid)
+
     def test_enum_storage_arrays_are_not_values(self) -> None:
         self.assertFalse(coverage.storage_array("t_array$_t_enum_5_$dyn_storage"))
         self.assertFalse(coverage.storage_array_value("t_array$_t_enum_5_$dyn_storage"))

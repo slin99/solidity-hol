@@ -178,7 +178,7 @@ class Blocker:
 
 EXPRESSIONS = {
     "Identifier", "Literal", "UnaryOperation", "BinaryOperation", "Assignment",
-    "TupleExpression", "FunctionCall", "IndexAccess",
+    "TupleExpression", "FunctionCall", "IndexAccess", "Conditional",
 }
 STATEMENTS = {
     "Block", "UncheckedBlock", "ExpressionStatement", "VariableDeclarationStatement",
@@ -199,7 +199,6 @@ STRUCTURAL = {
     "EnumValue",
 }
 FEATURES = {
-    "Conditional": "conditional expressions",
     "FunctionTypeName": "function types",
     "IndexRangeAccess": "array slices",
     "TryCatchClause": "try/catch",
@@ -526,6 +525,10 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
     found: list[str] = []
     if kind in FEATURES:
         found.append(FEATURES[kind])
+    elif kind == "Conditional":
+        # the checker takes a conditional of one type
+        if node["typeDescriptions"].get("typeIdentifier", "").startswith(("t_tuple", "t_function")):
+            found.append("conditional expressions")
     elif kind == "IndexAccess" and node.get("indexExpression") is None:
         found.append("array type expressions")
     elif kind == "ArrayTypeName":
@@ -858,6 +861,11 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
             elif not (VALUE_TYPE.fullmatch(element := base_type[len("t_array$_"):-len("_$dyn_storage")])
                       or ENUM.fullmatch(element)):
                 found.append("aggregate array mutation")
+    elif kind == "Conditional":
+        # the result is declared with a default value: a value or a memory reference
+        if node["typeDescriptions"].get("typeIdentifier", "").endswith(
+                ("_storage", "_storage_ptr", "_calldata_ptr")):
+            found.append("conditional expressions")
     elif kind == "SourceUnit":
         if len(deployable(node)) != 1:
             found.append("source units without exactly one contract")
