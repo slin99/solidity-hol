@@ -1026,9 +1026,15 @@ Datatype:
   |>
 End
 
+(* The members of the struct with node id id. *)
+Definition source_struct_members_def:
+  source_struct_members structs id =
+    ALOOKUP (MAP (λs. (s.struct_info.node_id, s.struct_members)) structs) id
+End
+
 Definition source_struct_field_def:
   source_struct_field structs id field =
-    case ALOOKUP (MAP (λs. (s.struct_info.node_id, s.struct_members)) structs) id of
+    case source_struct_members structs id of
       SOME fields =>
         (case ALOOKUP (MAP (λv. (v.var_info.node_id, v)) fields) field of
            SOME v => field_variable_type v
@@ -1590,7 +1596,7 @@ Definition getter_results_def:
   getter_results structs ty =
     case ty of
       StructT (AstId id) =>
-        (case ALOOKUP (MAP (λs. (s.struct_info.node_id, s.struct_members)) structs) id of
+        (case source_struct_members structs id of
            SOME fields =>
              (case all_some (MAP getter_member fields) of
                 SOME ms => if FLAT ms = [] then NONE else SOME (FLAT ms)
@@ -1853,6 +1859,7 @@ QED
 
 val () = cv_auto_trans unit_ids_def;
 
+val () = cv_auto_trans source_struct_members_def;
 val () = cv_auto_trans source_struct_field_def;
 val () = cv_auto_trans literal_message_def;
 val () = cv_auto_trans builtin_shape_def;

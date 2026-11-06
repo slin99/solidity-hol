@@ -1578,13 +1578,6 @@ Definition getter_reads_def:
         | SOME ((ss', as), n2) => SOME ((ss ++ ss', a :: as), n2))
 End
 
-(* A getter's return bindings: fresh ids from n, one per result. *)
-Definition getter_returns_def:
-  (getter_returns (n : num) [] = []) ∧
-  (getter_returns n ((_, ty) :: rs) =
-    (AstId n, getter_result ty) :: getter_returns (n + 1) rs)
-End
-
 (* The getter of the public state variable or immutable x of type ty, the
  * procedure its selector reaches: it returns what getter_results says of the
  * location its arguments name. *)
@@ -1605,7 +1598,8 @@ Definition elab_getter_def:
             | SOME ((rs, as), n2) =>
                 SOME (<| procedure_id := AstId x;
                          parameters := core_bindings params;
-                         return_bindings := getter_returns n2 results;
+                         return_bindings :=
+                           core_bindings (getter_parameters n2 (MAP (getter_result o SND) results));
                          body := [DefineStmt (AstId root) (ReferenceType ty)
                                     (if IS_SOME (ALOOKUP state x)
                                      then StateReferenceOperation (AstId x)
@@ -2100,7 +2094,6 @@ val () = cv_auto_trans getter_result_def;
 val () = cv_auto_trans getter_parameters_def;
 val () = cv_auto_trans getter_read_def;
 val () = cv_auto_trans getter_reads_def;
-val () = cv_auto_trans getter_returns_def;
 val () = cv_auto_trans elab_getter_def;
 val () = cv_auto_trans elab_getters_def;
 val () = cv_auto_trans constant_procedure_def;

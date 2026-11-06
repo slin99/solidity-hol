@@ -755,19 +755,23 @@ UNARY_OPERATORS = {"++", "--", "-", "!", "~"}
 BYTES = re.compile(r"t_bytes_(storage|(memory|calldata|storage)_ptr)")
 
 
-def has_getter(type_name: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> bool:
+def has_getter(type_name: dict[str, Any], by_id: dict[int, dict[str, Any]], bases: set[int]) -> bool:
     """Whether getter_shape admits a public state variable's type: mappings
     with elementary keys and arrays, down to an elementary type, an enum, a
     byte sequence or a struct with a member getter_member returns and none it
-    rejects."""
+    rejects. The importer gives the contract the structs of its bases and of
+    the file level only."""
     kind = type_name["nodeType"]
     if kind == "Mapping":
         key = type_name["keyType"]["typeDescriptions"].get("typeIdentifier") or ""
-        return VALUE_TYPE.fullmatch(key) is not None and has_getter(type_name["valueType"], by_id)
+        return VALUE_TYPE.fullmatch(key) is not None and has_getter(type_name["valueType"], by_id, bases)
     if kind == "ArrayTypeName":
-        return has_getter(type_name["baseType"], by_id)
+        return has_getter(type_name["baseType"], by_id, bases)
     declaration = by_id.get(type_name.get("referencedDeclaration"), {})
     if kind == "UserDefinedTypeName" and declaration.get("nodeType") == "StructDefinition":
+        scope = by_id.get(declaration.get("scope"), {})
+        if scope.get("nodeType") != "SourceUnit" and scope.get("id") not in bases:
+            return False
         # mappings and arrays other than byte sequences are skipped
         returned = [m["typeName"] for m in declaration["members"]
                     if m["typeName"]["nodeType"] not in ("Mapping", "ArrayTypeName")]
@@ -1406,6 +1410,8 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     fields = {v["id"] for n in reached.values() if n["nodeType"] == "StructDefinition"
               for v in n["members"]}
     based, live = live_functions(asts, by_id)
+    contract_bases = {b for ast in asts.values() for c in deployable(ast)
+                      for b in c["linearizedBaseContracts"]}
     dead = {n["id"] for f in based - live if f in reached for n in nodes(by_id[f])}
     # The checker and the elaborator see the live functions and the library
     # functions the contracts reach.
@@ -1465,7 +1471,8 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                     + coerced_literals(node, by_id)
                     + assembly_blockers(node, by_id, creation=node["id"] in creation))
         if (node["nodeType"] == "VariableDeclaration" and node["stateVariable"]
-                and node.get("visibility") == "public" and not has_getter(node["typeName"], by_id)):
+                and node.get("visibility") == "public"
+                and not has_getter(node["typeName"], by_id, contract_bases)):
             blockers.append(Blocker("VariableDeclaration", "public state variables", "elaboration"))
         if node["nodeType"] == "EventDefinition" and node["id"] in file_level:
             blockers.append(Blocker("EventDefinition", "file-level events", "import"))

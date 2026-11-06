@@ -2,8 +2,21 @@
 pragma solidity 0.8.37;
 
 // The getters of public structs: their values and byte sequences in order,
-// mappings and other arrays skipped, under mappings and arrays too.
-contract StructGetters {
+// mappings and other arrays skipped, under mappings and arrays too, of
+// structs declared in the contract, a base or at file level.
+struct Point {
+    int8 x;
+    StructGetters owner;
+}
+
+contract GetterBase {
+    struct Based {
+        uint64 v;
+        string s;
+    }
+}
+
+contract StructGetters is GetterBase {
     enum Side { Left, Right }
     struct Item {
         uint8 a;
@@ -28,6 +41,8 @@ contract StructGetters {
     mapping(uint256 => Item) public items;
     Tagged[] public tagged;
     mapping(address => Tagged[2]) public pairs;
+    Point public point;
+    mapping(uint256 => Based) public based;
 
     // A function beside the getters, reading what they read.
     function sum() public view returns (uint256) {

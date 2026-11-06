@@ -155,9 +155,9 @@ class GetterTests(unittest.TestCase):
         nested = mapping(10, elementary(11, "t_address"),
                          {"nodeType": "ArrayTypeName", "id": 12, "baseType": elementary(13, "t_string_storage_ptr"),
                           "typeDescriptions": {"typeIdentifier": "t_array"}})
-        self.assertTrue(coverage.has_getter(nested, {}))
+        self.assertTrue(coverage.has_getter(nested, {}, set()))
         self.assertFalse(coverage.has_getter(mapping(20, elementary(21, "t_string_memory_ptr"),
-                                                     elementary(22, "t_uint256")), {}))
+                                                     elementary(22, "t_uint256")), {}, set()))
 
         def struct(members):
             definition = {"nodeType": "StructDefinition", "id": 1,
@@ -165,7 +165,7 @@ class GetterTests(unittest.TestCase):
                                       for i, t in enumerate(members)]}
             return ({"nodeType": "UserDefinedTypeName", "id": 30, "referencedDeclaration": 1,
                      "typeDescriptions": {"typeIdentifier": "t_struct$_S_$1_storage_ptr"}},
-                    {1: definition})
+                    {1: dict(definition, scope=9), 9: {"nodeType": "SourceUnit", "id": 9}}, set())
 
         def array(node_id, base):
             return {"nodeType": "ArrayTypeName", "id": node_id, "baseType": base,
@@ -174,10 +174,17 @@ class GetterTests(unittest.TestCase):
         # A struct's getter returns its values and byte sequences, skipping
         # mappings and other arrays.
         returned = struct([elementary(50, "t_uint8"), elementary(51, "t_bytes_storage_ptr"),
+                           elementary(59, "t_enum_7"), elementary(65, "t_address"),
                            mapping(52, elementary(53, "t_uint256"), elementary(54, "t_uint256")),
                            array(55, elementary(56, "t_uint256"))])
         self.assertTrue(coverage.has_getter(*returned))
-        self.assertTrue(coverage.has_getter(mapping(57, elementary(58, "t_uint256"), returned[0]), returned[1]))
+        self.assertTrue(coverage.has_getter(mapping(57, elementary(58, "t_uint256"), returned[0]), *returned[1:]))
+        # A struct of a contract that is not a base of the deployed one is not
+        # the contract's; one of a base is.
+        type_name, by_id, _ = returned
+        elsewhere = {**by_id, 1: dict(by_id[1], scope=8), 8: {"nodeType": "ContractDefinition", "id": 8}}
+        self.assertFalse(coverage.has_getter(type_name, elsewhere, set()))
+        self.assertTrue(coverage.has_getter(type_name, elsewhere, {8}))
         self.assertFalse(coverage.has_getter(*struct([mapping(60, elementary(61, "t_uint256"),
                                                               elementary(62, "t_uint256"))])))
         nested = struct([elementary(63, "t_uint256"),
