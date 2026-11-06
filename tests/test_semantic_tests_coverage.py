@@ -986,6 +986,27 @@ class ClassifyTests(unittest.TestCase):
         self.assertIn(coverage.Blocker("MemberAccess", "enum types as expressions", "elaboration"),
                       coverage.scan(asts).get(mode["id"], []))
 
+    def test_hashes_are_admitted(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/hashes.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        self.assertEqual(coverage.scan(asts), {})
+
+    def test_selectors_of_computed_values_are_blocked(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/hashes.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        by_id = {n["id"]: n for ast in asts.values() for n in coverage.nodes(ast)}
+        # this.ofBytes.selector, made (this).ofBytes.selector: a base the importer
+        # does not read as a name
+        selector = next(n for n in by_id.values() if n.get("nodeType") == "MemberAccess"
+                        and n["memberName"] == "selector"
+                        and n["expression"].get("memberName") == "ofBytes")
+        this = selector["expression"]["expression"]
+        selector["expression"]["expression"] = {
+            "nodeType": "TupleExpression", "id": 10 ** 6, "components": [this],
+            "isInlineArray": False, "typeDescriptions": this["typeDescriptions"]}
+        self.assertIsNone(coverage.selector_declaration(selector, by_id))
+        self.assertIn(selector["id"], coverage.scan(asts))
+
     def test_enum_storage_arrays_are_not_values(self) -> None:
         self.assertFalse(coverage.storage_array("t_array$_t_enum_5_$dyn_storage"))
         self.assertFalse(coverage.storage_array_value("t_array$_t_enum_5_$dyn_storage"))

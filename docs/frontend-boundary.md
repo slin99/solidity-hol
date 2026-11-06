@@ -207,8 +207,8 @@ run time, stored and ABI encoded as one: in type names, in the type
 identifiers of expressions and in storage layouts. `I(a)` is a conversion to
 `address`, `this` is the contract's own address, and an external call
 `c.f{value: v}(args)` may name any contract-typed `c`. `new C`, `type(C)`,
-external calls to getters and the members of external functions, such as
-`c.f.selector`, are rejected, as are overloads that differ only in
+external calls to getters and the members of external functions other
+than `selector` (below) are rejected, as are overloads that differ only in
 contract-typed parameters, which reading them as `address` would merge.
 
 Enums, declared at file level, in a contract or in a library, are read by
@@ -223,6 +223,16 @@ external call's argument. A call or creation whose enum argument is out of
 range reverts when the decoder reaches it, before later arguments are read. Enums as mapping keys, as elements of memory or calldata
 arrays, as constants, immutables or error parameters, returned by an
 external call, `type(E).min/max` and `delete` are rejected.
+
+`keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
+a `bytes32`. A literal argument is first made a memory `bytes`, and one in
+storage or calldata is copied to memory, as for an internal call's argument.
+`f.selector`, `I.f.selector` and `E.selector` are constants: the selector the
+compiler records on the function, error or event they name (four bytes, or 32
+for an event). The base must be a name or a member of one, so that nothing is
+evaluated. A selector of any other function-typed value is rejected, and so are
+`sha256`, `ripemd160`, `ecrecover`, the `abi.*` functions and
+`type(I).interfaceId`.
 
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,

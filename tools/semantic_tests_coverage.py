@@ -261,6 +261,11 @@ ENVIRONMENT = {
 }
 # require, assert and revert.
 REQUIRE, ASSERT, REVERT = -18, -3, -19
+KECCAK256 = -8
+# The field holding the selector the compiler records on each kind of
+# declaration that has one.
+SELECTOR_FIELDS = {"FunctionDefinition": "functionSelector", "EventDefinition": "eventSelector",
+                   "ErrorDefinition": "errorSelector"}
 THIS = -28
 STRING_LITERALS = {"string", "unicodeString", "hexString"}
 
@@ -1173,6 +1178,25 @@ def unwrap(value: dict[str, Any] | None) -> dict[str, Any] | None:
     return value
 
 
+def selector_declaration(node: dict[str, Any], by_id: dict[int, dict[str, Any]]
+                         ) -> dict[str, Any] | None:
+    """The declaration whose recorded selector f.selector, I.f.selector or
+    E.selector names, as selector_bytes in the importer finds it: the base is
+    an identifier, or a member of one."""
+    if node["nodeType"] != "MemberAccess" or node["memberName"] != "selector" \
+            or node.get("referencedDeclaration") is not None:
+        return None
+    base = node["expression"]
+    if base["nodeType"] == "MemberAccess" and base["expression"]["nodeType"] != "Identifier":
+        return None
+    if base["nodeType"] not in {"Identifier", "MemberAccess"}:
+        return None
+    declaration = by_id.get(base.get("referencedDeclaration"))
+    if declaration is None or SELECTOR_FIELDS.get(declaration["nodeType"]) not in declaration:
+        return None
+    return declaration
+
+
 def special_forms(reached: dict[int, dict[str, Any]],
                   by_id: dict[int, dict[str, Any]]) -> tuple[set[int], dict[int, list[Blocker]]]:
     """The nodes the importer reads as part of a larger form rather than as
@@ -1279,6 +1303,9 @@ def special_forms(reached: dict[int, dict[str, Any]],
             # I(a), a conversion to address, and E(x): the importer reads the
             # callee as a type name
             unread.update(n["id"] for n in nodes(node["expression"]))
+        if selector_declaration(node, by_id) is not None:
+            # f.selector: the importer reads it as the declaration's selector
+            unread.update(n["id"] for n in nodes(node))
         if (kind == "MemberAccess"
                 and by_id.get(node.get("referencedDeclaration"), {}).get("nodeType") == "EnumValue"):
             # E.A: the importer reads E as a type name
@@ -1378,7 +1405,10 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     super_bases = {n["expression"]["expression"]["id"]
                    for f in reached.values() if f["nodeType"] == "FunctionDefinition"
                    for n in super_calls(f)}
-    plain_callees = builtin_callees | super_bases
+    hash_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
+                    and n["expression"]["nodeType"] == "Identifier"
+                    and n["expression"].get("referencedDeclaration") == KECCAK256}
+    plain_callees = builtin_callees | super_bases | hash_callees
     unread, found = special_forms(reached, by_id)
     file_level = {m["id"] for ast in asts.values() for m in ast["nodes"]}
     storage_bases = {n["baseExpression"]["id"] for n in reached.values()

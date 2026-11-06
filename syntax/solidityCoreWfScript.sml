@@ -730,6 +730,9 @@ Definition wf_core_operation_def:
          ALOOKUP ctx.bindings x = SOME (SingleType (LocatedT StorageLoc ty))) ∧
         located_value_type (LocatedT MemoryLoc ty) ∧ (case ty of ArrayT _ _ => T | _ => F)
     | _ => F) ∧
+  (wf_core_operation env ctx annotation (Keccak256Operation a) ⇔
+    annotation = SingleType (FixedBytesT 32) ∧
+    wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a) ∧
   (wf_core_operation env ctx annotation (ArrayLengthOperation a) ⇔
     annotation = SingleType (UintT 256) ∧
     case a of

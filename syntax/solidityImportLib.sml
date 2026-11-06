@@ -311,6 +311,40 @@ val enum_values : (IntInf.int * (IntInf.int * int)) list ref = ref []
 
 fun enum_value id = List.find (fn (i, _) => i = id) (!enum_values)
 
+(* The functions, events and errors of the compilation, by id, for the
+ * selectors their member accesses name. *)
+val selector_declarations : (IntInf.int * JSON.value) list ref = ref []
+
+(* f.selector, I.f.selector, E.selector: the selector the compiler records on
+ * the declaration the base names. The base of I.f must be an identifier, so
+ * that no expression is evaluated for its effects. *)
+fun selector_bytes v base =
+  let
+    val id =
+      case node_type base of
+        "Identifier" => int_field base "referencedDeclaration"
+      | "MemberAccess" =>
+          (require v (node_type (field base "expression") = "Identifier")
+             "selectors of computed values are not supported";
+           case optional_field base "referencedDeclaration" of
+             SOME d => JSONUtil.asIntInf d
+           | NONE => fail (describe v ^ ": unsupported selector"))
+      | _ => fail (describe v ^ ": selectors of computed values are not supported")
+    val d =
+      case List.find (fn (i, _) => i = id) (!selector_declarations) of
+        SOME (_, d) => d
+      | NONE => fail (describe v ^ ": unsupported selector")
+    val key =
+      case node_type d of
+        "FunctionDefinition" => "functionSelector"
+      | "EventDefinition" => "eventSelector"
+      | _ => "errorSelector"
+  in
+    case optional_field d key of
+      SOME _ => mk_bytes d (string_field d key)
+    | NONE => fail (describe v ^ ": unsupported selector")
+  end
+
 (* The members of the libraries of the compilation, by id: their internal
  * functions and constants are imported with the contracts that use them. *)
 val library_members : (IntInf.int * JSON.value) list ref = ref []
@@ -422,6 +456,8 @@ fun expr v = within v (fn v =>
            else if String.isPrefix "t_struct$_"
                  (string_field (field (field v "expression") "typeDescriptions") "typeIdentifier")
             then raise MalformedInput (describe v ^ ": missing struct field declaration")
+            else if string_field v "memberName" = "selector" then
+              con "SrcSelector" [info v, selector_bytes v base, type_id v]
             else case string_field v "memberName" of
               "length" => con "SrcArrayLength"
                 [info v, expr (field v "expression"), type_id v]
@@ -488,6 +524,10 @@ fun expr v = within v (fn v =>
             if is_external_call callee orelse
                node_type callee = "FunctionCallOptions" then
               external_call v callee args
+            else if node_type callee = "Identifier" andalso
+               int_field callee "referencedDeclaration" = ~8 then
+              (require v (length args = 1) "keccak256 takes one argument";
+               con "SrcKeccak256" [info v, info callee, hd args, type_id v])
             else if node_type callee = "Identifier" andalso
                int_field callee "referencedDeclaration" < 0 then
               let
@@ -1256,6 +1296,14 @@ fun import_source_unit units v contracts = within v (fn v =>
                      List.tabulate (length (JSONUtil.arrayMap I (field e "members")),
                                     fn i => (int_field e "id", i))))
              enums)
+    val () =
+      selector_declarations :=
+        List.mapPartial
+          (fn d => if List.exists (fn k => k = node_type d)
+                        ["FunctionDefinition", "EventDefinition", "ErrorDefinition"]
+                   then SOME (int_field d "id", d) else NONE)
+          (List.concat (map (fn u => JSONUtil.arrayMap I (field u "nodes")) units) @
+           List.concat (map (fn (_, c) => JSONUtil.arrayMap I (field c "nodes")) declared))
     val () =
       function_declarations :=
         List.concat
