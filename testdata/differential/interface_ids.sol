@@ -23,6 +23,13 @@ interface IEmpty {
     event Ping();
 }
 
+// A fallback and a receive function are not part of the interface id either.
+interface IPayable {
+    function pay() external payable;
+    fallback() external;
+    receive() external payable;
+}
+
 contract InterfaceIds {
     bytes4 constant TOKEN = type(IToken).interfaceId;
 
@@ -38,6 +45,10 @@ contract InterfaceIds {
     function converted() external pure returns (bytes32, uint32) {
         bytes32 w = type(IToken).interfaceId;
         return (w, uint32(type(IBase).interfaceId));
+    }
+
+    function payableId() external pure returns (bytes4) {
+        return type(IPayable).interfaceId;
     }
 
     function supportsInterface(bytes4 id) external pure returns (bool) {

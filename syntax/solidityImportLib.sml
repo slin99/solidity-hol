@@ -319,7 +319,7 @@ val selector_declarations : (IntInf.int * JSON.value) list ref = ref []
 val contract_declarations : (IntInf.int * JSON.value) list ref = ref []
 
 (* type(I).interfaceId: the XOR of the selectors of the functions the interface
- * declares itself, not those it inherits. *)
+ * declares itself, not those it inherits, nor its fallback or receive. *)
 fun interface_id v id =
   let
     val c =
@@ -330,7 +330,8 @@ fun interface_id v id =
                "interfaceId of a non-interface"
     val selectors =
       List.mapPartial
-        (fn m => if node_type m = "FunctionDefinition"
+        (fn m => if node_type m = "FunctionDefinition" andalso
+                    string_field m "kind" = "function"
                  then SOME (hex_bytes m (string_field m "functionSelector"))
                  else NONE)
         (JSONUtil.arrayMap I (field c "nodes"))
