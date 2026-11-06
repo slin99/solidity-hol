@@ -299,7 +299,7 @@ fun checked_form (nm, body) t th =
  * timeout.
  *
  * The bound is generous: the slowest form this suite covers takes about five
- * seconds on the bot box, and a loaded box moves that. *)
+ * seconds, and a loaded machine moves that. *)
 fun under_clock secs thunk =
   (SOME (Timeout.apply (Time.fromReal secs) thunk ())
      handle Timeout.TIMEOUT _ => NONE)

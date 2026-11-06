@@ -562,13 +562,10 @@ fun occurrences v tm =
 (* Beta reduction, except where it would copy a folded call: substituting one
  * into a continuation puts the call -- and the scaffolding around it -- at
  * every place the bound name appears, and evaluating those copies is the
- * blowup this file exists to avoid.  This is what sees a block's own binding
- * (the clause is written as the redex, so it is a `let` of this shape), and
- * declining there is not enough on its own: the redex is left for the compute
- * set to take, which copies it anyway.  Taking the binding where what copies
- * can be avoided is `result_conv` below; this rule is what takes the branches
- * a case has been pushed into, which are applications of a lambda to the
- * branch's own small term. *)
+ * blowup this file exists to avoid.  The clauses' own bindings are `LET`
+ * applications, which `let_conv` below takes; this rule takes the redexes that
+ * pushing a case into a function leaves, the branches' applications of a
+ * lambda to the branch's own small term. *)
 fun beta_conv tm =
   case dest_term tm of
     Term.COMB (rator, arg) =>
@@ -582,10 +579,9 @@ fun beta_conv tm =
   | _ => raise Conv.UNCHANGED
 
 (* A `let` binding, taken the same way and with the same exception as a beta
- * redex: the clause is written as one or the other -- a `Definition` quotation
- * turns `let x = e in b` into the redex, but the binding a case has been pushed
- * into is the `LET` constant, and taking it is what lets the rule that drops a
- * call's dead branch see the conditional it is stated on.  Without it the
+ * redex.  The stored clauses keep each `let` as the `LET` constant, and taking
+ * it is what lets the rule that drops a call's dead branch see the conditional
+ * it is stated on.  Without it the
  * binding is left for the compute set, whose own rule for `let`
  * (`let_yul_conv`, below) pushes a binding of a statement's result into a
  * decision, keeps one that is neither a decision nor a record bound on the
@@ -859,12 +855,9 @@ fun result_field_conv v tm =
   end
   handle HOL_ERR _ => raise Conv.UNCHANGED
 
-(* The binding, taken with its fields in hand.  A `let` in a definition is
- * either an application of `LET` or the beta redex itself -- this evaluator's
- * clause is the redex, `(λr. …) (eval_yul_stmt n fns s m)`, which is also why
- * `beta_conv` above sees it -- and the beta reduction is what takes it.  The
- * `LET` form is what the rule is stated on, and it is the only shape that
- * rewrite can take; the redex is left to the beta reduction below. *)
+(* The binding, taken with its fields in hand.  The clause binds a statement's
+ * result with `LET`, `LET (λr. …) (eval_yul_stmt n fns s m)`, and that is the
+ * shape the rule is stated on; a beta redex of the same shape is taken too. *)
 fun result_conv v tm =
   let
     val unlet =
@@ -1392,12 +1385,15 @@ val yul_result_ty =
 
 (* A result written out as a record: a field update, or the constructor.  The
  * fields are what a binding's body reads, and reading them off a record is a
- * reduction, so a record is bound by substitution whatever it holds. *)
+ * reduction, so a record is bound by substitution whatever it holds.  The
+ * updates must bottom out at `ARB` or the constructor: an update of some other
+ * result leaves that result to be read, and copied, at every use. *)
 fun is_result_record tm =
-  let val c = head_const tm in
-    is_const c andalso
-    (String.isSuffix "_fupd" (fst (dest_const c)) orelse
-     is_const_named "yulState" "yul_result" c)
+  let val (c, args) = strip_comb tm in
+    boolSyntax.is_arb tm orelse
+    is_const_named "yulState" "recordtype.yul_result" c orelse
+    (is_const c andalso String.isSuffix "_fupd" (fst (dest_const c)) andalso
+     (case args of [_, r] => is_result_record r | _ => false))
   end
 
 (* `LET f v`, as a compute rule in place of `LET`'s definition.  The set
