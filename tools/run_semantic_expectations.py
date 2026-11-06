@@ -256,7 +256,7 @@ def classify(calls: list[Call], executed: dict[int, dict[str, Any]]) -> list[dic
                     result.update(status="not-runnable", reason=call.reason)
                 elif (actual["actual"] == call.expected
                       and not (call.builtin and call.events)
-                      and actual.get("logs", []) == actual.get("expected_logs", [])):
+                      and (call.implicit or actual.get("logs", []) == actual.get("expected_logs", []))):
                     result["status"] = "agree"
                 else:
                     result["status"] = "disagree"

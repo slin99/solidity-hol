@@ -73,6 +73,16 @@ class ExpectationTests(unittest.TestCase):
         self.assertIsNone(calls[1].calldata)
         self.assertIn("unsupported byte token", calls[1].reason or "")
 
+    def test_implicit_deployment_checks_success_without_asserting_logs(self) -> None:
+        calls = runner.parse_calls('// ----\n// f() ->', {"f()": "12345678"})
+        actual = {-1: {"status": "executed", "actual": {"returned": "0x"},
+                       "logs": [{"data": "0x"}], "expected_logs": []},
+                  0: {"status": "executed", "actual": {"returned": "0x"},
+                      "logs": [], "expected_logs": []}}
+        self.assertEqual([c["status"] for c in runner.classify(calls, actual)], ["agree"])
+        actual[-1]["actual"] = {"reverted": "0x"}
+        self.assertEqual(runner.classify(calls, actual)[0]["status"], "disagree")
+
 
 if __name__ == "__main__":
     unittest.main()
