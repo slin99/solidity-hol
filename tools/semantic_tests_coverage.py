@@ -1200,9 +1200,11 @@ def special_forms(reached: dict[int, dict[str, Any]],
                       .startswith("t_type$_t_enum$_"))}
     for node in reached.values():
         kind = node["nodeType"]
+        # Any other name of an enum type is imported as an identifier that
+        # source validation rejects.
         if (kind in ("Identifier", "MemberAccess") and node["id"] not in enum_names
                 and by_id.get(node.get("referencedDeclaration"), {}).get("nodeType") == "EnumDefinition"):
-            block(node, "enum types as expressions", "import")
+            block(node, "enum types as expressions", "elaboration")
         if node["id"] in members:
             if kind == "FunctionDefinition" and node["visibility"] not in ("internal", "private"):
                 block(node, "external library functions", "import")

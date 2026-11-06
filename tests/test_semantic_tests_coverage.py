@@ -983,7 +983,7 @@ class ClassifyTests(unittest.TestCase):
                     and n["expression"].get("memberName") == "divide")
         mode = call["arguments"][2]["expression"]
         call["arguments"][2] = mode
-        self.assertIn(coverage.Blocker("MemberAccess", "enum types as expressions", "import"),
+        self.assertIn(coverage.Blocker("MemberAccess", "enum types as expressions", "elaboration"),
                       coverage.scan(asts).get(mode["id"], []))
 
     def test_enum_storage_arrays_are_not_values(self) -> None:
