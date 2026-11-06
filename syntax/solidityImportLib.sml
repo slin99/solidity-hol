@@ -134,34 +134,41 @@ fun info v =
 
 (* A contract or interface type is an address at run time, stored and ABI
  * encoded as one: its type identifier, t_contract$_C_$n in the AST and
- * t_contract(C)n in a storage layout, is read as t_address. *)
-fun erase_contracts s =
+ * t_contract(C)n in a storage layout, is read as t_address. An enum's,
+ * t_enum$_E_$n or t_enum(E)n, is read as t_enum_n, which names the enum by
+ * its id alone. *)
+fun normalize_type_id s =
   let
     val n = size s
     fun at i p = String.isPrefix p (String.extract (s, i, NONE))
     fun digits i =
       if i < n andalso Char.isDigit (String.sub (s, i)) then digits (i + 1) else i
-    (* The end of "C_$n", where a "$" in C is escaped as "$$$". *)
-    fun name_end i =
-      if i + 2 >= n then fail ("malformed contract type identifier " ^ s)
+    (* The id ending "C_$n", where a "$" in C is escaped as "$$$". *)
+    fun name_id i =
+      if i + 2 >= n then fail ("malformed type identifier " ^ s)
       else if at i "_$" andalso Char.isDigit (String.sub (s, i + 2))
-      then digits (i + 2)
-      else name_end (i + 1)
-    fun paren_end i =
-      if i >= n then fail ("malformed contract type identifier " ^ s)
-      else if String.sub (s, i) = #")" then digits (i + 1)
-      else paren_end (i + 1)
+      then (i + 2, digits (i + 2))
+      else name_id (i + 1)
+    fun paren_id i =
+      if i >= n then fail ("malformed type identifier " ^ s)
+      else if String.sub (s, i) = #")" then (i + 1, digits (i + 1))
+      else paren_id (i + 1)
+    fun id (start, stop) = String.substring (s, start, stop - start)
     fun go i acc =
       if i >= n then String.concat (rev acc)
-      else if at i "t_contract$_" then go (name_end (i + 12)) ("t_address" :: acc)
-      else if at i "t_contract(" then go (paren_end (i + 11)) ("t_address" :: acc)
+      else if at i "t_contract$_" then go (#2 (name_id (i + 12))) ("t_address" :: acc)
+      else if at i "t_contract(" then go (#2 (paren_id (i + 11))) ("t_address" :: acc)
+      else if at i "t_enum$_" then
+        let val r = name_id (i + 8) in go (#2 r) (("t_enum_" ^ id r) :: acc) end
+      else if at i "t_enum(" then
+        let val r = paren_id (i + 7) in go (#2 r) (("t_enum_" ^ id r) :: acc) end
       else go (i + 1) (String.str (String.sub (s, i)) :: acc)
   in
     go 0 []
   end
 
 fun raw_type_id v = string_field (field v "typeDescriptions") "typeIdentifier"
-fun type_id v = mk_str (erase_contracts (raw_type_id v))
+fun type_id v = mk_str (normalize_type_id (raw_type_id v))
 
 fun address_type_name v =
   con "SrcElementaryTypeName"
@@ -177,6 +184,8 @@ fun type_name v = within v (fn v =>
         val tid = raw_type_id v
       in
         if String.isPrefix "t_contract$_" tid then address_type_name v
+        else if String.isPrefix "t_enum$_" tid then
+          con "SrcEnumTypeName" [info v, mk_num declaration]
         else
           (require v (declaration >= 0 andalso String.isPrefix "t_struct$_" tid)
              "only struct user-defined types are supported";
@@ -295,6 +304,13 @@ fun is_super_member callee =
 val super_calls = ref ([] : IntInf.int list)
 val in_function = ref false
 
+(* The enums of the compilation, wherever declared: their ids and member
+ * counts, and each member's id with its enum's id and its index. *)
+val enum_declarations : (IntInf.int * int) list ref = ref []
+val enum_values : (IntInf.int * (IntInf.int * int)) list ref = ref []
+
+fun enum_value id = List.find (fn (i, _) => i = id) (!enum_values)
+
 (* The members of the libraries of the compilation, by id: their internal
  * functions and constants are imported with the contracts that use them. *)
 val library_members : (IntInf.int * JSON.value) list ref = ref []
@@ -365,6 +381,13 @@ fun expr v = within v (fn v =>
   | "MemberAccess" =>
       (case optional_field v "referencedDeclaration" of
          SOME declaration =>
+           (case enum_value (JSONUtil.asIntInf declaration) of
+              SOME (_, (enum, index)) =>
+                (* E.A, the enum's member at index *)
+                con "SrcEnumValue"
+                  [info v, con "SrcEnumTypeName" [info (field v "expression"), mk_num enum],
+                   mk_num (IntInf.fromInt index), type_id v]
+            | NONE =>
            if is_library_member v then
              (require v (not (is_attached v))
                 "an attached function is supported only as a callee";
@@ -374,7 +397,7 @@ fun expr v = within v (fn v =>
            else
            con "SrcMemberAccess"
              [info v, expr (field v "expression"),
-              mk_num (JSONUtil.asIntInf declaration), type_id v]
+              mk_num (JSONUtil.asIntInf declaration), type_id v])
        | NONE =>
            let val base = field v "expression" in
            if node_type base = "Identifier" andalso
@@ -427,7 +450,7 @@ fun expr v = within v (fn v =>
       con "SrcBinaryOperation"
         [info v, mk_str (string_field v "operator"),
          expr (field v "leftExpression"), expr (field v "rightExpression"),
-         mk_str (erase_contracts (string_field (field v "commonType") "typeIdentifier")),
+         mk_str (normalize_type_id (string_field (field v "commonType") "typeIdentifier")),
          type_id v]
   | "Assignment" =>
       con "SrcAssignment"
@@ -528,6 +551,13 @@ fun expr v = within v (fn v =>
              if String.isPrefix "t_type$_t_contract$_" (raw_type_id callee) then
                (* I(a), a conversion to a contract type *)
                con "SrcTypeConversion" [info v, address_type_name callee, hd args, type_id v]
+             else if String.isPrefix "t_type$_t_enum$_" (raw_type_id callee) then
+               (* E(x), with E named by an identifier or a member access *)
+               con "SrcTypeConversion"
+                 [info v,
+                  con "SrcEnumTypeName"
+                    [info callee, mk_num (int_field callee "referencedDeclaration")],
+                  hd args, type_id v]
              else
                (within callee (fn c => expect c "ElementaryTypeNameExpression");
                 con "SrcTypeConversion"
@@ -832,7 +862,7 @@ fun storage_entry v = within v (fn v =>
         SOME i => mk_num i
       | NONE => fail "malformed storage slot"),
      ("storage_offset", mk_num (int_field v "offset")),
-     ("storage_type_id", mk_str (erase_contracts (string_field v "type")))])
+     ("storage_type_id", mk_str (normalize_type_id (string_field v "type")))])
 
 fun struct_declaration types v = within v (fn v =>
   let
@@ -886,6 +916,8 @@ fun constant_declaration v = within v (fn v =>
      "expected a contract constant";
    require v (not (isSome (optional_field v "overrides")))
      "overriding state variables are not supported";
+   require v (not (String.isPrefix "t_enum$_" (raw_type_id v)))
+     "enum constants are not supported";
    pairSyntax.mk_pair (variable_record v, expr (field v "value"))))
 
 (* A deployable contract, flattened along its linearization (most derived
@@ -946,7 +978,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
       List.app (fn f => List.app (fn g =>
         if string_field f "name" = string_field g "name" andalso
            parameter_types f <> parameter_types g andalso
-           map erase_contracts (parameter_types f) = map erase_contracts (parameter_types g)
+           map normalize_type_id (parameter_types f) = map normalize_type_id (parameter_types g)
         then fail (describe g ^ ": overloads differing only in contract types are not supported")
         else ()) overloadable) overloadable
     fun after f =
@@ -1030,6 +1062,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
               "library variables are not supported"
         | "ModifierDefinition" => ()
         | "ErrorDefinition" => ()
+        | "EnumDefinition" => ()
         | other => fail (describe m ^ ": unsupported library member " ^ other)))
         used_members
     val () =
@@ -1043,7 +1076,8 @@ fun contract external_structs contracts declared v = within v (fn v =>
                     if List.exists (fn l => l = int_field m "scope") ls then ls
                     else int_field m "scope" :: ls)
         [] (List.filter (fn m => node_type m <> "ErrorDefinition" andalso
-                                 node_type m <> "ModifierDefinition") used_members)
+                                 node_type m <> "ModifierDefinition" andalso
+                                 node_type m <> "EnumDefinition") used_members)
     (* The file-level structs the bases refer to, also through other structs. *)
     fun used picked =
       let
@@ -1063,6 +1097,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
                     (require m (node_type m = "FunctionDefinition" orelse
                                 node_type m = "VariableDeclaration" orelse
                                 node_type m = "StructDefinition" orelse
+                                node_type m = "EnumDefinition" orelse
                                 node_type m = "EventDefinition" orelse
                                 node_type m = "ErrorDefinition" orelse
                                 node_type m = "ModifierDefinition" orelse
@@ -1152,6 +1187,10 @@ fun contract external_structs contracts declared v = within v (fn v =>
           (map (struct_declaration (field layout "types"))
              (used [] @ members_of "StructDefinition" (rev bases)),
            struct_ty)),
+       ("contract_enums", listSyntax.mk_list
+          (map (fn (i, k) => pairSyntax.mk_pair (mk_num i, mk_num (IntInf.fromInt k)))
+             (!enum_declarations),
+           pairSyntax.mk_prod (numSyntax.num, numSyntax.num))),
        ("contract_events", listSyntax.mk_list
           (map event (members_of "EventDefinition" bases), event_ty)),
        ("contract_modifiers", listSyntax.mk_list
@@ -1197,6 +1236,26 @@ fun import_source_unit units v contracts = within v (fn v =>
     val structs = all_members "StructDefinition"
     val declared =
       map (fn c => (int_field c "id", c)) (all_members "ContractDefinition")
+    val enums =
+      all_members "EnumDefinition" @
+      List.concat
+        (map (fn (_, c) =>
+                List.filter (fn m => node_type m = "EnumDefinition")
+                  (JSONUtil.arrayMap I (field c "nodes")))
+           declared)
+    val () =
+      enum_declarations :=
+        map (fn e => (int_field e "id", length (JSONUtil.arrayMap I (field e "members"))))
+          enums
+    val () =
+      enum_values :=
+        List.concat
+          (map (fn e =>
+                  ListPair.zip
+                    (JSONUtil.arrayMap (fn m => int_field m "id") (field e "members"),
+                     List.tabulate (length (JSONUtil.arrayMap I (field e "members")),
+                                    fn i => (int_field e "id", i))))
+             enums)
     val () =
       function_declarations :=
         List.concat
@@ -1250,6 +1309,7 @@ fun import_source_unit units v contracts = within v (fn v =>
         "PragmaDirective" => acc
       | "ImportDirective" => acc
       | "StructDefinition" => acc
+      | "EnumDefinition" => acc
       | "ErrorDefinition" => acc
       | "UsingForDirective" => acc
       | "ContractDefinition" =>

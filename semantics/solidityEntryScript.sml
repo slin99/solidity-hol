@@ -63,7 +63,7 @@ Definition dispatch_def:
         (case lookup_procedure env e.external_procedure of
            NONE => DispatchInvalid "unknown procedure"
          | SOME p =>
-             case decode_arguments (MAP SND p.parameters) (DROP 4 data) 4 128 of
+             case decode_arguments env (MAP SND p.parameters) (DROP 4 data) 4 128 of
                INL args => DispatchCall p args
              | INR (PanicCompletion n) => DispatchPanic n
              | INR _ => DispatchRevert)
@@ -144,7 +144,7 @@ Definition deploy_contract_def:
         | SOME p =>
             let reserved = 32 * LENGTH prog.immutables +
                            32 * ((LENGTH fr.call_data + 31) DIV 32) in
-            case decode_arguments (MAP SND p.parameters) fr.call_data 0
+            case decode_arguments env (MAP SND p.parameters) fr.call_data 0
               (128 + reserved) of
               INR (PanicCompletion n) => ContractReverted (panic_data n) w
             | INR _ => ContractReverted [] w

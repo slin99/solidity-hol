@@ -18,6 +18,7 @@ Definition abi_type_def:
   (abi_type BoolT = Bool) ∧
   (abi_type (AddressT _) = Address) ∧
   (abi_type (FixedBytesT n) = Bytes (SOME n)) ∧
+  (abi_type (EnumT _) = Uint 8) ∧
   (abi_type BytesT = Bytes NONE) ∧
   (abi_type StringT = String) ∧
   (abi_type (ArrayT ty length) = Array length (abi_type ty)) ∧
@@ -33,6 +34,7 @@ Definition abi_value_def:
   (abi_value (AddressT _) (ScalarValue (AddressValue a)) =
     SOME (NumV (w2n a))) ∧
   (abi_value (FixedBytesT _) (ScalarValue (BytesValue bs)) = SOME (BytesV bs)) ∧
+  (abi_value (EnumT _) (ScalarValue (IntegerValue i)) = SOME (NumV (Num i))) ∧
   (abi_value BytesT (ScalarValue (BytesValue bs)) = SOME (BytesV bs)) ∧
   (abi_value StringT (ScalarValue (BytesValue bs)) = SOME (BytesV bs)) ∧
   (abi_value (LocatedT _ ty) v = abi_value ty v) ∧
@@ -124,6 +126,8 @@ Definition abi_runtime_value_def:
     SOME (ScalarValue (AddressValue (n2w n)))) ∧
   (abi_runtime_value (FixedBytesT _) (BytesV bs) =
     SOME (ScalarValue (BytesValue bs))) ∧
+  (* a uint8, which dispatch checks against the enum's members *)
+  (abi_runtime_value (EnumT _) (NumV n) = SOME (ScalarValue (IntegerValue (&n)))) ∧
   (abi_runtime_value _ _ = NONE)
 End
 
@@ -493,9 +497,11 @@ Definition array_copy_value_def:
 End
 
 (* An argument at head: a scalar or static array in place, any other value at
- * the offset the head holds. A calldata byte sequence stays in the calldata. *)
+ * the offset the head holds. A calldata byte sequence stays in the calldata.
+ * An enum outside its members reverts, as the pinned decoder's validator
+ * does before it reads the next argument. *)
 Definition decode_abi_argument_def:
-  decode_abi_argument ty bs head base free =
+  decode_abi_argument env ty bs head base free =
     if head + 32 > LENGTH bs then INR (RevertCompletion []) else
     case ty of
       LocatedT CalldataLoc (ArrayT element (SOME n)) =>
@@ -515,24 +521,31 @@ Definition decode_abi_argument_def:
           if 2 ** 64 ≤ offset then INR (RevertCompletion [])
           else decode_memory_value element bs offset free
         else decode_memory_value element bs head free
+    | EnumT _ =>
+        (case decode_memory_value ty bs head free of
+           INL (ScalarValue s, next) =>
+             if scalar_has_type env ty s then INL (ScalarValue s, next)
+             else INR (RevertCompletion [])
+         | INL _ => INR (InvalidCompletion "bad ABI enum")
+         | INR c => INR c)
     | _ => decode_memory_value ty bs head free
 End
 
 Definition decode_abi_arguments_def:
-  (decode_abi_arguments [] bs head base free = INL []) ∧
-  (decode_abi_arguments (ty :: tys) bs head base free =
-    case decode_abi_argument ty bs head base free of
+  (decode_abi_arguments env [] bs head base free = INL []) ∧
+  (decode_abi_arguments env (ty :: tys) bs head base free =
+    case decode_abi_argument env ty bs head base free of
       INR c => INR c
     | INL (v, next) =>
-        case decode_abi_arguments tys bs (head + abi_stride ty) base next of
+        case decode_abi_arguments env tys bs (head + abi_stride ty) base next of
           INL vs => INL (v :: vs)
         | INR c => INR c)
 End
 
 Definition decode_arguments_def:
-  decode_arguments tys bs base free =
+  decode_arguments env tys bs base free =
     if head_lengths (MAP abi_type tys) 0 > LENGTH bs then INR (RevertCompletion [])
-    else decode_abi_arguments tys bs 0 base free
+    else decode_abi_arguments env tys bs 0 base free
 End
 
 (* A decoded memory value as heap objects, allocated in decoding order: an

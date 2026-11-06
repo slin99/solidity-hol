@@ -114,6 +114,7 @@ Datatype:
                 | SrcDynamicArrayTypeName node_info src_type_name
   | SrcMappingTypeName node_info src_type_name src_type_name
   | SrcStructTypeName node_info num string
+  | SrcEnumTypeName node_info num
 End
 
 Datatype:
@@ -138,8 +139,9 @@ End
  * SuperCall (super.f(args)): the declaration of f the compiler resolved
  * from the caller's contract, positional arguments.
  * FunctionCall (kind typeConversion): target type name, argument.
- * Environment: a member of msg, tx or block, this or address(this).
+ * Environment: a member of msg, tx or block, or this.
  * New (new T(n)): the type name of T, the length.
+ * EnumValue (E.A): the enum's type name and the member's index.
  * ExternalCall (c.f{value: v}(args), c of a contract type): the declaration of f, whether
  * a value is given, and the operands in evaluation order: the target, the
  * value if given, the positional arguments.
@@ -189,6 +191,7 @@ Datatype:
   | SrcExternalCall node_info src_external bool (src_expr list) string
   | SrcTypeMember node_info string src_type_name string
   | SrcNew node_info src_type_name src_expr string
+  | SrcEnumValue node_info src_type_name num string
 End
 
 (* VariableDeclarationStatement: assignments, declarations (NONE for a hole),
@@ -323,6 +326,8 @@ Datatype:
     contract_base_arguments : (num # num # src_expr list) list;
     contract_storage : src_storage_entry list;
     contract_structs : src_struct list;
+    (* the enums of the compilation, by id, with their member counts *)
+    contract_enums : (num # num) list;
     contract_events : src_event list;
     contract_modifiers : src_modifier list;
     contract_functions : src_function list;
@@ -388,6 +393,7 @@ Definition normalize_type_name_def:
     if isPREFIX "t_struct$_" tid ∧
        isPREFIX (REVERSE ("_$" ++ toString id ++ "_storage_ptr")) (REVERSE tid)
     then SOME (StructT (AstId id)) else NONE) ∧
+  (normalize_type_name (SrcEnumTypeName _ id) = SOME (EnumT (AstId id))) ∧
   (normalize_type_name (SrcDynamicArrayTypeName _ element) =
     OPTION_MAP (λty. ArrayT ty NONE) (normalize_type_name element)) ∧
   (normalize_type_name (SrcMappingTypeName _ key value) =
@@ -511,6 +517,8 @@ Definition decode_elementary_identifier_def:
     else if s = "t_bytes_storage_ptr" then SOME (LocatedT StorageLoc BytesT)
     else if s = "t_string_storage_ptr" then SOME (LocatedT StorageLoc StringT)
     else if s = "t_address_payable" then SOME (AddressT PayableAddress)
+    else if isPREFIX "t_enum_" s then
+      OPTION_MAP (λid. EnumT (AstId id)) (fromDecString (DROP 7 s))
     else if isPREFIX "t_" s ∧ s ≠ "t_uint" ∧ s ≠ "t_int" then
       elementary_type (DROP 2 s)
     else NONE
@@ -705,6 +713,7 @@ Definition storage_type_identifier_def:
     "_storage") ∧
   (storage_type_identifier (StructT (AstId id)) =
     "t_struct$__$" ++ toString id ++ "_storage") ∧
+  (storage_type_identifier (EnumT (AstId id)) = "t_enum_" ++ toString id) ∧
   (storage_type_identifier (ArrayT element NONE) =
     "t_array$_" ++ storage_type_identifier element ++ "_$dyn_storage") ∧
   (storage_type_identifier (MappingT key value) =
@@ -843,6 +852,7 @@ Definition type_name_ids_def:
   (type_name_ids (SrcArrayTypeName info element _) =
     info.node_id :: type_name_ids element) ∧
   (type_name_ids (SrcStructTypeName info _ _) = [info.node_id]) ∧
+  (type_name_ids (SrcEnumTypeName info _) = [info.node_id]) ∧
   (type_name_ids (SrcDynamicArrayTypeName info element) =
     info.node_id :: type_name_ids element) ∧
   (type_name_ids (SrcMappingTypeName info key value) =
@@ -883,6 +893,7 @@ Definition expr_ids_def:
     info.node_id :: type_name_ids tn ++ expr_ids e) ∧
   (expr_ids (SrcEnvironment info _ _) = [info.node_id]) ∧
   (expr_ids (SrcTypeMember info _ tn _) = info.node_id :: type_name_ids tn) ∧
+  (expr_ids (SrcEnumValue info tn _ _) = info.node_id :: type_name_ids tn) ∧
   (expr_ids (SrcExternalCall info _ _ operands _) =
     info.node_id :: exprs_ids operands) ∧
   (expr_ids (SrcNew info tn e _) =
@@ -945,6 +956,7 @@ Definition contract_ids_def:
     c.contract_info.node_id ::
     FLAT (MAP (λs. s.struct_info.node_id ::
       FLAT (MAP variable_ids s.struct_members)) c.contract_structs) ++
+    MAP FST c.contract_enums ++
     FLAT (MAP variable_ids c.contract_state_variables) ++
     FLAT (MAP variable_ids c.contract_immutables) ++
     FLAT (MAP (λ(_, e). expr_ids e) c.contract_initializers) ++
@@ -996,6 +1008,7 @@ Datatype:
     functions : (num # src_function) list;
     supers : (num # src_function) list;
     structs : src_struct list;
+    enums : (num # num) list;
     events : (num # src_event) list;
     variables : (num # sol_type) list;
     state : (num # sol_type) list;
@@ -1146,7 +1159,8 @@ Definition check_expr_def:
   (check_expr env (SrcFunctionCall _ (SrcArrayMember _ member root_expr _) args tid) =
     case check_expr env root_expr of
       SOME (SrcType (ArrayT element NONE)) =>
-        if ¬elementary_storage_type_ok element then NONE else
+        if ¬(case element of EnumT _ => T | _ => elementary_storage_type_ok element)
+        then NONE else
         if member = "push" ∧ args = [] ∧ source_type_matches element tid then
           SOME (SrcType element)
         else if tid = "t_tuple$__$" ∧ check_exprs env args ∧
@@ -1198,6 +1212,15 @@ Definition check_expr_def:
   (check_expr env (SrcEnvironment _ f tid) =
     if source_type_matches (environment_type f) tid
     then SOME (SrcType (environment_type f)) else NONE) ∧
+  (check_expr env (SrcEnumValue _ tn index tid) =
+    case normalize_type_name tn of
+      SOME (EnumT id) =>
+        (case ALOOKUP (MAP (λ(n, members). (AstId n, members)) env.enums) id of
+           SOME members =>
+             if index < members ∧ source_type_matches (EnumT id) tid
+             then SOME (SrcType (EnumT id)) else NONE
+         | NONE => NONE)
+    | _ => NONE) ∧
   (check_expr env (SrcTypeMember _ member tn tid) =
     case normalize_type_name tn of
       SOME ty =>
@@ -1214,7 +1237,9 @@ Definition check_expr_def:
         if MEM callee.ext_mutability ["pure"; "view"; "nonpayable"; "payable"] ∧
            (with_value ⇒ callee.ext_mutability = "payable") ∧
            LENGTH operands = LENGTH params + (if with_value then 2 else 1) ∧
-           check_exprs env operands ∧ vt = call_value_type rets
+           check_exprs env operands ∧ vt = call_value_type rets ∧
+           (* calls returning enums are not supported yet *)
+           EVERY (λty. case ty of EnumT _ => F | _ => T) rets
         then SOME vt else NONE
     | _ => NONE) ∧
   (* new T(n) of a byte sequence or dynamic memory array type. *)
@@ -1536,7 +1561,7 @@ Definition getter_shape_def:
         else NONE
     | ArrayT element _ =>
         OPTION_MAP (λ(ps, r). (UintT 256 :: ps, r)) (getter_shape element)
-    | _ => if is_elementary_type ty ∨ byte_sequence_type ty then SOME ([], ty)
+    | _ => if is_stored_scalar_type ty ∨ byte_sequence_type ty then SOME ([], ty)
            else NONE
 End
 
@@ -1574,8 +1599,8 @@ End
  * of the return variables, which the elaborator does not model.
  *)
 Definition check_function_def:
-  check_function structs events functions fs modifiers state constants bases
-                 (f : src_function) ⇔
+  check_function structs enums events functions fs modifiers state constants
+                 bases (f : src_function) ⇔
     MEM f.fn_scope bases ∧
     (f.fn_kind = "function" ∨ f.fn_kind = "receive" ∨ f.fn_kind = "fallback" ∨
      f.fn_kind = "constructor") ∧
@@ -1589,7 +1614,7 @@ Definition check_function_def:
            NONE => F
          | SOME supers =>
         let env = <| functions := functions; supers := supers;
-                     structs := structs; events := events;
+                     structs := structs; enums := enums; events := events;
                      variables := ps ++ rs;
                      state := if f.fn_mutability = "pure" then [] else state;
                      locations := state; constants := constants;
@@ -1644,6 +1669,7 @@ Definition initializer_env_def:
                                 c.contract_library_functions);
        supers := [];
        structs := c.contract_structs;
+       enums := c.contract_enums;
        events := MAP (λe. (e.event_info.node_id, e)) c.contract_events;
        variables := []; state := state; locations := state;
        constants := constants; scope := c.contract_info.node_id;
@@ -1664,13 +1690,14 @@ Definition check_contract_def:
     (case c.contract_bases of x :: _ => x = c.contract_info.node_id | [] => F) ∧
     ALL_DISTINCT (c.contract_bases ++ c.contract_libraries) ∧
     EVERY (check_struct sources c.contract_bases) c.contract_structs ∧
+    EVERY (λ(_, members). 0 < members ∧ members ≤ 256) c.contract_enums ∧
     EVERY check_event c.contract_events ∧
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
     case (all_some (MAP (state_variable c.contract_bases)
                       c.contract_state_variables), constant_table c,
           immutable_table c) of
       (SOME state, SOME constants, SOME immutables) =>
-        EVERY (check_function c.contract_structs
+        EVERY (check_function c.contract_structs c.contract_enums
                  (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
                  (call_table (c.contract_functions ++
                               c.contract_library_functions))
@@ -1681,7 +1708,7 @@ Definition check_contract_def:
         (* library functions see no state *)
         EVERY (λf. f.fn_kind = "function" ∧
                    (f.fn_visibility = "internal" ∨ f.fn_visibility = "private") ∧
-                   check_function c.contract_structs
+                   check_function c.contract_structs c.contract_enums
                      (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
                      (call_table (c.contract_functions ++
                                   c.contract_library_functions))

@@ -195,12 +195,11 @@ STRUCTURAL = {
     "FunctionDefinition", "ParameterList", "VariableDeclaration", "ElementaryTypeName",
     "ElementaryTypeNameExpression", "IdentifierPath", "StructuredDocumentation", "Mapping",
     "StructDefinition", "EventDefinition", "ErrorDefinition", "InheritanceSpecifier",
-    "OverrideSpecifier", "ModifierDefinition", "ModifierInvocation",
+    "OverrideSpecifier", "ModifierDefinition", "ModifierInvocation", "EnumDefinition",
+    "EnumValue",
 }
 FEATURES = {
     "Conditional": "conditional expressions",
-    "EnumDefinition": "enums",
-    "EnumValue": "enums",
     "FunctionTypeName": "function types",
     "IndexRangeAccess": "array slices",
     "TryCatchClause": "try/catch",
@@ -278,6 +277,8 @@ def type_feature(type_identifier: str | None) -> str:
                 return "nested tuples"
             if not decodes_component(component):
                 return type_feature(component)
+    if (type_identifier or "").startswith("t_mapping$_t_enum_"):
+        return "enum mapping keys"
     for prefix, feature in TYPE_FEATURES:
         if (type_identifier or "").startswith(prefix):
             return feature
@@ -542,7 +543,7 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
         if created["nodeType"] == "ArrayTypeName" and not located_array(result.removesuffix("_$")):
             found.append("memory arrays (new T[](n))")
     elif kind == "UserDefinedTypeName":
-        if not node["typeDescriptions"].get("typeIdentifier", "").startswith(("t_struct$_", "t_address")):
+        if not node["typeDescriptions"].get("typeIdentifier", "").startswith(("t_struct$_", "t_address", "t_enum_")):
             found.append(type_feature(node["typeDescriptions"].get("typeIdentifier")))
     elif kind == "Literal":
         if node.get("subdenomination") is not None:
@@ -599,6 +600,9 @@ VALUE_TYPE = re.compile(
     r"|128|136|144|152|160|168|176|184|192|200|208|216|224|232|240|248|256)"
     r"|bytes([1-9]|[12][0-9]|3[0-2]))(?=_\$_|_\$|$)"
 )
+# An enum type, as normalize_type_ids reads it.
+ENUM = re.compile(r"t_enum_[0-9]+")
+ENUM_PREFIX = re.compile(r"t_enum_[0-9]+(?=_\$_|_\$|$)")
 # The types of constants: value types, and byte sequences, which references
 # see in memory.
 CONSTANT_TYPE = re.compile(rf"(?:{VALUE_TYPE.pattern})|t_(string|bytes)_memory_ptr")
@@ -647,6 +651,7 @@ def located_array(type_identifier: str) -> bool:
 def decodes_component(type_identifier: str) -> bool:
     """Whether tuple_component admits a component's type identifier."""
     return (VALUE_TYPE.fullmatch(type_identifier) is not None
+            or ENUM.fullmatch(type_identifier) is not None
             or BYTE_SEQUENCE.fullmatch(type_identifier) is not None
             or located_array(type_identifier) or storage_array_value(type_identifier)
             or type_identifier.startswith("t_stringliteral_"))
@@ -654,8 +659,9 @@ def decodes_component(type_identifier: str) -> bool:
 
 def decodes(type_identifier: str) -> bool:
     """Whether decode_type_identifier admits a type identifier: an elementary
-    value type or byte sequence, a literal type, or a tuple of those."""
-    if (VALUE_TYPE.fullmatch(type_identifier) or RATIONAL.fullmatch(type_identifier)
+    value type, enum or byte sequence, a literal type, or a tuple of those."""
+    if (VALUE_TYPE.fullmatch(type_identifier) or ENUM.fullmatch(type_identifier)
+            or RATIONAL.fullmatch(type_identifier)
             or BYTE_SEQUENCE.fullmatch(type_identifier) or located_array(type_identifier)
             or storage_array_value(type_identifier)
             or type_identifier.startswith("t_stringliteral_")):
@@ -686,8 +692,8 @@ def tuple_identifier_components(fields: list[str]) -> list[str] | None:
 
 
 def storage_type_supported(type_identifier: str) -> bool:
-    """Storage scalars, bytes and strings, structs and combinations of arrays
-    and mappings."""
+    """Storage scalars, enums, bytes and strings, structs and combinations of
+    arrays and mappings, with elementary keys."""
     def parse_at(start: int) -> int | None:
         array = "t_array$_"
         if type_identifier.startswith(array, start):
@@ -716,7 +722,7 @@ def storage_type_supported(type_identifier: str) -> bool:
         sequence = re.match(r"t_(bytes|string)_storage(?=_\$_|_\$|$)", type_identifier[start:])
         if sequence is not None:
             return start + sequence.end()
-        scalar = VALUE_TYPE.match(type_identifier, start)
+        scalar = VALUE_TYPE.match(type_identifier, start) or ENUM_PREFIX.match(type_identifier, start)
         return scalar.end() if scalar is not None else None
 
     return parse_at(0) == len(type_identifier)
@@ -734,7 +740,7 @@ def storage_array(type_identifier: str) -> bool:
     base = type_identifier.removesuffix("_ptr")
     return (base.startswith("t_array$_") and base.endswith("_storage")
             and "t_mapping$_" not in base and "t_struct$_" not in base
-            and storage_type_supported(base))
+            and "t_enum" not in base and storage_type_supported(base))
 
 
 UNARY_OPERATORS = {"++", "--", "-", "!", "~"}
@@ -745,8 +751,8 @@ BYTES = re.compile(r"t_bytes_(storage|(memory|calldata|storage)_ptr)")
 
 def has_getter(type_name: dict[str, Any]) -> bool:
     """Whether getter_shape admits a public state variable's type: mappings
-    with elementary keys and arrays, down to an elementary type or a byte
-    sequence."""
+    with elementary keys and arrays, down to an elementary type, an enum or a
+    byte sequence."""
     kind = type_name["nodeType"]
     if kind == "Mapping":
         key = type_name["keyType"]["typeDescriptions"].get("typeIdentifier") or ""
@@ -757,6 +763,7 @@ def has_getter(type_name: dict[str, Any]) -> bool:
     # A contract type name is read as address.
     return (kind in ("ElementaryTypeName", "UserDefinedTypeName")
             and (VALUE_TYPE.fullmatch(type_identifier) is not None
+                 or ENUM.fullmatch(type_identifier) is not None
                  or type_identifier in ("t_bytes_storage_ptr", "t_string_storage_ptr")))
 
 
@@ -826,6 +833,8 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
         base_type = node["expression"]["typeDescriptions"].get("typeIdentifier") or ""
         if base_type.startswith("t_type$_t_super"):
             pass  # super.f: whether it is called where admitted is the import's check
+        elif base_type.startswith("t_type$_t_enum$_"):
+            pass  # E.A, an enum's member
         elif node.get("referencedDeclaration") is not None:
             if not base_type.startswith("t_struct$_") or not storage_type_supported(base_type):
                 found.append(type_feature(base_type))
@@ -840,7 +849,8 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
                 found.append(type_feature(base_type))
             elif not base_type.endswith("_$dyn_storage"):
                 found.append("fixed array mutation")
-            elif not VALUE_TYPE.fullmatch(base_type[len("t_array$_"):-len("_$dyn_storage")]):
+            elif not (VALUE_TYPE.fullmatch(element := base_type[len("t_array$_"):-len("_$dyn_storage")])
+                      or ENUM.fullmatch(element)):
                 found.append("aggregate array mutation")
     elif kind == "SourceUnit":
         if len(deployable(node)) != 1:
@@ -1168,7 +1178,7 @@ def special_forms(reached: dict[int, dict[str, Any]],
     """The nodes the importer reads as part of a larger form rather than as
     expressions of their own, and what it and the checker reject in those
     forms: event and error names, the members and contract conversions of
-    external calls, address(this), type(T), the members of msg, block and tx,
+    external calls, contract and enum conversions, enum values, type(T), the members of msg, block and tx,
     the messages of require and revert, and library members named through
     their library or attached to a type, which the importer reads as names. Only the reached nodes are
     scanned; by_id indexes the whole compilation, where a call's target may
@@ -1181,13 +1191,25 @@ def special_forms(reached: dict[int, dict[str, Any]],
 
     called = {n["expression"]["id"]: n for n in reached.values() if n["nodeType"] == "FunctionCall"}
     members = library_members(by_id)
+    # The enum types the importer reads as type names: E in E.A and in E(x).
+    enum_names = {n["expression"]["id"] for n in reached.values()
+                  if (n["nodeType"] == "MemberAccess"
+                      and by_id.get(n.get("referencedDeclaration"), {}).get("nodeType") == "EnumValue")
+                  or (n["nodeType"] == "FunctionCall" and n["kind"] == "typeConversion"
+                      and n["expression"]["typeDescriptions"].get("typeIdentifier", "")
+                      .startswith("t_type$_t_enum$_"))}
     for node in reached.values():
         kind = node["nodeType"]
+        # Any other name of an enum type is imported as an identifier that
+        # source validation rejects.
+        if (kind in ("Identifier", "MemberAccess") and node["id"] not in enum_names
+                and by_id.get(node.get("referencedDeclaration"), {}).get("nodeType") == "EnumDefinition"):
+            block(node, "enum types as expressions", "elaboration")
         if node["id"] in members:
             if kind == "FunctionDefinition" and node["visibility"] not in ("internal", "private"):
                 block(node, "external library functions", "import")
             elif kind not in ("FunctionDefinition", "VariableDeclaration", "ModifierDefinition",
-                              "UsingForDirective"):
+                              "UsingForDirective", "EnumDefinition"):
                 block(node, "library structs and events", "import")
         if kind == "MemberAccess" and node.get("referencedDeclaration") in members:
             unread.add(node["id"])
@@ -1252,25 +1274,34 @@ def special_forms(reached: dict[int, dict[str, Any]],
                     block(node, "require with a custom error" if error else "messages that are not literals",
                           "elaboration")
         elif (kind == "FunctionCall" and node["kind"] == "typeConversion"
-              and node["expression"]["typeDescriptions"].get("typeIdentifier", "").startswith("t_type$_t_contract$_")):
-            # I(a): the importer reads a conversion to address
+              and node["expression"]["typeDescriptions"].get("typeIdentifier", "").startswith(
+                  ("t_type$_t_contract$_", "t_type$_t_enum$_"))):
+            # I(a), a conversion to address, and E(x): the importer reads the
+            # callee as a type name
+            unread.update(n["id"] for n in nodes(node["expression"]))
+        if (kind == "MemberAccess"
+                and by_id.get(node.get("referencedDeclaration"), {}).get("nodeType") == "EnumValue"):
+            # E.A: the importer reads E as a type name
             unread.update(n["id"] for n in nodes(node["expression"]))
     return unread, found
 
 
-# A contract type's identifier, other than within a type expression's: the
-# importer reads it as t_address (erase_contracts in solidityImportLib).
+# A contract or enum type's identifier, other than within a type expression's:
+# the importer reads a contract type as t_address and an enum type by its id
+# alone (normalize_type_id in solidityImportLib).
 CONTRACT_TYPE = re.compile(r'(?<!t_type\$_)t_contract\$_.*?_\$[0-9]+')
+ENUM_TYPE = re.compile(r'(?<!t_type\$_)t_enum\$_.*?_\$([0-9]+)')
 
 
-def erase_contracts(value: Any) -> Any:
-    """A copy of an AST with contract types read as t_address in its type
-    identifiers."""
+def normalize_type_ids(value: Any) -> Any:
+    """A copy of an AST with its type identifiers read as the importer reads
+    them."""
     if isinstance(value, dict):
-        return {k: (CONTRACT_TYPE.sub("t_address", v) if k == "typeIdentifier" and isinstance(v, str)
-                    else erase_contracts(v)) for k, v in value.items()}
+        return {k: (ENUM_TYPE.sub(r"t_enum_\1", CONTRACT_TYPE.sub("t_address", v))
+                    if k == "typeIdentifier" and isinstance(v, str)
+                    else normalize_type_ids(v)) for k, v in value.items()}
     if isinstance(value, list):
-        return [erase_contracts(v) for v in value]
+        return [normalize_type_ids(v) for v in value]
     return value
 
 
@@ -1298,7 +1329,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     """Every node the importer reads that the semantics rejects, by node id,
     the importer's reasons first."""
     overloads = contract_overloads(asts)
-    asts = erase_contracts(asts)
+    asts = normalize_type_ids(asts)
     by_id = {n["id"]: n for ast in asts.values() for n in nodes(ast)}
     reached = {n["id"]: n for root in imported(asts, by_id) for n in nodes(root, skip=lambda n: not read(n))}
     reached.update((ast["id"], ast) for ast in asts.values())
@@ -1365,6 +1396,13 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                     + assembly_blockers(node, by_id, creation=node["id"] in creation))
         if node["nodeType"] == "EventDefinition" and node["id"] in file_level:
             blockers.append(Blocker("EventDefinition", "file-level events", "import"))
+        if any(declaration["nodeType"] == "FunctionDefinition"
+               and signature is declaration["returnParameters"]
+               and any(ENUM.fullmatch(p["typeDescriptions"].get("typeIdentifier") or "")
+                       for p in signature["parameters"])
+               for declaration, signature in signatures(node, by_id)):
+            # The checker admits no enum in what an external call returns.
+            blockers.append(Blocker("FunctionCall", "enums returned by external calls", "elaboration"))
         if node["id"] in builtin_callees:
             call = next(c for c in calls if c["expression"]["id"] == node["id"])
             if len(call["arguments"]) not in ({1, 2} if node["referencedDeclaration"] == REQUIRE else

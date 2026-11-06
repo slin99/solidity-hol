@@ -33,6 +33,8 @@ Definition stored_value_def:
     | IntT w => SOME (IntegerValue (wrap_integer T w (&n)))
     | AddressT _ => SOME (AddressValue (n2w n))
     | FixedBytesT k => SOME (BytesValue (num_to_bytes k n))
+    (* any byte; read_storage_reference checks it against the members *)
+    | EnumT _ => SOME (IntegerValue (&n))
     | _ => NONE
 End
 
@@ -484,14 +486,21 @@ End
 (* Access and navigation consume concrete references, independently of atoms,
  * bindings, scopes and evaluator control flow.
  *)
+(* A stored enum byte out of range panics as the compiler's cleanup does at
+ * the value's first use. *)
 Definition read_storage_reference_def:
-  read_storage_reference accounts ty r =
+  read_storage_reference env accounts ty r =
     case r of
       StorageReference PersistentStorage addr slot offset rty _ =>
         if rty ≠ ty then ValueAbrupt (InvalidCompletion "bad read type")
         else if offset = 0 ∧ memory_object_type ty then ValueOk (ReferenceValue r)
         else (case read_storage accounts addr slot offset ty of
-                SOME scalar => ValueOk (ScalarValue scalar)
+                SOME scalar =>
+                  (case ty of
+                     EnumT _ =>
+                       if scalar_has_type env ty scalar then ValueOk (ScalarValue scalar)
+                       else ValueAbrupt (PanicCompletion panic_enum_conversion)
+                   | _ => ValueOk (ScalarValue scalar))
               | NONE => ValueAbrupt (InvalidCompletion "bad storage read"))
     | _ => ValueAbrupt (InvalidCompletion "bad storage reference")
 End
