@@ -755,19 +755,32 @@ UNARY_OPERATORS = {"++", "--", "-", "!", "~"}
 BYTES = re.compile(r"t_bytes_(storage|(memory|calldata|storage)_ptr)")
 
 
-def has_getter(type_name: dict[str, Any]) -> bool:
+def has_getter(type_name: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> bool:
     """Whether getter_shape admits a public state variable's type: mappings
-    with elementary keys and arrays, down to an elementary type, an enum or a
-    byte sequence."""
+    with elementary keys and arrays, down to an elementary type, an enum, a
+    byte sequence or a struct with a member getter_member returns and none it
+    rejects."""
     kind = type_name["nodeType"]
     if kind == "Mapping":
         key = type_name["keyType"]["typeDescriptions"].get("typeIdentifier") or ""
-        return VALUE_TYPE.fullmatch(key) is not None and has_getter(type_name["valueType"])
+        return VALUE_TYPE.fullmatch(key) is not None and has_getter(type_name["valueType"], by_id)
     if kind == "ArrayTypeName":
-        return has_getter(type_name["baseType"])
+        return has_getter(type_name["baseType"], by_id)
+    declaration = by_id.get(type_name.get("referencedDeclaration"), {})
+    if kind == "UserDefinedTypeName" and declaration.get("nodeType") == "StructDefinition":
+        # mappings and arrays other than byte sequences are skipped
+        returned = [m["typeName"] for m in declaration["members"]
+                    if m["typeName"]["nodeType"] not in ("Mapping", "ArrayTypeName")]
+        return bool(returned) and all(getter_value(t) for t in returned)
+    return getter_value(type_name)
+
+
+def getter_value(type_name: dict[str, Any]) -> bool:
+    """Whether a getter returns a value of this type: an elementary type, an
+    enum or a byte sequence."""
     type_identifier = type_name["typeDescriptions"].get("typeIdentifier") or ""
     # A contract type name is read as address.
-    return (kind in ("ElementaryTypeName", "UserDefinedTypeName")
+    return (type_name["nodeType"] in ("ElementaryTypeName", "UserDefinedTypeName")
             and (VALUE_TYPE.fullmatch(type_identifier) is not None
                  or ENUM.fullmatch(type_identifier) is not None
                  or type_identifier in ("t_bytes_storage_ptr", "t_string_storage_ptr")))
@@ -802,9 +815,6 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
                 found.append("event array parameters")
             if error_parameter and not VALUE_TYPE.fullmatch(type_identifier):
                 found.append("custom errors with reference parameters")
-            if (node["stateVariable"] and node.get("visibility") == "public"
-                    and not has_getter(node["typeName"])):
-                found.append("public state variables")
     elif (kind == "TupleExpression" and not node["isInlineArray"]
           and not decodes(node["typeDescriptions"]["typeIdentifier"])):
         type_identifier = node["typeDescriptions"]["typeIdentifier"]
@@ -1454,6 +1464,9 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                                            error_parameter=node["id"] in error_parameters)
                     + coerced_literals(node, by_id)
                     + assembly_blockers(node, by_id, creation=node["id"] in creation))
+        if (node["nodeType"] == "VariableDeclaration" and node["stateVariable"]
+                and node.get("visibility") == "public" and not has_getter(node["typeName"], by_id)):
+            blockers.append(Blocker("VariableDeclaration", "public state variables", "elaboration"))
         if node["nodeType"] == "EventDefinition" and node["id"] in file_level:
             blockers.append(Blocker("EventDefinition", "file-level events", "import"))
         if any(declaration["nodeType"] == "FunctionDefinition"

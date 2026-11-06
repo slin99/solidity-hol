@@ -155,11 +155,35 @@ class GetterTests(unittest.TestCase):
         nested = mapping(10, elementary(11, "t_address"),
                          {"nodeType": "ArrayTypeName", "id": 12, "baseType": elementary(13, "t_string_storage_ptr"),
                           "typeDescriptions": {"typeIdentifier": "t_array"}})
-        self.assertTrue(coverage.has_getter(nested))
+        self.assertTrue(coverage.has_getter(nested, {}))
         self.assertFalse(coverage.has_getter(mapping(20, elementary(21, "t_string_memory_ptr"),
-                                                     elementary(22, "t_uint256"))))
-        self.assertFalse(coverage.has_getter({"nodeType": "UserDefinedTypeName", "id": 30,
-                                              "typeDescriptions": {"typeIdentifier": "t_struct$_S_$1_storage_ptr"}}))
+                                                     elementary(22, "t_uint256")), {}))
+
+        def struct(members):
+            definition = {"nodeType": "StructDefinition", "id": 1,
+                          "members": [{"nodeType": "VariableDeclaration", "id": 40 + i, "typeName": t}
+                                      for i, t in enumerate(members)]}
+            return ({"nodeType": "UserDefinedTypeName", "id": 30, "referencedDeclaration": 1,
+                     "typeDescriptions": {"typeIdentifier": "t_struct$_S_$1_storage_ptr"}},
+                    {1: definition})
+
+        def array(node_id, base):
+            return {"nodeType": "ArrayTypeName", "id": node_id, "baseType": base,
+                    "typeDescriptions": {"typeIdentifier": "t_array"}}
+
+        # A struct's getter returns its values and byte sequences, skipping
+        # mappings and other arrays.
+        returned = struct([elementary(50, "t_uint8"), elementary(51, "t_bytes_storage_ptr"),
+                           mapping(52, elementary(53, "t_uint256"), elementary(54, "t_uint256")),
+                           array(55, elementary(56, "t_uint256"))])
+        self.assertTrue(coverage.has_getter(*returned))
+        self.assertTrue(coverage.has_getter(mapping(57, elementary(58, "t_uint256"), returned[0]), returned[1]))
+        self.assertFalse(coverage.has_getter(*struct([mapping(60, elementary(61, "t_uint256"),
+                                                              elementary(62, "t_uint256"))])))
+        nested = struct([elementary(63, "t_uint256"),
+                         {"nodeType": "UserDefinedTypeName", "id": 64, "referencedDeclaration": 2,
+                          "typeDescriptions": {"typeIdentifier": "t_struct$_T_$2_storage_ptr"}}])
+        self.assertFalse(coverage.has_getter(*nested))
         # A contract type is read as address.
         contract_typed = {"nodeType": "UserDefinedTypeName", "id": 31,
                           "typeDescriptions": {"typeIdentifier": "t_contract$_C_$2"}}
