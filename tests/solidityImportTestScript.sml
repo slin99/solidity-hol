@@ -23,7 +23,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/errors.json",
   "../testdata/differential/expected/type_bounds.json",
   "../testdata/differential/expected/using_for.json",
-  "../testdata/differential/expected/contract_types.json"
+  "../testdata/differential/expected/contract_types.json",
+  "../testdata/differential/expected/hashes.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -976,3 +977,48 @@ val contracts_contracts = artifact_part contracts_fixture ["contracts", contract
 val () = import_error_with Unsupported contracts_contracts "overloads differing only in contract types"
   (edit_first_where (named "FunctionDefinition" "same") "same"
      (set_field "name" (JSON.STRING "balanceVia")) contracts_ast)
+
+(* Selectors: only names the compiler does not evaluate may be receivers, and
+ * a state variable's selector is its getter's only through this. *)
+
+val hashes_fixture = "../testdata/differential/expected/hashes.json"
+val hashes_source = "testdata/differential/hashes.sol"
+val hashes_ast = artifact_part hashes_fixture ["sources", hashes_source, "ast"]
+val hashes_base = artifact_part hashes_fixture ["sources", "testdata/differential/hashes_base.sol", "ast"]
+val hashes_contracts = artifact_part hashes_fixture ["contracts", hashes_source]
+
+fun member name v =
+  is_node "MemberAccess" v andalso
+  JSONUtil.testField "memberName" (fn JSON.STRING s => s = name | _ => false) v
+
+fun declaration_id ty name v =
+  let
+    fun find v =
+      if named ty name v then SOME (JSONUtil.lookupField v "id")
+      else case v of
+             JSON.OBJECT kvs => List.foldl (fn ((_, x), r) => if isSome r then r else find x) NONE kvs
+           | JSON.ARRAY vs => List.foldl (fn (x, r) => if isSome r then r else find x) NONE vs
+           | _ => NONE
+  in
+    valOf (find v)
+  end
+
+fun hashes_error name v = import_units_error_with Unsupported [hashes_base] hashes_contracts name v
+
+val _ = import_source_unit [hashes_base] hashes_ast hashes_contracts
+
+val () = hashes_error "selector through a contract-typed value"
+  (edit_first_where (named "Identifier" "IReceiver") "IReceiver"
+     (type_identifier "t_contract$_IReceiver_$1") hashes_ast)
+
+val () = hashes_error "selector of a state variable through a contract name"
+  (edit_first_where (member "total") "this.total"
+     (fn m => set_field "expression"
+                (type_identifier "t_type$_t_contract$_Hashes_$1"
+                   (set_field "referencedDeclaration" (JSON.INT 1)
+                      (JSONUtil.lookupField m "expression"))) m) hashes_ast)
+
+val () = hashes_error "selector of a state variable by name"
+  (edit_first_where (named "Identifier" "Denied") "Denied"
+     (set_field "referencedDeclaration"
+        (declaration_id "VariableDeclaration" "total" hashes_ast)) hashes_ast)
