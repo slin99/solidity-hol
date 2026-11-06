@@ -241,14 +241,15 @@ evaluate. A selector of any other function-typed value is rejected, and so are
 `abi.encodeWithSignature` give a new memory `bytes`, allocated as the
 compiler allocates it. Their arguments are evaluated in order and may be
 scalars, byte sequences in any location, which are encoded where they are,
-and string literals; `abi.encode` also takes integer literals, encoded as
+and string and hex literals; `abi.encode` also takes integer literals, encoded as
 their smallest type, which has the encoding of `int256` or `uint256`.
 `abi.encode` gives the standard ABI encoding of the arguments, after the four
 bytes of a `bytes4` selector for `encodeWithSelector`, or of the Keccak-256
 hash of a literal signature for `encodeWithSignature`; `abi.encodePacked`
 gives each scalar in its own width, a `bytesN` as its N bytes, and a byte
-sequence as its contents. Arrays and structs as arguments, and a signature
-that is not a literal, are rejected.
+sequence as its contents. Arrays and structs as arguments, a selector that
+is not a `bytes4` value (a literal selector included), and a signature that is
+not a plain string literal are rejected.
 
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
