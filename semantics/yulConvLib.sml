@@ -1272,16 +1272,13 @@ fun eval_conv_raw tm =
     (* What the set unfolded above can leave something the settling never
      * saw: a case it surfaced in an argument list -- the second call of
      * `slt(cleanup(x), convert(y))`, still a case on a case inside the first
-     * call's values branch -- or a `yul_pop_result` over the case a block came
-     * out as, which is the shape of a block statement's own clause.  Left
-     * there, the bindings and the builtin behind them unfold on the case's
-     * bound variables, and every later read of the scope they wrote is stuck.
-     * So one more round whenever the set changed the term.  A call the first
-     * round already framed is not framed again: `frame_pending` recognises
-     * its settled branch. *)
+     * call's values branch.  Left there, the bindings and the builtin behind
+     * it unfold on the case's bound variables, and every later read of the
+     * scope they wrote is stuck.  So one more round whenever the set changed
+     * the term.  A call the first round already framed is not framed again:
+     * `frame_pending` recognises its settled branch. *)
     val out =
-      if not (aconv (rhs (concl red)) (rhs (concl settled))) orelse
-         pop_over_decision (rhs (concl red))
+      if not (aconv (rhs (concl red)) (rhs (concl settled)))
       then let
              val settled2 = settle_conv (rhs (concl red))
              val red2 = computeLib.CBV_CONV (cs ()) (rhs (concl settled2))

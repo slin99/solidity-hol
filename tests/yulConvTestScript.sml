@@ -24,13 +24,13 @@
  * costs, and every conversion runs under a clock, so one that stops coming back
  * fails the build instead of leaving it at the heap cap.
  *
- * A few functions are not covered by the size bound yet: each is named in
- * `excluded` below with the reason it is there, every name has to be a function
- * of the object, and the list empties as the conversion stops copying the rest
- * of a body into a branch of a decision (see the comment on the list).  A line
- * that says a function produces no form is converted under that clock too, and
- * fails the build as soon as it comes back; the clock is what makes such a
- * claim honest rather than taken on trust.
+ * Every loop-free function is held to the size bound.  A function the bound
+ * cannot be asked of goes in `excluded` below with the reason it is there, and
+ * every name there has to be a function of the object (see the comment on the
+ * list, which is empty now).  A line that says a function produces no form is
+ * converted under that clock too, and fails the build as soon as it comes
+ * back; the clock is what makes such a claim honest rather than taken on
+ * trust.
  *)
 Theory yulConvTest
 Ancestors
