@@ -561,11 +561,14 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
         if node["isInlineArray"]:
             found.append("inline arrays")
     elif kind == "FunctionCall":
-        # Named arguments are taken on calls of declared functions only.
+        # Named arguments are taken on calls of declared functions only,
+        # with or without call options.
         callee = node["expression"]
+        if callee["nodeType"] == "FunctionCallOptions":
+            callee = callee["expression"]
         if node["names"] and (node["kind"] != "functionCall"
                               or callee["nodeType"] == "NewExpression"
-                              or callee.get("referencedDeclaration", 0) < 0):
+                              or callee.get("referencedDeclaration", -1) < 0):
             found.append("named arguments")
         if node["tryCall"]:
             found.append("try/catch")

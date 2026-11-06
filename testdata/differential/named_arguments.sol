@@ -14,6 +14,16 @@ contract NamedBase {
     function mix(uint256 a, uint256 b) public virtual returns (uint256) {
         return a * 100 + b;
     }
+
+    // An override may rename its parameters: a call takes the names of the
+    // declaration it names, not those of the function that runs.
+    function swap(uint256 a, uint256 b) public pure virtual returns (uint256) {
+        return a * 10 + b;
+    }
+
+    function swapFromBase() external pure returns (uint256) {
+        return swap({a: 1, b: 2});
+    }
 }
 
 contract NamedArguments is NamedBase {
@@ -93,6 +103,24 @@ contract NamedArguments is NamedBase {
         trace = 0;
         r = this.mix({b: tick(6), a: tick(5)});
         t = trace;
+    }
+
+    function payment(uint256 a, uint256 b) external payable returns (uint256) {
+        return a * 100 + b * 10 + msg.value;
+    }
+
+    function externalValueOrder() external payable returns (uint256 r, uint256 t) {
+        trace = 0;
+        r = this.payment{value: tick(4)}({b: tick(6), a: tick(5)});
+        t = trace;
+    }
+
+    function swap(uint256 b, uint256 a) public pure override returns (uint256) {
+        return b * 10 + a;
+    }
+
+    function swapFromDerived() external pure returns (uint256) {
+        return swap({a: 1, b: 2});
     }
 
     function emitOrder() external returns (uint256) {

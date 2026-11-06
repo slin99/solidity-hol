@@ -464,15 +464,14 @@ Definition coerce_abi_values_def:
 End
 
 (* A call's argument values, evaluated in the call's order, in its
- * parameters' order: order gives, for each of the last LENGTH order
- * parameters, the position of its argument among the last LENGTH order
- * arguments (argument_order_ok). *)
+ * parameters' order: order gives, for each parameter, the position of its
+ * argument (argument_order_ok). The values are those of the call's
+ * arguments, after those of an external call's target and value. *)
 Definition arrange_def:
   arrange (order : num list) vs =
     if order = [] then SOME vs else
     let k = LENGTH vs - LENGTH order in
-    OPTION_MAP (λws. TAKE k vs ++ ws)
-      (all_some (MAP (λi. case DROP (k + i) vs of [] => NONE | v :: _ => SOME v) order))
+    OPTION_MAP (λws. TAKE k vs ++ ws) (all_some (MAP (λi. oEL (k + i) vs) order))
 End
 
 Definition elab_expr_def:

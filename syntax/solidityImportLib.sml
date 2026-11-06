@@ -315,9 +315,10 @@ fun enum_value id = List.find (fn (i, _) => i = id) (!enum_values)
  * id, for the selectors their member accesses name. *)
 val selector_declarations : (IntInf.int * JSON.value) list ref = ref []
 
-(* A call's parameter order: for each parameter of the declaration id after
- * the first skip (a bound call's receiver), the index of the argument the
- * call names for it among its named arguments; [] for a call without names.
+(* A call's parameter order: for each parameter of the declaration id, the
+ * index of the argument the call names for it; [] for a call without names.
+ * The first skip parameters (a bound call's receiver) are passed
+ * positionally, before the named arguments, so they keep their indices.
  * The arguments stay in the call's order, the order they are evaluated in. *)
 fun argument_order call id skip =
   case JSONUtil.arrayMap JSONUtil.asString (field call "names") of
@@ -335,11 +336,13 @@ fun argument_order call id skip =
         val indexed = ListPair.zip (List.tabulate (length names, fn i => i), names)
         fun index p =
           case List.find (fn (_, n) => n = p) indexed of
-            SOME (i, _) => mk_num (IntInf.fromInt i)
+            SOME (i, _) => mk_num (IntInf.fromInt (skip + i))
           | NONE => fail (describe call ^ ": no argument named " ^ p)
       in
         require call (length params = length names) "named arguments must name every parameter";
-        listSyntax.mk_list (map index params, numSyntax.num)
+        listSyntax.mk_list
+          (List.tabulate (skip, fn i => mk_num (IntInf.fromInt i)) @ map index params,
+           numSyntax.num)
       end
 
 (* Whether a node is f.selector, a member the compiler declares. *)
@@ -645,8 +648,9 @@ fun expr v = within v (fn v =>
                  type_id v])
             else con "SrcFunctionCall"
               [info v, expr callee, listSyntax.mk_list (args, expr_ty),
-               if no_names then listSyntax.mk_nil numSyntax.num
-               else argument_order v (int_field callee "referencedDeclaration") 0,
+               case optional_field callee "referencedDeclaration" of
+                 SOME _ => argument_order v (int_field callee "referencedDeclaration") 0
+               | NONE => (positional (); listSyntax.mk_nil numSyntax.num),
                type_id v]
         | "typeConversion" =>
             (positional ();

@@ -1071,12 +1071,12 @@ Definition type_bound_def:
 End
 
 (* A call's parameter order, for named arguments: none, or a permutation of
- * the positions of its last arguments, at most n of them. The elaborator
- * passes those arguments in that order. *)
+ * the positions of its n arguments. The elaborator passes the arguments in
+ * that order. *)
 Definition argument_order_ok_def:
   argument_order_ok (order : num list) n ⇔
     order = [] ∨
-    (LENGTH order ≤ n ∧ ALL_DISTINCT order ∧ EVERY (λi. i < LENGTH order) order)
+    (LENGTH order = n ∧ ALL_DISTINCT order ∧ EVERY (λi. i < n) order)
 End
 
 (* The decoded type of a checked expression. *)
