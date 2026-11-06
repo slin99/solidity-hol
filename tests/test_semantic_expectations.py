@@ -1,6 +1,7 @@
 """Regression examples from upstream isoltest's expectation language."""
 
 from pathlib import Path
+import json
 import sys
 import unittest
 
@@ -59,14 +60,29 @@ class ExpectationTests(unittest.TestCase):
         self.assertIsNone(calls[1].calldata)
         self.assertEqual(calls[1].reason, "out-of-gas expectation: gas is not modeled")
 
-    def test_revert_and_builtin_event_mismatches_are_not_agreement(self) -> None:
+    def test_revert_events_are_compared_and_builtin_events_are_unsupported(self) -> None:
         call = runner.Call(0, "f() -> FAILURE", calldata="0x", expected={"reverted": "0x"})
         actual = {0: {"status": "executed", "actual": {"reverted": "0x"},
                       "logs": [], "expected_logs": [{"data": "0x"}]}}
         self.assertEqual(runner.classify([call], actual)[0]["status"], "disagree")
         builtin = runner.Call(0, "balance -> 0", builtin="balance", expected={"returned": "0x"},
                               events=[{"signature": "E()"}])
-        self.assertEqual(runner.classify([builtin], {0: {"status": "executed", "actual": {"returned": "0x"}}})[0]["status"], "disagree")
+        result = runner.classify([builtin], {0: {"status": "executed", "actual": {"returned": "0x"}}})[0]
+        self.assertEqual(result["status"], "not-runnable")
+        self.assertIn("event observations after builtin", result["reason"])
+
+    def test_unsupported_builtin_output_keeps_known_account_effect(self) -> None:
+        calls = runner.parse_calls('// ----\n// account: 2 -> 0.0\n// balance -> 0.0\n// f() ->', {"f()": "12345678"})
+        self.assertEqual([c.builtin for c in calls[1:3]], ["account", "balance"])
+        self.assertTrue(all("unsupported byte token" in (c.reason or "") for c in calls[1:3]))
+        self.assertEqual(calls[3].sender, str(runner.ACCOUNT + 8192))
+
+    def test_truncated_final_result_keeps_completed_prefix(self) -> None:
+        log = ('other output\n' + runner.PREFIX + '{"test":"a", "kind":"complete"}\n'
+               + runner.PREFIX + '{"test":"b", "index":')
+        self.assertEqual(runner.result_records(log), [{"test": "a", "kind": "complete"}])
+        with self.assertRaises(json.JSONDecodeError):
+            runner.result_records(runner.PREFIX + '{"test":\n')
 
     def test_unknown_input_is_not_encoded(self) -> None:
         calls = runner.parse_calls('// ----\n// f(): something -> 1', {"f()": "12345678"})

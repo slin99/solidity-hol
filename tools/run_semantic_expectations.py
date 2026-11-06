@@ -199,16 +199,19 @@ def parse_calls(text: str, methods: dict[str, str]) -> list[Call]:
             call.reason = "out-of-gas expectation: gas is not modeled"
             continue
         account = re.fullmatch(r"account:\s*(\d+)\s*->\s*(.*)", line)
+        builtin = re.fullmatch(r"(balance|storageEmpty)(?::\s*(0x[0-9a-fA-F]+))?\s*->\s*(.*)", line)
         if account:
             sender = ACCOUNT + int(account[1]) * 4096
-            call.expected = {"returned": encode_bytes(account[2])}
             call.builtin = "account"
             call.builtin_arg = str(sender)
-            continue
-        builtin = re.fullmatch(r"(balance|storageEmpty)(?::\s*(0x[0-9a-fA-F]+))?\s*->\s*(.*)", line)
-        if builtin:
+            result = account[2]
+        elif builtin:
             call.builtin, call.builtin_arg, result = builtin.groups()
-            call.expected = {"returned": encode_bytes(result)}
+        if call.builtin:
+            try:
+                call.expected = {"returned": encode_bytes(result)}
+            except UnsupportedExpectation as error:
+                call.reason = str(error)
             continue
         match = re.fullmatch(r"(\w*\(.*?\))(?:,\s*(\d+)\s*(wei|ether))?\s*(?::\s*(.*?))?\s*(?:->\s*(.*))?", line)
         if not match:
@@ -254,8 +257,9 @@ def classify(calls: list[Call], executed: dict[int, dict[str, Any]]) -> list[dic
             if actual["status"] == "executed":
                 if call.reason:
                     result.update(status="not-runnable", reason=call.reason)
+                elif call.builtin and call.events:
+                    result.update(status="not-runnable", reason="event observations after builtin directives are not supported")
                 elif (actual["actual"] == call.expected
-                      and not (call.builtin and call.events)
                       and (call.implicit or actual.get("logs", []) == actual.get("expected_logs", []))):
                     result["status"] = "agree"
                 else:
@@ -276,6 +280,21 @@ def test_status(calls: list[dict[str, Any]]) -> str:
     if not statuses or "not-runnable" in statuses:
         return "not-runnable"
     return "agree"
+
+
+def result_records(text: str) -> list[dict[str, Any]]:
+    """Read flushed result lines; a truncated final record belongs to an unfinished test."""
+    records: list[dict[str, Any]] = []
+    for line in text.splitlines(keepends=True):
+        if not line.startswith(PREFIX):
+            continue
+        try:
+            records.append(json.loads(line[len(PREFIX):]))
+        except json.JSONDecodeError:
+            if not line.endswith("\n"):
+                break
+            raise
+    return records
 
 
 def markdown(report: dict[str, Any]) -> str:
@@ -377,11 +396,9 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit("cannot resume: test inputs or runner/evaluator sources changed")
         logs = sorted(work.glob("batch-*.log"))
         for log in logs:
-            for line in log.read_text(errors="replace").splitlines():
-                if line.startswith(PREFIX):
-                    result = json.loads(line[len(PREFIX):])
-                    if result.get("kind") in ("complete", "preparation"):
-                        completed.add(result["test"])
+            for result in result_records(log.read_text(errors="replace")):
+                if result.get("kind") in ("complete", "preparation"):
+                    completed.add(result["test"])
     elif manifest.exists():
         raise SystemExit(f"work directory already contains a run: use --resume or a new directory: {work}")
     else:
@@ -406,10 +423,7 @@ def main(argv: list[str] | None = None) -> int:
     executed: dict[str, dict[int, dict[str, Any]]] = {}
     preparations: dict[str, str] = {}
     complete = set()
-    for line in (line for log in logs for line in log.read_text(errors="replace").splitlines()):
-        if not line.startswith(PREFIX):
-            continue
-        result = json.loads(line[len(PREFIX):])
+    for result in (result for log in logs for result in result_records(log.read_text(errors="replace"))):
         name = result.pop("test")
         if result.get("kind") == "complete":
             complete.add(name)
