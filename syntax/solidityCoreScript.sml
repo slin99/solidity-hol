@@ -111,7 +111,8 @@ End
  * ty. AllocateMemoryOperation ty n: new ty(n), a zeroed byte sequence or
  * dynamic array of length n. ArrayIndexOperation a i: element i of the memory
  * or calldata array a. CopyToMemoryOperation a: a new memory copy of the
- * calldata array a.
+ * calldata array a. Keccak256Operation a: the Keccak-256 hash of the memory
+ * byte sequence a, as bytes32.
  * ExternalCallOperation kind selector parameter_types return_types target
  * value arguments: a high-level call I(target).f{value: value}(arguments) of
  * the function with that selector and those ABI types.
@@ -133,6 +134,7 @@ Datatype:
   | ArrayIndexOperation core_atom core_atom
   | CopyToMemoryOperation core_atom
   | ArrayLengthOperation core_atom
+  | Keccak256Operation core_atom
   | ArrayPushOperation core_atom (core_atom option)
   | ArrayPopOperation core_atom
   | InternalCallOperation ast_id (core_atom list)

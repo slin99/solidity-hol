@@ -261,6 +261,11 @@ ENVIRONMENT = {
 }
 # require, assert and revert.
 REQUIRE, ASSERT, REVERT = -18, -3, -19
+KECCAK256 = -8
+# The field holding the selector the compiler records on each kind of
+# declaration that has one.
+SELECTOR_FIELDS = {"FunctionDefinition": "functionSelector", "EventDefinition": "eventSelector",
+                   "ErrorDefinition": "errorSelector", "VariableDeclaration": "functionSelector"}
 THIS = -28
 STRING_LITERALS = {"string", "unicodeString", "hexString"}
 
@@ -367,7 +372,8 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
 
     pending = list(roots)
     while pending:
-        for node in nodes(pending.pop()):
+        # A selector's base is not imported.
+        for node in nodes(pending.pop(), skip=is_selector):
             if node["id"] in seen:
                 continue
             seen.add(node["id"])
@@ -1173,6 +1179,50 @@ def unwrap(value: dict[str, Any] | None) -> dict[str, Any] | None:
     return value
 
 
+def is_selector(node: dict[str, Any]) -> bool:
+    """Whether a node is f.selector, a member the compiler declares."""
+    return (node["nodeType"] == "MemberAccess" and node["memberName"] == "selector"
+            and node.get("referencedDeclaration") is None)
+
+
+def unevaluated_receiver(node: dict[str, Any]) -> bool:
+    """Whether a receiver is this or a name the compiler does not evaluate: a
+    contract, interface or library name, or an imported module's, possibly
+    qualified by a module (unevaluated_receiver in the importer)."""
+    named = (node.get("typeDescriptions", {}).get("typeIdentifier") or "").startswith(
+        ("t_type$_t_contract$_", "t_module_"))
+    if node["nodeType"] == "Identifier":
+        return node.get("referencedDeclaration") == THIS or named
+    if node["nodeType"] == "MemberAccess":
+        return named and unevaluated_receiver(node["expression"])
+    return False
+
+
+def selector_declaration(node: dict[str, Any], by_id: dict[int, dict[str, Any]]
+                         ) -> dict[str, Any] | None:
+    """The declaration whose recorded selector f.selector, E.selector,
+    this.f.selector, I.f.selector or this.x.selector (a public state variable)
+    names, as selector_bytes in the importer finds it: the base is an
+    identifier, or a member of a receiver the compiler does not evaluate."""
+    if not is_selector(node):
+        return None
+    base = node["expression"]
+    if base["nodeType"] == "MemberAccess" and not unevaluated_receiver(base["expression"]):
+        return None
+    if base["nodeType"] not in {"Identifier", "MemberAccess"}:
+        return None
+    declaration = by_id.get(base.get("referencedDeclaration"))
+    if declaration is None or SELECTOR_FIELDS.get(declaration["nodeType"]) not in declaration:
+        return None
+    # x.selector and C.x.selector for a variable x are the selector of the
+    # function value it holds; only this.x names x's getter.
+    if declaration["nodeType"] == "VariableDeclaration" and not (
+            base["nodeType"] == "MemberAccess" and base["expression"]["nodeType"] == "Identifier"
+            and base["expression"].get("referencedDeclaration") == THIS):
+        return None
+    return declaration
+
+
 def special_forms(reached: dict[int, dict[str, Any]],
                   by_id: dict[int, dict[str, Any]]) -> tuple[set[int], dict[int, list[Blocker]]]:
     """The nodes the importer reads as part of a larger form rather than as
@@ -1198,7 +1248,14 @@ def special_forms(reached: dict[int, dict[str, Any]],
                   or (n["nodeType"] == "FunctionCall" and n["kind"] == "typeConversion"
                       and n["expression"]["typeDescriptions"].get("typeIdentifier", "")
                       .startswith("t_type$_t_enum$_"))}
+    # f.selector: the importer reads it as the declaration's selector, and
+    # none of its parts.
+    selector_parts = {n["id"] for s in reached.values()
+                      if selector_declaration(s, by_id) is not None for n in nodes(s)}
+    unread.update(selector_parts)
     for node in reached.values():
+        if node["id"] in selector_parts:
+            continue
         kind = node["nodeType"]
         # Any other name of an enum type is imported as an identifier that
         # source validation rejects.
@@ -1378,7 +1435,10 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     super_bases = {n["expression"]["expression"]["id"]
                    for f in reached.values() if f["nodeType"] == "FunctionDefinition"
                    for n in super_calls(f)}
-    plain_callees = builtin_callees | super_bases
+    hash_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
+                    and n["expression"]["nodeType"] == "Identifier"
+                    and n["expression"].get("referencedDeclaration") == KECCAK256}
+    plain_callees = builtin_callees | super_bases | hash_callees
     unread, found = special_forms(reached, by_id)
     file_level = {m["id"] for ast in asts.values() for m in ast["nodes"]}
     storage_bases = {n["baseExpression"]["id"] for n in reached.values()

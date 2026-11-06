@@ -22,12 +22,12 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 | outcome | tests |
 | --- | ---: |
-| admitted | 535 |
-| elaboration-rejected | 65 |
-| import-rejected | 674 |
+| admitted | 545 |
+| elaboration-rejected | 68 |
+| import-rejected | 659 |
 | compile-failure | 0 |
 | malformed-input | 0 |
-| source-rejected | 296 |
+| source-rejected | 298 |
 | invalid-core | 0 |
 | skipped | 100 |
 | total | 1670 |
@@ -41,32 +41,30 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | feature | AST nodes | tests | only blocker | first |
 | --- | --- | ---: | ---: | ---: |
 | structs | `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 165 | 5 | 18 |
-| local reference bindings | `VariableDeclaration` | 158 | 0 | 0 |
-| source units without exactly one contract | `SourceUnit` | 129 | 5 | 0 |
-| arrays | `ArrayTypeName`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 125 | 3 | 6 |
-| function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 121 | 0 | 17 |
-| address members (balance, call, transfer, …) | `MemberAccess` | 114 | 14 | 19 |
+| local reference bindings | `VariableDeclaration` | 156 | 0 | 0 |
+| source units without exactly one contract | `SourceUnit` | 129 | 7 | 0 |
+| arrays | `ArrayTypeName`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 124 | 3 | 6 |
+| address members (balance, call, transfer, …) | `MemberAccess` | 108 | 14 | 19 |
 | struct values and copying | `Identifier`, `IndexAccess`, `MemberAccess` | 108 | 2 | 0 |
-| abi.* functions | `MemberAccess` | 100 | 19 | 58 |
-| function types | `FunctionTypeName` | 96 | 0 | 85 |
+| function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 105 | 0 | 8 |
+| abi.* functions | `MemberAccess` | 100 | 25 | 62 |
+| function types | `FunctionTypeName` | 96 | 0 | 87 |
 | inline assembly memory references | `InlineAssembly` | 87 | 8 | 0 |
 | contract creation (new C) | `FunctionCall` | 78 | 0 | 49 |
 | operator delete | `UnaryOperation` | 75 | 13 | 0 |
 | free functions | `FunctionDefinition` | 73 | 10 | 31 |
-| functions as values | `Identifier`, `MemberAccess` | 65 | 1 | 0 |
 | array values | `Identifier`, `IndexAccess`, `MemberAccess` | 65 | 0 | 0 |
-| hash and signature built-ins | `Identifier` | 62 | 10 | 16 |
+| functions as values | `Identifier`, `MemberAccess` | 58 | 1 | 0 |
 | type names as values | `ElementaryTypeNameExpression` | 55 | 1 | 8 |
 | user-defined value types | `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `UserDefinedValueTypeDefinition`, `VariableDeclaration` | 52 | 7 | 30 |
 | inline assembly memory outside the scratch space | `InlineAssembly` | 50 | 8 | 0 |
 | inline arrays | `TupleExpression` | 47 | 13 | 38 |
-| external library functions | `FunctionDefinition` | 47 | 8 | 32 |
+| external library functions | `FunctionDefinition` | 45 | 8 | 31 |
 | transient storage | `VariableDeclaration` | 41 | 17 | 0 |
 | conditional expressions | `Conditional` | 40 | 12 | 25 |
 | public state variables | `VariableDeclaration` | 39 | 5 | 0 |
-| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 17 | 0 |
+| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 18 | 0 |
 | aggregate array mutation | `MemberAccess` | 37 | 8 | 0 |
-| library calls and contract-name members | `IndexAccess`, `MemberAccess` | 34 | 13 | 0 |
 | mappings | `IndexAccess`, `TupleExpression`, `VariableDeclaration` | 33 | 9 | 0 |
 | inline assembly | `InlineAssembly` | 32 | 11 | 22 |
 | literals of non-integer types | `Assignment`, `BinaryOperation`, `FunctionCall`, `Literal`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 32 | 10 | 0 |
@@ -75,18 +73,20 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | bytes.concat and string.concat | `MemberAccess`, `TupleExpression` | 30 | 0 | 14 |
 | using for with functions | `UsingForDirective` | 29 | 0 | 27 |
 | tuples of literals | `TupleExpression` | 28 | 5 | 0 |
+| library calls and contract-name members | `IndexAccess`, `MemberAccess` | 27 | 13 | 0 |
 | members of elementary type names | `IndexAccess`, `TupleExpression` | 24 | 0 | 0 |
-| bytes push and pop | `MemberAccess` | 23 | 13 | 0 |
-| library structs and events | `EventDefinition`, `StructDefinition` | 23 | 1 | 23 |
+| bytes push and pop | `MemberAccess` | 23 | 14 | 0 |
 | memory arrays (new T[](n)) | `NewExpression` | 23 | 0 | 0 |
 | call options ({value: …, gas: …}) | `FunctionCallOptions`, `IndexAccess`, `MemberAccess`, `NewExpression`, `TupleExpression` | 22 | 0 | 14 |
 | try/catch | `FunctionCall`, `TryCatchClause`, `TryStatement` | 20 | 4 | 17 |
+| library structs and events | `EventDefinition`, `StructDefinition` | 20 | 1 | 20 |
 | array slices | `IndexRangeAccess` | 19 | 5 | 16 |
 | require with a custom error | `FunctionCall` | 18 | 11 | 0 |
 | mapping values | `Identifier`, `IndexAccess`, `MemberAccess` | 17 | 0 | 0 |
-| type(…) | `Identifier` | 16 | 3 | 11 |
+| type(…) | `Identifier` | 16 | 4 | 11 |
 | constants | `VariableDeclaration` | 15 | 7 | 9 |
-| built-in erc7201 | `Identifier` | 12 | 1 | 7 |
+| hash and signature built-ins | `Identifier` | 12 | 5 | 6 |
+| built-in erc7201 | `Identifier` | 12 | 1 | 8 |
 | event array parameters | `VariableDeclaration` | 11 | 6 | 0 |
 | literal subdenominations (ether, days, …) | `Literal` | 11 | 6 | 9 |
 | inline assembly calls, gas, return data and code | `InlineAssembly` | 10 | 5 | 0 |
@@ -99,7 +99,7 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | virtual modifiers | `ModifierDefinition` | 6 | 5 | 5 |
 | array type expressions | `IndexAccess` | 6 | 0 | 5 |
 | tuples with empty components | `TupleExpression` | 6 | 0 | 0 |
-| file-level events | `EventDefinition` | 5 | 2 | 3 |
+| file-level events | `EventDefinition` | 5 | 4 | 5 |
 | super calls | `Identifier`, `TupleExpression` | 5 | 1 | 2 |
 | tuple assignments to element or member targets | `Assignment` | 5 | 0 | 0 |
 | messages that are not literals | `FunctionCall` | 4 | 3 | 0 |
@@ -112,17 +112,16 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | enum types as expressions | `Identifier`, `MemberAccess` | 3 | 1 | 0 |
 | overriding state variables | `VariableDeclaration` | 3 | 1 | 3 |
 | built-in selfdestruct | `Identifier` | 3 | 0 | 0 |
-| events | `MemberAccess` | 3 | 0 | 0 |
 | immutables | `VariableDeclaration` | 3 | 0 | 0 |
 | built-in gasleft | `Identifier` | 2 | 2 | 2 |
 | built-in addmod | `Identifier` | 2 | 1 | 2 |
-| custom errors | `MemberAccess`, `TupleExpression` | 2 | 0 | 1 |
 | inline assembly halts in a constructor | `InlineAssembly` | 2 | 0 | 0 |
 | constant expressions over literals | `BinaryOperation`, `UnaryOperation` | 1 | 1 | 0 |
 | static memory array returns under modifiers | `VariableDeclaration` | 1 | 1 | 0 |
 | FunctionCallOptions nodes | `FunctionCallOptions` | 1 | 0 | 0 |
 | built-in mulmod | `Identifier` | 1 | 0 | 0 |
 | conversions to non-elementary types | `IndexAccess` | 1 | 0 | 0 |
+| custom errors | `TupleExpression` | 1 | 0 | 0 |
 | enums | `TupleExpression` | 1 | 0 | 0 |
 | nested tuples | `TupleExpression` | 1 | 0 | 0 |
 
@@ -132,26 +131,26 @@ Supporting the features in this order admits the most rejected tests at each ste
 
 | step | feature | admitted |
 | ---: | --- | ---: |
-| 1 | abi.* functions | 19 |
-| 2 | hash and signature built-ins | 39 |
-| 3 | string literals as fixed-size bytes | 58 |
-| 4 | address members (balance, call, transfer, …) | 76 |
-| 5 | transient storage | 94 |
-| 6 | operator delete | 116 |
-| 7 | literals of non-integer types | 134 |
-| 8 | bytes push and pop | 152 |
-| 9 | inline arrays | 168 |
-| 10 | conditional expressions | 182 |
-| 11 | aggregate array mutation | 195 |
-| 12 | library calls and contract-name members | 208 |
-| 13 | require with a custom error | 221 |
-| 14 | struct values and copying | 232 |
-| 15 | structs | 258 |
-| 16 | local reference bindings | 293 |
-| 17 | arrays | 317 |
-| 18 | array values | 352 |
-| 19 | inline assembly memory references | 378 |
-| 20 | inline assembly memory outside the scratch space | 405 |
+| 1 | abi.* functions | 25 |
+| 2 | string literals as fixed-size bytes | 44 |
+| 3 | address members (balance, call, transfer, …) | 62 |
+| 4 | transient storage | 80 |
+| 5 | operator delete | 102 |
+| 6 | literals of non-integer types | 119 |
+| 7 | bytes push and pop | 137 |
+| 8 | inline arrays | 153 |
+| 9 | conditional expressions | 167 |
+| 10 | aggregate array mutation | 180 |
+| 11 | library calls and contract-name members | 193 |
+| 12 | require with a custom error | 206 |
+| 13 | struct values and copying | 217 |
+| 14 | structs | 245 |
+| 15 | local reference bindings | 280 |
+| 16 | arrays | 304 |
+| 17 | array values | 339 |
+| 18 | inline assembly memory references | 365 |
+| 19 | inline assembly memory outside the scratch space | 391 |
+| 20 | named arguments | 410 |
 
 ## Skipped and compile failures
 
@@ -299,8 +298,10 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `array/slices/array_calldata_assignment.sol`
 - `array/string_bytes_conversion.sol`
 - `array/string_literal_assign_to_storage_bytes.sol`
+- `builtinFunctions/assignment_to_const_var_involving_keccak.sol`
 - `builtinFunctions/blobhash_shadow_resolution.sol`
 - `builtinFunctions/blockhash_shadow_resolution.sol`
+- `builtinFunctions/keccak256_empty.sol`
 - `cleanup/bool_conversion_v2.sol`
 - `cleanup/cleanup_in_compound_assign.sol`
 - `cleanup/dirty_calldata_bytes.sol`
@@ -313,6 +314,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `cleanup/indexed_log_topic_during_explicit_downcast_during_emissions.sol`
 - `constants/constant_public_getter_checked_unchecked.sol`
 - `constants/constant_string.sol`
+- `constants/function_unreferenced.sol`
 - `constants/simple_constant_variables_test.sol`
 - `constructor/base_constructor_arguments.sol`
 - `constructor/bytes_in_constructors_unpacker.sol`
@@ -322,6 +324,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `constructor/order_of_evaluation.sol`
 - `constructor/payable_constructor.sol`
 - `constructor/state_variable_initialization.sol`
+- `conversions/calldata_bytes_to_memory.sol`
 - `conversions/string_to_bytes.sol`
 - `enums/constructing_enums_from_ints.sol`
 - `enums/enum_explicit_overflow.sol`
@@ -330,6 +333,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `enums/using_inherited_enum.sol`
 - `enums/using_inherited_enum_excplicitly.sol`
 - `errors/error_in_library_and_interface.sol`
+- `errors/error_selector.sol`
 - `errors/simple.sol`
 - `errors/weird_name.sol`
 - `events/emit_three_identical_events.sol`
@@ -387,6 +391,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `functionCall/transaction_status.sol`
 - `functionCall/value_test.sol`
 - `functionTypes/same_function_in_construction_and_runtime.sol`
+- `functionTypes/selector_1.sol`
 - `getters/arrays.sol`
 - `getters/bytes.sol`
 - `getters/mapping.sol`
@@ -465,6 +470,8 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `integer/many_local_variables.sol`
 - `integer/small_signed_types.sol`
 - `integer/uint.sol`
+- `interfaceID/homer.sol`
+- `interfaceID/lisa.sol`
 - `isoltestTesting/account.sol`
 - `isoltestTesting/balance_with_balance.sol`
 - `isoltestTesting/balance_with_balance2.sol`
@@ -563,6 +570,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `smoke/fallback.sol`
 - `smoke/multiline.sol`
 - `smoke/multiline_comments.sol`
+- `specialFunctions/keccak256_optimized.sol`
 - `state/block_basefee.sol`
 - `state/block_chainid.sol`
 - `state/block_coinbase.sol`
@@ -677,6 +685,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `viaYul/exp_various.sol`
 - `viaYul/function_entry_checks.sol`
 - `viaYul/if.sol`
+- `viaYul/keccak.sol`
 - `viaYul/local_address_assignment.sol`
 - `viaYul/local_assignment.sol`
 - `viaYul/local_bool_assignment.sol`
@@ -815,6 +824,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `array/short_fixed_array_cleanup.sol`: array/short_fixed_array_cleanup.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/storage_array_ref.sol`: array/storage_array_ref.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/string_allocation_bug.sol`: array/string_allocation_bug.sol: valid_src_unit failed (source validation/subset restriction)
+- `builtinFunctions/keccak256_with_bytes.sol`: builtinFunctions/keccak256_with_bytes.sol: valid_src_unit failed (source validation/subset restriction)
 - `cleanup/byte_array_to_storage_cleanup.sol`: cleanup/byte_array_to_storage_cleanup.sol: valid_src_unit failed (source validation/subset restriction)
 - `cleanup/cleanup_address_types_shortening.sol`: cleanup/cleanup_address_types_shortening.sol: valid_src_unit failed (source validation/subset restriction)
 - `cleanup/cleanup_address_types_v2.sol`: cleanup/cleanup_address_types_v2.sol: valid_src_unit failed (source validation/subset restriction)
@@ -940,6 +950,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `structs/memory_structs_nested.sol`: structs/memory_structs_nested.sol: valid_src_unit failed (source validation/subset restriction)
 - `structs/memory_structs_nested_load.sol`: structs/memory_structs_nested_load.sol: valid_src_unit failed (source validation/subset restriction)
 - `structs/memory_structs_read_write.sol`: structs/memory_structs_read_write.sol: valid_src_unit failed (source validation/subset restriction)
+- `structs/msg_data_to_struct_member_copy.sol`: structs/msg_data_to_struct_member_copy.sol: valid_src_unit failed (source validation/subset restriction)
 - `structs/packed_storage_structs_delete.sol`: structs/packed_storage_structs_delete.sol: valid_src_unit failed (source validation/subset restriction)
 - `structs/recursive_struct_2.sol`: structs/recursive_struct_2.sol: valid_src_unit failed (source validation/subset restriction)
 - `structs/recursive_structs.sol`: structs/recursive_structs.sol: valid_src_unit failed (source validation/subset restriction)
@@ -1033,11 +1044,14 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `events/event_anonymous_with_topics.sol`: events/event_anonymous_with_topics.sol: elaborate_unit returned NONE (unsupported lowering)
 - `events/event_constructor.sol`: events/event_constructor.sol: elaborate_unit returned NONE (unsupported lowering)
 - `events/event_really_really_lots_of_data_from_storage.sol`: events/event_really_really_lots_of_data_from_storage.sol: elaborate_unit returned NONE (unsupported lowering)
+- `events/event_selector.sol`: events/event_selector.sol: elaborate_unit returned NONE (unsupported lowering)
 - `expressions/bytes_comparison.sol`: expressions/bytes_comparison.sol: elaborate_unit returned NONE (unsupported lowering)
 - `externalSource/source_import_subdir.sol`: _external/import_with_subdir.sol: elaborate_unit returned NONE (unsupported lowering)
 - `externalSource/source_name_starting_with_dots.sol`: _sourceNameStartingWithDots/dir/contract.sol: elaborate_unit returned NONE (unsupported lowering)
 - `functionCall/calldata_and_memory_arguments.sol`: functionCall/calldata_and_memory_arguments.sol: elaborate_unit returned NONE (unsupported lowering)
 - `functionCall/calldata_argument_internal_library_bytes.sol`: functionCall/calldata_argument_internal_library_bytes.sol: elaborate_unit returned NONE (unsupported lowering)
+- `functionCall/member_accessors.sol`: functionCall/member_accessors.sol: elaborate_unit returned NONE (unsupported lowering)
+- `functionTypes/selector_2.sol`: functionTypes/selector_2.sol: elaborate_unit returned NONE (unsupported lowering)
 - `immutable/immutable_tag_too_large_bug.sol`: immutable/immutable_tag_too_large_bug.sol: elaborate_unit returned NONE (unsupported lowering)
 - `inlineAssembly/calldata_array_assign_static.sol`: inlineAssembly/calldata_array_assign_static.sol: elaborate_unit returned NONE (unsupported lowering)
 - `inlineAssembly/inline_assembly_memory_access.sol`: inlineAssembly/inline_assembly_memory_access.sol: elaborate_unit returned NONE (unsupported lowering)

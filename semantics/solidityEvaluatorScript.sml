@@ -264,6 +264,14 @@ Definition eval_operation_def:
                   INL (_, _, _, v) => ValueOk v
                 | INR c => ValueAbrupt c)
          | _ => ValueAbrupt (InvalidCompletion "bad array index operands"))
+    | Keccak256Operation a =>
+        (case eval_atom st.scopes a of
+           SOME (ReferenceValue r) =>
+             (case byte_contents st r of
+                INL bs => ValueOk (ScalarValue (BytesValue (num_to_bytes 32
+                            (w2n (word_of_bytes_be (Keccak_256_w64 bs) : bytes32)))))
+              | INR c => ValueAbrupt c)
+         | _ => ValueAbrupt (InvalidCompletion "bad keccak256 operand"))
     | ArrayLengthOperation a =>
         (case eval_atom st.scopes a of
            SOME (ReferenceValue r) =>

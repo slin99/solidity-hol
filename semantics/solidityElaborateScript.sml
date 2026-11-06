@@ -331,6 +331,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcTypeConversion _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcExternalCall _ _ _ operands _) ⇔ exprs_assign operands) ∧
   (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcKeccak256 _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcSuperCall _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns _ ⇔ F) ∧
   (components_assign [] ⇔ F) ∧
@@ -812,6 +813,20 @@ Definition elab_expr_def:
                              (ConvertOperation ty (ConstantAtom (IntegerValue (&index)))) in
              SOME ((ss, a, ElabType ty), n + 1)
          | NONE => NONE)
+    | SrcKeccak256 _ _ e _ =>
+        (case elab_expr ctx n e of
+           SOME ((ss, a, vt), n1) =>
+             (case coerce n1 (LocatedT MemoryLoc BytesT) a vt of
+                SOME ((cs, b), n2) =>
+                  let (hs, h) = bind_value n2 (FixedBytesT 32) (Keccak256Operation b) in
+                  SOME ((ss ++ cs ++ hs, h, ElabType (FixedBytesT 32)), n2 + 1)
+              | NONE => NONE)
+         | NONE => NONE)
+    | SrcSelector _ bs _ =>
+        (* bound, so that a later conversion converts a bytesN local *)
+        let ty = FixedBytesT (LENGTH bs) in
+        let (ss, a) = bind_value n ty (ConvertOperation ty (ConstantAtom (BytesValue bs))) in
+        SOME ((ss, a, ElabType ty), n + 1)
     | SrcTypeMember _ member tn _ =>
         (case normalize_type_name tn of
            SOME ty =>

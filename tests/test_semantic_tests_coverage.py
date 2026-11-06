@@ -986,6 +986,58 @@ class ClassifyTests(unittest.TestCase):
         self.assertIn(coverage.Blocker("MemberAccess", "enum types as expressions", "elaboration"),
                       coverage.scan(asts).get(mode["id"], []))
 
+    def test_selectors_of_computed_values_are_blocked(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/hashes.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        by_id = {n["id"]: n for ast in asts.values() for n in coverage.nodes(ast)}
+        # this.ofBytes.selector, made (this).ofBytes.selector: a base the importer
+        # does not read as a name
+        selector = next(n for n in by_id.values() if n.get("nodeType") == "MemberAccess"
+                        and n["memberName"] == "selector"
+                        and n["expression"].get("memberName") == "ofBytes")
+        this = selector["expression"]["expression"]
+        selector["expression"]["expression"] = {
+            "nodeType": "TupleExpression", "id": 10 ** 6, "components": [this],
+            "isInlineArray": False, "typeDescriptions": this["typeDescriptions"]}
+        self.assertIsNone(coverage.selector_declaration(selector, by_id))
+        self.assertIn(selector["id"], coverage.scan(asts))
+
+    def test_selectors_through_variables_are_blocked(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/hashes.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        by_id = {n["id"]: n for ast in asts.values() for n in coverage.nodes(ast)}
+        # IReceiver.onReceived.selector, made r.onReceived.selector for a
+        # contract-typed variable r, which the compiler evaluates
+        selector = next(n for n in by_id.values() if n.get("nodeType") == "MemberAccess"
+                        and n["memberName"] == "selector"
+                        and n["expression"].get("memberName") == "onReceived")
+        receiver = selector["expression"]["expression"]
+        self.assertIsNotNone(coverage.selector_declaration(selector, by_id))
+        receiver["typeDescriptions"]["typeIdentifier"] = "t_contract$_IReceiver_$1"
+        self.assertIsNone(coverage.selector_declaration(selector, by_id))
+
+    def test_state_variable_selectors_only_through_this(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/hashes.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        by_id = {n["id"]: n for ast in asts.values() for n in coverage.nodes(ast)}
+        def selector_of(member: str) -> dict:
+            return next(n for n in by_id.values() if n.get("nodeType") == "MemberAccess"
+                        and n["memberName"] == "selector"
+                        and n["expression"].get("memberName", n["expression"].get("name")) == member)
+        total = next(n["id"] for n in by_id.values()
+                     if n.get("nodeType") == "VariableDeclaration" and n["name"] == "total")
+        getter = selector_of("total")
+        self.assertIsNotNone(coverage.selector_declaration(getter, by_id))
+        # C.total.selector is the selector of the value total holds
+        getter["expression"]["expression"].update(
+            referencedDeclaration=1, typeDescriptions={"typeIdentifier": "t_type$_t_contract$_Hashes_$1"})
+        self.assertIsNone(coverage.selector_declaration(getter, by_id))
+        # so is total.selector
+        named = selector_of("Denied")
+        self.assertIsNotNone(coverage.selector_declaration(named, by_id))
+        named["expression"]["referencedDeclaration"] = total
+        self.assertIsNone(coverage.selector_declaration(named, by_id))
+
     def test_enum_storage_arrays_are_not_values(self) -> None:
         self.assertFalse(coverage.storage_array("t_array$_t_enum_5_$dyn_storage"))
         self.assertFalse(coverage.storage_array_value("t_array$_t_enum_5_$dyn_storage"))

@@ -192,6 +192,8 @@ Datatype:
   | SrcTypeMember node_info string src_type_name string
   | SrcNew node_info src_type_name src_expr string
   | SrcEnumValue node_info src_type_name num string
+  | SrcKeccak256 node_info node_info src_expr string
+  | SrcSelector node_info (byte list) string
 End
 
 (* VariableDeclarationStatement: assignments, declarations (NONE for a hole),
@@ -894,6 +896,9 @@ Definition expr_ids_def:
   (expr_ids (SrcEnvironment info _ _) = [info.node_id]) ∧
   (expr_ids (SrcTypeMember info _ tn _) = info.node_id :: type_name_ids tn) ∧
   (expr_ids (SrcEnumValue info tn _ _) = info.node_id :: type_name_ids tn) ∧
+  (expr_ids (SrcKeccak256 info callee e _) =
+    info.node_id :: callee.node_id :: expr_ids e) ∧
+  (expr_ids (SrcSelector info _ _) = [info.node_id]) ∧
   (expr_ids (SrcExternalCall info _ _ operands _) =
     info.node_id :: exprs_ids operands) ∧
   (expr_ids (SrcNew info tn e _) =
@@ -1221,6 +1226,22 @@ Definition check_expr_def:
              then SOME (SrcType (EnumT id)) else NONE
          | NONE => NONE)
     | _ => NONE) ∧
+  (* keccak256 takes bytes memory; a literal, or bytes in another location
+     (a state variable's is unlocated), converts to it as an argument would. *)
+  (check_expr env (SrcKeccak256 _ _ e tid) =
+    if source_type_matches (FixedBytesT 32) tid ∧
+       (case check_expr env e of
+          SOME SrcByteLiteral => T
+        | SOME (SrcType BytesT) => T
+        | SOME (SrcType (LocatedT _ BytesT)) => T
+        | _ => F)
+    then SOME (SrcType (FixedBytesT 32)) else NONE) ∧
+  (* f.selector, E.selector: the selector the compiler records on the
+     declaration, bytes4 or (for an event) bytes32. *)
+  (check_expr env (SrcSelector _ bs tid) =
+    if (LENGTH bs = 4 ∨ LENGTH bs = 32) ∧
+       source_type_matches (FixedBytesT (LENGTH bs)) tid
+    then SOME (SrcType (FixedBytesT (LENGTH bs))) else NONE) ∧
   (check_expr env (SrcTypeMember _ member tn tid) =
     case normalize_type_name tn of
       SOME ty =>
