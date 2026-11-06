@@ -211,6 +211,18 @@ external calls to getters and the members of external functions, such as
 `c.f.selector`, are rejected, as are overloads that differ only in
 contract-typed parameters, which reading them as `address` would merge.
 
+Enums, declared at file level, in a contract or in a library, are read by
+their declaration id: type identifiers `t_enum$_E_$n` and storage-layout
+types `t_enum(E)n` become `t_enum_n`. `E.A` is the constant of `A`'s index,
+and `E(x)` and `uint8(e)` are conversions; converting an out-of-range value
+panics with 0x21. An enum occupies one byte of storage; reading a stored
+byte that is out of range panics with 0x21 when it is read, where the
+compiler checks it only where the value is used. It is
+ABI encoded as `uint8`, and a call or creation whose enum argument is out of
+range reverts. Enums as mapping keys, as elements of memory or calldata
+arrays, as constants, immutables or error parameters, returned by an
+external call, `type(E).min/max` and `delete` are rejected.
+
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
 from the functions calls can reach (an overridden function counts only when

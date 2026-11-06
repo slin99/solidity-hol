@@ -81,6 +81,12 @@ Definition is_elementary_type_def[simp]:
   (is_elementary_type _ ⇔ F)
 End
 
+(* A value read or stored as a whole: an elementary type or an enum. *)
+Definition is_stored_scalar_type_def[simp]:
+  (is_stored_scalar_type (EnumT _) ⇔ T) ∧
+  (is_stored_scalar_type ty ⇔ is_elementary_type ty)
+End
+
 (* Whether a mapping is reachable through array elements and struct fields.
  * The fuel bounds the struct nesting depth: a reachable mapping is reachable
  * without revisiting a struct, so the number of declarations suffices and
@@ -147,14 +153,14 @@ Definition core_scalar_type_def:
     declared_type_ok env ty
 End
 
-(* The bytes a value type occupies in a storage slot. Enums and user-defined
- * value types are not stored yet: reading an enum needs a choice of where an
- * out-of-range byte is rejected.
+(* The bytes a value type occupies in a storage slot. An enum takes one byte;
+ * user-defined value types are not stored yet.
  *)
 Definition storage_bytes_def:
   storage_bytes ty =
     case ty of
       BoolT => SOME 1
+    | EnumT _ => SOME 1
     | UintT n => SOME (n DIV 8)
     | IntT n => SOME (n DIV 8)
     | AddressT _ => SOME 20
@@ -206,6 +212,7 @@ Definition storage_type_ok_def:
     elementary_storage_type_ok key ∧ storage_type_ok env value) ∧
   (storage_type_ok env (ArrayT element NONE) ⇔ storage_type_ok env element) ∧
   (storage_type_ok env (StructT id) ⇔ IS_SOME (lookup_struct_layout env id)) ∧
+  (storage_type_ok env (EnumT id) ⇔ IS_SOME (lookup_enum env id)) ∧
   (storage_type_ok env BytesT ⇔ T) ∧
   (storage_type_ok env StringT ⇔ T) ∧
   (storage_type_ok env ty ⇔ elementary_storage_type_ok ty)
@@ -737,7 +744,7 @@ Definition wf_core_operation_def:
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
            SOME (ReferenceType (ArrayT element NONE)) =>
-             elementary_storage_type_ok element ∧
+             storage_type_ok env element ∧ IS_SOME (storage_bytes element) ∧
              annotation = ReferenceType element ∧
              (case value of
                 NONE => T
@@ -749,7 +756,8 @@ Definition wf_core_operation_def:
     case a of
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
-           SOME (ReferenceType (ArrayT element NONE)) => elementary_storage_type_ok element
+           SOME (ReferenceType (ArrayT element NONE)) =>
+             storage_type_ok env element ∧ IS_SOME (storage_bytes element)
          | _ => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (InternalCallOperation f args) ⇔
@@ -1223,15 +1231,16 @@ Definition wf_core_environment_def:
     EVERY (λ(_, decl). wf_type_declaration env decl) env.type_declarations
 End
 
-(* Calldata reaches procedures whose parameters and returns are elementary,
- * the types the entry ABI-decodes and encodes; receive and the fallback take
- * and return nothing, and the creation procedure returns nothing.
+(* Calldata reaches procedures whose parameters and returns are ABI values or
+ * enums, the types the entry ABI-decodes and encodes (an enum as a uint8 the
+ * entry checks against its members); receive and the fallback take and
+ * return nothing, and the creation procedure returns nothing.
  *)
 Definition abi_procedure_def:
   abi_procedure env f ⇔
     case lookup_procedure env f of
       SOME p =>
-        EVERY (λ(_, ty). abi_value_type ty)
+        EVERY (λ(_, ty). case ty of EnumT _ => T | _ => abi_value_type ty)
           (p.parameters ++ p.return_bindings)
     | NONE => F
 End
@@ -1260,7 +1269,10 @@ Definition wf_core_dispatch_def:
          (case lookup_procedure env f of
             SOME p => p.return_bindings = [] ∧
               EVERY (λ(_, ty). is_elementary_type ty ∨
-                       case ty of LocatedT MemoryLoc _ => T | _ => F) p.parameters
+                       case ty of
+                         LocatedT MemoryLoc _ => T
+                       | EnumT _ => T
+                       | _ => F) p.parameters
           | NONE => F)
      | NONE => T)
 End

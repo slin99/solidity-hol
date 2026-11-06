@@ -943,6 +943,47 @@ class ClassifyTests(unittest.TestCase):
         self.assertIn(coverage.Blocker("FunctionCall", "string literals as fixed-size bytes",
                                        "elaboration"), coverage.scan(asts).get(call["id"], []))
 
+    def test_enums_are_admitted(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/enums.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        self.assertEqual(coverage.scan(asts), {})
+
+    def test_enum_mapping_keys_are_blocked(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/enums.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        statuses = next(n for ast in asts.values() for n in coverage.nodes(ast)
+                        if n.get("nodeType") == "VariableDeclaration" and n.get("name") == "statuses")
+        enum = statuses["typeName"]["valueType"]["typeDescriptions"]["typeIdentifier"]
+        statuses["typeDescriptions"]["typeIdentifier"] = f"t_mapping$_{enum}_$_t_uint256_$"
+        self.assertIn(coverage.Blocker("VariableDeclaration", "enum mapping keys", "elaboration"),
+                      coverage.scan(asts)[statuses["id"]])
+
+    def test_enums_returned_by_external_calls_are_blocked(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/contract_types.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        by_id = {n["id"]: n for ast in asts.values() for n in coverage.nodes(ast)}
+        balance_of = next(n for n in by_id.values() if n.get("nodeType") == "FunctionDefinition"
+                          and n.get("name") == "balanceOf")
+        balance_of["returnParameters"]["parameters"][0]["typeDescriptions"]["typeIdentifier"] = \
+            "t_enum$_E_$1"
+        calls = {n["id"] for n in by_id.values() if n.get("nodeType") == "FunctionCall"
+                 and n["expression"].get("referencedDeclaration") == balance_of["id"]}
+        found = coverage.scan(asts)
+        self.assertTrue(calls)
+        for call in calls:
+            self.assertIn(coverage.Blocker("FunctionCall", "enums returned by external calls",
+                                           "elaboration"), found[call])
+
+    def test_enum_type_identifiers_are_read_by_id(self) -> None:
+        self.assertEqual(coverage.normalize_type_ids(
+            {"typeIdentifier": "t_mapping$_t_address_$_t_enum$_S_$5_$"}),
+            {"typeIdentifier": "t_mapping$_t_address_$_t_enum_5_$"})
+        # A type expression keeps its enum's name, as the importer reads its callee.
+        self.assertEqual(coverage.normalize_type_ids({"typeIdentifier": "t_type$_t_enum$_S_$5_$"}),
+                         {"typeIdentifier": "t_type$_t_enum$_S_$5_$"})
+        self.assertTrue(coverage.storage_type_supported("t_array$_t_enum_5_$dyn_storage"))
+        self.assertFalse(coverage.located_array("t_array$_t_enum_5_$dyn_memory_ptr"))
+
     def test_compilation_retains_artifact_contract_for_preparation(self) -> None:
         metadata = {"storageLayout": {"storage": [{"astId": 3, "slot": "0"}]},
                     "evm": {"deployedBytecode": {"object": "00"}}}

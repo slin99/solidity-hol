@@ -142,6 +142,7 @@ Definition default_elementary_def:
     | IntT _ => SOME (IntegerValue 0)
     | AddressT _ => SOME (AddressValue 0w)
     | FixedBytesT n => SOME (BytesValue (REPLICATE n 0w))
+    | EnumT _ => SOME (IntegerValue 0)
     | _ => NONE
 End
 

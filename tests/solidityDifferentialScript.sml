@@ -64,6 +64,9 @@ Definition argument_value_def:
     if LENGTH bs = 20 then
       SOME (ScalarValue (AddressValue (n2w (num_of_be_bytes bs))))
     else NONE) ∧
+  (* an enum travels as a uint8; the contract checks it against the members *)
+  (argument_value (EnumT _) (IntArg i) =
+    if 0 ≤ i ∧ i < 256 then SOME (ScalarValue (IntegerValue i)) else NONE) ∧
   (argument_value (LocatedT loc ty) (BytesArg bs) =
     if byte_sequence_type ty ∧ loc ≠ StorageLoc then
       SOME (ScalarValue (BytesValue bs)) else NONE) ∧

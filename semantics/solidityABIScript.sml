@@ -18,6 +18,7 @@ Definition abi_type_def:
   (abi_type BoolT = Bool) ∧
   (abi_type (AddressT _) = Address) ∧
   (abi_type (FixedBytesT n) = Bytes (SOME n)) ∧
+  (abi_type (EnumT _) = Uint 8) ∧
   (abi_type BytesT = Bytes NONE) ∧
   (abi_type StringT = String) ∧
   (abi_type (ArrayT ty length) = Array length (abi_type ty)) ∧
@@ -33,6 +34,7 @@ Definition abi_value_def:
   (abi_value (AddressT _) (ScalarValue (AddressValue a)) =
     SOME (NumV (w2n a))) ∧
   (abi_value (FixedBytesT _) (ScalarValue (BytesValue bs)) = SOME (BytesV bs)) ∧
+  (abi_value (EnumT _) (ScalarValue (IntegerValue i)) = SOME (NumV (Num i))) ∧
   (abi_value BytesT (ScalarValue (BytesValue bs)) = SOME (BytesV bs)) ∧
   (abi_value StringT (ScalarValue (BytesValue bs)) = SOME (BytesV bs)) ∧
   (abi_value (LocatedT _ ty) v = abi_value ty v) ∧
@@ -124,6 +126,8 @@ Definition abi_runtime_value_def:
     SOME (ScalarValue (AddressValue (n2w n)))) ∧
   (abi_runtime_value (FixedBytesT _) (BytesV bs) =
     SOME (ScalarValue (BytesValue bs))) ∧
+  (* a uint8, which dispatch checks against the enum's members *)
+  (abi_runtime_value (EnumT _) (NumV n) = SOME (ScalarValue (IntegerValue (&n)))) ∧
   (abi_runtime_value _ _ = NONE)
 End
 

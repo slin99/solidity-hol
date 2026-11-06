@@ -52,6 +52,17 @@ Definition dispatch_procedure_def:
     | NONE => DispatchInvalid "unknown procedure"
 End
 
+(* Decoded arguments of enum type are within the enum's members: the
+ * compiler's decoder reverts on any other value. *)
+Definition enum_arguments_ok_def:
+  (enum_arguments_ok env (ty :: tys) (v :: vs) ⇔
+    (case (ty, v) of
+       (EnumT _, ScalarValue s) => scalar_has_type env ty s
+     | _ => T) ∧
+    enum_arguments_ok env tys vs) ∧
+  (enum_arguments_ok env _ _ ⇔ T)
+End
+
 Definition dispatch_def:
   dispatch env (prog : core_program) (fr : source_frame) =
     let data = fr.call_data in
@@ -64,7 +75,9 @@ Definition dispatch_def:
            NONE => DispatchInvalid "unknown procedure"
          | SOME p =>
              case decode_arguments (MAP SND p.parameters) (DROP 4 data) 4 128 of
-               INL args => DispatchCall p args
+               INL args =>
+                 if enum_arguments_ok env (MAP SND p.parameters) args
+                 then DispatchCall p args else DispatchRevert
              | INR (PanicCompletion n) => DispatchPanic n
              | INR _ => DispatchRevert)
     | NONE =>
@@ -148,8 +161,11 @@ Definition deploy_contract_def:
               (128 + reserved) of
               INR (PanicCompletion n) => ContractReverted (panic_data n) w
             | INR _ => ContractReverted [] w
-            | INL args => run_entry fuel env p args (fr with call_data := []) w
-                FEMPTY reserved T
+            | INL args =>
+                if enum_arguments_ok env (MAP SND p.parameters) args then
+                  run_entry fuel env p args (fr with call_data := []) w
+                    FEMPTY reserved T
+                else ContractReverted [] w
 End
 
 Theorem call_contract_revert_restores_world:
@@ -161,6 +177,7 @@ QED
 
 val () = cv_auto_trans lookup_external_def;
 val () = cv_auto_trans dispatch_procedure_def;
+val () = cv_auto_trans enum_arguments_ok_def;
 val () = cv_auto_trans dispatch_def;
 val () = cv_auto_trans run_entry_def;
 val () = cv_auto_trans call_contract_def;

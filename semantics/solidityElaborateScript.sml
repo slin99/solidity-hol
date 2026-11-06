@@ -469,7 +469,7 @@ Definition elab_expr_def:
         (case variable_destination ctx n x of
            SOME ((ls, target), n1) =>
              let ty = destination_type target in
-             if ¬(is_elementary_type ty ∨ memory_object_type ty ∨ located_value_type ty) then NONE else
+             if ¬(is_stored_scalar_type ty ∨ memory_object_type ty ∨ located_value_type ty) then NONE else
              let (read, n2) = read_destination n1 target in
              let (ss, a) = read in
              SOME ((ls ++ ss, a, ElabType (read_value_type ty)), n2)
@@ -513,7 +513,7 @@ Definition elab_expr_def:
     | SrcMemberAccess _ _ _ _ =>
         (case elab_location ctx n expression of
            SOME ((ss, ref, ty), n1) =>
-             if is_elementary_type ty ∨ memory_object_type ty then
+             if is_stored_scalar_type ty ∨ memory_object_type ty then
                let (rs, a) = bind_value n1 (read_value_type ty) (ReadOperation ty ref) in
                SOME ((ss ++ rs, a, ElabType (read_value_type ty)), n1 + 1)
              else NONE
@@ -548,7 +548,7 @@ Definition elab_expr_def:
          | _ =>
            case elab_location ctx n expression of
              SOME ((ss, ref, ty), n1) =>
-               if is_elementary_type ty ∨ memory_object_type ty then
+               if is_stored_scalar_type ty ∨ memory_object_type ty then
                  let (rs, a) = bind_value n1 (read_value_type ty) (ReadOperation ty ref) in
                  SOME ((ss ++ rs, a, ElabType (read_value_type ty)), n1 + 1)
                else NONE
@@ -805,6 +805,13 @@ Definition elab_expr_def:
     | SrcEnvironment _ f _ =>
         let (ss, a) = bind_value n (environment_type f) (EnvironmentOperation f) in
         SOME ((ss, a, ElabType (environment_type f)), n + 1)
+    | SrcEnumValue _ tn index _ =>
+        (case normalize_type_name tn of
+           SOME ty =>
+             let (ss, a) = bind_value n ty
+                             (ConvertOperation ty (ConstantAtom (IntegerValue (&index)))) in
+             SOME ((ss, a, ElabType ty), n + 1)
+         | NONE => NONE)
     | SrcTypeMember _ member tn _ =>
         (case normalize_type_name tn of
            SOME ty =>
@@ -1457,11 +1464,12 @@ Definition core_state_variables_def:
 End
 
 Definition elab_type_declarations_def:
-  elab_type_declarations structs =
-    all_some (MAP (λs.
+  elab_type_declarations enums structs =
+    OPTION_MAP (λds. MAP (λ(id, members). (AstId id, EnumDeclaration members)) enums ++ ds)
+    (all_some (MAP (λs.
       OPTION_MAP (λfields. (AstId s.struct_info.node_id, StructDeclaration fields))
         (all_some (MAP (λv. OPTION_MAP (λty. (AstId v.var_info.node_id, ty))
-                           (field_variable_type v)) s.struct_members))) structs)
+                           (field_variable_type v)) s.struct_members))) structs))
 End
 
 Definition elab_struct_layouts_def:
@@ -1749,7 +1757,7 @@ Definition elaborate_unit_def:
                constant_table c, immutable_table c) of
            (SOME state, SOME table, SOME immutables) =>
              let constants = number_constants (MAX_LIST (unit_ids u) + 1) table in
-             (case (elab_type_declarations c.contract_structs,
+             (case (elab_type_declarations c.contract_enums c.contract_structs,
                    elab_struct_layouts c.contract_structs,
                    core_state_variables state c.contract_storage,
                    elab_functions c.contract_structs

@@ -223,7 +223,7 @@ Definition eval_operation_def:
                   case default_elementary ty of
                     SOME s => ValueOk (ScalarValue s)
                   | NONE => ValueAbrupt (InvalidCompletion "bad immutable type"))
-         | SOME (ReferenceValue r) => read_storage_reference st.world.accounts ty r
+         | SOME (ReferenceValue r) => read_storage_reference env st.world.accounts ty r
          | _ => ValueAbrupt (InvalidCompletion "bad storage reference"))
     | ByteIndexOperation a index =>
         (case (eval_atom st.scopes a, eval_atom st.scopes index) of
@@ -232,7 +232,7 @@ Definition eval_operation_def:
                 StorageReference _ _ _ _ _ _ =>
                   (case navigate_storage env st.world.accounts r (IntegerValue i) of
                      ValueOk (ReferenceValue element) =>
-                       read_storage_reference st.world.accounts (FixedBytesT 1) element
+                       read_storage_reference env st.world.accounts (FixedBytesT 1) element
                    | ValueAbrupt c => ValueAbrupt c
                    | _ => ValueAbrupt (InvalidCompletion "bad storage byte reference"))
               | _ => case byte_contents st r of
@@ -256,7 +256,7 @@ Definition eval_operation_def:
                 StorageReference _ _ _ _ (ArrayT element _) _ =>
                   (case navigate_storage env st.world.accounts r (IntegerValue i) of
                      ValueOk (ReferenceValue r') =>
-                       read_storage_reference st.world.accounts element r'
+                       read_storage_reference env st.world.accounts element r'
                    | ValueOk _ => ValueAbrupt (InvalidCompletion "bad storage array element")
                    | ValueAbrupt c => ValueAbrupt c)
               | _ =>
