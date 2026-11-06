@@ -1,13 +1,13 @@
 {
   "counts": {
-    "admitted": 526,
+    "admitted": 535,
     "compile-failure": 0,
-    "elaboration-rejected": 59,
-    "import-rejected": 693,
+    "elaboration-rejected": 65,
+    "import-rejected": 674,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 292
+    "source-rejected": 296
   },
   "features": [
     {
@@ -87,7 +87,7 @@
     },
     {
       "feature": "abi.* functions",
-      "first_rejection": 57,
+      "first_rejection": 58,
       "node_types": [
         "MemberAccess"
       ],
@@ -109,7 +109,7 @@
       "node_types": [
         "InlineAssembly"
       ],
-      "only_blocker": 2,
+      "only_blocker": 8,
       "tests": 87
     },
     {
@@ -211,11 +211,11 @@
     },
     {
       "feature": "external library functions",
-      "first_rejection": 31,
+      "first_rejection": 32,
       "node_types": [
         "FunctionDefinition"
       ],
-      "only_blocker": 7,
+      "only_blocker": 8,
       "tests": 47
     },
     {
@@ -224,7 +224,7 @@
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 16,
+      "only_blocker": 17,
       "tests": 41
     },
     {
@@ -243,7 +243,7 @@
         "VariableDeclaration"
       ],
       "only_blocker": 5,
-      "tests": 40
+      "tests": 39
     },
     {
       "feature": "string literals as fixed-size bytes",
@@ -261,6 +261,15 @@
       "tests": 38
     },
     {
+      "feature": "aggregate array mutation",
+      "first_rejection": 0,
+      "node_types": [
+        "MemberAccess"
+      ],
+      "only_blocker": 8,
+      "tests": 37
+    },
+    {
       "feature": "library calls and contract-name members",
       "first_rejection": 0,
       "node_types": [
@@ -268,7 +277,7 @@
         "MemberAccess"
       ],
       "only_blocker": 13,
-      "tests": 37
+      "tests": 34
     },
     {
       "feature": "mappings",
@@ -279,16 +288,7 @@
         "VariableDeclaration"
       ],
       "only_blocker": 9,
-      "tests": 37
-    },
-    {
-      "feature": "aggregate array mutation",
-      "first_rejection": 0,
-      "node_types": [
-        "MemberAccess"
-      ],
-      "only_blocker": 8,
-      "tests": 37
+      "tests": 33
     },
     {
       "feature": "inline assembly",
@@ -316,7 +316,7 @@
     },
     {
       "feature": "named arguments",
-      "first_rejection": 25,
+      "first_rejection": 26,
       "node_types": [
         "FunctionCall"
       ],
@@ -325,7 +325,7 @@
     },
     {
       "feature": "external calls to getters",
-      "first_rejection": 3,
+      "first_rejection": 4,
       "node_types": [
         "MemberAccess"
       ],
@@ -341,21 +341,6 @@
       ],
       "only_blocker": 0,
       "tests": 30
-    },
-    {
-      "feature": "enums",
-      "first_rejection": 23,
-      "node_types": [
-        "EnumDefinition",
-        "EnumValue",
-        "FunctionCall",
-        "MemberAccess",
-        "TupleExpression",
-        "UserDefinedTypeName",
-        "VariableDeclaration"
-      ],
-      "only_blocker": 4,
-      "tests": 29
     },
     {
       "feature": "using for with functions",
@@ -376,17 +361,6 @@
       "tests": 28
     },
     {
-      "feature": "library structs and events",
-      "first_rejection": 26,
-      "node_types": [
-        "EnumDefinition",
-        "EventDefinition",
-        "StructDefinition"
-      ],
-      "only_blocker": 1,
-      "tests": 26
-    },
-    {
       "feature": "members of elementary type names",
       "first_rejection": 0,
       "node_types": [
@@ -403,6 +377,16 @@
         "MemberAccess"
       ],
       "only_blocker": 13,
+      "tests": 23
+    },
+    {
+      "feature": "library structs and events",
+      "first_rejection": 23,
+      "node_types": [
+        "EventDefinition",
+        "StructDefinition"
+      ],
+      "only_blocker": 1,
       "tests": 23
     },
     {
@@ -469,7 +453,7 @@
     },
     {
       "feature": "type(\u2026)",
-      "first_rejection": 10,
+      "first_rejection": 11,
       "node_types": [
         "Identifier"
       ],
@@ -478,11 +462,11 @@
     },
     {
       "feature": "constants",
-      "first_rejection": 7,
+      "first_rejection": 9,
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 6,
+      "only_blocker": 7,
       "tests": 15
     },
     {
@@ -651,13 +635,13 @@
       "tests": 4
     },
     {
-      "feature": "conversions to non-elementary types",
+      "feature": "enum mapping keys",
       "first_rejection": 0,
       "node_types": [
-        "Identifier",
-        "IndexAccess"
+        "IndexAccess",
+        "VariableDeclaration"
       ],
-      "only_blocker": 0,
+      "only_blocker": 1,
       "tests": 4
     },
     {
@@ -691,6 +675,16 @@
       "feature": "array members as values",
       "first_rejection": 0,
       "node_types": [
+        "MemberAccess"
+      ],
+      "only_blocker": 1,
+      "tests": 3
+    },
+    {
+      "feature": "enum types as expressions",
+      "first_rejection": 0,
+      "node_types": [
+        "Identifier",
         "MemberAccess"
       ],
       "only_blocker": 1,
@@ -807,6 +801,24 @@
       "tests": 1
     },
     {
+      "feature": "conversions to non-elementary types",
+      "first_rejection": 0,
+      "node_types": [
+        "IndexAccess"
+      ],
+      "only_blocker": 0,
+      "tests": 1
+    },
+    {
+      "feature": "enums",
+      "first_rejection": 0,
+      "node_types": [
+        "TupleExpression"
+      ],
+      "only_blocker": 0,
+      "tests": 1
+    },
+    {
       "feature": "nested tuples",
       "first_rejection": 0,
       "node_types": [
@@ -835,67 +847,67 @@
       "feature": "address members (balance, call, transfer, \u2026)"
     },
     {
-      "admitted": 93,
+      "admitted": 94,
       "feature": "transient storage"
     },
     {
-      "admitted": 115,
+      "admitted": 116,
       "feature": "operator delete"
     },
     {
-      "admitted": 133,
+      "admitted": 134,
       "feature": "literals of non-integer types"
     },
     {
-      "admitted": 151,
+      "admitted": 152,
       "feature": "bytes push and pop"
     },
     {
-      "admitted": 167,
+      "admitted": 168,
       "feature": "inline arrays"
     },
     {
-      "admitted": 181,
+      "admitted": 182,
       "feature": "conditional expressions"
     },
     {
-      "admitted": 194,
+      "admitted": 195,
       "feature": "aggregate array mutation"
     },
     {
-      "admitted": 207,
+      "admitted": 208,
       "feature": "library calls and contract-name members"
     },
     {
-      "admitted": 220,
+      "admitted": 221,
       "feature": "require with a custom error"
     },
     {
-      "admitted": 231,
+      "admitted": 232,
       "feature": "struct values and copying"
     },
     {
-      "admitted": 257,
+      "admitted": 258,
       "feature": "structs"
     },
     {
-      "admitted": 292,
+      "admitted": 293,
       "feature": "local reference bindings"
     },
     {
-      "admitted": 316,
+      "admitted": 317,
       "feature": "arrays"
     },
     {
-      "admitted": 351,
+      "admitted": 352,
       "feature": "array values"
     },
     {
-      "admitted": 371,
+      "admitted": 378,
       "feature": "inline assembly memory references"
     },
     {
-      "admitted": 398,
+      "admitted": 405,
       "feature": "inline assembly memory outside the scratch space"
     }
   ],
@@ -1166,7 +1178,6 @@
         "address members (balance, call, transfer, \u2026)",
         "array values",
         "arrays",
-        "enums",
         "hash and signature built-ins",
         "local reference bindings",
         "memory arrays (new T[](n))",
@@ -2073,13 +2084,12 @@
       "test": "abicoder/cleanup/enum_v1.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "enums",
         "inline assembly memory references"
       ],
-      "first": "enums",
-      "reason": "abicoder/cleanup/enum_v2.sol: EnumDefinition 4: unsupported contract member",
+      "first": null,
+      "reason": "abicoder/cleanup/enum_v2.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "abicoder/cleanup/enum_v2.sol"
     },
@@ -5481,11 +5491,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "constants",
-        "enums"
+        "constants"
       ],
-      "first": "enums",
-      "reason": "constants/constant_string_at_file_level.sol: UserDefinedTypeName 57: only struct user-defined types are supported",
+      "first": "constants",
+      "reason": "constants/constant_string_at_file_level.sol: VariableDeclaration 25: unsupported source unit member VariableDeclaration",
       "scan_agrees": true,
       "test": "constants/constant_string_at_file_level.sol"
     },
@@ -5503,11 +5512,10 @@
       "category": "import-rejected",
       "features": [
         "constants",
-        "enums",
         "string literals as fixed-size bytes"
       ],
-      "first": "enums",
-      "reason": "constants/constant_variables.sol: EnumDefinition 8: unsupported contract member",
+      "first": "constants",
+      "reason": "constants/constant_variables.sol: VariableDeclaration 13: enum constants are not supported",
       "scan_agrees": true,
       "test": "constants/constant_variables.sol"
     },
@@ -6066,24 +6074,18 @@
       "test": "ecrecover/failing_ecrecover_invalid_input_proper.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conversions to non-elementary types",
-        "enums"
-      ],
-      "first": "enums",
-      "reason": "enums/constructing_enums_from_ints.sol: EnumDefinition 3: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "enums/constructing_enums_from_ints.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conversions to non-elementary types",
-        "enums"
-      ],
-      "first": "enums",
-      "reason": "enums/enum_explicit_overflow.sol: EnumDefinition 4: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "enums/enum_explicit_overflow.sol"
     },
@@ -6098,13 +6100,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "enums",
-        "external library functions",
-        "library calls and contract-name members",
-        "library structs and events"
+        "external library functions"
       ],
-      "first": "library structs and events",
-      "reason": "enums/enum_referencing.sol: EnumDefinition 9: unsupported library member EnumDefinition",
+      "first": "external library functions",
+      "reason": "enums/enum_referencing.sol: FunctionDefinition 19: only internal library functions are supported",
       "scan_agrees": true,
       "test": "enums/enum_referencing.sol"
     },
@@ -6112,75 +6111,64 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "conversions to non-elementary types",
+        "enum types as expressions",
         "enums"
       ],
-      "first": "enums",
-      "reason": "enums/enum_with_256_members.sol: UserDefinedTypeName 261: only struct user-defined types are supported",
+      "first": "abi.* functions",
+      "reason": "enums/enum_with_256_members.sol: MemberAccess 313: unsupported built-in member decode",
       "scan_agrees": true,
       "test": "enums/enum_with_256_members.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "enums",
         "inline assembly memory references"
       ],
-      "first": "enums",
-      "reason": "enums/invalid_enum_logged.sol: EnumDefinition 3: unsupported contract member",
+      "first": null,
+      "reason": "enums/invalid_enum_logged.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "enums/invalid_enum_logged.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "enums",
+        "enum types as expressions",
         "type(\u2026)"
       ],
-      "first": "enums",
-      "reason": "enums/minmax.sol: EnumDefinition 5: unsupported contract member",
+      "first": "type(\u2026)",
+      "reason": "enums/minmax.sol: Identifier 13: expected ElementaryTypeNameExpression",
       "scan_agrees": true,
       "test": "enums/minmax.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "enums",
-        "library calls and contract-name members"
-      ],
-      "first": "enums",
-      "reason": "enums/using_contract_enums_with_explicit_contract_name.sol: EnumDefinition 4: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "enums/using_contract_enums_with_explicit_contract_name.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "enums"
-      ],
-      "first": "enums",
-      "reason": "enums/using_enums.sol: EnumDefinition 5: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "enums/using_enums.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "enums"
-      ],
-      "first": "enums",
-      "reason": "enums/using_inherited_enum.sol: EnumDefinition 4: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "enums/using_inherited_enum.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "enums",
-        "library calls and contract-name members"
-      ],
-      "first": "enums",
-      "reason": "enums/using_inherited_enum_excplicitly.sol: EnumDefinition 4: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "enums/using_inherited_enum_excplicitly.sol"
     },
@@ -6241,12 +6229,11 @@
       "category": "import-rejected",
       "features": [
         "custom errors with reference parameters",
-        "enums",
         "named arguments",
         "structs"
       ],
-      "first": "enums",
-      "reason": "errors/named_parameters_shadowing_types.sol: EnumDefinition 5: unsupported contract member",
+      "first": "named arguments",
+      "reason": "errors/named_parameters_shadowing_types.sol: FunctionCall 28: named arguments are not supported",
       "scan_agrees": true,
       "test": "errors/named_parameters_shadowing_types.sol"
     },
@@ -10732,13 +10719,10 @@
       "test": "libraries/internal_library_function_attached_to_dynamic_array.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "enums",
-        "library structs and events"
-      ],
-      "first": "library structs and events",
-      "reason": "libraries/internal_library_function_attached_to_enum.sol: EnumDefinition 3: unsupported library member EnumDefinition",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/internal_library_function_attached_to_enum.sol"
     },
@@ -11036,13 +11020,12 @@
       "test": "libraries/library_delegatecall_guard_view_staticcall.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "enums",
-        "library structs and events"
+        "enum types as expressions"
       ],
-      "first": "library structs and events",
-      "reason": "libraries/library_enum_as_an_expression.sol: EnumDefinition 3: unsupported library member EnumDefinition",
+      "first": null,
+      "reason": "libraries/library_enum_as_an_expression.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "libraries/library_enum_as_an_expression.sol"
     },
@@ -12773,47 +12756,42 @@
       "test": "reverts/error_struct.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "enums",
         "inline assembly memory references"
       ],
-      "first": "enums",
-      "reason": "reverts/invalid_enum_as_external_arg.sol: EnumDefinition 3: unsupported contract member",
+      "first": null,
+      "reason": "reverts/invalid_enum_as_external_arg.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "reverts/invalid_enum_as_external_arg.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "enums",
         "inline assembly memory references"
       ],
-      "first": "enums",
-      "reason": "reverts/invalid_enum_as_external_ret.sol: EnumDefinition 3: unsupported contract member",
+      "first": null,
+      "reason": "reverts/invalid_enum_as_external_ret.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "reverts/invalid_enum_as_external_ret.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "enums",
         "inline assembly memory references"
       ],
-      "first": "enums",
-      "reason": "reverts/invalid_enum_compared.sol: EnumDefinition 3: unsupported contract member",
+      "first": null,
+      "reason": "reverts/invalid_enum_compared.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "reverts/invalid_enum_compared.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "enums",
-        "inline assembly memory references",
-        "public state variables"
+        "inline assembly memory references"
       ],
-      "first": "enums",
-      "reason": "reverts/invalid_enum_stored.sol: EnumDefinition 3: unsupported contract member",
+      "first": null,
+      "reason": "reverts/invalid_enum_stored.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "reverts/invalid_enum_stored.sol"
     },
@@ -13546,12 +13524,10 @@
       "test": "storage/packed_storage_structs_bytes.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "enums"
-      ],
-      "first": "enums",
-      "reason": "storage/packed_storage_structs_enum.sol: EnumDefinition 5: unsupported contract member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storage/packed_storage_structs_enum.sol"
     },
@@ -14077,12 +14053,10 @@
       "test": "storageLayoutSpecifier/state_variable_dynamic_array.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "enums"
-      ],
-      "first": "enums",
-      "reason": "storageLayoutSpecifier/state_variable_enum.sol: UserDefinedTypeName 8: only struct user-defined types are supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "storageLayoutSpecifier/state_variable_enum.sol"
     },
@@ -15519,13 +15493,12 @@
     {
       "category": "import-rejected",
       "features": [
-        "enums",
+        "enum mapping keys",
         "external calls to getters",
-        "mappings",
         "public state variables"
       ],
-      "first": "enums",
-      "reason": "types/mapping_enum_key_getter_v2.sol: EnumDefinition 5: unsupported contract member",
+      "first": "external calls to getters",
+      "reason": "types/mapping_enum_key_getter_v2.sol: MemberAccess 34: calls only functions declared in the compilation",
       "scan_agrees": true,
       "test": "types/mapping_enum_key_getter_v2.sol"
     },
@@ -15540,11 +15513,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "enums",
+        "enum mapping keys",
         "external library functions",
         "local reference bindings",
-        "mapping values",
-        "mappings"
+        "mapping values"
       ],
       "first": "external library functions",
       "reason": "types/mapping_enum_key_library_v2.sol: FunctionDefinition 23: only internal library functions are supported",
@@ -15560,13 +15532,12 @@
       "test": "types/mapping_enum_key_v1.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "enums",
-        "mappings"
+        "enum mapping keys"
       ],
-      "first": "enums",
-      "reason": "types/mapping_enum_key_v2.sol: UserDefinedTypeName 7: only struct user-defined types are supported",
+      "first": null,
+      "reason": "types/mapping_enum_key_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "types/mapping_enum_key_v2.sol"
     },
@@ -16214,7 +16185,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "enums",
         "source units without exactly one contract",
         "structs",
         "user-defined value types"
@@ -16409,13 +16379,12 @@
       "test": "variables/transient_state_address_variable_members.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "enums",
         "transient storage"
       ],
-      "first": "enums",
-      "reason": "variables/transient_state_enum_variable.sol: EnumDefinition 5: unsupported contract member",
+      "first": null,
+      "reason": "variables/transient_state_enum_variable.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "variables/transient_state_enum_variable.sol"
     },
@@ -17759,14 +17728,13 @@
       "test": "viaYul/loops/simple.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "enums",
-        "mappings",
+        "enum mapping keys",
         "public state variables"
       ],
-      "first": "enums",
-      "reason": "viaYul/mapping_enum_key_getter.sol: EnumDefinition 5: unsupported contract member",
+      "first": null,
+      "reason": "viaYul/mapping_enum_key_getter.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "viaYul/mapping_enum_key_getter.sol"
     },
