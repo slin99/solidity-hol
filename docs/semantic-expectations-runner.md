@@ -6,6 +6,10 @@ executes those admitted programs against the upstream test's return values,
 revert data and events. It runs on demand; the upstream corpus sweep is absent
 from per-PR CI.
 
+The committed [summary](semantic-expectations.md) lists every selected test and
+each inconclusive call. The [JSON report](semantic-expectations.json) retains
+the inputs and execution observations for every call.
+
 ## Running
 
 Use the pinned Solidity checkout described in the acceptance report, and the
