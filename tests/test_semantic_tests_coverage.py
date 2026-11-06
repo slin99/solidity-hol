@@ -203,6 +203,21 @@ class GetterTests(unittest.TestCase):
         self.assertEqual({b.feature for b in coverage.scan({"t.sol": unit([overriding, function(4, [])])})[3]},
                          {"overriding state variables"})
 
+    def test_struct_getters_need_the_contracts_structs(self) -> None:
+        """A getter of a struct the deployed contract doesn't inherit, such as
+        one of a contract deployed beside it, is rejected as the importer
+        rejects it."""
+        artifact = json.loads((ROOT / "testdata/differential/expected/struct_getters.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        self.assertEqual(coverage.scan(asts), {})
+        (unit_ast,) = asts.values()
+        contracts = {n["name"]: n for n in unit_ast["nodes"] if n["nodeType"] == "ContractDefinition"}
+        getters = contracts["StructGetters"]
+        getters["linearizedBaseContracts"] = [getters["id"]]
+        based = next(n for n in getters["nodes"] if n.get("name") == "based")
+        self.assertIn(coverage.Blocker("VariableDeclaration", "public state variables", "elaboration"),
+                      coverage.scan(asts).get(based["id"], []))
+
     def test_external_calls_to_getters_are_blocked(self) -> None:
         # C(a).x() for the public state variable x of C
         state = dict(variable(3, state=True, visibility="public"),
