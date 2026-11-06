@@ -1238,7 +1238,7 @@ Definition check_expr_def:
            (with_value ⇒ callee.ext_mutability = "payable") ∧
            LENGTH operands = LENGTH params + (if with_value then 2 else 1) ∧
            check_exprs env operands ∧ vt = call_value_type rets ∧
-           (* returned data is not range-checked against an enum *)
+           (* calls returning enums are not supported yet *)
            EVERY (λty. case ty of EnumT _ => F | _ => T) rets
         then SOME vt else NONE
     | _ => NONE) ∧

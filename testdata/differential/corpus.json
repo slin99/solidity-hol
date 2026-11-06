@@ -940,6 +940,9 @@
         {"name": "external_call_argument", "function": "viaThis", "args": [2], "expect": {"return": [2]}},
         {"name": "enum_then_bytes", "function": "withBytes", "args": [1, "0x616263"], "expect": {"return": [4]}},
         {"name": "enum_reverts_before_later_argument", "calldata": "0xf5c2338a000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000010000000000000000", "expect": {"revert": "0x"}},
+        {"name": "struct_fields_written", "function": "setEntry", "args": [2, 1], "storage": {"3": 1792}, "expect": {"return": []}, "final_storage": {"3": 67330}},
+        {"name": "struct_fields_read", "function": "entryFields", "args": [], "storage": {"3": 132865}, "expect": {"return": [1, 7, 2]}},
+        {"name": "struct_field_byte_out_of_range_panics", "function": "entryFields", "args": [], "storage": {"3": 591617}, "expect": {"panic": "0x21"}},
         {"name": "constructor_argument", "deploy": true, "args": [2], "expect": {"return": []}, "final_storage": {"0": 2}},
         {"name": "constructor_argument_out_of_range_reverts", "deploy": true, "args": [3], "expect": {"revert": "0x"}}
       ]

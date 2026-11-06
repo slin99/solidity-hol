@@ -25,6 +25,15 @@ contract Enums {
     mapping(address => Status) private statuses;
     Status[] private history;
 
+    struct Entry {
+        Status s;
+        uint8 n;
+        Level l;
+    }
+
+    // s, n and l share slot 3.
+    Entry private entry;
+
     event StatusSet(Status indexed s, Level l);
 
     constructor(Status initial) {
@@ -77,6 +86,15 @@ contract Enums {
 
     function historyAt(uint256 i) external view returns (Status) {
         return history[i];
+    }
+
+    function setEntry(Status s, Level l) external {
+        entry.s = s;
+        entry.l = l;
+    }
+
+    function entryFields() external view returns (Status, uint8, Level) {
+        return (entry.s, entry.n, entry.l);
     }
 
     function announce(Status s, Level l) external {
