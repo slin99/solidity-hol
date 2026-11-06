@@ -22,12 +22,12 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 | outcome | tests |
 | --- | ---: |
-| admitted | 545 |
+| admitted | 550 |
 | elaboration-rejected | 68 |
 | import-rejected | 659 |
 | compile-failure | 0 |
 | malformed-input | 0 |
-| source-rejected | 298 |
+| source-rejected | 293 |
 | invalid-core | 0 |
 | skipped | 100 |
 | total | 1670 |
@@ -60,11 +60,10 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | inline assembly memory outside the scratch space | `InlineAssembly` | 50 | 8 | 0 |
 | inline arrays | `TupleExpression` | 47 | 13 | 38 |
 | external library functions | `FunctionDefinition` | 45 | 8 | 31 |
-| transient storage | `VariableDeclaration` | 41 | 17 | 0 |
+| transient storage | `VariableDeclaration` | 41 | 19 | 0 |
 | conditional expressions | `Conditional` | 40 | 12 | 25 |
-| public state variables | `VariableDeclaration` | 39 | 5 | 0 |
 | string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 18 | 0 |
-| aggregate array mutation | `MemberAccess` | 37 | 8 | 0 |
+| aggregate array mutation | `MemberAccess` | 37 | 10 | 0 |
 | mappings | `IndexAccess`, `TupleExpression`, `VariableDeclaration` | 33 | 9 | 0 |
 | inline assembly | `InlineAssembly` | 32 | 11 | 22 |
 | literals of non-integer types | `Assignment`, `BinaryOperation`, `FunctionCall`, `Literal`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 32 | 10 | 0 |
@@ -81,6 +80,7 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | try/catch | `FunctionCall`, `TryCatchClause`, `TryStatement` | 20 | 4 | 17 |
 | library structs and events | `EventDefinition`, `StructDefinition` | 20 | 1 | 20 |
 | array slices | `IndexRangeAccess` | 19 | 5 | 16 |
+| public state variables | `VariableDeclaration` | 19 | 0 | 0 |
 | require with a custom error | `FunctionCall` | 18 | 11 | 0 |
 | mapping values | `Identifier`, `IndexAccess`, `MemberAccess` | 17 | 0 | 0 |
 | type(…) | `Identifier` | 16 | 4 | 11 |
@@ -105,12 +105,12 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | messages that are not literals | `FunctionCall` | 4 | 3 | 0 |
 | bound calls copying their receiver | `FunctionCall` | 4 | 2 | 2 |
 | enum mapping keys | `IndexAccess`, `VariableDeclaration` | 4 | 1 | 0 |
+| overriding state variables | `VariableDeclaration` | 3 | 3 | 3 |
 | built-in blobhash | `Identifier` | 3 | 2 | 3 |
 | built-in blockhash | `Identifier` | 3 | 2 | 3 |
 | return variables in modifier arguments | `Identifier` | 3 | 2 | 0 |
 | array members as values | `MemberAccess` | 3 | 1 | 0 |
 | enum types as expressions | `Identifier`, `MemberAccess` | 3 | 1 | 0 |
-| overriding state variables | `VariableDeclaration` | 3 | 1 | 3 |
 | built-in selfdestruct | `Identifier` | 3 | 0 | 0 |
 | immutables | `VariableDeclaration` | 3 | 0 | 0 |
 | built-in gasleft | `Identifier` | 2 | 2 | 2 |
@@ -132,25 +132,25 @@ Supporting the features in this order admits the most rejected tests at each ste
 | step | feature | admitted |
 | ---: | --- | ---: |
 | 1 | abi.* functions | 25 |
-| 2 | string literals as fixed-size bytes | 44 |
-| 3 | address members (balance, call, transfer, …) | 62 |
-| 4 | transient storage | 80 |
-| 5 | operator delete | 102 |
-| 6 | literals of non-integer types | 119 |
-| 7 | bytes push and pop | 137 |
-| 8 | inline arrays | 153 |
-| 9 | conditional expressions | 167 |
-| 10 | aggregate array mutation | 180 |
-| 11 | library calls and contract-name members | 193 |
-| 12 | require with a custom error | 206 |
-| 13 | struct values and copying | 217 |
-| 14 | structs | 245 |
-| 15 | local reference bindings | 280 |
-| 16 | arrays | 304 |
-| 17 | array values | 339 |
-| 18 | inline assembly memory references | 365 |
-| 19 | inline assembly memory outside the scratch space | 391 |
-| 20 | named arguments | 410 |
+| 2 | transient storage | 44 |
+| 3 | operator delete | 66 |
+| 4 | address members (balance, call, transfer, …) | 85 |
+| 5 | string literals as fixed-size bytes | 104 |
+| 6 | literals of non-integer types | 121 |
+| 7 | bytes push and pop | 139 |
+| 8 | inline arrays | 155 |
+| 9 | aggregate array mutation | 170 |
+| 10 | conditional expressions | 184 |
+| 11 | library calls and contract-name members | 197 |
+| 12 | require with a custom error | 210 |
+| 13 | struct values and copying | 221 |
+| 14 | structs | 252 |
+| 15 | local reference bindings | 288 |
+| 16 | arrays | 312 |
+| 17 | array values | 347 |
+| 18 | inline assembly memory references | 375 |
+| 19 | inline assembly memory outside the scratch space | 401 |
+| 20 | named arguments | 421 |
 
 ## Skipped and compile failures
 
@@ -395,8 +395,11 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `getters/arrays.sol`
 - `getters/bytes.sol`
 - `getters/mapping.sol`
+- `getters/mapping_to_struct.sol`
 - `getters/mapping_with_names.sol`
 - `getters/string_and_bytes.sol`
+- `getters/struct_with_bytes.sol`
+- `getters/struct_with_bytes_simple.sol`
 - `immutable/assign_at_declaration.sol`
 - `immutable/assign_from_immutables.sol`
 - `immutable/fun_read_in_ctor.sol`
@@ -585,6 +588,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `statements/do_while_loop_continue.sol`
 - `statements/empty_for_loop.sol`
 - `storage/accessors_mapping_for_array.sol`
+- `storage/array_accessor.sol`
 - `storage/empty_nonempty_empty.sol`
 - `storage/mapping_state.sol`
 - `storage/packed_storage_signed.sol`
@@ -593,6 +597,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `storage/simple_accessor.sol`
 - `storage/state_smoke_test.sol`
 - `storage/storage_packed_array_copy.sol`
+- `storage/struct_accessor.sol`
 - `storageLayoutSpecifier/base_slot_max_value.sol`
 - `storageLayoutSpecifier/constructor.sol`
 - `storageLayoutSpecifier/dynamic_array_storage_end.sol`
@@ -875,9 +880,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `getters/array_mapping_struct.sol`: getters/array_mapping_struct.sol: valid_src_unit failed (source validation/subset restriction)
 - `getters/mapping_array_struct.sol`: getters/mapping_array_struct.sol: valid_src_unit failed (source validation/subset restriction)
 - `getters/mapping_of_string.sol`: getters/mapping_of_string.sol: valid_src_unit failed (source validation/subset restriction)
-- `getters/mapping_to_struct.sol`: getters/mapping_to_struct.sol: valid_src_unit failed (source validation/subset restriction)
-- `getters/struct_with_bytes.sol`: getters/struct_with_bytes.sol: valid_src_unit failed (source validation/subset restriction)
-- `getters/struct_with_bytes_simple.sol`: getters/struct_with_bytes_simple.sol: valid_src_unit failed (source validation/subset restriction)
 - `getters/value_types.sol`: getters/value_types.sol: valid_src_unit failed (source validation/subset restriction)
 - `immutable/delete.sol`: immutable/delete.sol: valid_src_unit failed (source validation/subset restriction)
 - `immutable/multiple_initializations.sol`: immutable/multiple_initializations.sol: valid_src_unit failed (source validation/subset restriction)
@@ -909,7 +911,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `smoke/basic.sol`: smoke/basic.sol: valid_src_unit failed (source validation/subset restriction)
 - `smoke/bytes_and_strings.sol`: smoke/bytes_and_strings.sol: valid_src_unit failed (source validation/subset restriction)
 - `smoke/failure.sol`: smoke/failure.sol: valid_src_unit failed (source validation/subset restriction)
-- `storage/array_accessor.sol`: storage/array_accessor.sol: valid_src_unit failed (source validation/subset restriction)
 - `storage/delete_overlapping_transient_after_inherited_storage_same_value_type.sol`: storage/delete_overlapping_transient_after_inherited_storage_same_value_type.sol: valid_src_unit failed (source validation/subset restriction)
 - `storage/delete_overlapping_transient_after_storage_array_pop_same_base_type.sol`: storage/delete_overlapping_transient_after_storage_array_pop_same_base_type.sol: valid_src_unit failed (source validation/subset restriction)
 - `storage/delete_overlapping_transient_after_storage_delete_same_value_type.sol`: storage/delete_overlapping_transient_after_storage_delete_same_value_type.sol: valid_src_unit failed (source validation/subset restriction)
@@ -925,7 +926,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `storage/storage_boundary_array_delete.sol`: storage/storage_boundary_array_delete.sol: valid_src_unit failed (source validation/subset restriction)
 - `storage/storage_boundary_array_delete_overlapping_variable.sol`: storage/storage_boundary_array_delete_overlapping_variable.sol: valid_src_unit failed (source validation/subset restriction)
 - `storage/storage_boundary_packed_array.sol`: storage/storage_boundary_packed_array.sol: valid_src_unit failed (source validation/subset restriction)
-- `storage/struct_accessor.sol`: storage/struct_accessor.sol: valid_src_unit failed (source validation/subset restriction)
 - `storageLayoutSpecifier/delete.sol`: storageLayoutSpecifier/delete.sol: valid_src_unit failed (source validation/subset restriction)
 - `storageLayoutSpecifier/delete_transient_storage.sol`: storageLayoutSpecifier/delete_transient_storage.sol: valid_src_unit failed (source validation/subset restriction)
 - `storageLayoutSpecifier/function_from_base_contract.sol`: storageLayoutSpecifier/function_from_base_contract.sol: valid_src_unit failed (source validation/subset restriction)

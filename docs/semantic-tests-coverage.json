@@ -1,13 +1,13 @@
 {
   "counts": {
-    "admitted": 545,
+    "admitted": 550,
     "compile-failure": 0,
     "elaboration-rejected": 68,
     "import-rejected": 659,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 298
+    "source-rejected": 293
   },
   "features": [
     {
@@ -215,7 +215,7 @@
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 17,
+      "only_blocker": 19,
       "tests": 41
     },
     {
@@ -226,15 +226,6 @@
       ],
       "only_blocker": 12,
       "tests": 40
-    },
-    {
-      "feature": "public state variables",
-      "first_rejection": 0,
-      "node_types": [
-        "VariableDeclaration"
-      ],
-      "only_blocker": 5,
-      "tests": 39
     },
     {
       "feature": "string literals as fixed-size bytes",
@@ -257,7 +248,7 @@
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 8,
+      "only_blocker": 10,
       "tests": 37
     },
     {
@@ -420,6 +411,15 @@
         "IndexRangeAccess"
       ],
       "only_blocker": 5,
+      "tests": 19
+    },
+    {
+      "feature": "public state variables",
+      "first_rejection": 0,
+      "node_types": [
+        "VariableDeclaration"
+      ],
+      "only_blocker": 0,
       "tests": 19
     },
     {
@@ -645,6 +645,15 @@
       "tests": 4
     },
     {
+      "feature": "overriding state variables",
+      "first_rejection": 3,
+      "node_types": [
+        "VariableDeclaration"
+      ],
+      "only_blocker": 3,
+      "tests": 3
+    },
+    {
       "feature": "built-in blobhash",
       "first_rejection": 3,
       "node_types": [
@@ -686,15 +695,6 @@
       "node_types": [
         "Identifier",
         "MemberAccess"
-      ],
-      "only_blocker": 1,
-      "tests": 3
-    },
-    {
-      "feature": "overriding state variables",
-      "first_rejection": 3,
-      "node_types": [
-        "VariableDeclaration"
       ],
       "only_blocker": 1,
       "tests": 3
@@ -826,78 +826,78 @@
     },
     {
       "admitted": 44,
-      "feature": "string literals as fixed-size bytes"
-    },
-    {
-      "admitted": 62,
-      "feature": "address members (balance, call, transfer, \u2026)"
-    },
-    {
-      "admitted": 80,
       "feature": "transient storage"
     },
     {
-      "admitted": 102,
+      "admitted": 66,
       "feature": "operator delete"
     },
     {
-      "admitted": 119,
+      "admitted": 85,
+      "feature": "address members (balance, call, transfer, \u2026)"
+    },
+    {
+      "admitted": 104,
+      "feature": "string literals as fixed-size bytes"
+    },
+    {
+      "admitted": 121,
       "feature": "literals of non-integer types"
     },
     {
-      "admitted": 137,
+      "admitted": 139,
       "feature": "bytes push and pop"
     },
     {
-      "admitted": 153,
+      "admitted": 155,
       "feature": "inline arrays"
     },
     {
-      "admitted": 167,
-      "feature": "conditional expressions"
-    },
-    {
-      "admitted": 180,
+      "admitted": 170,
       "feature": "aggregate array mutation"
     },
     {
-      "admitted": 193,
+      "admitted": 184,
+      "feature": "conditional expressions"
+    },
+    {
+      "admitted": 197,
       "feature": "library calls and contract-name members"
     },
     {
-      "admitted": 206,
+      "admitted": 210,
       "feature": "require with a custom error"
     },
     {
-      "admitted": 217,
+      "admitted": 221,
       "feature": "struct values and copying"
     },
     {
-      "admitted": 245,
+      "admitted": 252,
       "feature": "structs"
     },
     {
-      "admitted": 280,
+      "admitted": 288,
       "feature": "local reference bindings"
     },
     {
-      "admitted": 304,
+      "admitted": 312,
       "feature": "arrays"
     },
     {
-      "admitted": 339,
+      "admitted": 347,
       "feature": "array values"
     },
     {
-      "admitted": 365,
+      "admitted": 375,
       "feature": "inline assembly memory references"
     },
     {
-      "admitted": 391,
+      "admitted": 401,
       "feature": "inline assembly memory outside the scratch space"
     },
     {
-      "admitted": 410,
+      "admitted": 421,
       "feature": "named arguments"
     }
   ],
@@ -4697,7 +4697,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -4725,7 +4724,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -8769,8 +8767,7 @@
     {
       "category": "source-rejected",
       "features": [
-        "aggregate array mutation",
-        "public state variables"
+        "aggregate array mutation"
       ],
       "first": null,
       "reason": "getters/array_mapping_struct.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -8804,8 +8801,7 @@
     {
       "category": "source-rejected",
       "features": [
-        "aggregate array mutation",
-        "public state variables"
+        "aggregate array mutation"
       ],
       "first": null,
       "reason": "getters/mapping_array_struct.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -8824,12 +8820,10 @@
       "test": "getters/mapping_of_string.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "public state variables"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "getters/mapping_to_struct.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "getters/mapping_to_struct.sol"
     },
@@ -8850,22 +8844,18 @@
       "test": "getters/string_and_bytes.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "public state variables"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "getters/struct_with_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "getters/struct_with_bytes.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "public state variables"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "getters/struct_with_bytes_simple.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "getters/struct_with_bytes_simple.sol"
     },
@@ -9870,7 +9860,6 @@
       "features": [
         "inline assembly memory references",
         "local reference bindings",
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -10078,7 +10067,6 @@
         "abi.* functions",
         "inline assembly memory references",
         "local reference bindings",
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -13153,12 +13141,10 @@
       "test": "storage/accessors_mapping_for_array.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "public state variables"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "storage/array_accessor.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "storage/array_accessor.sol"
     },
@@ -13643,12 +13629,10 @@
       "test": "storage/storage_packed_array_copy.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "public state variables"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "storage/struct_accessor.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "storage/struct_accessor.sol"
     },
@@ -13963,7 +13947,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "public state variables",
         "transient storage"
       ],
       "first": null,
@@ -13982,7 +13965,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "public state variables",
         "transient storage"
       ],
       "first": null,
@@ -14015,7 +13997,6 @@
       "category": "source-rejected",
       "features": [
         "local reference bindings",
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -14029,7 +14010,6 @@
       "features": [
         "external library functions",
         "local reference bindings",
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -14842,7 +14822,6 @@
       "category": "import-rejected",
       "features": [
         "named arguments",
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -16216,8 +16195,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "overriding state variables",
-        "public state variables"
+        "overriding state variables"
       ],
       "first": "overriding state variables",
       "reason": "variables/public_state_overridding_dynamic_struct.sol: VariableDeclaration 29: overriding state variables are not supported",
@@ -16227,8 +16205,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "overriding state variables",
-        "public state variables"
+        "overriding state variables"
       ],
       "first": "overriding state variables",
       "reason": "variables/public_state_overridding_mapping_to_dynamic_struct.sol: VariableDeclaration 33: overriding state variables are not supported",
@@ -16870,8 +16847,7 @@
       "category": "import-rejected",
       "features": [
         "external calls to getters",
-        "inline arrays",
-        "public state variables"
+        "inline arrays"
       ],
       "first": "inline arrays",
       "reason": "various/skip_dynamic_types_for_structs.sol: TupleExpression 38: inline arrays are not supported",
@@ -16977,7 +16953,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
