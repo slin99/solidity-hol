@@ -826,4 +826,135 @@ fun run_three_way {root, corpus, yul_root} =
   end
   handle CorpusError msg => raise ERR "run_three_way" msg
 
+
+(* The sweep uses the same preparation, bytecode reader, frames and cv evaluator
+ * as the maintained corpus. Only transaction sequencing differs. *)
+fun run_expectations {root, manifest} =
+  let
+    fun eval tm = rhs (concl (cv_eval tm))
+    fun output fields =
+      (print ("expectation-result: " ^ json_object fields ^ "\n");
+       TextIO.flushOut TextIO.stdOut)
+    fun run_test (index, test) =
+      let
+        val name = string_field test "test"
+        val base = [("test", json_string name)]
+        val artifact = root ^ "/" ^ string_field test "artifact"
+        val source = string_field test "source"
+        val contract = string_field test "contract"
+        val prefix = "expectation_" ^ Int.toString index
+        val checked = solidityPrepareLib.prepare_artifact
+          {root = root, path = artifact, source = source}
+        val () = check_unit_contracts (#prepared checked) contract
+        val (unit, program) = prepared_constants prefix (#prepared checked)
+        val code = code_constant (prefix ^ "_code") "deployedBytecode"
+                     (#artifact checked) source contract
+        val refs = #refs (unit_immutables (#unit (#prepared checked))
+                           (#artifact checked) source contract)
+        val initial_sender = “0x1212121212121212121212121212120000000012w : address”
+        val address = eval “address_for_create ^initial_sender 1”
+        val world = ref (eval “differential_world (FOLDL
+          (λaccounts i. update_account (n2w (w2n ^initial_sender + i * 4096))
+            (empty_account_state with balance := 2 ** 100) accounts)
+          empty_accounts (COUNT_LIST 10))”)
+        val block = ref 0
+        val imm = ref “FEMPTY : num |-> scalar”
+        val stopped = ref (NONE : string option)
+                fun run_call c =
+          let
+            val id = integer (field c "index")
+            val fields = base @ [("index", IntInf.toString id)]
+            fun unavailable message = output (fields @
+              [("status", json_string "not-runnable"),
+               ("reason", json_string message)])
+          in
+            case !stopped of
+              SOME reason => unavailable ("earlier transaction not runnable: " ^ reason)
+            | NONE =>
+              (case JSONUtil.findField c "calldata" of
+                 NONE =>
+                   let val reason = string_field c "reason" in
+                     stopped := SOME reason; unavailable reason
+                   end
+               | SOME (JSON.STRING hex) =>
+                 let
+                   val creating = JSONUtil.asBool (field c "deploy")
+                   val data = bytes_term (hex_bytes hex)
+                   val value = num_term (integer (field c "value"))
+                   val sender = word_term 160 (integer (field c "sender"))
+                   val before = !world
+                   val () = block := !block + 1
+                   val bn = num_term (IntInf.fromInt (!block))
+                   val fr = eval “(differential_frame ^sender ^value ^data) with
+                     <| self_address := ^address; code_address := ^address;
+                        tx_params := (differential_frame ^sender ^value ^data).tx_params with
+                          <| origin := 0x9292929292929292929292929292929292929292w;
+                             gasPrice := 3000000000; blockNumber := ^bn;
+                             blockTimeStamp := 15 * ^bn; chainId := 1;
+                             blockCoinBase := 0x7878787878787878787878787878787878787878w;
+                             blockGasLimit := 20000000;
+                             prevRandao := 0xa86c2e601b6c44eb4848f7d23d9df3113fbcac42041c49cbed5000cb4f118777w |> |>”
+                   val entered = eval “^before with accounts :=
+                     transfer_value ^sender ^address ^value ^before.accounts”
+                   val r = eval (if creating then
+                     “deploy_contract 1000000 ^program ^fr ^entered”
+                     else “call_contract 1000000 ^program ^(!imm) ^fr ^entered”)
+                   val (constructor, args) = strip_comb r
+                   val kind = fst (dest_const constructor)
+                   val (outcome, logs) =
+                     case (kind, args) of
+                       ("ContractCreated", [im, w]) =>
+                         let
+                           val patched = eval “FOLDL
+                             (λcode (x, offsets). FOLDL
+                               (patch_word (created_immutable_words ^unit
+                                  [(x, offsets)] ^im)) code offsets)
+                             ^code ^refs”
+                           val w = eval “^w with accounts :=
+                             update_account ^address
+                               ((lookup_account ^address ^w.accounts)
+                                  with code := ^patched) ^w.accounts”
+                         in
+                           imm := im; world := w;
+                           (con "Returned" [bytes_term []], eval “^w.logs”)
+                         end
+                     | ("ContractReturned", [bs, w]) =>
+                         (world := w;
+                          (con "Returned" [bs], eval “^w.logs”))
+                     | ("ContractReverted", [bs, _]) =>
+                         (world := before;
+                          if creating then stopped := SOME "deployment reverted" else ();
+                          (con "Reverted" [if creating then bytes_term [] else bs], bytes_term []))
+                     | ("ContractInvalid", [reason]) =>
+                         (stopped := SOME (stringSyntax.fromHOLstring reason);
+                          (con "Diagnostic" [“InvalidCompletion”], bytes_term []))
+                     | ("ContractOutOfFuel", []) =>
+                         (stopped := SOME "core evaluator exhausted fuel";
+                          (con "Diagnostic" [“OutOfFuel”], bytes_term []))
+                     | _ => raise ERR "run_expectations" "unexpected contract_result"
+                   val () = world := eval “^(!world) with
+                     <| logs := []; transient := empty_transient_storage |>”
+                   val diagnostic = is_con "Diagnostic" outcome
+                   val () = output (fields @
+                     [("status", json_string (if diagnostic then "not-runnable" else "executed")),
+                      ("actual", outcome_json outcome)] @
+                     (if is_con "Returned" outcome then [("logs", logs_json logs)] else []) @
+                     (case !stopped of SOME why => [("reason", json_string why)] | NONE => []))
+                 in () end
+               | _ => fail "calldata must be a hex string")
+          end
+        val () = List.app run_call (array_field test "calls")
+      in
+        output (base @ [("kind", json_string "complete")])
+      end
+      handle solidityPrepareLib.PreparationError (kind, message) =>
+        output [("test", json_string (string_field test "test")),
+                ("kind", json_string "preparation"),
+                ("status", json_string (solidityPrepareLib.failure_name kind)),
+                ("reason", json_string message)]
+    val tests = array_field (JSONParser.parseFile manifest) "tests"
+  in
+    List.app run_test (ListPair.zip (List.tabulate (length tests, fn i => i), tests))
+  end
+
 end
