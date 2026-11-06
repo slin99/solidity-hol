@@ -9179,6 +9179,229 @@
     {
       "contracts": [
         {
+          "contract": "InterfaceIds",
+          "objects": [
+            {
+              "builtins": {
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "InterfaceIds_138",
+              "nodeKinds": {
+                "assignment": 1,
+                "block": 5,
+                "expressionStatement": 6,
+                "functionCall": 13,
+                "functionDefinition": 3,
+                "identifier": 2,
+                "if": 1,
+                "literal:number": 5,
+                "literal:string": 3,
+                "variableDeclaration": 1
+              },
+              "role": "creation",
+              "stage": "ir",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 13,
+                "and": 2,
+                "calldataload": 2,
+                "calldatasize": 5,
+                "callvalue": 4,
+                "eq": 3,
+                "iszero": 5,
+                "lt": 1,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 5,
+                "return": 4,
+                "revert": 5,
+                "shr": 1,
+                "slt": 2,
+                "sub": 6
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "InterfaceIds_138_deployed",
+              "nodeKinds": {
+                "assignment": 38,
+                "block": 55,
+                "case": 4,
+                "default": 1,
+                "expressionStatement": 37,
+                "functionCall": 124,
+                "functionDefinition": 39,
+                "identifier": 113,
+                "if": 9,
+                "leave": 4,
+                "literal:number": 54,
+                "switch": 1,
+                "variableDeclaration": 51
+              },
+              "role": "runtime",
+              "stage": "ir",
+              "subobjects": 0
+            },
+            {
+              "builtins": {
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "InterfaceIds_138",
+              "nodeKinds": {
+                "assignment": 1,
+                "block": 5,
+                "expressionStatement": 5,
+                "functionCall": 12,
+                "functionDefinition": 2,
+                "identifier": 2,
+                "if": 1,
+                "literal:number": 5,
+                "literal:string": 3,
+                "variableDeclaration": 1
+              },
+              "role": "creation",
+              "stage": "ir-optimized-off",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 13,
+                "and": 2,
+                "calldataload": 2,
+                "calldatasize": 5,
+                "callvalue": 4,
+                "eq": 3,
+                "iszero": 5,
+                "lt": 1,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 5,
+                "return": 4,
+                "revert": 4,
+                "shl": 9,
+                "shr": 1,
+                "slt": 2,
+                "sub": 6
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "InterfaceIds_138_deployed",
+              "nodeKinds": {
+                "assignment": 38,
+                "block": 54,
+                "case": 4,
+                "default": 1,
+                "expressionStatement": 36,
+                "functionCall": 132,
+                "functionDefinition": 38,
+                "identifier": 113,
+                "if": 9,
+                "leave": 4,
+                "literal:number": 61,
+                "switch": 1,
+                "variableDeclaration": 51
+              },
+              "role": "runtime",
+              "stage": "ir-optimized-off",
+              "subobjects": 0
+            },
+            {
+              "builtins": {
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 1,
+                "memoryguard": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "InterfaceIds_138",
+              "nodeKinds": {
+                "block": 3,
+                "expressionStatement": 4,
+                "functionCall": 8,
+                "identifier": 5,
+                "if": 1,
+                "literal:number": 4,
+                "literal:string": 2,
+                "variableDeclaration": 2
+              },
+              "role": "creation",
+              "stage": "ir-optimized-on",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "add": 8,
+                "and": 1,
+                "calldataload": 2,
+                "calldatasize": 5,
+                "callvalue": 4,
+                "eq": 3,
+                "iszero": 5,
+                "lt": 1,
+                "memoryguard": 1,
+                "mload": 3,
+                "mstore": 9,
+                "not": 4,
+                "return": 4,
+                "revert": 10,
+                "shl": 8,
+                "shr": 1,
+                "slt": 4
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "InterfaceIds_138_deployed",
+              "nodeKinds": {
+                "assignment": 1,
+                "block": 17,
+                "case": 4,
+                "expressionStatement": 23,
+                "functionCall": 73,
+                "identifier": 20,
+                "if": 11,
+                "literal:number": 67,
+                "switch": 1,
+                "variableDeclaration": 7
+              },
+              "role": "runtime",
+              "stage": "ir-optimized-on",
+              "subobjects": 0
+            }
+          ]
+        }
+      ],
+      "sha256": "6046f5fd70a55cd5fc1577247d5ba8556225234e41f622a1b8fec24423f4d8d0",
+      "source": "testdata/differential/interface_ids.sol"
+    },
+    {
+      "contracts": [
+        {
           "contract": "Mappings",
           "objects": [
             {
@@ -17646,6 +17869,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -17673,7 +17897,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2573,
+          "runtime": 2586,
           "subobject": 0
         },
         "address": {
@@ -17718,6 +17942,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -17744,7 +17969,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 385,
+          "runtime": 387,
           "subobject": 0
         },
         "basefee": {
@@ -17822,6 +18047,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -17848,7 +18074,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 298,
+          "runtime": 300,
           "subobject": 0
         },
         "calldatasize": {
@@ -17876,6 +18102,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -17903,7 +18130,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 639,
+          "runtime": 644,
           "subobject": 0
         },
         "caller": {
@@ -17923,7 +18150,7 @@
           "subobject": 0
         },
         "callvalue": {
-          "creation": 73,
+          "creation": 74,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -17951,6 +18178,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -17978,7 +18206,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 544,
+          "runtime": 548,
           "subobject": 0
         },
         "chainid": {
@@ -17990,7 +18218,7 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 86,
+          "creation": 87,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18018,6 +18246,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -18074,7 +18303,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18102,6 +18331,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -18133,7 +18363,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 158,
+          "creation": 160,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18161,6 +18391,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -18255,6 +18486,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -18281,7 +18513,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 279,
+          "runtime": 282,
           "subobject": 0
         },
         "exp": {
@@ -18415,6 +18647,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -18442,7 +18675,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 658,
+          "runtime": 663,
           "subobject": 0
         },
         "keccak256": {
@@ -18577,6 +18810,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -18603,7 +18837,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 427,
+          "runtime": 428,
           "subobject": 0
         },
         "mcopy": {
@@ -18625,7 +18859,7 @@
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18653,6 +18887,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -18680,11 +18915,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 69,
+          "runtime": 70,
           "subobject": 0
         },
         "mload": {
-          "creation": 124,
+          "creation": 125,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18712,6 +18947,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -18739,7 +18975,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 213,
+          "runtime": 214,
           "subobject": 0
         },
         "mod": {
@@ -18766,7 +19002,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 190,
+          "creation": 191,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -18794,6 +19030,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -18821,7 +19058,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1037,
+          "runtime": 1042,
           "subobject": 0
         },
         "mstore8": {
@@ -19012,7 +19249,7 @@
           "subobject": 0
         },
         "return": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19040,6 +19277,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -19067,7 +19305,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 545,
+          "runtime": 549,
           "subobject": 0
         },
         "returndatacopy": {
@@ -19099,7 +19337,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 155,
+          "creation": 156,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19127,6 +19365,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -19154,7 +19393,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 600,
+          "runtime": 605,
           "subobject": 0
         },
         "sar": {
@@ -19280,6 +19519,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -19307,7 +19547,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 176,
+          "runtime": 177,
           "subobject": 0
         },
         "signextend": {
@@ -19405,6 +19645,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -19431,7 +19672,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 315,
+          "runtime": 317,
           "subobject": 0
         },
         "smod": {
@@ -19543,6 +19784,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -19569,7 +19811,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1122,
+          "runtime": 1128,
           "subobject": 0
         },
         "timestamp": {
@@ -19591,7 +19833,7 @@
       },
       "nodeKinds": {
         "assignment": {
-          "creation": 574,
+          "creation": 575,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19619,6 +19861,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -19646,11 +19889,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6935,
+          "runtime": 6973,
           "subobject": 0
         },
         "block": {
-          "creation": 1091,
+          "creation": 1096,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19678,6 +19921,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -19705,7 +19949,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 9705,
+          "runtime": 9760,
           "subobject": 0
         },
         "break": {
@@ -19749,6 +19993,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -19775,7 +20020,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 607,
+          "runtime": 611,
           "subobject": 0
         },
         "continue": {
@@ -19813,6 +20058,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -19839,11 +20085,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 89,
+          "runtime": 90,
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 925,
+          "creation": 931,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19871,6 +20117,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -19898,7 +20145,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6185,
+          "runtime": 6222,
           "subobject": 0
         },
         "for": {
@@ -19927,7 +20174,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 2772,
+          "creation": 2785,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -19955,6 +20202,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -19982,11 +20230,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 25753,
+          "runtime": 25877,
           "subobject": 0
         },
         "functionDefinition": {
-          "creation": 793,
+          "creation": 796,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20014,6 +20262,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20041,11 +20290,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6168,
+          "runtime": 6207,
           "subobject": 0
         },
         "identifier": {
-          "creation": 1924,
+          "creation": 1926,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20073,6 +20322,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20100,11 +20350,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 27696,
+          "runtime": 27809,
           "subobject": 0
         },
         "if": {
-          "creation": 182,
+          "creation": 183,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20132,6 +20382,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20159,7 +20410,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1894,
+          "runtime": 1903,
           "subobject": 0
         },
         "leave": {
@@ -20187,6 +20438,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20213,11 +20465,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 473,
+          "runtime": 477,
           "subobject": 0
         },
         "literal:number": {
-          "creation": 1119,
+          "creation": 1124,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20245,6 +20497,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20272,11 +20525,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 9699,
+          "runtime": 9753,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 253,
+          "creation": 256,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20304,6 +20557,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20359,6 +20613,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20385,11 +20640,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 106,
+          "runtime": 107,
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 653,
+          "creation": 654,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20417,6 +20672,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20444,7 +20700,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 12554,
+          "runtime": 12605,
           "subobject": 0
         }
       },
@@ -20478,6 +20734,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20505,7 +20762,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 72,
+          "runtime": 73,
           "subobject": 0
         },
         "datacopy": {
@@ -20515,7 +20772,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20543,6 +20800,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20574,7 +20832,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 158,
+          "creation": 160,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20602,6 +20860,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20633,7 +20892,7 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -20661,6 +20920,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20731,6 +20991,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20758,7 +21019,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2560,
+          "runtime": 2573,
           "subobject": 0
         },
         "address": {
@@ -20803,6 +21064,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20829,7 +21091,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 382,
+          "runtime": 384,
           "subobject": 0
         },
         "basefee": {
@@ -20907,6 +21169,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20933,7 +21196,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 298,
+          "runtime": 300,
           "subobject": 0
         },
         "calldatasize": {
@@ -20961,6 +21224,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -20988,7 +21252,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 639,
+          "runtime": 644,
           "subobject": 0
         },
         "caller": {
@@ -21008,7 +21272,7 @@
           "subobject": 0
         },
         "callvalue": {
-          "creation": 73,
+          "creation": 74,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21036,6 +21300,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -21063,7 +21328,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 544,
+          "runtime": 548,
           "subobject": 0
         },
         "chainid": {
@@ -21075,7 +21340,7 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 86,
+          "creation": 87,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21103,6 +21368,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -21159,7 +21425,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21187,6 +21453,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -21218,7 +21485,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 158,
+          "creation": 160,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21246,6 +21513,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -21337,6 +21605,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -21363,7 +21632,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 273,
+          "runtime": 276,
           "subobject": 0
         },
         "exp": {
@@ -21497,6 +21766,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -21524,7 +21794,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 652,
+          "runtime": 657,
           "subobject": 0
         },
         "keccak256": {
@@ -21645,6 +21915,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -21671,7 +21942,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 427,
+          "runtime": 428,
           "subobject": 0
         },
         "mcopy": {
@@ -21693,7 +21964,7 @@
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21721,6 +21992,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -21748,11 +22020,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 69,
+          "runtime": 70,
           "subobject": 0
         },
         "mload": {
-          "creation": 124,
+          "creation": 125,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21780,6 +22052,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -21807,7 +22080,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 197,
+          "runtime": 198,
           "subobject": 0
         },
         "mod": {
@@ -21830,7 +22103,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 184,
+          "creation": 185,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -21858,6 +22131,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -21885,7 +22159,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1023,
+          "runtime": 1028,
           "subobject": 0
         },
         "mstore8": {
@@ -22089,7 +22363,7 @@
           "subobject": 0
         },
         "return": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -22117,6 +22391,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -22144,7 +22419,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 545,
+          "runtime": 549,
           "subobject": 0
         },
         "returndatacopy": {
@@ -22176,7 +22451,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 141,
+          "creation": 142,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -22204,6 +22479,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -22231,7 +22507,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 556,
+          "runtime": 560,
           "subobject": 0
         },
         "sar": {
@@ -22307,6 +22583,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -22333,7 +22610,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 331,
+          "runtime": 340,
           "subobject": 0
         },
         "shr": {
@@ -22364,6 +22641,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -22391,7 +22669,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 162,
+          "runtime": 163,
           "subobject": 0
         },
         "signextend": {
@@ -22489,6 +22767,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -22515,7 +22794,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 315,
+          "runtime": 317,
           "subobject": 0
         },
         "smod": {
@@ -22627,6 +22906,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -22653,7 +22933,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1152,
+          "runtime": 1158,
           "subobject": 0
         },
         "timestamp": {
@@ -22675,7 +22955,7 @@
       },
       "nodeKinds": {
         "assignment": {
-          "creation": 574,
+          "creation": 575,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -22703,6 +22983,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -22730,11 +23011,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6854,
+          "runtime": 6892,
           "subobject": 0
         },
         "block": {
-          "creation": 1043,
+          "creation": 1048,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -22762,6 +23043,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -22789,7 +23071,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 9248,
+          "runtime": 9302,
           "subobject": 0
         },
         "break": {
@@ -22833,6 +23115,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -22859,7 +23142,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 607,
+          "runtime": 611,
           "subobject": 0
         },
         "continue": {
@@ -22897,6 +23180,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -22923,11 +23207,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 89,
+          "runtime": 90,
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 824,
+          "creation": 829,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -22955,6 +23239,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -22982,7 +23267,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6135,
+          "runtime": 6171,
           "subobject": 0
         },
         "for": {
@@ -23011,7 +23296,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 2784,
+          "creation": 2796,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -23039,6 +23324,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23066,11 +23352,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 25905,
+          "runtime": 26037,
           "subobject": 0
         },
         "functionDefinition": {
-          "creation": 691,
+          "creation": 693,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -23098,6 +23384,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23125,11 +23412,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6061,
+          "runtime": 6099,
           "subobject": 0
         },
         "identifier": {
-          "creation": 1884,
+          "creation": 1886,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -23157,6 +23444,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23184,11 +23472,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 27235,
+          "runtime": 27348,
           "subobject": 0
         },
         "if": {
-          "creation": 182,
+          "creation": 183,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -23216,6 +23504,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23243,7 +23532,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1894,
+          "runtime": 1903,
           "subobject": 0
         },
         "leave": {
@@ -23271,6 +23560,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23297,11 +23587,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 473,
+          "runtime": 477,
           "subobject": 0
         },
         "literal:number": {
-          "creation": 1171,
+          "creation": 1176,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -23329,6 +23619,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23356,11 +23647,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 9726,
+          "runtime": 9787,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 253,
+          "creation": 256,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -23388,6 +23679,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23443,6 +23735,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23469,11 +23762,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 106,
+          "runtime": 107,
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 609,
+          "creation": 610,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -23501,6 +23794,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23528,7 +23822,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 12082,
+          "runtime": 12133,
           "subobject": 0
         }
       },
@@ -23562,6 +23856,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23589,7 +23884,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 72,
+          "runtime": 73,
           "subobject": 0
         },
         "datacopy": {
@@ -23599,7 +23894,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -23627,6 +23922,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23658,7 +23954,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 158,
+          "creation": 160,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -23686,6 +23982,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23717,7 +24014,7 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -23745,6 +24042,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23814,6 +24112,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23841,7 +24140,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2277,
+          "runtime": 2285,
           "subobject": 0
         },
         "address": {
@@ -23882,6 +24181,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -23905,7 +24205,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 826,
+          "runtime": 827,
           "subobject": 0
         },
         "basefee": {
@@ -23981,6 +24281,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -24007,7 +24308,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 480,
+          "runtime": 482,
           "subobject": 0
         },
         "calldatasize": {
@@ -24035,6 +24336,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -24062,7 +24364,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 722,
+          "runtime": 727,
           "subobject": 0
         },
         "caller": {
@@ -24082,7 +24384,7 @@
           "subobject": 0
         },
         "callvalue": {
-          "creation": 73,
+          "creation": 74,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -24110,6 +24412,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -24137,7 +24440,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 544,
+          "runtime": 548,
           "subobject": 0
         },
         "chainid": {
@@ -24149,7 +24452,7 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 86,
+          "creation": 87,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -24177,6 +24480,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -24233,7 +24537,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -24261,6 +24565,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -24292,7 +24597,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 86,
+          "creation": 87,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -24320,6 +24625,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -24397,6 +24703,7 @@
             "testdata/differential/imports.sol",
             "testdata/differential/inheritance.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -24423,7 +24730,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 253,
+          "runtime": 256,
           "subobject": 0
         },
         "exp": {
@@ -24555,6 +24862,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -24582,7 +24890,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 767,
+          "runtime": 772,
           "subobject": 0
         },
         "keccak256": {
@@ -24702,6 +25010,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -24728,7 +25037,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 424,
+          "runtime": 425,
           "subobject": 0
         },
         "mcopy": {
@@ -24750,7 +25059,7 @@
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -24778,6 +25087,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -24805,7 +25115,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 55,
+          "runtime": 56,
           "subobject": 0
         },
         "mload": {
@@ -24835,6 +25145,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -24858,7 +25169,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 889,
+          "runtime": 892,
           "subobject": 0
         },
         "mod": {
@@ -24873,7 +25184,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 240,
+          "creation": 241,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -24901,6 +25212,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -24928,7 +25240,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2474,
+          "runtime": 2483,
           "subobject": 0
         },
         "mstore8": {
@@ -24995,6 +25307,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -25021,7 +25334,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 855,
+          "runtime": 859,
           "subobject": 0
         },
         "number": {
@@ -25100,7 +25413,7 @@
           "subobject": 0
         },
         "return": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -25128,6 +25441,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -25155,7 +25469,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 526,
+          "runtime": 530,
           "subobject": 0
         },
         "returndatacopy": {
@@ -25187,7 +25501,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 167,
+          "creation": 168,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -25215,6 +25529,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -25242,7 +25557,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1923,
+          "runtime": 1933,
           "subobject": 0
         },
         "sar": {
@@ -25316,6 +25631,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -25342,7 +25658,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1100,
+          "runtime": 1108,
           "subobject": 0
         },
         "shr": {
@@ -25370,6 +25686,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -25396,7 +25713,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 244,
+          "runtime": 245,
           "subobject": 0
         },
         "signextend": {
@@ -25491,6 +25808,7 @@
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -25517,7 +25835,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 572,
+          "runtime": 576,
           "subobject": 0
         },
         "smod": {
@@ -25693,6 +26011,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -25719,11 +26038,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1367,
+          "runtime": 1368,
           "subobject": 0
         },
         "block": {
-          "creation": 393,
+          "creation": 396,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -25751,6 +26070,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -25778,7 +26098,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 3844,
+          "runtime": 3861,
           "subobject": 0
         },
         "break": {
@@ -25820,6 +26140,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -25843,7 +26164,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 594,
+          "runtime": 598,
           "subobject": 0
         },
         "continue": {
@@ -25876,7 +26197,7 @@
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 662,
+          "creation": 666,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -25904,6 +26225,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -25931,7 +26253,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 5885,
+          "runtime": 5908,
           "subobject": 0
         },
         "for": {
@@ -25960,7 +26282,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 1822,
+          "creation": 1830,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -25988,6 +26310,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -26015,7 +26338,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 19113,
+          "runtime": 19186,
           "subobject": 0
         },
         "functionDefinition": {
@@ -26069,7 +26392,7 @@
           "subobject": 0
         },
         "identifier": {
-          "creation": 1049,
+          "creation": 1054,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -26097,6 +26420,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -26124,11 +26448,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 9240,
+          "runtime": 9260,
           "subobject": 0
         },
         "if": {
-          "creation": 196,
+          "creation": 197,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -26156,6 +26480,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -26183,7 +26508,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2205,
+          "runtime": 2216,
           "subobject": 0
         },
         "leave": {
@@ -26205,7 +26530,7 @@
           "subobject": 0
         },
         "literal:number": {
-          "creation": 1374,
+          "creation": 1378,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -26233,6 +26558,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -26260,11 +26586,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 16122,
+          "runtime": 16189,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 181,
+          "creation": 183,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -26292,6 +26618,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -26347,6 +26674,7 @@
             "testdata/differential/inheritance.sol",
             "testdata/differential/inheritance_diamond.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -26370,11 +26698,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 93,
+          "runtime": 94,
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 362,
+          "creation": 364,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -26402,6 +26730,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -26429,7 +26758,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 3487,
+          "runtime": 3494,
           "subobject": 0
         }
       },
@@ -26463,6 +26792,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -26490,7 +26820,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 72,
+          "runtime": 73,
           "subobject": 0
         },
         "datacopy": {
@@ -26500,7 +26830,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -26528,6 +26858,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -26559,7 +26890,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 86,
+          "creation": 87,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -26587,6 +26918,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
@@ -26618,7 +26950,7 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 72,
+          "creation": 73,
           "fixtures": [
             "testdata/differential/builtins.sol",
             "testdata/differential/calldata_arrays.sol",
@@ -26646,6 +26978,7 @@
             "testdata/differential/inherited_payable.sol",
             "testdata/differential/initializers_only.sol",
             "testdata/differential/inline_assembly.sol",
+            "testdata/differential/interface_ids.sol",
             "testdata/differential/mappings.sol",
             "testdata/differential/memory_arrays.sol",
             "testdata/differential/memory_bytes.sol",
