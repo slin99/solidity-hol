@@ -586,8 +586,9 @@ fun beta_conv tm =
  * turns `let x = e in b` into the redex, but the binding a case has been pushed
  * into is the `LET` constant, and taking it is what lets the rule that drops a
  * call's dead branch see the conditional it is stated on.  Without it the
- * binding is left for the compute set, which substitutes the bound term at
- * every use. *)
+ * binding is left for the compute set, whose own rule for `let`
+ * (`let_yul_conv`, below) pushes a binding into a decision and otherwise
+ * substitutes the bound term at every use. *)
 fun let_conv tm =
   let
     val unlet = Conv.REWR_CONV boolTheory.LET_THM tm
@@ -948,18 +949,23 @@ fun pop_result_conv tm = matching distribute_lemmas tm
  * result, and what its caller routes on rather than taking apart. *)
 val pop_result_c = prim_mk_const {Thy = "yulEvaluator", Name = "yul_pop_result"}
 
+(* A term whose head is one of the decisions `distribute_lemmas` push a
+ * function into. *)
+fun is_decision tm =
+  let val c = head_const tm in
+    is_const_named "yulEvaluator" "yul_expr_result_CASE" c orelse
+    is_const_named "option" "option_CASE" c orelse
+    is_const_named "list" "list_CASE" c orelse
+    is_const_named "bool" "COND" c
+  end
+
 fun pop_over_decision tm =
   let
     val (h, args) = strip_comb tm
   in
     same_const h pop_result_c andalso
     (case args of
-       [a] => let val c = head_const a in
-                is_const_named "yulEvaluator" "yul_expr_result_CASE" c orelse
-                is_const_named "option" "option_CASE" c orelse
-                is_const_named "list" "list_CASE" c orelse
-                is_const_named "bool" "COND" c
-              end
+       [a] => is_decision a
      | _ => false)
   end
 
@@ -1026,7 +1032,8 @@ fun step_conv tm =
          is_const_named "option" "option_CASE" c orelse
          is_const_named "list" "list_CASE" c
       then (after_binding (case_conv tm) handle Conv.UNCHANGED =>
-              prune_call_conv tm)
+              (after_binding (push_conv tm) handle Conv.UNCHANGED =>
+                 call_case_conv tm))
       else if is_beta orelse is_const_named "bool" "LET" c
       then binding_step_conv tm
       else if is_const_named "bool" "COND" c
@@ -1148,7 +1155,7 @@ fun split_conv tm =
  * escaping, since `block_conv` is a compute rule and a conv that raises is
  * read as one that does not apply. *)
 fun value_conv v redex =
-  result_conv v redex
+  (if is_decision v then raise Conv.UNCHANGED else result_conv v redex)
   handle Conv.UNCHANGED =>
     (let
        val pushed = distribute_conv redex
@@ -1262,15 +1269,19 @@ fun eval_conv_raw tm =
           end
     val settled = go (Thm.REFL body) 4
     val red = computeLib.CBV_CONV (cs ()) (rhs (concl settled))
-    (* What the set unfolded above can leave at the top something the settling
-     * never saw: a `yul_pop_result` over the case a block came out as, which is
-     * the shape of a block statement's own clause.  The statement rule its
-     * caller runs tests the result for a case and takes anything else as a
-     * value, so the pop, and every read behind it, would be left outside every
-     * decision the case carries.  One more round when that is what came out,
-     * rather than on every clause. *)
+    (* What the set unfolded above can leave something the settling never
+     * saw: a case it surfaced in an argument list -- the second call of
+     * `slt(cleanup(x), convert(y))`, still a case on a case inside the first
+     * call's values branch -- or a `yul_pop_result` over the case a block came
+     * out as, which is the shape of a block statement's own clause.  Left
+     * there, the bindings and the builtin behind them unfold on the case's
+     * bound variables, and every later read of the scope they wrote is stuck.
+     * So one more round whenever the set changed the term.  A call the first
+     * round already framed is not framed again: `frame_pending` recognises
+     * its settled branch. *)
     val out =
-      if pop_over_decision (rhs (concl red))
+      if not (aconv (rhs (concl red)) (rhs (concl settled))) orelse
+         pop_over_decision (rhs (concl red))
       then let
              val settled2 = settle_conv (rhs (concl red))
              val red2 = computeLib.CBV_CONV (cs ()) (rhs (concl settled2))
@@ -1366,6 +1377,60 @@ fun with_zero_conv tm =
   then Conv.REWR_CONV vfmExecutionTheory.with_zero_def tm
   else raise Conv.UNCHANGED
 
+(* `yul_pop_result D`, as a compute rule in place of its definition.  Over a
+ * decision the pop goes into the branches (`pop_result_conv`), and is only
+ * unfolded on what reaches a branch.  Unfolded over the decision itself, the
+ * definition -- `D with machine := yul_pop_scope D.machine` -- puts `D` at
+ * three places, and the result's head is a record update rather than the
+ * decision, so the block's split no longer sees the decision to hand the rest
+ * of the body to.  Off a decision it is the guarded unfold it always was. *)
+fun pop_conv eqs tm =
+  if pop_over_decision tm then pop_result_conv tm else guarded_unfold eqs tm
+
+(* A statement's result, the type the clauses' `let`s over a block bind. *)
+val yul_result_ty =
+  type_of (rand (lhs (concl (SPEC_ALL yul_pop_result_def))))
+
+(* A result written out as a record: a field update, or the constructor.  The
+ * fields are what a binding's body reads, and reading them off a record is a
+ * reduction, so a record is bound by substitution whatever it holds. *)
+fun is_result_record tm =
+  let val c = head_const tm in
+    is_const c andalso
+    (String.isSuffix "_fupd" (fst (dest_const c)) orelse
+     is_const_named "yulState" "yul_result" c)
+  end
+
+(* `LET f v`, as a compute rule in place of `LET`'s definition.  The set
+ * reduces `v` first and leaves `f` -- an abstraction -- as it is, so this sees
+ * the bound result before anything has been substituted.  A result that is a
+ * decision has the binding pushed into its branches (`distribute_lemmas`), and
+ * the set then meets the binding again at each branch, down to the records at
+ * the leaves.  Substituting the decision instead copies all of it into each
+ * use of the name -- seven in a call's clause, six of a loop iteration's body
+ * result -- and every copy is then read and updated on its own.
+ *
+ * A result that is neither a decision nor a record, holds a folded call and is
+ * used twice or more stays bound, for the reason `beta_conv` declines the same
+ * redex.  Every other `let` is the substitution `LET`'s definition makes. *)
+fun let_yul_conv tm =
+  let val v = rand tm in
+    if type_of v = yul_result_ty andalso is_decision v then
+      matching distribute_lemmas tm
+    else
+      let
+        val unlet = Conv.REWR_CONV boolTheory.LET_THM tm
+        val f = rator (rhs (concl unlet))
+      in
+        if type_of v = yul_result_ty andalso not (is_result_record v) andalso
+           is_abs f andalso contains_invoke v andalso
+           occurrences (fst (dest_abs f)) (snd (dest_abs f)) >= 2
+        then raise Conv.UNCHANGED
+        else unlet
+      end
+  end
+  handle HOL_ERR _ => raise Conv.UNCHANGED
+
 (* The base is EVAL's own compute set rather than the boolean one: an
  * evaluator clause is full of `case` over the Yul datatypes, and a datatype's
  * case equations are put where its definition registered them, not into the
@@ -1416,6 +1481,10 @@ val eval_compset =
          * `invoke_yul` the rules that settle a call are stated on. *)
         val cs4 = computeLib.add_thms
                     [arithmeticTheory.SUC_SUB1, numTheory.NOT_SUC] cs4
+        (* `let` as the rule above, before any clause is compiled: the
+         * clauses' own bindings are what it is for. *)
+        val cs4 = computeLib.add_conv (boolSyntax.let_tm, 2, let_yul_conv)
+                    (computeLib.scrub_const cs4 boolSyntax.let_tm)
       in
         computeLib.add_conv (flookup_tm, 2, flookup_conv) cs4
       end
@@ -1423,7 +1492,9 @@ val eval_compset =
      * clause would run before any conversion and take the copy -- so its
      * clauses go on as this one rule, which declines on a term holding a call. *)
     fun guard ((c, nhyp, eqs), cs) =
-      computeLib.add_conv (c, nhyp, guarded_unfold eqs)
+      computeLib.add_conv
+        (c, nhyp,
+         if same_const c pop_result_c then pop_conv eqs else guarded_unfold eqs)
         (computeLib.scrub_const cs c)
     (* The four constants the conversion itself is written for: their clauses
      * are not compiled into the set, and the conversion goes in their place.
