@@ -1222,9 +1222,11 @@ def selector_declaration(node: dict[str, Any], by_id: dict[int, dict[str, Any]]
     declaration = by_id.get(base.get("referencedDeclaration"))
     if declaration is None or SELECTOR_FIELDS.get(declaration["nodeType"]) not in declaration:
         return None
-    # x.selector for a variable x is the selector of the function value it
-    # holds; only this.x and C.x name x's getter.
-    if declaration["nodeType"] == "VariableDeclaration" and base["nodeType"] != "MemberAccess":
+    # x.selector and C.x.selector for a variable x are the selector of the
+    # function value it holds; only this.x names x's getter.
+    if declaration["nodeType"] == "VariableDeclaration" and not (
+            base["nodeType"] == "MemberAccess" and base["expression"]["nodeType"] == "Identifier"
+            and base["expression"].get("referencedDeclaration") == THIS):
         return None
     return declaration
 

@@ -355,10 +355,12 @@ fun selector_bytes v base =
       case List.find (fn (i, _) => i = id) (!selector_declarations) of
         SOME (_, d) => d
       | NONE => fail (describe v ^ ": unsupported selector")
-    (* x.selector for a variable x is the selector of the function value it
-     * holds; only this.x and C.x name x's getter *)
+    (* x.selector and C.x.selector for a variable x are the selector of the
+     * function value it holds; only this.x names x's getter *)
     val () = require v (node_type d <> "VariableDeclaration" orelse
-                        node_type base = "MemberAccess")
+                        (node_type base = "MemberAccess" andalso
+                         node_type (field base "expression") = "Identifier" andalso
+                         int_field (field base "expression") "referencedDeclaration" = ~28))
                "selectors of function values are not supported"
     val key =
       case node_type d of
