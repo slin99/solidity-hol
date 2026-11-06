@@ -587,8 +587,10 @@ fun beta_conv tm =
  * into is the `LET` constant, and taking it is what lets the rule that drops a
  * call's dead branch see the conditional it is stated on.  Without it the
  * binding is left for the compute set, whose own rule for `let`
- * (`let_yul_conv`, below) pushes a binding into a decision and otherwise
- * substitutes the bound term at every use. *)
+ * (`let_yul_conv`, below) pushes a binding of a statement's result into a
+ * decision, keeps one that is neither a decision nor a record bound on the
+ * condition this rule declines on, and substitutes a binding of any other
+ * type. *)
 fun let_conv tm =
   let
     val unlet = Conv.REWR_CONV boolTheory.LET_THM tm

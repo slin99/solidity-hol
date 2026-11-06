@@ -167,13 +167,17 @@ val () =
  * this test prints below -- or a claim that no form comes back inside a clock.
  *
  * The list is empty.  It held the bodies whose forms the conversion copied a
- * decision into: a `let` over a statement's or a call's result that was still
- * a case, or a scope pop over one, substituted the case at every use of the
- * name, so the form grew by a factor per read.  The conversion now pushes such
- * a binding into the decision's branches before anything is substituted (see
- * semantics/yulConvLib.sml), and the three that were over the line --
- * `fun_signedLess` at 1 083 107 nodes, `fun_boolLogic` at 1 008 029 and
- * `checked_exp_signed` at 903 697 -- came under it.
+ * decision into, two ways: a `let` over a statement's or a call's result that
+ * was still a case, or a scope pop over one, substituted the case at every use
+ * of the name, so the form grew by a factor per read; and a call among a
+ * builtin's arguments (`slt(cleanup_int8(x), cleanup_int8(y))`) stayed a case
+ * inside the other call's branch, where the binding behind it unfolded on the
+ * branch's variables and left every later scope read stuck.  The conversion now
+ * pushes a binding into a decision before anything is substituted, and settles
+ * a clause again after the set's reduction (see semantics/yulConvLib.sml); the
+ * three that were over the line -- `fun_signedLess` at 1 083 107 nodes,
+ * `fun_boolLogic` at 1 008 029 and `checked_exp_signed` at 903 697 -- came
+ * under it with both in.  Which of the two each one needed was not measured.
  *
  * The line is drawn at a size rather than a time because a time moves with the
  * machine the build runs on and a size does not.  A body that goes over it
@@ -294,8 +298,8 @@ fun checked_form (nm, body) t th =
  * its own, not `Fail`, so a check that fails inside is not mistaken for a
  * timeout.
  *
- * The bound is generous: the slowest form this suite covers takes about a
- * second, and a loaded box moves that. *)
+ * The bound is generous: the slowest form this suite covers takes about five
+ * seconds on the bot box, and a loaded box moves that. *)
 fun under_clock secs thunk =
   (SOME (Timeout.apply (Time.fromReal secs) thunk ())
      handle Timeout.TIMEOUT _ => NONE)
@@ -466,9 +470,9 @@ QED
  * The shapes that have left this class as the conversion has improved all nest
  * a call inside another call's arguments: `wrapping_exp_uint8_uint8` closes now
  * -- its `exp` call is reached through the builtin dispatch rather than left to
- * the word library -- and the ones that carry a size above come back under a
- * longer clock.  No line is left in the class now, and the check stays for the
- * next body that stops coming back. *)
+ * the word library -- and the rest are covered by the size bound.  No line is
+ * left in the class now, and the check stays for the next body that stops
+ * coming back. *)
 val () =
   List.app
     (fn (nm, why) =>
