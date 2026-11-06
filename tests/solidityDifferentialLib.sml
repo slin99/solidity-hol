@@ -831,12 +831,18 @@ fun run_three_way {root, corpus, yul_root} =
  * as the maintained corpus. Only transaction sequencing differs. *)
 fun run_expectations {root, manifest} =
   let
-    fun eval tm = rhs (concl (cv_eval tm))
-      handle e => (print ("failed-evaluation: " ^ term_to_string tm ^ "\n"); raise e)
+    fun discharge th =
+      if is_imp (concl th) then
+        let val premise = fst (dest_imp (concl th))
+            val proved = EQT_ELIM (discharge (cv_eval premise))
+        in discharge (MP th proved) end
+      else th
+    fun eval tm = rhs (concl (discharge (cv_eval tm)))
     val serial = ref 0
     fun keep tm =
       let val () = serial := !serial + 1 in
-        rhs (concl (cv_eval_pat (cvName ("expectation_state_" ^ Int.toString (!serial))) tm))
+        rhs (concl (discharge (cv_eval_pat
+          (cvName ("expectation_state_" ^ Int.toString (!serial))) tm)))
       end
     fun output fields =
       (print ("expectation-result: " ^ json_object fields ^ "\n");
@@ -865,6 +871,13 @@ fun run_expectations {root, manifest} =
               (empty_account_state with balance := 2 ** 100) ^accounts”
           end) “empty_accounts” (List.tabulate (10, fn i => i))
         val world = ref (keep “differential_world ^accounts”)
+        val evm_accounts = ref (keep “update_account ^initial_sender
+          ((lookup_account ^initial_sender ^accounts) with nonce := 1) ^accounts”)
+        val verify = case JSONUtil.findField test "verify_bytecode" of
+          SOME (JSON.BOOL v) => v | _ => false
+        val initcode = if verify then
+          code_constant (prefix ^ "_initcode") "bytecode"
+            (#artifact checked) source contract else bytes_term []
         val block = ref 0
         val imm = ref “FEMPTY : num |-> scalar”
         val stopped = ref (NONE : string option)
@@ -904,7 +917,14 @@ fun run_expectations {root, manifest} =
                | SOME (JSON.STRING hex) =>
                  let
                    val creating = JSONUtil.asBool (field c "deploy")
-                   val data = bytes_term (hex_bytes hex)
+                   val raw_data = bytes_term (hex_bytes hex)
+                   val data = case JSONUtil.findField c "signature" of
+                     NONE => raw_data
+                   | SOME v =>
+                       let val sig_bytes = bytes_term (map ord
+                         (explode (JSONUtil.asString v))) in
+                         eval “TAKE 4 (Keccak_256_w64 ^sig_bytes) ++ ^raw_data”
+                       end
                    val value = num_term (integer (field c "value"))
                    val sender = word_term 160 (integer (field c "sender"))
                    val prior_world = !world
@@ -919,21 +939,95 @@ fun run_expectations {root, manifest} =
                              blockCoinBase := 0x7878787878787878787878787878787878787878w;
                              blockGasLimit := 20000000;
                              prevRandao := 0xa86c2e601b6c44eb4848f7d23d9df3113fbcac42041c49cbed5000cb4f118777w |> |>”
-                   val entered = keep “^prior_world with accounts :=
+                   fun bytecode () =
+                     if not verify then [] else
+                     let
+                       fun observed outcome logs =
+                         [("bytecode", outcome_json outcome),
+                          ("bytecode_logs", logs_json logs)]
+                     in
+                       if creating then
+                         let
+                           val blk = eval “differential_block with
+                             <| number := ^bn; timeStamp := 15 * ^bn;
+                                coinBase := 0x7878787878787878787878787878787878787878w;
+                                gasLimit := 20000000;
+                                prevRandao := ^fr.tx_params.prevRandao |>”
+                           val tx = eval “(differential_tx ^sender ^value
+                             (^initcode ++ ^data)) with
+                             <| to := NONE; nonce := 1; gasLimit := 10000000;
+                                gasPrice := 3000000000 |>”
+                           val start = keep “run_create (Collect empty_domain) F 1 []
+                             ^blk ^(!evm_accounts) ^tx”
+                           val runnable = eval “case ^start of
+                             SOME (INR _) => 1n | _ => 0”
+                         in
+                           if aconv runnable “0n” then
+                             [("bytecode_reason", json_string "creation transaction not runnable")]
+                           else
+                             let
+                               val acc = keep “FST (THE (case ^start of
+                                 SOME (INR p) => SOME p | _ => NONE))”
+                               val state = keep “FST (SND (THE (case ^start of
+                                 SOME (INR p) => SOME p | _ => NONE))) with txParams := ^fr.tx_params”
+                               val ran = keep “run ^state”
+                               val finished = eval “case ^ran of
+                                 SOME (INR _, _) => 1n | _ => 0”
+                             in
+                               if aconv finished “0n” then
+                                 [("bytecode_reason", json_string "creation EVM left the model")]
+                               else
+                                 let
+                                   val resultvalue = eval “OUTR (FST (THE ^ran))”
+                                   val post = keep “post_transaction_accounting ^blk ^tx
+                                     ^resultvalue ^acc (SND (THE ^ran))”
+                                   val success = aconv “1n” (eval “if IS_NONE (FST ^post).result then 1n else 0”)
+                                   val () = evm_accounts := keep “SND ^post”
+                                   val outcome = con (if success then "Returned" else "Reverted")
+                                     [bytes_term []]
+                                 in observed outcome (eval “(FST ^post).logs”) end
+                             end
+                         end
+                       else
+                         let
+                           val result = keep “run_external_call ^sender ^address ^data
+                             ^value F 20000000 ^(!evm_accounts) empty_transient_storage ^fr.tx_params”
+                           val unavailable = aconv “1n” (eval “if IS_NONE ^result then 1n else 0”)
+                         in
+                           if unavailable then
+                             [("bytecode_reason", json_string "EVM call left the model")]
+                           else
+                             let
+                               val success = aconv “1n” (eval “if (THE ^result).call_success then 1n else 0”)
+                               val () = evm_accounts := keep “(THE ^result).call_accounts”
+                             in
+                               observed (con (if success then "Returned" else "Reverted")
+                                 [eval “(THE ^result).call_return”])
+                                 (eval “(THE ^result).call_logs”)
+                             end
+                         end
+                     end
+                   val bytecode_fields = bytecode ()
+                   val entered = “^prior_world with accounts :=
                      transfer_value ^sender ^address ^value ^prior_world.accounts”
                    val result = keep (if creating then
                      “deploy_contract 10000 ^program ^fr ^entered”
                      else “call_contract 10000 ^program ^(!imm) ^fr ^entered”)
-                   val r = eval result
-                   val result_world = keep “case ^result of
+                   val r = eval “case ^result of
+                     ContractCreated im _ => ContractCreated im (differential_world empty_accounts)
+                   | ContractReturned bs _ => ContractReturned bs (differential_world empty_accounts)
+                   | ContractReverted bs _ => ContractReverted bs (differential_world empty_accounts)
+                   | other => other”
+                   val result_world = “case ^result of
                      ContractCreated _ w => w | ContractReturned _ w => w
                      | ContractReverted _ w => w | _ => ^entered”
                    val (constructor, args) = strip_comb r
                    val kind = fst (dest_const constructor)
                    val (outcome, logs) =
                      case (kind, args) of
-                       ("ContractCreated", [im, w]) =>
+                       ("ContractCreated", [_, _]) =>
                          let
+                           val im = “case ^result of ContractCreated im _ => im | _ => FEMPTY”
                            fun patch (entry, code) =
                              let
                                val (_, offsets) = pairSyntax.dest_pair entry
@@ -944,7 +1038,7 @@ fun run_expectations {root, manifest} =
                                   (fst (listSyntax.dest_list offsets)) end
                            val patched = List.foldl patch code
                              (fst (listSyntax.dest_list refs))
-                           val w = keep “^result_world with accounts :=
+                           val w = “^result_world with accounts :=
                              update_account ^address
                                ((lookup_account ^address ^result_world.accounts)
                                   with code := ^patched) ^result_world.accounts”
@@ -990,7 +1084,7 @@ fun run_expectations {root, manifest} =
                      (map expected_event (array_field c "events"), “:event”)
                    val diagnostic = is_con "Diagnostic" outcome
                    val () = output (fields @
-                     [("status", json_string (if diagnostic then "not-runnable" else "executed")),
+                     bytecode_fields @ [("status", json_string (if diagnostic then "not-runnable" else "executed")),
                       ("actual", outcome_json outcome)] @
                      (if is_con "Returned" outcome then [("logs", logs_json logs),
                        ("expected_logs", logs_json expected_logs)] else []) @

@@ -120,6 +120,7 @@ class Call:
     reason: str | None = None
     observations: list[dict[str, str]] = field(default_factory=list)
     implicit: bool = False
+    signature: str | None = None
     builtin: str | None = None
     builtin_arg: str | None = None
     events: list[dict[str, Any]] = field(default_factory=list)
@@ -219,7 +220,8 @@ def parse_calls(text: str, methods: dict[str, str]) -> list[Call]:
             elif signature in methods:
                 call.calldata = "0x" + methods[signature] + encoded
             else:
-                raise UnsupportedExpectation(f"unknown signature or builtin: {signature}")
+                call.signature = signature
+                call.calldata = "0x" + encoded
             expected_tokens = tokens(expected or "")
             reverted = bool(expected_tokens and expected_tokens[0] == "FAILURE")
             if reverted:
@@ -310,6 +312,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--work-dir", type=Path, required=True, help="retain manifests, compiler artifacts and HOL log")
     parser.add_argument("--match", default="", help="run only test names containing this string")
     parser.add_argument("--holbuild", default="holbuild")
+    parser.add_argument("--verify-bytecode", action="store_true", help="also execute compiled bytecode for mismatch triage")
     parser.add_argument("-j", type=int, default=4)
     args = parser.parse_args(argv)
     pin = exporter.PIN_FILE.read_text().strip()
@@ -343,7 +346,7 @@ def main(argv: list[str] | None = None) -> int:
         methods = artifact["output"]["contracts"][source][contract]["evm"]["methodIdentifiers"]
         calls = parse_calls((tests_root / name).read_text(), methods)
         return {"test": name, "artifact": str(path), "source": source, "contract": contract,
-                "calls": [c.manifest() for c in calls]}
+                "calls": [c.manifest() for c in calls], "verify_bytecode": args.verify_bytecode}
 
     with ThreadPoolExecutor(max_workers=args.j) as pool:
         tests = list(pool.map(compile_one, selected))
@@ -353,9 +356,9 @@ def main(argv: list[str] | None = None) -> int:
     logs: list[Path] = []
     status = 0
     # Each process bounds the lifetime of preparation/evaluation theorem state.
-    for offset in range(0, len(tests), 64):
+    for offset in range(0, len(tests), 16):
         batch = work / f"batch-{offset:04d}.json"
-        exporter.write_json_atomic(batch, {"tests": tests[offset:offset + 64]})
+        exporter.write_json_atomic(batch, {"tests": tests[offset:offset + 16]})
         log = work / f"batch-{offset:04d}.log"
         logs.append(log)
         with log.open("w") as stream:
@@ -364,7 +367,7 @@ def main(argv: list[str] | None = None) -> int:
                                     env={**os.environ, "SEMANTIC_EXPECTATIONS_MANIFEST": str(batch)}).returncode
         if status:
             raise SystemExit(f"HOL run failed: status {status}; see {log}")
-        print(f"Executed batch {offset}..{min(offset + 64, len(tests))}", file=sys.stderr, flush=True)
+        print(f"Executed batch {offset}..{min(offset + 16, len(tests))}", file=sys.stderr, flush=True)
     executed: dict[str, dict[int, dict[str, Any]]] = {}
     preparations: dict[str, str] = {}
     complete = set()

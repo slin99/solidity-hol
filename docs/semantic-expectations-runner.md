@@ -18,7 +18,7 @@ python3 tools/run_semantic_expectations.py ../solidity-tests \
 ```
 
 The work directory retains compiler artifacts, the ordered-call manifest and
-`hol.log`. The runner writes `docs/semantic-expectations.json` and `.md`. Use
+batch logs. The runner writes `docs/semantic-expectations.json` and `.md`. Use
 `--match substring` and `--output /path/to/report` for a focused run. A focused
 report covers only its selected tests, rather than the whole acceptance set.
 
@@ -65,6 +65,10 @@ input, expectation, actual result and reason. Agreement checks the observations
 the upstream test asks for, rather than all final storage; this differs from
 [differential execution](differential-testing.md), which compares complete
 storage against compiler bytecode as well.
+
+For mismatch triage, add `--verify-bytecode` to run the same ordered transactions
+in Verifereum from the pinned compiler's creation and runtime bytecode. The JSON
+then retains the bytecode outcome beside the core outcome.
 
 ## Format reference
 
