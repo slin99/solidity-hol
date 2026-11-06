@@ -192,9 +192,9 @@ val () = import_error "modifier invocation of unknown kind"
      (set_field "modifiers"
         (JSON.ARRAY [JSON.OBJECT [("kind", JSON.STRING "unknownInvocation")]]))
      ast)
-val () = import_error "named arguments"
+val () = import_error "a named argument naming no parameter"
   (edit_first "FunctionCall"
-     (set_field "names" (JSON.ARRAY [JSON.STRING "n"])) ast)
+     (set_field "names" (JSON.ARRAY [JSON.STRING "noSuchParameter"])) ast)
 val () = import_error "base outside the compilation"
   (edit_first "ContractDefinition"
      (fn c => set_field "linearizedBaseContracts"
@@ -795,7 +795,7 @@ QED
 Definition revert_errors_def:
   (revert_errors (SrcBlock _ ss) = revert_errors_list ss) ∧
   (revert_errors (SrcIfStatement _ _ t NONE) = revert_errors t) ∧
-  (revert_errors (SrcRevertError _ err args) =
+  (revert_errors (SrcRevertError _ err args _) =
     [(err.error_selector, LENGTH err.error_parameters, LENGTH args)]) ∧
   (revert_errors _ = []) ∧
   (revert_errors_list [] = []) ∧

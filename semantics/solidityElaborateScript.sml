@@ -319,7 +319,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcBinaryOperation _ _ l r _ _) ⇔
     expr_assigns l ∨ expr_assigns r) ∧
   (expr_assigns (SrcTupleExpression _ cs _) ⇔ components_assign cs) ∧
-  (expr_assigns (SrcFunctionCall _ callee args _) ⇔
+  (expr_assigns (SrcFunctionCall _ callee args _ _) ⇔
     expr_assigns callee ∨ exprs_assign args) ∧
   (expr_assigns (SrcArrayMember _ _ root_expr _) ⇔ expr_assigns root_expr) ∧
   (expr_assigns (SrcBuiltinCall _ _ _ condition message _) ⇔
@@ -329,10 +329,10 @@ Definition expr_assigns_def:
   (expr_assigns (SrcMemberAccess _ root_expr _ _) ⇔ expr_assigns root_expr) ∧
   (expr_assigns (SrcArrayLength _ root_expr _) ⇔ expr_assigns root_expr) ∧
   (expr_assigns (SrcTypeConversion _ _ e _) ⇔ expr_assigns e) ∧
-  (expr_assigns (SrcExternalCall _ _ _ operands _) ⇔ exprs_assign operands) ∧
+  (expr_assigns (SrcExternalCall _ _ _ operands _ _) ⇔ exprs_assign operands) ∧
   (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcKeccak256 _ _ e _) ⇔ expr_assigns e) ∧
-  (expr_assigns (SrcSuperCall _ _ args _) ⇔ exprs_assign args) ∧
+  (expr_assigns (SrcSuperCall _ _ args _ _) ⇔ exprs_assign args) ∧
   (expr_assigns _ ⇔ F) ∧
   (components_assign [] ⇔ F) ∧
   (components_assign (NONE :: cs) ⇔ components_assign cs) ∧
@@ -461,6 +461,18 @@ Definition coerce_abi_values_def:
          | NONE => NONE)
     | NONE => NONE) ∧
   (coerce_abi_values n _ _ = NONE)
+End
+
+(* A call's argument values, evaluated in the call's order, in its
+ * parameters' order: order gives, for each of the last LENGTH order
+ * parameters, the position of its argument among the last LENGTH order
+ * arguments (argument_order_ok). *)
+Definition arrange_def:
+  arrange (order : num list) vs =
+    if order = [] then SOME vs else
+    let k = LENGTH vs - LENGTH order in
+    OPTION_MAP (λws. TAKE k vs ++ ws)
+      (all_some (MAP (λi. case DROP (k + i) vs of [] => NONE | v :: _ => SOME v) order))
 End
 
 Definition elab_expr_def:
@@ -693,10 +705,11 @@ Definition elab_expr_def:
     | SrcTupleExpression _ _ _ =>
         (NONE)
     | SrcArrayMember _ _ _ _ => NONE
-    | SrcFunctionCall _ callee args _ =>
+    | SrcFunctionCall _ callee args order _ =>
         (case callee of
            SrcArrayMember _ member root_expr _ =>
-             (case elab_location ctx n root_expr of
+             (if order ≠ [] then NONE else
+              case elab_location ctx n root_expr of
                 SOME ((ss, ref, ArrayT element NONE), n1) =>
                   if member = "push" then
                     (case args of
@@ -730,7 +743,7 @@ Definition elab_expr_def:
                 SOME callee =>
                   (case callee_types callee of
                      SOME (params, rets) =>
-                       (case elab_args ctx n params args of
+                       (case elab_args ctx n order params args of
                           SOME ((sa, atoms), n1) =>
                             SOME ((sa ++ [DefineStmt (AstId n1) (call_result_type rets)
                                             (InternalCallOperation
@@ -740,12 +753,12 @@ Definition elab_expr_def:
                    | NONE => NONE)
               | NONE => NONE)
          | _ => NONE)
-    | SrcSuperCall _ r args _ =>
+    | SrcSuperCall _ r args order _ =>
         (case ALOOKUP ctx.supers r of
            SOME callee =>
              (case callee_types callee of
                 SOME (params, rets) =>
-                  (case elab_args ctx n params args of
+                  (case elab_args ctx n order params args of
                      SOME ((sa, atoms), n1) =>
                        SOME ((sa ++ [DefineStmt (AstId n1) (call_result_type rets)
                                        (InternalCallOperation
@@ -771,11 +784,13 @@ Definition elab_expr_def:
                          BoundAtom (AstId n2), ElabTuple []), n2 + 1)
                    | NONE => NONE)
               | NONE => NONE))
-    | SrcExternalCall _ callee with_value operands _ =>
+    | SrcExternalCall _ callee with_value operands order _ =>
         (case (all_some (MAP call_variable_type callee.ext_parameters),
                all_some (MAP call_variable_type callee.ext_returns)) of
            (SOME params, SOME rets) =>
-             (case elab_arg_values ctx n operands of
+             (case OPTION_BIND (elab_arg_values ctx n operands)
+                     (λ((ss, vs), next). OPTION_MAP (λvs'. ((ss, vs'), next))
+                                           (arrange order vs)) of
                 SOME ((ss, vs), next) =>
                   (case coerce_abi_values next
                           (AddressT NonpayableAddress ::
@@ -868,11 +883,16 @@ Definition elab_expr_def:
                 SOME ((ss ++ cs, v, ElabType ty), n1 + 1))
          | _ => NONE)) ∧
   (* Capture every argument before any location conversion copies contents. *)
-  (elab_args ctx n tys es =
+  (* Arguments are evaluated in the call's order and passed in the
+     parameters' (arrange). *)
+  (elab_args ctx n order tys es =
     case elab_arg_values ctx n es of
       SOME ((ss, vs), n1) =>
-        (case coerce_values n1 tys vs of
-           SOME (cs, as, n2) => SOME ((ss ++ cs, as), n2)
+        (case arrange order vs of
+           SOME vs' =>
+             (case coerce_values n1 tys vs' of
+                SOME (cs, as, n2) => SOME ((ss ++ cs, as), n2)
+              | NONE => NONE)
          | NONE => NONE)
     | NONE => NONE) ∧
   (* Multiple values: tuple expressions, and calls with several returns. *)
@@ -965,7 +985,7 @@ Definition elab_expr_def:
                    | NONE => NONE)
               | NONE => NONE)
          | _ => NONE)
-    | SrcFunctionCall _ (SrcArrayMember _ member root_expr _) [] _ =>
+    | SrcFunctionCall _ (SrcArrayMember _ member root_expr _) [] [] _ =>
         (if member ≠ "push" then NONE else
          case elab_location ctx n root_expr of
            SOME ((ss, ref, ArrayT element NONE), n1) =>
@@ -1016,7 +1036,7 @@ Definition elab_expr_def:
 Termination
   qexists_tac ‘measure (λx. case x of
      INL (ctx, n, e) => 3 * src_expr_size e + 2
-   | INR (INL (ctx, n, tys, es)) => 3 * list_size src_expr_size es + 1
+   | INR (INL (ctx, n, order, tys, es)) => 3 * list_size src_expr_size es + 1
    | INR (INR (INL (ctx, n, e))) => 3 * src_expr_size e + 3
    | INR (INR (INR (INL (ctx, n, cs)))) =>
        3 * list_size (option_size src_expr_size) cs
@@ -1272,14 +1292,16 @@ Definition elab_stmts_def:
            SOME (cs, as, n2) => SOME ((ss ++ cs ++ [ReturnStmt as], ctx), n2)
          | NONE => NONE)
     | NONE => NONE) ∧
-  (elab_stmt ctx n (SrcEmit _ ev args) =
+  (elab_stmt ctx n (SrcEmit _ ev args order) =
     case ALOOKUP ctx.events ev of
       NONE => NONE
     | SOME e =>
         case all_some (MAP event_parameter e.event_parameters) of
           NONE => NONE
         | SOME ps =>
-            case elab_arg_values ctx n args of
+            case OPTION_BIND (elab_arg_values ctx n args)
+                   (λ((ss, vs), next). OPTION_MAP (λvs'. ((ss, vs'), next))
+                                         (arrange order vs)) of
               SOME ((ss, vs), next) =>
                 (case coerce_abi_values next (MAP FST ps) vs of
                    SOME (cs, as, n1) =>
@@ -1289,12 +1311,12 @@ Definition elab_stmts_def:
             | NONE => NONE) ∧
   (* Arguments are coerced to the error's parameter types, which must be
      elementary for the revert data's ABI encoding. *)
-  (elab_stmt ctx n (SrcRevertError _ err args) =
+  (elab_stmt ctx n (SrcRevertError _ err args order) =
     case all_some (MAP variable_type err.error_parameters) of
       NONE => NONE
     | SOME params =>
         if ¬EVERY is_elementary_type params then NONE else
-        case elab_args ctx n params args of
+        case elab_args ctx n order params args of
           SOME ((ss, as), n1) =>
             SOME ((ss ++ [RevertErrorStmt err.error_selector params as], ctx), n1)
         | NONE => NONE) ∧
@@ -1349,7 +1371,7 @@ End
 Definition elab_modifier_args_def:
   (elab_modifier_args ctx n [] [] = SOME ([], n)) ∧
   (elab_modifier_args ctx n ((x, ty) :: ps) (e :: es) =
-    case elab_args ctx n [ty] [e] of
+    case elab_args ctx n [] [ty] [e] of
       SOME ((ss, as), n1) =>
         (case elab_modifier_args ctx n1 ps es of
            SOME (ss', n2) =>
@@ -1675,7 +1697,7 @@ Definition elab_base_arguments_def:
   (elab_base_arguments ctx fs n ((x, b, args) :: rest) =
     case (constructor_parameters x fs, constructor_parameters b fs) of
       (SOME xps, SOME bps) =>
-        (case elab_args (ctx with variables := xps) n (MAP SND bps) args of
+        (case elab_args (ctx with variables := xps) n [] (MAP SND bps) args of
            SOME ((ss, atoms), n1) =>
              (case elab_base_arguments ctx fs n1 rest of
                 SOME (ss', n2) => SOME (ss ++ define_parameters bps atoms ++ ss', n2)
@@ -1906,12 +1928,14 @@ Proof
   simp[Once coerce_abi_values_pre_def] >> rw[] >> fs[]
 QED
 
+val () = cv_auto_trans arrange_def;
+
 val elab_expr_pre_def = cv_auto_trans_pre_rec
   "elab_expr_pre elab_args_pre elab_values_pre elab_components_pre elab_location_pre elab_destination_pre elab_arg_values_pre"
   elab_expr_def (
   WF_REL_TAC ‘measure (λx. case x of
      INL (ctx, n, e) => 3 * cv_size e + 2
-   | INR (INL (ctx, n, tys, es)) => 3 * cv_size es + 1
+   | INR (INL (ctx, n, order, tys, es)) => 3 * cv_size es + 1
    | INR (INR (INL (ctx, n, e))) => 3 * cv_size e + 3
    | INR (INR (INR (INL (ctx, n, cs)))) => 3 * cv_size cs
    | INR (INR (INR (INR (INL (ctx, n, e))))) => 3 * cv_size e + 1
@@ -1923,8 +1947,8 @@ val elab_expr_pre_def = cv_auto_trans_pre_rec
 Theorem elab_pre_bounded[local]:
   !b.
   (!ctx n e. 3 * src_expr_size e + 2 < b ==> elab_expr_pre ctx n e) /\
-  (!ctx n tys es. 3 * list_size src_expr_size es + 1 < b ==>
-     elab_args_pre ctx n tys es) /\
+  (!ctx n order tys es. 3 * list_size src_expr_size es + 1 < b ==>
+     elab_args_pre ctx n order tys es) /\
   (!ctx n e. 3 * src_expr_size e + 3 < b ==> elab_values_pre ctx n e) /\
   (!ctx n cs. 3 * list_size (option_size src_expr_size) cs < b ==>
      elab_components_pre ctx n cs) /\
@@ -1940,7 +1964,7 @@ Proof
   >~ [‘elab_location_pre ctx n e’] >-
     (Cases_on ‘e’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
      simp[src_expr_distinct, src_expr_11, solidityImportTheory.src_expr_size_def])
-  >~ [‘elab_args_pre ctx n tys es’] >-
+  >~ [‘elab_args_pre ctx n order tys es’] >-
     (Cases_on ‘es’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
      simp[listTheory.list_size_def])
   >~ [‘elab_arg_values_pre ctx n es’] >-
@@ -1955,7 +1979,7 @@ QED
 
 Theorem elab_expr_pre[cv_pre,local]:
   (∀ctx n v. elab_expr_pre ctx n v) ∧
-  (∀ctx n tys es. elab_args_pre ctx n tys es) ∧
+  (∀ctx n order tys es. elab_args_pre ctx n order tys es) ∧
   (∀ctx n e. elab_values_pre ctx n e) ∧
   (∀ctx n cs. elab_components_pre ctx n cs) ∧
   (∀ctx n e. elab_location_pre ctx n e) ∧
