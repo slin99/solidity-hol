@@ -24,7 +24,8 @@ storage layouts. `core_program_environment` derives both checker and runtime
 environments from it. `StructDeclaration` records field identities and types even
 without storage metadata. Layouts give relative slots, offsets and extents and
 must agree with those declarations. Enum and user-defined value declarations
-have the same semantic home; their import coverage remains deferred.
+have the same semantic home; enums are imported, user-defined value types not
+yet.
 
 ## Destinations and storage
 

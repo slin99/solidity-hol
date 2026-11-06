@@ -278,11 +278,12 @@ Definition element_type_def:
     if is_elementary_type element then element else LocatedT loc element
 End
 
-(* ABI values contain scalars, byte sequences in memory/calldata and memory
- * arrays; storage pointers never cross an ABI boundary. *)
+(* ABI values contain scalars (an enum as a uint8), byte sequences in
+ * memory/calldata and memory arrays; storage pointers never cross an ABI
+ * boundary. *)
 Definition abi_value_type_def:
   abi_value_type ty ⇔
-    is_elementary_type ty ∨
+    is_stored_scalar_type ty ∨
     (located_value_type ty ∧
      case ty of LocatedT StorageLoc _ => F | _ => T)
 End
@@ -1231,16 +1232,15 @@ Definition wf_core_environment_def:
     EVERY (λ(_, decl). wf_type_declaration env decl) env.type_declarations
 End
 
-(* Calldata reaches procedures whose parameters and returns are ABI values or
- * enums, the types the entry ABI-decodes and encodes (an enum as a uint8 the
- * entry checks against its members); receive and the fallback take and
- * return nothing, and the creation procedure returns nothing.
+(* Calldata reaches procedures whose parameters and returns are ABI values,
+ * the types the entry ABI-decodes and encodes; receive and the fallback take
+ * and return nothing, and the creation procedure returns nothing.
  *)
 Definition abi_procedure_def:
   abi_procedure env f ⇔
     case lookup_procedure env f of
       SOME p =>
-        EVERY (λ(_, ty). case ty of EnumT _ => T | _ => abi_value_type ty)
+        EVERY (λ(_, ty). abi_value_type ty)
           (p.parameters ++ p.return_bindings)
     | NONE => F
 End

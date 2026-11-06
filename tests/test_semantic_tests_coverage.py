@@ -974,6 +974,22 @@ class ClassifyTests(unittest.TestCase):
             self.assertIn(coverage.Blocker("FunctionCall", "enums returned by external calls",
                                            "elaboration"), found[call])
 
+    def test_enum_types_as_expressions_are_blocked(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/enums.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        by_id = {n["id"]: n for ast in asts.values() for n in coverage.nodes(ast)}
+        # Rounding.divide(a, b, Rounding.Mode.Ceil), made Rounding.divide(a, b, Rounding.Mode)
+        call = next(n for n in by_id.values() if n.get("nodeType") == "FunctionCall"
+                    and n["expression"].get("memberName") == "divide")
+        mode = call["arguments"][2]["expression"]
+        call["arguments"][2] = mode
+        self.assertIn(coverage.Blocker("MemberAccess", "enum types as expressions", "import"),
+                      coverage.scan(asts).get(mode["id"], []))
+
+    def test_enum_storage_arrays_are_not_values(self) -> None:
+        self.assertFalse(coverage.storage_array("t_array$_t_enum_5_$dyn_storage"))
+        self.assertFalse(coverage.storage_array_value("t_array$_t_enum_5_$dyn_storage"))
+
     def test_enum_type_identifiers_are_read_by_id(self) -> None:
         self.assertEqual(coverage.normalize_type_ids(
             {"typeIdentifier": "t_mapping$_t_address_$_t_enum$_S_$5_$"}),

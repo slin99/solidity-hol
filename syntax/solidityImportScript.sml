@@ -956,6 +956,7 @@ Definition contract_ids_def:
     c.contract_info.node_id ::
     FLAT (MAP (λs. s.struct_info.node_id ::
       FLAT (MAP variable_ids s.struct_members)) c.contract_structs) ++
+    MAP FST c.contract_enums ++
     FLAT (MAP variable_ids c.contract_state_variables) ++
     FLAT (MAP variable_ids c.contract_immutables) ++
     FLAT (MAP (λ(_, e). expr_ids e) c.contract_initializers) ++
@@ -1007,6 +1008,7 @@ Datatype:
     functions : (num # src_function) list;
     supers : (num # src_function) list;
     structs : src_struct list;
+    enums : (num # num) list;
     events : (num # src_event) list;
     variables : (num # sol_type) list;
     state : (num # sol_type) list;
@@ -1210,10 +1212,14 @@ Definition check_expr_def:
   (check_expr env (SrcEnvironment _ f tid) =
     if source_type_matches (environment_type f) tid
     then SOME (SrcType (environment_type f)) else NONE) ∧
-  (check_expr env (SrcEnumValue _ tn _ tid) =
+  (check_expr env (SrcEnumValue _ tn index tid) =
     case normalize_type_name tn of
       SOME (EnumT id) =>
-        if source_type_matches (EnumT id) tid then SOME (SrcType (EnumT id)) else NONE
+        (case ALOOKUP (MAP (λ(n, members). (AstId n, members)) env.enums) id of
+           SOME members =>
+             if index < members ∧ source_type_matches (EnumT id) tid
+             then SOME (SrcType (EnumT id)) else NONE
+         | NONE => NONE)
     | _ => NONE) ∧
   (check_expr env (SrcTypeMember _ member tn tid) =
     case normalize_type_name tn of
@@ -1593,8 +1599,8 @@ End
  * of the return variables, which the elaborator does not model.
  *)
 Definition check_function_def:
-  check_function structs events functions fs modifiers state constants bases
-                 (f : src_function) ⇔
+  check_function structs enums events functions fs modifiers state constants
+                 bases (f : src_function) ⇔
     MEM f.fn_scope bases ∧
     (f.fn_kind = "function" ∨ f.fn_kind = "receive" ∨ f.fn_kind = "fallback" ∨
      f.fn_kind = "constructor") ∧
@@ -1608,7 +1614,7 @@ Definition check_function_def:
            NONE => F
          | SOME supers =>
         let env = <| functions := functions; supers := supers;
-                     structs := structs; events := events;
+                     structs := structs; enums := enums; events := events;
                      variables := ps ++ rs;
                      state := if f.fn_mutability = "pure" then [] else state;
                      locations := state; constants := constants;
@@ -1663,6 +1669,7 @@ Definition initializer_env_def:
                                 c.contract_library_functions);
        supers := [];
        structs := c.contract_structs;
+       enums := c.contract_enums;
        events := MAP (λe. (e.event_info.node_id, e)) c.contract_events;
        variables := []; state := state; locations := state;
        constants := constants; scope := c.contract_info.node_id;
@@ -1683,13 +1690,14 @@ Definition check_contract_def:
     (case c.contract_bases of x :: _ => x = c.contract_info.node_id | [] => F) ∧
     ALL_DISTINCT (c.contract_bases ++ c.contract_libraries) ∧
     EVERY (check_struct sources c.contract_bases) c.contract_structs ∧
+    EVERY (λ(_, members). 0 < members ∧ members ≤ 256) c.contract_enums ∧
     EVERY check_event c.contract_events ∧
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
     case (all_some (MAP (state_variable c.contract_bases)
                       c.contract_state_variables), constant_table c,
           immutable_table c) of
       (SOME state, SOME constants, SOME immutables) =>
-        EVERY (check_function c.contract_structs
+        EVERY (check_function c.contract_structs c.contract_enums
                  (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
                  (call_table (c.contract_functions ++
                               c.contract_library_functions))
@@ -1700,7 +1708,7 @@ Definition check_contract_def:
         (* library functions see no state *)
         EVERY (λf. f.fn_kind = "function" ∧
                    (f.fn_visibility = "internal" ∨ f.fn_visibility = "private") ∧
-                   check_function c.contract_structs
+                   check_function c.contract_structs c.contract_enums
                      (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
                      (call_table (c.contract_functions ++
                                   c.contract_library_functions))

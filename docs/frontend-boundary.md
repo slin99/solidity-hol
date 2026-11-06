@@ -218,8 +218,9 @@ and `E(x)` and `uint8(e)` are conversions; converting an out-of-range value
 panics with 0x21. An enum occupies one byte of storage; reading a stored
 byte that is out of range panics with 0x21 when it is read, where the
 compiler checks it only where the value is used. It is
-ABI encoded as `uint8`, and a call or creation whose enum argument is out of
-range reverts. Enums as mapping keys, as elements of memory or calldata
+ABI encoded as `uint8`, as a parameter, a return, an event argument or an
+external call's argument. A call or creation whose enum argument is out of
+range reverts when the decoder reaches it, before later arguments are read. Enums as mapping keys, as elements of memory or calldata
 arrays, as constants, immutables or error parameters, returned by an
 external call, `type(E).min/max` and `delete` are rejected.
 

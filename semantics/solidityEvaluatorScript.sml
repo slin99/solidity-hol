@@ -556,7 +556,7 @@ Definition call_external_def:
                             (LENGTH r.call_return) in
                  let st1 = st' with memory_allocated := st'.memory_allocated +
                        32 * ((reserved + 31) DIV 32) in
-                 case decode_arguments rets r.call_return 0 (memory_free_pointer st1) of
+                 case decode_arguments env rets r.call_return 0 (memory_free_pointer st1) of
                    INL rvs =>
                      (case materialize_arguments rets rvs st1 of
                         SOME (values, st2) =>

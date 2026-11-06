@@ -740,7 +740,7 @@ def storage_array(type_identifier: str) -> bool:
     base = type_identifier.removesuffix("_ptr")
     return (base.startswith("t_array$_") and base.endswith("_storage")
             and "t_mapping$_" not in base and "t_struct$_" not in base
-            and storage_type_supported(base))
+            and "t_enum" not in base and storage_type_supported(base))
 
 
 UNARY_OPERATORS = {"++", "--", "-", "!", "~"}
@@ -1191,8 +1191,18 @@ def special_forms(reached: dict[int, dict[str, Any]],
 
     called = {n["expression"]["id"]: n for n in reached.values() if n["nodeType"] == "FunctionCall"}
     members = library_members(by_id)
+    # The enum types the importer reads as type names: E in E.A and in E(x).
+    enum_names = {n["expression"]["id"] for n in reached.values()
+                  if (n["nodeType"] == "MemberAccess"
+                      and by_id.get(n.get("referencedDeclaration"), {}).get("nodeType") == "EnumValue")
+                  or (n["nodeType"] == "FunctionCall" and n["kind"] == "typeConversion"
+                      and n["expression"]["typeDescriptions"].get("typeIdentifier", "")
+                      .startswith("t_type$_t_enum$_"))}
     for node in reached.values():
         kind = node["nodeType"]
+        if (kind in ("Identifier", "MemberAccess") and node["id"] not in enum_names
+                and by_id.get(node.get("referencedDeclaration"), {}).get("nodeType") == "EnumDefinition"):
+            block(node, "enum types as expressions", "import")
         if node["id"] in members:
             if kind == "FunctionDefinition" and node["visibility"] not in ("internal", "private"):
                 block(node, "external library functions", "import")

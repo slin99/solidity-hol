@@ -42,7 +42,7 @@ checking/runtime environment from that program. Struct declarations describe
 field identities and types even when there is no storage layout. Storage
 layouts separately describe slots and offsets and must agree with the declared
 fields. Enum and user-defined value declarations also live in the program;
-their importer coverage is still deferred.
+the importer reads enums, and user-defined value types are still deferred.
 
 The evaluator executes elementary scalar operations and conversions, locals,
 tuples, structured control flow, internal calls, built-in failures, packed

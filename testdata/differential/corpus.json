@@ -931,7 +931,17 @@
         {"name": "library_enum_argument", "function": "ceil", "args": [7, 2], "expect": {"return": [4]}},
         {"name": "array_element", "function": "historyAt", "args": [1], "storage": {"2": 2, "29102676481673041902632991033461445430619272659676223336789171408008386403022": 512}, "expect": {"return": [2]}},
         {"name": "array_element_out_of_range", "function": "historyAt", "args": [2], "storage": {"2": 2, "29102676481673041902632991033461445430619272659676223336789171408008386403022": 512}, "expect": {"panic": "0x32"}},
-        {"name": "public_getter", "function": "status", "args": [], "storage": {"0": 2}, "expect": {"return": [2]}}
+        {"name": "public_getter", "function": "status", "args": [], "storage": {"0": 2}, "expect": {"return": [2]}},
+        {"name": "mapping_byte_out_of_range_panics", "function": "isActive", "args": [12288], "storage": {"50475380566019111153475393030133440076602138498750187031960546369980623491947": 5}, "expect": {"panic": "0x21"}},
+        {"name": "array_byte_out_of_range_panics", "function": "historyAt", "args": [1], "storage": {"2": 2, "29102676481673041902632991033461445430619272659676223336789171408008386403022": 1280}, "expect": {"panic": "0x21"}},
+        {"name": "packed_byte_out_of_range_panics", "function": "current", "args": [], "storage": {"0": 1281}, "expect": {"panic": "0x21"}},
+        {"name": "getter_byte_out_of_range_panics", "function": "status", "args": [], "storage": {"0": 5}, "expect": {"panic": "0x21"}},
+        {"name": "event_arguments", "function": "announce", "args": [1, 2], "expect": {"return": []}, "logs": [{"topics": ["0x53a3741f0dfbd5f20e0288770df18a3ed4c5050c2b0ac9e3bd175913b7ace050", "0x0000000000000000000000000000000000000000000000000000000000000001"], "data": "0x0000000000000000000000000000000000000000000000000000000000000002"}]},
+        {"name": "external_call_argument", "function": "viaThis", "args": [2], "expect": {"return": [2]}},
+        {"name": "enum_then_bytes", "function": "withBytes", "args": [1, "0x616263"], "expect": {"return": [4]}},
+        {"name": "enum_reverts_before_later_argument", "calldata": "0xf5c2338a000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000010000000000000000", "expect": {"revert": "0x"}},
+        {"name": "constructor_argument", "deploy": true, "args": [2], "expect": {"return": []}, "final_storage": {"0": 2}},
+        {"name": "constructor_argument_out_of_range_reverts", "deploy": true, "args": [3], "expect": {"revert": "0x"}}
       ]
     },
     {

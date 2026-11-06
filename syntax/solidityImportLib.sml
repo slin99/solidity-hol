@@ -916,6 +916,8 @@ fun constant_declaration v = within v (fn v =>
      "expected a contract constant";
    require v (not (isSome (optional_field v "overrides")))
      "overriding state variables are not supported";
+   require v (not (String.isPrefix "t_enum$_" (raw_type_id v)))
+     "enum constants are not supported";
    pairSyntax.mk_pair (variable_record v, expr (field v "value"))))
 
 (* A deployable contract, flattened along its linearization (most derived

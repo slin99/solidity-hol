@@ -25,6 +25,12 @@ contract Enums {
     mapping(address => Status) private statuses;
     Status[] private history;
 
+    event StatusSet(Status indexed s, Level l);
+
+    constructor(Status initial) {
+        status = initial;
+    }
+
     function setStatus(Status s) external {
         status = s;
         history.push(s);
@@ -71,5 +77,17 @@ contract Enums {
 
     function historyAt(uint256 i) external view returns (Status) {
         return history[i];
+    }
+
+    function announce(Status s, Level l) external {
+        emit StatusSet(s, l);
+    }
+
+    function viaThis(Status s) external view returns (uint256) {
+        return this.toUint(s);
+    }
+
+    function withBytes(Status s, bytes memory b) external pure returns (uint256) {
+        return uint256(s) + b.length;
     }
 }
