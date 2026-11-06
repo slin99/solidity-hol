@@ -104,4 +104,44 @@ contract Conditionals {
         c ? x++ : x--;
         return x;
     }
+
+    function writeThrough(bool c) public pure returns (uint256, uint256, uint256) {
+        uint256[] memory left = new uint256[](1);
+        uint256[] memory right = new uint256[](2);
+        (c ? left : right)[0] = 9;
+        return (left[0], right[0], (c ? left : right).length);
+    }
+
+    function calldataArray(bool c, uint256[] calldata d) external pure returns (uint256, uint256) {
+        uint256[] memory m = new uint256[](1);
+        uint256[] memory r = c ? d : m;
+        return (r.length, r[0]);
+    }
+
+    function staticArray(bool c) public pure returns (uint256, uint256) {
+        uint256[2] memory a;
+        a[0] = 4;
+        uint256[2] memory b;
+        b[1] = 5;
+        uint256[2] memory r = c ? a : b;
+        return (r[0], r[1]);
+    }
+
+    function signedWiden(bool c, int8 a, int16 b) public pure returns (int256) {
+        return c ? a : b;
+    }
+
+    function inShortCircuit(bool c, uint256 x) public pure returns (bool) {
+        return x > 0 && (c ? x > 5 : x < 5);
+    }
+
+    function count(uint256 by) external returns (uint256) {
+        calls += by;
+        return calls;
+    }
+
+    function viaReceiver(bool c) external returns (uint256) {
+        Conditionals other = this;
+        return (c ? this : other).count(c ? 1 : 2);
+    }
 }

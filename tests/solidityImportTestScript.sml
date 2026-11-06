@@ -1054,6 +1054,12 @@ val () = edited_unit_with conditionals_contracts "stored_bytes_conditional"
 val () = edited_unit_with conditionals_contracts "tuple_conditional"
   (edit_first "Conditional" (type_identifier "t_tuple$_t_uint16_$_t_uint16_$") conditionals_ast)
 
+val () = edited_unit_with conditionals_contracts "calldata_conditional"
+  (edit_first "Conditional" (type_identifier "t_bytes_calldata_ptr") conditionals_ast)
+
+val () = edited_unit_with conditionals_contracts "function_conditional"
+  (edit_first "Conditional" (type_identifier "t_function_internal_pure$__$returns$__$") conditionals_ast)
+
 Theorem storage_conditional_rejected:
   ¬valid_src_unit storage_conditional
 Proof
@@ -1068,6 +1074,18 @@ QED
 
 Theorem tuple_conditional_rejected:
   ¬valid_src_unit tuple_conditional
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem calldata_conditional_rejected:
+  ¬valid_src_unit calldata_conditional
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem function_conditional_rejected:
+  ¬valid_src_unit function_conditional
 Proof
   CONV_TAC cv_eval
 QED
