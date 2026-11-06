@@ -7,6 +7,7 @@ contract Conditionals {
     uint8 public small;
     uint256 public calls;
     bytes public blob;
+    uint256[] nums;
 
     function literals(bool c) public pure returns (uint16, int256) {
         uint16 a = c ? 1 : 300;
@@ -74,5 +75,33 @@ contract Conditionals {
     function asArgument(bool c, uint256 x) public pure returns (uint256) {
         require(c ? x > 0 : true, "zero");
         return twice(c ? x : 5);
+    }
+
+    function calldataOrMemory(bool c, bytes calldata d, bytes memory m) external pure returns (bytes memory) {
+        return c ? d : m;
+    }
+
+    function storageArray(bool c) public view returns (uint256, uint256) {
+        uint256[] memory m = new uint256[](1);
+        uint256[] memory r = c ? nums : m;
+        return (r.length, r[0]);
+    }
+
+    function conditionEffect(uint256 x) public pure returns (uint256) {
+        return x + (x++ > 0 ? 1 : 2);
+    }
+
+    function loops(uint256 n) public pure returns (uint256 i, uint256 j) {
+        while (i < (n > 5 ? 5 : n)) {
+            i++;
+        }
+        do {
+            j++;
+        } while (j < (n > 5 ? 5 : n));
+    }
+
+    function statement(bool c, uint256 x) public pure returns (uint256) {
+        c ? x++ : x--;
+        return x;
     }
 }

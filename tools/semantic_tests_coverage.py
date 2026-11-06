@@ -525,10 +525,6 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
     found: list[str] = []
     if kind in FEATURES:
         found.append(FEATURES[kind])
-    elif kind == "Conditional":
-        # the checker takes a conditional of one type
-        if node["typeDescriptions"].get("typeIdentifier", "").startswith(("t_tuple", "t_function")):
-            found.append("conditional expressions")
     elif kind == "IndexAccess" and node.get("indexExpression") is None:
         found.append("array type expressions")
     elif kind == "ArrayTypeName":
@@ -862,9 +858,11 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
                       or ENUM.fullmatch(element)):
                 found.append("aggregate array mutation")
     elif kind == "Conditional":
-        # the result is declared with a default value: a value or a memory reference
-        if node["typeDescriptions"].get("typeIdentifier", "").endswith(
-                ("_storage", "_storage_ptr", "_calldata_ptr")):
+        # the checker and elaborator take a value or a memory reference
+        type_identifier = node["typeDescriptions"].get("typeIdentifier") or ""
+        if not (VALUE_TYPE.fullmatch(type_identifier) or ENUM.fullmatch(type_identifier)
+                or type_identifier in ("t_bytes_memory_ptr", "t_string_memory_ptr")
+                or (located_array(type_identifier) and type_identifier.endswith("_memory_ptr"))):
             found.append("conditional expressions")
     elif kind == "SourceUnit":
         if len(deployable(node)) != 1:

@@ -1160,7 +1160,9 @@ Definition check_expr_def:
   (check_expr env (SrcConditional _ c t f tid) =
     case (check_expr env c, decode_type_identifier tid) of
       (SOME (SrcType BoolT), SOME (SrcType ty)) =>
-        if IS_SOME (check_expr env t) ∧ IS_SOME (check_expr env f)
+        (* a value or a memory reference, which the result local can hold *)
+        if (case ty of LocatedT loc _ => loc = MemoryLoc | _ => is_stored_scalar_type ty) ∧
+           IS_SOME (check_expr env t) ∧ IS_SOME (check_expr env f)
         then SOME (SrcType ty) else NONE
     | _ => NONE) ∧
   (check_expr env (SrcAssignment _ op l r tid) =

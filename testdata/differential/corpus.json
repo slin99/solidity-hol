@@ -1313,7 +1313,17 @@
         {"name": "memory_reference_aliased_false", "function": "aliased", "args": [false], "expect": {"return": [0, 9]}},
         {"name": "in_require_reverts", "function": "asArgument", "args": [true, 0], "expect": {"revert": "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000047a65726f00000000000000000000000000000000000000000000000000000000"}},
         {"name": "as_argument_true", "function": "asArgument", "args": [true, 4], "expect": {"return": [8]}},
-        {"name": "as_argument_false", "function": "asArgument", "args": [false, 0], "expect": {"return": [10]}}
+        {"name": "as_argument_false", "function": "asArgument", "args": [false, 0], "expect": {"return": [10]}},
+        {"name": "calldata_operand_copied", "function": "calldataOrMemory", "args": [true, "0xaabbcc", "0x01"], "expect": {"return": ["0xaabbcc"]}},
+        {"name": "memory_operand_of_calldata_pair", "function": "calldataOrMemory", "args": [false, "0xaabbcc", "0x01"], "expect": {"return": ["0x01"]}},
+        {"name": "storage_array_operand_copied", "function": "storageArray", "args": [true], "storage": {"3": "2", "87903029871075914254377627908054574944891091886930582284385770809450030037083": "7", "87903029871075914254377627908054574944891091886930582284385770809450030037084": "8"}, "expect": {"return": [2, 7]}},
+        {"name": "memory_array_operand", "function": "storageArray", "args": [false], "storage": {"3": "2", "87903029871075914254377627908054574944891091886930582284385770809450030037083": "7", "87903029871075914254377627908054574944891091886930582284385770809450030037084": "8"}, "expect": {"return": [1, 0]}},
+        {"name": "condition_assigns_after_snapshot", "function": "conditionEffect", "args": [3], "expect": {"return": [4]}},
+        {"name": "condition_assigns_false", "function": "conditionEffect", "args": [0], "expect": {"return": [2]}},
+        {"name": "loop_conditions_capped", "function": "loops", "args": [9], "expect": {"return": [5, 5]}},
+        {"name": "loop_conditions_small", "function": "loops", "args": [0], "expect": {"return": [0, 1]}},
+        {"name": "statement_true", "function": "statement", "args": [true, 5], "expect": {"return": [6]}},
+        {"name": "statement_false", "function": "statement", "args": [false, 5], "expect": {"return": [4]}}
       ]
     }
   ]
