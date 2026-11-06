@@ -229,10 +229,11 @@ a `bytes32`. A literal argument is first made a memory `bytes`, and one in
 storage or calldata is copied to memory, as for an internal call's argument.
 `f.selector`, `I.f.selector` and `E.selector` are constants: the selector the
 compiler records on the function, error or event they name (four bytes, or 32
-for an event), also of a library's public function or event. The receiver in
-`x.f.selector` must be `this` or a contract, interface or library name, which
-the compiler does not evaluate. A selector of any other function-typed value
-is rejected, and so are
+for an event), also of a library's public function or event, and
+`this.x.selector` is that of a public state variable's getter. The receiver in
+`x.f.selector` must be `this` or a contract, interface or library name,
+possibly qualified by an imported module's, which the compiler does not
+evaluate. A selector of any other function-typed value is rejected, and so are
 `sha256`, `ripemd160`, `ecrecover`, the `abi.*` functions and
 `type(I).interfaceId`.
 

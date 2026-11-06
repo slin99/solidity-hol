@@ -311,8 +311,8 @@ val enum_values : (IntInf.int * (IntInf.int * int)) list ref = ref []
 
 fun enum_value id = List.find (fn (i, _) => i = id) (!enum_values)
 
-(* The functions, events and errors of the compilation, by id, for the
- * selectors their member accesses name. *)
+(* The functions, events, errors and state variables of the compilation, by
+ * id, for the selectors their member accesses name. *)
 val selector_declarations : (IntInf.int * JSON.value) list ref = ref []
 
 (* Whether a node is f.selector, a member the compiler declares. *)
@@ -322,22 +322,31 @@ fun is_selector v =
      not (isSome (optional_field v "referencedDeclaration"))
   end
 
-(* f.selector, E.selector, this.f.selector, I.f.selector: the selector the
- * compiler records on the declaration the base names. In a member base, the
- * receiver must be this or a contract, interface or library name, which the
- * compiler does not evaluate. *)
+(* Whether a receiver is this or a name the compiler does not evaluate: a
+ * contract, interface or library name, or an imported module's, possibly
+ * qualified by a module. *)
+fun unevaluated_receiver r =
+  let val named = String.isPrefix "t_type$_t_contract$_" (raw_type_id r) orelse
+                  String.isPrefix "t_module_" (raw_type_id r)
+  in
+    case node_type r of
+      "Identifier" => int_field r "referencedDeclaration" = ~28 orelse named
+    | "MemberAccess" => named andalso unevaluated_receiver (field r "expression")
+    | _ => false
+  end
+
+(* f.selector, E.selector, this.f.selector, I.f.selector, this.x.selector for a
+ * public state variable: the selector the compiler records on the declaration
+ * the base names. In a member base, the receiver must be one the compiler does
+ * not evaluate. *)
 fun selector_bytes v base =
   let
     val id =
       case node_type base of
         "Identifier" => int_field base "referencedDeclaration"
       | "MemberAccess" =>
-          (let val receiver = field base "expression" in
-             require v (node_type receiver = "Identifier" andalso
-                        (int_field receiver "referencedDeclaration" = ~28 orelse
-                         String.isPrefix "t_type$_t_contract$_" (raw_type_id receiver)))
-               "selectors of computed values are not supported"
-           end;
+          (require v (unevaluated_receiver (field base "expression"))
+             "selectors of computed values are not supported";
            case optional_field base "referencedDeclaration" of
              SOME d => JSONUtil.asIntInf d
            | NONE => fail (describe v ^ ": unsupported selector"))
@@ -346,11 +355,16 @@ fun selector_bytes v base =
       case List.find (fn (i, _) => i = id) (!selector_declarations) of
         SOME (_, d) => d
       | NONE => fail (describe v ^ ": unsupported selector")
+    (* x.selector for a variable x is the selector of the function value it
+     * holds; only this.x and C.x name x's getter *)
+    val () = require v (node_type d <> "VariableDeclaration" orelse
+                        node_type base = "MemberAccess")
+               "selectors of function values are not supported"
     val key =
       case node_type d of
-        "FunctionDefinition" => "functionSelector"
-      | "EventDefinition" => "eventSelector"
-      | _ => "errorSelector"
+        "EventDefinition" => "eventSelector"
+      | "ErrorDefinition" => "errorSelector"
+      | _ => "functionSelector"
   in
     case optional_field d key of
       SOME _ => mk_bytes d (string_field d key)
@@ -1314,7 +1328,8 @@ fun import_source_unit units v contracts = within v (fn v =>
       selector_declarations :=
         List.mapPartial
           (fn d => if List.exists (fn k => k = node_type d)
-                        ["FunctionDefinition", "EventDefinition", "ErrorDefinition"]
+                        ["FunctionDefinition", "EventDefinition", "ErrorDefinition",
+                         "VariableDeclaration"]
                    then SOME (int_field d "id", d) else NONE)
           (List.concat (map (fn u => JSONUtil.arrayMap I (field u "nodes")) units) @
            List.concat (map (fn (_, c) => JSONUtil.arrayMap I (field c "nodes")) declared))

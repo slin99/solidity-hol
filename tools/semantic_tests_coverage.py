@@ -265,7 +265,7 @@ KECCAK256 = -8
 # The field holding the selector the compiler records on each kind of
 # declaration that has one.
 SELECTOR_FIELDS = {"FunctionDefinition": "functionSelector", "EventDefinition": "eventSelector",
-                   "ErrorDefinition": "errorSelector"}
+                   "ErrorDefinition": "errorSelector", "VariableDeclaration": "functionSelector"}
 THIS = -28
 STRING_LITERALS = {"string", "unicodeString", "hexString"}
 
@@ -1185,25 +1185,38 @@ def is_selector(node: dict[str, Any]) -> bool:
             and node.get("referencedDeclaration") is None)
 
 
+def unevaluated_receiver(node: dict[str, Any]) -> bool:
+    """Whether a receiver is this or a name the compiler does not evaluate: a
+    contract, interface or library name, or an imported module's, possibly
+    qualified by a module (unevaluated_receiver in the importer)."""
+    named = (node.get("typeDescriptions", {}).get("typeIdentifier") or "").startswith(
+        ("t_type$_t_contract$_", "t_module_"))
+    if node["nodeType"] == "Identifier":
+        return node.get("referencedDeclaration") == THIS or named
+    if node["nodeType"] == "MemberAccess":
+        return named and unevaluated_receiver(node["expression"])
+    return False
+
+
 def selector_declaration(node: dict[str, Any], by_id: dict[int, dict[str, Any]]
                          ) -> dict[str, Any] | None:
     """The declaration whose recorded selector f.selector, E.selector,
-    this.f.selector or I.f.selector names, as selector_bytes in the importer
-    finds it: the base is an identifier, or a member of this or of a contract,
-    interface or library name, which the compiler does not evaluate."""
+    this.f.selector, I.f.selector or this.x.selector (a public state variable)
+    names, as selector_bytes in the importer finds it: the base is an
+    identifier, or a member of a receiver the compiler does not evaluate."""
     if not is_selector(node):
         return None
     base = node["expression"]
-    if base["nodeType"] == "MemberAccess" and not (
-            base["expression"]["nodeType"] == "Identifier"
-            and (base["expression"].get("referencedDeclaration") == THIS
-                 or (base["expression"]["typeDescriptions"].get("typeIdentifier") or "")
-                 .startswith("t_type$_t_contract$_"))):
+    if base["nodeType"] == "MemberAccess" and not unevaluated_receiver(base["expression"]):
         return None
     if base["nodeType"] not in {"Identifier", "MemberAccess"}:
         return None
     declaration = by_id.get(base.get("referencedDeclaration"))
     if declaration is None or SELECTOR_FIELDS.get(declaration["nodeType"]) not in declaration:
+        return None
+    # x.selector for a variable x is the selector of the function value it
+    # holds; only this.x and C.x name x's getter.
+    if declaration["nodeType"] == "VariableDeclaration" and base["nodeType"] != "MemberAccess":
         return None
     return declaration
 

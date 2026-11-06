@@ -986,11 +986,6 @@ class ClassifyTests(unittest.TestCase):
         self.assertIn(coverage.Blocker("MemberAccess", "enum types as expressions", "elaboration"),
                       coverage.scan(asts).get(mode["id"], []))
 
-    def test_hashes_are_admitted(self) -> None:
-        artifact = json.loads((ROOT / "testdata/differential/expected/hashes.json").read_text())
-        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
-        self.assertEqual(coverage.scan(asts), {})
-
     def test_selectors_of_computed_values_are_blocked(self) -> None:
         artifact = json.loads((ROOT / "testdata/differential/expected/hashes.json").read_text())
         asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}

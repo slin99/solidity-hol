@@ -1276,6 +1276,8 @@
         {"name": "event_selector", "function": "eventSelector", "args": [], "expect": {"return": ["0x5f8c326f855a74f7f47586fc81870663692268d15d98e8f20c0ab3847641a6e7"]}},
         {"name": "library_selectors", "function": "librarySelectors", "args": [], "expect": {"return": ["0xf207564e", "0x1fcb8fd4a09d0facf37b6e1cd47a0cce5aa0b069a1d3d5bd9c223220fa1f5a1c"]}},
         {"name": "selector_widened_and_converted", "function": "widened", "args": [], "expect": {"return": ["0x05588c3e00000000000000000000000000000000000000000000000000000000", 4016751922]}},
+        {"name": "module_qualified_selectors", "function": "moduleSelectors", "args": [], "expect": {"return": ["0x773acdef", "0x590a5151", "0xcd1f5876a7d71dd23dec305977c08069d94c421d8eccf041570b143e2312045d"]}},
+        {"name": "getter_selector", "function": "getterSelector", "args": [], "expect": {"return": ["0x2ddbd13a"]}},
         {"name": "selector_compared", "function": "checkReply", "args": ["0x05588c3e"], "expect": {"return": [true]}},
         {"name": "selector_differs", "function": "checkReply", "args": ["0x00000000"], "expect": {"return": [false]}}
       ]

@@ -1,13 +1,13 @@
 {
   "counts": {
-    "admitted": 535,
+    "admitted": 545,
     "compile-failure": 0,
-    "elaboration-rejected": 65,
-    "import-rejected": 674,
+    "elaboration-rejected": 68,
+    "import-rejected": 659,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 296
+    "source-rejected": 298
   },
   "features": [
     {
@@ -30,7 +30,7 @@
         "VariableDeclaration"
       ],
       "only_blocker": 0,
-      "tests": 158
+      "tests": 156
     },
     {
       "feature": "source units without exactly one contract",
@@ -38,7 +38,7 @@
       "node_types": [
         "SourceUnit"
       ],
-      "only_blocker": 5,
+      "only_blocker": 7,
       "tests": 129
     },
     {
@@ -52,18 +52,7 @@
         "VariableDeclaration"
       ],
       "only_blocker": 3,
-      "tests": 125
-    },
-    {
-      "feature": "function members (selector, address, \u2026)",
-      "first_rejection": 17,
-      "node_types": [
-        "MemberAccess",
-        "TupleExpression",
-        "VariableDeclaration"
-      ],
-      "only_blocker": 0,
-      "tests": 121
+      "tests": 124
     },
     {
       "feature": "address members (balance, call, transfer, \u2026)",
@@ -72,7 +61,7 @@
         "MemberAccess"
       ],
       "only_blocker": 14,
-      "tests": 114
+      "tests": 108
     },
     {
       "feature": "struct values and copying",
@@ -86,17 +75,28 @@
       "tests": 108
     },
     {
+      "feature": "function members (selector, address, \u2026)",
+      "first_rejection": 8,
+      "node_types": [
+        "MemberAccess",
+        "TupleExpression",
+        "VariableDeclaration"
+      ],
+      "only_blocker": 0,
+      "tests": 105
+    },
+    {
       "feature": "abi.* functions",
-      "first_rejection": 58,
+      "first_rejection": 62,
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 19,
+      "only_blocker": 25,
       "tests": 100
     },
     {
       "feature": "function types",
-      "first_rejection": 85,
+      "first_rejection": 87,
       "node_types": [
         "FunctionTypeName"
       ],
@@ -140,16 +140,6 @@
       "tests": 73
     },
     {
-      "feature": "functions as values",
-      "first_rejection": 0,
-      "node_types": [
-        "Identifier",
-        "MemberAccess"
-      ],
-      "only_blocker": 1,
-      "tests": 65
-    },
-    {
       "feature": "array values",
       "first_rejection": 0,
       "node_types": [
@@ -161,13 +151,14 @@
       "tests": 65
     },
     {
-      "feature": "hash and signature built-ins",
-      "first_rejection": 16,
+      "feature": "functions as values",
+      "first_rejection": 0,
       "node_types": [
-        "Identifier"
+        "Identifier",
+        "MemberAccess"
       ],
-      "only_blocker": 10,
-      "tests": 62
+      "only_blocker": 1,
+      "tests": 58
     },
     {
       "feature": "type names as values",
@@ -211,12 +202,12 @@
     },
     {
       "feature": "external library functions",
-      "first_rejection": 32,
+      "first_rejection": 31,
       "node_types": [
         "FunctionDefinition"
       ],
       "only_blocker": 8,
-      "tests": 47
+      "tests": 45
     },
     {
       "feature": "transient storage",
@@ -257,7 +248,7 @@
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
-      "only_blocker": 17,
+      "only_blocker": 18,
       "tests": 38
     },
     {
@@ -268,16 +259,6 @@
       ],
       "only_blocker": 8,
       "tests": 37
-    },
-    {
-      "feature": "library calls and contract-name members",
-      "first_rejection": 0,
-      "node_types": [
-        "IndexAccess",
-        "MemberAccess"
-      ],
-      "only_blocker": 13,
-      "tests": 34
     },
     {
       "feature": "mappings",
@@ -361,6 +342,16 @@
       "tests": 28
     },
     {
+      "feature": "library calls and contract-name members",
+      "first_rejection": 0,
+      "node_types": [
+        "IndexAccess",
+        "MemberAccess"
+      ],
+      "only_blocker": 13,
+      "tests": 27
+    },
+    {
       "feature": "members of elementary type names",
       "first_rejection": 0,
       "node_types": [
@@ -376,17 +367,7 @@
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 13,
-      "tests": 23
-    },
-    {
-      "feature": "library structs and events",
-      "first_rejection": 23,
-      "node_types": [
-        "EventDefinition",
-        "StructDefinition"
-      ],
-      "only_blocker": 1,
+      "only_blocker": 14,
       "tests": 23
     },
     {
@@ -420,6 +401,16 @@
         "TryStatement"
       ],
       "only_blocker": 4,
+      "tests": 20
+    },
+    {
+      "feature": "library structs and events",
+      "first_rejection": 20,
+      "node_types": [
+        "EventDefinition",
+        "StructDefinition"
+      ],
+      "only_blocker": 1,
       "tests": 20
     },
     {
@@ -457,7 +448,7 @@
       "node_types": [
         "Identifier"
       ],
-      "only_blocker": 3,
+      "only_blocker": 4,
       "tests": 16
     },
     {
@@ -470,8 +461,17 @@
       "tests": 15
     },
     {
+      "feature": "hash and signature built-ins",
+      "first_rejection": 6,
+      "node_types": [
+        "Identifier"
+      ],
+      "only_blocker": 5,
+      "tests": 12
+    },
+    {
       "feature": "built-in erc7201",
-      "first_rejection": 7,
+      "first_rejection": 8,
       "node_types": [
         "Identifier"
       ],
@@ -590,11 +590,11 @@
     },
     {
       "feature": "file-level events",
-      "first_rejection": 3,
+      "first_rejection": 5,
       "node_types": [
         "EventDefinition"
       ],
-      "only_blocker": 2,
+      "only_blocker": 4,
       "tests": 5
     },
     {
@@ -709,15 +709,6 @@
       "tests": 3
     },
     {
-      "feature": "events",
-      "first_rejection": 0,
-      "node_types": [
-        "MemberAccess"
-      ],
-      "only_blocker": 0,
-      "tests": 3
-    },
-    {
       "feature": "immutables",
       "first_rejection": 0,
       "node_types": [
@@ -742,16 +733,6 @@
         "Identifier"
       ],
       "only_blocker": 1,
-      "tests": 2
-    },
-    {
-      "feature": "custom errors",
-      "first_rejection": 1,
-      "node_types": [
-        "MemberAccess",
-        "TupleExpression"
-      ],
-      "only_blocker": 0,
       "tests": 2
     },
     {
@@ -810,6 +791,15 @@
       "tests": 1
     },
     {
+      "feature": "custom errors",
+      "first_rejection": 0,
+      "node_types": [
+        "TupleExpression"
+      ],
+      "only_blocker": 0,
+      "tests": 1
+    },
+    {
       "feature": "enums",
       "first_rejection": 0,
       "node_types": [
@@ -831,84 +821,84 @@
   "format": "solidity-hol-semantic-tests-coverage-v1",
   "greedy_order": [
     {
-      "admitted": 19,
+      "admitted": 25,
       "feature": "abi.* functions"
     },
     {
-      "admitted": 39,
-      "feature": "hash and signature built-ins"
-    },
-    {
-      "admitted": 58,
+      "admitted": 44,
       "feature": "string literals as fixed-size bytes"
     },
     {
-      "admitted": 76,
+      "admitted": 62,
       "feature": "address members (balance, call, transfer, \u2026)"
     },
     {
-      "admitted": 94,
+      "admitted": 80,
       "feature": "transient storage"
     },
     {
-      "admitted": 116,
+      "admitted": 102,
       "feature": "operator delete"
     },
     {
-      "admitted": 134,
+      "admitted": 119,
       "feature": "literals of non-integer types"
     },
     {
-      "admitted": 152,
+      "admitted": 137,
       "feature": "bytes push and pop"
     },
     {
-      "admitted": 168,
+      "admitted": 153,
       "feature": "inline arrays"
     },
     {
-      "admitted": 182,
+      "admitted": 167,
       "feature": "conditional expressions"
     },
     {
-      "admitted": 195,
+      "admitted": 180,
       "feature": "aggregate array mutation"
     },
     {
-      "admitted": 208,
+      "admitted": 193,
       "feature": "library calls and contract-name members"
     },
     {
-      "admitted": 221,
+      "admitted": 206,
       "feature": "require with a custom error"
     },
     {
-      "admitted": 232,
+      "admitted": 217,
       "feature": "struct values and copying"
     },
     {
-      "admitted": 258,
+      "admitted": 245,
       "feature": "structs"
     },
     {
-      "admitted": 293,
+      "admitted": 280,
       "feature": "local reference bindings"
     },
     {
-      "admitted": 317,
+      "admitted": 304,
       "feature": "arrays"
     },
     {
-      "admitted": 352,
+      "admitted": 339,
       "feature": "array values"
     },
     {
-      "admitted": 378,
+      "admitted": 365,
       "feature": "inline assembly memory references"
     },
     {
-      "admitted": 405,
+      "admitted": 391,
       "feature": "inline assembly memory outside the scratch space"
+    },
+    {
+      "admitted": 410,
+      "feature": "named arguments"
     }
   ],
   "profile": "solc-0.8.37-via-ir-osaka",
@@ -1120,7 +1110,6 @@
         "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types",
-        "hash and signature built-ins",
         "tuples of literals"
       ],
       "first": "function types",
@@ -1149,7 +1138,6 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "hash and signature built-ins",
         "tuples of literals"
       ],
       "first": "abi.* functions",
@@ -1178,7 +1166,6 @@
         "address members (balance, call, transfer, \u2026)",
         "array values",
         "arrays",
-        "hash and signature built-ins",
         "local reference bindings",
         "memory arrays (new T[](n))",
         "struct values and copying",
@@ -2761,7 +2748,6 @@
       "category": "import-rejected",
       "features": [
         "bytes.concat and string.concat",
-        "hash and signature built-ins",
         "type names as values"
       ],
       "first": "bytes.concat and string.concat",
@@ -3042,7 +3028,6 @@
         "arrays",
         "function types",
         "functions as values",
-        "hash and signature built-ins",
         "inline arrays",
         "memory arrays (new T[](n))"
       ],
@@ -3060,7 +3045,6 @@
         "arrays",
         "function types",
         "functions as values",
-        "hash and signature built-ins",
         "inline arrays",
         "memory arrays (new T[](n))"
       ],
@@ -3367,8 +3351,7 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "free functions",
-        "hash and signature built-ins"
+        "free functions"
       ],
       "first": "free functions",
       "reason": "array/copying/copy_byte_array_to_storage.sol: FunctionDefinition 44: unsupported source unit member FunctionDefinition",
@@ -3934,7 +3917,6 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "function members (selector, address, \u2026)",
         "library calls and contract-name members",
         "operator delete",
         "structs"
@@ -4616,7 +4598,6 @@
         "abi.* functions",
         "contract creation (new C)",
         "external calls to getters",
-        "hash and signature built-ins",
         "source units without exactly one contract"
       ],
       "first": "abi.* functions",
@@ -4647,7 +4628,6 @@
       "features": [
         "abi.* functions",
         "array slices",
-        "hash and signature built-ins",
         "members of elementary type names",
         "type names as values"
       ],
@@ -4755,12 +4735,10 @@
       "test": "array/strings_in_struct.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "hash and signature built-ins"
-      ],
-      "first": "hash and signature built-ins",
-      "reason": "builtinFunctions/assignment_to_const_var_involving_keccak.sol: Identifier 2: unsupported built-in declaration ~8",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "builtinFunctions/assignment_to_const_var_involving_keccak.sol"
     },
@@ -4806,7 +4784,6 @@
         "built-in erc7201",
         "bytes.concat and string.concat",
         "free functions",
-        "hash and signature built-ins",
         "type names as values"
       ],
       "first": "built-in erc7201",
@@ -4820,7 +4797,6 @@
         "arrays",
         "bytes.concat and string.concat",
         "free functions",
-        "hash and signature built-ins",
         "type names as values"
       ],
       "first": "arrays",
@@ -4833,7 +4809,6 @@
       "features": [
         "bytes.concat and string.concat",
         "free functions",
-        "hash and signature built-ins",
         "type names as values"
       ],
       "first": "free functions",
@@ -4858,7 +4833,6 @@
         "built-in erc7201",
         "bytes.concat and string.concat",
         "free functions",
-        "hash and signature built-ins",
         "type names as values"
       ],
       "first": "abi.* functions",
@@ -4884,7 +4858,6 @@
         "built-in erc7201",
         "bytes.concat and string.concat",
         "free functions",
-        "hash and signature built-ins",
         "type names as values"
       ],
       "first": "built-in erc7201",
@@ -4898,7 +4871,6 @@
         "built-in erc7201",
         "bytes.concat and string.concat",
         "free functions",
-        "hash and signature built-ins",
         "type names as values"
       ],
       "first": "built-in erc7201",
@@ -4912,7 +4884,6 @@
         "built-in erc7201",
         "bytes.concat and string.concat",
         "free functions",
-        "hash and signature built-ins",
         "type names as values"
       ],
       "first": "bytes.concat and string.concat",
@@ -4926,7 +4897,6 @@
         "built-in erc7201",
         "bytes.concat and string.concat",
         "free functions",
-        "hash and signature built-ins",
         "type names as values"
       ],
       "first": "built-in erc7201",
@@ -4941,7 +4911,6 @@
         "bytes.concat and string.concat",
         "conditional expressions",
         "free functions",
-        "hash and signature built-ins",
         "type names as values"
       ],
       "first": "conditional expressions",
@@ -4955,7 +4924,6 @@
         "built-in erc7201",
         "bytes.concat and string.concat",
         "free functions",
-        "hash and signature built-ins",
         "type names as values"
       ],
       "first": "built-in erc7201",
@@ -4969,7 +4937,6 @@
         "built-in erc7201",
         "bytes.concat and string.concat",
         "free functions",
-        "hash and signature built-ins",
         "type names as values"
       ],
       "first": "built-in erc7201",
@@ -4984,11 +4951,10 @@
         "bytes.concat and string.concat",
         "fixed-size bytes members and indexing",
         "free functions",
-        "hash and signature built-ins",
         "type names as values"
       ],
-      "first": "hash and signature built-ins",
-      "reason": "builtinFunctions/erc7201_param_with_zero_last_byte_of_inner_hash.sol: Identifier 52: unsupported built-in declaration ~8",
+      "first": "built-in erc7201",
+      "reason": "builtinFunctions/erc7201_param_with_zero_last_byte_of_inner_hash.sol: Identifier 70: unsupported built-in declaration ~30",
       "scan_agrees": true,
       "test": "builtinFunctions/erc7201_param_with_zero_last_byte_of_inner_hash.sol"
     },
@@ -4999,7 +4965,6 @@
         "bytes.concat and string.concat",
         "fixed-size bytes members and indexing",
         "free functions",
-        "hash and signature built-ins",
         "type names as values"
       ],
       "first": "arrays",
@@ -5014,8 +4979,8 @@
         "function members (selector, address, \u2026)",
         "function types"
       ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "builtinFunctions/function_types_sig.sol: MemberAccess 9: unsupported built-in member",
+      "first": "function types",
+      "reason": "builtinFunctions/function_types_sig.sol: FunctionTypeName 21: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "builtinFunctions/function_types_sig.sol"
     },
@@ -5023,19 +4988,17 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "bytes push and pop",
-        "hash and signature built-ins"
+        "bytes push and pop"
       ],
-      "first": "hash and signature built-ins",
-      "reason": "builtinFunctions/iterated_keccak256_with_bytes.sol: Identifier 29: unsupported built-in declaration ~8",
+      "first": "abi.* functions",
+      "reason": "builtinFunctions/iterated_keccak256_with_bytes.sol: MemberAccess 27: unsupported built-in member encodePacked",
       "scan_agrees": true,
       "test": "builtinFunctions/iterated_keccak256_with_bytes.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "hash and signature built-ins"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "builtinFunctions/keccak256.sol: MemberAccess 9: unsupported built-in member encodePacked",
@@ -5043,20 +5006,17 @@
       "test": "builtinFunctions/keccak256.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "hash and signature built-ins"
-      ],
-      "first": "hash and signature built-ins",
-      "reason": "builtinFunctions/keccak256_empty.sol: Identifier 5: unsupported built-in declaration ~8",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "builtinFunctions/keccak256_empty.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "hash and signature built-ins"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "builtinFunctions/keccak256_multiple_arguments.sol: MemberAccess 14: unsupported built-in member encodePacked",
@@ -5066,8 +5026,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "hash and signature built-ins"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "builtinFunctions/keccak256_multiple_arguments_with_numeric_literals.sol: MemberAccess 12: unsupported built-in member encodePacked",
@@ -5077,19 +5036,17 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "hash and signature built-ins"
+        "abi.* functions"
       ],
-      "first": "hash and signature built-ins",
-      "reason": "builtinFunctions/keccak256_multiple_arguments_with_string_literals.sol: Identifier 6: unsupported built-in declaration ~8",
+      "first": "abi.* functions",
+      "reason": "builtinFunctions/keccak256_multiple_arguments_with_string_literals.sol: MemberAccess 24: unsupported built-in member encodePacked",
       "scan_agrees": true,
       "test": "builtinFunctions/keccak256_multiple_arguments_with_string_literals.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "hash and signature built-ins"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "builtinFunctions/keccak256_packed.sol: MemberAccess 27: unsupported built-in member encodePacked",
@@ -5099,8 +5056,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
-        "hash and signature built-ins"
+        "abi.* functions"
       ],
       "first": "abi.* functions",
       "reason": "builtinFunctions/keccak256_packed_complex_types.sol: MemberAccess 84: unsupported built-in member encodePacked",
@@ -5108,13 +5064,12 @@
       "test": "builtinFunctions/keccak256_packed_complex_types.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "bytes push and pop",
-        "hash and signature built-ins"
+        "bytes push and pop"
       ],
-      "first": "hash and signature built-ins",
-      "reason": "builtinFunctions/keccak256_with_bytes.sol: Identifier 25: unsupported built-in declaration ~8",
+      "first": null,
+      "reason": "builtinFunctions/keccak256_with_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "builtinFunctions/keccak256_with_bytes.sol"
     },
@@ -5542,13 +5497,10 @@
       "test": "constants/consteval_array_length.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "function members (selector, address, \u2026)",
-        "library calls and contract-name members"
-      ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "constants/function_unreferenced.sol: MemberAccess 11: unsupported built-in member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "constants/function_unreferenced.sol"
     },
@@ -5827,12 +5779,10 @@
       "test": "constructor/transient_state_variable_initialization.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "hash and signature built-ins"
-      ],
-      "first": "hash and signature built-ins",
-      "reason": "conversions/calldata_bytes_to_memory.sol: Identifier 7: unsupported built-in declaration ~8",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "conversions/calldata_bytes_to_memory.sol"
     },
@@ -5897,8 +5847,7 @@
       "features": [
         "function members (selector, address, \u2026)",
         "function types",
-        "functions as values",
-        "hash and signature built-ins"
+        "functions as values"
       ],
       "first": "function types",
       "reason": "deployedCodeExclusion/library_function_deployed.sol: FunctionTypeName 16: unsupported type name FunctionTypeName",
@@ -5925,7 +5874,6 @@
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
-        "hash and signature built-ins",
         "imports",
         "source units without exactly one contract"
       ],
@@ -5951,7 +5899,6 @@
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
-        "hash and signature built-ins",
         "library calls and contract-name members"
       ],
       "first": "function types",
@@ -5988,7 +5935,6 @@
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
-        "hash and signature built-ins",
         "super calls"
       ],
       "first": "function types",
@@ -6012,7 +5958,6 @@
         "function members (selector, address, \u2026)",
         "function types",
         "functions as values",
-        "hash and signature built-ins",
         "super calls"
       ],
       "first": "function types",
@@ -6181,13 +6126,10 @@
       "test": "errors/error_in_library_and_interface.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "custom errors",
-        "library calls and contract-name members"
-      ],
-      "first": "custom errors",
-      "reason": "errors/error_selector.sol: MemberAccess 92: unsupported built-in member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "errors/error_selector.sol"
     },
@@ -6943,39 +6885,32 @@
       "test": "events/event_really_really_lots_of_data_from_storage.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "events",
-        "library calls and contract-name members",
-        "library structs and events",
         "source units without exactly one contract"
       ],
-      "first": "library structs and events",
-      "reason": "events/event_selector.sol: EventDefinition 2: unsupported library member EventDefinition",
+      "first": null,
+      "reason": "events/event_selector.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "events/event_selector.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "events",
-        "file-level events",
-        "library structs and events"
+        "file-level events"
       ],
-      "first": "library structs and events",
-      "reason": "events/event_selector_file_level.sol: EventDefinition 4: unsupported library member EventDefinition",
+      "first": "file-level events",
+      "reason": "events/event_selector_file_level.sol: EventDefinition 2: unsupported source unit member EventDefinition",
       "scan_agrees": true,
       "test": "events/event_selector_file_level.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "events",
-        "file-level events",
-        "library structs and events"
+        "file-level events"
       ],
-      "first": "library structs and events",
-      "reason": "events/event_shadowing_file_level.sol: EventDefinition 6: unsupported library member EventDefinition",
+      "first": "file-level events",
+      "reason": "events/event_shadowing_file_level.sol: EventDefinition 2: unsupported source unit member EventDefinition",
       "scan_agrees": true,
       "test": "events/event_shadowing_file_level.sol"
     },
@@ -7280,7 +7215,6 @@
       "category": "import-rejected",
       "features": [
         "address members (balance, call, transfer, \u2026)",
-        "hash and signature built-ins",
         "literal subdenominations (ether, days, \u2026)",
         "literals of non-integer types",
         "local reference bindings",
@@ -8282,13 +8216,12 @@
       "test": "functionCall/mapping_internal_return.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "hash and signature built-ins",
         "string literals as fixed-size bytes"
       ],
-      "first": "hash and signature built-ins",
-      "reason": "functionCall/member_accessors.sol: Identifier 20: unsupported built-in declaration ~8",
+      "first": null,
+      "reason": "functionCall/member_accessors.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "functionCall/member_accessors.sol"
     },
@@ -8333,13 +8266,11 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "function members (selector, address, \u2026)",
-        "library calls and contract-name members",
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "functionCall/precompile_extcodesize_check.sol: MemberAccess 81: unsupported built-in member",
+      "first": "abi.* functions",
+      "reason": "functionCall/precompile_extcodesize_check.sol: MemberAccess 78: unsupported built-in member encodeWithSelector",
       "scan_agrees": true,
       "test": "functionCall/precompile_extcodesize_check.sol"
     },
@@ -8408,11 +8339,10 @@
       "features": [
         "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
-        "library calls and contract-name members",
         "source units without exactly one contract"
       ],
       "first": "function members (selector, address, \u2026)",
-      "reason": "functionSelector/function_selector_via_contract_name.sol: MemberAccess 39: unsupported built-in member",
+      "reason": "functionSelector/function_selector_via_contract_name.sol: MemberAccess 73: selectors of computed values are not supported",
       "scan_agrees": true,
       "test": "functionSelector/function_selector_via_contract_name.sol"
     },
@@ -8633,27 +8563,20 @@
       "test": "functionTypes/same_function_in_construction_and_runtime_equality_check.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "address members (balance, call, transfer, \u2026)",
-        "function members (selector, address, \u2026)",
-        "functions as values",
-        "library calls and contract-name members"
-      ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "functionTypes/selector_1.sol: MemberAccess 24: unsupported built-in member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "functionTypes/selector_1.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "function members (selector, address, \u2026)",
-        "library calls and contract-name members",
         "source units without exactly one contract"
       ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "functionTypes/selector_2.sol: MemberAccess 18: unsupported built-in member",
+      "first": null,
+      "reason": "functionTypes/selector_2.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "functionTypes/selector_2.sol"
     },
@@ -8665,7 +8588,7 @@
         "function members (selector, address, \u2026)"
       ],
       "first": "function members (selector, address, \u2026)",
-      "reason": "functionTypes/selector_assignment_expression.sol: MemberAccess 15: unsupported built-in member",
+      "reason": "functionTypes/selector_assignment_expression.sol: MemberAccess 15: selectors of computed values are not supported",
       "scan_agrees": true,
       "test": "functionTypes/selector_assignment_expression.sol"
     },
@@ -8676,7 +8599,7 @@
         "function members (selector, address, \u2026)"
       ],
       "first": "function members (selector, address, \u2026)",
-      "reason": "functionTypes/selector_expression_side_effect.sol: MemberAccess 10: unsupported built-in member",
+      "reason": "functionTypes/selector_expression_side_effect.sol: MemberAccess 10: selectors of computed values are not supported",
       "scan_agrees": true,
       "test": "functionTypes/selector_expression_side_effect.sol"
     },
@@ -8688,7 +8611,7 @@
         "function members (selector, address, \u2026)"
       ],
       "first": "function members (selector, address, \u2026)",
-      "reason": "functionTypes/selector_ternary.sol: MemberAccess 22: unsupported built-in member",
+      "reason": "functionTypes/selector_ternary.sol: MemberAccess 22: selectors of computed values are not supported",
       "scan_agrees": true,
       "test": "functionTypes/selector_ternary.sol"
     },
@@ -10153,7 +10076,6 @@
       "category": "import-rejected",
       "features": [
         "abi.* functions",
-        "hash and signature built-ins",
         "inline assembly memory references",
         "local reference bindings",
         "public state variables",
@@ -10336,13 +10258,10 @@
       "test": "integer/uint.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "address members (balance, call, transfer, \u2026)",
-        "function members (selector, address, \u2026)"
-      ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "interfaceID/homer.sol: MemberAccess 35: unsupported built-in member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "interfaceID/homer.sol"
     },
@@ -10380,21 +10299,16 @@
       "test": "interfaceID/interfaces.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "address members (balance, call, transfer, \u2026)",
-        "function members (selector, address, \u2026)"
-      ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "interfaceID/lisa.sol: MemberAccess 63: unsupported built-in member",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "interfaceID/lisa.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "address members (balance, call, transfer, \u2026)",
-        "function members (selector, address, \u2026)",
         "type(\u2026)"
       ],
       "first": "type(\u2026)",
@@ -10950,8 +10864,6 @@
         "arrays",
         "conditional expressions",
         "external library functions",
-        "function members (selector, address, \u2026)",
-        "functions as values",
         "local reference bindings",
         "members of elementary type names",
         "type names as values"
@@ -10969,8 +10881,6 @@
         "arrays",
         "conditional expressions",
         "external library functions",
-        "function members (selector, address, \u2026)",
-        "functions as values",
         "local reference bindings",
         "members of elementary type names",
         "type names as values"
@@ -10988,8 +10898,6 @@
         "arrays",
         "conditional expressions",
         "external library functions",
-        "function members (selector, address, \u2026)",
-        "functions as values",
         "local reference bindings",
         "members of elementary type names",
         "type names as values"
@@ -11008,8 +10916,6 @@
         "contract creation (new C)",
         "external calls to getters",
         "external library functions",
-        "function members (selector, address, \u2026)",
-        "functions as values",
         "members of elementary type names",
         "source units without exactly one contract",
         "type names as values"
@@ -11045,17 +10951,11 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "arrays",
-        "external library functions",
-        "function members (selector, address, \u2026)",
-        "functions as values",
-        "hash and signature built-ins",
-        "local reference bindings",
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "external library functions",
-      "reason": "libraries/library_function_selectors.sol: FunctionDefinition 10: only internal library functions are supported",
+      "first": "abi.* functions",
+      "reason": "libraries/library_function_selectors.sol: MemberAccess 72: unsupported built-in member encodeWithSelector",
       "scan_agrees": true,
       "test": "libraries/library_function_selectors.sol"
     },
@@ -11064,12 +10964,7 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "external library functions",
-        "function members (selector, address, \u2026)",
-        "functions as values",
-        "hash and signature built-ins",
         "library structs and events",
-        "local reference bindings",
         "members of elementary type names",
         "structs",
         "type names as values"
@@ -12837,7 +12732,6 @@
         "abi.* functions",
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
-        "hash and signature built-ins",
         "source units without exactly one contract",
         "type(\u2026)"
       ],
@@ -13022,12 +12916,10 @@
       "test": "specialFunctions/abi_functions_member_access.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "hash and signature built-ins"
-      ],
-      "first": "hash and signature built-ins",
-      "reason": "specialFunctions/keccak256_optimized.sol: Identifier 24: unsupported built-in declaration ~8",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "specialFunctions/keccak256_optimized.sol"
     },
@@ -14608,15 +14500,13 @@
       "test": "structs/memory_structs_read_write.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "address members (balance, call, transfer, \u2026)",
-        "function members (selector, address, \u2026)",
         "struct values and copying",
         "structs"
       ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "structs/msg_data_to_struct_member_copy.sol: MemberAccess 57: unsupported built-in member",
+      "first": null,
+      "reason": "structs/msg_data_to_struct_member_copy.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "structs/msg_data_to_struct_member_copy.sol"
     },
@@ -15706,7 +15596,6 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "function members (selector, address, \u2026)",
         "members of elementary type names",
         "type names as values",
         "user-defined value types"
@@ -16514,7 +16403,6 @@
       "features": [
         "contract creation (new C)",
         "external calls to getters",
-        "hash and signature built-ins",
         "inline assembly",
         "inline assembly calls, gas, return data and code",
         "inline assembly memory outside the scratch space",
@@ -16556,7 +16444,6 @@
       "category": "import-rejected",
       "features": [
         "contract creation (new C)",
-        "hash and signature built-ins",
         "inline assembly",
         "source units without exactly one contract",
         "type(\u2026)"
@@ -16654,7 +16541,6 @@
         "abi.* functions",
         "bytes.concat and string.concat",
         "conditional expressions",
-        "hash and signature built-ins",
         "inline assembly",
         "string literals as fixed-size bytes",
         "type names as values"
@@ -16901,7 +16787,6 @@
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
-        "hash and signature built-ins",
         "inline assembly",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
@@ -17624,12 +17509,11 @@
     {
       "category": "import-rejected",
       "features": [
-        "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
         "function types"
       ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "viaYul/function_selector.sol: MemberAccess 7: unsupported built-in member",
+      "first": "function types",
+      "reason": "viaYul/function_selector.sol: FunctionTypeName 13: unsupported type name FunctionTypeName",
       "scan_agrees": true,
       "test": "viaYul/function_selector.sol"
     },
@@ -17642,12 +17526,10 @@
       "test": "viaYul/if.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "hash and signature built-ins"
-      ],
-      "first": "hash and signature built-ins",
-      "reason": "viaYul/keccak.sol: Identifier 5: unsupported built-in declaration ~8",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/keccak.sol"
     },

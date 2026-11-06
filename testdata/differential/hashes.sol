@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import * as Base from "./hashes_base.sol";
+
 interface IReceiver {
     function onReceived(address from, uint256 amount, bytes calldata data) external returns (bytes4);
 }
@@ -24,6 +26,7 @@ contract Hashes {
     bytes public blob;
     mapping(bytes32 => uint256) public seen;
     uint256 public calls;
+    uint256 public total;
 
     function ofBytes(bytes memory b) public pure returns (bytes32) {
         return keccak256(b);
@@ -80,6 +83,14 @@ contract Hashes {
     function widened() public pure returns (bytes32, uint32) {
         bytes32 w = IReceiver.onReceived.selector;
         return (w, uint32(this.ofBytes.selector));
+    }
+
+    function moduleSelectors() public pure returns (bytes4, bytes4, bytes32) {
+        return (Base.IPeer.ping.selector, Base.Refused.selector, Base.IPeer.Pinged.selector);
+    }
+
+    function getterSelector() public pure returns (bytes4) {
+        return this.total.selector;
     }
 
     function checkReply(bytes4 reply) public pure returns (bool) {
