@@ -83,7 +83,9 @@ holbuild -j8 build --skip-checkpoints --skip-proof-steps solidityHolTheory
 
 Pass `--solc /path/to/pinned/solc` to reproduce the compiler artifacts as well.
 The upstream `semanticTests` acceptance report is a separate preparation check;
-it does not execute those tests' call expectations.
+it does not execute those tests' call expectations. The separate
+[expectation runner](semantic-expectations-runner.md) executes admitted tests
+in order against their upstream observations, outside per-PR CI.
 
 ## The compiler's own Yul
 

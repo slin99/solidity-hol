@@ -34,6 +34,40 @@ def tokens(text: str) -> list[str]:
         r'(?:hex)?"(?:[^"\\]|\\.)*"|(?:left|right)\([^)]*\)|[^,\s][^,]*', text)]
 
 
+def decode_string(text: str) -> bytes:
+    """Decode isoltest's byte escapes, including NUL and hex bytes."""
+    result = bytearray()
+    i = 0
+    escapes = {"\\": b"\\", "n": b"\n", "r": b"\r", "t": b"\t", "0": b"\0"}
+    while i < len(text):
+        c = text[i]
+        i += 1
+        if c != "\\":
+            result.extend(c.encode("utf-8"))
+            continue
+        if i == len(text):
+            raise UnsupportedExpectation("trailing string escape")
+        c = text[i]
+        i += 1
+        if c == "x":
+            match = re.match(r"[0-9a-fA-F]{1,2}", text[i:])
+            if not match:
+                raise UnsupportedExpectation("hex escape needs one or two digits")
+            result.append(int(match[0], 16))
+            i += len(match[0])
+        elif c in escapes:
+            result.extend(escapes[c])
+        else:
+            raise UnsupportedExpectation(f"unsupported string escape: {c}")
+    return bytes(result)
+
+
+def strip_comments(text: str) -> str:
+    """Remove paired # comments outside quoted strings."""
+    return re.sub(r'"(?:[^"\\]|\\.)*"|#[^#]*#',
+                  lambda m: m[0] if m[0].startswith('"') else "", text)
+
+
 def encode_token(token: str) -> bytes:
     """The isoltest language encodes bytes directly, without ABI type inference."""
     alignment = re.fullmatch(r"(left|right)\((.*)\)", token)
@@ -41,18 +75,17 @@ def encode_token(token: str) -> bytes:
     if alignment:
         side, token = alignment.groups()
     if token.startswith('hex"') and token.endswith('"'):
+        if alignment:
+            raise UnsupportedExpectation("hex string tokens cannot be aligned")
         try:
             return bytes.fromhex(token[4:-1])
         except ValueError as error:
             raise UnsupportedExpectation(f"invalid hex bytes: {token}") from error
-    if token.startswith('"'):
-        try:
-            raw = json.loads(token).encode("utf-8")
-        except (json.JSONDecodeError, AttributeError) as error:
-            raise UnsupportedExpectation(f"unsupported string: {token}") from error
+    if token.startswith('"') and token.endswith('"'):
+        raw = decode_string(token[1:-1])
         if len(raw) > 32:
             raise UnsupportedExpectation("string token exceeds one ABI word")
-        return raw.ljust(32, b"\0")
+        return raw.ljust(32, b"\0") if side != "right" or not alignment else raw.rjust(32, b"\0")
     if token in ("true", "false"):
         number = int(token == "true")
     elif re.fullmatch(r"-?(?:0x[0-9a-fA-F]+|[0-9]+)", token):
@@ -62,7 +95,8 @@ def encode_token(token: str) -> bytes:
     if not -(1 << 255) <= number < 1 << 256:
         raise UnsupportedExpectation(f"integer token outside 256 bits: {token}")
     number %= 1 << 256
-    size = max(1, (number.bit_length() + 7) // 8) if alignment else 32
+    size = ((len(token) - 2 + 1) // 2 if token.startswith("0x")
+            else max(1, (number.bit_length() + 7) // 8)) if alignment else 32
     raw = number.to_bytes(size, "big")
     return raw.ljust(32, b"\0") if side == "left" else raw.rjust(32, b"\0")
 
@@ -84,8 +118,11 @@ class Call:
     calldata: str | None = None
     expected: dict[str, str] | None = None
     reason: str | None = None
-    observations: list[str] = field(default_factory=list)
+    observations: list[dict[str, str]] = field(default_factory=list)
     implicit: bool = False
+    builtin: str | None = None
+    builtin_arg: str | None = None
+    events: list[dict[str, Any]] = field(default_factory=list)
 
     def manifest(self) -> dict[str, Any]:
         return {k: v for k, v in asdict(self).items() if v is not None}
@@ -103,12 +140,12 @@ def expectation_lines(text: str) -> list[str]:
             raise UnsupportedExpectation("non-comment line after expectation separator")
         line = raw.lstrip()[2:].strip()
         if not line.startswith("~ emit "):
-            line = re.sub(r"#.*?#", "", line).strip()
+            line = strip_comments(line).strip()
         if not line:
             continue
         if line.startswith(("gas ", "~ emit ")):
             lines.append(line)
-        elif re.match(r"(?:[A-Za-z_$][\w$]*|)\(", line) or re.match(r"\w+:\s", line):
+        elif re.match(r"(?:[A-Za-z_$][\w$]*|)\(", line) or re.match(r"[A-Za-z_]\w*\s*(?::|->)", line):
             lines.append(line)
         elif lines and not lines[-1].startswith(("gas ", "~ emit ")):
             lines[-1] += " " + line
@@ -117,13 +154,41 @@ def expectation_lines(text: str) -> list[str]:
     return lines
 
 
+def parse_event(line: str) -> dict[str, Any]:
+    """Read the logger, indexed topics and raw data of an isoltest event."""
+    match = re.fullmatch(r"~ emit (.*?)(?: from (0x[0-9a-fA-F]+))?(?::\s*(.*))?", line)
+    if not match:
+        raise UnsupportedExpectation(f"unsupported event expectation: {line}")
+    signature, logger, arguments = match.groups()
+    topics, data = [], []
+    for token in tokens(arguments or ""):
+        if token.startswith("#"):
+            raw = encode_bytes(token[1:])
+            if len(raw) != 66:
+                raise UnsupportedExpectation("event topic is not 32 bytes")
+            topics.append(raw)
+        else:
+            data.append(encode_token(token))
+    if signature != "<anonymous>" and not re.fullmatch(r"\w+\(.*\)", signature):
+        raise UnsupportedExpectation(f"unsupported event signature: {signature}")
+    return {"signature": signature, "logger": logger, "topics": topics,
+            "data": "0x" + b"".join(data).hex()}
+
+
 def parse_calls(text: str, methods: dict[str, str]) -> list[Call]:
     """Parse call arguments/results; unsupported transactions stop later replay."""
     calls: list[Call] = []
     sender = ACCOUNT
     for line in expectation_lines(text):
         if line.startswith(("gas ", "~ emit ")) and calls:
-            calls[-1].observations.append(line)
+            if line.startswith("gas "):
+                calls[-1].observations.append({"text": line, "status": "not-runnable",
+                                              "reason": "gas is not modeled"})
+            else:
+                try:
+                    calls[-1].events.append(parse_event(line))
+                except UnsupportedExpectation as error:
+                    calls[-1].reason = str(error)
             continue
         call = Call(len(calls), line, sender=str(sender))
         calls.append(call)
@@ -131,7 +196,13 @@ def parse_calls(text: str, methods: dict[str, str]) -> list[Call]:
         if account:
             sender = ACCOUNT + int(account[1]) * 4096
             call.expected = {"returned": encode_bytes(account[2])}
-            call.reason = "builtin account directive"
+            call.builtin = "account"
+            call.builtin_arg = str(sender)
+            continue
+        builtin = re.fullmatch(r"(balance|storageEmpty)(?::\s*(0x[0-9a-fA-F]+))?\s*->\s*(.*)", line)
+        if builtin:
+            call.builtin, call.builtin_arg, result = builtin.groups()
+            call.expected = {"returned": encode_bytes(result)}
             continue
         match = re.fullmatch(r"(\w*\(.*?\))(?:,\s*(\d+)\s*(wei|ether))?\s*(?::\s*(.*?))?\s*(?:->\s*(.*))?", line)
         if not match:
@@ -176,7 +247,7 @@ def classify(calls: list[Call], executed: dict[int, dict[str, Any]]) -> list[dic
             if actual["status"] == "executed":
                 if call.reason:
                     result.update(status="not-runnable", reason=call.reason)
-                elif actual["actual"] == call.expected:
+                elif actual["actual"] == call.expected and actual.get("logs", []) == actual.get("expected_logs", []):
                     result["status"] = "agree"
                 else:
                     result["status"] = "disagree"
@@ -209,7 +280,7 @@ def markdown(report: dict[str, Any]) -> str:
     lines += ["", "Calls execute after deployment in order, sharing storage, balances and immutables. "
               "A skipped transaction makes subsequent calls not runnable. A diagnostic is never agreement. "
               "Test categories prioritize disagreement, then not runnable; fully agreeing tests have every call agreeing.", "",
-              "Gas and event observations are recorded separately as untested; agreement here covers return/revert bytes only.", "",
+              "Gas observations are recorded separately as untested because the core does not track gas. Agreement covers return/revert bytes and event logs.", "",
               "## Per-test results", "", "| test | outcome | agree / disagree / not runnable |", "| --- | --- | --- |"]
     for test in report["tests"]:
         counts = Counter(c["status"] for c in test["calls"])
@@ -279,15 +350,25 @@ def main(argv: list[str] | None = None) -> int:
     manifest = work / "manifest.json"
     exporter.write_json_atomic(manifest, {"tests": tests})
     subprocess.run([args.holbuild, "-j4", "build", "solidityDifferentialLib"], cwd=ROOT, check=True)
-    log = work / "hol.log"
-    with log.open("w") as stream:
-        status = subprocess.run([args.holbuild, "-j1", "run", str(ROOT / "tools/semantic_expectations.sml")],
-                                cwd=ROOT, stdin=subprocess.DEVNULL, stdout=stream, stderr=subprocess.STDOUT,
-                                env={**os.environ, "SEMANTIC_EXPECTATIONS_MANIFEST": str(manifest)}).returncode
+    logs: list[Path] = []
+    status = 0
+    # Each process bounds the lifetime of preparation/evaluation theorem state.
+    for offset in range(0, len(tests), 64):
+        batch = work / f"batch-{offset:04d}.json"
+        exporter.write_json_atomic(batch, {"tests": tests[offset:offset + 64]})
+        log = work / f"batch-{offset:04d}.log"
+        logs.append(log)
+        with log.open("w") as stream:
+            status = subprocess.run([args.holbuild, "-j1", "run", str(ROOT / "tools/semantic_expectations.sml")],
+                                    cwd=ROOT, stdin=subprocess.DEVNULL, stdout=stream, stderr=subprocess.STDOUT,
+                                    env={**os.environ, "SEMANTIC_EXPECTATIONS_MANIFEST": str(batch)}).returncode
+        if status:
+            raise SystemExit(f"HOL run failed: status {status}; see {log}")
+        print(f"Executed batch {offset}..{min(offset + 64, len(tests))}", file=sys.stderr, flush=True)
     executed: dict[str, dict[int, dict[str, Any]]] = {}
     preparations: dict[str, str] = {}
     complete = set()
-    for line in log.read_text(errors="replace").splitlines():
+    for line in (line for log in logs for line in log.read_text(errors="replace").splitlines()):
         if not line.startswith(PREFIX):
             continue
         result = json.loads(line[len(PREFIX):])
@@ -312,6 +393,7 @@ def main(argv: list[str] | None = None) -> int:
         results.append({"test": test["test"], "status": test_status(calls), "calls": calls})
     result_report = {"format": "solidity-hol-semantic-expectations-v1", "solidity_pin": pin,
                      "core_revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
+                     "untested_observations": dict(Counter(o["reason"] for t in results for c in t["calls"] for o in c["observations"])),
                      "test_counts": dict(Counter(t["status"] for t in results)),
                      "call_counts": dict(Counter(c["status"] for t in results for c in t["calls"])), "tests": results}
     exporter.write_json_atomic(args.output.with_suffix(".json"), result_report)
