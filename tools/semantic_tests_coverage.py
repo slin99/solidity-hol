@@ -372,7 +372,8 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
 
     pending = list(roots)
     while pending:
-        for node in nodes(pending.pop()):
+        # A selector's base is not imported.
+        for node in nodes(pending.pop(), skip=is_selector):
             if node["id"] in seen:
                 continue
             seen.add(node["id"])
@@ -1178,16 +1179,26 @@ def unwrap(value: dict[str, Any] | None) -> dict[str, Any] | None:
     return value
 
 
+def is_selector(node: dict[str, Any]) -> bool:
+    """Whether a node is f.selector, a member the compiler declares."""
+    return (node["nodeType"] == "MemberAccess" and node["memberName"] == "selector"
+            and node.get("referencedDeclaration") is None)
+
+
 def selector_declaration(node: dict[str, Any], by_id: dict[int, dict[str, Any]]
                          ) -> dict[str, Any] | None:
-    """The declaration whose recorded selector f.selector, I.f.selector or
-    E.selector names, as selector_bytes in the importer finds it: the base is
-    an identifier, or a member of one."""
-    if node["nodeType"] != "MemberAccess" or node["memberName"] != "selector" \
-            or node.get("referencedDeclaration") is not None:
+    """The declaration whose recorded selector f.selector, E.selector,
+    this.f.selector or I.f.selector names, as selector_bytes in the importer
+    finds it: the base is an identifier, or a member of this or of a contract,
+    interface or library name, which the compiler does not evaluate."""
+    if not is_selector(node):
         return None
     base = node["expression"]
-    if base["nodeType"] == "MemberAccess" and base["expression"]["nodeType"] != "Identifier":
+    if base["nodeType"] == "MemberAccess" and not (
+            base["expression"]["nodeType"] == "Identifier"
+            and (base["expression"].get("referencedDeclaration") == THIS
+                 or (base["expression"]["typeDescriptions"].get("typeIdentifier") or "")
+                 .startswith("t_type$_t_contract$_"))):
         return None
     if base["nodeType"] not in {"Identifier", "MemberAccess"}:
         return None
@@ -1222,7 +1233,14 @@ def special_forms(reached: dict[int, dict[str, Any]],
                   or (n["nodeType"] == "FunctionCall" and n["kind"] == "typeConversion"
                       and n["expression"]["typeDescriptions"].get("typeIdentifier", "")
                       .startswith("t_type$_t_enum$_"))}
+    # f.selector: the importer reads it as the declaration's selector, and
+    # none of its parts.
+    selector_parts = {n["id"] for s in reached.values()
+                      if selector_declaration(s, by_id) is not None for n in nodes(s)}
+    unread.update(selector_parts)
     for node in reached.values():
+        if node["id"] in selector_parts:
+            continue
         kind = node["nodeType"]
         # Any other name of an enum type is imported as an identifier that
         # source validation rejects.
@@ -1303,9 +1321,6 @@ def special_forms(reached: dict[int, dict[str, Any]],
             # I(a), a conversion to address, and E(x): the importer reads the
             # callee as a type name
             unread.update(n["id"] for n in nodes(node["expression"]))
-        if selector_declaration(node, by_id) is not None:
-            # f.selector: the importer reads it as the declaration's selector
-            unread.update(n["id"] for n in nodes(node))
         if (kind == "MemberAccess"
                 and by_id.get(node.get("referencedDeclaration"), {}).get("nodeType") == "EnumValue"):
             # E.A: the importer reads E as a type name

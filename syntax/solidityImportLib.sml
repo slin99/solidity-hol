@@ -315,17 +315,29 @@ fun enum_value id = List.find (fn (i, _) => i = id) (!enum_values)
  * selectors their member accesses name. *)
 val selector_declarations : (IntInf.int * JSON.value) list ref = ref []
 
-(* f.selector, I.f.selector, E.selector: the selector the compiler records on
- * the declaration the base names. The base of I.f must be an identifier, so
- * that no expression is evaluated for its effects. *)
+(* Whether a node is f.selector, a member the compiler declares. *)
+fun is_selector v =
+  let fun is k x = case optional_field v k of SOME (JSON.STRING y) => x = y | _ => false
+  in is "nodeType" "MemberAccess" andalso is "memberName" "selector" andalso
+     not (isSome (optional_field v "referencedDeclaration"))
+  end
+
+(* f.selector, E.selector, this.f.selector, I.f.selector: the selector the
+ * compiler records on the declaration the base names. In a member base, the
+ * receiver must be this or a contract, interface or library name, which the
+ * compiler does not evaluate. *)
 fun selector_bytes v base =
   let
     val id =
       case node_type base of
         "Identifier" => int_field base "referencedDeclaration"
       | "MemberAccess" =>
-          (require v (node_type (field base "expression") = "Identifier")
-             "selectors of computed values are not supported";
+          (let val receiver = field base "expression" in
+             require v (node_type receiver = "Identifier" andalso
+                        (int_field receiver "referencedDeclaration" = ~28 orelse
+                         String.isPrefix "t_type$_t_contract$_" (raw_type_id receiver)))
+               "selectors of computed values are not supported"
+           end;
            case optional_field base "referencedDeclaration" of
              SOME d => JSONUtil.asIntInf d
            | NONE => fail (describe v ^ ": unsupported selector"))
@@ -942,7 +954,9 @@ fun super_members (v as JSON.OBJECT fields) =
   | super_members _ = []
 
 (* The declarations the nodes of v refer to. *)
-fun references (JSON.OBJECT fields) =
+fun references (v as JSON.OBJECT fields) =
+      (* a selector's base is not imported *)
+      if is_selector v then [] else
       List.concat
         (map (fn ("referencedDeclaration", JSON.INT i) => [i]
                | (_, w) => references w) fields)

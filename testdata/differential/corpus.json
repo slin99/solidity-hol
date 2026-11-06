@@ -1274,6 +1274,8 @@
         {"name": "constant_hash_differs", "function": "isRole", "args": ["0xf0887ba65ee2024ea881d91b74c2450ef19e1557f03bed3ea9f16b037cbe2dc9"], "expect": {"return": [false]}},
         {"name": "function_and_error_selectors", "function": "selectors", "args": [], "expect": {"return": ["0x05588c3e", "0xef6ac532", "0xe7d05e27"]}},
         {"name": "event_selector", "function": "eventSelector", "args": [], "expect": {"return": ["0x5f8c326f855a74f7f47586fc81870663692268d15d98e8f20c0ab3847641a6e7"]}},
+        {"name": "library_selectors", "function": "librarySelectors", "args": [], "expect": {"return": ["0xf207564e", "0x1fcb8fd4a09d0facf37b6e1cd47a0cce5aa0b069a1d3d5bd9c223220fa1f5a1c"]}},
+        {"name": "selector_widened_and_converted", "function": "widened", "args": [], "expect": {"return": ["0x05588c3e00000000000000000000000000000000000000000000000000000000", 4016751922]}},
         {"name": "selector_compared", "function": "checkReply", "args": ["0x05588c3e"], "expect": {"return": [true]}},
         {"name": "selector_differs", "function": "checkReply", "args": ["0x00000000"], "expect": {"return": [false]}}
       ]

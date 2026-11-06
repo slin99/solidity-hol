@@ -1007,6 +1007,20 @@ class ClassifyTests(unittest.TestCase):
         self.assertIsNone(coverage.selector_declaration(selector, by_id))
         self.assertIn(selector["id"], coverage.scan(asts))
 
+    def test_selectors_through_variables_are_blocked(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/hashes.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        by_id = {n["id"]: n for ast in asts.values() for n in coverage.nodes(ast)}
+        # IReceiver.onReceived.selector, made r.onReceived.selector for a
+        # contract-typed variable r, which the compiler evaluates
+        selector = next(n for n in by_id.values() if n.get("nodeType") == "MemberAccess"
+                        and n["memberName"] == "selector"
+                        and n["expression"].get("memberName") == "onReceived")
+        receiver = selector["expression"]["expression"]
+        self.assertIsNotNone(coverage.selector_declaration(selector, by_id))
+        receiver["typeDescriptions"]["typeIdentifier"] = "t_contract$_IReceiver_$1"
+        self.assertIsNone(coverage.selector_declaration(selector, by_id))
+
     def test_enum_storage_arrays_are_not_values(self) -> None:
         self.assertFalse(coverage.storage_array("t_array$_t_enum_5_$dyn_storage"))
         self.assertFalse(coverage.storage_array_value("t_array$_t_enum_5_$dyn_storage"))

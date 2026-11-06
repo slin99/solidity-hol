@@ -823,7 +823,10 @@ Definition elab_expr_def:
               | NONE => NONE)
          | NONE => NONE)
     | SrcSelector _ bs _ =>
-        SOME (([], ConstantAtom (BytesValue bs), ElabType (FixedBytesT (LENGTH bs))), n)
+        (* bound, so that a later conversion converts a bytesN local *)
+        let ty = FixedBytesT (LENGTH bs) in
+        let (ss, a) = bind_value n ty (ConvertOperation ty (ConstantAtom (BytesValue bs))) in
+        SOME ((ss, a, ElabType ty), n + 1)
     | SrcTypeMember _ member tn _ =>
         (case normalize_type_name tn of
            SOME ty =>

@@ -7,6 +7,15 @@ interface IReceiver {
 
 error Denied(address who);
 
+library Registry {
+    event Registered(uint256 id);
+
+    function register(uint256 id) public returns (uint256) {
+        emit Registered(id);
+        return id;
+    }
+}
+
 contract Hashes {
     bytes32 public constant ROLE = keccak256("MINTER_ROLE");
 
@@ -62,6 +71,15 @@ contract Hashes {
 
     function eventSelector() public pure returns (bytes32) {
         return Moved.selector;
+    }
+
+    function librarySelectors() public pure returns (bytes4, bytes32) {
+        return (Registry.register.selector, Registry.Registered.selector);
+    }
+
+    function widened() public pure returns (bytes32, uint32) {
+        bytes32 w = IReceiver.onReceived.selector;
+        return (w, uint32(this.ofBytes.selector));
     }
 
     function checkReply(bytes4 reply) public pure returns (bool) {
