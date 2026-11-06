@@ -21,6 +21,10 @@ The work directory retains compiler artifacts, the ordered-call manifest and
 batch logs. The runner writes `docs/semantic-expectations.json` and `.md`. Use
 `--match substring` and `--output /path/to/report` for a focused run. A focused
 report covers only its selected tests, rather than the whole acceptance set.
+After an interrupted run, repeat the command with `--resume`. Completed tests
+are reused only when the manifest and runner/evaluator source fingerprint match;
+an incomplete test restarts from deployment. Changed inputs require a new work
+directory. The JSON report records the source fingerprint.
 
 The runner selects tests marked admitted by the committed coverage JSON. It
 reuses `semantic_tests_coverage.read_test` and `compile_test`, then rechecks

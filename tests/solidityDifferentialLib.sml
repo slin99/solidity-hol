@@ -838,6 +838,12 @@ fun run_expectations {root, manifest} =
         in discharge (MP th proved) end
       else th
     fun eval tm = rhs (concl (discharge (cv_eval tm)))
+    fun event_logs_json tm =
+      logs_json (listSyntax.mk_list
+        (map (fn e => TypeBase.mk_record (“:event”,
+          [("logger", eval “^e.logger”), ("topics", eval “^e.topics”),
+           ("data", eval “^e.data”)]))
+          (fst (listSyntax.dest_list tm)), “:event”))
     val serial = ref 0
     fun keep tm =
       let val () = serial := !serial + 1 in
@@ -944,7 +950,7 @@ fun run_expectations {root, manifest} =
                      let
                        fun observed outcome logs =
                          [("bytecode", outcome_json outcome),
-                          ("bytecode_logs", logs_json logs)]
+                          ("bytecode_logs", event_logs_json logs)]
                      in
                        if creating then
                          let
@@ -1086,8 +1092,8 @@ fun run_expectations {root, manifest} =
                    val () = output (fields @
                      bytecode_fields @ [("status", json_string (if diagnostic then "not-runnable" else "executed")),
                       ("actual", outcome_json outcome)] @
-                     (if not diagnostic then [("logs", if is_con "Reverted" outcome then "[]" else logs_json logs),
-                       ("expected_logs", logs_json expected_logs)] else []) @
+                     (if not diagnostic then [("logs", if is_con "Reverted" outcome then "[]" else event_logs_json logs),
+                       ("expected_logs", event_logs_json expected_logs)] else []) @
                      (case !stopped of SOME why => [("reason", json_string why)] | NONE => []))
                  in () end
                | _ => fail "calldata must be a hex string"))

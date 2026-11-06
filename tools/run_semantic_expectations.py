@@ -320,6 +320,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", type=Path, default=ROOT / "docs/semantic-expectations")
     parser.add_argument("--work-dir", type=Path, required=True, help="retain manifests, compiler artifacts and HOL log")
     parser.add_argument("--match", default="", help="run only test names containing this string")
+    parser.add_argument("--resume", action="store_true", help="reuse completed tests from the same input and runner sources")
     parser.add_argument("--holbuild", default="holbuild")
     parser.add_argument("--verify-bytecode", action="store_true", help="also execute compiled bytecode for mismatch triage")
     parser.add_argument("-j", type=int, default=4)
@@ -360,15 +361,40 @@ def main(argv: list[str] | None = None) -> int:
     with ThreadPoolExecutor(max_workers=args.j) as pool:
         tests = list(pool.map(compile_one, selected))
     manifest = work / "manifest.json"
-    exporter.write_json_atomic(manifest, {"tests": tests})
-    subprocess.run([args.holbuild, "-j4", "build", "solidityDifferentialLib"], cwd=ROOT, check=True)
+    fingerprint = hashlib.sha256()
+    for name in subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True).splitlines():
+        path = ROOT / name
+        if path.suffix in (".sml", ".sig", ".py", ".toml") or name == "SOLIDITY_PIN":
+            fingerprint.update(name.encode())
+            fingerprint.update(path.read_bytes())
+    for test in tests:
+        fingerprint.update(Path(test["artifact"]).read_bytes())
+    inputs = {"source_hash": fingerprint.hexdigest(), "tests": tests}
+    completed: set[str] = set()
     logs: list[Path] = []
+    if args.resume:
+        if exporter.read_json(manifest) != inputs:
+            raise SystemExit("cannot resume: test inputs or runner/evaluator sources changed")
+        logs = sorted(work.glob("batch-*.log"))
+        for log in logs:
+            for line in log.read_text(errors="replace").splitlines():
+                if line.startswith(PREFIX):
+                    result = json.loads(line[len(PREFIX):])
+                    if result.get("kind") in ("complete", "preparation"):
+                        completed.add(result["test"])
+    elif manifest.exists():
+        raise SystemExit(f"work directory already contains a run: use --resume or a new directory: {work}")
+    else:
+        exporter.write_json_atomic(manifest, inputs)
+    subprocess.run([args.holbuild, "-j4", "build", "solidityDifferentialLib"], cwd=ROOT, check=True)
+    pending = [test for test in tests if test["test"] not in completed]
+    next_batch = 1 + max((int(log.stem.split("-")[1]) for log in logs), default=-1)
     status = 0
     # Each process bounds the lifetime of preparation/evaluation theorem state.
-    for offset in range(0, len(tests), 16):
-        batch = work / f"batch-{offset:04d}.json"
-        exporter.write_json_atomic(batch, {"tests": tests[offset:offset + 16]})
-        log = work / f"batch-{offset:04d}.log"
+    for batch_index, offset in enumerate(range(0, len(pending), 16), next_batch):
+        batch = work / f"batch-{batch_index:04d}.json"
+        exporter.write_json_atomic(batch, {"tests": pending[offset:offset + 16]})
+        log = batch.with_suffix(".log")
         logs.append(log)
         with log.open("w") as stream:
             status = subprocess.run([args.holbuild, "-j1", "run", str(ROOT / "tools/semantic_expectations.sml")],
@@ -376,7 +402,7 @@ def main(argv: list[str] | None = None) -> int:
                                     env={**os.environ, "SEMANTIC_EXPECTATIONS_MANIFEST": str(batch)}).returncode
         if status:
             raise SystemExit(f"HOL run failed: status {status}; see {log}")
-        print(f"Executed batch {offset}..{min(offset + 16, len(tests))}", file=sys.stderr, flush=True)
+        print(f"Executed {len(completed) + min(offset + 16, len(pending))}/{len(tests)} tests", file=sys.stderr, flush=True)
     executed: dict[str, dict[int, dict[str, Any]]] = {}
     preparations: dict[str, str] = {}
     complete = set()
@@ -404,6 +430,7 @@ def main(argv: list[str] | None = None) -> int:
                 call.update(status="not-runnable", reason="preparation: " + preparations[test["test"]])
         results.append({"test": test["test"], "status": test_status(calls), "calls": calls})
     result_report = {"format": "solidity-hol-semantic-expectations-v1", "solidity_pin": pin,
+                     "source_hash": inputs["source_hash"],
                      "core_revision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                      "untested_observations": dict(Counter(o["reason"] for t in results for c in t["calls"] for o in c["observations"])),
                      "test_counts": dict(Counter(t["status"] for t in results)),
