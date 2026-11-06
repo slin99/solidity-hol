@@ -1086,7 +1086,7 @@ fun run_expectations {root, manifest} =
                    val () = output (fields @
                      bytecode_fields @ [("status", json_string (if diagnostic then "not-runnable" else "executed")),
                       ("actual", outcome_json outcome)] @
-                     (if is_con "Returned" outcome then [("logs", logs_json logs),
+                     (if not diagnostic then [("logs", if is_con "Reverted" outcome then "[]" else logs_json logs),
                        ("expected_logs", logs_json expected_logs)] else []) @
                      (case !stopped of SOME why => [("reason", json_string why)] | NONE => []))
                  in () end

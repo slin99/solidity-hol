@@ -56,7 +56,9 @@ Calls agree only when their return/revert bytes and event logs match. Core
 invalid completions and fuel exhaustion are not runnable. Unsupported input
 syntax stops subsequent replay, since its effects on state are unknown;
 unsupported output observations can still allow later transactions to run.
-Gas observations are explicitly recorded as not runnable and counted separately
+Calls explicitly marked as out-of-gas are not runnable: the core does not charge
+gas, so success cannot be checked against that failure expectation. Gas
+observations are explicitly recorded as not runnable and counted separately
 from calls, since gas is outside the core model. No gas agreement is implied.
 
 Test results prioritize a disagreement over a not-runnable call; a fully

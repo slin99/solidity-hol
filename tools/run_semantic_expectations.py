@@ -140,13 +140,12 @@ def expectation_lines(text: str) -> list[str]:
         if not raw.lstrip().startswith("//"):
             raise UnsupportedExpectation("non-comment line after expectation separator")
         line = raw.lstrip()[2:].strip()
-        if not line.startswith("~ emit "):
-            line = strip_comments(line).strip()
-        if not line:
+        clean = line if line.startswith("~ emit ") else strip_comments(line).strip()
+        if not clean:
             continue
         if line.startswith(("gas ", "~ emit ")):
             lines.append(line)
-        elif re.match(r"(?:[A-Za-z_$][\w$]*|)\(", line) or re.match(r"[A-Za-z_]\w*\s*(?::|->)", line):
+        elif re.match(r"(?:[A-Za-z_$][\w$]*|)\(", clean) or re.match(r"[A-Za-z_]\w*\s*(?::|->)", clean):
             lines.append(line)
         elif lines and not lines[-1].startswith(("gas ", "~ emit ")):
             lines[-1] += " " + line
@@ -180,7 +179,8 @@ def parse_calls(text: str, methods: dict[str, str]) -> list[Call]:
     """Parse call arguments/results; unsupported transactions stop later replay."""
     calls: list[Call] = []
     sender = ACCOUNT
-    for line in expectation_lines(text):
+    for original in expectation_lines(text):
+        line = original if original.startswith(("gas ", "~ emit ")) else strip_comments(original).strip()
         if line.startswith(("gas ", "~ emit ")) and calls:
             if line.startswith("gas "):
                 calls[-1].observations.append({"text": line, "status": "not-runnable",
@@ -191,8 +191,13 @@ def parse_calls(text: str, methods: dict[str, str]) -> list[Call]:
                 except UnsupportedExpectation as error:
                     calls[-1].reason = str(error)
             continue
-        call = Call(len(calls), line, sender=str(sender))
+        call = Call(len(calls), original, sender=str(sender))
         calls.append(call)
+        comments = [m[0] for m in re.finditer(r'"(?:[^"\\]|\\.)*"|#[^#]*#', original)
+                    if m[0].startswith("#")]
+        if any(re.search(r"out[- ]of[- ]gas", comment, re.IGNORECASE) for comment in comments):
+            call.reason = "out-of-gas expectation: gas is not modeled"
+            continue
         account = re.fullmatch(r"account:\s*(\d+)\s*->\s*(.*)", line)
         if account:
             sender = ACCOUNT + int(account[1]) * 4096
@@ -249,7 +254,9 @@ def classify(calls: list[Call], executed: dict[int, dict[str, Any]]) -> list[dic
             if actual["status"] == "executed":
                 if call.reason:
                     result.update(status="not-runnable", reason=call.reason)
-                elif actual["actual"] == call.expected and actual.get("logs", []) == actual.get("expected_logs", []):
+                elif (actual["actual"] == call.expected
+                      and not (call.builtin and call.events)
+                      and actual.get("logs", []) == actual.get("expected_logs", [])):
                     result["status"] = "agree"
                 else:
                     result["status"] = "disagree"
@@ -299,6 +306,8 @@ def markdown(report: dict[str, Any]) -> str:
                 lines.append(f"  {call['reason']}")
             if call["status"] == "disagree":
                 lines.append(f"  Expected `{json.dumps(call['expected'])}`; got `{json.dumps(call['actual'])}`.")
+                if call.get("logs", []) != call.get("expected_logs", []):
+                    lines.append(f"  Expected logs `{json.dumps(call.get('expected_logs', []))}`; got `{json.dumps(call.get('logs', []))}`.")
         lines.append("")
     return "\n".join(lines) + "\n"
 

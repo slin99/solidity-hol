@@ -54,6 +54,20 @@ class ExpectationTests(unittest.TestCase):
         calls = runner.parse_calls('// ----\n// f() -> 1\n// balance -> 2\n// storageEmpty -> false', {"f()": "12345678"})
         self.assertEqual([c.builtin for c in calls[1:]], [None, "balance", "storageEmpty"])
 
+    def test_out_of_gas_expectation_is_not_executed(self) -> None:
+        calls = runner.parse_calls('// ----\n// f() -> FAILURE # Out-of-gas #', {"f()": "12345678"})
+        self.assertIsNone(calls[1].calldata)
+        self.assertEqual(calls[1].reason, "out-of-gas expectation: gas is not modeled")
+
+    def test_revert_and_builtin_event_mismatches_are_not_agreement(self) -> None:
+        call = runner.Call(0, "f() -> FAILURE", calldata="0x", expected={"reverted": "0x"})
+        actual = {0: {"status": "executed", "actual": {"reverted": "0x"},
+                      "logs": [], "expected_logs": [{"data": "0x"}]}}
+        self.assertEqual(runner.classify([call], actual)[0]["status"], "disagree")
+        builtin = runner.Call(0, "balance -> 0", builtin="balance", expected={"returned": "0x"},
+                              events=[{"signature": "E()"}])
+        self.assertEqual(runner.classify([builtin], {0: {"status": "executed", "actual": {"returned": "0x"}}})[0]["status"], "disagree")
+
     def test_unknown_input_is_not_encoded(self) -> None:
         calls = runner.parse_calls('// ----\n// f(): something -> 1', {"f()": "12345678"})
         self.assertIsNone(calls[1].calldata)
