@@ -289,6 +289,12 @@ fun is_external_call callee =
   String.isPrefix "t_function_external_"
     (string_field (field callee "typeDescriptions") "typeIdentifier")
 
+(* bytes.concat or string.concat, as a callee: kind is "bytes" or "string". *)
+fun is_concat kind callee =
+  node_type callee = "MemberAccess" andalso
+  String.isPrefix ("t_function_" ^ kind ^ "concat_")
+    (string_field (field callee "typeDescriptions") "typeIdentifier")
+
 (* super.f, as a callee. *)
 fun is_super_member callee =
   node_type callee = "MemberAccess" andalso
@@ -625,6 +631,13 @@ fun expr v = within v (fn v =>
               (positional ();
                require v (length args = 1) "keccak256 takes one argument";
                con "SrcKeccak256" [info v, info callee, hd args, type_id v])
+            else if is_concat "bytes" callee orelse is_concat "string" callee then
+              (* bytes.concat is abi.encodePacked; string.concat is too, as a string *)
+              (positional ();
+               con "SrcAbiEncode"
+                 [info v, info callee,
+                  con (if is_concat "string" callee then "AbiStringConcat" else "AbiPacked") [],
+                  listSyntax.mk_list (args, expr_ty), type_id v])
             else if node_type callee = "MemberAccess" andalso
                node_type (field callee "expression") = "Identifier" andalso
                int_field (field callee "expression") "referencedDeclaration" = ~1 then

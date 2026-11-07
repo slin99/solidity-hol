@@ -172,10 +172,12 @@ End
 
 (* abi.encode, abi.encodePacked, abi.encodeWithSelector (the selector is the
  * first argument) and abi.encodeWithSignature (of the bytes of a literal
- * signature, which is not among the arguments).
+ * signature, which is not among the arguments). bytes.concat is
+ * abi.encodePacked, and string.concat (AbiStringConcat) is too, as a string.
  *)
 Datatype:
   abi_form = AbiPlain | AbiPacked | AbiWithSelector | AbiWithSignature (byte list)
+           | AbiStringConcat
 End
 
 Datatype:
@@ -1330,19 +1332,22 @@ Definition check_expr_def:
            source_type_matches (LocatedT MemoryLoc ty) tid
         then SOME (SrcType (LocatedT MemoryLoc ty)) else NONE
     | _ => NONE) ∧
-  (* abi.encode* to memory bytes; a selector given as an argument is a bytes4,
-     and the other arguments are scalars or byte sequences (integer literals
-     only unpacked, as the compiler requires). *)
+  (* abi.encode* to memory bytes, or string.concat to a memory string; a
+     selector given as an argument is a bytes4, and the other arguments are
+     scalars or byte sequences (integer literals only unpacked, as the
+     compiler requires). *)
   (check_expr env (SrcAbiEncode _ _ form args tid) =
-    if source_type_matches (LocatedT MemoryLoc BytesT) tid ∧
+    let ty = LocatedT MemoryLoc (if form = AbiStringConcat then StringT else BytesT) in
+    if source_type_matches ty tid ∧
        (case (form, args) of
           (AbiWithSelector, s :: rest) =>
             check_expr env s = SOME (SrcType (FixedBytesT 4)) ∧
             check_abi_args env F rest
         | (AbiWithSelector, []) => F
         | (AbiPacked, _) => check_abi_args env T args
+        | (AbiStringConcat, _) => check_abi_args env T args
         | _ => check_abi_args env F args)
-    then SOME (SrcType (LocatedT MemoryLoc BytesT)) else NONE) ∧
+    then SOME (SrcType ty) else NONE) ∧
   (check_components env [] ⇔ T) ∧
   (check_components env (NONE :: cs) ⇔ check_components env cs) ∧
   (check_components env (SOME e :: cs) ⇔

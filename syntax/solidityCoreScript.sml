@@ -117,7 +117,8 @@ End
  * arguments as those ABI types, after the four bytes of the selector if any,
  * as a new memory bytes. AbiEncodePackedOperation types arguments:
  * abi.encodePacked(arguments), each value in its own width and each byte
- * sequence as its contents, as a new memory bytes.
+ * sequence as its contents, as a new memory bytes, or as a new memory string
+ * (string.concat) when the result is defined as one.
  * ExternalCallOperation kind selector parameter_types return_types target
  * value arguments: a high-level call I(target).f{value: value}(arguments) of
  * the function with that selector and those ABI types.
