@@ -426,18 +426,35 @@ class ClassifyTests(unittest.TestCase):
         address = literal(5, "t_address")
         declaration = {
             "nodeType": "VariableDeclarationStatement", "id": 6,
-            "declarations": [variable(7, type_identifier="t_bytes4")],
-            "initialValue": literal(8, "t_rational_305419896_by_1"),
+            "declarations": [variable(7, type_identifier="t_bool")],
+            "initialValue": literal(8, "t_rational_1_by_1"),
         }
         boolean = {"nodeType": "Literal", "id": 9, "kind": "bool", "value": "false",
                    "typeDescriptions": {"typeIdentifier": "t_bool"}}
-        found = coverage.scan({"t.sol": unit([function(4, [address, declaration, boolean])])})
+        # 0x12345678 as a bytes4: the literal's bytes
+        fixed_bytes = {
+            "nodeType": "VariableDeclarationStatement", "id": 10,
+            "declarations": [variable(11, type_identifier="t_bytes4")],
+            "initialValue": literal(12, "t_rational_305419896_by_1"),
+        }
+        # -0 as a bytes2: a folded zero
+        negated_zero = {
+            "nodeType": "VariableDeclarationStatement", "id": 13,
+            "declarations": [variable(14, type_identifier="t_bytes2")],
+            "initialValue": {"nodeType": "UnaryOperation", "id": 15, "operator": "-",
+                             "prefix": True, "subExpression": literal(16, "t_rational_0_by_1"),
+                             "typeDescriptions": {"typeIdentifier": "t_rational_0_by_1"}},
+        }
+        found = coverage.scan({"t.sol": unit([function(4, [address, declaration, boolean,
+                                                           fixed_bytes, negated_zero])])})
         self.assertEqual(found[5], [coverage.Blocker(
             "Literal", "literals of non-integer types", "elaboration")])
         self.assertEqual(found[6], [coverage.Blocker(
             "VariableDeclarationStatement", "literals of non-integer types", "elaboration")])
         self.assertNotIn(8, found)
         self.assertNotIn(9, found)
+        self.assertNotIn(10, found)
+        self.assertNotIn(13, found)
 
     def test_abi_encodings_take_scalars_byte_sequences_and_literals(self) -> None:
         def name(node_id, type_identifier):
