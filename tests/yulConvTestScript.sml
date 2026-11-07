@@ -397,6 +397,23 @@ val () =
      (“with_zero word_div (a : bytes32) 5w”, false),
      (“with_zero word_div (a : bytes32) 0w”, false)]
 
+(* A `let` over a result that holds a call and is used twice stays bound, but
+ * one whose body reduces to a single use goes, even when the body reduces
+ * only after the binding was first kept: `if T then r else r` here. *)
+val () =
+  let
+    val t = “LET (λr. if T then r else r)
+               ((r0 : yul_result) with machine :=
+                  (h : yul_expr_result -> yul_machine)
+                    (invoke_yul 1 fns "f" [] m))”
+    val r = rhs (concl (yulConvLib.yul_eval_conv []
+                          “fns : (string |-> yul_function)” t))
+  in
+    if can (find_term boolSyntax.is_let) r
+    then fail ("a let whose body uses it once was left: " ^ term_to_string r)
+    else ()
+  end
+
 (* One function converted over the table *term* rather than over the constant it
  * is bound to.  A caller may give either, `defs` being what that term is folded
  * from; what keeps the table out of the body's own set has to hold for both.  A
