@@ -32,7 +32,6 @@ import differential_theories as theories
 
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS = Path("testdata/differential/corpus.json")
-CORPUS_SCRIPT = Path("tests/solidityDifferentialCorpusScript.sml")
 CORPUS_THEORY = "solidityDifferentialCorpusTheory"
 CORPUS_FORMAT = "solidity-hol-differential-corpus-v1"
 REPORT_FORMAT = "solidity-hol-differential-report-v1"

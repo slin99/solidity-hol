@@ -425,7 +425,7 @@ fun artifact_immutables artifact source contract =
         val name = string_field v "name"
         val text = string_field (field v "typeDescriptions") "typeString"
         val ty = if String.isPrefix "contract " text orelse text = "address payable"
-                 then “Address”
+                 then contractABISyntax.parse_abi_type "address"
                  else if String.isPrefix "enum " text then “Uint 8”
                  else contractABISyntax.parse_abi_type text
       in (name, integer (field v "id"), ty) end
@@ -449,9 +449,10 @@ fun immutable_words declarations c =
       case List.find (fn (n, _, _) => n = name) declarations of
         NONE => fail ("no immutable named " ^ name)
       | SOME (_, id, ty) =>
-          pairSyntax.list_mk_pair [num_term id, oneSyntax.one_tm, encode [ty] [value]]
+          pairSyntax.list_mk_pair [num_term id, F, encode [ty] [value]]
   in
-    listSyntax.mk_list (map entry values, “:num # unit # byte list”)
+    listSyntax.mk_list (map entry values,
+      pairSyntax.list_mk_prod [numSyntax.num, bool, listSyntax.mk_list_type byte_ty])
   end
 
 fun raw_expectation outputs c =

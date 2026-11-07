@@ -124,12 +124,6 @@ class CorpusTests(unittest.TestCase):
             fake.write(driver.CORPUS.as_posix(), json.dumps(data))
             (fake.root / "testdata/differential/suites/a.json").unlink()
             fake.write("testdata/differential/suites/z.json", json.dumps(suite))
-            fake.write(driver.CORPUS_SCRIPT.as_posix(), '''
-                fun holbuild_extra_deps (_ : string list) = ()
-                val () = holbuild_extra_deps ["../testdata/differential/corpus.json",
-                  "../testdata/differential/suites",
-                  "../testdata/differential/expected"]
-            ''')
             other = {**suite, "name": "another"}
             fake.write("testdata/differential/suites/a.json", json.dumps(other))
             loaded = driver.load_corpus(fake.root / driver.CORPUS)
