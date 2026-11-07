@@ -13,6 +13,10 @@ sig
    * or case fails, it raises an error after all have run.
    *)
   val run_corpus : {root : string, corpus : string} -> unit
+  (* Standalone upstream expectation sweep; calls share deployment state.
+   * The manifest and result protocol are owned by run_semantic_expectations.py.
+   *)
+  val run_expectations : {root : string, manifest : string} -> unit
   (* The three-way run: for each suite it imports the Yul the pinned compiler
    * emitted for the suite's source, at the three stages the design separates
    * (the code generator's output; what the Yul transformations leave with the
