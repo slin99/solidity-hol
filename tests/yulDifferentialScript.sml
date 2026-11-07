@@ -46,6 +46,15 @@ Datatype:
   |>
 End
 
+Datatype:
+  yul_case_program = <|
+    runtime_body : yul_stmt list;
+    runtime_bytes : byte list;
+    runtime_refs : (num # num list) list;
+    creation_program : yul_creation_program option
+  |>
+End
+
 (* The frame the corpus's cases run in: the contract account at
  * contract_address holding the case's initial storage, its deployed bytecode
  * and the case's value, the case's sender funded for it, the peer contract the
@@ -174,19 +183,20 @@ End
  * sides.
  *)
 Definition yul_case_execution_def:
-  yul_case_execution evm_code ycode u c fuel =
+  yul_case_execution (evm_code : byte list) ycode u c fuel =
     case (input_call u c.case_input, case_immutable_values u c.case_immutables) of
       (INL d, _) => (Diagnostic d, NONE, [])
     | (_, NONE) => (Diagnostic UnencodableArguments, NONE, [])
     | (INR (data, _), SOME imm) =>
         (case c.case_input of
            Deploy _ _ =>
-             (case SND ycode of
+             (case ycode.creation_program of
                 NONE => (Diagnostic InvalidCompletion, NONE, [])
               | SOME p => yul_creation_execution p c data fuel)
          | _ =>
-             let m = yul_differential_machine evm_code imm c data in
-             let r = run_yul fuel (FST ycode) m in
+             let m = yul_differential_machine ycode.runtime_bytes imm
+                       (c with case_immutable_refs := ycode.runtime_refs) data in
+             let r = run_yul fuel ycode.runtime_body m in
              yul_frame_observation (finish_yul_frame m r.machine r.completion))
 End
 

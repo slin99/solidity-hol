@@ -342,27 +342,31 @@ fun yul_code_constant name path source contract stage unit deploy =
     val output = field artifact "output"
     val runtime_def = define (name ^ "_runtime")
                 (yulImportLib.import_runtime output source contract stage)
-    val () = cv_auto_trans runtime_def
+    val () = cv_trans_deep_embedding EVAL runtime_def
     val runtime = lhs (concl runtime_def)
+    val deployed = code_constant (name ^ "_deployed") "deployedBytecode"
+                     artifact source contract
+    val refs = #refs (unit_immutables unit artifact source contract)
     val creation =
       if not deploy then optionSyntax.mk_none “:yul_creation_program”
       else
         let
           val (obj_name, deployed_name, body) =
             yulImportLib.import_creation output source contract stage
+          val body_def = define (name ^ "_creation") body
+          val () = cv_trans_deep_embedding EVAL body_def
           val initcode = code_constant (name ^ "_initcode") "bytecode"
                            artifact source contract
-          val deployed = code_constant (name ^ "_deployed") "deployedBytecode"
-                           artifact source contract
-          val refs = #refs (unit_immutables unit artifact source contract)
           val program =
-            “<| creation_body := ^body;
+            “<| creation_body := ^(lhs (concl body_def));
                 creation_name := ^(stringSyntax.fromMLstring obj_name);
                 deployed_name := ^(stringSyntax.fromMLstring deployed_name);
                 creation_bytes := ^initcode; deployed_bytes := ^deployed;
                 creation_refs := ^refs |>”
         in optionSyntax.mk_some program end
-    val def = define name (pairSyntax.mk_pair (runtime, creation))
+    val def = define name
+      “<| runtime_body := ^runtime; runtime_bytes := ^deployed;
+          runtime_refs := ^refs; creation_program := ^creation |>”
     val () = cv_auto_trans def
   in lhs (concl def) end
 
