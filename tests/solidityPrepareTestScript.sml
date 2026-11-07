@@ -65,10 +65,13 @@ val () = rejects solidityPrepareLib.UnsupportedLowering
 
 (* A function header the source check rejects (here a parameter's scope or
  * type) rejects the unit: only a body is confined to its function. *)
+fun edited_unit name =
+  rhs (concl (DB.fetch "solidityImportTest" (name ^ "_def")));
 val () = rejects solidityPrepareLib.SourceRejected
-  (fn () => ignore (solidityPrepareLib.prepare_unit “wrong_scope”));
+  (fn () => ignore (solidityPrepareLib.prepare_unit (edited_unit "wrong_scope")));
 val () = rejects solidityPrepareLib.SourceRejected
-  (fn () => ignore (solidityPrepareLib.prepare_unit “declaration_type_mismatch”));
+  (fn () => ignore (solidityPrepareLib.prepare_unit
+                      (edited_unit "declaration_type_mismatch")));
 
 val bad_artifact_path = OS.FileSys.tmpName ();
 val bad_artifact_stream = TextIO.openOut bad_artifact_path;
