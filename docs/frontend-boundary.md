@@ -287,6 +287,10 @@ scalars or byte sequences; other receivers (a constant, whose initializer the
 compiler evaluates and which may fail, included), and array and struct
 parameters, are rejected.
 
+`address.code.length` reads the account's code size directly, including zero for
+an account without code. The receiver is evaluated once and no memory bytes
+object is allocated. Standalone `address.code` remains unsupported.
+
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
 from the functions calls can reach (an overridden function counts only when

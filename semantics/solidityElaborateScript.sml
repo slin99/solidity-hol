@@ -345,6 +345,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcExternalCall _ _ _ operands _ _) ⇔ exprs_assign operands) ∧
   (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcKeccak256 _ _ e _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcAddressCodeLength _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcSuperCall _ _ args _ _) ⇔ exprs_assign args) ∧
   (expr_assigns _ ⇔ F) ∧
@@ -938,6 +939,12 @@ Definition elab_expr_def:
                         | NONE => NONE)
                    | NONE => NONE)
               | _ => NONE)
+         | _ => NONE)
+    | SrcAddressCodeLength _ _ e _ =>
+        (case elab_expr ctx n e of
+           SOME ((ss, a, ElabType (AddressT _)), n1) =>
+             let (rs, r) = bind_value n1 (UintT 256) (CodeLengthOperation a) in
+             SOME ((ss ++ rs, r, ElabType (UintT 256)), n1 + 1)
          | _ => NONE)
     | SrcKeccak256 _ _ e _ =>
         (case elab_expr ctx n e of
