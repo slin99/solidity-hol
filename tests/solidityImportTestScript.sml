@@ -148,12 +148,14 @@ fun type_identifier tid =
     (JSON.OBJECT [("typeIdentifier", JSON.STRING tid),
                   ("typeString", JSON.STRING "")])
 
-datatype import_failure = Unsupported | Malformed
+(* How an edited unit fails import: Unsupported when an import error rejects
+ * the unit, UnsupportedFunction when it imports with a function marked
+ * unsupported (an unsupported construct in a body or a modifier rejects that
+ * function only), Malformed when the compiler JSON is malformed. *)
+datatype import_failure = Unsupported | UnsupportedFunction | Malformed
 
-(* Why an edited unit is not imported whole: the import error that rejects
- * it, or the reason of a function import marked unsupported, since an
- * unsupported construct in a body or a modifier rejects that function only.
- * NONE when everything imports. *)
+(* How an edited unit fails import, with the reason; NONE when everything
+ * imports. *)
 fun import_rejection units v contracts =
   let
     fun reason t =
@@ -170,22 +172,28 @@ fun import_rejection units v contracts =
     val tm = import_source_unit units v contracts
   in
     case find_terms (isSome o reason) tm of
-      t :: _ => reason t
+      t :: _ => SOME (UnsupportedFunction, valOf (reason t))
     | [] => NONE
   end
-  handle ImportError msg => SOME msg
+  handle ImportError msg => SOME (Unsupported, msg)
+       | MalformedInput msg => SOME (Malformed, msg)
+
+fun failure_name Unsupported = "unit rejection"
+  | failure_name UnsupportedFunction = "unsupported function"
+  | failure_name Malformed = "malformed input"
 
 fun import_units_error_with expected units contracts name v =
-  (case import_rejection units v contracts of
-     NONE => raise Fail (name ^ ": imported")
-   | SOME _ =>
-       if expected = Unsupported then () else raise Fail (name ^ ": expected malformed input"))
-  handle MalformedInput _ =>
-           if expected = Malformed then () else raise Fail (name ^ ": expected unsupported input")
+  case import_rejection units v contracts of
+    NONE => raise Fail (name ^ ": imported")
+  | SOME (actual, msg) =>
+      if actual = expected then ()
+      else raise Fail (name ^ ": expected " ^ failure_name expected ^ ", got " ^
+                       failure_name actual ^ ": " ^ msg)
 
 fun import_error_with expected = import_units_error_with expected []
 
 val import_error = import_error_with Unsupported contracts
+val function_error = import_error_with UnsupportedFunction contracts
 val malformed_input = import_error_with Malformed contracts
 
 (* An edited unit that imports, as a cv-translated constant. *)
@@ -201,9 +209,9 @@ val edited_unit = edited_unit_with contracts
 
 (* Unknown forms, missing annotations and unsupported features fail import. *)
 
-val () = import_error "unknown statement"
+val () = function_error "unknown statement"
   (edit_first "Break" (set_field "nodeType" (JSON.STRING "TryStatement")) ast)
-val () = import_error "unknown expression"
+val () = function_error "unknown expression"
   (edit_first "Literal" (set_field "nodeType" (JSON.STRING "IndexRangeAccess")) ast)
 val () = malformed_input "missing type annotation"
   (edit_first "Identifier" (drop_field "typeDescriptions") ast)
@@ -214,12 +222,12 @@ val () = malformed_input "missing common type"
 val () = malformed_input "function as state variable"
   (edit_first "FunctionDefinition"
      (set_field "nodeType" (JSON.STRING "VariableDeclaration")) ast)
-val () = import_error "modifier invocation of unknown kind"
+val () = function_error "modifier invocation of unknown kind"
   (edit_first "FunctionDefinition"
      (set_field "modifiers"
         (JSON.ARRAY [JSON.OBJECT [("kind", JSON.STRING "unknownInvocation")]]))
      ast)
-val () = import_error "a named argument naming no parameter"
+val () = function_error "a named argument naming no parameter"
   (edit_first "FunctionCall"
      (set_field "names" (JSON.ARRAY [JSON.STRING "noSuchParameter"])) ast)
 (* (fact)({n: ...}): the callee names no declaration to take the parameter
@@ -243,8 +251,9 @@ val () =
   in
     case import_rejection [] (edit_first "FunctionCall" edit ast) contracts of
       NONE => raise Fail "named arguments of a parenthesized callee: imported"
-    | SOME msg =>
-        if String.isSubstring "named arguments are not supported" msg then ()
+    | SOME (k, msg) =>
+        if k = UnsupportedFunction andalso
+           String.isSubstring "named arguments are not supported" msg then ()
         else raise Fail ("named arguments of a parenthesized callee: " ^ msg)
   end
 val () = import_error "base outside the compilation"
@@ -261,8 +270,8 @@ val () =
          (edit_first "Identifier"
             (set_field "referencedDeclaration" (JSON.INT ~18)) ast) contracts of
     NONE => raise Fail "built-in: imported"
-  | SOME msg =>
-      if String.isPrefix "Identifier " msg andalso
+  | SOME (k, msg) =>
+      if k = UnsupportedFunction andalso String.isPrefix "Identifier " msg andalso
          String.isSubstring ": built-in " msg
       then ()
       else raise Fail ("built-in: " ^ msg)
@@ -647,7 +656,7 @@ Proof
   CONV_TAC cv_eval
 QED
 
-val () = import_error_with Unsupported builtins_contracts "unknown builtin declaration"
+val () = import_error_with UnsupportedFunction builtins_contracts "unknown builtin declaration"
   (edit_callee (set_field "referencedDeclaration" (JSON.INT ~999)) builtins_ast)
 
 (* A nonliteral message must not be silently ignored on success. *)
@@ -1030,7 +1039,7 @@ val () = import_error_with Unsupported using_contracts "reached library using fu
                     | kv => kv) kvs)
        | v => v)
      using_ast)
-val () = import_error_with Unsupported using_contracts "receiver copied to memory"
+val () = import_error_with UnsupportedFunction using_contracts "receiver copied to memory"
   (edit_first_where
      (fn v => is_node "MemberAccess" v andalso
               JSONUtil.testField "memberName" (fn JSON.STRING s => s = "fill" | _ => false) v)
@@ -1087,7 +1096,7 @@ fun declaration_id ty name v =
     valOf (find v)
   end
 
-fun hashes_error name v = import_units_error_with Unsupported [hashes_base] hashes_contracts name v
+fun hashes_error name v = import_units_error_with UnsupportedFunction [hashes_base] hashes_contracts name v
 
 val _ = import_source_unit [hashes_base] hashes_ast hashes_contracts
 
