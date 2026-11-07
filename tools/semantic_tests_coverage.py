@@ -178,7 +178,7 @@ class Blocker:
 
 EXPRESSIONS = {
     "Identifier", "Literal", "UnaryOperation", "BinaryOperation", "Assignment",
-    "TupleExpression", "FunctionCall", "IndexAccess",
+    "TupleExpression", "FunctionCall", "IndexAccess", "Conditional",
 }
 STATEMENTS = {
     "Block", "UncheckedBlock", "ExpressionStatement", "VariableDeclarationStatement",
@@ -199,7 +199,6 @@ STRUCTURAL = {
     "EnumValue",
 }
 FEATURES = {
-    "Conditional": "conditional expressions",
     "FunctionTypeName": "function types",
     "IndexRangeAccess": "array slices",
     "TryCatchClause": "try/catch",
@@ -562,7 +561,13 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
         if node["isInlineArray"]:
             found.append("inline arrays")
     elif kind == "FunctionCall":
-        if node["names"]:
+        # Named arguments are taken on calls of declared functions only,
+        # with or without call options; `new` names no declaration.
+        callee = node["expression"]
+        if callee["nodeType"] == "FunctionCallOptions":
+            callee = callee["expression"]
+        if node["names"] and (node["kind"] != "functionCall"
+                              or callee.get("referencedDeclaration", -1) < 0):
             found.append("named arguments")
         if node["tryCall"]:
             found.append("try/catch")
@@ -756,19 +761,36 @@ UNARY_OPERATORS = {"++", "--", "-", "!", "~"}
 BYTES = re.compile(r"t_bytes_(storage|(memory|calldata|storage)_ptr)")
 
 
-def has_getter(type_name: dict[str, Any]) -> bool:
+def has_getter(type_name: dict[str, Any], by_id: dict[int, dict[str, Any]], bases: set[int]) -> bool:
     """Whether getter_shape admits a public state variable's type: mappings
-    with elementary keys and arrays, down to an elementary type, an enum or a
-    byte sequence."""
+    with elementary keys and arrays, down to an elementary type, an enum, a
+    byte sequence or a struct with a member getter_member returns and none it
+    rejects. The importer gives the contract the structs of its bases and of
+    the file level only."""
     kind = type_name["nodeType"]
     if kind == "Mapping":
         key = type_name["keyType"]["typeDescriptions"].get("typeIdentifier") or ""
-        return VALUE_TYPE.fullmatch(key) is not None and has_getter(type_name["valueType"])
+        return VALUE_TYPE.fullmatch(key) is not None and has_getter(type_name["valueType"], by_id, bases)
     if kind == "ArrayTypeName":
-        return has_getter(type_name["baseType"])
+        return has_getter(type_name["baseType"], by_id, bases)
+    declaration = by_id.get(type_name.get("referencedDeclaration"), {})
+    if kind == "UserDefinedTypeName" and declaration.get("nodeType") == "StructDefinition":
+        scope = by_id.get(declaration.get("scope"), {})
+        if scope.get("nodeType") != "SourceUnit" and scope.get("id") not in bases:
+            return False
+        # mappings and arrays other than byte sequences are skipped
+        returned = [m["typeName"] for m in declaration["members"]
+                    if m["typeName"]["nodeType"] not in ("Mapping", "ArrayTypeName")]
+        return bool(returned) and all(getter_value(t) for t in returned)
+    return getter_value(type_name)
+
+
+def getter_value(type_name: dict[str, Any]) -> bool:
+    """Whether a getter returns a value of this type: an elementary type, an
+    enum or a byte sequence."""
     type_identifier = type_name["typeDescriptions"].get("typeIdentifier") or ""
     # A contract type name is read as address.
-    return (kind in ("ElementaryTypeName", "UserDefinedTypeName")
+    return (type_name["nodeType"] in ("ElementaryTypeName", "UserDefinedTypeName")
             and (VALUE_TYPE.fullmatch(type_identifier) is not None
                  or ENUM.fullmatch(type_identifier) is not None
                  or type_identifier in ("t_bytes_storage_ptr", "t_string_storage_ptr")))
@@ -803,9 +825,6 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
                 found.append("event array parameters")
             if error_parameter and not VALUE_TYPE.fullmatch(type_identifier):
                 found.append("custom errors with reference parameters")
-            if (node["stateVariable"] and node.get("visibility") == "public"
-                    and not has_getter(node["typeName"])):
-                found.append("public state variables")
     elif (kind == "TupleExpression" and not node["isInlineArray"]
           and not decodes(node["typeDescriptions"]["typeIdentifier"])):
         type_identifier = node["typeDescriptions"]["typeIdentifier"]
@@ -859,6 +878,13 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
             elif not (VALUE_TYPE.fullmatch(element := base_type[len("t_array$_"):-len("_$dyn_storage")])
                       or ENUM.fullmatch(element)):
                 found.append("aggregate array mutation")
+    elif kind == "Conditional":
+        # the checker and elaborator take a value or a memory reference
+        type_identifier = node["typeDescriptions"].get("typeIdentifier") or ""
+        if not (VALUE_TYPE.fullmatch(type_identifier) or ENUM.fullmatch(type_identifier)
+                or type_identifier in ("t_bytes_memory_ptr", "t_string_memory_ptr")
+                or (located_array(type_identifier) and type_identifier.endswith("_memory_ptr"))):
+            found.append("conditional expressions")
     elif kind == "SourceUnit":
         if len(deployable(node)) != 1:
             found.append("source units without exactly one contract")
@@ -1297,16 +1323,12 @@ def special_forms(reached: dict[int, dict[str, Any]],
             callee = node["eventCall"]["expression"]
             unread.update({node["eventCall"]["id"], callee["id"]})
             unread.update(n["id"] for n in nodes(callee))
-            if node["eventCall"]["names"]:
-                block(node["eventCall"], "named arguments", "import")
             if callee["nodeType"] != "Identifier":
                 block(callee, "events named through a contract or library", "import")
         elif kind == "RevertStatement":
             callee = node["errorCall"]["expression"]
             unread.add(node["errorCall"]["id"])
             unread.update(n["id"] for n in nodes(callee))
-            if node["errorCall"]["names"]:
-                block(node["errorCall"], "named arguments", "import")
         elif (kind == "FunctionCall" and node["kind"] == "functionCall"
               and node["expression"]["nodeType"] == "MemberAccess"
               and node["expression"]["expression"]["nodeType"] == "Identifier"
@@ -1338,7 +1360,11 @@ def special_forms(reached: dict[int, dict[str, Any]],
             elif is_type_call(base):
                 argument = base["arguments"][0] if base["arguments"] else base
                 unread.update({base["id"], base["expression"]["id"], argument["id"]})
-                if argument["nodeType"] != "ElementaryTypeNameExpression":
+                if (argument["nodeType"] == "Identifier" and node["memberName"] == "interfaceId"
+                        and by_id.get(argument.get("referencedDeclaration"), {}).get("contractKind")
+                        == "interface"):
+                    pass
+                elif argument["nodeType"] != "ElementaryTypeNameExpression":
                     block(argument, "type(…)", "import")
                 elif (node["memberName"] not in {"max", "min"}
                       or not re.fullmatch(r"u?int[0-9]*", argument["typeName"]["name"])):
@@ -1433,6 +1459,13 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     fields = {v["id"] for n in reached.values() if n["nodeType"] == "StructDefinition"
               for v in n["members"]}
     based, live = live_functions(asts, by_id)
+    # The bases of each contract deploying each contract: its getters see
+    # their structs, in every deployment.
+    deployed_bases: dict[int, list[set[int]]] = {}
+    for ast in asts.values():
+        for c in deployable(ast):
+            for b in c["linearizedBaseContracts"]:
+                deployed_bases.setdefault(b, []).append(set(c["linearizedBaseContracts"]))
     dead = {n["id"] for f in based - live if f in reached for n in nodes(by_id[f])}
     # The checker and the elaborator see the live functions and the library
     # functions the contracts reach.
@@ -1491,6 +1524,11 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                                            error_parameter=node["id"] in error_parameters)
                     + coerced_literals(node, by_id)
                     + assembly_blockers(node, by_id, creation=node["id"] in creation))
+        if (node["nodeType"] == "VariableDeclaration" and node["stateVariable"]
+                and node.get("visibility") == "public"
+                and not all(has_getter(node["typeName"], by_id, bases)
+                            for bases in deployed_bases.get(node.get("scope"), [set()]))):
+            blockers.append(Blocker("VariableDeclaration", "public state variables", "elaboration"))
         if node["nodeType"] == "EventDefinition" and node["id"] in file_level:
             blockers.append(Blocker("EventDefinition", "file-level events", "import"))
         if any(declaration["nodeType"] == "FunctionDefinition"

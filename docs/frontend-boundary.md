@@ -175,6 +175,14 @@ existing bytes at the appended position, as the pinned compiler does. Dynamic
 array mutation of aggregates, local reference bindings and aggregate copies
 remain coverage work.
 
+A public state variable's getter takes one key per mapping and one index per
+array along its type, an index past an array's length reverting with no data.
+It returns the value it reaches, a byte sequence copied to memory; for a
+struct, its members in declaration order, skipping mappings and arrays other
+than `bytes` and `string`, as the compiler's getter does. A struct with a
+struct-typed member, or with no member to return, has no getter here, and
+neither has a mapping whose key is not an elementary value type.
+
 Constants of elementary value types, `string` and `bytes`, declared in the
 contract or a base, are imported with their values. Each elaborates to two
 procedures without parameters that evaluate the value and convert it to the
@@ -206,10 +214,11 @@ A contract or interface type is read as `address`, which is its value at
 run time, stored and ABI encoded as one: in type names, in the type
 identifiers of expressions and in storage layouts. `I(a)` is a conversion to
 `address`, `this` is the contract's own address, and an external call
-`c.f{value: v}(args)` may name any contract-typed `c`. `new C`, `type(C)`,
-external calls to getters and the members of external functions other
-than `selector` (below) are rejected, as are overloads that differ only in
-contract-typed parameters, which reading them as `address` would merge.
+`c.f{value: v}(args)` may name any contract-typed `c`. `new C`, `type(C)`
+other than `type(I).interfaceId` (below), external calls to getters and the
+members of external functions other than `selector` (below) are rejected, as
+are overloads that differ only in contract-typed parameters, which reading
+them as `address` would merge.
 
 Enums, declared at file level, in a contract or in a library, are read by
 their declaration id: type identifiers `t_enum$_E_$n` and storage-layout
@@ -231,11 +240,20 @@ storage or calldata is copied to memory, as for an internal call's argument.
 compiler records on the function, error or event they name (four bytes, or 32
 for an event), also of a library's public function or event, and
 `this.x.selector` is that of a public state variable's getter. The receiver in
-`x.f.selector` must be `this` or a contract, interface or library name,
-possibly qualified by an imported module's, which the compiler does not
-evaluate. A selector of any other function-typed value is rejected, and so are
-`sha256`, `ripemd160`, `ecrecover`, `abi.decode`, `abi.encodeCall` and
-`type(I).interfaceId`.
+`x.f.selector` must be `this`, a contract, interface or library name,
+possibly qualified by imported modules (`M.I.f.selector`), or an imported
+module (`M.E.selector`), none of which the compiler evaluates.
+`type(I).interfaceId` is the constant XOR of the selectors of the functions
+the interface `I` declares itself, not those it inherits, nor its `fallback`
+or `receive`; `I` must name an interface directly, not through a module, and
+an abstract contract's `interfaceId` is rejected. A selector of any other
+function-typed value is rejected, and so are `sha256`, `ripemd160`,
+`ecrecover`, `abi.decode` and `abi.encodeCall`.
+
+`c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
+type the compiler gives the whole expression, which must be a value type or
+a memory reference (a memory operand is the same reference, not a copy).
+Conditionals of tuple, storage, calldata or function type are rejected.
 
 `abi.encode`, `abi.encodePacked`, `abi.encodeWithSelector` and
 `abi.encodeWithSignature` give a new memory `bytes`, allocated as the
@@ -269,6 +287,16 @@ functions included) and user-defined operators, and library structs and
 events are rejected; a file-level directive with a function list rejects the
 compilation, whichever file it is in. In the Yul the compiler emits, `linkersymbol`, a linked
 library's address, is not admitted.
+
+Named arguments, `f({b: y, a: x})`, are implemented for internal, bound
+library, `super` and external calls, `emit` and `revert` with a custom error.
+As the compiler does, the arguments are evaluated in the call's order, then
+passed in the parameters' order, each converted to its parameter's type; a
+bound call's receiver comes first, as without names. The importer records,
+for each parameter of the declaration the compiler resolved, the position of
+its argument, and the checker requires a permutation of the argument
+positions. Names on type conversions, `new`, `keccak256`, other builtins and
+struct constructors are rejected.
 
 Memory arrays of elementary leaves or byte sequences, nested to any depth, are
 implemented: locals, parameters and returns, `new T[](n)`, `new bytes(n)` and

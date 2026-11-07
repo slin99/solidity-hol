@@ -24,7 +24,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/type_bounds.json",
   "../testdata/differential/expected/using_for.json",
   "../testdata/differential/expected/contract_types.json",
-  "../testdata/differential/expected/hashes.json"
+  "../testdata/differential/expected/hashes.json",
+  "../testdata/differential/expected/conditionals.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -177,7 +178,7 @@ val edited_unit = edited_unit_with contracts
 val () = import_error "unknown statement"
   (edit_first "Break" (set_field "nodeType" (JSON.STRING "TryStatement")) ast)
 val () = import_error "unknown expression"
-  (edit_first "Literal" (set_field "nodeType" (JSON.STRING "Conditional")) ast)
+  (edit_first "Literal" (set_field "nodeType" (JSON.STRING "IndexRangeAccess")) ast)
 val () = malformed_input "missing type annotation"
   (edit_first "Identifier" (drop_field "typeDescriptions") ast)
 val () = malformed_input "missing declaration reference"
@@ -192,9 +193,34 @@ val () = import_error "modifier invocation of unknown kind"
      (set_field "modifiers"
         (JSON.ARRAY [JSON.OBJECT [("kind", JSON.STRING "unknownInvocation")]]))
      ast)
-val () = import_error "named arguments"
+val () = import_error "a named argument naming no parameter"
   (edit_first "FunctionCall"
-     (set_field "names" (JSON.ARRAY [JSON.STRING "n"])) ast)
+     (set_field "names" (JSON.ARRAY [JSON.STRING "noSuchParameter"])) ast)
+(* (fact)({n: ...}): the callee names no declaration to take the parameter
+ * names from, so the call fails import as unsupported, naming the cause. *)
+val () =
+  let
+    fun parenthesize (callee as JSON.OBJECT kvs) =
+          JSON.OBJECT
+            ([("nodeType", JSON.STRING "TupleExpression"),
+              ("isInlineArray", JSON.BOOL false),
+              ("components", JSON.ARRAY [callee])] @
+             List.filter (fn (k, _) => k = "id" orelse k = "src" orelse
+                                       k = "typeDescriptions") kvs)
+      | parenthesize v = v
+    fun edit call =
+      case JSONUtil.findField call "expression" of
+        SOME callee =>
+          set_field "names" (JSON.ARRAY [JSON.STRING "n"])
+            (set_field "expression" (parenthesize callee) call)
+      | NONE => raise Fail "a call without a callee"
+  in
+    (import_source_unit [] (edit_first "FunctionCall" edit ast) contracts;
+     raise Fail "named arguments of a parenthesized callee: imported")
+    handle ImportError msg =>
+      if String.isSubstring "named arguments are not supported" msg then ()
+      else raise Fail ("named arguments of a parenthesized callee: " ^ msg)
+  end
 val () = import_error "base outside the compilation"
   (edit_first "ContractDefinition"
      (fn c => set_field "linearizedBaseContracts"
@@ -649,6 +675,29 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* A public struct has a getter when each member it returns is a value or a
+ * byte sequence: item's members are values, nested's include a struct. *)
+fun public_state_variable name selector =
+  edit_first_where
+    (fn v => is_node "VariableDeclaration" v andalso
+             JSONUtil.testField "name" (fn JSON.STRING s => s = name | _ => false) v)
+    ("state variable " ^ name)
+    (fn v => case set_field "visibility" (JSON.STRING "public") v of
+                JSON.OBJECT kvs =>
+                  JSON.OBJECT (kvs @ [("functionSelector", JSON.STRING selector)])
+              | v' => v')
+
+val () = edited_unit_with struct_contracts "struct_getter"
+  (public_state_variable "item" "f2a4a82e" struct_ast)
+val () = edited_unit_with struct_contracts "nested_struct_getter"
+  (public_state_variable "nested" "4ce2d543" struct_ast)
+
+Theorem nested_struct_getter_rejected:
+  valid_src_unit struct_getter ∧ ¬valid_src_unit nested_struct_getter
+Proof
+  CONV_TAC cv_eval
+QED
+
 val () = import_error_with Malformed struct_contracts "missing field identity"
   (edit_first "MemberAccess" (drop_field "referencedDeclaration") struct_ast)
 
@@ -795,7 +844,7 @@ QED
 Definition revert_errors_def:
   (revert_errors (SrcBlock _ ss) = revert_errors_list ss) ∧
   (revert_errors (SrcIfStatement _ _ t NONE) = revert_errors t) ∧
-  (revert_errors (SrcRevertError _ err args) =
+  (revert_errors (SrcRevertError _ err args _) =
     [(err.error_selector, LENGTH err.error_parameters, LENGTH args)]) ∧
   (revert_errors _ = []) ∧
   (revert_errors_list [] = []) ∧
@@ -1022,3 +1071,69 @@ val () = hashes_error "selector of a state variable by name"
   (edit_first_where (named "Identifier" "Denied") "Denied"
      (set_field "referencedDeclaration"
         (declaration_id "VariableDeclaration" "total" hashes_ast)) hashes_ast)
+
+(* Conditionals: the checker takes one whose type is a value or a memory
+ * reference. The first conditional is c ? 1 : 300, typed uint16. *)
+
+val conditionals_fixture = "../testdata/differential/expected/conditionals.json"
+val conditionals_source = "testdata/differential/conditionals.sol"
+val conditionals_ast = artifact_part conditionals_fixture ["sources", conditionals_source, "ast"]
+val conditionals_contracts = artifact_part conditionals_fixture ["contracts", conditionals_source]
+
+Definition conditionals_unit_def:
+  conditionals_unit = ^(import_artifact conditionals_fixture conditionals_source)
+End
+
+val () = cv_auto_trans conditionals_unit_def;
+
+Theorem conditionals_unit_valid:
+  valid_src_unit conditionals_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+val () = edited_unit_with conditionals_contracts "storage_conditional"
+  (edit_first "Conditional" (type_identifier "t_bytes_storage_ptr") conditionals_ast)
+
+(* a storage bytes variable's own type, which decodes unlocated *)
+val () = edited_unit_with conditionals_contracts "stored_bytes_conditional"
+  (edit_first "Conditional" (type_identifier "t_bytes_storage") conditionals_ast)
+
+val () = edited_unit_with conditionals_contracts "tuple_conditional"
+  (edit_first "Conditional" (type_identifier "t_tuple$_t_uint16_$_t_uint16_$") conditionals_ast)
+
+val () = edited_unit_with conditionals_contracts "calldata_conditional"
+  (edit_first "Conditional" (type_identifier "t_bytes_calldata_ptr") conditionals_ast)
+
+val () = edited_unit_with conditionals_contracts "function_conditional"
+  (edit_first "Conditional" (type_identifier "t_function_internal_pure$__$returns$__$") conditionals_ast)
+
+Theorem storage_conditional_rejected:
+  ¬valid_src_unit storage_conditional
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem stored_bytes_conditional_rejected:
+  ¬valid_src_unit stored_bytes_conditional
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem tuple_conditional_rejected:
+  ¬valid_src_unit tuple_conditional
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem calldata_conditional_rejected:
+  ¬valid_src_unit calldata_conditional
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem function_conditional_rejected:
+  ¬valid_src_unit function_conditional
+Proof
+  CONV_TAC cv_eval
+QED
