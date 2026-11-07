@@ -179,6 +179,7 @@ Datatype:
   | SrcLiteral node_info string string string
   | SrcUnaryOperation node_info string bool src_expr string
   | SrcBinaryOperation node_info string src_expr src_expr string string
+  | SrcConditional node_info src_expr src_expr src_expr string
   | SrcAssignment node_info string src_expr src_expr string
   | SrcIndexAccess node_info src_expr src_expr string
   | SrcTupleExpression node_info (src_expr option list) string
@@ -878,6 +879,8 @@ Definition expr_ids_def:
   (expr_ids (SrcUnaryOperation info _ _ e _) = info.node_id :: expr_ids e) ∧
   (expr_ids (SrcBinaryOperation info _ l r _ _) =
     info.node_id :: expr_ids l ++ expr_ids r) ∧
+  (expr_ids (SrcConditional info c t f _) =
+    info.node_id :: expr_ids c ++ expr_ids t ++ expr_ids f) ∧
   (expr_ids (SrcIndexAccess info b i _) =
     info.node_id :: expr_ids b ++ expr_ids i) ∧
   (expr_ids (SrcAssignment info _ l r _) =
@@ -1026,9 +1029,15 @@ Datatype:
   |>
 End
 
+(* The members of the struct with node id id. *)
+Definition source_struct_members_def:
+  source_struct_members structs id =
+    ALOOKUP (MAP (λs. (s.struct_info.node_id, s.struct_members)) structs) id
+End
+
 Definition source_struct_field_def:
   source_struct_field structs id field =
-    case ALOOKUP (MAP (λs. (s.struct_info.node_id, s.struct_members)) structs) id of
+    case source_struct_members structs id of
       SOME fields =>
         (case ALOOKUP (MAP (λv. (v.var_info.node_id, v)) fields) field of
            SOME v => field_variable_type v
@@ -1163,6 +1172,14 @@ Definition check_expr_def:
       | (_, SOME (SrcRational i d)) => if d = 1 then SOME (SrcRational i d) else NONE
       | _ => NONE
     else NONE) ∧
+  (check_expr env (SrcConditional _ c t f tid) =
+    case (check_expr env c, decode_type_identifier tid) of
+      (SOME (SrcType BoolT), SOME (SrcType ty)) =>
+        (* a value or a memory reference, which the result local can hold *)
+        if (case ty of LocatedT loc _ => loc = MemoryLoc | _ => is_stored_scalar_type ty) ∧
+           IS_SOME (check_expr env t) ∧ IS_SOME (check_expr env f)
+        then SOME (SrcType ty) else NONE
+    | _ => NONE) ∧
   (check_expr env (SrcAssignment _ op l r tid) =
     if assignment_operator_ok op ∧ IS_SOME (check_expr env l) ∧
        IS_SOME (check_expr env r)
@@ -1583,21 +1600,51 @@ Definition contract_constructor_def:
     else contract_constructor x fs)
 End
 
-(* The parameter types and the result type of the getter of a public state
+(* What a getter returns of a struct member: nothing for a mapping or an
+ * array other than a byte sequence, as the compiler's getters skip them, or
+ * the member, which must be a value or a byte sequence.
+ *)
+Definition getter_member_def:
+  getter_member (v : src_variable) =
+    case field_variable_type v of
+      SOME (MappingT _ _) => SOME []
+    | SOME (ArrayT _ _) => SOME []
+    | SOME ty =>
+        if is_stored_scalar_type ty ∨ byte_sequence_type ty
+        then SOME [(SOME v.var_info.node_id, ty)] else NONE
+    | NONE => NONE
+End
+
+(* What a getter returns of the value of type ty it reaches: the value, or a
+ * struct's returned members in order, each with its member id. *)
+Definition getter_results_def:
+  getter_results structs ty =
+    case ty of
+      StructT (AstId id) =>
+        (case source_struct_members structs id of
+           SOME fields =>
+             (case all_some (MAP getter_member fields) of
+                SOME ms => if FLAT ms = [] then NONE else SOME (FLAT ms)
+              | NONE => NONE)
+         | NONE => NONE)
+    | _ => if is_stored_scalar_type ty ∨ byte_sequence_type ty then SOME [(NONE, ty)]
+           else NONE
+End
+
+(* The parameter types and the results of the getter of a public state
  * variable of type ty: a key for each mapping and an index for each array
- * along its type, down to a value type or a byte sequence.
+ * along its type, down to a value, a byte sequence or a struct.
  *)
 Definition getter_shape_def:
-  getter_shape ty =
+  getter_shape structs ty =
     case ty of
       MappingT key value =>
         if is_elementary_type key then
-          OPTION_MAP (λ(ps, r). (key :: ps, r)) (getter_shape value)
+          OPTION_MAP (λ(ps, r). (key :: ps, r)) (getter_shape structs value)
         else NONE
     | ArrayT element _ =>
-        OPTION_MAP (λ(ps, r). (UintT 256 :: ps, r)) (getter_shape element)
-    | _ => if is_stored_scalar_type ty ∨ byte_sequence_type ty then SOME ([], ty)
-           else NONE
+        OPTION_MAP (λ(ps, r). (UintT 256 :: ps, r)) (getter_shape structs element)
+    | _ => OPTION_MAP (λrs. ([], rs)) (getter_results structs ty)
 End
 
 (* The variables the base constructor arguments a base gives see: the
@@ -1761,7 +1808,7 @@ Definition check_contract_def:
         EVERY (λ(x, selector).
                  LENGTH selector = 4 ∧
                  case ALOOKUP (state ++ immutables) x of
-                   SOME ty => IS_SOME (getter_shape ty)
+                   SOME ty => IS_SOME (getter_shape c.contract_structs ty)
                  | NONE => IS_SOME (ALOOKUP constants x))
           c.contract_getters ∧
         EVERY (λ(x, b, args).
@@ -1837,6 +1884,7 @@ QED
 
 val () = cv_auto_trans unit_ids_def;
 
+val () = cv_auto_trans source_struct_members_def;
 val () = cv_auto_trans source_struct_field_def;
 val () = cv_auto_trans argument_order_ok_def;
 val () = cv_auto_trans literal_message_def;
@@ -1893,6 +1941,8 @@ val () = cv_auto_trans constant_variable_def;
 val () = cv_auto_trans constant_table_def;
 val () = cv_auto_trans immutable_variable_def;
 val () = cv_auto_trans immutable_table_def;
+val () = cv_auto_trans getter_member_def;
+val () = cv_auto_trans getter_results_def;
 val () = cv_auto_trans getter_shape_def;
 val () = cv_auto_trans call_table_def;
 val () = cv_auto_trans contract_constructor_def;

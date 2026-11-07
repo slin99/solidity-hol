@@ -138,8 +138,8 @@ Definition function_types_def:
                v :: _ =>
                  (case state_variable c.contract_bases v of
                     SOME (_, ty) =>
-                      OPTION_MAP (λ(keys, result). (keys, [getter_result result]))
-                        (getter_shape ty)
+                      OPTION_MAP (λ(keys, results). (keys, MAP (getter_result o SND) results))
+                        (getter_shape c.contract_structs ty)
                   | NONE => NONE)
              | [] =>
                case FILTER (λv. v.var_name = name ∧

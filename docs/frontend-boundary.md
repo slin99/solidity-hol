@@ -175,6 +175,14 @@ existing bytes at the appended position, as the pinned compiler does. Dynamic
 array mutation of aggregates, local reference bindings and aggregate copies
 remain coverage work.
 
+A public state variable's getter takes one key per mapping and one index per
+array along its type, an index past an array's length reverting with no data.
+It returns the value it reaches, a byte sequence copied to memory; for a
+struct, its members in declaration order, skipping mappings and arrays other
+than `bytes` and `string`, as the compiler's getter does. A struct with a
+struct-typed member, or with no member to return, has no getter here, and
+neither has a mapping whose key is not an elementary value type.
+
 Constants of elementary value types, `string` and `bytes`, declared in the
 contract or a base, are imported with their values. Each elaborates to two
 procedures without parameters that evaluate the value and convert it to the
@@ -231,11 +239,16 @@ storage or calldata is copied to memory, as for an internal call's argument.
 compiler records on the function, error or event they name (four bytes, or 32
 for an event), also of a library's public function or event, and
 `this.x.selector` is that of a public state variable's getter. The receiver in
-`x.f.selector` must be `this` or a contract, interface or library name,
-possibly qualified by an imported module's, which the compiler does not
-evaluate. A selector of any other function-typed value is rejected, and so are
+`x.f.selector` must be `this`, a contract, interface or library name,
+possibly qualified by imported modules (`M.I.f.selector`), or an imported
+module (`M.E.selector`), none of which the compiler evaluates. A selector of any other function-typed value is rejected, and so are
 `sha256`, `ripemd160`, `ecrecover`, the `abi.*` functions and
 `type(I).interfaceId`.
+
+`c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
+type the compiler gives the whole expression, which must be a value type or
+a memory reference (a memory operand is the same reference, not a copy).
+Conditionals of tuple, storage, calldata or function type are rejected.
 
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
