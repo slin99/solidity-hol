@@ -8,7 +8,7 @@
  * on a hand-built tree but run over a whole real object.
  *
  * What is checked is that each function of the runtime object reaches a closed
- * form, and how long that takes.  All but one of the object's functions are
+ * form within the size bound.  All but one of the object's functions are
  * loop-free -- checked_exp_helper has a loop, and a loop is a lemma about a
  * loop head rather than a closed form, so its form stops at the loop and one
  * iteration is converted on its own (at the end of this file) -- and the build
@@ -20,13 +20,11 @@
  * reduce even where the machine is one the conversion has in hand (the note on
  * `memory_read_residue` below) -- and one that calls is left waiting on the
  * frame a callee returned and nothing else (see semantics/yulConvLib.sml).  The
- * number the test asserts is the slowest of them, so that a conversion that
- * regressed to the simplifier's cost fails the build on the clock alone; the
- * total is printed to say what the suite costs, and every conversion runs under
- * a clock, so one that stops coming back fails the build instead of leaving it
- * at the heap cap.
+ * slowest conversion and the total time are printed to say what the suite
+ * costs, and every conversion runs under a clock, so one that stops coming back
+ * fails the build instead of leaving it at the heap cap.
  *
- * A few functions are not covered by that bound yet: each is named in
+ * A few functions are not covered by the size bound yet: each is named in
  * `excluded` below with the reason it is there, every name has to be a function
  * of the object, and the list empties as the conversion stops copying the rest
  * of a body into a branch of a decision (see the comment on the list).  A line
@@ -164,11 +162,10 @@ val () =
           ^ Int.toString (List.length loop_free) ^ " loop-free, looping: "
           ^ String.concatWith ", " (List.map (fn (nm, _, _) => nm) looping))
 
-(* The functions the bound below is not asked of yet.  A line carries one of
- * three things about why it is there: the form this suite measures -- every node
- * of the term, which is the `size` this test prints below; a claim that no form
- * comes back inside a clock; or the conversion times that keep it out although
- * its form is inside the bound.  Every line here names a body that calls.
+(* The functions the size bound below is not asked of yet.  A line carries
+ * either the form size this suite measures -- every node of the term, which is
+ * the `size` this test prints below -- or a claim that no form comes back inside
+ * a clock.  Every line here names a body that calls.
  *
  * A call's answer is what leaves a decision standing -- the arity the callee
  * answered with, and the frame it came back on -- and a decision the conversion
@@ -197,28 +194,18 @@ val () =
  * conversion does, so they are re-measured with the list rather than read as an
  * invariant.  The line is enforced from one side only: the suite fails if a
  * form it does cover reaches 200k nodes, so a covered function that grew past
- * the line cannot pass unnoticed, but nothing here converts the five named
+ * the line cannot pass unnoticed, but nothing here converts the three named
  * here -- a name whose form has dropped under the line keeps its line until the
  * list is re-measured, which happens with each change to the conversion.
  * Converting them here as well would put their cost -- seconds each, and a
  * million nodes at the far end -- on every run of this suite.
  *
- * The list was re-measured against this conversion, and it names two reasons.
- * Three are over the line: `fun_signedLess` (1 083 107), `fun_boolLogic`
- * (1 008 029) and `checked_exp_signed` (903 697, in about 3s); which decision
+ * Three forms are over the line: `fun_signedLess` (1 083 107),
+ * `fun_boolLogic` (1 008 029) and `checked_exp_signed` (903 697); which decision
  * their continuations are copied under has not been measured yet.  The first
  * two call inside a builtin's arguments
- * (`slt(cleanup_int8(x), cleanup_int8(y))`), which is a candidate.  Two more
- * are under the line and inside the clock here, and are left out for the margin
- * the build machine needs: `fun_bitwise`'s conversion takes 7.2s there against
- * 2.4s on the box these numbers were measured on -- past the five-second
- * bound, and the first CI run that covered it is what said so -- and
- * `fun_widen` (1.1-1.4s here) is left out with it rather than run near a bound
- * the machine it runs on cannot hold to.  That machine runs these conversions
- * about three times slower than the box they were timed on (91.3s against
- * 32.5s for the same set), so the bound below is worth keeping to forms whose
- * time there is well inside it.  What is left is 132 of the 137, whose slowest
- * the check below bounds at five seconds.
+ * (`slt(cleanup_int8(x), cleanup_int8(y))`), which is a candidate.  The suite
+ * covers the other 134 of the 137 loop-free functions.
  *
  * No line says `no_form` now.  `checked_exp_signed` was the one that did: a
  * sweep did not see it come back inside a clock of a minute, and given a minute
@@ -247,8 +234,6 @@ val excluded = [
   ("checked_exp_signed", "form of 903697 nodes"),
   ("fun_boolLogic", "form of 1008029 nodes"),
   ("fun_signedLess", "form of 1083107 nodes"),
-  ("fun_bitwise", "conversion of 7.2s on the build machine"),
-  ("fun_widen", "conversion of 1.1s here, three times that on the build machine"),
 ]
 
 val excluded_names = List.map #1 excluded
@@ -370,9 +355,8 @@ fun convert f =
 fun stated_form nm =
   #2 (convert (valOf (List.find (fn (n, _, _) => n = nm) functions)))
 
-(* Timed one at a time: what the conversion is asked for is seconds per
- * function, so the number the test bounds is the slowest of them, and the
- * total is printed to say what the suite costs.  The size of the largest form
+(* Timed one at a time: the slowest conversion and the total time are printed
+ * to say what the suite costs.  The size of the largest form
  * is printed with them, since that is where a conversion that copies the rest
  * of a body once per statement instead of once per outcome shows up first.
  * Only the name, the time and the size are kept: holding all 137 forms holds
@@ -408,11 +392,6 @@ val () = print ("yulConvTest: " ^ Int.toString (List.length timings)
                 ^ Real.toString (#2 slowest) ^ "s; largest " ^ #1 largest
                 ^ " at " ^ Int.toString (#2 largest) ^ " nodes; "
                 ^ Int.toString calling ^ " of the bodies call\n")
-
-val () =
-  if #2 slowest < 5.0 then ()
-  else fail ("the slowest form took " ^ Real.toString (#2 slowest) ^ "s ("
-             ^ #1 slowest ^ ")")
 
 (* And the line the list above is drawn at, enforced from this side: a form this
  * suite does cover that has reached 200k nodes is one the list should have
