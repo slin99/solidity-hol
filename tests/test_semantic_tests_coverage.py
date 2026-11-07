@@ -402,6 +402,49 @@ class ClassifyTests(unittest.TestCase):
         self.assertNotIn(8, found)
         self.assertNotIn(9, found)
 
+    def test_abi_encodings_take_scalars_byte_sequences_and_literals(self) -> None:
+        def name(node_id, type_identifier):
+            return {"nodeType": "Identifier", "id": node_id, "name": "x", "referencedDeclaration": 3,
+                    "typeDescriptions": {"typeIdentifier": type_identifier}}
+
+        def literal(node_id, kind, type_identifier):
+            return {"nodeType": "Literal", "id": node_id, "kind": kind, "value": "1", "hexValue": "31",
+                    "typeDescriptions": {"typeIdentifier": type_identifier}}
+
+        def call(node_id, member, arguments):
+            abi = {"nodeType": "Identifier", "id": node_id + 1, "name": "abi", "referencedDeclaration": -1,
+                   "typeDescriptions": {"typeIdentifier": "t_magic_abi"}}
+            callee = {"nodeType": "MemberAccess", "id": node_id + 2, "memberName": member, "expression": abi,
+                      "typeDescriptions": {"typeIdentifier": "t_function_abiencode_pure$__$returns$__$"}}
+            return {"nodeType": "FunctionCall", "id": node_id, "kind": "functionCall", "names": [],
+                    "tryCall": False, "expression": callee, "arguments": arguments,
+                    "typeDescriptions": {"typeIdentifier": "t_bytes_memory_ptr"}}
+
+        def abi_blockers(statements):
+            found = coverage.scan({"t.sol": unit([variable(3, state=True), function(4, statements)])})
+            return {node_id for node_id, blockers in found.items()
+                    if any(b.feature == "abi.* functions" for b in blockers)}
+
+        admitted = [
+            call(10, "encode", [name(20, "t_uint8"), name(21, "t_enum_7"), name(22, "t_bytes_storage_ptr"),
+                                literal(23, "number", "t_rational_minus_3_by_1"),
+                                literal(24, "string", "t_stringliteral_abcd")]),
+            call(30, "encodePacked", [name(40, "t_bytes3"), name(41, "t_string_calldata_ptr"),
+                                      literal(42, "string", "t_stringliteral_abcd")]),
+            call(50, "encodeWithSelector", [name(60, "t_bytes4"), name(61, "t_address")]),
+            call(70, "encodeWithSignature", [literal(80, "string", "t_stringliteral_abcd"), name(81, "t_bool")]),
+        ]
+        self.assertEqual(abi_blockers(admitted), set())
+        rejected = [
+            call(100, "encodePacked", [literal(110, "number", "t_rational_1_by_1")]),
+            call(120, "encode", [name(130, "t_array$_t_uint256_$dyn_memory_ptr")]),
+            call(140, "encodeWithSignature", [name(150, "t_string_memory_ptr")]),
+            call(160, "encodeWithSelector", [name(170, "t_bytes32")]),
+            call(180, "encodeCall", []),
+            call(190, "decode", []),
+        ]
+        self.assertEqual(abi_blockers(rejected), {110, 130, 140, 160, 180, 190})
+
     def test_interface_ids_are_admitted_and_other_contract_type_members_blocked(self) -> None:
         def type_member(node_id, member, target=50):
             interface = {"nodeType": "Identifier", "id": node_id + 1, "name": "I",

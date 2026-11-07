@@ -1,18 +1,18 @@
 {
   "counts": {
-    "admitted": 570,
+    "admitted": 579,
     "compile-failure": 0,
-    "elaboration-rejected": 71,
-    "import-rejected": 619,
+    "elaboration-rejected": 73,
+    "import-rejected": 582,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 310
+    "source-rejected": 336
   },
   "features": [
     {
       "feature": "structs",
-      "first_rejection": 19,
+      "first_rejection": 20,
       "node_types": [
         "FunctionCall",
         "IndexAccess",
@@ -56,11 +56,11 @@
     },
     {
       "feature": "address members (balance, call, transfer, \u2026)",
-      "first_rejection": 19,
+      "first_rejection": 25,
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 14,
+      "only_blocker": 16,
       "tests": 108
     },
     {
@@ -86,15 +86,6 @@
       "tests": 105
     },
     {
-      "feature": "abi.* functions",
-      "first_rejection": 62,
-      "node_types": [
-        "MemberAccess"
-      ],
-      "only_blocker": 25,
-      "tests": 100
-    },
-    {
       "feature": "function types",
       "first_rejection": 87,
       "node_types": [
@@ -114,7 +105,7 @@
     },
     {
       "feature": "contract creation (new C)",
-      "first_rejection": 49,
+      "first_rejection": 50,
       "node_types": [
         "FunctionCall"
       ],
@@ -136,8 +127,20 @@
       "node_types": [
         "FunctionDefinition"
       ],
-      "only_blocker": 10,
+      "only_blocker": 11,
       "tests": 73
+    },
+    {
+      "feature": "abi.* functions",
+      "first_rejection": 10,
+      "node_types": [
+        "FunctionCall",
+        "Identifier",
+        "IndexRangeAccess",
+        "MemberAccess"
+      ],
+      "only_blocker": 16,
+      "tests": 70
     },
     {
       "feature": "array values",
@@ -162,7 +165,7 @@
     },
     {
       "feature": "type names as values",
-      "first_rejection": 8,
+      "first_rejection": 9,
       "node_types": [
         "ElementaryTypeNameExpression"
       ],
@@ -230,7 +233,7 @@
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
-      "only_blocker": 20,
+      "only_blocker": 21,
       "tests": 38
     },
     {
@@ -340,7 +343,7 @@
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 14,
+      "only_blocker": 15,
       "tests": 23
     },
     {
@@ -453,16 +456,16 @@
     },
     {
       "feature": "hash and signature built-ins",
-      "first_rejection": 6,
+      "first_rejection": 11,
       "node_types": [
         "Identifier"
       ],
-      "only_blocker": 5,
+      "only_blocker": 9,
       "tests": 12
     },
     {
       "feature": "built-in erc7201",
-      "first_rejection": 9,
+      "first_rejection": 10,
       "node_types": [
         "Identifier"
       ],
@@ -511,7 +514,7 @@
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 3,
+      "only_blocker": 4,
       "tests": 10
     },
     {
@@ -821,83 +824,83 @@
   "format": "solidity-hol-semantic-tests-coverage-v1",
   "greedy_order": [
     {
-      "admitted": 25,
-      "feature": "abi.* functions"
-    },
-    {
-      "admitted": 46,
+      "admitted": 21,
       "feature": "string literals as fixed-size bytes"
     },
     {
-      "admitted": 65,
+      "admitted": 40,
       "feature": "transient storage"
     },
     {
-      "admitted": 87,
+      "admitted": 62,
       "feature": "operator delete"
     },
     {
-      "admitted": 106,
+      "admitted": 79,
       "feature": "address members (balance, call, transfer, \u2026)"
     },
     {
-      "admitted": 123,
+      "admitted": 97,
+      "feature": "abi.* functions"
+    },
+    {
+      "admitted": 114,
       "feature": "literals of non-integer types"
     },
     {
-      "admitted": 141,
+      "admitted": 132,
       "feature": "bytes push and pop"
     },
     {
-      "admitted": 158,
+      "admitted": 149,
       "feature": "require with a custom error"
     },
     {
-      "admitted": 174,
+      "admitted": 165,
       "feature": "inline arrays"
     },
     {
-      "admitted": 189,
+      "admitted": 180,
       "feature": "aggregate array mutation"
     },
     {
-      "admitted": 203,
+      "admitted": 194,
       "feature": "library calls and contract-name members"
     },
     {
-      "admitted": 214,
+      "admitted": 205,
       "feature": "struct values and copying"
     },
     {
-      "admitted": 245,
+      "admitted": 236,
       "feature": "structs"
     },
     {
-      "admitted": 281,
+      "admitted": 272,
       "feature": "local reference bindings"
     },
     {
-      "admitted": 305,
+      "admitted": 296,
       "feature": "arrays"
     },
     {
-      "admitted": 340,
+      "admitted": 331,
       "feature": "array values"
     },
     {
-      "admitted": 368,
+      "admitted": 359,
       "feature": "inline assembly memory references"
     },
     {
-      "admitted": 394,
+      "admitted": 385,
       "feature": "inline assembly memory outside the scratch space"
     },
     {
-      "admitted": 411,
+      "admitted": 402,
       "feature": "inline assembly"
     },
     {
-      "admitted": 424,
+      "admitted": 415,
       "feature": "free functions"
     }
   ],
@@ -950,7 +953,7 @@
         "structs"
       ],
       "first": "abi.* functions",
-      "reason": "abicoder/abi_decode_from_calldata_struct_v2.sol: MemberAccess 16: unsupported built-in member decode",
+      "reason": "abicoder/abi_decode_from_calldata_struct_v2.sol: FunctionCall 20: unsupported abi.decode",
       "scan_agrees": true,
       "test": "abicoder/abi_decode_from_calldata_struct_v2.sol"
     },
@@ -962,7 +965,7 @@
         "structs"
       ],
       "first": "abi.* functions",
-      "reason": "abicoder/abi_decode_from_memory_struct_v2.sol: MemberAccess 60: unsupported built-in member encode",
+      "reason": "abicoder/abi_decode_from_memory_struct_v2.sol: FunctionCall 65: unsupported abi.decode",
       "scan_agrees": true,
       "test": "abicoder/abi_decode_from_memory_struct_v2.sol"
     },
@@ -974,7 +977,7 @@
         "structs"
       ],
       "first": "abi.* functions",
-      "reason": "abicoder/abi_decode_from_storage_struct_v2.sol: MemberAccess 61: unsupported built-in member encode",
+      "reason": "abicoder/abi_decode_from_storage_struct_v2.sol: FunctionCall 71: unsupported abi.decode",
       "scan_agrees": true,
       "test": "abicoder/abi_decode_from_storage_struct_v2.sol"
     },
@@ -1067,13 +1070,12 @@
       "test": "abicoder/abi_decode_trivial.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "abi.* functions",
         "string literals as fixed-size bytes"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/abi_encode.sol: MemberAccess 6: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/abi_encode.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "abicoder/abi_encode.sol"
     },
@@ -1083,8 +1085,8 @@
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/abi_encode_call.sol: MemberAccess 84: unsupported built-in member encodeWithSignature",
+      "first": "address members (balance, call, transfer, \u2026)",
+      "reason": "abicoder/abi_encode_call.sol: MemberAccess 82: unsupported built-in member",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_call.sol"
     },
@@ -1099,7 +1101,7 @@
         "type names as values"
       ],
       "first": "abi.* functions",
-      "reason": "abicoder/abi_encode_call_declaration_v2.sol: MemberAccess 49: unsupported built-in member encodeCall",
+      "reason": "abicoder/abi_encode_call_declaration_v2.sol: FunctionCall 53: unsupported abi.encodeCall",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_call_declaration_v2.sol"
     },
@@ -1141,7 +1143,7 @@
         "tuples of literals"
       ],
       "first": "abi.* functions",
-      "reason": "abicoder/abi_encode_call_special_args_v2.sol: MemberAccess 33: unsupported built-in member encodeWithSignature",
+      "reason": "abicoder/abi_encode_call_special_args_v2.sol: FunctionCall 48: unsupported abi.encodeCall",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_call_special_args_v2.sol"
     },
@@ -1197,18 +1199,16 @@
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/abi_encode_decode_simple.sol: MemberAccess 14: unsupported built-in member encode",
+      "first": "type names as values",
+      "reason": "abicoder/abi_encode_decode_simple.sol: ElementaryTypeNameExpression 22: unsupported expression ElementaryTypeNameExpression",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_decode_simple.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "abi.* functions"
-      ],
-      "first": "abi.* functions",
-      "reason": "abicoder/abi_encode_empty_string_not_bytes0.sol: MemberAccess 8: unsupported built-in member encode",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/abi_encode_empty_string_not_bytes0.sol"
     },
@@ -1221,44 +1221,42 @@
       "test": "abicoder/abi_encode_empty_string_v1.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/abi_encode_memory_dynamic_array_and_calldata_bytes_v1.sol: MemberAccess 12: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/abi_encode_memory_dynamic_array_and_calldata_bytes_v1.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_memory_dynamic_array_and_calldata_bytes_v1.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "abi.* functions"
-      ],
-      "first": "abi.* functions",
-      "reason": "abicoder/abi_encode_rational.sol: MemberAccess 6: unsupported built-in member encode",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "abicoder/abi_encode_rational.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/abi_encode_storage_array_v2.sol: MemberAccess 21: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/abi_encode_storage_array_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_storage_array_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions",
         "string literals as fixed-size bytes",
         "struct values and copying"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/abi_encode_v2.sol: MemberAccess 13: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/abi_encode_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_v2.sol"
     },
@@ -1288,26 +1286,26 @@
       "test": "abicoder/abi_encode_v2_in_modifier_used_in_v1_contract.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions",
         "literals of non-integer types"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/abi_encode_with_selector_v1.sol: MemberAccess 7: unsupported built-in member encodeWithSelector",
+      "first": null,
+      "reason": "abicoder/abi_encode_with_selector_v1.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_with_selector_v1.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions",
         "literals of non-integer types",
         "struct values and copying",
         "structs"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/abi_encode_with_selector_v2.sol: MemberAccess 7: unsupported built-in member encodeWithSelector",
+      "first": null,
+      "reason": "abicoder/abi_encode_with_selector_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_with_selector_v2.sol"
     },
@@ -1317,7 +1315,7 @@
         "abi.* functions"
       ],
       "first": "abi.* functions",
-      "reason": "abicoder/abi_encode_with_signature_v1.sol: MemberAccess 7: unsupported built-in member encodeWithSignature",
+      "reason": "abicoder/abi_encode_with_signature_v1.sol: FunctionCall 25: abi.encodeWithSignature of a non-literal signature is not supported",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_with_signature_v1.sol"
     },
@@ -1329,7 +1327,7 @@
         "structs"
       ],
       "first": "abi.* functions",
-      "reason": "abicoder/abi_encode_with_signature_v2.sol: MemberAccess 7: unsupported built-in member encodeWithSignature",
+      "reason": "abicoder/abi_encode_with_signature_v2.sol: FunctionCall 25: abi.encodeWithSignature of a non-literal signature is not supported",
       "scan_agrees": true,
       "test": "abicoder/abi_encode_with_signature_v2.sol"
     },
@@ -1393,12 +1391,12 @@
       "test": "abicoder/calldataDecoding/array/calldata_array_dynamic_of_uint_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_dynamic_of_value_types_v2.sol: MemberAccess 10: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_array_dynamic_of_value_types_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_dynamic_of_value_types_v2.sol"
     },
@@ -1504,24 +1502,24 @@
       "test": "abicoder/calldataDecoding/array/calldata_array_indexing_dynamic_bytes_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions",
         "arrays",
         "local reference bindings"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_indexing_dynamic_v2.sol: MemberAccess 10: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_array_indexing_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_indexing_dynamic_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_indexing_static_v2.sol: MemberAccess 11: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_array_indexing_static_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_indexing_static_v2.sol"
     },
@@ -1534,12 +1532,12 @@
       "test": "abicoder/calldataDecoding/array/calldata_array_length_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_multi_dynamic_v2.sol: MemberAccess 11: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_array_multi_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_multi_dynamic_v2.sol"
     },
@@ -1580,25 +1578,25 @@
       "test": "abicoder/calldataDecoding/array/calldata_array_static_of_uint_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_static_of_value_types_v2.sol: MemberAccess 11: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_array_static_of_value_types_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_static_of_value_types_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions",
         "array values",
         "arrays",
         "local reference bindings"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_struct_dynamic_v2.sol: MemberAccess 15: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_array_struct_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_struct_dynamic_v2.sol"
     },
@@ -1615,22 +1613,22 @@
       "test": "abicoder/calldataDecoding/array/calldata_array_struct_static_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_two_dynamic_v2.sol: MemberAccess 16: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_array_two_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_two_dynamic_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/calldata_array_two_static_v2.sol: MemberAccess 18: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_array_two_static_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_array_two_static_v2.sol"
     },
@@ -1659,35 +1657,35 @@
       "test": "abicoder/calldataDecoding/array/calldata_nested_array_reencode_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions",
         "array values",
         "arrays",
         "local reference bindings"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/calldata_nested_array_static_reencode_v2.sol: MemberAccess 11: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_nested_array_static_reencode_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_nested_array_static_reencode_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/calldata_overlapping_dynamic_arrays_v2.sol: MemberAccess 43: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_overlapping_dynamic_arrays_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_overlapping_dynamic_arrays_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/calldata_overlapping_nested_dynamic_arrays_v2.sol: MemberAccess 32: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_overlapping_nested_dynamic_arrays_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_overlapping_nested_dynamic_arrays_v2.sol"
     },
@@ -1700,7 +1698,7 @@
       "test": "abicoder/calldataDecoding/array/calldata_string_array_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions",
         "array values",
@@ -1709,8 +1707,8 @@
         "struct values and copying",
         "structs"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/calldata_struct_array_reencode_v2.sol: MemberAccess 17: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/calldata_struct_array_reencode_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/calldata_struct_array_reencode_v2.sol"
     },
@@ -1723,22 +1721,22 @@
       "test": "abicoder/calldataDecoding/array/memory_arrays_static.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/memory_dynamic_array_and_calldata_bytes.sol: MemberAccess 11: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/memory_dynamic_array_and_calldata_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/memory_dynamic_array_and_calldata_bytes.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/array/memory_dynamic_array_and_calldata_static_array.sol: MemberAccess 13: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/array/memory_dynamic_array_and_calldata_static_array.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/array/memory_dynamic_array_and_calldata_static_array.sol"
     },
@@ -1821,15 +1819,15 @@
       "test": "abicoder/calldataDecoding/struct/member_array_dynamic_multiple_fields_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions",
         "local reference bindings",
         "struct values and copying",
         "structs"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/struct/member_array_dynamic_v2.sol: MemberAccess 14: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/struct/member_array_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/struct/member_array_dynamic_v2.sol"
     },
@@ -1972,15 +1970,15 @@
       "test": "abicoder/calldataDecoding/struct/simple_multiple_fields_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions",
         "local reference bindings",
         "struct values and copying",
         "structs"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/calldataDecoding/struct/simple_single_field_v2.sol: MemberAccess 13: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/calldataDecoding/struct/simple_single_field_v2.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "abicoder/calldataDecoding/struct/simple_single_field_v2.sol"
     },
@@ -2106,14 +2104,13 @@
       "test": "abicoder/cleanup/intx_v2.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "abi.* functions",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references"
       ],
-      "first": "abi.* functions",
-      "reason": "abicoder/cleanup/reencoded_calldata_string.sol: MemberAccess 13: unsupported built-in member encode",
+      "first": null,
+      "reason": "abicoder/cleanup/reencoded_calldata_string.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "abicoder/cleanup/reencoded_calldata_string.sol"
     },
@@ -3350,7 +3347,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "free functions"
       ],
       "first": "free functions",
@@ -3921,8 +3917,8 @@
         "operator delete",
         "structs"
       ],
-      "first": "abi.* functions",
-      "reason": "array/delete/memory_bytes_delete_element_abi_encode_neighbor.sol: MemberAccess 17: unsupported built-in member encodePacked",
+      "first": "structs",
+      "reason": "array/delete/memory_bytes_delete_element_abi_encode_neighbor.sol: FunctionCall 37: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "array/delete/memory_bytes_delete_element_abi_encode_neighbor.sol"
     },
@@ -4237,14 +4233,13 @@
       "test": "array/inline_array_strings_from_document.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "abi.* functions",
         "bytes push and pop",
         "operator delete"
       ],
-      "first": "abi.* functions",
-      "reason": "array/invalid_encoding_for_storage_byte_array.sol: MemberAccess 35: unsupported built-in member encodePacked",
+      "first": null,
+      "reason": "array/invalid_encoding_for_storage_byte_array.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "array/invalid_encoding_for_storage_byte_array.sol"
     },
@@ -4595,13 +4590,12 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "contract creation (new C)",
         "external calls to getters",
         "source units without exactly one contract"
       ],
-      "first": "abi.* functions",
-      "reason": "array/reusing_memory.sol: MemberAccess 37: unsupported built-in member encodePacked",
+      "first": "contract creation (new C)",
+      "reason": "array/reusing_memory.sol: FunctionCall 47: contract creation (new C) is not supported",
       "scan_agrees": true,
       "test": "array/reusing_memory.sol"
     },
@@ -4827,14 +4821,13 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "built-in erc7201",
         "bytes.concat and string.concat",
         "free functions",
         "type names as values"
       ],
-      "first": "abi.* functions",
-      "reason": "builtinFunctions/erc7201_param_abi_encode.sol: MemberAccess 50: unsupported built-in member encode",
+      "first": "built-in erc7201",
+      "reason": "builtinFunctions/erc7201_param_abi_encode.sol: Identifier 46: unsupported built-in declaration ~30",
       "scan_agrees": true,
       "test": "builtinFunctions/erc7201_param_abi_encode.sol"
     },
@@ -4982,23 +4975,20 @@
       "test": "builtinFunctions/function_types_sig.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "abi.* functions",
         "bytes push and pop"
       ],
-      "first": "abi.* functions",
-      "reason": "builtinFunctions/iterated_keccak256_with_bytes.sol: MemberAccess 27: unsupported built-in member encodePacked",
+      "first": null,
+      "reason": "builtinFunctions/iterated_keccak256_with_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "builtinFunctions/iterated_keccak256_with_bytes.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "abi.* functions"
-      ],
-      "first": "abi.* functions",
-      "reason": "builtinFunctions/keccak256.sol: MemberAccess 9: unsupported built-in member encodePacked",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "builtinFunctions/keccak256.sol"
     },
@@ -5011,52 +5001,44 @@
       "test": "builtinFunctions/keccak256_empty.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "abi.* functions"
-      ],
-      "first": "abi.* functions",
-      "reason": "builtinFunctions/keccak256_multiple_arguments.sol: MemberAccess 14: unsupported built-in member encodePacked",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "builtinFunctions/keccak256_multiple_arguments.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "abi.* functions"
-      ],
-      "first": "abi.* functions",
-      "reason": "builtinFunctions/keccak256_multiple_arguments_with_numeric_literals.sol: MemberAccess 12: unsupported built-in member encodePacked",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "builtinFunctions/keccak256_multiple_arguments_with_numeric_literals.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "abi.* functions"
-      ],
-      "first": "abi.* functions",
-      "reason": "builtinFunctions/keccak256_multiple_arguments_with_string_literals.sol: MemberAccess 24: unsupported built-in member encodePacked",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "builtinFunctions/keccak256_multiple_arguments_with_string_literals.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "abi.* functions"
-      ],
-      "first": "abi.* functions",
-      "reason": "builtinFunctions/keccak256_packed.sol: MemberAccess 27: unsupported built-in member encodePacked",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "builtinFunctions/keccak256_packed.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "abi.* functions"
       ],
-      "first": "abi.* functions",
-      "reason": "builtinFunctions/keccak256_packed_complex_types.sol: MemberAccess 84: unsupported built-in member encodePacked",
+      "first": null,
+      "reason": "builtinFunctions/keccak256_packed_complex_types.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "builtinFunctions/keccak256_packed_complex_types.sol"
     },
@@ -5093,11 +5075,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "hash and signature built-ins"
       ],
-      "first": "abi.* functions",
-      "reason": "builtinFunctions/ripemd160.sol: MemberAccess 9: unsupported built-in member encodePacked",
+      "first": "hash and signature built-ins",
+      "reason": "builtinFunctions/ripemd160.sol: Identifier 7: unsupported built-in declaration ~20",
       "scan_agrees": true,
       "test": "builtinFunctions/ripemd160.sol"
     },
@@ -5114,22 +5095,20 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "hash and signature built-ins"
       ],
-      "first": "abi.* functions",
-      "reason": "builtinFunctions/ripemd160_packed.sol: MemberAccess 27: unsupported built-in member encodePacked",
+      "first": "hash and signature built-ins",
+      "reason": "builtinFunctions/ripemd160_packed.sol: Identifier 25: unsupported built-in declaration ~20",
       "scan_agrees": true,
       "test": "builtinFunctions/ripemd160_packed.sol"
     },
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "hash and signature built-ins"
       ],
-      "first": "abi.* functions",
-      "reason": "builtinFunctions/sha256.sol: MemberAccess 9: unsupported built-in member encodePacked",
+      "first": "hash and signature built-ins",
+      "reason": "builtinFunctions/sha256.sol: Identifier 7: unsupported built-in declaration ~22",
       "scan_agrees": true,
       "test": "builtinFunctions/sha256.sol"
     },
@@ -5146,11 +5125,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "hash and signature built-ins"
       ],
-      "first": "abi.* functions",
-      "reason": "builtinFunctions/sha256_packed.sol: MemberAccess 27: unsupported built-in member encodePacked",
+      "first": "hash and signature built-ins",
+      "reason": "builtinFunctions/sha256_packed.sol: Identifier 25: unsupported built-in declaration ~22",
       "scan_agrees": true,
       "test": "builtinFunctions/sha256_packed.sol"
     },
@@ -5784,12 +5762,10 @@
       "test": "conversions/calldata_bytes_to_memory.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "abi.* functions"
-      ],
-      "first": "abi.* functions",
-      "reason": "conversions/calldata_bytes_to_memory_reencode.sol: MemberAccess 8: unsupported built-in member encode",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "conversions/calldata_bytes_to_memory_reencode.sol"
     },
@@ -6006,12 +5982,11 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "hash and signature built-ins",
         "literals of non-integer types"
       ],
-      "first": "abi.* functions",
-      "reason": "ecrecover/failing_ecrecover_invalid_input_proper.sol: MemberAccess 36: unsupported built-in member encodePacked",
+      "first": "hash and signature built-ins",
+      "reason": "ecrecover/failing_ecrecover_invalid_input_proper.sol: Identifier 44: unsupported built-in declaration ~6",
       "scan_agrees": true,
       "test": "ecrecover/failing_ecrecover_invalid_input_proper.sol"
     },
@@ -6057,7 +6032,7 @@
         "enums"
       ],
       "first": "abi.* functions",
-      "reason": "enums/enum_with_256_members.sol: MemberAccess 313: unsupported built-in member decode",
+      "reason": "enums/enum_with_256_members.sol: FunctionCall 317: unsupported abi.decode",
       "scan_agrees": true,
       "test": "enums/enum_with_256_members.sol"
     },
@@ -7218,7 +7193,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "array slices",
         "arrays",
         "fixed-size bytes members and indexing",
@@ -7939,11 +7913,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "address members (balance, call, transfer, \u2026)"
       ],
-      "first": "abi.* functions",
-      "reason": "functionCall/delegatecall_return_value.sol: MemberAccess 33: unsupported built-in member encodeWithSignature",
+      "first": "address members (balance, call, transfer, \u2026)",
+      "reason": "functionCall/delegatecall_return_value.sol: MemberAccess 31: unsupported built-in member",
       "scan_agrees": true,
       "test": "functionCall/delegatecall_return_value.sol"
     },
@@ -8233,8 +8206,8 @@
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "abi.* functions",
-      "reason": "functionCall/precompile_extcodesize_check.sol: MemberAccess 78: unsupported built-in member encodeWithSelector",
+      "first": "address members (balance, call, transfer, \u2026)",
+      "reason": "functionCall/precompile_extcodesize_check.sol: MemberAccess 76: unsupported built-in member",
       "scan_agrees": true,
       "test": "functionCall/precompile_extcodesize_check.sol"
     },
@@ -10027,16 +10000,15 @@
       "test": "inlineAssembly/shadowing_local_function_opcode.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "abi.* functions",
         "inline assembly memory references",
         "local reference bindings",
         "struct values and copying",
         "structs"
       ],
-      "first": "abi.* functions",
-      "reason": "inlineAssembly/slot_access.sol: MemberAccess 26: unsupported built-in member encode",
+      "first": null,
+      "reason": "inlineAssembly/slot_access.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "inlineAssembly/slot_access.sol"
     },
@@ -10360,8 +10332,8 @@
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)"
       ],
-      "first": "abi.* functions",
-      "reason": "isoltestTesting/precompiles_ignoring_trailing_input.sol: MemberAccess 19: unsupported built-in member encode",
+      "first": "address members (balance, call, transfer, \u2026)",
+      "reason": "isoltestTesting/precompiles_ignoring_trailing_input.sol: MemberAccess 17: unsupported built-in member",
       "scan_agrees": true,
       "test": "isoltestTesting/precompiles_ignoring_trailing_input.sol"
     },
@@ -10769,11 +10741,10 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "address members (balance, call, transfer, \u2026)"
       ],
-      "first": "abi.* functions",
-      "reason": "libraries/library_address_homestead.sol: MemberAccess 50: unsupported built-in member encodeWithSignature",
+      "first": "address members (balance, call, transfer, \u2026)",
+      "reason": "libraries/library_address_homestead.sol: MemberAccess 48: unsupported built-in member",
       "scan_agrees": true,
       "test": "libraries/library_address_homestead.sol"
     },
@@ -10895,8 +10866,8 @@
         "members of elementary type names",
         "type names as values"
       ],
-      "first": "abi.* functions",
-      "reason": "libraries/library_function_selectors.sol: MemberAccess 72: unsupported built-in member encodeWithSelector",
+      "first": "address members (balance, call, transfer, \u2026)",
+      "reason": "libraries/library_function_selectors.sol: MemberAccess 70: unsupported built-in member",
       "scan_agrees": true,
       "test": "libraries/library_function_selectors.sol"
     },
@@ -11155,12 +11126,10 @@
       "test": "literals/denominations_in_array_sizes.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "abi.* functions"
-      ],
-      "first": "abi.* functions",
-      "reason": "literals/escape.sol: MemberAccess 13: unsupported built-in member encodePacked",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "literals/escape.sol"
     },
@@ -12663,7 +12632,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "call options ({value: \u2026, gas: \u2026})",
         "contract creation (new C)",
         "source units without exactly one contract",
@@ -12835,7 +12803,7 @@
         "abi.* functions"
       ],
       "first": "abi.* functions",
-      "reason": "specialFunctions/abi_encode_with_signature_from_string.sol: MemberAccess 13: unsupported built-in member encodeWithSignature",
+      "reason": "specialFunctions/abi_encode_with_signature_from_string.sol: FunctionCall 24: abi.encodeWithSignature of a non-literal signature is not supported",
       "scan_agrees": true,
       "test": "specialFunctions/abi_encode_with_signature_from_string.sol"
     },
@@ -14069,13 +14037,12 @@
       "test": "strings/constant_string_literal.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "abi.* functions",
         "custom errors with reference parameters"
       ],
-      "first": "abi.* functions",
-      "reason": "strings/empty_storage_string.sol: MemberAccess 98: unsupported built-in member encode",
+      "first": null,
+      "reason": "strings/empty_storage_string.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "strings/empty_storage_string.sol"
     },
@@ -16460,7 +16427,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "bytes.concat and string.concat",
         "inline assembly",
         "string literals as fixed-size bytes",
@@ -16507,7 +16473,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
         "external calls to getters",
@@ -16705,7 +16670,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
         "contract creation (new C)",
         "inline assembly",

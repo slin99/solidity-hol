@@ -22,12 +22,12 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 | outcome | tests |
 | --- | ---: |
-| admitted | 570 |
-| elaboration-rejected | 71 |
-| import-rejected | 619 |
+| admitted | 579 |
+| elaboration-rejected | 73 |
+| import-rejected | 582 |
 | compile-failure | 0 |
 | malformed-input | 0 |
-| source-rejected | 310 |
+| source-rejected | 336 |
 | invalid-core | 0 |
 | skipped | 100 |
 | total | 1670 |
@@ -40,28 +40,28 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 
 | feature | AST nodes | tests | only blocker | first |
 | --- | --- | ---: | ---: | ---: |
-| structs | `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 165 | 5 | 19 |
+| structs | `FunctionCall`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 165 | 5 | 20 |
 | local reference bindings | `VariableDeclaration` | 156 | 0 | 0 |
 | source units without exactly one contract | `SourceUnit` | 129 | 7 | 0 |
 | arrays | `ArrayTypeName`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 124 | 3 | 6 |
-| address members (balance, call, transfer, …) | `MemberAccess` | 108 | 14 | 19 |
+| address members (balance, call, transfer, …) | `MemberAccess` | 108 | 16 | 25 |
 | struct values and copying | `Identifier`, `IndexAccess`, `MemberAccess` | 108 | 2 | 0 |
 | function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 105 | 0 | 9 |
-| abi.* functions | `MemberAccess` | 100 | 25 | 62 |
 | function types | `FunctionTypeName` | 96 | 0 | 87 |
 | inline assembly memory references | `InlineAssembly` | 87 | 8 | 0 |
-| contract creation (new C) | `FunctionCall` | 78 | 0 | 49 |
+| contract creation (new C) | `FunctionCall` | 78 | 0 | 50 |
 | operator delete | `UnaryOperation` | 75 | 13 | 0 |
-| free functions | `FunctionDefinition` | 73 | 10 | 31 |
+| free functions | `FunctionDefinition` | 73 | 11 | 31 |
+| abi.* functions | `FunctionCall`, `Identifier`, `IndexRangeAccess`, `MemberAccess` | 70 | 16 | 10 |
 | array values | `Identifier`, `IndexAccess`, `MemberAccess` | 65 | 0 | 0 |
 | functions as values | `Identifier`, `MemberAccess` | 58 | 1 | 0 |
-| type names as values | `ElementaryTypeNameExpression` | 55 | 1 | 8 |
+| type names as values | `ElementaryTypeNameExpression` | 55 | 1 | 9 |
 | user-defined value types | `MemberAccess`, `TupleExpression`, `UserDefinedTypeName`, `UserDefinedValueTypeDefinition`, `VariableDeclaration` | 52 | 7 | 30 |
 | inline assembly memory outside the scratch space | `InlineAssembly` | 50 | 8 | 0 |
 | inline arrays | `TupleExpression` | 47 | 13 | 38 |
 | external library functions | `FunctionDefinition` | 45 | 9 | 31 |
 | transient storage | `VariableDeclaration` | 41 | 19 | 0 |
-| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 20 | 0 |
+| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 21 | 0 |
 | aggregate array mutation | `MemberAccess` | 37 | 10 | 0 |
 | mappings | `IndexAccess`, `TupleExpression`, `VariableDeclaration` | 33 | 9 | 0 |
 | inline assembly | `InlineAssembly` | 32 | 11 | 22 |
@@ -72,7 +72,7 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | tuples of literals | `TupleExpression` | 28 | 5 | 0 |
 | library calls and contract-name members | `IndexAccess`, `MemberAccess` | 27 | 14 | 0 |
 | members of elementary type names | `IndexAccess`, `TupleExpression` | 24 | 0 | 0 |
-| bytes push and pop | `MemberAccess` | 23 | 14 | 0 |
+| bytes push and pop | `MemberAccess` | 23 | 15 | 0 |
 | memory arrays (new T[](n)) | `NewExpression` | 23 | 0 | 0 |
 | call options ({value: …, gas: …}) | `FunctionCallOptions`, `IndexAccess`, `MemberAccess`, `NewExpression`, `TupleExpression` | 22 | 0 | 14 |
 | try/catch | `FunctionCall`, `TryCatchClause`, `TryStatement` | 20 | 4 | 17 |
@@ -84,13 +84,13 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | conditional expressions | `Conditional` | 16 | 0 | 0 |
 | constants | `VariableDeclaration` | 15 | 7 | 9 |
 | named arguments | `FunctionCall` | 15 | 0 | 12 |
-| hash and signature built-ins | `Identifier` | 12 | 5 | 6 |
-| built-in erc7201 | `Identifier` | 12 | 1 | 9 |
+| hash and signature built-ins | `Identifier` | 12 | 9 | 11 |
+| built-in erc7201 | `Identifier` | 12 | 1 | 10 |
 | event array parameters | `VariableDeclaration` | 11 | 6 | 0 |
 | literal subdenominations (ether, days, …) | `Literal` | 11 | 6 | 9 |
 | type(…) | `Identifier` | 11 | 1 | 7 |
 | inline assembly calls, gas, return data and code | `InlineAssembly` | 10 | 5 | 0 |
-| custom errors with reference parameters | `VariableDeclaration` | 10 | 3 | 0 |
+| custom errors with reference parameters | `VariableDeclaration` | 10 | 4 | 0 |
 | fixed-size bytes members and indexing | `IndexAccess`, `MemberAccess` | 10 | 2 | 0 |
 | events named through a contract or library | `MemberAccess` | 8 | 4 | 6 |
 | imports | `MemberAccess`, `TupleExpression` | 8 | 0 | 0 |
@@ -131,26 +131,26 @@ Supporting the features in this order admits the most rejected tests at each ste
 
 | step | feature | admitted |
 | ---: | --- | ---: |
-| 1 | abi.* functions | 25 |
-| 2 | string literals as fixed-size bytes | 46 |
-| 3 | transient storage | 65 |
-| 4 | operator delete | 87 |
-| 5 | address members (balance, call, transfer, …) | 106 |
-| 6 | literals of non-integer types | 123 |
-| 7 | bytes push and pop | 141 |
-| 8 | require with a custom error | 158 |
-| 9 | inline arrays | 174 |
-| 10 | aggregate array mutation | 189 |
-| 11 | library calls and contract-name members | 203 |
-| 12 | struct values and copying | 214 |
-| 13 | structs | 245 |
-| 14 | local reference bindings | 281 |
-| 15 | arrays | 305 |
-| 16 | array values | 340 |
-| 17 | inline assembly memory references | 368 |
-| 18 | inline assembly memory outside the scratch space | 394 |
-| 19 | inline assembly | 411 |
-| 20 | free functions | 424 |
+| 1 | string literals as fixed-size bytes | 21 |
+| 2 | transient storage | 40 |
+| 3 | operator delete | 62 |
+| 4 | address members (balance, call, transfer, …) | 79 |
+| 5 | abi.* functions | 97 |
+| 6 | literals of non-integer types | 114 |
+| 7 | bytes push and pop | 132 |
+| 8 | require with a custom error | 149 |
+| 9 | inline arrays | 165 |
+| 10 | aggregate array mutation | 180 |
+| 11 | library calls and contract-name members | 194 |
+| 12 | struct values and copying | 205 |
+| 13 | structs | 236 |
+| 14 | local reference bindings | 272 |
+| 15 | arrays | 296 |
+| 16 | array values | 331 |
+| 17 | inline assembly memory references | 359 |
+| 18 | inline assembly memory outside the scratch space | 385 |
+| 19 | inline assembly | 402 |
+| 20 | free functions | 415 |
 
 ## Skipped and compile failures
 
@@ -173,6 +173,8 @@ Supporting the features in this order admits the most rejected tests at each ste
 
 ## Admitted
 
+- `abicoder/abi_encode_empty_string_not_bytes0.sol`
+- `abicoder/abi_encode_rational.sol`
 - `abicoder/calldataDecoding/array/byte_arrays.sol`
 - `abicoder/calldataDecoding/array/calldata_array_2d_dynamic_dynamic_v2.sol`
 - `abicoder/calldataDecoding/array/calldata_array_bytes_v2.sol`
@@ -301,7 +303,12 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `builtinFunctions/assignment_to_const_var_involving_keccak.sol`
 - `builtinFunctions/blobhash_shadow_resolution.sol`
 - `builtinFunctions/blockhash_shadow_resolution.sol`
+- `builtinFunctions/keccak256.sol`
 - `builtinFunctions/keccak256_empty.sol`
+- `builtinFunctions/keccak256_multiple_arguments.sol`
+- `builtinFunctions/keccak256_multiple_arguments_with_numeric_literals.sol`
+- `builtinFunctions/keccak256_multiple_arguments_with_string_literals.sol`
+- `builtinFunctions/keccak256_packed.sol`
 - `cleanup/bool_conversion_v2.sol`
 - `cleanup/cleanup_in_compound_assign.sol`
 - `cleanup/dirty_calldata_bytes.sol`
@@ -325,6 +332,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `constructor/payable_constructor.sol`
 - `constructor/state_variable_initialization.sol`
 - `conversions/calldata_bytes_to_memory.sol`
+- `conversions/calldata_bytes_to_memory_reencode.sol`
 - `conversions/string_to_bytes.sol`
 - `enums/constructing_enums_from_ints.sol`
 - `enums/enum_explicit_overflow.sol`
@@ -515,6 +523,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `libraries/stub_internal.sol`
 - `libraries/using_for_named_parameters.sol`
 - `literals/denominations_in_array_sizes.sol`
+- `literals/escape.sol`
 - `literals/hex_string_with_non_printable_characters.sol`
 - `literals/hex_string_with_underscore.sol`
 - `literals/ternary_operator_with_literal_types_overflow.sol`
@@ -746,18 +755,38 @@ Supporting the features in this order admits the most rejected tests at each ste
 
 ## Source validation rejections
 
+- `abicoder/abi_encode_memory_dynamic_array_and_calldata_bytes_v1.sol`: abicoder/abi_encode_memory_dynamic_array_and_calldata_bytes_v1.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/abi_encode_storage_array_v2.sol`: abicoder/abi_encode_storage_array_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/abi_encode_v2.sol`: abicoder/abi_encode_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/abi_encode_with_selector_v1.sol`: abicoder/abi_encode_with_selector_v1.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/abi_encode_with_selector_v2.sol`: abicoder/abi_encode_with_selector_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/bug_abi_encoder_v2_head_overflow_with_static_array_cleanup.sol`: abicoder/bug_abi_encoder_v2_head_overflow_with_static_array_cleanup.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/array/calldata_array_2d_dynamic_static_v2.sol`: abicoder/calldataDecoding/array/calldata_array_2d_dynamic_static_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/array/calldata_array_dynamic_of_uint_v2.sol`: abicoder/calldataDecoding/array/calldata_array_dynamic_of_uint_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/calldata_array_dynamic_of_value_types_v2.sol`: abicoder/calldataDecoding/array/calldata_array_dynamic_of_value_types_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/array/calldata_array_dynamic_static_dynamic_v2.sol`: abicoder/calldataDecoding/array/calldata_array_dynamic_static_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/array/calldata_array_dynamic_static_short_decode_v2.sol`: abicoder/calldataDecoding/array/calldata_array_dynamic_static_short_decode_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/array/calldata_array_dynamic_static_short_reencode_v2.sol`: abicoder/calldataDecoding/array/calldata_array_dynamic_static_short_reencode_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/array/calldata_array_indexing_3d_v2.sol`: abicoder/calldataDecoding/array/calldata_array_indexing_3d_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/calldata_array_indexing_dynamic_v2.sol`: abicoder/calldataDecoding/array/calldata_array_indexing_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/calldata_array_indexing_static_v2.sol`: abicoder/calldataDecoding/array/calldata_array_indexing_static_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/calldata_array_multi_dynamic_v2.sol`: abicoder/calldataDecoding/array/calldata_array_multi_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/calldata_array_static_of_value_types_v2.sol`: abicoder/calldataDecoding/array/calldata_array_static_of_value_types_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/calldata_array_struct_dynamic_v2.sol`: abicoder/calldataDecoding/array/calldata_array_struct_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/array/calldata_array_struct_static_v2.sol`: abicoder/calldataDecoding/array/calldata_array_struct_static_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/calldata_array_two_dynamic_v2.sol`: abicoder/calldataDecoding/array/calldata_array_two_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/calldata_array_two_static_v2.sol`: abicoder/calldataDecoding/array/calldata_array_two_static_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/calldata_nested_array_static_reencode_v2.sol`: abicoder/calldataDecoding/array/calldata_nested_array_static_reencode_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/calldata_overlapping_dynamic_arrays_v2.sol`: abicoder/calldataDecoding/array/calldata_overlapping_dynamic_arrays_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/calldata_overlapping_nested_dynamic_arrays_v2.sol`: abicoder/calldataDecoding/array/calldata_overlapping_nested_dynamic_arrays_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/calldata_struct_array_reencode_v2.sol`: abicoder/calldataDecoding/array/calldata_struct_array_reencode_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/memory_dynamic_array_and_calldata_bytes.sol`: abicoder/calldataDecoding/array/memory_dynamic_array_and_calldata_bytes.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/array/memory_dynamic_array_and_calldata_static_array.sol`: abicoder/calldataDecoding/array/memory_dynamic_array_and_calldata_static_array.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/struct/mediocre_dynamic_v2.sol`: abicoder/calldataDecoding/struct/mediocre_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/struct/mediocre_static_v2.sol`: abicoder/calldataDecoding/struct/mediocre_static_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/struct/member_array_dynamic2_v2.sol`: abicoder/calldataDecoding/struct/member_array_dynamic2_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/struct/member_array_dynamic_multiple_fields_v2.sol`: abicoder/calldataDecoding/struct/member_array_dynamic_multiple_fields_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/struct/member_array_dynamic_v2.sol`: abicoder/calldataDecoding/struct/member_array_dynamic_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/struct/member_array_static_mulitple_fields_v2.sol`: abicoder/calldataDecoding/struct/member_array_static_mulitple_fields_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/struct/multiple_structs_v2.sol`: abicoder/calldataDecoding/struct/multiple_structs_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/struct/nested_static_3_fields_v2.sol`: abicoder/calldataDecoding/struct/nested_static_3_fields_v2.sol: valid_src_unit failed (source validation/subset restriction)
@@ -768,6 +797,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `abicoder/calldataDecoding/struct/short_v2.sol`: abicoder/calldataDecoding/struct/short_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/struct/simple_multiple_fields_short_types_v2.sol`: abicoder/calldataDecoding/struct/simple_multiple_fields_short_types_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/struct/simple_multiple_fields_v2.sol`: abicoder/calldataDecoding/struct/simple_multiple_fields_v2.sol: valid_src_unit failed (source validation/subset restriction)
+- `abicoder/calldataDecoding/struct/simple_single_field_v2.sol`: abicoder/calldataDecoding/struct/simple_single_field_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/calldataDecoding/struct/struct_and_ints_v2.sol`: abicoder/calldataDecoding/struct/struct_and_ints_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/cleanup/struct2_v2.sol`: abicoder/cleanup/struct2_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/arrayMemoryAllocation/array_2d_zeroed_memory_index_access.sol`: array/arrayMemoryAllocation/array_2d_zeroed_memory_index_access.sol: valid_src_unit failed (source validation/subset restriction)
@@ -823,6 +853,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `array/fixed_bytes_length_access.sol`: array/fixed_bytes_length_access.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/indexAccess/index_access.sol`: array/indexAccess/index_access.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/indexAccess/memory_arrays_dynamic_index_access_write.sol`: array/indexAccess/memory_arrays_dynamic_index_access_write.sol: valid_src_unit failed (source validation/subset restriction)
+- `array/invalid_encoding_for_storage_byte_array.sol`: array/invalid_encoding_for_storage_byte_array.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/long_byte_array_cleanup_after_delete.sol`: array/long_byte_array_cleanup_after_delete.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/long_byte_array_cleanup_after_overwrite_with_long.sol`: array/long_byte_array_cleanup_after_overwrite_with_long.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/pop/array_pop_isolated.sol`: array/pop/array_pop_isolated.sol: valid_src_unit failed (source validation/subset restriction)
@@ -849,6 +880,8 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `array/short_fixed_array_cleanup.sol`: array/short_fixed_array_cleanup.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/storage_array_ref.sol`: array/storage_array_ref.sol: valid_src_unit failed (source validation/subset restriction)
 - `array/string_allocation_bug.sol`: array/string_allocation_bug.sol: valid_src_unit failed (source validation/subset restriction)
+- `builtinFunctions/iterated_keccak256_with_bytes.sol`: builtinFunctions/iterated_keccak256_with_bytes.sol: valid_src_unit failed (source validation/subset restriction)
+- `builtinFunctions/keccak256_packed_complex_types.sol`: builtinFunctions/keccak256_packed_complex_types.sol: valid_src_unit failed (source validation/subset restriction)
 - `builtinFunctions/keccak256_with_bytes.sol`: builtinFunctions/keccak256_with_bytes.sol: valid_src_unit failed (source validation/subset restriction)
 - `cleanup/byte_array_to_storage_cleanup.sol`: cleanup/byte_array_to_storage_cleanup.sol: valid_src_unit failed (source validation/subset restriction)
 - `cleanup/cleanup_address_types_shortening.sol`: cleanup/cleanup_address_types_shortening.sol: valid_src_unit failed (source validation/subset restriction)
@@ -929,6 +962,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `inlineAssembly/inline_assembly_storage_access_local_var.sol`: inlineAssembly/inline_assembly_storage_access_local_var.sol: valid_src_unit failed (source validation/subset restriction)
 - `inlineAssembly/inline_assembly_storage_access_via_pointer.sol`: inlineAssembly/inline_assembly_storage_access_via_pointer.sol: valid_src_unit failed (source validation/subset restriction)
 - `inlineAssembly/inline_assembly_transient_storage_access_inside_function.sol`: inlineAssembly/inline_assembly_transient_storage_access_inside_function.sol: valid_src_unit failed (source validation/subset restriction)
+- `inlineAssembly/slot_access.sol`: inlineAssembly/slot_access.sol: valid_src_unit failed (source validation/subset restriction)
 - `inlineAssembly/slot_access_via_mapping_pointer.sol`: inlineAssembly/slot_access_via_mapping_pointer.sol: valid_src_unit failed (source validation/subset restriction)
 - `libraries/attached_internal_library_function_accepting_calldata_struct_v2.sol`: libraries/attached_internal_library_function_accepting_calldata_struct_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `libraries/internal_call_unattached_with_parentheses.sol`: libraries/internal_call_unattached_with_parentheses.sol: valid_src_unit failed (source validation/subset restriction)
@@ -971,6 +1005,7 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `storageLayoutSpecifier/storage_reference_array.sol`: storageLayoutSpecifier/storage_reference_array.sol: valid_src_unit failed (source validation/subset restriction)
 - `storageLayoutSpecifier/storage_reference_inheritance.sol`: storageLayoutSpecifier/storage_reference_inheritance.sol: valid_src_unit failed (source validation/subset restriction)
 - `storageLayoutSpecifier/transient_state_variable_slot_offset.sol`: storageLayoutSpecifier/transient_state_variable_slot_offset.sol: valid_src_unit failed (source validation/subset restriction)
+- `strings/empty_storage_string.sol`: strings/empty_storage_string.sol: valid_src_unit failed (source validation/subset restriction)
 - `structs/conversion/recursive_storage_memory.sol`: structs/conversion/recursive_storage_memory.sol: valid_src_unit failed (source validation/subset restriction)
 - `structs/conversion/recursive_storage_memory_complex.sol`: structs/conversion/recursive_storage_memory_complex.sol: valid_src_unit failed (source validation/subset restriction)
 - `structs/copy_from_storage.sol`: structs/copy_from_storage.sol: valid_src_unit failed (source validation/subset restriction)
@@ -1059,8 +1094,10 @@ Supporting the features in this order admits the most rejected tests at each ste
 
 ## Elaborator rejections
 
+- `abicoder/abi_encode.sol`: abicoder/abi_encode.sol: elaborate_unit returned NONE (unsupported lowering)
 - `abicoder/cleanup/dynamic_array_v2.sol`: abicoder/cleanup/dynamic_array_v2.sol: elaborate_unit returned NONE (unsupported lowering)
 - `abicoder/cleanup/enum_v2.sol`: abicoder/cleanup/enum_v2.sol: elaborate_unit returned NONE (unsupported lowering)
+- `abicoder/cleanup/reencoded_calldata_string.sol`: abicoder/cleanup/reencoded_calldata_string.sol: elaborate_unit returned NONE (unsupported lowering)
 - `abicoder/return_dynamic_types_cross_call_out_of_range_post_homestead.sol`: abicoder/return_dynamic_types_cross_call_out_of_range_post_homestead.sol: elaborate_unit returned NONE (unsupported lowering)
 - `array/copying/array_copy_target_leftover.sol`: array/copying/array_copy_target_leftover.sol: elaborate_unit returned NONE (unsupported lowering)
 - `array/copying/dirty_memory_bytes_to_storage_copy_ir.sol`: array/copying/dirty_memory_bytes_to_storage_copy_ir.sol: elaborate_unit returned NONE (unsupported lowering)

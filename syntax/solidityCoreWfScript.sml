@@ -733,6 +733,21 @@ Definition wf_core_operation_def:
   (wf_core_operation env ctx annotation (Keccak256Operation a) ⇔
     annotation = SingleType (FixedBytesT 32) ∧
     wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a) ∧
+  (wf_core_operation env ctx annotation (AbiEncodeOperation selector tys args) ⇔
+    annotation = SingleType (LocatedT MemoryLoc BytesT) ∧
+    (case selector of
+       NONE => T
+     | SOME s => wf_core_atom env ctx (SingleType (FixedBytesT 4)) s) ∧
+    EVERY (λty. abi_value_type ty ∧ valid_type_shape ty) tys ∧
+    LIST_REL (wf_abi_atom env ctx) tys args) ∧
+  (* A byte sequence argument is encoded where it is, in any location. *)
+  (wf_core_operation env ctx annotation (AbiEncodePackedOperation tys args) ⇔
+    annotation = SingleType (LocatedT MemoryLoc BytesT) ∧
+    EVERY (λty. is_stored_scalar_type ty ∨
+                case ty of
+                  LocatedT MemoryLoc element => byte_sequence_type element
+                | _ => F) tys ∧
+    LIST_REL (wf_abi_atom env ctx) tys args) ∧
   (wf_core_operation env ctx annotation (ArrayLengthOperation a) ⇔
     annotation = SingleType (UintT 256) ∧
     case a of

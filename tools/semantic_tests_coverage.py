@@ -261,6 +261,7 @@ ENVIRONMENT = {
 # require, assert and revert.
 REQUIRE, ASSERT, REVERT = -18, -3, -19
 KECCAK256 = -8
+ABI = -1
 # The field holding the selector the compiler records on each kind of
 # declaration that has one.
 SELECTOR_FIELDS = {"FunctionDefinition": "functionSelector", "EventDefinition": "eventSelector",
@@ -1249,6 +1250,18 @@ def selector_declaration(node: dict[str, Any], by_id: dict[int, dict[str, Any]]
     return declaration
 
 
+def abi_argument(node: dict[str, Any], packed: bool) -> bool:
+    """Whether the checker takes this argument of abi.encode*: a scalar, a
+    byte sequence in any location, a string literal, or, unpacked, an
+    integer literal."""
+    tid = node["typeDescriptions"].get("typeIdentifier") or ""
+    if VALUE_TYPE.match(tid) or tid.startswith(("t_enum_", "t_enum$_", "t_contract$_")):
+        return True
+    if tid.startswith(("t_bytes_", "t_string_", "t_stringliteral_")):
+        return True
+    return not packed and re.fullmatch(r"t_rational_(minus_)?[0-9]+_by_1", tid) is not None
+
+
 def special_forms(reached: dict[int, dict[str, Any]],
                   by_id: dict[int, dict[str, Any]]) -> tuple[set[int], dict[int, list[Blocker]]]:
     """The nodes the importer reads as part of a larger form rather than as
@@ -1316,6 +1329,30 @@ def special_forms(reached: dict[int, dict[str, Any]],
             callee = node["errorCall"]["expression"]
             unread.add(node["errorCall"]["id"])
             unread.update(n["id"] for n in nodes(callee))
+        elif (kind == "FunctionCall" and node["kind"] == "functionCall"
+              and node["expression"]["nodeType"] == "MemberAccess"
+              and node["expression"]["expression"]["nodeType"] == "Identifier"
+              and node["expression"]["expression"].get("referencedDeclaration") == ABI):
+            # abi.encode*: the importer reads the member as the form, and a
+            # literal signature as its bytes.
+            callee = node["expression"]
+            unread.update({callee["id"], callee["expression"]["id"]})
+            member = callee["memberName"]
+            arguments = node["arguments"]
+            if member == "encodeWithSignature":
+                if not arguments or arguments[0]["nodeType"] != "Literal" or arguments[0]["kind"] != "string":
+                    block(node, "abi.* functions", "import")
+                arguments = arguments[1:]
+            elif member == "encodeWithSelector":
+                if not arguments or arguments[0]["typeDescriptions"].get("typeIdentifier") != "t_bytes4":
+                    block(node, "abi.* functions", "elaboration")
+                arguments = arguments[1:]
+            elif member not in ("encode", "encodePacked"):
+                block(node, "abi.* functions", "import")
+                arguments = []
+            for argument in arguments:
+                if not abi_argument(argument, member == "encodePacked"):
+                    block(argument, "abi.* functions", "elaboration")
         elif kind == "MemberAccess" and node.get("referencedDeclaration") is None:
             base = node["expression"]
             if base["nodeType"] == "Identifier" and base.get("referencedDeclaration", 0) < 0:
