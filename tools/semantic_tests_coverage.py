@@ -754,19 +754,36 @@ UNARY_OPERATORS = {"++", "--", "-", "!", "~"}
 BYTES = re.compile(r"t_bytes_(storage|(memory|calldata|storage)_ptr)")
 
 
-def has_getter(type_name: dict[str, Any]) -> bool:
+def has_getter(type_name: dict[str, Any], by_id: dict[int, dict[str, Any]], bases: set[int]) -> bool:
     """Whether getter_shape admits a public state variable's type: mappings
-    with elementary keys and arrays, down to an elementary type, an enum or a
-    byte sequence."""
+    with elementary keys and arrays, down to an elementary type, an enum, a
+    byte sequence or a struct with a member getter_member returns and none it
+    rejects. The importer gives the contract the structs of its bases and of
+    the file level only."""
     kind = type_name["nodeType"]
     if kind == "Mapping":
         key = type_name["keyType"]["typeDescriptions"].get("typeIdentifier") or ""
-        return VALUE_TYPE.fullmatch(key) is not None and has_getter(type_name["valueType"])
+        return VALUE_TYPE.fullmatch(key) is not None and has_getter(type_name["valueType"], by_id, bases)
     if kind == "ArrayTypeName":
-        return has_getter(type_name["baseType"])
+        return has_getter(type_name["baseType"], by_id, bases)
+    declaration = by_id.get(type_name.get("referencedDeclaration"), {})
+    if kind == "UserDefinedTypeName" and declaration.get("nodeType") == "StructDefinition":
+        scope = by_id.get(declaration.get("scope"), {})
+        if scope.get("nodeType") != "SourceUnit" and scope.get("id") not in bases:
+            return False
+        # mappings and arrays other than byte sequences are skipped
+        returned = [m["typeName"] for m in declaration["members"]
+                    if m["typeName"]["nodeType"] not in ("Mapping", "ArrayTypeName")]
+        return bool(returned) and all(getter_value(t) for t in returned)
+    return getter_value(type_name)
+
+
+def getter_value(type_name: dict[str, Any]) -> bool:
+    """Whether a getter returns a value of this type: an elementary type, an
+    enum or a byte sequence."""
     type_identifier = type_name["typeDescriptions"].get("typeIdentifier") or ""
     # A contract type name is read as address.
-    return (kind in ("ElementaryTypeName", "UserDefinedTypeName")
+    return (type_name["nodeType"] in ("ElementaryTypeName", "UserDefinedTypeName")
             and (VALUE_TYPE.fullmatch(type_identifier) is not None
                  or ENUM.fullmatch(type_identifier) is not None
                  or type_identifier in ("t_bytes_storage_ptr", "t_string_storage_ptr")))
@@ -801,9 +818,6 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
                 found.append("event array parameters")
             if error_parameter and not VALUE_TYPE.fullmatch(type_identifier):
                 found.append("custom errors with reference parameters")
-            if (node["stateVariable"] and node.get("visibility") == "public"
-                    and not has_getter(node["typeName"])):
-                found.append("public state variables")
     elif (kind == "TupleExpression" and not node["isInlineArray"]
           and not decodes(node["typeDescriptions"]["typeIdentifier"])):
         type_identifier = node["typeDescriptions"]["typeIdentifier"]
@@ -1402,6 +1416,13 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     fields = {v["id"] for n in reached.values() if n["nodeType"] == "StructDefinition"
               for v in n["members"]}
     based, live = live_functions(asts, by_id)
+    # The bases of each contract deploying each contract: its getters see
+    # their structs, in every deployment.
+    deployed_bases: dict[int, list[set[int]]] = {}
+    for ast in asts.values():
+        for c in deployable(ast):
+            for b in c["linearizedBaseContracts"]:
+                deployed_bases.setdefault(b, []).append(set(c["linearizedBaseContracts"]))
     dead = {n["id"] for f in based - live if f in reached for n in nodes(by_id[f])}
     # The checker and the elaborator see the live functions and the library
     # functions the contracts reach.
@@ -1460,6 +1481,11 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                                            error_parameter=node["id"] in error_parameters)
                     + coerced_literals(node, by_id)
                     + assembly_blockers(node, by_id, creation=node["id"] in creation))
+        if (node["nodeType"] == "VariableDeclaration" and node["stateVariable"]
+                and node.get("visibility") == "public"
+                and not all(has_getter(node["typeName"], by_id, bases)
+                            for bases in deployed_bases.get(node.get("scope"), [set()]))):
+            blockers.append(Blocker("VariableDeclaration", "public state variables", "elaboration"))
         if node["nodeType"] == "EventDefinition" and node["id"] in file_level:
             blockers.append(Blocker("EventDefinition", "file-level events", "import"))
         if any(declaration["nodeType"] == "FunctionDefinition"

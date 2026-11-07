@@ -1581,42 +1581,68 @@ Definition getter_result_def:
   getter_result ty = if byte_sequence_type ty then LocatedT MemoryLoc ty else ty
 End
 
+(* A getter's read of one result from ref, the location it reached: the
+ * value there, or a struct member there, a byte sequence copied to memory. *)
+Definition getter_read_def:
+  getter_read n ref (field, ty) =
+    let (ns, r, n1) =
+      case field of
+        NONE => ([], ref, n)
+      | SOME f => ([DefineStmt (AstId n) (ReferenceType ty)
+                      (NavigateOperation ty ref (FieldNavigation (AstId f)))],
+                   BoundAtom (AstId n), n + 1) in
+    let (rs, a) = bind_value n1 (read_value_type ty) (ReadOperation ty r) in
+    case coerce (n1 + 1) (getter_result ty) a (ElabType (read_value_type ty)) of
+      NONE => NONE
+    | SOME ((cs, a'), n2) => SOME ((ns ++ rs ++ cs, a'), n2)
+End
+
+Definition getter_reads_def:
+  (getter_reads n ref [] = SOME (([], []), n)) ∧
+  (getter_reads n ref (r :: rs) =
+    case getter_read n ref r of
+      NONE => NONE
+    | SOME ((ss, a), n1) =>
+        case getter_reads n1 ref rs of
+          NONE => NONE
+        | SOME ((ss', as), n2) => SOME ((ss ++ ss', a :: as), n2))
+End
+
 (* The getter of the public state variable or immutable x of type ty, the
- * procedure its selector reaches: it returns the value at the location its
- * arguments name, a byte sequence copied to memory. *)
+ * procedure its selector reaches: it returns what getter_results says of the
+ * location its arguments name. *)
 Definition elab_getter_def:
-  elab_getter state immutables n (x : num) =
+  elab_getter structs state immutables n (x : num) =
     case ALOOKUP (state ++ immutables) x of
       NONE => NONE
     | SOME ty =>
-        case getter_shape ty of
+        case getter_shape structs ty of
           NONE => NONE
-        | SOME (keys, result) =>
+        | SOME (keys, results) =>
             let params = getter_parameters n keys in
             let root = n + LENGTH keys in
             let ((nav, ref, _), n1) =
                   getter_location (root + 1) (BoundAtom (AstId root)) ty (MAP FST params) in
-            let returned = getter_result result in
-            let (rs, a) = bind_value n1 (read_value_type result) (ReadOperation result ref) in
-            case coerce (n1 + 1) returned a (ElabType (read_value_type result)) of
+            case getter_reads n1 ref results of
               NONE => NONE
-            | SOME ((cs, a'), n2) =>
+            | SOME ((rs, as), n2) =>
                 SOME (<| procedure_id := AstId x;
                          parameters := core_bindings params;
-                         return_bindings := [(AstId n2, returned)];
+                         return_bindings :=
+                           core_bindings (getter_parameters n2 (MAP (getter_result o SND) results));
                          body := [DefineStmt (AstId root) (ReferenceType ty)
                                     (if IS_SOME (ALOOKUP state x)
                                      then StateReferenceOperation (AstId x)
                                      else ImmutableReferenceOperation (AstId x))] ++
-                                 nav ++ rs ++ cs ++ [ReturnStmt [a']] |>, n2 + 1)
+                                 nav ++ rs ++ [ReturnStmt as] |>, n2 + LENGTH results)
 End
 
 Definition elab_getters_def:
-  (elab_getters state immutables n [] = SOME ([], n)) ∧
-  (elab_getters state immutables n (x :: gs) =
-    case elab_getter state immutables n x of
+  (elab_getters structs state immutables n [] = SOME ([], n)) ∧
+  (elab_getters structs state immutables n (x :: gs) =
+    case elab_getter structs state immutables n x of
       SOME (p, n1) =>
-        (case elab_getters state immutables n1 gs of
+        (case elab_getters structs state immutables n1 gs of
            SOME (ps, n2) => SOME (p :: ps, n2)
          | NONE => NONE)
     | NONE => NONE)
@@ -1816,7 +1842,7 @@ Definition elaborate_unit_def:
                      (checked_functions c.contract_functions c.contract_bases ++
                       c.contract_library_functions)) of
                (SOME decls, SOME layouts, SOME cvs, SOME (fps, n0)) =>
-                 (case elab_getters state immutables n0
+                 (case elab_getters c.contract_structs state immutables n0
                          (FILTER (λx. IS_SOME (ALOOKUP (state ++ immutables) x))
                             (MAP FST c.contract_getters)) of
                     NONE => NONE
@@ -2097,6 +2123,8 @@ val () = cv_auto_trans elab_struct_layouts_def;
 val () = cv_auto_trans getter_location_def;
 val () = cv_auto_trans getter_result_def;
 val () = cv_auto_trans getter_parameters_def;
+val () = cv_auto_trans getter_read_def;
+val () = cv_auto_trans getter_reads_def;
 val () = cv_auto_trans elab_getter_def;
 val () = cv_auto_trans elab_getters_def;
 val () = cv_auto_trans constant_procedure_def;

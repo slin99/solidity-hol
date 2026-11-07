@@ -650,6 +650,29 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* A public struct has a getter when each member it returns is a value or a
+ * byte sequence: item's members are values, nested's include a struct. *)
+fun public_state_variable name selector =
+  edit_first_where
+    (fn v => is_node "VariableDeclaration" v andalso
+             JSONUtil.testField "name" (fn JSON.STRING s => s = name | _ => false) v)
+    ("state variable " ^ name)
+    (fn v => case set_field "visibility" (JSON.STRING "public") v of
+                JSON.OBJECT kvs =>
+                  JSON.OBJECT (kvs @ [("functionSelector", JSON.STRING selector)])
+              | v' => v')
+
+val () = edited_unit_with struct_contracts "struct_getter"
+  (public_state_variable "item" "f2a4a82e" struct_ast)
+val () = edited_unit_with struct_contracts "nested_struct_getter"
+  (public_state_variable "nested" "4ce2d543" struct_ast)
+
+Theorem nested_struct_getter_rejected:
+  valid_src_unit struct_getter ∧ ¬valid_src_unit nested_struct_getter
+Proof
+  CONV_TAC cv_eval
+QED
+
 val () = import_error_with Malformed struct_contracts "missing field identity"
   (edit_first "MemberAccess" (drop_field "referencedDeclaration") struct_ast)
 
