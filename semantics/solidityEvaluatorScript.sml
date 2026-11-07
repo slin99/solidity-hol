@@ -560,7 +560,7 @@ Definition call_external_mode_def:
                if ¬r.call_success then
                  if ¬catching then abrupt_result (RevertCompletion r.call_return) st gas
                  else
-                   (case all_some (MAP default_elementary rets) of
+                   (case OPT_MMAP default_elementary rets of
                       NONE => abrupt_result (InvalidCompletion "bad try return types") st gas
                     | SOME defaults =>
                         let values = ScalarValue (BoolValue F) :: MAP ScalarValue defaults in
