@@ -202,7 +202,10 @@ one. So a value that overflows its type panics with `0x11` when it is
 referenced in checked code, and wraps inside `unchecked`. File-level constants and references through a contract name
 other than a library (`C.X`) are rejected. An operation over literals that the compiler types
 as an integer (`10 ** 27`, `-1`) elaborates to that integer, as the compiler
-folds it; one over other rational constants is still rejected.
+folds it; one over other rational constants is still rejected. A number
+literal the compiler takes as a fixed-size bytes (zero, or hex digits that
+fill it, as in `bytes32 constant ROLE = 0x00`) stands for its big-endian
+bytes, here and wherever a value is converted.
 
 Immutables of elementary value types, declared in the contract or a base, are
 implemented, with getters for public ones. The source state holds a table of

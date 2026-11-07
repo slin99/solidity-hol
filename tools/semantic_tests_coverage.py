@@ -1083,8 +1083,9 @@ def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]],
 
 def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[Blocker]:
     """Integer literals used where a value of another type is expected, which
-    elaborate_unit converts only to integer types, and string literals used
-    as fixed-size bytes, which it does not convert: initial values of locals
+    elaborate_unit converts only to integer types and fixed-size bytes, and
+    string literals used as fixed-size bytes, which it does not convert:
+    initial values of locals
     and state variables, returned and assigned values, tuple components
     included, operands, mapping keys, arguments of calls, emits and reverts,
     and conversions."""
@@ -1171,7 +1172,13 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
                 and INTEGER_RATIONAL.fullmatch(value_type))):
             continue
         conversion = kind == "FunctionCall" and node["kind"] == "typeConversion"
-        if RATIONAL.fullmatch(value_type) and not INTEGER_TYPE.fullmatch(target_type) and not conversion:
+        # an integer literal as a bytesN: the compiler takes only zero and
+        # hex digits that fill it, which elaboration takes as their bytes
+        fixed_bytes = (value["nodeType"] == "Literal"
+                       and re.fullmatch(r"t_bytes[0-9]+", target_type) is not None
+                       and re.fullmatch(r"t_rational_[0-9]+_by_1", value_type) is not None)
+        if (RATIONAL.fullmatch(value_type) and not INTEGER_TYPE.fullmatch(target_type)
+                and not fixed_bytes and not conversion):
             found.append("literals of non-integer types")
         if value_type.startswith("t_stringliteral_"):
             found.append("string literals as fixed-size bytes")

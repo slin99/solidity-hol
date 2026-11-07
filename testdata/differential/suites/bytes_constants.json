@@ -1,0 +1,145 @@
+{
+  "name": "bytes_constants",
+  "source": "testdata/differential/bytes_constants.sol",
+  "contract": "BytesConstants",
+  "artifact": "testdata/differential/expected/bytes_constants.json",
+  "cases": [
+    {
+      "name": "admin_role_getter",
+      "function": "DEFAULT_ADMIN_ROLE",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "tag_getter",
+      "function": "TAG",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x12345678"
+        ]
+      }
+    },
+    {
+      "name": "full_getter",
+      "function": "FULL",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x0102030405060708091011121314151617181920212223242526272829303132"
+        ]
+      }
+    },
+    {
+      "name": "grant_admin",
+      "function": "grantAdmin",
+      "args": [],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "78338746147236970124700731725183845421594913511827187288591969170390706184117": 1
+      }
+    },
+    {
+      "name": "grant_role",
+      "function": "grant",
+      "args": [
+        "0xabababababababababababababababababababababababababababababababab"
+      ],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "33556783313918170547109341625409821840431816470073241621286399084310253084216": 1
+      }
+    },
+    {
+      "name": "is_admin",
+      "function": "isAdmin",
+      "args": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "is_not_admin",
+      "function": "isAdmin",
+      "args": [
+        "0x0000000000000000000000000000000000000000000000000000000000000001"
+      ],
+      "expect": {
+        "return": [
+          false
+        ]
+      }
+    },
+    {
+      "name": "is_tag",
+      "function": "isTag",
+      "args": [
+        "0x12345678"
+      ],
+      "expect": {
+        "return": [
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "name": "is_not_tag",
+      "function": "isTag",
+      "args": [
+        "0x12345679"
+      ],
+      "expect": {
+        "return": [
+          false,
+          false
+        ]
+      }
+    },
+    {
+      "name": "locals",
+      "function": "locals",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x1234",
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0xff",
+          "0x0102030405060708091011121314151617181920212223242526272829303132"
+        ]
+      }
+    },
+    {
+      "name": "argument",
+      "function": "argument",
+      "args": [],
+      "expect": {
+        "return": [
+          "0xabcd"
+        ]
+      }
+    },
+    {
+      "name": "zero_return",
+      "function": "zero",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x00000000"
+        ]
+      }
+    }
+  ]
+}

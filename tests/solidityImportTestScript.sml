@@ -25,7 +25,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/using_for.json",
   "../testdata/differential/expected/contract_types.json",
   "../testdata/differential/expected/hashes.json",
-  "../testdata/differential/expected/conditionals.json"
+  "../testdata/differential/expected/conditionals.json",
+  "../testdata/differential/expected/bytes_constants.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -1134,6 +1135,27 @@ QED
 
 Theorem function_conditional_rejected:
   ¬valid_src_unit function_conditional
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* Constants: a number literal initializes a bytes32 constant. *)
+
+val bytes_constants_fixture = "../testdata/differential/expected/bytes_constants.json"
+val bytes_constants_source = "testdata/differential/bytes_constants.sol"
+val bytes_constants_ast =
+  artifact_part bytes_constants_fixture ["sources", bytes_constants_source, "ast"]
+val bytes_constants_contracts =
+  artifact_part bytes_constants_fixture ["contracts", bytes_constants_source]
+
+Definition bytes_constants_unit_def:
+  bytes_constants_unit = ^(import_artifact bytes_constants_fixture bytes_constants_source)
+End
+
+val () = cv_auto_trans bytes_constants_unit_def;
+
+Theorem bytes_constants_unit_valid:
+  valid_src_unit bytes_constants_unit
 Proof
   CONV_TAC cv_eval
 QED

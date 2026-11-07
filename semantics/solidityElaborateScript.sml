@@ -111,8 +111,8 @@ Definition default_operation_def:
                 | NONE => NONE
 End
 
-(* A value of type ty: integer literals stand for themselves, other types are
- * converted.
+(* A value of type ty: integer literals stand for themselves, or for their
+ * bytes as a fixed-size bytes; other types are converted.
  *)
 Definition coerce_def:
   coerce n ty a vt =
@@ -136,7 +136,16 @@ Definition coerce_def:
                SOME (bind_value n ty (BytesLiteralOperation element bs), n + 1)
              else NONE
          | _ => NONE)
-    | ElabLiteral => if is_integer_type ty then SOME (([], a), n) else NONE
+    | ElabLiteral =>
+        if is_integer_type ty then SOME (([], a), n) else
+        (* a number literal the compiler takes as a bytesN: zero, or hex
+           digits that fill it *)
+        (case (ty, a) of
+           (FixedBytesT k, ConstantAtom (IntegerValue i)) =>
+             if 0 ≤ i ∧ Num i < 256 ** k then
+               SOME (([], ConstantAtom (BytesValue (num_to_bytes k (Num i)))), n)
+             else NONE
+         | _ => NONE)
     | ElabTuple _ => NONE
 End
 
