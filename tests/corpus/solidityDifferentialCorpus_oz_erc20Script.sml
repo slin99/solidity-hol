@@ -16,6 +16,9 @@ val () = holbuild_extra_deps [
   "../../testdata/yul/openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol",
   "../../testdata/yul/openzeppelin/contracts/utils/Context.sol"
 ]
-val () = solidityDifferentialLib.run_suite_file
+fun holbuild_extra_outputs (_ : string list) = ()
+val () = holbuild_extra_outputs ["solidityDifferentialCorpus_oz_erc20.results.jsonl"]
+val () = solidityDifferentialLib.with_results "solidityDifferentialCorpus_oz_erc20.results.jsonl" (fn () =>
+  solidityDifferentialLib.run_suite_file
   {root = "../..", suite_file = "testdata/differential/suites/oz_erc20.json",
-   fuel = 1000, bytecode_theory = "solidityBytecodeCorpus_oz_erc20"}
+   fuel = 1000, bytecode_theory = "solidityBytecodeCorpus_oz_erc20"})
