@@ -236,7 +236,8 @@ for an event), also of a library's public function or event, and
 possibly qualified by an imported module's, which the compiler does not
 evaluate. `type(I).interfaceId` is the constant XOR of the selectors of the
 functions the interface `I` declares itself, not those it inherits, nor its
-`fallback` or `receive`. A selector
+`fallback` or `receive`; `I` must name an interface directly, not through a
+module, and an abstract contract's `interfaceId` is rejected. A selector
 of any other function-typed value is rejected, and so are `sha256`,
 `ripemd160`, `ecrecover` and the `abi.*` functions.
 
