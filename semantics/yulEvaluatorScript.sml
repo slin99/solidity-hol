@@ -825,7 +825,9 @@ QED
 
 val () = cv_auto_trans yul_call_def;
 val () = cv_auto_trans yul_return_data_copy_def;
-val () = cv_auto_trans eval_yul_builtin_def;
+(* Bound left shifts before computing powers, as in the EVM translation. *)
+val () = cv_auto_trans
+  (REWRITE_RULE [word_lsl_modexp] eval_yul_builtin_def);
 val () = cv_auto_trans eval_yul_builtin_call_def;
 val () = cv_auto_trans yul_env_def;
 

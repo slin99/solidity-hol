@@ -1175,6 +1175,19 @@ Proof
   CONV_TAC cv_eval
 QED
 
+Theorem left_shift_discards_bits_beyond_word_width:
+  eval_yul_builtin YShl [0w; 2w] yul_test_machine =
+    EvalValues [2w] yul_test_machine ∧
+  eval_yul_builtin YShl [255w; 1w] yul_test_machine =
+    EvalValues [n2w (2 ** 255)] yul_test_machine ∧
+  eval_yul_builtin YShl [256w; 2w] yul_test_machine =
+    EvalValues [0w] yul_test_machine ∧
+  eval_yul_builtin YShl [-1w; 2w] yul_test_machine =
+    EvalValues [0w] yul_test_machine
+Proof
+  CONV_TAC cv_eval
+QED
+
 (* Dynamic byte copying emits BYTE and MSTORE8. *)
 Theorem byte_extraction:
   eval_yul_builtin YByte [30w; 0x1234w] yul_test_machine =
