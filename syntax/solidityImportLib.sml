@@ -57,6 +57,7 @@ fun mk_opt ty NONE = optionSyntax.mk_none ty
 
 fun import_type name = mk_thy_type {Thy = "solidityImport", Tyop = name, Args = []}
 val expr_ty = import_type "src_expr"
+val type_name_ty = import_type "src_type_name"
 val stmt_ty = import_type "src_stmt"
 val variable_ty = import_type "src_variable"
 val function_ty = import_type "src_function"
@@ -609,8 +610,17 @@ fun expr v = within v (fn v =>
           type_id v])
   | "FunctionCall" =>
       let
-        val args = JSONUtil.arrayMap expr (field v "arguments")
         val callee = field v "expression"
+        val abi_member =
+          node_type callee = "MemberAccess" andalso
+          node_type (field callee "expression") = "Identifier" andalso
+          int_field (field callee "expression") "referencedDeclaration" = ~1
+        val abi_decode = abi_member andalso string_field callee "memberName" = "decode"
+        (* abi.decode's second argument names types, which abi_decode reads *)
+        val args =
+          case (abi_decode, JSONUtil.arrayMap I (field v "arguments")) of
+            (true, data :: _) => [expr data]
+          | (_, raw) => map expr raw
         val no_names = null (JSONUtil.arrayMap I (field v "names"))
         fun positional () = require v no_names "named arguments are not supported here"
       in
@@ -631,9 +641,9 @@ fun expr v = within v (fn v =>
                require v (length args = 4) "ecrecover takes four arguments";
                con "SrcEcrecover"
                  [info v, info callee, listSyntax.mk_list (args, expr_ty), type_id v])
-            else if node_type callee = "MemberAccess" andalso
-               node_type (field callee "expression") = "Identifier" andalso
-               int_field (field callee "expression") "referencedDeclaration" = ~1 then
+            else if abi_decode then
+              (positional (); abi_decode_call v callee args)
+            else if abi_member then
               (positional (); abi_encode v callee args)
             else if node_type callee = "Identifier" andalso
                int_field callee "referencedDeclaration" < 0 then
@@ -748,6 +758,30 @@ and abi_encode v callee args =
   in
     con "SrcAbiEncode"
       [info v, info callee, form, listSyntax.mk_list (args, expr_ty), type_id v]
+  end
+
+(* abi.decode(data, (T1, ..., Tk)) of elementary types; the parenthesised
+ * types are a tuple expression even for one type. *)
+and abi_decode_call v callee args =
+  let
+    val components =
+      case JSONUtil.arrayMap I (field v "arguments") of
+        [_, types] =>
+          if node_type types = "TupleExpression" andalso
+             not (bool_field types "isInlineArray")
+          then JSONUtil.arrayMap I (field types "components")
+          else [types]
+      | _ => fail (describe v ^ ": abi.decode takes data and a list of types")
+    fun decoded_type c =
+      (require v (case c of
+                    JSON.NULL => false
+                  | _ => node_type c = "ElementaryTypeNameExpression")
+         "abi.decode of a non-elementary type is not supported";
+       type_name (field c "typeName"))
+  in
+    con "SrcAbiDecode"
+      [info v, info callee, hd args,
+       listSyntax.mk_list (map decoded_type components, type_name_ty), type_id v]
   end
 
 (* c.f{value: v}(args), with c of a contract type. *)

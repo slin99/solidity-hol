@@ -205,6 +205,7 @@ Datatype:
   | SrcSelector node_info (byte list) string
   | SrcEcrecover node_info node_info (src_expr list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
+  | SrcAbiDecode node_info node_info src_expr (src_type_name list) string
 End
 
 (* VariableDeclarationStatement: assignments, declarations (NONE for a hole),
@@ -916,6 +917,8 @@ Definition expr_ids_def:
     info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcAbiEncode info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
+  (expr_ids (SrcAbiDecode info callee e tns _) =
+    info.node_id :: callee.node_id :: expr_ids e ++ FLAT (MAP type_name_ids tns)) ∧
   (expr_ids (SrcExternalCall info _ _ operands _ _) =
     info.node_id :: exprs_ids operands) ∧
   (expr_ids (SrcNew info tn e _) =
@@ -1352,6 +1355,15 @@ Definition check_expr_def:
     if source_type_matches (AddressT NonpayableAddress) tid ∧
        LENGTH args = 4 ∧ check_exprs env args
     then SOME (SrcType (AddressT NonpayableAddress)) else NONE) ∧
+  (* abi.decode(data, (T1, ..., Tk)) of a memory bytes into elementary
+     types, without allocating. *)
+  (check_expr env (SrcAbiDecode _ _ e tns tid) =
+    case (all_some (MAP normalize_type_name tns), decode_type_identifier tid) of
+      (SOME tys, SOME vt) =>
+        if tys ≠ [] ∧ EVERY is_elementary_type tys ∧ vt = call_value_type tys ∧
+           check_expr env e = SOME (SrcType (LocatedT MemoryLoc BytesT))
+        then SOME vt else NONE
+    | _ => NONE) ∧
   (check_components env [] ⇔ T) ∧
   (check_components env (NONE :: cs) ⇔ check_components env cs) ∧
   (check_components env (SOME e :: cs) ⇔

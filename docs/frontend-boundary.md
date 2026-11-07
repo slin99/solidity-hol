@@ -259,8 +259,8 @@ module (`M.E.selector`), none of which the compiler evaluates.
 the interface `I` declares itself, not those it inherits, nor its `fallback`
 or `receive`; `I` must name an interface directly, not through a module, and
 an abstract contract's `interfaceId` is rejected. A selector of any other
-function-typed value is rejected, and so are `sha256`, `ripemd160`,
-`abi.decode` and `abi.encodeCall`.
+function-typed value is rejected, and so are `sha256`, `ripemd160` and
+`abi.encodeCall`.
 
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
 type the compiler gives the whole expression, which must be a value type or
@@ -280,6 +280,13 @@ gives each scalar in its own width, a `bytesN` as its N bytes, and a byte
 sequence as its contents. Arrays and structs as arguments, a selector that
 is not a `bytes4` value (a literal selector included), and a signature that is
 not a plain string literal are rejected.
+
+`abi.decode(data, (T1, ..., Tk))` decodes a memory `bytes` into values of
+elementary types (booleans, integers, addresses and fixed-size byte
+sequences), as the compiler's decoder from memory does: data shorter than the
+encoding, or a word that is not a value of its type, reverts with no data, and
+data after the encoding is ignored. It allocates nothing. Data in calldata or
+storage, and types other than elementary ones, are rejected.
 
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,

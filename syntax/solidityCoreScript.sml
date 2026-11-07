@@ -115,6 +115,8 @@ End
  * byte sequence a, as bytes32. EcrecoverOperation h v r s: ecrecover(h, v, r,
  * s), the address the signature (v, r, s) of the bytes32 hash h recovers, or
  * address(0) if it is invalid; v is a uint8 and r and s are bytes32.
+ * AbiDecodeOperation types a: abi.decode(a, (types)) of the memory bytes a
+ * into values of those elementary types, one value or a tuple of them.
  * AbiEncodeOperation selector types arguments: abi.encode(arguments) of the
  * arguments as those ABI types, after the four bytes of the selector if any,
  * as a new memory bytes. AbiEncodePackedOperation types arguments:
@@ -145,6 +147,7 @@ Datatype:
   | EcrecoverOperation core_atom core_atom core_atom core_atom
   | AbiEncodeOperation (core_atom option) (sol_type list) (core_atom list)
   | AbiEncodePackedOperation (sol_type list) (core_atom list)
+  | AbiDecodeOperation (sol_type list) core_atom
   | ArrayPushOperation core_atom (core_atom option)
   | ArrayPopOperation core_atom
   | InternalCallOperation ast_id (core_atom list)

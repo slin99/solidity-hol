@@ -347,6 +347,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcKeccak256 _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcEcrecover _ _ args _) ⇔ exprs_assign args) ∧
+  (expr_assigns (SrcAbiDecode _ _ e _ _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcSuperCall _ _ args _ _) ⇔ exprs_assign args) ∧
   (expr_assigns _ ⇔ F) ∧
   (components_assign [] ⇔ F) ∧
@@ -958,6 +959,14 @@ Definition elab_expr_def:
                   SOME ((ss ++ cs ++ es, a, ElabType ty), n2 + 1)
               | _ => NONE)
          | NONE => NONE)
+    | SrcAbiDecode _ _ e tns _ =>
+        (* the data is decoded where it is, so it must already be memory bytes *)
+        (case (elab_expr ctx n e, all_some (MAP normalize_type_name tns)) of
+           (SOME ((ss, a, ElabType (LocatedT MemoryLoc BytesT)), n1), SOME (ty :: tys)) =>
+             SOME ((ss ++ [DefineStmt (AstId n1) (call_result_type (ty :: tys))
+                                (AbiDecodeOperation (ty :: tys) a)],
+                    BoundAtom (AstId n1), call_value (ty :: tys)), n1 + 1)
+         | _ => NONE)
     | SrcSelector _ bs _ =>
         (* bound, so that a later conversion converts a bytesN local *)
         let ty = FixedBytesT (LENGTH bs) in

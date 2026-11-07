@@ -200,6 +200,13 @@ Definition environment_value_def:
         ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockGasLimit)))
 End
 
+(* A call's value, following call_result_type: nothing, one value, or a tuple. *)
+Definition pack_results_def:
+  (pack_results [] = TupleValue []) ∧
+  (pack_results [v] = v) ∧
+  (pack_results vs = TupleValue vs)
+End
+
 (* Pure operations; calls and array mutations are handled by statements. *)
 Definition eval_operation_def:
   eval_operation env (st : source_state) op =
@@ -285,6 +292,18 @@ Definition eval_operation_def:
                   SOME a => a
                 | NONE => 0w)))
          | _ => ValueAbrupt (InvalidCompletion "bad ecrecover operands"))
+    (* The compiler's decoder from memory: short data, or a value outside its
+     * type, reverts with no data; data after the encoding is ignored. *)
+    | AbiDecodeOperation tys a =>
+        (case eval_atom st.scopes a of
+           SOME (ReferenceValue r) =>
+             (case byte_contents st r of
+                INL bs =>
+                  (case decode_arguments env tys bs 0 (memory_free_pointer st) of
+                     INL vs => ValueOk (pack_results vs)
+                   | INR c => ValueAbrupt c)
+              | INR c => ValueAbrupt c)
+         | _ => ValueAbrupt (InvalidCompletion "bad abi.decode operand"))
     | ArrayLengthOperation a =>
         (case eval_atom st.scopes a of
            SOME (ReferenceValue r) =>
@@ -390,13 +409,6 @@ Definition read_returns_def:
     case (lookup_binding x scopes, read_returns scopes rets) of
       (SOME b, SOME vs) => SOME (b.binding_value :: vs)
     | _ => NONE)
-End
-
-(* A call's value, following call_result_type: nothing, one value, or a tuple. *)
-Definition pack_results_def:
-  (pack_results [] = TupleValue []) ∧
-  (pack_results [v] = v) ∧
-  (pack_results vs = TupleValue vs)
 End
 
 (* Statements that do not run nested code *)
