@@ -24,13 +24,13 @@
  * costs, and every conversion runs under a clock, so one that stops coming back
  * fails the build instead of leaving it at the heap cap.
  *
- * A few functions are not covered by the size bound yet: each is named in
- * `excluded` below with the reason it is there, every name has to be a function
- * of the object, and the list empties as the conversion stops copying the rest
- * of a body into a branch of a decision (see the comment on the list).  A line
- * that says a function produces no form is converted under that clock too, and
- * fails the build as soon as it comes back; the clock is what makes such a
- * claim honest rather than taken on trust.
+ * Every loop-free function is held to the size bound.  A function the bound
+ * cannot be asked of goes in `excluded` below with the reason it is there, and
+ * every name there has to be a function of the object (see the comment on the
+ * list, which is empty now).  A line that says a function produces no form is
+ * converted under that clock too, and fails the build as soon as it comes
+ * back; the clock is what makes such a claim honest rather than taken on
+ * trust.
  *)
 Theory yulConvTest
 Ancestors
@@ -162,67 +162,30 @@ val () =
           ^ Int.toString (List.length loop_free) ^ " loop-free, looping: "
           ^ String.concatWith ", " (List.map (fn (nm, _, _) => nm) looping))
 
-(* The functions the size bound below is not asked of yet.  A line carries
- * either the form size this suite measures -- every node of the term, which is
- * the `size` this test prints below -- or a claim that no form comes back inside
- * a clock.  Every line here names a body that calls.
+(* The functions the size bound below is not asked of yet, each with why: the
+ * form size this suite measures -- every node of the term, which is the `size`
+ * this test prints below -- or a claim that no form comes back inside a clock.
  *
- * A call's answer is what leaves a decision standing -- the arity the callee
- * answered with, and the frame it came back on -- and a decision the conversion
- * has not settled takes a copy of the rest of the body per branch, so the
- * copies multiply and a body's form is linear in its statements only while
- * nothing reads what a call answered.  The conversion settles a clause's own
- * sub-result before the clause's function is reduced, and it runs for the
- * clause constants themselves rather than only at the top of a statement, so a
- * clause nested inside another -- an argument list's own tail, a call among a
- * call's arguments -- is taken the same way instead of being handed to the
- * compute set whole.  That is what took the largest form here down by an order
- * of magnitude, and it is what brought the `abi_decode_*` group under the line;
- * what is left is the same shape one level further in, in the steps that still
- * go to the compute set -- the builtin dispatch, the scope updates, the machine
- * a call answered.  One of those was a builtin's own value: `div` and its
- * siblings unfolded `with_zero` into a test on the divisor, a decision nothing
- * took apart, and everything after it was evaluated over it; a divisor that is
- * not a literal now leaves the value folded (see semantics/yulConvLib.sml),
- * which is what brought `checked_exp_unsigned` under the line and
- * `checked_exp_signed` down by a factor of seventy.
+ * The list is empty.  It held the bodies whose forms the conversion copied a
+ * decision into, two ways: a `let` over a statement's or a call's result that
+ * was still a case, or a scope pop over one, substituted the case at every use
+ * of the name, so the form grew by a factor per read; and a call among a
+ * builtin's arguments (`slt(cleanup_int8(x), cleanup_int8(y))`) stayed a case
+ * inside the other call's branch, where the binding behind it unfolded on the
+ * branch's variables and left every later scope read stuck.  The conversion now
+ * pushes a binding into a decision before anything is substituted, and settles
+ * a clause again after the set's reduction (see semantics/yulConvLib.sml); the
+ * three that were over the line -- `fun_signedLess` at 1 083 107 nodes,
+ * `fun_boolLogic` at 1 008 029 and `checked_exp_signed` at 903 697 -- came
+ * under it with both in.  Which of the two each one needed was not measured.
  *
- * The line is drawn at a size rather than at a measured time because a time
- * moves with the machine the build runs on and a size does not.  The sizes on
- * these lines are a sweep's output over the list, not something the suite
- * checks -- they say how far over the line each one is, and they move when the
- * conversion does, so they are re-measured with the list rather than read as an
- * invariant.  The line is enforced from one side only: the suite fails if a
- * form it does cover reaches 200k nodes, so a covered function that grew past
- * the line cannot pass unnoticed, but nothing here converts the three named
- * here -- a name whose form has dropped under the line keeps its line until the
- * list is re-measured, which happens with each change to the conversion.
- * Converting them here as well would put their cost -- seconds each, and a
- * million nodes at the far end -- on every run of this suite.
- *
- * Three forms are over the line: `fun_signedLess` (1 083 107),
- * `fun_boolLogic` (1 008 029) and `checked_exp_signed` (903 697); which decision
- * their continuations are copied under has not been measured yet.  The first
- * two call inside a builtin's arguments
- * (`slt(cleanup_int8(x), cleanup_int8(y))`), which is a candidate.  The suite
- * covers the other 134 of the 137 loop-free functions.
- *
- * No line says `no_form` now.  `checked_exp_signed` was the one that did: a
- * sweep did not see it come back inside a clock of a minute, and given a minute
- * and a half it came back with 64 540 998 nodes in about 74s.  The check for
- * such a line stays: a line that claims no form is converted under a clock
- * below, so that the claim is asked of the conversion rather than taken on
- * trust, and one that comes back fails the check by name, with the size of its
- * form.  Without the clock a body that stopped coming back would sit at the
- * heap cap until the job's own limit rather than fail.
- *
- * So this list is the work list of the next piece, and it should empty: what the
- * suite is asked for is a conversion whose form is linear in the body, one leaf
- * per path rather than a copy of the continuation per branch.  A name that stops
- * needing its line is a line to delete; the test fails if a name is not a
- * function of the object, so a list left behind by a fixture change cannot pass
- * unnoticed.
- *)
+ * The line is drawn at a size rather than a time because a time moves with the
+ * machine the build runs on and a size does not.  A body that goes over it
+ * again comes back here, with its measured size, until the conversion takes it.
+ * A line that claims no form is converted under a clock below, so the claim is
+ * asked of the conversion rather than taken on trust; without the clock a body
+ * that stopped coming back would sit at the heap cap until the job's own limit
+ * rather than fail. *)
 val no_form = "no form within the clock"
 
 (* The tag above is what the check on those lines matches, so it is one name
@@ -230,11 +193,7 @@ val no_form = "no form within the clock"
  * the check that asks the conversion for it have to say the same thing, and a
  * re-worded line that the check no longer recognises is a line whose claim
  * nobody asks about. *)
-val excluded = [
-  ("checked_exp_signed", "form of 903697 nodes"),
-  ("fun_boolLogic", "form of 1008029 nodes"),
-  ("fun_signedLess", "form of 1083107 nodes"),
-]
+val excluded : (string * string) list = []
 
 val excluded_names = List.map #1 excluded
 
@@ -339,8 +298,8 @@ fun checked_form (nm, body) t th =
  * its own, not `Fail`, so a check that fails inside is not mistaken for a
  * timeout.
  *
- * The bound is generous: the slowest form this suite covers takes about a
- * second, and a loaded box moves that. *)
+ * The bound is generous: the slowest form this suite covers takes about five
+ * seconds, and a loaded machine moves that. *)
 fun under_clock secs thunk =
   (SOME (Timeout.apply (Time.fromReal secs) thunk ())
      handle Timeout.TIMEOUT _ => NONE)
@@ -511,9 +470,9 @@ QED
  * The shapes that have left this class as the conversion has improved all nest
  * a call inside another call's arguments: `wrapping_exp_uint8_uint8` closes now
  * -- its `exp` call is reached through the builtin dispatch rather than left to
- * the word library -- and the ones that carry a size above come back under a
- * longer clock.  No line is left in the class now, and the check stays for the
- * next body that stops coming back. *)
+ * the word library -- and the rest are covered by the size bound.  No line is
+ * left in the class now, and the check stays for the next body that stops
+ * coming back. *)
 val () =
   List.app
     (fn (nm, why) =>
