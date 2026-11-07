@@ -1,9 +1,9 @@
 {
   "counts": {
-    "admitted": 567,
+    "admitted": 570,
     "compile-failure": 0,
     "elaboration-rejected": 71,
-    "import-rejected": 622,
+    "import-rejected": 619,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
@@ -76,7 +76,7 @@
     },
     {
       "feature": "function members (selector, address, \u2026)",
-      "first_rejection": 8,
+      "first_rejection": 9,
       "node_types": [
         "MemberAccess",
         "TupleExpression",
@@ -425,15 +425,6 @@
       "tests": 17
     },
     {
-      "feature": "type(\u2026)",
-      "first_rejection": 11,
-      "node_types": [
-        "Identifier"
-      ],
-      "only_blocker": 4,
-      "tests": 16
-    },
-    {
       "feature": "conditional expressions",
       "first_rejection": 0,
       "node_types": [
@@ -494,6 +485,15 @@
         "Literal"
       ],
       "only_blocker": 6,
+      "tests": 11
+    },
+    {
+      "feature": "type(\u2026)",
+      "first_rejection": 7,
+      "node_types": [
+        "Identifier"
+      ],
+      "only_blocker": 1,
       "tests": 11
     },
     {
@@ -7223,8 +7223,7 @@
         "arrays",
         "fixed-size bytes members and indexing",
         "hash and signature built-ins",
-        "literal subdenominations (ether, days, \u2026)",
-        "type(\u2026)"
+        "literal subdenominations (ether, days, \u2026)"
       ],
       "first": "arrays",
       "reason": "externalContracts/deposit_contract.sol: ArrayTypeName 66: array length is not a positive integer constant",
@@ -10220,22 +10219,18 @@
       "test": "interfaceID/homer.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "type(\u2026)"
-      ],
-      "first": "type(\u2026)",
-      "reason": "interfaceID/homer_interfaceId.sol: Identifier 34: expected ElementaryTypeNameExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "interfaceID/homer_interfaceId.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "type(\u2026)"
-      ],
-      "first": "type(\u2026)",
-      "reason": "interfaceID/interfaceId_events.sol: Identifier 23: expected ElementaryTypeNameExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "interfaceID/interfaceId_events.sol"
     },
@@ -10244,11 +10239,10 @@
       "features": [
         "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
-        "literals of non-integer types",
-        "type(\u2026)"
+        "literals of non-integer types"
       ],
-      "first": "type(\u2026)",
-      "reason": "interfaceID/interfaces.sol: Identifier 27: expected ElementaryTypeNameExpression",
+      "first": "function members (selector, address, \u2026)",
+      "reason": "interfaceID/interfaces.sol: MemberAccess 47: selectors of computed values are not supported",
       "scan_agrees": true,
       "test": "interfaceID/interfaces.sol"
     },
@@ -10261,12 +10255,10 @@
       "test": "interfaceID/lisa.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "type(\u2026)"
-      ],
-      "first": "type(\u2026)",
-      "reason": "interfaceID/lisa_interfaceId.sol: Identifier 62: expected ElementaryTypeNameExpression",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "interfaceID/lisa_interfaceId.sol"
     },

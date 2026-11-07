@@ -1323,7 +1323,11 @@ def special_forms(reached: dict[int, dict[str, Any]],
             elif is_type_call(base):
                 argument = base["arguments"][0] if base["arguments"] else base
                 unread.update({base["id"], base["expression"]["id"], argument["id"]})
-                if argument["nodeType"] != "ElementaryTypeNameExpression":
+                if (argument["nodeType"] == "Identifier" and node["memberName"] == "interfaceId"
+                        and by_id.get(argument.get("referencedDeclaration"), {}).get("contractKind")
+                        == "interface"):
+                    pass
+                elif argument["nodeType"] != "ElementaryTypeNameExpression":
                     block(argument, "type(…)", "import")
                 elif (node["memberName"] not in {"max", "min"}
                       or not re.fullmatch(r"u?int[0-9]*", argument["typeName"]["name"])):

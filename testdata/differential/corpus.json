@@ -1383,6 +1383,21 @@
         {"name": "emit_order", "function": "emitOrder", "args": [], "final_storage": {"0": 21}, "expect": {"return": [21]}, "logs": [{"topics": ["0x2d3b57dedfada8371bdae932a6881ace0dec34c90dd19fd49b2164124e699e2d", "0x0000000000000000000000000000000000000000000000000000000000000001"], "data": "0x0000000000000000000000000000000000000000000000000000000000000002"}]},
         {"name": "revert_order", "function": "revertOrder", "args": [], "expect": {"revert": "0xe3932fc800000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001"}}
       ]
+    },
+    {
+      "name": "interface_ids",
+      "source": "testdata/differential/interface_ids.sol",
+      "contract": "InterfaceIds",
+      "artifact": "testdata/differential/expected/interface_ids.json",
+      "cases": [
+        {"name": "interface_ids", "function": "ids", "args": [], "expect": {"return": ["0xe8df712d", "0x5001f3b5", "0x4d43ffa2", "0x00000000"]}},
+        {"name": "interface_id_constant", "function": "fromConstant", "args": [], "expect": {"return": ["0xe8df712d"]}},
+        {"name": "interface_id_converted", "function": "converted", "args": [], "expect": {"return": ["0xe8df712d00000000000000000000000000000000000000000000000000000000", 1342305205]}},
+        {"name": "fallback_and_receive_not_included", "function": "payableId", "args": [], "expect": {"return": ["0x1b9265b8"]}},
+        {"name": "supports_own_interface", "function": "supportsInterface", "args": ["0xe8df712d"], "expect": {"return": [true]}},
+        {"name": "supports_base_interface", "function": "supportsInterface", "args": ["0x5001f3b5"], "expect": {"return": [true]}},
+        {"name": "inherited_selectors_not_included", "function": "supportsInterface", "args": ["0xb8de8298"], "expect": {"return": [false]}}
+      ]
     }
   ]
 }

@@ -22,9 +22,9 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 
 | outcome | tests |
 | --- | ---: |
-| admitted | 567 |
+| admitted | 570 |
 | elaboration-rejected | 71 |
-| import-rejected | 622 |
+| import-rejected | 619 |
 | compile-failure | 0 |
 | malformed-input | 0 |
 | source-rejected | 310 |
@@ -46,7 +46,7 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | arrays | `ArrayTypeName`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 124 | 3 | 6 |
 | address members (balance, call, transfer, …) | `MemberAccess` | 108 | 14 | 19 |
 | struct values and copying | `Identifier`, `IndexAccess`, `MemberAccess` | 108 | 2 | 0 |
-| function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 105 | 0 | 8 |
+| function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 105 | 0 | 9 |
 | abi.* functions | `MemberAccess` | 100 | 25 | 62 |
 | function types | `FunctionTypeName` | 96 | 0 | 87 |
 | inline assembly memory references | `InlineAssembly` | 87 | 8 | 0 |
@@ -81,7 +81,6 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | public state variables | `VariableDeclaration` | 19 | 0 | 0 |
 | require with a custom error | `FunctionCall` | 18 | 15 | 0 |
 | mapping values | `Identifier`, `IndexAccess`, `MemberAccess` | 17 | 0 | 0 |
-| type(…) | `Identifier` | 16 | 4 | 11 |
 | conditional expressions | `Conditional` | 16 | 0 | 0 |
 | constants | `VariableDeclaration` | 15 | 7 | 9 |
 | named arguments | `FunctionCall` | 15 | 0 | 12 |
@@ -89,6 +88,7 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | built-in erc7201 | `Identifier` | 12 | 1 | 9 |
 | event array parameters | `VariableDeclaration` | 11 | 6 | 0 |
 | literal subdenominations (ether, days, …) | `Literal` | 11 | 6 | 9 |
+| type(…) | `Identifier` | 11 | 1 | 7 |
 | inline assembly calls, gas, return data and code | `InlineAssembly` | 10 | 5 | 0 |
 | custom errors with reference parameters | `VariableDeclaration` | 10 | 3 | 0 |
 | fixed-size bytes members and indexing | `IndexAccess`, `MemberAccess` | 10 | 2 | 0 |
@@ -483,7 +483,10 @@ Supporting the features in this order admits the most rejected tests at each ste
 - `integer/small_signed_types.sol`
 - `integer/uint.sol`
 - `interfaceID/homer.sol`
+- `interfaceID/homer_interfaceId.sol`
+- `interfaceID/interfaceId_events.sol`
 - `interfaceID/lisa.sol`
+- `interfaceID/lisa_interfaceId.sol`
 - `isoltestTesting/account.sol`
 - `isoltestTesting/balance_with_balance.sol`
 - `isoltestTesting/balance_with_balance2.sol`

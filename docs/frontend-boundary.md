@@ -214,10 +214,11 @@ A contract or interface type is read as `address`, which is its value at
 run time, stored and ABI encoded as one: in type names, in the type
 identifiers of expressions and in storage layouts. `I(a)` is a conversion to
 `address`, `this` is the contract's own address, and an external call
-`c.f{value: v}(args)` may name any contract-typed `c`. `new C`, `type(C)`,
-external calls to getters and the members of external functions other
-than `selector` (below) are rejected, as are overloads that differ only in
-contract-typed parameters, which reading them as `address` would merge.
+`c.f{value: v}(args)` may name any contract-typed `c`. `new C`, `type(C)`
+other than `type(I).interfaceId` (below), external calls to getters and the
+members of external functions other than `selector` (below) are rejected, as
+are overloads that differ only in contract-typed parameters, which reading
+them as `address` would merge.
 
 Enums, declared at file level, in a contract or in a library, are read by
 their declaration id: type identifiers `t_enum$_E_$n` and storage-layout
@@ -241,9 +242,13 @@ for an event), also of a library's public function or event, and
 `this.x.selector` is that of a public state variable's getter. The receiver in
 `x.f.selector` must be `this`, a contract, interface or library name,
 possibly qualified by imported modules (`M.I.f.selector`), or an imported
-module (`M.E.selector`), none of which the compiler evaluates. A selector of any other function-typed value is rejected, and so are
-`sha256`, `ripemd160`, `ecrecover`, the `abi.*` functions and
-`type(I).interfaceId`.
+module (`M.E.selector`), none of which the compiler evaluates.
+`type(I).interfaceId` is the constant XOR of the selectors of the functions
+the interface `I` declares itself, not those it inherits, nor its `fallback`
+or `receive`; `I` must name an interface directly, not through a module, and
+an abstract contract's `interfaceId` is rejected. A selector of any other
+function-typed value is rejected, and so are `sha256`, `ripemd160`,
+`ecrecover` and the `abi.*` functions.
 
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
 type the compiler gives the whole expression, which must be a value type or

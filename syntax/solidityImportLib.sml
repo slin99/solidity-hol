@@ -315,6 +315,34 @@ fun enum_value id = List.find (fn (i, _) => i = id) (!enum_values)
  * id, for the selectors their member accesses name. *)
 val selector_declarations : (IntInf.int * JSON.value) list ref = ref []
 
+(* The contracts of the compilation, by id, for type(I).interfaceId. *)
+val contract_declarations : (IntInf.int * JSON.value) list ref = ref []
+
+(* type(I).interfaceId: the XOR of the selectors of the functions the interface
+ * declares itself, not those it inherits, nor its fallback or receive. *)
+fun interface_id v id =
+  let
+    val c =
+      case List.find (fn (i, _) => i = id) (!contract_declarations) of
+        SOME (_, c) => c
+      | NONE => fail (describe v ^ ": unsupported type(…) member")
+    val () = require v (string_field c "contractKind" = "interface")
+               "interfaceId of a non-interface"
+    val selectors =
+      List.mapPartial
+        (fn m => if node_type m = "FunctionDefinition" andalso
+                    string_field m "kind" = "function"
+                 then SOME (hex_bytes m (string_field m "functionSelector"))
+                 else NONE)
+        (JSONUtil.arrayMap I (field c "nodes"))
+    val xor = ListPair.map (fn (a, b) =>
+                Word.toInt (Word.xorb (Word.fromInt a, Word.fromInt b)))
+  in
+    listSyntax.mk_list
+      (map (fn b => wordsSyntax.mk_wordii (b, 8)) (foldl xor [0, 0, 0, 0] selectors),
+       wordsSyntax.mk_int_word_type 8)
+  end
+
 (* A call's parameter order: for each parameter of the declaration id, the
  * index of the argument the call names for it; [] for a call without names.
  * The first skip parameters (a bound call's receiver) are passed
@@ -506,6 +534,12 @@ fun expr v = within v (fn v =>
            then
              (case JSONUtil.arrayMap I (field base "arguments") of
                 [arg] =>
+                  if node_type arg = "Identifier" andalso
+                     string_field v "memberName" = "interfaceId" then
+                    con "SrcSelector"
+                      [info v, interface_id v (int_field arg "referencedDeclaration"),
+                       type_id v]
+                  else
                   (within arg (fn a => expect a "ElementaryTypeNameExpression");
                    con "SrcTypeMember"
                      [info v, mk_str (string_field v "memberName"),
@@ -1373,6 +1407,7 @@ fun import_source_unit units v contracts = within v (fn v =>
                      List.tabulate (length (JSONUtil.arrayMap I (field e "members")),
                                     fn i => (int_field e "id", i))))
              enums)
+    val () = contract_declarations := declared
     val () =
       selector_declarations :=
         List.mapPartial

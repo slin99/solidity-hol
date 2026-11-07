@@ -402,6 +402,31 @@ class ClassifyTests(unittest.TestCase):
         self.assertNotIn(8, found)
         self.assertNotIn(9, found)
 
+    def test_interface_ids_are_admitted_and_other_contract_type_members_blocked(self) -> None:
+        def type_member(node_id, member, target=50):
+            interface = {"nodeType": "Identifier", "id": node_id + 1, "name": "I",
+                         "referencedDeclaration": target,
+                         "typeDescriptions": {"typeIdentifier": "t_type$_t_contract$_I_$2"}}
+            callee = {"nodeType": "Identifier", "id": node_id + 2, "name": "type",
+                      "referencedDeclaration": -27,
+                      "typeDescriptions": {"typeIdentifier": "t_function_metatype_pure$__$returns$__$"}}
+            call = {"nodeType": "FunctionCall", "id": node_id + 3, "kind": "functionCall", "names": [],
+                    "expression": callee, "arguments": [interface],
+                    "typeDescriptions": {"typeIdentifier": "t_magic_meta_type_t_contract$_I_$2"}}
+            return {"nodeType": "MemberAccess", "id": node_id, "memberName": member, "expression": call,
+                    "typeDescriptions": {"typeIdentifier": "t_bytes4"}}
+
+        # An abstract contract has an interfaceId too, which the importer rejects.
+        ast = unit([function(4, [type_member(10, "interfaceId"), type_member(20, "name"),
+                                 type_member(30, "interfaceId", target=2)])])
+        ast["nodes"].append({"nodeType": "ContractDefinition", "id": 50, "contractKind": "interface",
+                             "abstract": False, "baseContracts": [],
+                             "linearizedBaseContracts": [50], "nodes": []})
+        found = coverage.scan({"t.sol": ast})
+        self.assertFalse({10, 11, 12, 13} & set(found))
+        self.assertEqual(found[21], [coverage.Blocker("Identifier", "type(…)", "import")])
+        self.assertEqual(found[31], [coverage.Blocker("Identifier", "type(…)", "import")])
+
     def test_state_initializers_and_revert_arguments_are_coerced(self) -> None:
         def string(node_id):
             return {"nodeType": "Literal", "id": node_id, "kind": "string", "value": "abcd",
