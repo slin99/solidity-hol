@@ -157,6 +157,8 @@ class Parser:
     def decimal(self) -> str:
         if self.current.kind != "number" or not self.current.text.isdigit():
             raise UnsupportedExpectation("only integral decimal parameters are supported")
+        if len(self.current.text) > 1 and self.current.text.startswith("0"):
+            raise UnsupportedExpectation("leading-zero numerals are not supported")
         if len(self.current.text) > 78:
             raise UnsupportedExpectation("decimal literal exceeds the supported 256-bit range")
         return self.take().text

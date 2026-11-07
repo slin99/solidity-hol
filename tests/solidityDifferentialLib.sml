@@ -871,11 +871,15 @@ fun run_expectations {root, manifest} =
                            (#artifact checked) source contract)
         val initial_sender = “0x1212121212121212121212121212120000000012w : address”
         val address = eval “address_for_create ^initial_sender 1”
+        val precompile_accounts = List.foldl (fn (i, accounts) =>
+          let val addr = word_term 160 (IntInf.fromInt i) in
+            “update_account ^addr (empty_account_state with balance := 1) ^accounts”
+          end) “empty_accounts” (List.tabulate (8, fn i => i + 1))
         val accounts = List.foldl (fn (i, accounts) =>
           let val n = num_term (IntInf.fromInt i) in
             “update_account (n2w (w2n ^initial_sender + ^n * 4096))
               (empty_account_state with balance := 2 ** 100) ^accounts”
-          end) “empty_accounts” (List.tabulate (10, fn i => i))
+          end) precompile_accounts (List.tabulate (10, fn i => i))
         val world = ref (keep “differential_world ^accounts”)
         val evm_accounts = ref (keep “update_account ^initial_sender
           ((lookup_account ^initial_sender ^accounts) with nonce := 1) ^accounts”)

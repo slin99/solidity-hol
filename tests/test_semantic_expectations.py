@@ -102,6 +102,15 @@ class ExpectationTests(unittest.TestCase):
         self.assertEqual(runner.decode_string(r"\x1"), b"\x01")
         self.assertEqual(runner.encode_bytes(r'"\x1g"'), "0x10" + "00" * 31)
 
+    def test_leading_zero_numerals_reject_the_whole_block(self) -> None:
+        for line in ('f(uint256): 010 -> 10', 'f(uint256): 10 -> 010',
+                     'f(), 010 wei ->', 'f(uint256): 08 -> 8', 'f() -> -010'):
+            with self.subTest(line=line):
+                calls = runner.parse_calls('// ----\n// ' + line, {"f(uint256)": "12345678", "f()": "87654321"})
+                self.assertEqual(len(calls), 1)
+                self.assertIsNone(calls[0].calldata)
+                self.assertIn("leading-zero", calls[0].reason or "")
+
     def test_events_keep_indexed_markers(self) -> None:
         calls = runner.parse_calls('// ----\n// f() ->\n// ~ emit E(uint256,uint256): #1, 2', {"f()": "12345678"})
         self.assertEqual(calls[1].events[0]["topics"], ["0x" + (1).to_bytes(32, "big").hex()])

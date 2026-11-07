@@ -61,14 +61,15 @@ Successful calls commit storage and balances. Logs and transient storage reset
 between transactions. Account-selection and balance/storage builtins do not
 advance blocks. The transaction environment follows the pinned isoltest host,
 including its funded accounts, origin, block progression and first deployment
-address. This differs from the maintained differential corpus's deliberately
+address. Precompile addresses 1–8 start with one wei each, as in isoltest.
+This differs from the maintained differential corpus's deliberately
 distinct environment fields.
 
 Calls agree only when their return/revert bytes and event logs match. Core
 invalid completions and fuel exhaustion are not runnable. The entire expectation
 block is parsed before replay. Unknown tokens, unsupported byte encodings and
 unsupported observations reject that block before any transaction executes.
-The supported subset excludes fixed-point parameters, aligned strings or signed
+The supported subset excludes leading-zero numerals, fixed-point parameters, aligned strings or signed
 literals, strings longer than one word, library directives and non-event side
 effects. Recognized unsupported builtins retain their call rows with a reason;
 an unparseable block has a single diagnostic row because its call boundaries
