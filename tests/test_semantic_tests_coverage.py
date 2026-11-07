@@ -76,6 +76,11 @@ ASSEMBLY = assembly([{"nodeType": "YulExpressionStatement",
 
 
 class BuiltinCoverageTests(unittest.TestCase):
+    def test_address_code_length_fixture_is_admitted(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/code_lengths.json").read_text())
+        sources = {name: data["ast"] for name, data in artifact["output"]["sources"].items()}
+        self.assertEqual(coverage.scan(sources), {})
+
     def test_messages_must_be_literals(self) -> None:
         def call(message: dict) -> dict:
             return {"nodeType": "FunctionCall", "id": 5, "kind": "functionCall", "names": [],

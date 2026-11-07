@@ -140,6 +140,8 @@ Datatype:
   | CopyToMemoryOperation core_atom
   | ArrayLengthOperation core_atom
   | Keccak256Operation core_atom
+  (* The addressed account's code size, without a memory bytes allocation. *)
+  | CodeLengthOperation core_atom
   | AbiEncodeOperation (core_atom option) (sol_type list) (core_atom list)
   | AbiEncodePackedOperation (sol_type list) (core_atom list)
   | ArrayPushOperation core_atom (core_atom option)

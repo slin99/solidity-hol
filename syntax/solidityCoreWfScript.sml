@@ -733,6 +733,10 @@ Definition wf_core_operation_def:
   (wf_core_operation env ctx annotation (Keccak256Operation a) ⇔
     annotation = SingleType (FixedBytesT 32) ∧
     wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a) ∧
+  (wf_core_operation env ctx annotation (CodeLengthOperation a) ⇔
+    annotation = SingleType (UintT 256) ∧
+    (wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) a ∨
+     wf_core_atom env ctx (SingleType (AddressT PayableAddress)) a)) ∧
   (wf_core_operation env ctx annotation (AbiEncodeOperation selector tys args) ⇔
     annotation = SingleType (LocatedT MemoryLoc BytesT) ∧
     (case selector of
