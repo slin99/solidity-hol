@@ -18,54 +18,19 @@ from typing import Any
 
 import export_solc_artifacts as exporter
 import semantic_tests_coverage as coverage
+from isoltest_expectations import Parser, UnsupportedExpectation, decode_string
 
 ROOT = Path(__file__).resolve().parents[1]
 PREFIX = "expectation-result: "
 ACCOUNT = 0x1212121212121212121212121212120000000012
 
 
-class UnsupportedExpectation(ValueError):
-    """An expectation cannot be represented by this runner."""
-
-
 def tokens(text: str) -> list[str]:
-    """Split comma-separated expectation bytes, preserving quoted commas."""
-    return [m.group().strip() for m in re.finditer(
-        r'(?:hex)?"(?:[^"\\]|\\.)*"|(?:left|right)\([^)]*\)|[^,\s][^,]*', text)]
-
-
-def decode_string(text: str) -> bytes:
-    """Decode isoltest's byte escapes, including NUL and hex bytes."""
-    result = bytearray()
-    i = 0
-    escapes = {"\\": b"\\", "n": b"\n", "r": b"\r", "t": b"\t", "0": b"\0"}
-    while i < len(text):
-        c = text[i]
-        i += 1
-        if c != "\\":
-            result.extend(c.encode("utf-8"))
-            continue
-        if i == len(text):
-            raise UnsupportedExpectation("trailing string escape")
-        c = text[i]
-        i += 1
-        if c == "x":
-            match = re.match(r"[0-9a-fA-F]{1,2}", text[i:])
-            if not match:
-                raise UnsupportedExpectation("hex escape needs one or two digits")
-            result.append(int(match[0], 16))
-            i += len(match[0])
-        elif c in escapes:
-            result.extend(escapes[c])
-        else:
-            raise UnsupportedExpectation(f"unsupported string escape: {c}")
-    return bytes(result)
-
-
-def strip_comments(text: str) -> str:
-    """Remove paired # comments outside quoted strings."""
-    return re.sub(r'"(?:[^"\\]|\\.)*"|#[^#]*#',
-                  lambda m: m[0] if m[0].startswith('"') else "", text)
+    """Read a complete comma-separated parameter list without skipping text."""
+    parser = Parser(text)
+    result = parser.parameters()
+    parser.finish()
+    return result
 
 
 def encode_token(token: str) -> bytes:
@@ -78,8 +43,11 @@ def encode_token(token: str) -> bytes:
         if alignment:
             raise UnsupportedExpectation("hex string tokens cannot be aligned")
         try:
-            return bytes.fromhex(token[4:-1])
-        except ValueError as error:
+            raw = decode_string(token[4:-1]).decode("ascii")
+            if not re.fullmatch(r"(?:[0-9a-fA-F]{2})*", raw):
+                raise ValueError("only whole literal hex bytes are supported")
+            return bytes.fromhex(raw)
+        except (ValueError, UnicodeError) as error:
             raise UnsupportedExpectation(f"invalid hex bytes: {token}") from error
     if token.startswith('"') and token.endswith('"'):
         raw = decode_string(token[1:-1])
@@ -129,131 +97,162 @@ class Call:
         return {k: v for k, v in asdict(self).items() if v is not None}
 
 
-def expectation_lines(text: str) -> list[str]:
-    """Join multiline calls and retain gas/event observations with their call."""
+def parse_event(line: str) -> dict[str, Any]:
+    """Parse an event's signature and raw indexed/data parameters structurally."""
+    anonymous = line.startswith("~ emit <anonymous>")
+    fragment = line.replace("<anonymous>", "_anonymous()", 1) if anonymous else line
+    parser = Parser(fragment.removeprefix("~").strip(), comments=False)
+    parser.expect("emit")
+    # The anonymous marker is outside signature syntax.
+    signature = parser.signature()
+    if anonymous:
+        signature = "<anonymous>"
+    logger = None
+    if parser.accept("from"):
+        logger = parser.take().text
+        if not re.fullmatch(r"0x[0-9a-fA-F]{40}", logger):
+            raise UnsupportedExpectation("event logger must be a 20-byte address")
+    topics, data = [], []
+    if parser.accept(":"):
+        while True:
+            indexed = parser.accept("#")
+            token = parser.parameter()
+            if token is None or token == "FAILURE":
+                raise UnsupportedExpectation("expected event byte parameter")
+            raw = encode_token(token)
+            if indexed:
+                if len(raw) != 32:
+                    raise UnsupportedExpectation("event topic is not 32 bytes")
+                topics.append("0x" + raw.hex())
+            else:
+                data.append(raw)
+            if not parser.accept(","):
+                break
+    parser.finish()
+    return {"signature": signature, "logger": logger, "topics": topics,
+            "data": "0x" + b"".join(data).hex()}
+
+
+def expectation_source(text: str) -> str:
+    """Retain line boundaries for side effects; comments are scanned as a block."""
     if "// ----" not in text:
-        return []
-    lines: list[str] = []
+        return ""
+    lines = []
     for raw in text.split("// ----", 1)[1].splitlines():
         if not raw.strip():
             continue
         if not raw.lstrip().startswith("//"):
             raise UnsupportedExpectation("non-comment line after expectation separator")
-        line = raw.lstrip()[2:].strip()
-        clean = line if line.startswith("~") else strip_comments(line).strip()
-        if not clean:
-            continue
-        previous = (strip_comments(lines[-1]).rstrip()
-                    if lines and not lines[-1].startswith(("gas ", "~")) else "")
-        if line.startswith(("gas ", "~")) and lines:
-            lines.append(line)
-        elif re.match(r'(?:left\(|right\(|hex"|"|-?[0-9]|true\b|false\b|FAILURE\b)', clean):
-            if not previous.endswith((":", ",", "->")):
-                raise UnsupportedExpectation(f"cannot attribute parameter continuation: {line}")
-            lines[-1] += " " + line
-        elif clean.startswith("->"):
-            if not previous or "->" in previous or previous.endswith((":", ",")):
-                raise UnsupportedExpectation(f"cannot attribute result continuation: {line}")
-            lines[-1] += " " + line
-        elif re.match(r"(?:[A-Za-z_$][\w$]*|)\(", clean) or re.match(r"[A-Za-z_]\w*\s*(?::|->)", clean):
-            lines.append(line)
-        else:
-            raise UnsupportedExpectation(f"cannot attribute expectation line: {line}")
-    return lines
-
-
-def parse_event(line: str) -> dict[str, Any]:
-    """Read the logger, indexed topics and raw data of an isoltest event."""
-    match = re.fullmatch(r"~ emit (.*?)(?: from (0x[0-9a-fA-F]+))?(?::\s*(.*))?", line)
-    if not match:
-        raise UnsupportedExpectation(f"unsupported event expectation: {line}")
-    signature, logger, arguments = match.groups()
-    topics, data = [], []
-    for token in tokens(arguments or ""):
-        if token.startswith("#"):
-            raw = encode_bytes(token[1:])
-            if len(raw) != 66:
-                raise UnsupportedExpectation("event topic is not 32 bytes")
-            topics.append(raw)
-        else:
-            data.append(encode_token(token))
-    if signature != "<anonymous>" and not re.fullmatch(r"\w+\(.*\)", signature):
-        raise UnsupportedExpectation(f"unsupported event signature: {signature}")
-    return {"signature": signature, "logger": logger, "topics": topics,
-            "data": "0x" + b"".join(data).hex()}
+        lines.append(raw.lstrip()[2:].strip())
+    return "\n".join(lines)
 
 
 def parse_calls(text: str, methods: dict[str, str]) -> list[Call]:
-    """Parse call arguments/results; unsupported transactions stop later replay."""
+    """Validate the entire closed grammar before making any transaction runnable."""
+    try:
+        return parse_block(expectation_source(text), methods)
+    except (UnsupportedExpectation, RecursionError) as error:
+        return [Call(0, "[unsupported expectation block]", reason=str(error))]
+
+
+def parse_block(source: str, methods: dict[str, str]) -> list[Call]:
+    parser = Parser(source)
     calls: list[Call] = []
     sender = ACCOUNT
-    try:
-        lines = expectation_lines(text)
-    except UnsupportedExpectation as error:
-        return [Call(0, "[unsupported expectation block]", reason=str(error))]
-    for original in lines:
-        line = original if original.startswith(("gas ", "~")) else strip_comments(original).strip()
-        if line.startswith(("gas ", "~")) and calls:
-            if line.startswith("gas "):
-                calls[-1].observations.append({"text": line, "status": "not-runnable",
-                                              "reason": "gas is not modeled"})
-            elif line.startswith("~ emit "):
-                try:
-                    calls[-1].events.append(parse_event(line))
-                except UnsupportedExpectation as error:
-                    calls[-1].reason = str(error)
-            else:
-                calls[-1].reason = calls[-1].reason or "unsupported side-effect observation"
-                calls[-1].text += " " + original
+    blocked = None
+    builtins = {"account", "balance", "storageEmpty", "isoltest_builtin_test", "isoltest_side_effects_test"}
+    while parser.current.kind != "end":
+        start = parser.current.start
+        token_start = parser.position
+        if parser.current.text == "gas":
+            if not calls:
+                raise UnsupportedExpectation("gas observation without a call")
+            parser.take()
+            mode = parser.identifier()
+            if mode not in {"ir", "irOptimized", "legacy", "legacyOptimized", "ssaCFG", "ssaCFGOptimized"}:
+                raise UnsupportedExpectation("unknown gas observation mode")
+            parser.accept("code")
+            parser.expect(":")
+            parser.decimal()
+            calls[-1].observations.append({"text": source[start:parser.end], "status": "not-runnable",
+                                          "reason": "gas is not modeled"})
             continue
-        call = Call(len(calls), original, sender=str(sender))
+        if parser.current.kind == "effect":
+            if not calls:
+                raise UnsupportedExpectation("side-effect observation without a call")
+            line = parser.take().text
+            if line.startswith("~ emit "):
+                if calls[-1].builtin:
+                    raise UnsupportedExpectation("event observations after builtin directives are not supported")
+                calls[-1].events.append(parse_event(line))
+            else:
+                blocked = "unsupported side-effect observation"
+                calls[-1].text += " " + line
+            continue
+        name = parser.current.text
+        bare_builtin = name in builtins and parser.tokens[parser.position + 1].text != "("
+        signature = parser.take().text if bare_builtin else parser.signature()
+        value = 0
+        if parser.accept(","):
+            value = int(parser.decimal())
+            unit = parser.take().text
+            if unit not in ("wei", "ether"):
+                raise UnsupportedExpectation("call value needs wei or ether")
+            value *= 10**18 if unit == "ether" else 1
+            if value >= 1 << 256:
+                raise UnsupportedExpectation("call value exceeds 256 bits")
+        arguments = parser.parameters(required=True) if parser.accept(":") else []
+        parser.comment()
+        expected = parser.parameters() if parser.accept("->") else []
+        parser.comment()
+        original = " ".join(line.strip() for line in source[start:parser.end].splitlines() if line.strip())
+        call = Call(len(calls), original, sender=str(sender), value=value, deploy=signature == "constructor()")
         calls.append(call)
-        comments = [m[0] for m in re.finditer(r'"(?:[^"\\]|\\.)*"|#[^#]*#', original)
-                    if m[0].startswith("#")]
+        if "FAILURE" in arguments or "FAILURE" in expected[1:]:
+            raise UnsupportedExpectation("FAILURE is supported only at the start of an expected result")
+        argument_bytes = "0x" + b"".join(encode_token(t) for t in arguments).hex()
+        reverted = bool(expected and expected[0] == "FAILURE")
+        payload = "0x" + b"".join(encode_token(t) for t in expected[int(reverted):]).hex()
+        call.expected = {"reverted" if reverted else "returned": "0x" if call.deploy else payload}
+        if bare_builtin:
+            if value:
+                raise UnsupportedExpectation("builtin value transfers are not supported")
+            call.builtin = signature
+            if signature == "account":
+                if len(arguments) != 1 or not re.fullmatch(r"[0-9]+", arguments[0]):
+                    raise UnsupportedExpectation("account needs one decimal account number")
+                if int(arguments[0]) > (1 << 31) - 1:
+                    raise UnsupportedExpectation("account number exceeds the pinned host's signed integer range")
+                sender = ACCOUNT + int(arguments[0]) * 4096
+                if sender >= 1 << 160:
+                    raise UnsupportedExpectation("account address exceeds 160 bits")
+                call.builtin_arg = str(sender)
+            elif signature == "balance":
+                if len(arguments) > 1 or (arguments and not re.fullmatch(r"0x[0-9a-fA-F]{40}", arguments[0])):
+                    raise UnsupportedExpectation("balance needs an optional 20-byte hex address")
+                call.builtin_arg = arguments[0] if arguments else None
+            elif signature == "storageEmpty":
+                if arguments:
+                    raise UnsupportedExpectation("storageEmpty takes no arguments")
+            else:
+                blocked = "unsupported isoltest builtin directive"
+        elif call.deploy or signature == "()":
+            call.calldata = argument_bytes
+        elif signature in methods:
+            call.calldata = "0x" + methods[signature] + argument_bytes[2:]
+        else:
+            call.signature, call.calldata = signature, argument_bytes
+        comments = [token.text for token in parser.tokens[token_start:parser.position] if token.kind == "comment"]
         if any(re.search(r"out[- ]of[- ]gas", comment, re.IGNORECASE) for comment in comments):
             call.reason = "out-of-gas expectation: gas is not modeled"
-            continue
-        account = re.fullmatch(r"account:\s*(\d+)\s*->\s*(.*)", line)
-        builtin = re.fullmatch(r"(balance|storageEmpty)(?::\s*(0x[0-9a-fA-F]+))?\s*->\s*(.*)", line)
-        if account:
-            sender = ACCOUNT + int(account[1]) * 4096
-            call.builtin = "account"
-            call.builtin_arg = str(sender)
-            result = account[2]
-        elif builtin:
-            call.builtin, call.builtin_arg, result = builtin.groups()
-        if call.builtin:
-            try:
-                call.expected = {"returned": encode_bytes(result)}
-            except UnsupportedExpectation as error:
-                call.reason = str(error)
-            continue
-        match = re.fullmatch(r"(\w*\(.*?\))(?:,\s*(\d+)\s*(wei|ether))?\s*(?::\s*(.*?))?\s*(?:->\s*(.*))?", line)
-        if not match:
-            call.reason = "unsupported expectation syntax or builtin directive"
-            continue
-        signature, value, unit, arguments, expected = match.groups()
-        call.deploy = signature == "constructor()"
-        call.value = int(value or "0") * (10**18 if unit == "ether" else 1)
-        try:
-            encoded = encode_bytes(arguments or "")[2:]
-            signature = signature.replace(" ", "")
-            if call.deploy or signature == "()":
-                call.calldata = "0x" + encoded
-            elif signature in methods:
-                call.calldata = "0x" + methods[signature] + encoded
-            else:
-                call.signature = signature
-                call.calldata = "0x" + encoded
-            expected_tokens = tokens(expected or "")
-            reverted = bool(expected_tokens and expected_tokens[0] == "FAILURE")
-            if reverted:
-                expected_tokens = expected_tokens[1:]
-            call.expected = {"reverted" if reverted else "returned":
-                             "0x" + b"".join(encode_token(t) for t in expected_tokens).hex()}
-        except UnsupportedExpectation as error:
-            call.reason = str(error)
-    if not calls or not calls[0].deploy:
+            call.calldata = None
+            call.expected = None
+            call.signature = None
+    if blocked:
+        for call in calls:
+            call.calldata = call.builtin = None
+            call.reason = blocked
+    elif not calls or not calls[0].deploy:
         calls.insert(0, Call(-1, "constructor() [implicit]", deploy=True,
                              calldata="0x", expected={"returned": "0x"}, implicit=True))
     return calls

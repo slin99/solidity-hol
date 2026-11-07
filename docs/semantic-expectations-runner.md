@@ -49,6 +49,10 @@ raw calldata without a selector.
 The expectation format describes bytes, not typed argument values: numeric and
 boolean tokens occupy one word, quoted strings pad on the right, `hex"..."`
 contributes unpadded bytes, and `left(...)`/`right(...)` specify alignment.
+The tokenizer and structural parser follow the pinned isoltest grammar for
+signatures, comma-separated parameters, paired comments and string escapes.
+Comments may span lines; call signatures ignore whitespace. Calls may omit
+arrows and may follow another call on the same physical line.
 `FAILURE` expects a revert with the following exact bytes. Constructor
 expectations compare success/failure only, as isoltest discards creation output.
 
@@ -61,12 +65,14 @@ address. This differs from the maintained differential corpus's deliberately
 distinct environment fields.
 
 Calls agree only when their return/revert bytes and event logs match. Core
-invalid completions and fuel exhaustion are not runnable. Unsupported input
-syntax stops subsequent replay, since its effects on state are unknown;
-unsupported output observations can still allow later transactions to run.
-If a physical line cannot be assigned to a call or a parameter continuation,
-the entire expectation block is not runnable. The runner does not guess call
-boundaries. Aligned parameters can continue after a colon, comma or arrow.
+invalid completions and fuel exhaustion are not runnable. The entire expectation
+block is parsed before replay. Unknown tokens, unsupported byte encodings and
+unsupported observations reject that block before any transaction executes.
+The supported subset excludes fixed-point parameters, aligned strings or signed
+literals, strings longer than one word, library directives and non-event side
+effects. Recognized unsupported builtins retain their call rows with a reason;
+an unparseable block has a single diagnostic row because its call boundaries
+are unknown. Aligned parameters can continue after a colon, comma or arrow.
 Builtins observe the preceding transaction's logs, including when they expect
 no events. Explicit event expectations after builtin directives are not runnable.
 Calls explicitly marked as out-of-gas are not runnable: the core does not charge

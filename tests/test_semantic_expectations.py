@@ -50,14 +50,45 @@ class ExpectationTests(unittest.TestCase):
                 calls = runner.parse_calls(f'// ----\n// f() -> 0\n// {suffix}\n// f() ->', {"f()": "12345678"})
                 self.assertEqual(len(calls), 1)
                 self.assertIsNone(calls[0].calldata)
-                self.assertIn("cannot attribute", calls[0].reason or "")
+                self.assertTrue(calls[0].reason)
 
     def test_other_side_effects_are_observations_not_transactions(self) -> None:
         calls = runner.parse_calls('// ----\n// f() ->\n// ~ 00001234\n// f() ->', {"f()": "12345678"})
-        self.assertEqual(len(calls), 3)
-        self.assertEqual(calls[1].reason, "unsupported side-effect observation")
-        self.assertIn("~ 00001234", calls[1].text)
-        self.assertEqual(calls[2].calldata, "0x12345678")
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(all(c.calldata is None and c.reason == "unsupported side-effect observation" for c in calls))
+        self.assertIn("~ 00001234", calls[0].text)
+
+    def test_multiline_comments_cannot_create_calls(self) -> None:
+        calls = runner.parse_calls('// ----\n// f() -> # note\n// g() ->\n// h() -> #', {"f()": "12345678"})
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[1].calldata, "0x12345678")
+        self.assertEqual(calls[1].expected, {"returned": "0x"})
+        self.assertIsNone(calls[1].reason)
+
+    def test_adjacent_arrowless_calls_keep_their_own_selectors(self) -> None:
+        calls = runner.parse_calls('// ----\n// f() g()', {"f()": "12345678", "g()": "abcdef01"})
+        self.assertEqual([c.calldata for c in calls[1:]], ["0x12345678", "0xabcdef01"])
+        self.assertTrue(all(c.expected == {"returned": "0x"} for c in calls))
+
+    def test_signature_whitespace_is_canonical_before_dispatch(self) -> None:
+        calls = runner.parse_calls('// ----\n// constructor( ) ->\n// f(\tuint256): 1 -> 1', {"f(uint256)": "12345678"})
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(calls[0].deploy)
+        self.assertFalse(calls[0].implicit)
+        self.assertEqual(calls[1].calldata, "0x12345678" + (1).to_bytes(32, "big").hex())
+
+    def test_constructor_payload_is_ignored_but_logs_are_compared(self) -> None:
+        calls = runner.parse_calls('// ----\n// constructor() -> FAILURE, 1', {})
+        self.assertEqual(calls[0].expected, {"reverted": "0x"})
+        actual = {0: {"status": "executed", "actual": {"reverted": "0x"}, "logs": [], "expected_logs": []}}
+        self.assertEqual(runner.classify(calls, actual)[0]["status"], "agree")
+        actual[0]["logs"] = [{"data": "0x"}]
+        self.assertEqual(runner.classify(calls, actual)[0]["status"], "disagree")
+
+    def test_hex_escape_uses_pinned_scanner_consumption(self) -> None:
+        self.assertEqual(runner.decode_string(r"\x1g"), b"\x10")
+        self.assertEqual(runner.decode_string(r"\x1"), b"\x01")
+        self.assertEqual(runner.encode_bytes(r'"\x1g"'), "0x10" + "00" * 31)
 
     def test_events_keep_indexed_markers(self) -> None:
         calls = runner.parse_calls('// ----\n// f() ->\n// ~ emit E(uint256,uint256): #1, 2', {"f()": "12345678"})
@@ -97,11 +128,12 @@ class ExpectationTests(unittest.TestCase):
         self.assertEqual(result["status"], "not-runnable")
         self.assertIn("event observations after builtin", result["reason"])
 
-    def test_unsupported_builtin_output_keeps_known_account_effect(self) -> None:
+    def test_unsupported_builtin_output_rejects_before_any_replay(self) -> None:
         calls = runner.parse_calls('// ----\n// account: 2 -> 0.0\n// balance -> 0.0\n// f() ->', {"f()": "12345678"})
-        self.assertEqual([c.builtin for c in calls[1:3]], ["account", "balance"])
-        self.assertTrue(all("unsupported byte token" in (c.reason or "") for c in calls[1:3]))
-        self.assertEqual(calls[3].sender, str(runner.ACCOUNT + 8192))
+        self.assertEqual(len(calls), 1)
+        self.assertIsNone(calls[0].calldata)
+        self.assertIsNone(calls[0].builtin)
+        self.assertIn("integral decimal", calls[0].reason or "")
 
     def test_truncated_final_result_keeps_completed_prefix(self) -> None:
         log = ('other output\n' + runner.PREFIX + '{"test":"a", "kind":"complete"}\n'
@@ -126,8 +158,9 @@ class ExpectationTests(unittest.TestCase):
 
     def test_unknown_input_is_not_encoded(self) -> None:
         calls = runner.parse_calls('// ----\n// f(): something -> 1', {"f()": "12345678"})
-        self.assertIsNone(calls[1].calldata)
-        self.assertIn("unsupported byte token", calls[1].reason or "")
+        self.assertEqual(len(calls), 1)
+        self.assertIsNone(calls[0].calldata)
+        self.assertIn("expected byte parameter", calls[0].reason or "")
 
     def test_implicit_deployment_checks_success_without_asserting_logs(self) -> None:
         calls = runner.parse_calls('// ----\n// f() ->', {"f()": "12345678"})
