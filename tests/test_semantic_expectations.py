@@ -56,6 +56,7 @@ class ExpectationTests(unittest.TestCase):
         calls = runner.parse_calls('// ----\n// f() ->\n// ~ 00001234\n// f() ->', {"f()": "12345678"})
         self.assertEqual(len(calls), 3)
         self.assertEqual(calls[1].reason, "unsupported side-effect observation")
+        self.assertIn("~ 00001234", calls[1].text)
         self.assertEqual(calls[2].calldata, "0x12345678")
 
     def test_events_keep_indexed_markers(self) -> None:

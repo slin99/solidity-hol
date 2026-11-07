@@ -204,6 +204,7 @@ def parse_calls(text: str, methods: dict[str, str]) -> list[Call]:
                     calls[-1].reason = str(error)
             else:
                 calls[-1].reason = calls[-1].reason or "unsupported side-effect observation"
+                calls[-1].text += " " + original
             continue
         call = Call(len(calls), original, sender=str(sender))
         calls.append(call)
