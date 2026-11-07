@@ -516,6 +516,10 @@ fun expr v = within v (fn v =>
          expr (field v "leftExpression"), expr (field v "rightExpression"),
          mk_str (normalize_type_id (string_field (field v "commonType") "typeIdentifier")),
          type_id v]
+  | "Conditional" =>
+      con "SrcConditional"
+        [info v, expr (field v "condition"), expr (field v "trueExpression"),
+         expr (field v "falseExpression"), type_id v]
   | "Assignment" =>
       con "SrcAssignment"
         [info v, mk_str (string_field v "operator"),

@@ -100,6 +100,17 @@ Definition bind_value_def:
     ([DefineStmt (AstId n) (SingleType ty) op], BoundAtom (AstId n))
 End
 
+(* The value a local of type ty starts with when declared without one. *)
+Definition default_operation_def:
+  default_operation ty =
+    case ty of
+      LocatedT MemoryLoc element => SOME (DefaultMemoryOperation element)
+    | _ => if located_value_type ty then NONE
+           else case default_elementary ty of
+                  SOME d => SOME (ConvertOperation ty (ConstantAtom d))
+                | NONE => NONE
+End
+
 (* A value of type ty: integer literals stand for themselves, other types are
  * converted.
  *)
@@ -325,6 +336,8 @@ Definition expr_assigns_def:
   (expr_assigns (SrcBuiltinCall _ _ _ condition message _) ⇔
     (case condition of NONE => F | SOME c => expr_assigns c) ∨
     (case message of NONE => F | SOME m => expr_assigns m)) ∧
+  (expr_assigns (SrcConditional _ c t f _) ⇔
+    expr_assigns c ∨ expr_assigns t ∨ expr_assigns f) ∧
   (expr_assigns (SrcIndexAccess _ b i _) ⇔ expr_assigns b ∨ expr_assigns i) ∧
   (expr_assigns (SrcMemberAccess _ root_expr _ _) ⇔ expr_assigns root_expr) ∧
   (expr_assigns (SrcArrayLength _ root_expr _) ⇔ expr_assigns root_expr) ∧
@@ -813,6 +826,32 @@ Definition elab_expr_def:
                              (ConvertOperation ty (ConstantAtom (IntegerValue (&index)))) in
              SOME ((ss, a, ElabType ty), n + 1)
          | NONE => NONE)
+    | SrcConditional _ c t f tid =>
+        (* the result is declared first, and each branch writes it *)
+        (case (identifier_type tid, elab_expr ctx n c) of
+           (SOME ty, SOME ((sc, ac, vc), n1)) =>
+             (case (default_operation ty, coerce n1 BoolT ac vc) of
+                (SOME op, SOME ((cc, ac'), n2)) =>
+                  (case elab_expr ctx (n2 + 2) t of
+                     SOME ((st, at, vt), n3) =>
+                       (case coerce n3 ty at vt of
+                          SOME ((ct, at'), n4) =>
+                            (case elab_expr ctx (n4 + 1) f of
+                               SOME ((sf, af, vf), n5) =>
+                                 (case coerce n5 ty af vf of
+                                    SOME ((cf, af'), n6) =>
+                                      let (rs, res) = bind_value n2 ty op in
+                                      SOME ((sc ++ cc ++ rs ++
+                                             [IfStmt ac'
+                                                (st ++ ct ++ assign_local (n2 + 1) n2 ty at')
+                                                (sf ++ cf ++ assign_local n4 n2 ty af')],
+                                             res, ElabType ty), n6)
+                                  | NONE => NONE)
+                             | NONE => NONE)
+                        | NONE => NONE)
+                   | NONE => NONE)
+              | _ => NONE)
+         | _ => NONE)
     | SrcKeccak256 _ _ e _ =>
         (case elab_expr ctx n e of
            SOME ((ss, a, vt), n1) =>
@@ -1174,19 +1213,10 @@ Definition elab_stmts_def:
   (elab_stmt ctx n (SrcVariableDeclarationStatement _ _ [SOME v] NONE) =
     case variable_type v of
       SOME ty =>
-        if located_value_type ty then
-          (case ty of
-             LocatedT MemoryLoc element =>
-               SOME (([DefineStmt (AstId v.var_info.node_id) (SingleType ty)
-                         (DefaultMemoryOperation element)],
-                      ctx with variables := (v.var_info.node_id, ty) :: ctx.variables), n)
-           | _ => NONE)
-        else (case default_elementary ty of
-           SOME d =>
-             SOME (([DefineStmt (AstId v.var_info.node_id) (SingleType ty)
-                       (ConvertOperation ty (ConstantAtom d))],
-                    ctx with variables :=
-                      (v.var_info.node_id, ty) :: ctx.variables), n)
+        (case default_operation ty of
+           SOME op =>
+             SOME (([DefineStmt (AstId v.var_info.node_id) (SingleType ty) op],
+                    ctx with variables := (v.var_info.node_id, ty) :: ctx.variables), n)
          | NONE => NONE)
     | NONE => NONE) ∧
   (elab_stmt ctx n (SrcVariableDeclarationStatement _ _ decls (SOME e)) =
@@ -1871,6 +1901,7 @@ End
  *)
 
 val () = cv_auto_trans bind_value_def;
+val () = cv_auto_trans default_operation_def;
 val () = cv_auto_trans coerce_def;
 val () = cv_auto_trans snapshot_def;
 val () = cv_auto_trans store_target_def;

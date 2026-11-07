@@ -1062,6 +1062,18 @@ class ClassifyTests(unittest.TestCase):
         receiver["typeDescriptions"]["typeIdentifier"] = "t_contract$_IReceiver_$1"
         self.assertIsNone(coverage.selector_declaration(selector, by_id))
 
+    def test_conditionals_of_values_and_memory_only(self) -> None:
+        def blockers(tid: str) -> list[tuple[str, str]]:
+            node = {"nodeType": "Conditional", "typeDescriptions": {"typeIdentifier": tid}}
+            return [(b.feature, b.stage) for b in
+                    coverage.node_blockers(node) + coverage.elaboration_blockers(node)]
+        for tid in ("t_uint16", "t_bool", "t_string_memory_ptr", "t_array$_t_uint256_$dyn_memory_ptr"):
+            self.assertEqual(blockers(tid), [], tid)
+        for tid in ("t_tuple$__$", "t_tuple$_t_uint256_$_t_uint256_$", "t_function_internal_pure$__$returns$__$",
+                    "t_bytes_storage", "t_bytes_storage_ptr", "t_array$_t_uint256_$dyn_calldata_ptr",
+                    "t_mapping$_t_uint256_$_t_uint256_$", "t_struct$_S_$5_memory_ptr"):
+            self.assertEqual(blockers(tid), [("conditional expressions", "elaboration")], tid)
+
     def test_state_variable_selectors_only_through_this(self) -> None:
         artifact = json.loads((ROOT / "testdata/differential/expected/hashes.json").read_text())
         asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
