@@ -1416,13 +1416,13 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     fields = {v["id"] for n in reached.values() if n["nodeType"] == "StructDefinition"
               for v in n["members"]}
     based, live = live_functions(asts, by_id)
-    # The bases of the contracts deploying each contract: its getters see
-    # their structs.
-    deployed_bases: dict[int, set[int]] = {}
+    # The bases of each contract deploying each contract: its getters see
+    # their structs, in every deployment.
+    deployed_bases: dict[int, list[set[int]]] = {}
     for ast in asts.values():
         for c in deployable(ast):
             for b in c["linearizedBaseContracts"]:
-                deployed_bases.setdefault(b, set()).update(c["linearizedBaseContracts"])
+                deployed_bases.setdefault(b, []).append(set(c["linearizedBaseContracts"]))
     dead = {n["id"] for f in based - live if f in reached for n in nodes(by_id[f])}
     # The checker and the elaborator see the live functions and the library
     # functions the contracts reach.
@@ -1483,8 +1483,8 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                     + assembly_blockers(node, by_id, creation=node["id"] in creation))
         if (node["nodeType"] == "VariableDeclaration" and node["stateVariable"]
                 and node.get("visibility") == "public"
-                and not has_getter(node["typeName"], by_id,
-                                    deployed_bases.get(node.get("scope"), set()))):
+                and not all(has_getter(node["typeName"], by_id, bases)
+                            for bases in deployed_bases.get(node.get("scope"), [set()]))):
             blockers.append(Blocker("VariableDeclaration", "public state variables", "elaboration"))
         if node["nodeType"] == "EventDefinition" and node["id"] in file_level:
             blockers.append(Blocker("EventDefinition", "file-level events", "import"))

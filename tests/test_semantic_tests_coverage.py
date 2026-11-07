@@ -218,6 +218,30 @@ class GetterTests(unittest.TestCase):
         self.assertIn(coverage.Blocker("VariableDeclaration", "public state variables", "elaboration"),
                       coverage.scan(asts).get(based["id"], []))
 
+    def test_struct_getters_need_the_structs_in_every_deployment(self) -> None:
+        """A base's getter of a struct one deploying contract inherits and
+        another doesn't is rejected, as the importer rejects it in the other."""
+        def contract(node_id, bases, members):
+            return {"nodeType": "ContractDefinition", "id": node_id, "contractKind": "contract",
+                    "abstract": False, "baseContracts": [], "linearizedBaseContracts": bases,
+                    "nodes": members}
+
+        struct = {"nodeType": "StructDefinition", "id": 11, "name": "S", "scope": 10,
+                  "members": [dict(variable(12), typeName={
+                      "nodeType": "ElementaryTypeName", "id": 112, "name": "uint256",
+                      "typeDescriptions": {"typeIdentifier": "t_uint256"}})]}
+        getter = dict(variable(21, state=True, visibility="public", type_identifier="t_struct$_S_$11_storage"),
+                      scope=20, typeName={"nodeType": "UserDefinedTypeName", "id": 121, "referencedDeclaration": 11,
+                                          "typeDescriptions": {"typeIdentifier": "t_struct$_S_$11_storage_ptr"}})
+        # contract C is B, A, where A declares S and B has the getter
+        a = {"nodeType": "SourceUnit", "id": 1, "nodes": [
+            contract(10, [10], [struct]), contract(20, [20], [getter]), contract(30, [30, 10, 20], [])]}
+        rejected = coverage.Blocker("VariableDeclaration", "public state variables", "elaboration")
+        self.assertNotIn(rejected, coverage.scan({"a.sol": a}).get(21, []))
+        # contract D is B, in another unit
+        b = {"nodeType": "SourceUnit", "id": 2, "nodes": [contract(40, [40, 20], [])]}
+        self.assertIn(rejected, coverage.scan({"a.sol": a, "b.sol": b}).get(21, []))
+
     def test_external_calls_to_getters_are_blocked(self) -> None:
         # C(a).x() for the public state variable x of C
         state = dict(variable(3, state=True, visibility="public"),
