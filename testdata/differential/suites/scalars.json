@@ -1,0 +1,636 @@
+{
+  "name": "scalars",
+  "source": "testdata/differential/scalars.sol",
+  "contract": "Scalars",
+  "artifact": "testdata/differential/expected/scalars.json",
+  "cases": [
+    {
+      "name": "increment",
+      "function": "increment",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          6
+        ]
+      }
+    },
+    {
+      "name": "increment_max_panics",
+      "function": "increment",
+      "args": [
+        "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "subtract",
+      "function": "subtract",
+      "args": [
+        5,
+        3
+      ],
+      "expect": {
+        "return": [
+          2
+        ]
+      }
+    },
+    {
+      "name": "subtract_underflow_panics",
+      "function": "subtract",
+      "args": [
+        3,
+        5
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "wrapping_subtract",
+      "function": "wrappingSubtract",
+      "args": [
+        3,
+        5
+      ],
+      "expect": {
+        "return": [
+          254
+        ]
+      }
+    },
+    {
+      "name": "multiply_minimum",
+      "function": "multiply",
+      "args": [
+        -8,
+        16
+      ],
+      "expect": {
+        "return": [
+          -128
+        ]
+      }
+    },
+    {
+      "name": "multiply_overflow_panics",
+      "function": "multiply",
+      "args": [
+        16,
+        8
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "multiply_minimum_by_minus_one_panics",
+      "function": "multiply",
+      "args": [
+        -128,
+        -1
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "wrapping_multiply",
+      "function": "wrappingMultiply",
+      "args": [
+        16,
+        8
+      ],
+      "expect": {
+        "return": [
+          -128
+        ]
+      }
+    },
+    {
+      "name": "wrapping_multiply_minimum",
+      "function": "wrappingMultiply",
+      "args": [
+        -128,
+        -1
+      ],
+      "expect": {
+        "return": [
+          -128
+        ]
+      }
+    },
+    {
+      "name": "divide_truncates",
+      "function": "divide",
+      "args": [
+        -7,
+        2
+      ],
+      "expect": {
+        "return": [
+          -3
+        ]
+      }
+    },
+    {
+      "name": "divide_overflow_panics",
+      "function": "divide",
+      "args": [
+        -128,
+        -1
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "divide_by_zero_panics",
+      "function": "divide",
+      "args": [
+        1,
+        0
+      ],
+      "expect": {
+        "panic": "0x12"
+      }
+    },
+    {
+      "name": "wrapping_divide_minimum",
+      "function": "wrappingDivide",
+      "args": [
+        -128,
+        -1
+      ],
+      "expect": {
+        "return": [
+          -128
+        ]
+      }
+    },
+    {
+      "name": "wrapping_divide_by_zero_panics",
+      "function": "wrappingDivide",
+      "args": [
+        1,
+        0
+      ],
+      "expect": {
+        "panic": "0x12"
+      }
+    },
+    {
+      "name": "remainder_dividend_sign",
+      "function": "remainder",
+      "args": [
+        -7,
+        2
+      ],
+      "expect": {
+        "return": [
+          -1
+        ]
+      }
+    },
+    {
+      "name": "remainder_divisor_sign",
+      "function": "remainder",
+      "args": [
+        7,
+        -2
+      ],
+      "expect": {
+        "return": [
+          1
+        ]
+      }
+    },
+    {
+      "name": "remainder_minimum",
+      "function": "remainder",
+      "args": [
+        -128,
+        -1
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "remainder_by_zero_panics",
+      "function": "remainder",
+      "args": [
+        5,
+        0
+      ],
+      "expect": {
+        "panic": "0x12"
+      }
+    },
+    {
+      "name": "power",
+      "function": "power",
+      "args": [
+        2,
+        7
+      ],
+      "expect": {
+        "return": [
+          128
+        ]
+      }
+    },
+    {
+      "name": "power_zero_zero",
+      "function": "power",
+      "args": [
+        0,
+        0
+      ],
+      "expect": {
+        "return": [
+          1
+        ]
+      }
+    },
+    {
+      "name": "power_overflow_panics",
+      "function": "power",
+      "args": [
+        2,
+        8
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "wrapping_power",
+      "function": "wrappingPower",
+      "args": [
+        2,
+        8
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "wrapping_power_in_range",
+      "function": "wrappingPower",
+      "args": [
+        3,
+        5
+      ],
+      "expect": {
+        "return": [
+          243
+        ]
+      }
+    },
+    {
+      "name": "signed_power_minimum",
+      "function": "signedPower",
+      "args": [
+        -2,
+        7
+      ],
+      "expect": {
+        "return": [
+          -128
+        ]
+      }
+    },
+    {
+      "name": "signed_power_overflow_panics",
+      "function": "signedPower",
+      "args": [
+        2,
+        7
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "signed_power_odd",
+      "function": "signedPower",
+      "args": [
+        -3,
+        3
+      ],
+      "expect": {
+        "return": [
+          -27
+        ]
+      }
+    },
+    {
+      "name": "signed_power_minus_one",
+      "function": "signedPower",
+      "args": [
+        -1,
+        255
+      ],
+      "expect": {
+        "return": [
+          -1
+        ]
+      }
+    },
+    {
+      "name": "shift_truncates",
+      "function": "shifts",
+      "args": [
+        129,
+        1
+      ],
+      "expect": {
+        "return": [
+          2,
+          64
+        ]
+      }
+    },
+    {
+      "name": "shift_by_width",
+      "function": "shifts",
+      "args": [
+        255,
+        8
+      ],
+      "expect": {
+        "return": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "shift_beyond_width",
+      "function": "shifts",
+      "args": [
+        1,
+        300
+      ],
+      "expect": {
+        "return": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "signed_shift_minimum",
+      "function": "signedShift",
+      "args": [
+        -128,
+        1
+      ],
+      "expect": {
+        "return": [
+          -64
+        ]
+      }
+    },
+    {
+      "name": "signed_shift_rounds_down",
+      "function": "signedShift",
+      "args": [
+        -7,
+        1
+      ],
+      "expect": {
+        "return": [
+          -4
+        ]
+      }
+    },
+    {
+      "name": "signed_shift_minus_one",
+      "function": "signedShift",
+      "args": [
+        -1,
+        10
+      ],
+      "expect": {
+        "return": [
+          -1
+        ]
+      }
+    },
+    {
+      "name": "bitwise",
+      "function": "bitwise",
+      "args": [
+        12,
+        10
+      ],
+      "expect": {
+        "return": [
+          8,
+          14,
+          6,
+          243
+        ]
+      }
+    },
+    {
+      "name": "signed_not_zero",
+      "function": "signedNot",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          -1
+        ]
+      }
+    },
+    {
+      "name": "signed_not_minimum",
+      "function": "signedNot",
+      "args": [
+        -128
+      ],
+      "expect": {
+        "return": [
+          127
+        ]
+      }
+    },
+    {
+      "name": "signed_less",
+      "function": "signedLess",
+      "args": [
+        -1,
+        1
+      ],
+      "expect": {
+        "return": [
+          true,
+          true,
+          false
+        ]
+      }
+    },
+    {
+      "name": "signed_less_equal",
+      "function": "signedLess",
+      "args": [
+        5,
+        5
+      ],
+      "expect": {
+        "return": [
+          false,
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "name": "widen",
+      "function": "widen",
+      "args": [
+        -1,
+        255
+      ],
+      "expect": {
+        "return": [
+          -1,
+          255,
+          -1
+        ]
+      }
+    },
+    {
+      "name": "reinterpret",
+      "function": "reinterpret",
+      "args": [
+        -1,
+        255
+      ],
+      "expect": {
+        "return": [
+          255,
+          -1
+        ]
+      }
+    },
+    {
+      "name": "reinterpret_minimum",
+      "function": "reinterpret",
+      "args": [
+        -128,
+        128
+      ],
+      "expect": {
+        "return": [
+          128,
+          -128
+        ]
+      }
+    },
+    {
+      "name": "truncate",
+      "function": "truncate",
+      "args": [
+        65537,
+        -65537
+      ],
+      "expect": {
+        "return": [
+          1,
+          -1
+        ]
+      }
+    },
+    {
+      "name": "truncate_sign",
+      "function": "truncate",
+      "args": [
+        98304,
+        98304
+      ],
+      "expect": {
+        "return": [
+          32768,
+          -32768
+        ]
+      }
+    },
+    {
+      "name": "signed_to_unsigned",
+      "function": "signedToUnsigned",
+      "args": [
+        -1
+      ],
+      "expect": {
+        "return": [
+          "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+        ]
+      }
+    },
+    {
+      "name": "implicit_widening",
+      "function": "implicitWidening",
+      "args": [
+        65
+      ],
+      "expect": {
+        "return": [
+          65000
+        ]
+      }
+    },
+    {
+      "name": "implicit_widening_overflow_panics",
+      "function": "implicitWidening",
+      "args": [
+        66
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "bool_logic",
+      "function": "boolLogic",
+      "args": [
+        true,
+        false
+      ],
+      "expect": {
+        "return": [
+          false,
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "name": "bool_logic_both",
+      "function": "boolLogic",
+      "args": [
+        true,
+        true
+      ],
+      "expect": {
+        "return": [
+          true,
+          true,
+          false
+        ]
+      }
+    }
+  ]
+}

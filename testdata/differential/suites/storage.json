@@ -1,0 +1,238 @@
+{
+  "name": "storage",
+  "source": "testdata/differential/storage.sol",
+  "contract": "Storage",
+  "artifact": "testdata/differential/expected/storage.json",
+  "cases": [
+    {
+      "name": "set_total",
+      "function": "setTotal",
+      "args": [
+        7
+      ],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 7
+      }
+    },
+    {
+      "name": "get_total_reads_storage",
+      "function": "getTotal",
+      "args": [],
+      "storage": {
+        "0": 42
+      },
+      "expect": {
+        "return": [
+          42
+        ]
+      }
+    },
+    {
+      "name": "dirty_bool_reads_true",
+      "function": "getFlag",
+      "args": [],
+      "storage": {
+        "1": "0x02000000"
+      },
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "packed_slot_keeps_neighbours",
+      "function": "packed",
+      "args": [
+        200,
+        -2,
+        true,
+        "0x1234567890abcdef1234567890abcdef12345678"
+      ],
+      "storage": {
+        "1": "0xdeadbeef000000000000000000000000000000000000000000000000"
+      },
+      "expect": {
+        "return": [
+          200,
+          -2,
+          true,
+          103929005307927756724354605802047639613112342136
+        ]
+      },
+      "final_storage": {
+        "1": "0xdeadbeef1234567890abcdef1234567890abcdef1234567801fffec8"
+      }
+    },
+    {
+      "name": "fixed_bytes",
+      "function": "setTag",
+      "args": [
+        "0x12345678"
+      ],
+      "expect": {
+        "return": [
+          "0x12345678"
+        ]
+      },
+      "final_storage": {
+        "1": "0x12345678000000000000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "name": "halves_share_slot",
+      "function": "halves",
+      "args": [
+        3,
+        5
+      ],
+      "expect": {
+        "return": [
+          8
+        ]
+      },
+      "final_storage": {
+        "2": "0x0500000000000000000000000000000003"
+      }
+    },
+    {
+      "name": "writes_seen_across_calls",
+      "function": "acrossCalls",
+      "args": [],
+      "expect": {
+        "return": [
+          11,
+          22
+        ]
+      },
+      "final_storage": {
+        "0": 22
+      }
+    },
+    {
+      "name": "increments",
+      "function": "increments",
+      "args": [],
+      "expect": {
+        "return": [
+          253,
+          255,
+          -1
+        ]
+      },
+      "final_storage": {
+        "1": "0xffffff"
+      }
+    },
+    {
+      "name": "increments_dirty_slot",
+      "function": "increments",
+      "args": [],
+      "storage": {
+        "1": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "expect": {
+        "return": [
+          253,
+          255,
+          -2
+        ]
+      },
+      "final_storage": {
+        "1": "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeff"
+      }
+    },
+    {
+      "name": "overflow_discards_writes",
+      "function": "overflow",
+      "args": [],
+      "storage": {
+        "1": 7
+      },
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "revert_discards_writes",
+      "function": "writeThenRevert",
+      "args": [
+        0
+      ],
+      "storage": {
+        "0": 9
+      },
+      "expect": {
+        "panic": "0x12"
+      }
+    },
+    {
+      "name": "no_revert_keeps_writes",
+      "function": "writeThenRevert",
+      "args": [
+        5
+      ],
+      "storage": {
+        "0": 9
+      },
+      "expect": {
+        "return": [
+          2
+        ]
+      },
+      "final_storage": {
+        "0": 5,
+        "3": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      }
+    },
+    {
+      "name": "tuple_swap",
+      "function": "swap",
+      "args": [],
+      "storage": {
+        "2": "0x0700000000000000000000000000000003"
+      },
+      "expect": {
+        "return": [
+          7,
+          3
+        ]
+      },
+      "final_storage": {
+        "2": "0x0300000000000000000000000000000007"
+      }
+    },
+    {
+      "name": "read_before_call",
+      "function": "readOrder",
+      "args": [],
+      "expect": {
+        "return": [
+          3
+        ]
+      },
+      "final_storage": {
+        "0": 2
+      }
+    },
+    {
+      "name": "compound_signed",
+      "function": "compound",
+      "args": [],
+      "storage": {
+        "1": 4
+      },
+      "expect": {
+        "return": [
+          -5
+        ]
+      },
+      "final_storage": {
+        "3": "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb"
+      }
+    }
+  ]
+}

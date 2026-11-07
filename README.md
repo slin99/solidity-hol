@@ -102,5 +102,10 @@ Run admitted upstream call expectations separately with
 [`tools/run_semantic_expectations.py`](docs/semantic-expectations-runner.md);
 this on-demand sweep does not run in per-PR CI.
 
+Feature PRs include their own suite, compiler artifact and generated per-suite
+source/bytecode theories; shared report
+snapshots are refreshed after merges. See
+[generated-artifacts.md](docs/generated-artifacts.md) for the commands and ownership.
+
 See [implementation-blueprint.md](docs/implementation-blueprint.md) for module
 ownership, evaluator interfaces and extension points.

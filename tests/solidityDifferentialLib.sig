@@ -12,6 +12,11 @@ sig
    * printed as a line "differential-result: " followed by JSON; if any suite
    * or case fails, it raises an error after all have run.
    *)
+  val run_suite_file :
+    {root : string, suite_file : string, fuel : IntInf.int, bytecode_theory : string} -> unit
+  val run_yul_suite_file :
+    {root : string, suite_file : string, yul_root : string} -> unit
+
   val run_corpus : {root : string, corpus : string} -> unit
   (* Standalone upstream expectation sweep; calls share deployment state.
    * The manifest and result protocol are owned by run_semantic_expectations.py.

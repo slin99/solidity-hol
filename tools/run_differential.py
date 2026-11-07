@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """Run the differential regression corpus and write a report.
 
-The corpus (testdata/differential/corpus.json) lists source units with their
-committed solc artifacts and concrete calls with expected outcomes. Building
-the HOL theory solidityDifferentialCorpus imports and elaborates every unit,
-checks its core, runs each call through both the deployed bytecode and the
-evaluator, and proves one kernel-checked differential_agrees theorem per case;
-the build fails if any suite or case does not agree.
+The corpus config discovers suite files with committed solc artifacts and
+concrete calls. Each suite's bytecode theory checks the EVM observation;
+its source theory reuses that result, checks the same inputs and runs the
+source evaluator, proving one differential_agrees theorem per case. The
+build fails if any suite or case does not agree.
 
 Around that build this driver performs external checks that are not kernel
 checked: the corpus is well formed, every artifact records the pinned compiler
-and profile and was compiled from the current sources, the corpus theory
-stages every artifact, and, given --solc, every artifact is reproduced byte for
+and profile and was compiled from the current sources, each suite theory
+stages its artifacts, and, given --solc, every artifact is reproduced byte for
 byte by the pinned compiler. It writes report.json and report.md, and a
 directory of reproduction material for every failure. It exits unsuccessfully
 on any failure.
@@ -29,10 +28,10 @@ import sys
 from typing import Any
 
 import export_solc_artifacts as exporter
+import differential_theories as theories
 
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS = Path("testdata/differential/corpus.json")
-CORPUS_SCRIPT = Path("tests/solidityDifferentialCorpusScript.sml")
 CORPUS_THEORY = "solidityDifferentialCorpusTheory"
 CORPUS_FORMAT = "solidity-hol-differential-corpus-v1"
 REPORT_FORMAT = "solidity-hol-differential-report-v1"
@@ -50,7 +49,7 @@ class CorpusError(Exception):
 # The corpus
 
 
-# contract_address in tests/solidityDifferentialScript.sml
+# contract_address in tests/solidityBytecodeScript.sml
 CONTRACT_ADDRESS = 0x1000
 PEER_ADDRESS = 0x5000
 
@@ -177,6 +176,15 @@ def load_corpus(path: Path) -> dict[str, Any]:
         raise CorpusError(f"{path}: {error}") from error
     if not isinstance(corpus, dict) or corpus.get("format") != CORPUS_FORMAT:
         raise CorpusError(f"{path}: format must be {CORPUS_FORMAT}")
+    if "suite_directory" in corpus:
+        directory = corpus["suite_directory"]
+        if not isinstance(directory, str) or not directory or "suites" in corpus:
+            raise CorpusError("suite_directory must be a non-empty string and excludes suites")
+        try:
+            corpus["suites"] = [exporter.read_json(suite)
+                                for suite in sorted((path.parent / directory).glob("*.json"))]
+        except (OSError, json.JSONDecodeError) as error:
+            raise CorpusError(f"{path}: {error}") from error
     check_fuel(corpus.get("fuel"), "fuel")
     suites = corpus.get("suites")
     if not isinstance(suites, list) or not suites:
@@ -199,6 +207,8 @@ def load_corpus(path: Path) -> dict[str, Any]:
                     or not all(isinstance(v, str) and v for v in peer.values()):
                 raise CorpusError(
                     f"suite {name}: peer must have exactly source, contract and artifact strings")
+        if "fuel" in suite:
+            check_fuel(suite["fuel"], f"suite {name}: fuel")
         cases = suite.get("cases")
         if not isinstance(cases, list) or not cases:
             raise CorpusError(f"suite {name}: cases must be a non-empty list")
@@ -365,22 +375,28 @@ def check_artifacts(root: Path, corpus: dict[str, Any]) -> list[dict[str, str]]:
     return checks
 
 
-def staged_files(script: str) -> set[str]:
+def unstaged_files(script: str, wanted: set[str]) -> list[str]:
+    """Find inputs not covered by the theory's file or directory declarations."""
     match = re.search(r"holbuild_extra_deps\s*\[(.*?)\]", script.split("fun holbuild_extra_deps", 1)[-1], re.S)
-    return set(re.findall(r'"([^"]*)"', match.group(1))) if match else set()
+    patterns = re.findall(r'"([^"]*)"', match.group(1)) if match else []
+    return sorted(path for path in wanted
+                  if not any(path == pattern or path.startswith(pattern.rstrip("/") + "/")
+                             for pattern in patterns))
 
 
 def check_staging(root: Path, corpus_path: Path, corpus: dict[str, Any]) -> dict[str, str]:
-    """The corpus theory must stage the corpus and every artifact, so that
-    holbuild rebuilds it when any of them changes."""
-    staged = staged_files((root / CORPUS_SCRIPT).read_text(encoding="utf-8"))
-    wanted = {f"../{corpus_path.as_posix()}"} | {
-        f"../{c['artifact']}" for s in corpus["suites"] for c in compiled_contracts(s)}
-    missing = sorted(wanted - staged)
-    return check(
-        "corpus-staged", CORPUS_SCRIPT.as_posix(),
-        None if not missing else f"holbuild_extra_deps does not list {', '.join(missing)}",
-    )
+    """Each committed wrapper must run its suite and stage exactly its inputs."""
+    try:
+        expected = theories.wrappers(root, corpus_path, corpus)
+    except (OSError, KeyError, json.JSONDecodeError) as error:
+        return check("corpus-staged", theories.DIRECTORY.as_posix(), str(error))
+    stale = [path.as_posix() for path, text in expected.items()
+             if not (root / path).exists()
+             or (root / path).read_text(encoding="utf-8") != text]
+    return check("corpus-staged", theories.DIRECTORY.as_posix(),
+                 "missing or stale suite wrappers: " + ", ".join(stale) +
+                 "; run tools/run_differential.py --write-theories --no-hol"
+                 if stale else None)
 
 
 def reproduce_artifacts(root: Path, corpus: dict[str, Any], solc: Path, regenerate: bool) -> list[dict[str, str]]:
@@ -413,7 +429,10 @@ def parse_results(text: str, prefix: str = RESULT_PREFIX) -> list[dict[str, Any]
     for line in text.splitlines():
         if line.startswith(prefix):
             try:
-                results.append(json.loads(line[len(prefix):]))
+                result = json.loads(line[len(prefix):])
+                # Bytecode witnesses alone do not certify source agreement.
+                if result.get("side") != "bytecode" or result.get("status") != "agree":
+                    results.append(result)
             except json.JSONDecodeError:
                 pass
     return results
@@ -421,11 +440,16 @@ def parse_results(text: str, prefix: str = RESULT_PREFIX) -> list[dict[str, Any]
 
 def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
             build_args: list[str], theory: str = CORPUS_THEORY,
-            prefix: str = RESULT_PREFIX) -> dict[str, Any]:
+            prefix: str = RESULT_PREFIX,
+            suite_targets: dict[str, str] | None = None,
+            force_targets: list[str] | None = None) -> dict[str, Any]:
+    targets = list(suite_targets) if suite_targets is not None else [theory]
+    if force and force_targets:
+        targets += force_targets
     command = [holbuild]
     if jobs is not None:
         command += ["-j", str(jobs)]
-    command += ["build"] + (["--force=theory"] if force else []) + build_args + [theory]
+    command += ["build"] + (["--force=theory"] if force else []) + build_args + targets
     print("+", " ".join(command), flush=True)
     lines = []
     try:
@@ -439,18 +463,44 @@ def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
     except OSError as error:
         return {"command": command, "status": None, "error": str(error), "ran": False, "results": []}
     output = "".join(lines)
-    logs = re.findall(r"child log: (.*)", output)
-    log = Path(logs[-1].strip()) if logs else (
-        root / ".holbuild" / "logs" / "current" / "solidity-hol" / theory / "build.log")
-    ran = bool(logs) or re.search(rf"^{theory} built$", output, re.M) is not None
-    results = []
-    if ran:
-        try:
-            results = parse_results(log.read_text(encoding="utf-8", errors="replace"), prefix)
-        except OSError:
-            results = parse_results(output, prefix)
-    return {"command": command, "status": status, "ran": ran, "results": results,
-            "log": str(log) if ran else None}
+    logs = [Path(path.strip()) for path in re.findall(r"(?:child|instrumented) log: (.*)", output)]
+    runs = {}
+    for target in (suite_targets or {theory: theory}):
+        target_logs = [path for path in logs if target in path.parts]
+        if suite_targets is None and logs:
+            target_logs = logs
+        log = target_logs[-1] if target_logs else (
+            root / ".holbuild" / "logs" / "current" / "solidity-hol" / target / "build.log")
+        ran = bool(target_logs) or re.search(rf"^{re.escape(target)} built$", output, re.M) is not None
+        results = []
+        if ran:
+            try:
+                results = parse_results(log.read_text(encoding="utf-8", errors="replace"), prefix)
+            except OSError:
+                results = parse_results(output, prefix)
+        runs[target] = {"status": status, "ran": ran, "results": results,
+                        "log": str(log) if ran else None}
+    if status != 0 and suite_targets is not None:
+        for log in logs:
+            if any(run["log"] == str(log) for run in runs.values()):
+                continue
+            try:
+                rows = parse_results(log.read_text(encoding="utf-8", errors="replace"), prefix)
+            except OSError:
+                continue
+            for target, suite in suite_targets.items():
+                failures = [row for row in rows if row.get("suite") == suite]
+                if failures:
+                    runs[target]["results"].extend(failures)
+                    runs[target]["ran"] = True
+                    runs[target]["log"] = str(log)
+    result = {"command": command, "status": status,
+              "ran": any(run["ran"] for run in runs.values()),
+              "results": [row for run in runs.values() for row in run["results"]],
+              "log": next((run["log"] for run in runs.values() if run["log"]), None)}
+    if suite_targets is not None:
+        result["suite_runs"] = {suite: runs[target] for target, suite in suite_targets.items()}
+    return result
 
 
 # Reporting
@@ -501,7 +551,7 @@ def summarise(report: dict[str, Any]) -> str:
     else:
         lines.append(f"HOL command: `{' '.join(hol['command'])}` (status {hol['status']}).")
     lines += ["", "## Kernel-checked witnesses", "",
-              "Theorems of solidityDifferentialCorpusTheory, proved by the HOL kernel "
+              "Theorems of the per-suite solidityDifferentialCorpus theories, proved by the HOL kernel "
               "(with cv_compute) when the theory was built.", "",
               "| theorem | status |", "| --- | --- |"]
     for witness in report["kernel_checked"]:
@@ -529,13 +579,15 @@ def build_report(root: Path, corpus_path: Path, corpus: dict[str, Any],
     kernel_checked: list[dict[str, Any]] = []
     fuel = corpus["fuel"]
     if hol is not None:
-        results = hol["results"]
-        suite_results = {r.get("suite"): r for r in results if r.get("kind") == "suite"}
-        case_results = {(r.get("suite"), r.get("case")): r for r in results if r.get("kind") == "case"}
-        built = hol["status"] == 0
         for suite in corpus["suites"]:
+            fuel = suite.get("fuel", corpus["fuel"])
+            run = hol.get("suite_runs", {}).get(suite["name"], hol)
+            results = run["results"]
+            suite_results = {r.get("suite"): r for r in results if r.get("kind") == "suite"}
+            case_results = {(r.get("suite"), r.get("case")): r for r in results if r.get("kind") == "case"}
+            built = run["status"] == 0
             suite_result = suite_results.get(suite["name"])
-            if suite_result is None and built and hol["ran"]:
+            if suite_result is None and built and run["ran"]:
                 suite_result = {"kind": "suite", "suite": suite["name"], "status": "missing",
                                 "message": "no suite result was reported"}
             if suite_result is not None and suite_result.get("status") != "ok":
@@ -546,7 +598,7 @@ def build_report(root: Path, corpus_path: Path, corpus: dict[str, Any],
             if built or suite_result is not None:
                 for theorem in suite_theorems(suite):
                     kernel_checked.append({"theorem": theorem, "suite": suite["name"],
-                                           "status": "proved" if hol["ran"] else "proved (cached)"})
+                                           "status": "proved" if run["ran"] else "proved (cached)"})
             for case in suite["cases"]:
                 theorem = case_theorem(suite, case)
                 result = case_results.get((suite["name"], case["name"]))
@@ -554,14 +606,14 @@ def build_report(root: Path, corpus_path: Path, corpus: dict[str, Any],
                     kernel_checked.append({"theorem": theorem, "suite": suite["name"],
                                            "case": case["name"], "status": "proved",
                                            "outcome": result.get("outcome")})
-                elif result is None and built and not hol["ran"]:
+                elif result is None and built and not run["ran"]:
                     kernel_checked.append({"theorem": theorem, "suite": suite["name"],
                                            "case": case["name"], "status": "proved (cached)"})
                 elif result is not None:
                     failures.append({"kind": "case", **result})
                     write_reproduction(root, report_dir / "failures" / suite["name"] / case["name"],
                                        suite, case, result, fuel)
-                elif hol["ran"] and suite_result is not None:
+                elif run["ran"] and suite_result is not None:
                     failures.append({"kind": "case", "suite": suite["name"], "case": case["name"],
                                      "status": "missing", "message": "no result was reported"})
         if hol["status"] != 0 and not any(f["kind"] in ("suite", "case") for f in failures):
@@ -589,6 +641,8 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("-j", "--jobs", type=int)
     parser.add_argument("--allow-cached", action="store_true",
                         help="accept a cached corpus theory instead of rebuilding it")
+    parser.add_argument("--write-theories", action="store_true",
+                        help="write the per-suite HOL wrappers (commit them with the suite)")
     parser.add_argument("--no-hol", action="store_true", help="run the external checks only")
     parser.add_argument("build_args", nargs="*",
                         help="extra holbuild build options, after --")
@@ -609,10 +663,17 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
     if args.solc is not None:
         checks += reproduce_artifacts(root, corpus, args.solc, args.regenerate)
     checks += check_artifacts(root, corpus)
+    if args.write_theories:
+        theories.write_wrappers(root, theories.wrappers(root, CORPUS, corpus))
     checks.append(check_staging(root, CORPUS, corpus))
     hol = None
     if not args.no_hol:
-        hol = run_hol(root, args.holbuild, args.jobs, not args.allow_cached, args.build_args)
+        targets = {theories.theory_name(suite["name"], "source") + "Theory": suite["name"]
+                   for suite in corpus["suites"]}
+        bytecode_targets = [theories.theory_name(suite["name"], "bytecode") + "Theory"
+                            for suite in corpus["suites"]]
+        hol = run_hol(root, args.holbuild, args.jobs, not args.allow_cached, args.build_args,
+                      suite_targets=targets, force_targets=bytecode_targets)
     report_dir = args.report_dir.resolve()
     if (report_dir / "failures").exists():
         shutil.rmtree(report_dir / "failures")

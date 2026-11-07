@@ -1,0 +1,317 @@
+{
+  "name": "context",
+  "source": "testdata/differential/context.sol",
+  "contract": "Context",
+  "artifact": "testdata/differential/expected/context.json",
+  "cases": [
+    {
+      "name": "receive_with_value",
+      "calldata": "0x",
+      "sender": 12288,
+      "value": 5,
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 5
+      },
+      "logs": [
+        {
+          "topics": [
+            "0x88a5966d370b9919b20f3e2c13ff65706f196a4e32cc2c12bf57088f88525874",
+            "0x0000000000000000000000000000000000000000000000000000000000003000"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000005"
+        }
+      ]
+    },
+    {
+      "name": "receive_without_value",
+      "calldata": "0x",
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [
+            "0x88a5966d370b9919b20f3e2c13ff65706f196a4e32cc2c12bf57088f88525874",
+            "0x0000000000000000000000000000000000000000000000000000000000002000"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "name": "fallback_logs_anonymous",
+      "calldata": "0xdeadbeef",
+      "value": 3,
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000003"
+        }
+      ]
+    },
+    {
+      "name": "fallback_on_short_calldata",
+      "calldata": "0x01",
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "name": "deposit_payable",
+      "function": "deposit",
+      "args": [],
+      "sender": 12288,
+      "value": 7,
+      "storage": {
+        "0": 1
+      },
+      "expect": {
+        "return": [
+          8
+        ]
+      },
+      "final_storage": {
+        "0": 8,
+        "1": 12288
+      }
+    },
+    {
+      "name": "self_address",
+      "function": "self",
+      "args": [],
+      "expect": {
+        "return": [
+          4096
+        ]
+      }
+    },
+    {
+      "name": "sender",
+      "function": "sender",
+      "args": [],
+      "sender": 16384,
+      "expect": {
+        "return": [
+          16384
+        ]
+      }
+    },
+    {
+      "name": "origin",
+      "function": "origin",
+      "args": [],
+      "sender": 16384,
+      "expect": {
+        "return": [
+          16384
+        ]
+      }
+    },
+    {
+      "name": "block_info",
+      "function": "blockInfo",
+      "args": [],
+      "expect": {
+        "return": [
+          11,
+          1700000000,
+          5,
+          12648430
+        ]
+      }
+    },
+    {
+      "name": "fee_info",
+      "function": "feeInfo",
+      "args": [],
+      "expect": {
+        "return": [
+          9,
+          7,
+          30000000
+        ]
+      }
+    },
+    {
+      "name": "typed_topics",
+      "function": "typed",
+      "args": [
+        -2,
+        "0xdeadbeef",
+        true
+      ],
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [
+            "0xfc3c23acad18f11bc4ef52fa0934da4333adec748ee5e40f84c25be6a0a7269c",
+            "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe",
+            "0xdeadbeef00000000000000000000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000000000000000000000000001"
+          ],
+          "data": "0x"
+        }
+      ]
+    },
+    {
+      "name": "four_topics_anonymous",
+      "function": "four",
+      "args": [],
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [
+            "0x0000000000000000000000000000000000000000000000000000000000000001",
+            "0x0000000000000000000000000000000000000000000000000000000000000002",
+            "0x0000000000000000000000000000000000000000000000000000000000000003",
+            "0x0000000000000000000000000000000000000000000000000000000000000004"
+          ],
+          "data": "0x"
+        }
+      ]
+    },
+    {
+      "name": "emit_then_succeed",
+      "function": "emitThenCheck",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [
+            "0xff0c7f7b06a20eca4250394c03d994f0560c2cc82c3349fe9d95f30ee2d9d2d7"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000000"
+        }
+      ]
+    },
+    {
+      "name": "revert_discards_logs",
+      "function": "emitThenCheck",
+      "args": [
+        1
+      ],
+      "expect": {
+        "revert": "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000076e6f6e7a65726f00000000000000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "name": "view_with_value_reverts",
+      "function": "self",
+      "args": [],
+      "value": 1,
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "note_logs_indexed_tag",
+      "function": "note",
+      "args": [
+        7,
+        true,
+        "0xabababababababababababababababababababababababababababababababab"
+      ],
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [
+            "0x78a6dcdccb83e6cd3931ab7002ecfd066041fa0ed58be869ce152ce214eac4f2",
+            "0x0000000000000000000000000000000000000000000000000000000000000007"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000001abababababababababababababababababababababababababababababababab"
+        }
+      ]
+    },
+    {
+      "name": "narrow_round_trip",
+      "function": "narrow",
+      "args": [
+        255,
+        -2,
+        "0xabcd",
+        false
+      ],
+      "expect": {
+        "return": [
+          255,
+          -2,
+          "0xabcd",
+          false
+        ]
+      }
+    },
+    {
+      "name": "trailing_calldata_ignored",
+      "calldata": "0x8bcdbfdc00000000000000000000000000000000000000000000000000000000000000070000000000000000000000000000000000000000000000000000000000000001abababababababababababababababababababababababababababababababab99",
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [
+            "0x78a6dcdccb83e6cd3931ab7002ecfd066041fa0ed58be869ce152ce214eac4f2",
+            "0x0000000000000000000000000000000000000000000000000000000000000007"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000001abababababababababababababababababababababababababababababababab"
+        }
+      ]
+    },
+    {
+      "name": "narrow_dirty_uint8_reverts",
+      "calldata": "0x127df07e00000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000abcd0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "narrow_dirty_int16_reverts",
+      "calldata": "0x127df07e00000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000000000000000000000000000abcd0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "narrow_dirty_bytes2_reverts",
+      "calldata": "0x127df07e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000abcd0100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "narrow_dirty_bool_reverts",
+      "calldata": "0x127df07e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000abcd0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002",
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "narrow_short_calldata_reverts",
+      "calldata": "0x127df07e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000abcd00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "expect": {
+        "revert": "0x"
+      }
+    }
+  ]
+}

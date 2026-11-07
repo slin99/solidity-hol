@@ -1,0 +1,66 @@
+{
+  "name": "storage_structs_top_level",
+  "source": "testdata/differential/storage_structs_top_level.sol",
+  "contract": "TopLevelStructs",
+  "artifact": "testdata/differential/expected/storage_structs_top_level.json",
+  "cases": [
+    {
+      "name": "file_scope_escaped_name_and_unused_declarations",
+      "function": "put",
+      "args": [
+        1,
+        7
+      ],
+      "storage": {
+        "0": "0xabcd",
+        "1": 17,
+        "2": "0xbcde"
+      },
+      "expect": {
+        "return": [
+          7,
+          8
+        ]
+      },
+      "final_storage": {
+        "0": "0xab07",
+        "1": 17,
+        "2": "0xbc08"
+      }
+    },
+    {
+      "name": "field_overflow_rollback",
+      "function": "put",
+      "args": [
+        0,
+        255
+      ],
+      "storage": {
+        "0": 17
+      },
+      "expect": {
+        "panic": "0x11"
+      },
+      "final_storage": {
+        "0": 17
+      }
+    },
+    {
+      "name": "field_bounds_rollback",
+      "function": "put",
+      "args": [
+        2,
+        7
+      ],
+      "storage": {
+        "0": 17
+      },
+      "expect": {
+        "panic": "0x32"
+      },
+      "final_storage": {
+        "0": 17
+      }
+    }
+  ]
+}

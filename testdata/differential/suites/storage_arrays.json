@@ -1,0 +1,509 @@
+{
+  "name": "storage_arrays",
+  "source": "testdata/differential/storage_arrays.sol",
+  "contract": "StorageArrays",
+  "artifact": "testdata/differential/expected/storage_arrays.json",
+  "cases": [
+    {
+      "name": "fixed_lengths",
+      "function": "lengths",
+      "args": [],
+      "expect": {
+        "return": [
+          35,
+          2,
+          11
+        ]
+      }
+    },
+    {
+      "name": "packed_neighbour",
+      "function": "put",
+      "args": [
+        1,
+        7
+      ],
+      "storage": {
+        "0": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "expect": {
+        "return": [
+          7
+        ]
+      },
+      "final_storage": {
+        "0": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff07ff"
+      }
+    },
+    {
+      "name": "last_in_first_slot",
+      "function": "put",
+      "args": [
+        31,
+        9
+      ],
+      "storage": {
+        "0": 17,
+        "1": 23
+      },
+      "expect": {
+        "return": [
+          9
+        ]
+      },
+      "final_storage": {
+        "0": "0x0900000000000000000000000000000000000000000000000000000000000011",
+        "1": 23
+      }
+    },
+    {
+      "name": "first_in_second_slot",
+      "function": "put",
+      "args": [
+        32,
+        9
+      ],
+      "storage": {
+        "0": 17,
+        "1": "0xabcdef"
+      },
+      "expect": {
+        "return": [
+          9
+        ]
+      },
+      "final_storage": {
+        "0": 17,
+        "1": "0xabcd09"
+      }
+    },
+    {
+      "name": "last_element",
+      "function": "put",
+      "args": [
+        34,
+        9
+      ],
+      "storage": {
+        "1": "0xabcdef"
+      },
+      "expect": {
+        "return": [
+          9
+        ]
+      },
+      "final_storage": {
+        "1": "0x09cdef"
+      }
+    },
+    {
+      "name": "signed_packed",
+      "function": "signedPut",
+      "args": [
+        1,
+        -2
+      ],
+      "storage": {
+        "2": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "expect": {
+        "return": [
+          -2
+        ]
+      },
+      "final_storage": {
+        "2": "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffff"
+      }
+    },
+    {
+      "name": "signed_second_slot",
+      "function": "signedPut",
+      "args": [
+        16,
+        -32768
+      ],
+      "storage": {
+        "3": "0x12345678"
+      },
+      "expect": {
+        "return": [
+          -32768
+        ]
+      },
+      "final_storage": {
+        "3": "0x12348000"
+      }
+    },
+    {
+      "name": "bytes_neighbours",
+      "function": "tagPut",
+      "args": [
+        1,
+        "0x123456"
+      ],
+      "storage": {
+        "4": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "expect": {
+        "return": [
+          "0x123456"
+        ]
+      },
+      "final_storage": {
+        "4": "0xffffffffffffffffffffffffffffffffffffffffffffffffffff123456ffffff"
+      }
+    },
+    {
+      "name": "bytes_second_slot",
+      "function": "tagPut",
+      "args": [
+        10,
+        "0xabcdef"
+      ],
+      "storage": {
+        "5": "0x1234567890"
+      },
+      "expect": {
+        "return": [
+          "0xabcdef"
+        ]
+      },
+      "final_storage": {
+        "5": "0x1234abcdef"
+      }
+    },
+    {
+      "name": "nested_row_alignment",
+      "function": "rowPut",
+      "args": [
+        1,
+        0,
+        1193046
+      ],
+      "storage": {
+        "7": "0xabcdef",
+        "8": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "expect": {
+        "return": [
+          1193046
+        ]
+      },
+      "final_storage": {
+        "7": "0xabcdef",
+        "8": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffff123456"
+      }
+    },
+    {
+      "name": "nested_row_tail",
+      "function": "rowPut",
+      "args": [
+        1,
+        10,
+        11259375
+      ],
+      "storage": {
+        "9": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      },
+      "expect": {
+        "return": [
+          11259375
+        ]
+      },
+      "final_storage": {
+        "9": "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffabcdef"
+      }
+    },
+    {
+      "name": "indices_evaluated_once",
+      "function": "indexEffects",
+      "args": [],
+      "storage": {
+        "0": "0x08060400"
+      },
+      "expect": {
+        "return": [
+          4,
+          6,
+          7,
+          10
+        ]
+      },
+      "final_storage": {
+        "0": "0x0707070a",
+        "10": 4
+      }
+    },
+    {
+      "name": "writes_across_calls",
+      "function": "acrossCalls",
+      "args": [
+        33
+      ],
+      "storage": {
+        "1": "0xabcdef"
+      },
+      "expect": {
+        "return": [
+          6,
+          12
+        ]
+      },
+      "final_storage": {
+        "1": "0xab0cef"
+      }
+    },
+    {
+      "name": "bounds_rolls_back",
+      "function": "bounds",
+      "args": [
+        35
+      ],
+      "storage": {
+        "0": 17,
+        "1": 23
+      },
+      "expect": {
+        "panic": "0x32"
+      },
+      "final_storage": {
+        "0": 17,
+        "1": 23
+      }
+    },
+    {
+      "name": "large_index",
+      "function": "bounds",
+      "args": [
+        "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+      ],
+      "storage": {
+        "0": 17
+      },
+      "expect": {
+        "panic": "0x32"
+      },
+      "final_storage": {
+        "0": 17
+      }
+    },
+    {
+      "name": "outer_bounds",
+      "function": "nestedBounds",
+      "args": [
+        2,
+        0
+      ],
+      "storage": {
+        "6": 17,
+        "8": 23
+      },
+      "expect": {
+        "panic": "0x32"
+      },
+      "final_storage": {
+        "6": 17,
+        "8": 23
+      }
+    },
+    {
+      "name": "inner_bounds",
+      "function": "nestedBounds",
+      "args": [
+        1,
+        11
+      ],
+      "storage": {
+        "6": 17,
+        "8": 23
+      },
+      "expect": {
+        "panic": "0x32"
+      },
+      "final_storage": {
+        "6": 17,
+        "8": 23
+      }
+    },
+    {
+      "name": "overflow_rolls_back",
+      "function": "overflow",
+      "args": [],
+      "storage": {
+        "1": 17
+      },
+      "expect": {
+        "panic": "0x11"
+      },
+      "final_storage": {
+        "1": 17
+      }
+    },
+    {
+      "name": "rhs_before_index",
+      "function": "assignmentOrder",
+      "args": [],
+      "storage": {
+        "0": "0x08060400"
+      },
+      "expect": {
+        "return": [
+          4
+        ]
+      },
+      "final_storage": {
+        "0": "0x14060a00",
+        "10": 4
+      }
+    },
+    {
+      "name": "nested_indices_evaluated_once",
+      "function": "nestedIndices",
+      "args": [],
+      "expect": {
+        "return": [
+          2,
+          7
+        ]
+      },
+      "final_storage": {
+        "6": "0x07000000",
+        "10": 2
+      }
+    },
+    {
+      "name": "length_evaluates_prefix",
+      "function": "lengthEffect",
+      "args": [],
+      "storage": {
+        "10": 1
+      },
+      "expect": {
+        "return": [
+          11
+        ]
+      },
+      "final_storage": {
+        "10": 2
+      }
+    },
+    {
+      "name": "length_checks_prefix_bounds",
+      "function": "lengthEffect",
+      "args": [],
+      "storage": {
+        "10": 2
+      },
+      "expect": {
+        "panic": "0x32"
+      },
+      "final_storage": {
+        "10": 2
+      }
+    },
+    {
+      "name": "unwritten_element_is_zero",
+      "function": "get",
+      "args": [
+        34
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "dirty_bool_reads_true",
+      "function": "flagGet",
+      "args": [
+        32
+      ],
+      "storage": {
+        "12": 2
+      },
+      "expect": {
+        "return": [
+          true
+        ]
+      },
+      "final_storage": {
+        "12": 2
+      }
+    },
+    {
+      "name": "bool_neighbour_preserved",
+      "function": "flagPut",
+      "args": [
+        33,
+        false
+      ],
+      "storage": {
+        "12": "0x0202"
+      },
+      "expect": {
+        "return": [
+          false
+        ]
+      },
+      "final_storage": {
+        "12": 2
+      }
+    },
+    {
+      "name": "address_does_not_straddle_slot",
+      "function": "ownerPut",
+      "args": [
+        1,
+        4660
+      ],
+      "storage": {
+        "13": 17,
+        "14": "0xabcdef0000000000000000000000000000000000000000"
+      },
+      "expect": {
+        "return": [
+          4660
+        ]
+      },
+      "final_storage": {
+        "13": 17,
+        "14": "0xabcdef0000000000000000000000000000000000001234"
+      }
+    },
+    {
+      "name": "full_width_element",
+      "function": "widePut",
+      "args": [
+        1,
+        23
+      ],
+      "storage": {
+        "15": 17
+      },
+      "expect": {
+        "return": [
+          23
+        ]
+      },
+      "final_storage": {
+        "15": 17,
+        "16": 23
+      }
+    },
+    {
+      "name": "length_prefix_preserves_earlier_locals",
+      "function": "lengthOrder",
+      "args": [],
+      "expect": {
+        "return": [
+          11,
+          0,
+          11,
+          11,
+          1
+        ]
+      }
+    }
+  ]
+}
