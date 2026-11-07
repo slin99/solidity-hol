@@ -202,6 +202,7 @@ Datatype:
   | SrcNew node_info src_type_name src_expr string
   | SrcEnumValue node_info src_type_name num string
   | SrcKeccak256 node_info node_info src_expr string
+  | SrcAddressCodeLength node_info node_info src_expr string
   | SrcSelector node_info (byte list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
 End
@@ -910,6 +911,8 @@ Definition expr_ids_def:
   (expr_ids (SrcEnumValue info tn _ _) = info.node_id :: type_name_ids tn) ∧
   (expr_ids (SrcKeccak256 info callee e _) =
     info.node_id :: callee.node_id :: expr_ids e) ∧
+  (expr_ids (SrcAddressCodeLength info member e _) =
+    info.node_id :: member.node_id :: expr_ids e) ∧
   (expr_ids (SrcSelector info _ _) = [info.node_id]) ∧
   (expr_ids (SrcAbiEncode info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
@@ -1156,6 +1159,11 @@ Definition check_expr_def:
             | SrcRational i d => 0 ≤ i ∧ d = 1
             | _ => F)
         then SOME (SrcType element) else NONE
+    | _ => NONE) ∧
+  (check_expr env (SrcAddressCodeLength _ _ e tid) =
+    case check_expr env e of
+      SOME (SrcType (AddressT _)) =>
+        if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
     | _ => NONE) ∧
   (check_expr env (SrcArrayLength _ root_expr tid) =
     case check_expr env root_expr of
