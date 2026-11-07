@@ -518,7 +518,8 @@ def is_type_call(node: dict[str, Any]) -> bool:
             and node["expression"].get("referencedDeclaration", 0) < 0)
 
 
-def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list[Blocker]:
+def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False,
+                  try_callee: bool = False) -> list[Blocker]:
     """What the importer rejects at this node itself; children are checked as
     nodes of their own. Member and index accesses are classified by the type
     of the value accessed."""
@@ -569,7 +570,7 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
         if node["names"] and (node["kind"] != "functionCall"
                               or callee.get("referencedDeclaration", -1) < 0):
             found.append("named arguments")
-        if node["tryCall"]:
+        if node["tryCall"] and not try_callee:
             found.append("try/catch")
         if node["kind"] == "structConstructorCall":
             found.append("structs")
@@ -1298,6 +1299,25 @@ def special_forms(reached: dict[int, dict[str, Any]],
         kind = node["nodeType"]
         # Any other name of an enum type is imported as an identifier that
         # source validation rejects.
+        if kind == "TryStatement":
+            call, clauses = node["externalCall"], node["clauses"]
+            callee = call["expression"]
+            member = callee["expression"] if callee["nodeType"] == "FunctionCallOptions" else callee
+            declaration = by_id.get(member.get("referencedDeclaration"), {})
+            returns = declaration.get("returnParameters", {}).get("parameters", [])
+            if (call["nodeType"] == "FunctionCall" and call["kind"] == "functionCall"
+                    and is_external(member) and declaration.get("nodeType") == "FunctionDefinition"
+                    and len(clauses) == 2 and all(c["errorName"] == "" for c in clauses)
+                    and len(clauses[1].get("parameters", {}).get("parameters", [])) == 1
+                    and clauses[1]["parameters"]["parameters"][0]["typeDescriptions"]["typeIdentifier"]
+                    == "t_bytes_memory_ptr"
+                    and all(VALUE_TYPE.fullmatch(p["typeDescriptions"]["typeIdentifier"])
+                            or ENUM.fullmatch(p["typeDescriptions"]["typeIdentifier"]) for p in returns)
+                    and [p["typeDescriptions"]["typeIdentifier"] for p in returns]
+                    == [p["typeDescriptions"]["typeIdentifier"]
+                        for p in clauses[0].get("parameters", {}).get("parameters", [])]):
+                # Clause bodies, operands and signatures are still read normally.
+                unread.update([node["id"], *(c["id"] for c in clauses)])
         if (kind in ("Identifier", "MemberAccess") and node["id"] not in enum_names
                 and by_id.get(node.get("referencedDeclaration"), {}).get("nodeType") == "EnumDefinition"):
             block(node, "enum types as expressions", "elaboration")
@@ -1524,6 +1544,8 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                     and n["expression"].get("referencedDeclaration") == KECCAK256}
     plain_callees = builtin_callees | super_bases | hash_callees
     unread, found = special_forms(reached, by_id)
+    try_callees = {n["externalCall"]["id"] for n in reached.values()
+                   if n["nodeType"] == "TryStatement" and n["id"] in unread}
     file_level = {m["id"] for ast in asts.values() for m in ast["nodes"]}
     storage_bases = {n["baseExpression"]["id"] for n in reached.values()
                      if n["nodeType"] == "IndexAccess"}
@@ -1532,7 +1554,8 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     for node in reached.values():
         if node["id"] in unread:
             continue
-        blockers = (node_blockers(node, builtin_callee=node["id"] in plain_callees)
+        blockers = (node_blockers(node, builtin_callee=node["id"] in plain_callees,
+                                  try_callee=node["id"] in try_callees)
                     + callee_blockers(node, callees, conversions)
                     + elaboration_blockers(node, storage_field=node["id"] in fields,
                                            error_parameter=node["id"] in error_parameters)

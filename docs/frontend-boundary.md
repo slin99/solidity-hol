@@ -286,6 +286,14 @@ type, including the zero-argument and single-argument forms.
 an account without code. The receiver is evaluated once and no memory bytes
 object is allocated. Standalone `address.code` remains unsupported.
 
+External calls returning scalar values admit `try ... returns (...) { ... }
+catch (bytes memory reason) { ... }`. Only failure of the external call selects
+the catch body; argument evaluation, missing-code checks, return decoding and
+the success/catch bodies keep their ordinary failure behavior. Nonempty revert
+data is copied into a fresh memory bytes object; empty data uses the default
+empty bytes reference. Contract creation, typed `Error`/`Panic` handlers and
+catch clauses without a bytes parameter remain unsupported.
+
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
 from the functions calls can reach (an overridden function counts only when

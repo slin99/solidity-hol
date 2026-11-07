@@ -150,6 +150,10 @@ Datatype:
   | InternalCallOperation ast_id (core_atom list)
   | ExternalCallOperation external_kind (byte list) (sol_type list)
       (sol_type list) core_atom core_atom (core_atom list)
+  (* success flag, scalar returns, raw failure bytes; only a failed EVM call
+   * is caught. Operand and return-decoding failures still propagate. *)
+  | TryExternalCallOperation external_kind (byte list) (sol_type list)
+      (sol_type list) core_atom core_atom (core_atom list)
   | EnvironmentOperation environment_field
 End
 
