@@ -33,6 +33,31 @@ class ExpectationTests(unittest.TestCase):
         self.assertEqual(calls[1].expected, {"returned": "0x" + b"a,b".ljust(32, b"\0").hex()})
         self.assertEqual(calls[1].observations[0]["reason"], "gas is not modeled")
 
+    def test_aligned_continuations_do_not_create_transactions(self) -> None:
+        methods = {"f1(bytes32)": "12345678"}
+        for alignment in ("left", "right"):
+            with self.subTest(alignment=alignment):
+                token = f"{alignment}(0xFE)"
+                single = runner.parse_calls(f'// ----\n// f1(bytes32): {token} -> {token}', methods)
+                wrapped = runner.parse_calls(f'// ----\n// f1(bytes32):\n// {token}\n// ->\n// {token}', methods)
+                self.assertEqual(len(wrapped), 2)
+                self.assertEqual(wrapped[1].calldata, single[1].calldata)
+                self.assertEqual(wrapped[1].expected, single[1].expected)
+
+    def test_uncertain_line_boundaries_make_the_whole_block_unrunnable(self) -> None:
+        for suffix in ('left(0xFE)', 'right(0xFE)', '1', 'unknown continuation'):
+            with self.subTest(suffix=suffix):
+                calls = runner.parse_calls(f'// ----\n// f() -> 0\n// {suffix}\n// f() ->', {"f()": "12345678"})
+                self.assertEqual(len(calls), 1)
+                self.assertIsNone(calls[0].calldata)
+                self.assertIn("cannot attribute", calls[0].reason or "")
+
+    def test_other_side_effects_are_observations_not_transactions(self) -> None:
+        calls = runner.parse_calls('// ----\n// f() ->\n// ~ 00001234\n// f() ->', {"f()": "12345678"})
+        self.assertEqual(len(calls), 3)
+        self.assertEqual(calls[1].reason, "unsupported side-effect observation")
+        self.assertEqual(calls[2].calldata, "0x12345678")
+
     def test_events_keep_indexed_markers(self) -> None:
         calls = runner.parse_calls('// ----\n// f() ->\n// ~ emit E(uint256,uint256): #1, 2', {"f()": "12345678"})
         self.assertEqual(calls[1].events[0]["topics"], ["0x" + (1).to_bytes(32, "big").hex()])

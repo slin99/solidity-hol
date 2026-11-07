@@ -64,6 +64,9 @@ Calls agree only when their return/revert bytes and event logs match. Core
 invalid completions and fuel exhaustion are not runnable. Unsupported input
 syntax stops subsequent replay, since its effects on state are unknown;
 unsupported output observations can still allow later transactions to run.
+If a physical line cannot be assigned to a call or a parameter continuation,
+the entire expectation block is not runnable. The runner does not guess call
+boundaries. Aligned parameters can continue after a colon, comma or arrow.
 Builtins observe the preceding transaction's logs, including when they expect
 no events. Explicit event expectations after builtin directives are not runnable.
 Calls explicitly marked as out-of-gas are not runnable: the core does not charge

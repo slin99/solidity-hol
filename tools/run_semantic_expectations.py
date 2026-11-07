@@ -140,17 +140,25 @@ def expectation_lines(text: str) -> list[str]:
         if not raw.lstrip().startswith("//"):
             raise UnsupportedExpectation("non-comment line after expectation separator")
         line = raw.lstrip()[2:].strip()
-        clean = line if line.startswith("~ emit ") else strip_comments(line).strip()
+        clean = line if line.startswith("~") else strip_comments(line).strip()
         if not clean:
             continue
-        if line.startswith(("gas ", "~ emit ")):
+        previous = (strip_comments(lines[-1]).rstrip()
+                    if lines and not lines[-1].startswith(("gas ", "~")) else "")
+        if line.startswith(("gas ", "~")) and lines:
             lines.append(line)
+        elif re.match(r'(?:left\(|right\(|hex"|"|-?[0-9]|true\b|false\b|FAILURE\b)', clean):
+            if not previous.endswith((":", ",", "->")):
+                raise UnsupportedExpectation(f"cannot attribute parameter continuation: {line}")
+            lines[-1] += " " + line
+        elif clean.startswith("->"):
+            if not previous or "->" in previous or previous.endswith((":", ",")):
+                raise UnsupportedExpectation(f"cannot attribute result continuation: {line}")
+            lines[-1] += " " + line
         elif re.match(r"(?:[A-Za-z_$][\w$]*|)\(", clean) or re.match(r"[A-Za-z_]\w*\s*(?::|->)", clean):
             lines.append(line)
-        elif lines and not lines[-1].startswith(("gas ", "~ emit ")):
-            lines[-1] += " " + line
         else:
-            lines.append(line)
+            raise UnsupportedExpectation(f"cannot attribute expectation line: {line}")
     return lines
 
 
@@ -179,17 +187,23 @@ def parse_calls(text: str, methods: dict[str, str]) -> list[Call]:
     """Parse call arguments/results; unsupported transactions stop later replay."""
     calls: list[Call] = []
     sender = ACCOUNT
-    for original in expectation_lines(text):
-        line = original if original.startswith(("gas ", "~ emit ")) else strip_comments(original).strip()
-        if line.startswith(("gas ", "~ emit ")) and calls:
+    try:
+        lines = expectation_lines(text)
+    except UnsupportedExpectation as error:
+        return [Call(0, "[unsupported expectation block]", reason=str(error))]
+    for original in lines:
+        line = original if original.startswith(("gas ", "~")) else strip_comments(original).strip()
+        if line.startswith(("gas ", "~")) and calls:
             if line.startswith("gas "):
                 calls[-1].observations.append({"text": line, "status": "not-runnable",
                                               "reason": "gas is not modeled"})
-            else:
+            elif line.startswith("~ emit "):
                 try:
                     calls[-1].events.append(parse_event(line))
                 except UnsupportedExpectation as error:
                     calls[-1].reason = str(error)
+            else:
+                calls[-1].reason = calls[-1].reason or "unsupported side-effect observation"
             continue
         call = Call(len(calls), original, sender=str(sender))
         calls.append(call)
