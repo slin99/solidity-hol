@@ -20,6 +20,7 @@ on any failure.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 from pathlib import Path
 import re
@@ -177,6 +178,15 @@ def load_corpus(path: Path) -> dict[str, Any]:
         raise CorpusError(f"{path}: {error}") from error
     if not isinstance(corpus, dict) or corpus.get("format") != CORPUS_FORMAT:
         raise CorpusError(f"{path}: format must be {CORPUS_FORMAT}")
+    if "suite_directory" in corpus:
+        directory = corpus["suite_directory"]
+        if not isinstance(directory, str) or not directory or "suites" in corpus:
+            raise CorpusError("suite_directory must be a non-empty string and excludes suites")
+        try:
+            corpus["suites"] = [exporter.read_json(suite)
+                                for suite in sorted((path.parent / directory).glob("*.json"))]
+        except (OSError, json.JSONDecodeError) as error:
+            raise CorpusError(f"{path}: {error}") from error
     check_fuel(corpus.get("fuel"), "fuel")
     suites = corpus.get("suites")
     if not isinstance(suites, list) or not suites:
@@ -365,18 +375,24 @@ def check_artifacts(root: Path, corpus: dict[str, Any]) -> list[dict[str, str]]:
     return checks
 
 
-def staged_files(script: str) -> set[str]:
+def unstaged_files(script: str, wanted: set[str]) -> list[str]:
+    """Find inputs not covered by the theory's literal or glob declarations."""
     match = re.search(r"holbuild_extra_deps\s*\[(.*?)\]", script.split("fun holbuild_extra_deps", 1)[-1], re.S)
-    return set(re.findall(r'"([^"]*)"', match.group(1))) if match else set()
+    patterns = re.findall(r'"([^"]*)"', match.group(1)) if match else []
+    return sorted(path for path in wanted
+                  if not any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns))
 
 
 def check_staging(root: Path, corpus_path: Path, corpus: dict[str, Any]) -> dict[str, str]:
     """The corpus theory must stage the corpus and every artifact, so that
     holbuild rebuilds it when any of them changes."""
-    staged = staged_files((root / CORPUS_SCRIPT).read_text(encoding="utf-8"))
     wanted = {f"../{corpus_path.as_posix()}"} | {
         f"../{c['artifact']}" for s in corpus["suites"] for c in compiled_contracts(s)}
-    missing = sorted(wanted - staged)
+    if "suite_directory" in corpus:
+        directory = corpus_path.parent / corpus["suite_directory"]
+        wanted |= {f"../{path.relative_to(root).as_posix()}"
+                   for path in (root / directory).glob("*.json")}
+    missing = unstaged_files((root / CORPUS_SCRIPT).read_text(encoding="utf-8"), wanted)
     return check(
         "corpus-staged", CORPUS_SCRIPT.as_posix(),
         None if not missing else f"holbuild_extra_deps does not list {', '.join(missing)}",

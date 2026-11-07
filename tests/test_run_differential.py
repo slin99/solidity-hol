@@ -101,6 +101,47 @@ RETURNED = {"returned": "0x" + "00" * 31 + "02"}
 
 
 class CorpusTests(unittest.TestCase):
+    def test_discovers_new_suite_files_without_editing_shared_lists(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            data = corpus()
+            suite = data.pop("suites")[0]
+            data["suite_directory"] = "suites"
+            fake.write(driver.CORPUS.as_posix(), json.dumps(data))
+            fake.write("testdata/differential/suites/z.json", json.dumps(suite))
+            fake.write(driver.CORPUS_SCRIPT.as_posix(), '''
+                fun holbuild_extra_deps (_ : string list) = ()
+                val () = holbuild_extra_deps ["../testdata/differential/corpus.json",
+                  "../testdata/differential/suites/*.json",
+                  "../testdata/differential/expected/*.json"]
+            ''')
+            other = {**suite, "name": "another"}
+            fake.write("testdata/differential/suites/a.json", json.dumps(other))
+            loaded = driver.load_corpus(fake.root / driver.CORPUS)
+            self.assertEqual([s["name"] for s in loaded["suites"]], ["another", "a"])
+            self.assertEqual(driver.check_staging(fake.root, driver.CORPUS, loaded)["status"],
+                             "pass")
+            fake.write("testdata/differential/suites/duplicate.json", json.dumps(other))
+            with self.assertRaisesRegex(driver.CorpusError, "duplicate suite another"):
+                driver.load_corpus(fake.root / driver.CORPUS)
+
+    def test_suite_files_must_be_valid_and_staged(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            data = corpus()
+            suite = data.pop("suites")[0]
+            data["suite_directory"] = "suites"
+            fake.write(driver.CORPUS.as_posix(), json.dumps(data))
+            path = "testdata/differential/suites/a.json"
+            fake.write(path, json.dumps(suite))
+            loaded = driver.load_corpus(fake.root / driver.CORPUS)
+            check = driver.check_staging(fake.root, driver.CORPUS, loaded)
+            self.assertEqual(check["status"], "fail")
+            self.assertIn(path, check["detail"])
+            fake.write(path, "{")
+            with self.assertRaises(driver.CorpusError):
+                driver.load_corpus(fake.root / driver.CORPUS)
+
     def test_committed_corpus_is_consistent(self) -> None:
         loaded = driver.load_corpus(ROOT / driver.CORPUS)
         checks = driver.check_artifacts(ROOT, loaded)
