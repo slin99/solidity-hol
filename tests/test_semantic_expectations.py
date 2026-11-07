@@ -77,6 +77,12 @@ class ExpectationTests(unittest.TestCase):
         self.assertFalse(calls[0].implicit)
         self.assertEqual(calls[1].calldata, "0x12345678" + (1).to_bytes(32, "big").hex())
 
+    def test_newlines_inside_signatures_are_rejected_before_replay(self) -> None:
+        calls = runner.parse_calls('// ----\n// f(\n// uint256): 1 -> 1', {"f(uint256)": "12345678"})
+        self.assertEqual(len(calls), 1)
+        self.assertIsNone(calls[0].calldata)
+        self.assertTrue(calls[0].reason)
+
     def test_constructor_payload_is_ignored_but_logs_are_compared(self) -> None:
         calls = runner.parse_calls('// ----\n// constructor() -> FAILURE, 1', {})
         self.assertEqual(calls[0].expected, {"reverted": "0x"})

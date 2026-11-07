@@ -162,6 +162,9 @@ def parse_block(source: str, methods: dict[str, str]) -> list[Call]:
     blocked = None
     builtins = {"account", "balance", "storageEmpty", "isoltest_builtin_test", "isoltest_side_effects_test"}
     while parser.current.kind != "end":
+        if parser.current.kind == "newline":
+            parser.take()
+            continue
         start = parser.current.start
         token_start = parser.position
         if parser.current.text == "gas":
@@ -202,9 +205,13 @@ def parse_block(source: str, methods: dict[str, str]) -> list[Call]:
             if value >= 1 << 256:
                 raise UnsupportedExpectation("call value exceeds 256 bits")
         arguments = parser.parameters(required=True) if parser.accept(":") else []
+        parser.newline()
         parser.comment()
+        parser.newline()
         expected = parser.parameters() if parser.accept("->") else []
+        parser.newline()
         parser.comment()
+        parser.newline()
         original = " ".join(line.strip() for line in source[start:parser.end].splitlines() if line.strip())
         call = Call(len(calls), original, sender=str(sender), value=value, deploy=signature == "constructor()")
         if call.deploy and calls:

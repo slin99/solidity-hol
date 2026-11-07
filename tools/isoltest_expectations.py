@@ -39,6 +39,8 @@ def scan_string(source: str, start: int) -> tuple[int, bytes]:
             if source[i] != '"':
                 if source[i] in "\r\n":
                     raise UnsupportedExpectation("multiline string literals are not supported")
+                if not source[i].isascii():
+                    raise UnsupportedExpectation("non-ASCII hex-escape continuations are not supported")
                 value = value * 16 + (int(source[i], 16) if source[i] in "0123456789abcdefABCDEF" else 0)
                 i += 1
             result.append(value)
@@ -72,10 +74,12 @@ def tokenize(source: str, *, comments: bool = True) -> list[Token]:
     while i < len(source):
         start = i
         c = source[i]
-        if c in " \t\r\n\v\f":
+        if c in " \t\r\v\f":
             i += 1
             continue
-        if c == "#" and comments:
+        if c == "\n":
+            i, kind = i + 1, "newline"
+        elif c == "#" and comments:
             end = source.find("#", i + 1)
             if end == -1:
                 raise UnsupportedExpectation("unterminated expectation comment")
@@ -185,13 +189,19 @@ class Parser:
             raise UnsupportedExpectation("raw call signatures cannot have parameter types")
         return name + "(" + ",".join(parts) + ")"
 
-    def parameter(self) -> str | None:
+    def newline(self) -> None:
+        if self.current.kind == "newline":
+            self.take()
+
+    def parameter(self, *, newline: bool = True) -> str | None:
+        if newline:
+            self.newline()
         if self.current.text in ("left", "right"):
             side = self.take().text
             self.expect("(")
             if self.current.kind not in ("number", "hex") and self.current.text not in ("true", "false"):
                 raise UnsupportedExpectation("only unsigned literal alignment is supported")
-            value = self.parameter()
+            value = self.parameter(newline=False)
             self.expect(")")
             return f"{side}({value})"
         if self.accept("-"):

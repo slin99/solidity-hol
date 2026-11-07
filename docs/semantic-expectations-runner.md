@@ -51,7 +51,7 @@ boolean tokens occupy one word, quoted strings pad on the right, `hex"..."`
 contributes unpadded bytes, and `left(...)`/`right(...)` specify alignment.
 The tokenizer and structural parser follow the pinned isoltest grammar for
 signatures, comma-separated parameters, paired comments and string escapes.
-Comments may span lines; call signatures ignore whitespace. Calls may omit
+Comments may span lines; call signatures ignore spaces and tabs. Calls may omit
 arrows and may follow another call on the same physical line.
 `FAILURE` expects a revert with the following exact bytes. Constructor
 expectations compare success/failure only, as isoltest discards creation output.
