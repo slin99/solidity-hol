@@ -58,8 +58,8 @@ An inline assembly block (`AssemblyStmt`) runs on the Yul evaluator, over a
 memory holding only the free memory pointer: it reads and writes back the
 value-type locals it names, reads state variables' slots and offsets and
 integer and `bool` constants as literals in its code, as the compiler puts them
-(constants of address or fixed-bytes type aren't elaborated yet, in assembly
-or elsewhere), so
+(address and fixed-bytes constants initialized by a literal aren't elaborated
+yet, in assembly or elsewhere), so
 its Yul functions see them too (a function's parameters and results may
 reuse such a name in its body), may write
 only the scratch space unless it halts, may read only memory it wrote itself

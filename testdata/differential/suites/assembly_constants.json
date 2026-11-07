@@ -55,6 +55,30 @@
       "final_storage": {
         "1": 7
       }
+    },
+    {
+      "name": "library_constant",
+      "function": "fromLibrary",
+      "args": [
+        3
+      ],
+      "expect": {
+        "return": [
+          33
+        ]
+      }
+    },
+    {
+      "name": "library_constant_wraps",
+      "function": "fromLibrary",
+      "args": [
+        57896044618658097711785492504343953926634992332820282019728792003956564819968
+      ],
+      "expect": {
+        "return": [
+          57896044618658097711785492504343953926634992332820282019728792003956564819968
+        ]
+      }
     }
   ]
 }
