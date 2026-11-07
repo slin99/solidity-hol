@@ -28,6 +28,10 @@
  * carries the table the frame's caller supplies, keyed by that name, and a
  * name it does not carry is an invalid outcome.
  *
+ * Creation frames also carry their code image, named object extents and
+ * immutable patch offsets. Constructor arguments follow the initcode in the
+ * code image; they are not calldata.
+ *
  * The transaction and block the frame runs in are Verifereum's transaction
  * parameters, read by origin(), gasprice(), chainid(), number(),
  * timestamp(), coinbase(), basefee() and gaslimit().
@@ -71,6 +75,9 @@ Datatype:
     call_data : byte list;
     return_data : byte list;
     immutables : string |-> bytes32;
+    code : byte list;
+    objects : string |-> num # num;
+    immutable_offsets : string |-> num list;
     memory : num |-> word8;
     memory_size : num;
     gas_limit : num;

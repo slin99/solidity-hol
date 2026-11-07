@@ -84,6 +84,7 @@ Definition yul_conv_machine_def:
   yul_conv_machine =
     <| accounts := empty_accounts; logs := []; self_address := 0w;
        caller_address := 0w; call_value := 0w; call_data := []; return_data := [];
+       code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
        memory_size := 0; gas_limit := 0; scopes := [];
        transaction_parameters := yul_conv_tx_params |>

@@ -34,6 +34,18 @@ Ancestors
 Libs
   cv_transLib wordsLib intLib
 
+(* Each stage's actual object layout, alongside its creation code. *)
+Datatype:
+  yul_creation_program = <|
+    creation_body : yul_stmt list;
+    creation_name : string;
+    deployed_name : string;
+    creation_bytes : byte list;
+    deployed_bytes : byte list;
+    creation_refs : (num # num list) list
+  |>
+End
+
 (* The frame the corpus's cases run in: the contract account at
  * contract_address holding the case's initial storage, its deployed bytecode
  * and the case's value, the case's sender funded for it, the peer contract the
@@ -74,6 +86,8 @@ Definition yul_differential_machine_def:
        call_value := n2w c.case_value;
        call_data := data;
        return_data := [];
+       code := patch_immutables c.case_immutable_refs imm code;
+       objects := FEMPTY; immutable_offsets := FEMPTY;
        (* the compiler's Yul names an immutable by its declaration's id *)
        immutables :=
          FEMPTY |++ MAP (λ(x, _). (toString x, 0w : bytes32)) c.case_immutable_refs
@@ -104,6 +118,57 @@ Definition yul_frame_observation_def:
     | YulFrameResourceLimit => (Diagnostic OutOfFuel, NONE, [])
 End
 
+(* The creation frame has empty calldata; arguments follow its initcode. *)
+Definition yul_creation_machine_def:
+  yul_creation_machine p c data =
+    (yul_differential_machine [] ([] : (num # scalar # byte list) list) c []) with
+      <| accounts := transfer_value c.case_sender (case_address c) c.case_value
+           (case_accounts [] c.case_storage c.case_sender
+              c.case_peer_code c.case_peer_storage);
+         self_address := case_address c;
+         code := p.creation_bytes ++ data;
+         objects := FEMPTY |+ (p.creation_name, (0, LENGTH p.creation_bytes))
+           |+ (p.deployed_name,
+                (LENGTH p.creation_bytes - LENGTH p.deployed_bytes,
+                 LENGTH p.deployed_bytes));
+         immutables := FEMPTY;
+         immutable_offsets := FEMPTY |++
+           MAP (λ(x, offsets). (toString x, offsets)) p.creation_refs;
+         transaction_parameters := initial_tx_params differential_chain_id []
+           differential_block (case_tx c data) 0 |>
+End
+
+(* Compare the bytes actually returned, including immutable patches. *)
+Definition yul_created_code_def:
+  yul_created_code p imm =
+    FOLDL (λcode (x, offsets).
+      FOLDL (patch_word (word_to_bytes_be
+        (case FLOOKUP imm (toString x) of NONE => (0w : bytes32) | SOME w => w)))
+        code offsets) p.deployed_bytes p.creation_refs
+End
+
+Definition yul_creation_execution_def:
+  yul_creation_execution p c data fuel =
+    if LENGTH p.deployed_bytes > LENGTH p.creation_bytes ∨
+       DROP (LENGTH p.creation_bytes - LENGTH p.deployed_bytes)
+         p.creation_bytes ≠ p.deployed_bytes then
+      (Diagnostic InvalidCompletion, NONE, [])
+    else
+      let m = yul_creation_machine p c data in
+      let r = run_yul fuel p.creation_body m in
+      case finish_yul_frame m r.machine r.completion of
+        YulFrameSuccess out w =>
+          if out = yul_created_code p r.machine.immutables then
+            (Returned (code_immutable_words p.creation_refs out),
+             SOME (lookup_account (case_address c) w.accounts).storage, w.logs)
+          else (Diagnostic InvalidCompletion, NONE, [])
+      | YulFrameRevert out w =>
+          (Reverted out,
+           SOME (lookup_account (case_address c) w.accounts).storage, w.logs)
+      | YulFrameInvalid _ => (Diagnostic InvalidCompletion, NONE, [])
+      | YulFrameResourceLimit => (Diagnostic OutOfFuel, NONE, [])
+End
+
 (* A case's call: the same calldata the bytecode run is given, so an
  * unencodable argument or an unknown function is the same diagnostic on both
  * sides.
@@ -114,9 +179,15 @@ Definition yul_case_execution_def:
       (INL d, _) => (Diagnostic d, NONE, [])
     | (_, NONE) => (Diagnostic UnencodableArguments, NONE, [])
     | (INR (data, _), SOME imm) =>
-        let m = yul_differential_machine evm_code imm c data in
-        let r = run_yul fuel ycode m in
-        yul_frame_observation (finish_yul_frame m r.machine r.completion)
+        (case c.case_input of
+           Deploy _ _ =>
+             (case SND ycode of
+                NONE => (Diagnostic InvalidCompletion, NONE, [])
+              | SOME p => yul_creation_execution p c data fuel)
+         | _ =>
+             let m = yul_differential_machine evm_code imm c data in
+             let r = run_yul fuel (FST ycode) m in
+             yul_frame_observation (finish_yul_frame m r.machine r.completion))
 End
 
 Definition yul_observation_def:
@@ -217,6 +288,9 @@ QED
 
 val () = cv_auto_trans yul_differential_machine_def;
 val () = cv_auto_trans yul_frame_observation_def;
+val () = cv_auto_trans yul_creation_machine_def;
+val () = cv_auto_trans yul_created_code_def;
+val () = cv_auto_trans yul_creation_execution_def;
 val () = cv_auto_trans yul_case_execution_def;
 val () = cv_auto_trans yul_observation_def;
 val () = cv_auto_trans yul_case_verdict_def;

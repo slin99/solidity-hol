@@ -267,8 +267,8 @@ QED
 
 (* The object-level builtins read the running code or the object's layout,
  * or, setimmutable, write the deployed code's immutables into its copy in
- * memory, or, linkersymbol, read a linked library's address; the evaluator
- * does not model these, and it rejects them.
+ * memory, or, linkersymbol, read a linked library's address. Creation frames
+ * supply the code and layout; linkersymbol remains unsupported.
  *)
 Theorem builtin_effect_object:
   ∀b. builtin_effect b = EffectObject ⇔

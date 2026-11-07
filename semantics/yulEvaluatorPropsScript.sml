@@ -76,15 +76,15 @@ QED
 
 Theorem yul_fuel_expr_builtin[local]:
   !n fns op args m.
-    (!k. yul_running (eval_yul_args n fns args m) /\ n <= k ==>
-         eval_yul_args k fns args m = eval_yul_args n fns args m) ==>
+    (!k. yul_running (eval_yul_args n fns (yul_builtin_value_args op args) m) /\ n <= k ==>
+         eval_yul_args k fns (yul_builtin_value_args op args) m = eval_yul_args n fns (yul_builtin_value_args op args) m) ==>
     !k. yul_running (eval_yul_expr n fns (YulBuiltin op args) m) /\ n <= k ==>
         eval_yul_expr k fns (YulBuiltin op args) m =
         eval_yul_expr n fns (YulBuiltin op args) m
 Proof
   rpt gen_tac >> strip_tac >> gen_tac >>
   once_rewrite_tac[eval_yul_block_def] >>
-  Cases_on `eval_yul_args n fns args m` >> simp[yul_running_def] >>
+  Cases_on `eval_yul_args n fns (yul_builtin_value_args op args) m` >> simp[yul_running_def] >>
   strip_tac >> first_x_assum (qspec_then `k` mp_tac) >>
   simp[yul_running_def] >> disch_then SUBST1_TAC >> simp[]
 QED

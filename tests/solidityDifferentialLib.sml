@@ -593,24 +593,47 @@ fun yul_stages yul_root suite =
  *)
 val yul_fuel = 1000000;
 
-fun yul_code_constant name path source contract stage =
+fun yul_code_constant name path source contract stage unit deploy =
   let
-    val def = define name
-                (yulImportLib.import_runtime_artifact path source contract stage)
+    val artifact = JSONParser.parseFile path
+    val () = if string_field artifact "format" = "solidity-hol-solc-artifact-v1"
+             then () else fail "unsupported Yul artifact format"
+    val output = field artifact "output"
+    val runtime_def = define (name ^ "_runtime")
+                (yulImportLib.import_runtime output source contract stage)
+    val () = cv_auto_trans runtime_def
+    val runtime = lhs (concl runtime_def)
+    val creation =
+      if not deploy then optionSyntax.mk_none “:yul_creation_program”
+      else
+        let
+          val (obj_name, deployed_name, body) =
+            yulImportLib.import_creation output source contract stage
+          val initcode = code_constant (name ^ "_initcode") "bytecode"
+                           artifact source contract
+          val deployed = code_constant (name ^ "_deployed") "deployedBytecode"
+                           artifact source contract
+          val refs = #refs (unit_immutables unit artifact source contract)
+          val program =
+            “<| creation_body := ^body;
+                creation_name := ^(stringSyntax.fromMLstring obj_name);
+                deployed_name := ^(stringSyntax.fromMLstring deployed_name);
+                creation_bytes := ^initcode; deployed_bytes := ^deployed;
+                creation_refs := ^refs |>”
+        in optionSyntax.mk_some program end
+    val def = define name (pairSyntax.mk_pair (runtime, creation))
     val () = cv_auto_trans def
-  in
-    lhs (concl def)
-  end
+  in lhs (concl def) end
 
 (* Importing is where a stage is admitted, so admission is reported on its own
  * line: an unknown node kind, builtin or object form leaves the stage not
  * admitted, and its cases are not run at that stage. The report counts these
  * separately from agreements.
  *)
-fun yul_stage_code prefix suite source contract (tag, json_tag, path, stage) =
+fun yul_stage_code prefix suite source contract unit deploy (tag, json_tag, path, stage) =
   SOME (tag, json_tag,
         yul_code_constant (prefix ^ "_" ^ tag ^ "_code") path source contract
-          stage)
+          stage unit deploy)
   handle yulImportLib.ImportError msg =>
            (emit_yul [("kind", json_string "stage"), ("suite", json_string suite),
                       ("stage", json_string json_tag),
@@ -743,7 +766,7 @@ fun run_yul_stage env (stage_tag, json_tag, ycode) =
 
 fun run_case_three_way suite_name env c =
   let
-    val input = call_input (fn () => fail "Yul deployment is unsupported") c
+    val input = call_input (#initcode env) c
     val case_env =
       {suite = suite_name, case_name = name_field c "name",
        case_tm = case_term (#peer env) (#immutables env) input c, input = input,
@@ -775,12 +798,22 @@ fun run_suite_three_way root yul_root s =
     val code = code_constant (prefix ^ "_code") "deployedBytecode"
                  (#artifact checked) source contract
     val peer = peer_code root prefix s
-    val stages = List.mapPartial (yul_stage_code prefix suite source contract)
-                   (yul_stages yul_root suite)
+    val deploy = List.exists (fn c =>
+      case JSONUtil.findField c "deploy" of SOME (JSON.BOOL true) => true
+                                           | _ => false) cases
+    val stages = List.mapPartial
+      (yul_stage_code prefix suite source contract (#unit (#prepared checked)) deploy)
+      (yul_stages yul_root suite)
+    val initcode_tm = ref (NONE : term option)
+    fun initcode () =
+      case !initcode_tm of SOME tm => tm | NONE =>
+        let val tm = code_constant (prefix ^ "_initcode") "bytecode"
+                       (#artifact checked) source contract
+        in initcode_tm := SOME tm; tm end
     val immutables = unit_immutables (#unit (#prepared checked))
                        (#artifact checked) source contract
     val env = {unit = unit, code = code, peer = peer, immutables = immutables,
-               program = program, stages = stages}
+               program = program, stages = stages, initcode = initcode}
   in
     emit_yul [("kind", json_string "suite"), ("suite", json_string suite),
               ("status", json_string "ok"),

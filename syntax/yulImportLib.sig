@@ -21,6 +21,10 @@ sig
    *)
   val import_runtime : JSON.value -> string -> string -> stage -> term
 
+  (* Root name, runtime subobject name, and creation code. *)
+  val import_creation : JSON.value -> string -> string -> stage ->
+                        string * string * term
+
   (* A YulBlock as a yul_stmt list term: an inline assembly block's AST, or
    * an object's code block. Function definitions are read at its top level
    * only.

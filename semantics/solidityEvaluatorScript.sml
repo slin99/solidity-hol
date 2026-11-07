@@ -821,6 +821,7 @@ Definition assembly_machine_def:
          caller_address := st.frame.sender_address;
          call_value := n2w st.frame.call_value;
          call_data := st.frame.call_data; return_data := [];
+         code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
          immutables := FEMPTY; memory := FEMPTY; memory_size := 0;
          gas_limit := 0; scopes := [scope];
          transaction_parameters := st.frame.tx_params |>
