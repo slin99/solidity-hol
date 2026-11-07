@@ -85,6 +85,11 @@ fun run_case {suite, code, initcode, peer, immutables, unit, program, fuel, byte
             val cached_input = rand (lhs (concl cached))
             val prepared = “prepared_evm_input ^code ^unit ^case_tm”
             val bridge_result = cv_eval “^prepared = INR ^cached_input”
+          in
+            if not (rhs (concl bridge_result) ~~ T) andalso
+               sumSyntax.is_inl (rhs (concl (cv_eval prepared))) then
+              cv_eval verdict_tm
+            else let
             val () = if rhs (concl bridge_result) ~~ T then () else
               let
                 val checks =
@@ -105,6 +110,7 @@ fun run_case {suite, code, initcode, peer, immutables, unit, program, fuel, byte
               fail "cached bytecode result was not substituted completely"
           in
             (PURE_REWRITE_CONV [differential_verdict_def, evm] THENC cv_eval) verdict_tm
+            end
           end
     val result = rhs (concl verdict)
     val base = [("kind", json_string "case"), ("suite", json_string suite),

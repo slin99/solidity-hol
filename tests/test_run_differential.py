@@ -347,6 +347,17 @@ class DriverTests(unittest.TestCase):
             self.assertIn({"theorem": "a_f_returns", "suite": "a", "case": "f_returns",
                            "status": "proved", "outcome": RETURNED}, report["kernel_checked"])
 
+    def test_missing_artifact_is_reported_without_a_traceback(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            (fake.root / ARTIFACT).unlink()
+            status, report = fake.run(fake.holbuild([], 1))
+        self.assertEqual(status, 1)
+        self.assertIn("artifact-readable", [failure.get("check")
+                                           for failure in report["failures"]])
+        self.assertIn("corpus-staged", [failure.get("check")
+                                       for failure in report["failures"]])
+
     def test_altered_expectation_fails_with_reproduction(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fake = FakeRoot(Path(temporary))
@@ -470,7 +481,8 @@ class DriverTests(unittest.TestCase):
                     {"kind": "case", "suite": "a", "case": case, "status": "error"}))
                 logs.append(str(fake.root / path))
             fake.write("holbuild", f"#!{sys.executable}\nimport sys\n" +
-                       "\n".join(f"print({'child log: ' + log!r})" for log in logs) +
+                       "\n".join(f"print({prefix + log!r})" for prefix, log in
+                                 zip(("child log: ", "instrumented log: "), logs)) +
                        "\nsys.exit(1)\n")
             command = fake.root / "holbuild"
             command.chmod(0o755)

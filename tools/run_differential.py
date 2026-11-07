@@ -386,7 +386,10 @@ def unstaged_files(script: str, wanted: set[str]) -> list[str]:
 
 def check_staging(root: Path, corpus_path: Path, corpus: dict[str, Any]) -> dict[str, str]:
     """Each committed wrapper must run its suite and stage exactly its inputs."""
-    expected = theories.wrappers(root, corpus_path, corpus)
+    try:
+        expected = theories.wrappers(root, corpus_path, corpus)
+    except (OSError, KeyError, json.JSONDecodeError) as error:
+        return check("corpus-staged", theories.DIRECTORY.as_posix(), str(error))
     stale = [path.as_posix() for path, text in expected.items()
              if not (root / path).exists()
              or (root / path).read_text(encoding="utf-8") != text]
@@ -460,7 +463,7 @@ def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
     except OSError as error:
         return {"command": command, "status": None, "error": str(error), "ran": False, "results": []}
     output = "".join(lines)
-    logs = [Path(path.strip()) for path in re.findall(r"child log: (.*)", output)]
+    logs = [Path(path.strip()) for path in re.findall(r"(?:child|instrumented) log: (.*)", output)]
     runs = {}
     for target in (suite_targets or {theory: theory}):
         target_logs = [path for path in logs if target in path.parts]
