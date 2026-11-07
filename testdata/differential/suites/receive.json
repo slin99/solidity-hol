@@ -1,0 +1,33 @@
+{
+  "name": "receive",
+  "source": "testdata/differential/receive.sol",
+  "contract": "ReceiveOnly",
+  "artifact": "testdata/differential/expected/receive.json",
+  "cases": [
+    {
+      "name": "empty_calldata_runs_receive",
+      "calldata": "0x",
+      "value": 4,
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 4
+      }
+    },
+    {
+      "name": "short_calldata_reverts",
+      "calldata": "0x01",
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "selector_reverts",
+      "calldata": "0xdeadbeef",
+      "expect": {
+        "revert": "0x"
+      }
+    }
+  ]
+}

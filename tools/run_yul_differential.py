@@ -130,9 +130,13 @@ def check_staging(root: Path, written: list[str]) -> dict[str, str]:
         script = (root / CORPUS_SCRIPT).read_text(encoding="utf-8")
     except OSError as error:
         return core.check("yul-artifacts-staged", CORPUS_SCRIPT.as_posix(), str(error))
-    staged = core.staged_files(script)
     want = {f"../{core.CORPUS.as_posix()}"} | {f"../{path}" for path in written}
-    missing = sorted(want - staged)
+    corpus = core.load_corpus(root / core.CORPUS)
+    if "suite_directory" in corpus:
+        directory = core.CORPUS.parent / corpus["suite_directory"]
+        want |= {f"../{path.relative_to(root).as_posix()}"
+                 for path in (root / directory).glob("*.json")}
+    missing = core.unstaged_files(script, want)
     return core.check("yul-artifacts-staged", CORPUS_SCRIPT.as_posix(),
                       None if not missing else
                       f"holbuild_extra_deps does not list {', '.join(missing)}")
