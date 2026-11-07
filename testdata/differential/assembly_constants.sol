@@ -5,7 +5,18 @@ pragma solidity 0.8.37;
 // bool constants, folded and through another constant, read at the top
 // of a block and inside a Yul function, a function whose parameter and
 // result reuse a constant's name, and a Yul function reading x.slot and
-// x.offset.
+// x.offset, and a library function whose assembly reads the library's own
+// constant.
+library ScaleLib {
+    uint256 constant FACTOR = 11;
+
+    function scale(uint256 v) internal pure returns (uint256 r) {
+        assembly {
+            r := mul(v, FACTOR)
+        }
+    }
+}
+
 contract AssemblyConstants {
     uint16 x;
     uint16 y;
@@ -52,6 +63,10 @@ contract AssemblyConstants {
                 r := add(MINUS_ONE, SMALL)
             }
         }
+    }
+
+    function fromLibrary(uint256 v) public pure returns (uint256) {
+        return ScaleLib.scale(v);
     }
 
     // A Yul function writing through a slot and reading an offset.
