@@ -176,7 +176,7 @@ val edited_unit = edited_unit_with contracts
 (* Unknown forms, missing annotations and unsupported features fail import. *)
 
 val () = import_error "unknown statement"
-  (edit_first "Break" (set_field "nodeType" (JSON.STRING "TryStatement")) ast)
+  (edit_first "Break" (set_field "nodeType" (JSON.STRING "UnknownStatement")) ast)
 val () = import_error "unknown expression"
   (edit_first "Literal" (set_field "nodeType" (JSON.STRING "IndexRangeAccess")) ast)
 val () = malformed_input "missing type annotation"
