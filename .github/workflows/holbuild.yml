@@ -5,11 +5,12 @@ on:
   pull_request:
   merge_group:
   push:
-    branches: [main]
+    branches: [main, bot/opus/solidity-e2e]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Only PR runs share a group; branch runs never cancel each other.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read

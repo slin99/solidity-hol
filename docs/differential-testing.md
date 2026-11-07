@@ -81,6 +81,11 @@ The runner targets the suite theories directly. Their explicit fixture
 lists let holbuild schedule them independently and reuse unchanged bytecode
 results after a frontend change. `--allow-cached` accepts successful builds
 from identical inputs; the default forces both halves to execute again.
+Push builds on `main` and `bot/opus/solidity-e2e` save snapshots that their
+feature PRs can restore; PR-only snapshots are scoped to that PR and cannot
+warm sibling PRs. Branch runs have separate concurrency groups so a later
+merge cannot cancel a cache-warming run. Remove the integration-branch push
+trigger when that branch is merged into `main`.
 Cached suites need no old result log. A missing result from a suite that ran,
 or a failed dependency, fails the report.
 

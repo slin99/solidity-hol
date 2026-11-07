@@ -12,7 +12,7 @@ at the three stages the design separates (docs/roadmap.md, milestone 2):
 - ir-optimized, what the Yul transformations leave with the optimizer off;
 - optimized, the production build, the optimizer on with runs 200.
 
-It then builds yulDifferentialCorpusTheory, which imports those ASTs with
+It then builds one Yul corpus theory per suite, importing those ASTs with
 syntax/yulImportLib.sml, runs every case at every stage through the Yul
 semantics, and proves one yul_agrees theorem per case and stage, relating that
 run to the bytecode run and to the case's expectation (yulDifferentialTheory).
@@ -54,7 +54,6 @@ def display_path(path: Path) -> str:
     except (ValueError, RuntimeError):
         return path.as_posix()
 YUL_ROOT = Path("testdata/yul/generated")
-THEORY = "yulDifferentialCorpusTheory"
 RESULT_PREFIX = "yul-differential-result: "
 REPORT_FORMAT = "solidity-hol-yul-differential-report-v1"
 OPTIMIZED_PROFILE = ROOT / "profiles" / "solc-0.8.37-via-ir-osaka-optimized.json"
@@ -289,8 +288,8 @@ def summarise(report: dict[str, Any]) -> str:
         lines.append(f"| {item['suite']} | {item['stage']} | "
                      f"{'yes' if item['admitted'] else 'no'} | {item.get('status', '')} |")
     lines += ["", "## Kernel-checked witnesses", "",
-              "Theorems of yulDifferentialCorpusTheory, proved by the HOL kernel (with "
-              "cv_compute) when the theory was built. Each relates the Yul run to the "
+              "Theorems of the per-suite yulDifferentialCorpus_<suite> theories, proved by the HOL kernel (with "
+              "cv_compute) when each theory was built. Each relates the Yul run to the "
               "bytecode run and to the case's expectation, and says what the run left in",
               "storage and in the log.",
               "", "| theorem | outcome |", "| --- | --- |"]
@@ -346,7 +345,7 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
     hol = None
     if not args.no_hol:
         hol = core.run_hol(root, args.holbuild, args.jobs, True, args.build_args,
-                           theory=THEORY, prefix=RESULT_PREFIX,
+                           prefix=RESULT_PREFIX,
                            suite_targets={core.theories.theory_name(suite["name"], "yul") + "Theory":
                                           suite["name"] for suite in corpus["suites"]})
     report = build_report(core.CORPUS, corpus, args.solc, checks, hol)

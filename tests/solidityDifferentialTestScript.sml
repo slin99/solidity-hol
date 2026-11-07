@@ -1,6 +1,6 @@
 (* The comparison itself: deliberately altered expectations and a mismatching
  * fixture are detected, and diagnostics are never agreement. The corpus
- * witnesses are in solidityDifferentialCorpus.
+ * witnesses are in the per-suite solidityDifferentialCorpus theories.
  *)
 Theory solidityDifferentialTest
 Ancestors

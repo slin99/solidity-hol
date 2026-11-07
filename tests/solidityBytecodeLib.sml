@@ -509,14 +509,15 @@ fun run_bytecode_case {suite, artifact, code, initcode, peer, declarations, refs
   in
     emit [("kind", json_string "case"), ("suite", json_string suite),
           ("case", json_string name), ("side", json_string "bytecode"),
-          ("status", json_string "agree"), ("theorem", json_string prefix)]
+          ("status", json_string "agree"), ("theorem", json_string prefix)];
+    true
   end
   handle e =>
     (emit [("kind", json_string "case"), ("suite", json_string suite),
            ("case", json_string (string_field c "name")),
            ("side", json_string "bytecode"), ("status", json_string "error"),
            ("message", json_string (General.exnMessage e))];
-     raise e)
+     false)
 
 (* Prove complete bytecode observations without loading the Solidity frontend. *)
 fun run_suite_file {root, suite_file} =
@@ -536,10 +537,13 @@ fun run_suite_file {root, suite_file} =
     | NONE => let val code = code_constant (prefix ^ "_initcode") "bytecode" artifact source contract
               in init := SOME code; code end
     val (declarations, refs) = artifact_immutables artifact source contract
-  in
-    List.app (run_bytecode_case
+    val env =
       {suite = suite, artifact = target, code = code, initcode = initcode,
-       peer = peer, declarations = declarations, refs = refs}) (array_field s "cases")
+       peer = peer, declarations = declarations, refs = refs}
+    val ok = List.foldl (fn (c, ok) => run_bytecode_case env c andalso ok)
+               true (array_field s "cases")
+  in
+    if ok then () else fail (suite ^ ": bytecode suite failed")
   end
 
 end

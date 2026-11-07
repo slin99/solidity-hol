@@ -458,6 +458,29 @@ class DriverTests(unittest.TestCase):
         self.assertEqual(len(witnesses), 3)
         self.assertTrue(all(w["status"] == "proved (cached)" for w in witnesses))
 
+    def test_one_suite_keeps_its_own_log_when_a_dependency_also_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            target = "solidityDifferentialCorpus_aTheory"
+            logs = []
+            for theory, case in ((target, "source_failure"),
+                                 ("solidityBytecodeCorpus_aTheory", "bytecode_failure")):
+                path = f".holbuild/logs/current/solidity-hol/{theory}/build.log"
+                fake.write(path, driver.RESULT_PREFIX + json.dumps(
+                    {"kind": "case", "suite": "a", "case": case, "status": "error"}))
+                logs.append(str(fake.root / path))
+            fake.write("holbuild", f"#!{sys.executable}\nimport sys\n" +
+                       "\n".join(f"print({'child log: ' + log!r})" for log in logs) +
+                       "\nsys.exit(1)\n")
+            command = fake.root / "holbuild"
+            command.chmod(0o755)
+            with contextlib.redirect_stdout(io.StringIO()):
+                result = driver.run_hol(fake.root, str(command), 1, False, [],
+                                        suite_targets={target: "a"})
+        self.assertEqual(result["status"], 1)
+        self.assertEqual([row["case"] for row in result["results"]],
+                         ["source_failure", "bytecode_failure"])
+
     def test_build_failure_without_results_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fake = FakeRoot(Path(temporary))

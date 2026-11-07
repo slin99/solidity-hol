@@ -83,10 +83,26 @@ fun run_case {suite, code, initcode, peer, immutables, unit, program, fuel, byte
           let
             val cached = DB.fetch theory ("bytecode_" ^ theorem)
             val cached_input = rand (lhs (concl cached))
-            val bridge = EQT_ELIM (cv_eval
-              “prepared_evm_input ^code ^unit ^case_tm = INR ^cached_input”)
-            val evm = REWRITE_CONV [evm_execution_def, bridge, cached]
+            val prepared = “prepared_evm_input ^code ^unit ^case_tm”
+            val bridge_result = cv_eval “^prepared = INR ^cached_input”
+            val () = if rhs (concl bridge_result) ~~ T then () else
+              let
+                val checks =
+                  [("accounts", “case ^prepared of INL d => F | INR (a,t,r) => a = FST ^cached_input”),
+                   ("transaction", “case ^prepared of INL d => F | INR (a,t,r) => t = FST (SND ^cached_input)”),
+                   ("immutable references", “case ^prepared of INL d => F | INR (a,t,r) => r = SND (SND ^cached_input)”)]
+                val different = List.filter
+                  (fn (_, tm) => not (rhs (concl (cv_eval tm)) ~~ T)) checks
+              in
+                fail ("prepared EVM input differs from cached bytecode input: " ^
+                      String.concatWith ", " (map #1 different))
+              end
+            val bridge = EQT_ELIM bridge_result
+            val evm = (REWRITE_CONV [evm_execution_def, bridge, sumTheory.sum_case_def]
+                       THENC DEPTH_CONV BETA_CONV THENC REWRITE_CONV [cached])
               “evm_execution ^code ^unit ^case_tm”
+            val () = if rhs (concl evm) ~~ rhs (concl cached) then () else
+              fail "cached bytecode result was not substituted completely"
           in
             (PURE_REWRITE_CONV [differential_verdict_def, evm] THENC cv_eval) verdict_tm
           end

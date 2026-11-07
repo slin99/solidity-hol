@@ -86,14 +86,22 @@ class FakeRoot:
 
     def holbuild(self, results: list[dict], status: int) -> Path:
         """A holbuild that writes the given result lines to its child log."""
-        log = self.root / "build.log"
-        lines = "".join(driver.RESULT_PREFIX + json.dumps(r) + "\n" for r in results)
         path = self.root / "holbuild"
         path.write_text(textwrap.dedent(f"""\
             #!{sys.executable}
+            import json
+            from pathlib import Path
             import sys
-            open({str(log)!r}, "w").write({lines!r})
-            print("child log: {log}")
+            results = {results!r}
+            for target in sys.argv[1:]:
+                if not target.startswith('yulDifferentialCorpus_'):
+                    continue
+                suite = target.removeprefix('yulDifferentialCorpus_').removesuffix('Theory')
+                log = Path('.holbuild/logs/current/solidity-hol') / target / 'build.log'
+                log.parent.mkdir(parents=True, exist_ok=True)
+                log.write_text(''.join({driver.RESULT_PREFIX!r} + json.dumps(r) + '\\n'
+                                      for r in results if r.get('suite') == suite))
+                print('child log: ' + str(log.resolve()))
             sys.exit({status})
             """), encoding="utf-8")
         path.chmod(0o755)

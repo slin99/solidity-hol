@@ -464,7 +464,7 @@ def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
     runs = {}
     for target in (suite_targets or {theory: theory}):
         target_logs = [path for path in logs if target in path.parts]
-        if len(suite_targets or {theory: theory}) == 1 and logs:
+        if suite_targets is None and logs:
             target_logs = logs
         log = target_logs[-1] if target_logs else (
             root / ".holbuild" / "logs" / "current" / "solidity-hol" / target / "build.log")
