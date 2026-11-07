@@ -1,0 +1,133 @@
+{
+  "name": "try_calls",
+  "source": "testdata/differential/try_calls.sol",
+  "contract": "TryCalls",
+  "artifact": "testdata/differential/expected/try_calls.json",
+  "peer": {
+    "source": "testdata/differential/try_receiver.sol",
+    "contract": "TryReceiver",
+    "artifact": "testdata/differential/expected/try_receiver.json"
+  },
+  "cases": [
+    {
+      "name": "success",
+      "function": "attempt",
+      "args": [
+        20480,
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x150b7a02",
+          1,
+          "0x"
+        ]
+      },
+      "final_storage": {
+        "0": 2
+      }
+    },
+    {
+      "name": "catch_revert_data_and_rollback_callee",
+      "function": "attempt",
+      "args": [
+        20480,
+        1
+      ],
+      "expect": {
+        "return": [
+          "0x00000000",
+          0,
+          "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000872656a6563746564000000000000000000000000000000000000000000000000"
+        ]
+      },
+      "final_storage": {
+        "0": 2
+      }
+    },
+    {
+      "name": "catch_empty_failure",
+      "function": "attempt",
+      "args": [
+        20480,
+        2
+      ],
+      "expect": {
+        "return": [
+          "0x00000000",
+          0,
+          "0x"
+        ]
+      },
+      "final_storage": {
+        "0": 2
+      }
+    },
+    {
+      "name": "decode_failure_is_not_caught",
+      "function": "attempt",
+      "args": [
+        20480,
+        3
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "success_body_failure_is_not_caught",
+      "function": "attempt",
+      "args": [
+        20480,
+        4
+      ],
+      "expect": {
+        "revert": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e77726f6e67207265636569766572000000000000000000000000000000000000"
+      }
+    },
+    {
+      "name": "argument_failure_is_not_caught",
+      "function": "attempt",
+      "args": [
+        20480,
+        9
+      ],
+      "expect": {
+        "panic": 18
+      }
+    },
+    {
+      "name": "no_return_success",
+      "function": "noReturns",
+      "args": [
+        20480
+      ],
+      "expect": {
+        "return": [
+          1
+        ]
+      }
+    },
+    {
+      "name": "no_code_precheck_is_not_caught",
+      "function": "noReturns",
+      "args": [
+        12345
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "no_code_decode_failure_is_not_caught",
+      "function": "attempt",
+      "args": [
+        12345,
+        0
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    }
+  ]
+}

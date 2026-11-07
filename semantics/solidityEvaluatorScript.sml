@@ -535,8 +535,8 @@ End
  * data the decoder rejects reverts with none. A successful call leaves the
  * world the callee left, with its logs after the caller's.
  *)
-Definition call_external_def:
-  call_external env x ty kind selector params rets target value args
+Definition call_external_mode_def:
+  call_external_mode catching env x ty kind selector params rets target value args
                 (st : source_state) gas =
     case (eval_atom st.scopes target, eval_atom st.scopes value,
           eval_atoms st.scopes args) of
@@ -558,7 +558,23 @@ Definition call_external_def:
                  abrupt_result (InvalidCompletion "call outside the model") st gas
              | SOME r =>
                if ¬r.call_success then
-                 abrupt_result (RevertCompletion r.call_return) st gas
+                 if ¬catching then abrupt_result (RevertCompletion r.call_return) st gas
+                 else
+                   (case all_some (MAP default_elementary rets) of
+                      NONE => abrupt_result (InvalidCompletion "bad try return types") st gas
+                    | SOME defaults =>
+                        let values = ScalarValue (BoolValue F) :: MAP ScalarValue defaults in
+                        if r.call_return = [] then
+                          normal_result (define_binding x ty
+                            (TupleValue (values ++ [ReferenceValue
+                              (MemoryReference (HeapId 0) 0 BytesT)])) st) gas
+                        else if 2 ** 64 ≤ 128 + st.memory_allocated +
+                                32 + 32 * ((LENGTH r.call_return + 31) DIV 32) then
+                          abrupt_result (PanicCompletion 65) st gas
+                        else
+                          let (data, st1) = allocate_bytes BytesT r.call_return st in
+                          normal_result (define_binding x ty
+                            (TupleValue (values ++ [data])) st1) gas)
                else
                  let st' = st with world :=
                        <| accounts := r.call_accounts;
@@ -574,10 +590,19 @@ Definition call_external_def:
                    INL rvs =>
                      (case materialize_arguments rets rvs st1 of
                         SOME (values, st2) =>
-                          normal_result (define_binding x ty (pack_results values) st2) gas
+                          let result = if catching then
+                                TupleValue (ScalarValue (BoolValue T) :: values ++
+                                  [ReferenceValue (MemoryReference (HeapId 0) 0 BytesT)])
+                              else pack_results values in
+                          normal_result (define_binding x ty result st2) gas
                       | NONE => abrupt_result (InvalidCompletion "bad call results") st' gas)
                  | INR c => abrupt_result c st' gas)
     | _ => abrupt_result (InvalidCompletion "bad call operands") st gas
+End
+
+Definition call_external_def:
+  call_external env x ty kind selector params rets target value args st gas =
+    call_external_mode F env x ty kind selector params rets target value args st gas
 End
 
 (* The selector an ABI encoding starts with: none, or four bytes. *)
@@ -679,6 +704,9 @@ Definition simple_stmt_def:
     | DefineStmt x ty (ExternalCallOperation kind selector params rets target
                          value args) =>
         call_external env x ty kind selector params rets target value args st gas
+    | DefineStmt x ty (TryExternalCallOperation kind selector params rets target
+                         value args) =>
+        call_external_mode T env x ty kind selector params rets target value args st gas
     | DefineStmt x ty op =>
         (case eval_operation env st op of
            ValueOk v => normal_result (define_binding x ty v st) gas

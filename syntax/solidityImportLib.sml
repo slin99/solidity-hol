@@ -901,6 +901,34 @@ fun stmt v = within v (fn v =>
          optional_expr v "condition", optional_stmt v "loopExpression",
          stmt (field v "body")]
   | "InlineAssembly" => inline_assembly v
+  | "TryStatement" =>
+      let
+        val call = field v "externalCall"
+        val () = require call
+          (node_type call = "FunctionCall" andalso
+           string_field call "kind" = "functionCall" andalso bool_field call "tryCall")
+          "try supports only external function calls"
+        val (ok, err) = case JSONUtil.arrayMap I (field v "clauses") of
+          [ok, err] => (ok, err)
+        | _ => fail (describe v ^ ": try requires one catch(bytes memory) clause")
+        val () = require v
+          (string_field ok "errorName" = "" andalso string_field err "errorName" = "")
+          "typed catch clauses are not supported"
+        val reason = case optional_field err "parameters" of
+          SOME ps => (case JSONUtil.arrayMap variable (field ps "parameters") of
+                        [p] => p
+                      | _ => fail (describe err ^ ": catch requires one bytes parameter"))
+        | NONE => fail (describe err ^ ": catch requires one bytes parameter")
+        val imported = external_call call (field call "expression")
+          (JSONUtil.arrayMap expr (field call "arguments"))
+        val parameters = case optional_field ok "parameters" of
+          SOME ps => #2 (parameter_list ps)
+        | NONE => listSyntax.mk_list ([], variable_ty)
+      in
+        con "SrcTryStatement"
+          [info v, imported, info ok, parameters,
+           stmt (field ok "block"), info err, reason, stmt (field err "block")]
+      end
   | "Break" => con "SrcBreak" [info v]
   | "Continue" => con "SrcContinue" [info v]
   | "Return" =>
