@@ -112,7 +112,9 @@ End
  * dynamic array of length n. ArrayIndexOperation a i: element i of the memory
  * or calldata array a. CopyToMemoryOperation a: a new memory copy of the
  * calldata array a. Keccak256Operation a: the Keccak-256 hash of the memory
- * byte sequence a, as bytes32.
+ * byte sequence a, as bytes32. EcrecoverOperation h v r s: ecrecover(h, v, r,
+ * s), the address the signature (v, r, s) of the bytes32 hash h recovers, or
+ * address(0) if it is invalid; v is a uint8 and r and s are bytes32.
  * AbiEncodeOperation selector types arguments: abi.encode(arguments) of the
  * arguments as those ABI types, after the four bytes of the selector if any,
  * as a new memory bytes. AbiEncodePackedOperation types arguments:
@@ -140,6 +142,7 @@ Datatype:
   | CopyToMemoryOperation core_atom
   | ArrayLengthOperation core_atom
   | Keccak256Operation core_atom
+  | EcrecoverOperation core_atom core_atom core_atom core_atom
   | AbiEncodeOperation (core_atom option) (sol_type list) (core_atom list)
   | AbiEncodePackedOperation (sol_type list) (core_atom list)
   | ArrayPushOperation core_atom (core_atom option)

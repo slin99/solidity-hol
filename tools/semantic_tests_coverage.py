@@ -261,6 +261,10 @@ ENVIRONMENT = {
 # require, assert and revert.
 REQUIRE, ASSERT, REVERT = -18, -3, -19
 KECCAK256 = -8
+ECRECOVER = -6
+# ecrecover's parameters, to which its arguments convert as a call's do.
+ECRECOVER_PARAMETERS = [{"typeDescriptions": {"typeIdentifier": t}}
+                        for t in ("t_bytes32", "t_uint8", "t_bytes32", "t_bytes32")]
 ABI = -1
 # The field holding the selector the compiler records on each kind of
 # declaration that has one.
@@ -1148,6 +1152,8 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
                 expected.append((name["expression"], parameters[0]))
                 parameters = parameters[1:]
             expected.extend(arguments(node, parameters))
+        if name.get("nodeType") == "Identifier" and name.get("referencedDeclaration") == ECRECOVER:
+            expected.extend(zip(node["arguments"], ECRECOVER_PARAMETERS))
         member = node["expression"]
         if (member.get("nodeType") == "MemberAccess" and member["memberName"] == "push"
                 and len(node["arguments"]) == 1):
@@ -1514,7 +1520,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                    for n in super_calls(f)}
     hash_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
                     and n["expression"]["nodeType"] == "Identifier"
-                    and n["expression"].get("referencedDeclaration") == KECCAK256}
+                    and n["expression"].get("referencedDeclaration") in {KECCAK256, ECRECOVER}}
     plain_callees = builtin_callees | super_bases | hash_callees
     unread, found = special_forms(reached, by_id)
     file_level = {m["id"] for ast in asts.values() for m in ast["nodes"]}

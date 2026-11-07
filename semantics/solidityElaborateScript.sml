@@ -346,6 +346,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcKeccak256 _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
+  (expr_assigns (SrcEcrecover _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcSuperCall _ _ args _ _) ⇔ exprs_assign args) ∧
   (expr_assigns _ ⇔ F) ∧
   (components_assign [] ⇔ F) ∧
@@ -945,6 +946,17 @@ Definition elab_expr_def:
                   let (es, r) = bind_value n2 ty op in
                   SOME ((ss ++ cs ++ es, r, ElabType ty), n2 + 1)
               | NONE => NONE)
+         | NONE => NONE)
+    | SrcEcrecover _ _ args _ =>
+        (case elab_arg_values ctx n args of
+           SOME ((ss, vs), n1) =>
+             (case coerce_values n1 [FixedBytesT 32; UintT 8; FixedBytesT 32;
+                                     FixedBytesT 32] vs of
+                SOME (cs, [h; v; r; s], n2) =>
+                  let ty = AddressT NonpayableAddress in
+                  let (es, a) = bind_value n2 ty (EcrecoverOperation h v r s) in
+                  SOME ((ss ++ cs ++ es, a, ElabType ty), n2 + 1)
+              | _ => NONE)
          | NONE => NONE)
     | SrcSelector _ bs _ =>
         (* bound, so that a later conversion converts a bytesN local *)
