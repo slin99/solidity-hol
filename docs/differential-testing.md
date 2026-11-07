@@ -10,7 +10,10 @@ contract's bases, interfaces and structs may be declared in any of them; the
 runner checks that each of those files is the one the artifact was compiled
 from.
 
-Add a feature's suite as a separate file; both runners discover it automatically.
+Add a feature's suite as a separate file, then generate and commit its two
+wrappers with `python3 tools/run_differential.py --write-theories --no-hol`.
+Both runners discover suites automatically; adding one does not change another
+suite's wrappers or cache keys.
 Shared report snapshots are refreshed after merges, as described in
 [generated-artifacts.md](generated-artifacts.md).
 
@@ -58,6 +61,38 @@ its `loadimmutable` reads; an immutable the case leaves out is zero. The HOL cor
 `differential_agrees` theorem per case. Diagnostic failures and exhausted fuel
 are inconclusive, never agreement.
 
+Each suite has two committed theories under `tests/corpus/`:
+
+- `solidityBytecodeCorpus_<suite>` encodes calls from the artifact's ABI and
+  method selectors, runs Verifereum, and proves the expected complete observation
+  for every case. It depends on the suite and compiler artifacts, not the source
+  frontend or evaluator.
+- `solidityDifferentialCorpus_<suite>` prepares the source and proves that its
+  calldata, initial accounts and transaction equal the bytecode theory's inputs.
+  It reuses those bytecode results and evaluates the source against the same
+  expectation, saving the original `differential_agrees` theorem per case.
+
+The input equality is kernel checked, so a difference between the artifact's
+ABI encoding and the elaborated source fails the suite. The shared datatypes,
+transaction setup and EVM observation functions live in `solidityBytecode`;
+`solidityDifferential` retains the source execution and combined verdict.
+
+The runner targets the suite theories directly. Their explicit fixture
+lists let holbuild schedule them independently and reuse unchanged bytecode
+results after a frontend change. `--allow-cached` accepts successful builds
+from identical inputs; the default forces both halves to execute again.
+Cached suites need no old result log. A missing result from a suite that ran,
+or a failed dependency, fails the report.
+
+`solidityDifferentialCorpus` remains a compatibility roll-up, refreshed with
+integration reports. It owns no case definitions: ML consumers enumerating
+`DB.definitions` must use the per-suite theory segments. A fresh checkout can
+build any committed suite directly, for example:
+
+```sh
+holbuild -j4 build solidityDifferentialCorpus_storageTheory
+```
+
 The artifact goes through `solidityPrepareLib.prepare_artifact`, which checks
 the pinned compiler/profile/settings contract, validates and elaborates the
 source, and checks the full core program. The evaluator executes that core;
@@ -81,8 +116,8 @@ selected-slot lists. The negative mapping regression demonstrates this case.
 Run the same checks as CI with:
 
 ```sh
-python3 tools/run_differential.py -j8 --allow-cached \
-  -- --skip-checkpoints --skip-proof-steps
+python3 tools/run_differential.py -j2 --allow-cached \
+  -- --max-heap 6000 --skip-checkpoints --skip-proof-steps
 holbuild -j8 build --skip-checkpoints --skip-proof-steps solidityHolTheory
 ```
 
@@ -128,8 +163,9 @@ high-level calls use; `docs/yul-call-design.md` says how.
 that uses one is rejected at import rather than run wrongly.
 
 The ASTs are tens of megabytes across the corpus, so the tool generates them
-with the pinned compiler instead of committing them, and the run is far longer
-than the rest of CI. It writes the report, which is committed:
+with the pinned compiler instead of committing them. It also generates one
+wrapper per suite under ignored `tests/yul-generated/`, with exact artifact
+dependencies. The runtime-only Yul run is separate from PR CI. It writes the report, which is committed:
 
 ```sh
 python3 tools/run_yul_differential.py --solc ~/.local/opt/solc-0.8.37/solc -j8

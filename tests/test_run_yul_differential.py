@@ -42,9 +42,13 @@ class FakeRoot:
     """A repository root with one suite, its artifacts, and a fake compiler."""
 
     def __init__(self, directory: Path, deployed: str = DEPLOYED,
-                 unstaged: str | None = None) -> None:
+                 ) -> None:
         self.root = directory
-        self.write(core.CORPUS.as_posix(), json.dumps(corpus()))
+        data = corpus()
+        suite = data.pop("suites")[0]
+        data["suite_directory"] = "suites"
+        self.write(core.CORPUS.as_posix(), json.dumps(data))
+        self.write("testdata/differential/suites/a.json", json.dumps(suite))
         self.write(SOURCE, "contract A {}\n")
         pin = (ROOT / "SOLIDITY_PIN").read_text(encoding="ascii").strip()
         self.write(CORPUS_ARTIFACT, json.dumps({
@@ -55,17 +59,6 @@ class FakeRoot:
                 "evm": {"deployedBytecode": {"object": DEPLOYED}}}}}},
         }))
         self.deployed = deployed
-        artifacts = [f"../{driver.YUL_ROOT.as_posix()}/{name}.{tag}.json"
-                     for name in ("a",) for tag, _ in driver.ARTIFACT_STAGES]
-        artifacts.append(f"../{core.CORPUS.as_posix()}")
-        if unstaged is not None:
-            artifacts.remove(unstaged)
-        self.write(driver.CORPUS_SCRIPT.as_posix(), "\n".join(
-            ["fun holbuild_extra_deps (_ : string list) = ()",
-             "val () = holbuild_extra_deps ["] +
-            [f'  "{path}"' + ("," if i < len(artifacts) - 1 else "")
-             for i, path in enumerate(artifacts)] + ["]"]))
-
     def write(self, name: str, text: str) -> None:
         path = self.root / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -238,13 +231,18 @@ class DriverTests(unittest.TestCase):
         self.assertEqual([f["check"] for f in failed], ["yul-artifact-is-the-same-program"])
 
     def test_a_generated_artifact_that_is_not_staged_fails(self) -> None:
-        missing = f"../{driver.YUL_ROOT.as_posix()}/a.optimized.json"
         with tempfile.TemporaryDirectory() as temporary:
-            status, report = FakeRoot(Path(temporary), unstaged=missing).run(all_agree())
-        self.assertEqual(status, 1)
-        failed = [f for f in report["failures"] if f["kind"] == "external-check"]
-        self.assertEqual([f["check"] for f in failed], ["yul-artifacts-staged"])
-        self.assertIn("a.optimized.json", failed[0]["detail"])
+            fake = FakeRoot(Path(temporary))
+            loaded = core.load_corpus(fake.root / core.CORPUS)
+            expected = core.theories.wrappers(fake.root, core.CORPUS, loaded, yul=True)
+            core.theories.write_wrappers(fake.root, expected)
+            path = next(iter(expected))
+            fake.write(path.as_posix(), expected[path].replace(
+                '../../testdata/yul/generated/a.optimized.json', 'missing.json'))
+            check = driver.check_staging(fake.root, [
+                "testdata/yul/generated/a.optimized.json"])
+            self.assertEqual(check["status"], "fail")
+            self.assertIn(path.name, check["detail"])
 
 
 class CommittedTests(unittest.TestCase):
@@ -266,11 +264,15 @@ class CommittedTests(unittest.TestCase):
         self.assertEqual(sorted(report["per_stage"]), sorted(driver.STAGES))
         self.assertIn("The HOL corpus was not run", summary)
 
-    def test_the_committed_corpus_theory_stages_every_artifact(self) -> None:
+    def test_generated_suite_theories_stage_every_artifact(self) -> None:
         loaded = core.load_corpus(ROOT / core.CORPUS)
         written = [f"{driver.YUL_ROOT.as_posix()}/{suite['name']}.{tag}.json"
                    for suite in loaded["suites"] for tag, _ in driver.ARTIFACT_STAGES]
-        self.assertEqual(driver.check_staging(ROOT, written)["status"], "pass")
+        expected = core.theories.wrappers(ROOT, core.CORPUS, loaded, yul=True)
+        missing = [path for path in written
+                   if all(core.unstaged_files(text, {"../../" + path})
+                          for text in expected.values())]
+        self.assertEqual(missing, [])
 
 
 if __name__ == "__main__":

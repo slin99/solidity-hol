@@ -4,7 +4,9 @@
  *)
 Theory solidityDifferentialTest
 Ancestors
-  solidityDifferential solidityDifferentialCorpus
+  solidityDifferential solidityBytecode
+  solidityDifferentialCorpus_pure_core solidityDifferentialCorpus_storage
+  solidityDifferentialCorpus_mappings solidityDifferentialCorpus_token
 Libs
   solidityImportLib cv_transLib wordsLib intLib
 

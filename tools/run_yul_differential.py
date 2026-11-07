@@ -53,7 +53,6 @@ def display_path(path: Path) -> str:
         return "~/" + path.resolve().relative_to(Path.home()).as_posix()
     except (ValueError, RuntimeError):
         return path.as_posix()
-CORPUS_SCRIPT = Path("tests/yulDifferentialCorpusScript.sml")
 YUL_ROOT = Path("testdata/yul/generated")
 THEORY = "yulDifferentialCorpusTheory"
 RESULT_PREFIX = "yul-differential-result: "
@@ -124,22 +123,18 @@ def generate_artifacts(root: Path, corpus: dict[str, Any], solc: Path,
 
 
 def check_staging(root: Path, written: list[str]) -> dict[str, str]:
-    """The corpus theory stages every artifact it reads, so holbuild rebuilds it
-    when the compiler, the profile or the corpus changes."""
-    try:
-        script = (root / CORPUS_SCRIPT).read_text(encoding="utf-8")
-    except OSError as error:
-        return core.check("yul-artifacts-staged", CORPUS_SCRIPT.as_posix(), str(error))
-    want = {f"../{core.CORPUS.as_posix()}"} | {f"../{path}" for path in written}
+    """Every generated suite wrapper stages its own compiler inputs."""
     corpus = core.load_corpus(root / core.CORPUS)
-    if "suite_directory" in corpus:
-        directory = core.CORPUS.parent / corpus["suite_directory"]
-        want |= {f"../{path.relative_to(root).as_posix()}"
-                 for path in (root / directory).glob("*.json")}
-    missing = core.unstaged_files(script, want)
-    return core.check("yul-artifacts-staged", CORPUS_SCRIPT.as_posix(),
-                      None if not missing else
-                      f"holbuild_extra_deps does not list {', '.join(missing)}")
+    expected = core.theories.wrappers(root, core.CORPUS, corpus, yul=True)
+    missing = []
+    for path, text in expected.items():
+        if not (root / path).exists() or (root / path).read_text(encoding="utf-8") != text:
+            missing.append(path.as_posix())
+    missing += [path for path in written
+                if all(core.unstaged_files(text, {"../../" + path})
+                       for text in expected.values())]
+    return core.check("yul-artifacts-staged", core.theories.YUL_DIRECTORY.as_posix(),
+                      "missing or stale Yul wrappers: " + ", ".join(missing) if missing else None)
 
 
 def build_report(corpus_path: Path, corpus: dict[str, Any], solc: Path,
@@ -346,11 +341,14 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
         print(f"invalid corpus: {error}", file=sys.stderr)
         return 1
     checks, written = generate_artifacts(root, corpus, args.solc)
+    core.theories.write_wrappers(root, core.theories.wrappers(root, core.CORPUS, corpus, yul=True))
     checks.append(check_staging(root, written))
     hol = None
     if not args.no_hol:
         hol = core.run_hol(root, args.holbuild, args.jobs, True, args.build_args,
-                           theory=THEORY, prefix=RESULT_PREFIX)
+                           theory=THEORY, prefix=RESULT_PREFIX,
+                           suite_targets={core.theories.theory_name(suite["name"], "yul") + "Theory":
+                                          suite["name"] for suite in corpus["suites"]})
     report = build_report(core.CORPUS, corpus, args.solc, checks, hol)
     report_dir = args.report_dir.resolve()
     exporter.write_json_atomic(report_dir / "yul-differential.json", report)

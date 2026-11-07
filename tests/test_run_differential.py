@@ -45,7 +45,7 @@ class FakeRoot:
         (directory / "profiles").mkdir()
         profile = driver.exporter.DEFAULT_PROFILE
         shutil.copyfile(profile, directory / "profiles" / profile.name)
-        self.write(driver.CORPUS.as_posix(), json.dumps(corpus()))
+        self.write_corpus(corpus())
         self.write(SOURCE, source)
         pin = (ROOT / "SOLIDITY_PIN").read_text(encoding="ascii").strip()
         self.write(ARTIFACT, json.dumps({
@@ -59,13 +59,19 @@ class FakeRoot:
             },
             "output": {"contracts": {SOURCE: {"A": {"evm": {"deployedBytecode": {"object": "00"}}}}}},
         }))
-        self.write(driver.CORPUS_SCRIPT.as_posix(), textwrap.dedent(f"""\
-            fun holbuild_extra_deps (_ : string list) = ()
-            val () = holbuild_extra_deps [
-              "../{driver.CORPUS.as_posix()}",
-              "../{ARTIFACT}"
-            ]
-            """))
+        self.wrappers()
+
+    def write_corpus(self, data: dict) -> None:
+        manifest = {key: value for key, value in data.items() if key != "suites"}
+        manifest["suite_directory"] = "suites"
+        self.write(driver.CORPUS.as_posix(), json.dumps(manifest))
+        for suite in data["suites"]:
+            self.write(f"testdata/differential/suites/{suite['name']}.json", json.dumps(suite))
+
+    def wrappers(self) -> None:
+        data = driver.load_corpus(self.root / driver.CORPUS)
+        driver.theories.write_wrappers(
+            self.root, driver.theories.wrappers(self.root, driver.CORPUS, data))
 
     def write(self, name: str, text: str) -> None:
         path = self.root / name
@@ -74,14 +80,22 @@ class FakeRoot:
 
     def holbuild(self, results: list[dict], status: int) -> Path:
         """A holbuild that writes the given result lines to its child log."""
-        log = self.root / "build.log"
-        lines = "".join(driver.RESULT_PREFIX + json.dumps(r) + "\n" for r in results)
         path = self.root / "holbuild"
         path.write_text(textwrap.dedent(f"""\
             #!{sys.executable}
+            import json
+            from pathlib import Path
             import sys
-            open({str(log)!r}, "w").write({lines!r})
-            print("child log: {log}")
+            results = {results!r}
+            for target in sys.argv[1:]:
+                if not target.startswith('solidityDifferentialCorpus_'):
+                    continue
+                suite = target.removeprefix('solidityDifferentialCorpus_').removesuffix('Theory')
+                log = Path('.holbuild/logs/current/solidity-hol') / target / 'build.log'
+                log.parent.mkdir(parents=True, exist_ok=True)
+                log.write_text(''.join({driver.RESULT_PREFIX!r} + json.dumps(r) + '\\n'
+                                      for r in results if r.get('suite') == suite))
+                print('child log: ' + str(log.resolve()))
             sys.exit({status})
             """), encoding="utf-8")
         path.chmod(0o755)
@@ -108,6 +122,7 @@ class CorpusTests(unittest.TestCase):
             suite = data.pop("suites")[0]
             data["suite_directory"] = "suites"
             fake.write(driver.CORPUS.as_posix(), json.dumps(data))
+            (fake.root / "testdata/differential/suites/a.json").unlink()
             fake.write("testdata/differential/suites/z.json", json.dumps(suite))
             fake.write(driver.CORPUS_SCRIPT.as_posix(), '''
                 fun holbuild_extra_deps (_ : string list) = ()
@@ -119,6 +134,7 @@ class CorpusTests(unittest.TestCase):
             fake.write("testdata/differential/suites/a.json", json.dumps(other))
             loaded = driver.load_corpus(fake.root / driver.CORPUS)
             self.assertEqual([s["name"] for s in loaded["suites"]], ["another", "a"])
+            fake.wrappers()
             self.assertEqual(driver.check_staging(fake.root, driver.CORPUS, loaded)["status"],
                              "pass")
             fake.write("testdata/differential/suites/duplicate.json", json.dumps(other))
@@ -135,9 +151,10 @@ class CorpusTests(unittest.TestCase):
             path = "testdata/differential/suites/a.json"
             fake.write(path, json.dumps(suite))
             loaded = driver.load_corpus(fake.root / driver.CORPUS)
+            (fake.root / "tests/corpus/solidityBytecodeCorpus_aScript.sml").unlink()
             check = driver.check_staging(fake.root, driver.CORPUS, loaded)
             self.assertEqual(check["status"], "fail")
-            self.assertIn(path, check["detail"])
+            self.assertIn("solidityBytecodeCorpus_aScript.sml", check["detail"])
             fake.write(path, "{")
             with self.assertRaises(driver.CorpusError):
                 driver.load_corpus(fake.root / driver.CORPUS)
@@ -255,9 +272,14 @@ class CorpusTests(unittest.TestCase):
             data = corpus()
             data["suites"][0]["peer"] = {"source": SOURCE, "contract": "A",
                                          "artifact": "testdata/peer.json"}
-            check = driver.check_staging(fake.root, driver.CORPUS, data)
+            fake.write("testdata/peer.json", (fake.root / ARTIFACT).read_text())
+            fake.write_corpus(data)
+            loaded = driver.load_corpus(fake.root / driver.CORPUS)
+            check = driver.check_staging(fake.root, driver.CORPUS, loaded)
             self.assertEqual(check["status"], "fail")
-            self.assertIn("../testdata/peer.json", check["detail"])
+            fake.wrappers()
+            text = (fake.root / "tests/corpus/solidityBytecodeCorpus_aScript.sml").read_text()
+            self.assertEqual(driver.unstaged_files(text, {"../../testdata/peer.json"}), [])
 
     def test_detects_stale_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -280,8 +302,9 @@ class CorpusTests(unittest.TestCase):
     def test_detects_unstaged_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fake = FakeRoot(Path(temporary))
-            fake.write(driver.CORPUS_SCRIPT.as_posix(), "val () = ()\n")
-            self.assertEqual(driver.check_staging(fake.root, driver.CORPUS, corpus())["status"],
+            fake.write("tests/corpus/solidityBytecodeCorpus_aScript.sml", "val () = ()\n")
+            loaded = driver.load_corpus(fake.root / driver.CORPUS)
+            self.assertEqual(driver.check_staging(fake.root, driver.CORPUS, loaded)["status"],
                              "fail")
 
     def test_detects_compiler_identity_inconsistent_with_pin_and_profile(self) -> None:
@@ -378,7 +401,8 @@ class DriverTests(unittest.TestCase):
             data = corpus()
             second = {**data["suites"][0], "name": "b"}
             data["suites"].append(second)
-            fake.write(driver.CORPUS.as_posix(), json.dumps(data))
+            fake.write_corpus(data)
+            fake.wrappers()
             status, report = fake.run(fake.holbuild([
                 SUITE_OK,
                 {"kind": "case", "suite": "a", "case": "f_returns", "status": "agree",
@@ -402,6 +426,43 @@ class DriverTests(unittest.TestCase):
             self.assertEqual(len(report["kernel_checked"]), 3)
             self.assertTrue(all(w["status"] == "proved (cached)"
                                 for w in report["kernel_checked"]))
+
+    def test_bytecode_failure_never_claims_source_witnesses(self) -> None:
+        rows = [
+            {"kind": "case", "suite": "a", "case": "f_returns",
+             "side": "bytecode", "status": "agree"},
+            {"kind": "case", "suite": "a", "case": "later",
+             "side": "bytecode", "status": "error", "message": "mismatch"},
+        ]
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            status, report = fake.run(fake.holbuild(rows, 1))
+        self.assertEqual(status, 1)
+        self.assertEqual(report["kernel_checked"], [])
+
+    def test_mixed_cached_and_executed_suites_do_not_read_stale_logs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            data = corpus()
+            data["suites"].append({**data["suites"][0], "name": "b"})
+            fake.write_corpus(data)
+            fake.wrappers()
+            targets = {driver.theories.theory_name(name, "source") + "Theory": name
+                       for name in ("a", "b")}
+            for target in targets:
+                fake.write(f".holbuild/logs/current/solidity-hol/{target}/build.log",
+                           driver.RESULT_PREFIX + json.dumps(SUITE_OK) + "\n")
+            fake.write("holbuild", f"#!{sys.executable}\n" +
+                       f"print('{next(iter(targets))} built')\n")
+            command = fake.root / "holbuild"
+            command.chmod(0o755)
+            status, report = fake.run(command)
+        self.assertEqual(status, 1)
+        self.assertEqual([(f["suite"], f["status"]) for f in report["failures"]],
+                         [("a", "missing")])
+        witnesses = [w for w in report["kernel_checked"] if w["suite"] == "b"]
+        self.assertEqual(len(witnesses), 3)
+        self.assertTrue(all(w["status"] == "proved (cached)" for w in witnesses))
 
     def test_build_failure_without_results_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
