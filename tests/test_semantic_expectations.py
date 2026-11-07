@@ -85,6 +85,12 @@ class ExpectationTests(unittest.TestCase):
         actual[0]["logs"] = [{"data": "0x"}]
         self.assertEqual(runner.classify(calls, actual)[0]["status"], "disagree")
 
+    def test_constructor_after_another_call_rejects_before_replay(self) -> None:
+        calls = runner.parse_calls('// ----\n// f() ->\n// constructor() ->', {"f()": "12345678"})
+        self.assertEqual(len(calls), 1)
+        self.assertIsNone(calls[0].calldata)
+        self.assertEqual(calls[0].reason, "constructor must be the first call")
+
     def test_hex_escape_uses_pinned_scanner_consumption(self) -> None:
         self.assertEqual(runner.decode_string(r"\x1g"), b"\x10")
         self.assertEqual(runner.decode_string(r"\x1"), b"\x01")

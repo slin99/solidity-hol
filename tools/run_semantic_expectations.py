@@ -207,6 +207,8 @@ def parse_block(source: str, methods: dict[str, str]) -> list[Call]:
         parser.comment()
         original = " ".join(line.strip() for line in source[start:parser.end].splitlines() if line.strip())
         call = Call(len(calls), original, sender=str(sender), value=value, deploy=signature == "constructor()")
+        if call.deploy and calls:
+            raise UnsupportedExpectation("constructor must be the first call")
         calls.append(call)
         if "FAILURE" in arguments or "FAILURE" in expected[1:]:
             raise UnsupportedExpectation("FAILURE is supported only at the start of an expected result")
