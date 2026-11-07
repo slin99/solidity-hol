@@ -348,6 +348,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcEcrecover _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcAbiDecode _ _ e _ _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcStaticCall _ _ target data _) ⇔ expr_assigns target ∨ expr_assigns data) ∧
   (expr_assigns (SrcSuperCall _ _ args _ _) ⇔ exprs_assign args) ∧
   (expr_assigns _ ⇔ F) ∧
   (components_assign [] ⇔ F) ∧
@@ -959,6 +960,18 @@ Definition elab_expr_def:
                   SOME ((ss ++ cs ++ es, a, ElabType ty), n2 + 1)
               | _ => NONE)
          | NONE => NONE)
+    | SrcStaticCall _ _ target data _ =>
+        (* the data is passed where it is, so it must already be memory bytes *)
+        (case elab_arg_values ctx n [target; data] of
+           SOME ((ss, [(t, tvt); (d, ElabType (LocatedT MemoryLoc BytesT))]), n1) =>
+             (case coerce n1 (AddressT NonpayableAddress) t tvt of
+                SOME ((cs, t'), n2) =>
+                  let tys = [BoolT; LocatedT MemoryLoc BytesT] in
+                  SOME ((ss ++ cs ++ [DefineStmt (AstId n2) (call_result_type tys)
+                                        (StaticCallOperation t' d)],
+                         BoundAtom (AstId n2), call_value tys), n2 + 1)
+              | NONE => NONE)
+         | _ => NONE)
     | SrcAbiDecode _ _ e tns _ =>
         (* the data is decoded where it is, so it must already be memory bytes *)
         (case (elab_expr ctx n e, all_some (MAP normalize_type_name tns)) of

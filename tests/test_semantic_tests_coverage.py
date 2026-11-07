@@ -494,6 +494,40 @@ class ClassifyTests(unittest.TestCase):
                          {(10, "import")})
         self.assertEqual(blockers(decode(10, [data(20)])), {(10, "import")})
 
+    def test_staticcall_of_memory_bytes_is_admitted_and_other_address_members_blocked(self) -> None:
+        def target(node_id, type_identifier="t_address"):
+            return {"nodeType": "Identifier", "id": node_id, "name": "a", "referencedDeclaration": 3,
+                    "typeDescriptions": {"typeIdentifier": type_identifier}}
+
+        def data(node_id, type_identifier="t_bytes_memory_ptr"):
+            return {"nodeType": "Identifier", "id": node_id, "name": "b", "referencedDeclaration": 5,
+                    "typeDescriptions": {"typeIdentifier": type_identifier}}
+
+        def call(node_id, member, arguments, base=None, names=(), declaration=None):
+            callee = {"nodeType": "MemberAccess", "id": node_id + 1, "memberName": member,
+                      "expression": base or target(node_id + 2),
+                      "typeDescriptions": {"typeIdentifier": "t_function_barestaticcall_view$_t_bytes_memory_ptr_$"
+                                                              "returns$_t_bool_$_t_bytes_memory_ptr_$"}}
+            if declaration is not None:
+                callee["referencedDeclaration"] = declaration
+            return {"nodeType": "FunctionCall", "id": node_id, "kind": "functionCall", "names": list(names),
+                    "tryCall": False, "expression": callee, "arguments": arguments,
+                    "typeDescriptions": {"typeIdentifier": "t_tuple$_t_bool_$_t_bytes_memory_ptr_$"}}
+
+        def blockers(c):
+            found = coverage.scan({"t.sol": unit([variable(3, state=True), function(4, [c])])})
+            return {(node_id, b.stage) for node_id, bs in found.items() for b in bs}
+
+        self.assertEqual(blockers(call(10, "staticcall", [data(20)])), set())
+        self.assertEqual(blockers(call(10, "staticcall", [data(20)], base=target(12, "t_address_payable"))), set())
+        # calldata data, or a literal, is rejected by the checker
+        self.assertEqual(blockers(call(10, "staticcall", [data(20, "t_bytes_calldata_ptr")])),
+                         {(10, "elaboration")})
+        self.assertEqual(blockers(call(10, "staticcall", [data(20)], names=["x"])), {(10, "import")})
+        # call and delegatecall stay blocked where the importer rejects them
+        self.assertEqual(blockers(call(10, "call", [data(20)])), {(11, "import")})
+        self.assertEqual(blockers(call(10, "delegatecall", [data(20)])), {(11, "import")})
+
     def test_interface_ids_are_admitted_and_other_contract_type_members_blocked(self) -> None:
         def type_member(node_id, member, target=50):
             interface = {"nodeType": "Identifier", "id": node_id + 1, "name": "I",

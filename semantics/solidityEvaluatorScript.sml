@@ -599,6 +599,43 @@ Definition call_external_def:
     | _ => abrupt_result (InvalidCompletion "bad call operands") st gas
 End
 
+(* A low-level target.staticcall(data), as the compiler makes it: the data
+ * passed where it is, no check that the target has code, and a failure
+ * returned rather than reverted. No return data is the empty array at 0x60;
+ * other return data is copied to a new memory bytes.
+ *)
+Definition call_static_def:
+  call_static x ty target data (st : source_state) gas =
+    case (eval_atom st.scopes target, eval_atom st.scopes data) of
+      (SOME (ScalarValue (AddressValue callee)), SOME (ReferenceValue d)) =>
+        (case byte_contents st d of
+           INR c => abrupt_result c st gas
+         | INL bs =>
+           case run_external_call st.frame.self_address callee bs 0 T
+                  external_call_gas st.world.accounts st.world.transient
+                  st.frame.tx_params of
+             NONE => abrupt_result (InvalidCompletion "call outside the model") st gas
+           | SOME res =>
+             let st' = if res.call_success then
+                   st with world :=
+                     <| accounts := res.call_accounts;
+                        transient := res.call_transient;
+                        logs := st.world.logs ++ res.call_logs |>
+                 else st in
+             let success = ScalarValue (BoolValue res.call_success) in
+             if res.call_return = [] then
+               normal_result (define_binding x ty
+                 (TupleValue [success; ReferenceValue (MemoryReference (HeapId 0) 0 BytesT)])
+                 st') gas
+             else if 2 ** 64 ≤ 128 + st'.memory_allocated + 32 +
+                               32 * ((LENGTH res.call_return + 31) DIV 32)
+             then abrupt_result (PanicCompletion 65) st' gas
+             else
+               let (v, st1) = allocate_bytes BytesT res.call_return st' in
+               normal_result (define_binding x ty (TupleValue [success; v]) st1) gas)
+    | _ => abrupt_result (InvalidCompletion "bad staticcall operands") st gas
+End
+
 (* The selector an ABI encoding starts with: none, or four bytes. *)
 Definition selector_bytes_def:
   selector_bytes scopes selector =
@@ -698,6 +735,8 @@ Definition simple_stmt_def:
     | DefineStmt x ty (ExternalCallOperation kind selector params rets target
                          value args) =>
         call_external env x ty kind selector params rets target value args st gas
+    | DefineStmt x ty (StaticCallOperation target data) =>
+        call_static x ty target data st gas
     | DefineStmt x ty op =>
         (case eval_operation env st op of
            ValueOk v => normal_result (define_binding x ty v st) gas

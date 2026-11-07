@@ -288,6 +288,16 @@ encoding, or a word that is not a value of its type, reverts with no data, and
 data after the encoding is ignored. It allocates nothing. Data in calldata or
 storage, and types other than elementary ones, are rejected.
 
+`a.staticcall(data)`, with `a` an address and `data` a memory `bytes`,
+evaluates `a`, then `data`, and makes a static call to `a` with the bytes of
+`data` as its input and all the gas the call may forward, giving the success
+flag and the return data. A failed call, the callee's revert included, gives
+`false` and leaves the caller's state as it was; a call to an address without
+code succeeds with no data. Return data is copied into a new memory `bytes`,
+allocated as the compiler allocates it, and no return data gives the shared
+empty `bytes`, allocating nothing. Data in calldata, storage or a literal, gas
+options, `call` and `delegatecall` are rejected.
+
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
 from the functions calls can reach (an overridden function counts only when

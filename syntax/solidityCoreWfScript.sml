@@ -754,6 +754,10 @@ Definition wf_core_operation_def:
                   LocatedT MemoryLoc element => byte_sequence_type element
                 | _ => F) tys ∧
     LIST_REL (wf_abi_atom env ctx) tys args) ∧
+  (wf_core_operation env ctx annotation (StaticCallOperation target data) ⇔
+    annotation = call_result_type [BoolT; LocatedT MemoryLoc BytesT] ∧
+    wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
+    wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) data) ∧
   (wf_core_operation env ctx annotation (AbiDecodeOperation tys a) ⇔
     tys ≠ [] ∧ EVERY (λty. is_elementary_type ty ∧ valid_type_shape ty) tys ∧
     annotation = call_result_type tys ∧
