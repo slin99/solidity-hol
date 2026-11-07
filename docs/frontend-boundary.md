@@ -269,6 +269,16 @@ events are rejected; a file-level directive with a function list rejects the
 compilation, whichever file it is in. In the Yul the compiler emits, `linkersymbol`, a linked
 library's address, is not admitted.
 
+Named arguments, `f({b: y, a: x})`, are implemented for internal, bound
+library, `super` and external calls, `emit` and `revert` with a custom error.
+As the compiler does, the arguments are evaluated in the call's order, then
+passed in the parameters' order, each converted to its parameter's type; a
+bound call's receiver comes first, as without names. The importer records,
+for each parameter of the declaration the compiler resolved, the position of
+its argument, and the checker requires a permutation of the argument
+positions. Names on type conversions, `new`, `keccak256`, other builtins and
+struct constructors are rejected.
+
 Memory arrays of elementary leaves or byte sequences, nested to any depth, are
 implemented: locals, parameters and returns, `new T[](n)`, `new bytes(n)` and
 `new string(n)`, indexing, `.length`, and ABI decoding and encoding, with the

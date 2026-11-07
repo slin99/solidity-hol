@@ -315,6 +315,36 @@ fun enum_value id = List.find (fn (i, _) => i = id) (!enum_values)
  * id, for the selectors their member accesses name. *)
 val selector_declarations : (IntInf.int * JSON.value) list ref = ref []
 
+(* A call's parameter order: for each parameter of the declaration id, the
+ * index of the argument the call names for it; [] for a call without names.
+ * The first skip parameters (a bound call's receiver) are passed
+ * positionally, before the named arguments, so they keep their indices.
+ * The arguments stay in the call's order, the order they are evaluated in. *)
+fun argument_order call id skip =
+  case JSONUtil.arrayMap JSONUtil.asString (field call "names") of
+    [] => listSyntax.mk_nil numSyntax.num
+  | names =>
+      let
+        val d = case List.find (fn (i, _) => i = id) (!selector_declarations) of
+                  SOME (_, d) => d
+                | NONE => fail (describe call ^
+                                ": named arguments of a declaration outside the compilation")
+        val params =
+          List.drop
+            (JSONUtil.arrayMap (fn p => string_field p "name")
+               (field (field d "parameters") "parameters"), skip)
+        val indexed = ListPair.zip (List.tabulate (length names, fn i => i), names)
+        fun index p =
+          case List.find (fn (_, n) => n = p) indexed of
+            SOME (i, _) => mk_num (IntInf.fromInt (skip + i))
+          | NONE => fail (describe call ^ ": no argument named " ^ p)
+      in
+        require call (length params = length names) "named arguments must name every parameter";
+        listSyntax.mk_list
+          (List.tabulate (skip, fn i => mk_num (IntInf.fromInt i)) @ map index params,
+           numSyntax.num)
+      end
+
 (* Whether a node is f.selector, a member the compiler declares. *)
 fun is_selector v =
   let fun is k x = case optional_field v k of SOME (JSON.STRING y) => x = y | _ => false
@@ -547,9 +577,9 @@ fun expr v = within v (fn v =>
       let
         val args = JSONUtil.arrayMap expr (field v "arguments")
         val callee = field v "expression"
+        val no_names = null (JSONUtil.arrayMap I (field v "names"))
+        fun positional () = require v no_names "named arguments are not supported here"
       in
-        require v (null (JSONUtil.arrayMap I (field v "names")))
-          "named arguments are not supported";
         require v (not (bool_field v "tryCall")) "try calls are not supported";
         case string_field v "kind" of
           "functionCall" =>
@@ -558,11 +588,13 @@ fun expr v = within v (fn v =>
               external_call v callee args
             else if node_type callee = "Identifier" andalso
                int_field callee "referencedDeclaration" = ~8 then
-              (require v (length args = 1) "keccak256 takes one argument";
+              (positional ();
+               require v (length args = 1) "keccak256 takes one argument";
                con "SrcKeccak256" [info v, info callee, hd args, type_id v])
             else if node_type callee = "Identifier" andalso
                int_field callee "referencedDeclaration" < 0 then
               let
+                val () = positional ()
                 val id = int_field callee "referencedDeclaration"
                 val builtin = if id = ~18 then "RequireBuiltin"
                               else if id = ~3 then "AssertBuiltin"
@@ -582,7 +614,8 @@ fun expr v = within v (fn v =>
                   mk_opt expr_ty condition, mk_opt expr_ty message, type_id v]
               end
             else if node_type callee = "NewExpression" then
-              (require v (node_type (field callee "typeName") <> "UserDefinedTypeName")
+              (positional ();
+               require v (node_type (field callee "typeName") <> "UserDefinedTypeName")
                  "contract creation (new C) is not supported";
                require v (length args = 1) "new takes one argument";
                con "SrcNew"
@@ -598,7 +631,7 @@ fun expr v = within v (fn v =>
                 else super_calls := !super_calls @ [r];
                 con "SrcSuperCall"
                   [info v, mk_num r, listSyntax.mk_list (args, expr_ty),
-                   type_id v]
+                   argument_order v r 0, type_id v]
               end
             else if is_library_member callee andalso is_attached callee then
               (* x.f(args) calls f with x as its first argument; the compiler
@@ -615,11 +648,17 @@ fun expr v = within v (fn v =>
                     type_id callee],
                  listSyntax.mk_list (expr (field callee "expression") :: args,
                                      expr_ty),
+                 argument_order v (int_field callee "referencedDeclaration") 1,
                  type_id v])
             else con "SrcFunctionCall"
-              [info v, expr callee, listSyntax.mk_list (args, expr_ty), type_id v]
+              [info v, expr callee, listSyntax.mk_list (args, expr_ty),
+               case optional_field callee "referencedDeclaration" of
+                 SOME _ => argument_order v (int_field callee "referencedDeclaration") 0
+               | NONE => (positional (); listSyntax.mk_nil numSyntax.num),
+               type_id v]
         | "typeConversion" =>
-            (require v (length args = 1) "a conversion takes one argument";
+            (positional ();
+             require v (length args = 1) "a conversion takes one argument";
              if String.isPrefix "t_type$_t_contract$_" (raw_type_id callee) then
                (* I(a), a conversion to a contract type *)
                con "SrcTypeConversion" [info v, address_type_name callee, hd args, type_id v]
@@ -668,6 +707,7 @@ and external_call v callee args =
        mk_bool (isSome value),
        listSyntax.mk_list (target :: (case value of SOME x => [x] | NONE => []) @ args,
                            expr_ty),
+       argument_order v (int_field member "referencedDeclaration") 0,
        type_id v]
   end
 
@@ -797,31 +837,34 @@ fun stmt v = within v (fn v =>
   | "EmitStatement" =>
       let val call = field v "eventCall" in
         within call (fn call =>
-          (require call (null (JSONUtil.arrayMap I (field call "names")))
-             "named arguments are not supported";
-           within (field call "expression") (fn e => expect e "Identifier");
-           con "SrcEmit"
-             [info v,
-              mk_num (int_field (field call "expression") "referencedDeclaration"),
-              listSyntax.mk_list
-                (JSONUtil.arrayMap expr (field call "arguments"), expr_ty)]))
+          let
+            val ev = int_field (field call "expression") "referencedDeclaration"
+          in
+            within (field call "expression") (fn e => expect e "Identifier");
+            con "SrcEmit"
+              [info v, mk_num ev,
+               listSyntax.mk_list
+                 (JSONUtil.arrayMap expr (field call "arguments"), expr_ty),
+               argument_order call ev 0]
+          end)
       end
   | "RevertStatement" =>
       let val call = field v "errorCall" in
         within call (fn call =>
-          (require call (null (JSONUtil.arrayMap I (field call "names")))
-             "named arguments are not supported";
-           (* E, or a qualified I.E, which names a declaration only *)
-           within (field call "expression") (fn e =>
-             require e (node_type e = "Identifier" orelse
-                        node_type e = "MemberAccess")
-               "unsupported error name");
-           con "SrcRevertError"
-             [info v,
-              error_declaration call
-                (int_field (field call "expression") "referencedDeclaration"),
-              listSyntax.mk_list
-                (JSONUtil.arrayMap expr (field call "arguments"), expr_ty)]))
+          let
+            val err = int_field (field call "expression") "referencedDeclaration"
+          in
+            (* E, or a qualified I.E, which names a declaration only *)
+            within (field call "expression") (fn e =>
+              require e (node_type e = "Identifier" orelse
+                         node_type e = "MemberAccess")
+                "unsupported error name");
+            con "SrcRevertError"
+              [info v, error_declaration call err,
+               listSyntax.mk_list
+                 (JSONUtil.arrayMap expr (field call "arguments"), expr_ty),
+               argument_order call err 0]
+          end)
       end
   | other => fail (describe v ^ ": unsupported statement " ^ other))
 and stmts v = listSyntax.mk_list (JSONUtil.arrayMap stmt v, stmt_ty)

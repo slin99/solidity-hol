@@ -193,9 +193,34 @@ val () = import_error "modifier invocation of unknown kind"
      (set_field "modifiers"
         (JSON.ARRAY [JSON.OBJECT [("kind", JSON.STRING "unknownInvocation")]]))
      ast)
-val () = import_error "named arguments"
+val () = import_error "a named argument naming no parameter"
   (edit_first "FunctionCall"
-     (set_field "names" (JSON.ARRAY [JSON.STRING "n"])) ast)
+     (set_field "names" (JSON.ARRAY [JSON.STRING "noSuchParameter"])) ast)
+(* (fact)({n: ...}): the callee names no declaration to take the parameter
+ * names from, so the call fails import as unsupported, naming the cause. *)
+val () =
+  let
+    fun parenthesize (callee as JSON.OBJECT kvs) =
+          JSON.OBJECT
+            ([("nodeType", JSON.STRING "TupleExpression"),
+              ("isInlineArray", JSON.BOOL false),
+              ("components", JSON.ARRAY [callee])] @
+             List.filter (fn (k, _) => k = "id" orelse k = "src" orelse
+                                       k = "typeDescriptions") kvs)
+      | parenthesize v = v
+    fun edit call =
+      case JSONUtil.findField call "expression" of
+        SOME callee =>
+          set_field "names" (JSON.ARRAY [JSON.STRING "n"])
+            (set_field "expression" (parenthesize callee) call)
+      | NONE => raise Fail "a call without a callee"
+  in
+    (import_source_unit [] (edit_first "FunctionCall" edit ast) contracts;
+     raise Fail "named arguments of a parenthesized callee: imported")
+    handle ImportError msg =>
+      if String.isSubstring "named arguments are not supported" msg then ()
+      else raise Fail ("named arguments of a parenthesized callee: " ^ msg)
+  end
 val () = import_error "base outside the compilation"
   (edit_first "ContractDefinition"
      (fn c => set_field "linearizedBaseContracts"
@@ -819,7 +844,7 @@ QED
 Definition revert_errors_def:
   (revert_errors (SrcBlock _ ss) = revert_errors_list ss) ∧
   (revert_errors (SrcIfStatement _ _ t NONE) = revert_errors t) ∧
-  (revert_errors (SrcRevertError _ err args) =
+  (revert_errors (SrcRevertError _ err args _) =
     [(err.error_selector, LENGTH err.error_parameters, LENGTH args)]) ∧
   (revert_errors _ = []) ∧
   (revert_errors_list [] = []) ∧

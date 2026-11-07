@@ -560,7 +560,13 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
         if node["isInlineArray"]:
             found.append("inline arrays")
     elif kind == "FunctionCall":
-        if node["names"]:
+        # Named arguments are taken on calls of declared functions only,
+        # with or without call options; `new` names no declaration.
+        callee = node["expression"]
+        if callee["nodeType"] == "FunctionCallOptions":
+            callee = callee["expression"]
+        if node["names"] and (node["kind"] != "functionCall"
+                              or callee.get("referencedDeclaration", -1) < 0):
             found.append("named arguments")
         if node["tryCall"]:
             found.append("try/catch")
@@ -1304,16 +1310,12 @@ def special_forms(reached: dict[int, dict[str, Any]],
             callee = node["eventCall"]["expression"]
             unread.update({node["eventCall"]["id"], callee["id"]})
             unread.update(n["id"] for n in nodes(callee))
-            if node["eventCall"]["names"]:
-                block(node["eventCall"], "named arguments", "import")
             if callee["nodeType"] != "Identifier":
                 block(callee, "events named through a contract or library", "import")
         elif kind == "RevertStatement":
             callee = node["errorCall"]["expression"]
             unread.add(node["errorCall"]["id"])
             unread.update(n["id"] for n in nodes(callee))
-            if node["errorCall"]["names"]:
-                block(node["errorCall"], "named arguments", "import")
         elif kind == "MemberAccess" and node.get("referencedDeclaration") is None:
             base = node["expression"]
             if base["nodeType"] == "Identifier" and base.get("referencedDeclaration", 0) < 0:

@@ -183,13 +183,13 @@ Datatype:
   | SrcAssignment node_info string src_expr src_expr string
   | SrcIndexAccess node_info src_expr src_expr string
   | SrcTupleExpression node_info (src_expr option list) string
-  | SrcFunctionCall node_info src_expr (src_expr list) string
-  | SrcSuperCall node_info num (src_expr list) string
+  | SrcFunctionCall node_info src_expr (src_expr list) (num list) string
+  | SrcSuperCall node_info num (src_expr list) (num list) string
   | SrcBuiltinCall node_info node_info src_builtin (src_expr option)
       (src_expr option) string
   | SrcTypeConversion node_info src_type_name src_expr string
   | SrcEnvironment node_info environment_field string
-  | SrcExternalCall node_info src_external bool (src_expr list) string
+  | SrcExternalCall node_info src_external bool (src_expr list) (num list) string
   | SrcTypeMember node_info string src_type_name string
   | SrcNew node_info src_type_name src_expr string
   | SrcEnumValue node_info src_type_name num string
@@ -226,8 +226,8 @@ Datatype:
   | SrcBreak node_info
   | SrcContinue node_info
   | SrcReturn node_info num (src_expr option)
-  | SrcEmit node_info num (src_expr list)
-  | SrcRevertError node_info src_error (src_expr list)
+  | SrcEmit node_info num (src_expr list) (num list)
+  | SrcRevertError node_info src_error (src_expr list) (num list)
   | SrcInlineAssembly node_info (yul_stmt list)
       ((string # src_assembly_reference) list)
   | SrcPlaceholder node_info
@@ -887,9 +887,9 @@ Definition expr_ids_def:
     info.node_id :: expr_ids l ++ expr_ids r) ∧
   (expr_ids (SrcTupleExpression info cs _) =
     info.node_id :: component_ids cs) ∧
-  (expr_ids (SrcFunctionCall info f args _) =
+  (expr_ids (SrcFunctionCall info f args _ _) =
     info.node_id :: expr_ids f ++ exprs_ids args) ∧
-  (expr_ids (SrcSuperCall info _ args _) = info.node_id :: exprs_ids args) ∧
+  (expr_ids (SrcSuperCall info _ args _ _) = info.node_id :: exprs_ids args) ∧
   (expr_ids (SrcBuiltinCall info callee _ condition message _) =
     [info.node_id; callee.node_id] ++
     (case condition of NONE => [] | SOME c => expr_ids c) ++
@@ -902,7 +902,7 @@ Definition expr_ids_def:
   (expr_ids (SrcKeccak256 info callee e _) =
     info.node_id :: callee.node_id :: expr_ids e) ∧
   (expr_ids (SrcSelector info _ _) = [info.node_id]) ∧
-  (expr_ids (SrcExternalCall info _ _ operands _) =
+  (expr_ids (SrcExternalCall info _ _ operands _ _) =
     info.node_id :: exprs_ids operands) ∧
   (expr_ids (SrcNew info tn e _) =
     info.node_id :: type_name_ids tn ++ expr_ids e) ∧
@@ -942,8 +942,8 @@ Definition stmt_ids_def:
   (stmt_ids (SrcBreak info) = [info.node_id]) ∧
   (stmt_ids (SrcContinue info) = [info.node_id]) ∧
   (stmt_ids (SrcReturn info _ e) = info.node_id :: option_expr_ids e) ∧
-  (stmt_ids (SrcEmit info _ args) = info.node_id :: exprs_ids args) ∧
-  (stmt_ids (SrcRevertError info _ args) = info.node_id :: exprs_ids args) ∧
+  (stmt_ids (SrcEmit info _ args _) = info.node_id :: exprs_ids args) ∧
+  (stmt_ids (SrcRevertError info _ args _) = info.node_id :: exprs_ids args) ∧
   (stmt_ids (SrcInlineAssembly info _ _) = [info.node_id]) ∧
   (stmt_ids (SrcPlaceholder info) = [info.node_id]) ∧
   (option_stmt_ids NONE = []) ∧
@@ -1079,6 +1079,15 @@ Definition type_bound_def:
     | _ => NONE
 End
 
+(* A call's parameter order, for named arguments: none, or a permutation of
+ * the positions of its n arguments. The elaborator passes the arguments in
+ * that order. *)
+Definition argument_order_ok_def:
+  argument_order_ok (order : num list) n ⇔
+    order = [] ∨
+    (LENGTH order = n ∧ ALL_DISTINCT order ∧ EVERY (λi. i < n) order)
+End
+
 (* The decoded type of a checked expression. *)
 Definition check_expr_def:
   (check_expr (env : import_env) (SrcIdentifier _ _ x tid) =
@@ -1178,7 +1187,8 @@ Definition check_expr_def:
     else NONE) ∧
   (check_expr env (SrcTupleExpression _ cs tid) =
     if check_components env cs then decode_type_identifier tid else NONE) ∧
-  (check_expr env (SrcFunctionCall _ (SrcArrayMember _ member root_expr _) args tid) =
+  (check_expr env (SrcFunctionCall _ (SrcArrayMember _ member root_expr _) args order tid) =
+    if order ≠ [] then NONE else
     case check_expr env root_expr of
       SOME (SrcType (ArrayT element NONE)) =>
         if ¬(case element of EnumT _ => T | _ => elementary_storage_type_ok element)
@@ -1190,26 +1200,28 @@ Definition check_expr_def:
                  (member = "pop" ∧ args = []))
         then SOME (SrcTupleType []) else NONE
     | _ => NONE) ∧
-  (check_expr env (SrcFunctionCall _ (SrcIdentifier _ _ f _) args tid) =
+  (check_expr env (SrcFunctionCall _ (SrcIdentifier _ _ f _) args order tid) =
     case ALOOKUP env.functions f of
       SOME callee =>
         (case (all_some (MAP variable_type callee.fn_returns),
                decode_type_identifier tid) of
            (SOME tys, SOME vt) =>
              if LENGTH args = LENGTH callee.fn_parameters ∧
+                argument_order_ok order (LENGTH args) ∧
                 callee.fn_visibility ≠ "external" ∧ check_exprs env args ∧
                 vt = call_value_type tys
              then SOME vt else NONE
          | _ => NONE)
     | NONE => NONE) ∧
-  (check_expr env (SrcFunctionCall _ _ _ _) = NONE) ∧
-  (check_expr env (SrcSuperCall _ r args tid) =
+  (check_expr env (SrcFunctionCall _ _ _ _ _) = NONE) ∧
+  (check_expr env (SrcSuperCall _ r args order tid) =
     case ALOOKUP env.supers r of
       SOME callee =>
         (case (all_some (MAP variable_type callee.fn_returns),
                decode_type_identifier tid) of
            (SOME tys, SOME vt) =>
              if LENGTH args = LENGTH callee.fn_parameters ∧
+                argument_order_ok order (LENGTH args) ∧
                 callee.fn_visibility ≠ "external" ∧ check_exprs env args ∧
                 vt = call_value_type tys
              then SOME vt else NONE
@@ -1267,7 +1279,7 @@ Definition check_expr_def:
     | NONE => NONE) ∧
   (* Value only for a payable callee, as the compiler requires; elaboration
      converts the target to an address. *)
-  (check_expr env (SrcExternalCall _ callee with_value operands tid) =
+  (check_expr env (SrcExternalCall _ callee with_value operands order tid) =
     case (all_some (MAP call_variable_type callee.ext_parameters),
           all_some (MAP call_variable_type callee.ext_returns),
           decode_type_identifier tid) of
@@ -1275,6 +1287,7 @@ Definition check_expr_def:
         if MEM callee.ext_mutability ["pure"; "view"; "nonpayable"; "payable"] ∧
            (with_value ⇒ callee.ext_mutability = "payable") ∧
            LENGTH operands = LENGTH params + (if with_value then 2 else 1) ∧
+           argument_order_ok order (LENGTH params) ∧
            check_exprs env operands ∧ vt = call_value_type rets ∧
            (* calls returning enums are not supported yet *)
            EVERY (λty. case ty of EnumT _ => F | _ => T) rets
@@ -1412,17 +1425,18 @@ Definition check_stmts_def:
   (check_stmt env (SrcReturn _ returns_id e) ⇔
     returns_id = env.returns_id ∧
     case e of NONE => T | SOME e => IS_SOME (check_expr env e)) ∧
-  (check_stmt env (SrcEmit _ ev args) ⇔
+  (check_stmt env (SrcEmit _ ev args order) ⇔
     case ALOOKUP env.events ev of
-      SOME e => LENGTH args = LENGTH e.event_parameters ∧ check_exprs env args
+      SOME e => LENGTH args = LENGTH e.event_parameters ∧
+                argument_order_ok order (LENGTH args) ∧ check_exprs env args
     | NONE => F) ∧
   (check_stmt env (SrcPlaceholder _) ⇔ env.in_modifier) ∧
-  (check_stmt env (SrcRevertError _ err args) ⇔
+  (check_stmt env (SrcRevertError _ err args order) ⇔
     LENGTH err.error_selector = 4 ∧
     case all_some (MAP variable_type err.error_parameters) of
       SOME params =>
         EVERY is_elementary_type params ∧ LENGTH args = LENGTH params ∧
-        check_exprs env args
+        argument_order_ok order (LENGTH args) ∧ check_exprs env args
     | NONE => F) ∧
   (check_stmt env (SrcInlineAssembly _ _ refs) ⇔
     ALL_DISTINCT (MAP FST refs) ∧
@@ -1872,6 +1886,7 @@ val () = cv_auto_trans unit_ids_def;
 
 val () = cv_auto_trans source_struct_members_def;
 val () = cv_auto_trans source_struct_field_def;
+val () = cv_auto_trans argument_order_ok_def;
 val () = cv_auto_trans literal_message_def;
 val () = cv_auto_trans builtin_shape_def;
 val () = cv_auto_trans type_bound_def;

@@ -884,6 +884,39 @@ class ClassifyTests(unittest.TestCase):
                   "typeDescriptions": {"typeIdentifier": "t_uint256"}}
         self.assertEqual(coverage.scan({"t.sol": unit([function(4, [length])])}), {})
 
+    def test_named_arguments_need_a_declared_callee(self) -> None:
+        def call(callee, kind="functionCall"):
+            return {"nodeType": "FunctionCall", "id": 9, "kind": kind, "names": ["b", "a"],
+                    "tryCall": False, "expression": callee, "arguments": []}
+
+        declared = {"nodeType": "Identifier", "id": 5, "name": "f", "referencedDeclaration": 3}
+        named = coverage.Blocker("FunctionCall", "named arguments", "import")
+        self.assertNotIn(named, coverage.node_blockers(call(declared)))
+        parenthesized = {"nodeType": "TupleExpression", "id": 6, "components": [declared],
+                         "isInlineArray": False}
+        self.assertIn(named, coverage.node_blockers(call(parenthesized)))
+        builtin = dict(declared, referencedDeclaration=-8)
+        self.assertIn(named, coverage.node_blockers(call(builtin)))
+        self.assertIn(named, coverage.node_blockers(call(declared, kind="structConstructorCall")))
+        # c.f{value: v}({...}): the callee is the call options' expression.
+        member = {"nodeType": "MemberAccess", "id": 7, "memberName": "f", "referencedDeclaration": 3}
+        options = {"nodeType": "FunctionCallOptions", "id": 8, "expression": member,
+                   "names": ["value"], "options": []}
+        self.assertNotIn(named, coverage.node_blockers(call(options)))
+        self.assertIn(named, coverage.node_blockers(call(dict(options, expression={
+            "nodeType": "NewExpression", "id": 10, "typeName": {"nodeType": "ElementaryTypeName"}}))))
+        self.assertIn(named, coverage.node_blockers(call({"nodeType": "NewExpression", "id": 10, "typeName": {"nodeType": "ElementaryTypeName"}})))
+
+    def test_named_arguments_of_events_and_errors_are_taken(self) -> None:
+        statement = revert(40, 30, [])
+        statement["errorCall"]["names"] = ["a"]
+        event = {"nodeType": "EmitStatement", "id": 50, "eventCall": dict(
+            statement["errorCall"], id=51, names=["a"],
+            expression=dict(statement["errorCall"]["expression"], id=52, name="Ev"))}
+        reached = {n["id"]: n for n in (statement, event)}
+        _, found = coverage.special_forms(reached, reached)
+        self.assertNotIn("named arguments", {b.feature for bs in found.values() for b in bs})
+
     def test_array_type_expression_without_index_is_import_rejection(self) -> None:
         node = {"nodeType": "IndexAccess", "id": 13}
         self.assertEqual(coverage.node_blockers(node),

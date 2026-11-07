@@ -1,18 +1,18 @@
 {
   "counts": {
-    "admitted": 562,
+    "admitted": 567,
     "compile-failure": 0,
     "elaboration-rejected": 71,
-    "import-rejected": 635,
+    "import-rejected": 622,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 302
+    "source-rejected": 310
   },
   "features": [
     {
       "feature": "structs",
-      "first_rejection": 18,
+      "first_rejection": 19,
       "node_types": [
         "FunctionCall",
         "IndexAccess",
@@ -206,7 +206,7 @@
       "node_types": [
         "FunctionDefinition"
       ],
-      "only_blocker": 8,
+      "only_blocker": 9,
       "tests": 45
     },
     {
@@ -278,15 +278,6 @@
       "tests": 32
     },
     {
-      "feature": "named arguments",
-      "first_rejection": 26,
-      "node_types": [
-        "FunctionCall"
-      ],
-      "only_blocker": 5,
-      "tests": 32
-    },
-    {
       "feature": "external calls to getters",
       "first_rejection": 4,
       "node_types": [
@@ -330,7 +321,7 @@
         "IndexAccess",
         "MemberAccess"
       ],
-      "only_blocker": 13,
+      "only_blocker": 14,
       "tests": 27
     },
     {
@@ -419,7 +410,7 @@
       "node_types": [
         "FunctionCall"
       ],
-      "only_blocker": 11,
+      "only_blocker": 15,
       "tests": 18
     },
     {
@@ -458,6 +449,15 @@
         "VariableDeclaration"
       ],
       "only_blocker": 7,
+      "tests": 15
+    },
+    {
+      "feature": "named arguments",
+      "first_rejection": 12,
+      "node_types": [
+        "FunctionCall"
+      ],
+      "only_blocker": 0,
       "tests": 15
     },
     {
@@ -506,6 +506,15 @@
       "tests": 10
     },
     {
+      "feature": "custom errors with reference parameters",
+      "first_rejection": 0,
+      "node_types": [
+        "VariableDeclaration"
+      ],
+      "only_blocker": 3,
+      "tests": 10
+    },
+    {
       "feature": "fixed-size bytes members and indexing",
       "first_rejection": 0,
       "node_types": [
@@ -513,15 +522,6 @@
         "MemberAccess"
       ],
       "only_blocker": 2,
-      "tests": 10
-    },
-    {
-      "feature": "custom errors with reference parameters",
-      "first_rejection": 0,
-      "node_types": [
-        "VariableDeclaration"
-      ],
-      "only_blocker": 0,
       "tests": 10
     },
     {
@@ -849,56 +849,56 @@
       "feature": "bytes push and pop"
     },
     {
-      "admitted": 157,
-      "feature": "inline arrays"
-    },
-    {
-      "admitted": 172,
-      "feature": "aggregate array mutation"
-    },
-    {
-      "admitted": 185,
-      "feature": "library calls and contract-name members"
-    },
-    {
-      "admitted": 198,
+      "admitted": 158,
       "feature": "require with a custom error"
     },
     {
-      "admitted": 209,
+      "admitted": 174,
+      "feature": "inline arrays"
+    },
+    {
+      "admitted": 189,
+      "feature": "aggregate array mutation"
+    },
+    {
+      "admitted": 203,
+      "feature": "library calls and contract-name members"
+    },
+    {
+      "admitted": 214,
       "feature": "struct values and copying"
     },
     {
-      "admitted": 240,
+      "admitted": 245,
       "feature": "structs"
     },
     {
-      "admitted": 276,
+      "admitted": 281,
       "feature": "local reference bindings"
     },
     {
-      "admitted": 300,
+      "admitted": 305,
       "feature": "arrays"
     },
     {
-      "admitted": 335,
+      "admitted": 340,
       "feature": "array values"
     },
     {
-      "admitted": 363,
+      "admitted": 368,
       "feature": "inline assembly memory references"
     },
     {
-      "admitted": 389,
+      "admitted": 394,
       "feature": "inline assembly memory outside the scratch space"
     },
     {
-      "admitted": 409,
-      "feature": "named arguments"
+      "admitted": 411,
+      "feature": "inline assembly"
     },
     {
-      "admitted": 426,
-      "feature": "inline assembly"
+      "admitted": 424,
+      "feature": "free functions"
     }
   ],
   "profile": "solc-0.8.37-via-ir-osaka",
@@ -3660,7 +3660,7 @@
         "structs"
       ],
       "first": "named arguments",
-      "reason": "array/copying/nested_array_of_structs_storage_to_storage.sol: FunctionCall 60: named arguments are not supported",
+      "reason": "array/copying/nested_array_of_structs_storage_to_storage.sol: FunctionCall 60: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "array/copying/nested_array_of_structs_storage_to_storage.sol"
     },
@@ -6168,11 +6168,10 @@
       "category": "import-rejected",
       "features": [
         "custom errors with reference parameters",
-        "named arguments",
         "structs"
       ],
-      "first": "named arguments",
-      "reason": "errors/named_parameters_shadowing_types.sol: FunctionCall 28: named arguments are not supported",
+      "first": "structs",
+      "reason": "errors/named_parameters_shadowing_types.sol: FunctionCall 27: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "errors/named_parameters_shadowing_types.sol"
     },
@@ -6337,46 +6336,42 @@
       "test": "errors/require_error_multiple_arguments.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "named arguments",
         "require with a custom error"
       ],
-      "first": "named arguments",
-      "reason": "errors/require_error_named_parameters.sol: FunctionCall 32: named arguments are not supported",
+      "first": null,
+      "reason": "errors/require_error_named_parameters.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "errors/require_error_named_parameters.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "named arguments",
         "require with a custom error"
       ],
-      "first": "named arguments",
-      "reason": "errors/require_error_named_parameters_implicit_string_conversions.sol: FunctionCall 40: named arguments are not supported",
+      "first": null,
+      "reason": "errors/require_error_named_parameters_implicit_string_conversions.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "errors/require_error_named_parameters_implicit_string_conversions.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "named arguments",
         "require with a custom error"
       ],
-      "first": "named arguments",
-      "reason": "errors/require_error_named_parameters_literal_conversions.sol: FunctionCall 56: named arguments are not supported",
+      "first": null,
+      "reason": "errors/require_error_named_parameters_literal_conversions.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "errors/require_error_named_parameters_literal_conversions.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "named arguments",
         "require with a custom error"
       ],
-      "first": "named arguments",
-      "reason": "errors/require_error_named_parameters_stack_misalignment.sol: FunctionCall 16: named arguments are not supported",
+      "first": null,
+      "reason": "errors/require_error_named_parameters_stack_misalignment.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "errors/require_error_named_parameters_stack_misalignment.sol"
     },
@@ -6459,35 +6454,32 @@
       "test": "errors/revert_conversion.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "custom errors with reference parameters",
-        "named arguments"
+        "custom errors with reference parameters"
       ],
-      "first": "named arguments",
-      "reason": "errors/revert_error_named_parameters.sol: FunctionCall 30: named arguments are not supported",
+      "first": null,
+      "reason": "errors/revert_error_named_parameters.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "errors/revert_error_named_parameters.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "custom errors with reference parameters",
-        "named arguments"
+        "custom errors with reference parameters"
       ],
-      "first": "named arguments",
-      "reason": "errors/revert_error_named_parameters_implicit_string_conversions.sol: FunctionCall 38: named arguments are not supported",
+      "first": null,
+      "reason": "errors/revert_error_named_parameters_implicit_string_conversions.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "errors/revert_error_named_parameters_implicit_string_conversions.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "custom errors with reference parameters",
-        "named arguments"
+        "custom errors with reference parameters"
       ],
-      "first": "named arguments",
-      "reason": "errors/revert_error_named_parameters_literal_conversions.sol: FunctionCall 54: named arguments are not supported",
+      "first": null,
+      "reason": "errors/revert_error_named_parameters_literal_conversions.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "errors/revert_error_named_parameters_literal_conversions.sol"
     },
@@ -6527,7 +6519,7 @@
         "structs"
       ],
       "first": "named arguments",
-      "reason": "errors/using_structs.sol: FunctionCall 50: named arguments are not supported",
+      "reason": "errors/using_structs.sol: FunctionCall 49: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "errors/using_structs.sol"
     },
@@ -6785,12 +6777,10 @@
       "test": "events/event_emit_via_interface.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "named arguments"
-      ],
-      "first": "named arguments",
-      "reason": "events/event_emit_with_named_parameters.sol: FunctionCall 21: named arguments are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "events/event_emit_with_named_parameters.sol"
     },
@@ -7967,12 +7957,10 @@
       "test": "functionCall/delegatecall_return_value_pre_byzantium.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "named arguments"
-      ],
-      "first": "named arguments",
-      "reason": "functionCall/disordered_named_args.sol: FunctionCall 36: named arguments are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "functionCall/disordered_named_args.sol"
     },
@@ -8223,22 +8211,18 @@
       "test": "functionCall/multiple_return_values.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "named arguments"
-      ],
-      "first": "named arguments",
-      "reason": "functionCall/named_args.sol: FunctionCall 88: named arguments are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "functionCall/named_args.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "named arguments"
-      ],
-      "first": "named arguments",
-      "reason": "functionCall/named_args_overload.sol: FunctionCall 69: named arguments are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "functionCall/named_args_overload.sol"
     },
@@ -9236,13 +9220,12 @@
       "test": "inheritance/inherited_function_from_a_library.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
-        "library calls and contract-name members",
-        "named arguments"
+        "library calls and contract-name members"
       ],
-      "first": "named arguments",
-      "reason": "inheritance/inherited_function_named_parameters.sol: FunctionCall 62: named arguments are not supported",
+      "first": null,
+      "reason": "inheritance/inherited_function_named_parameters.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "inheritance/inherited_function_named_parameters.sol"
     },
@@ -10905,8 +10888,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "external library functions",
-        "named arguments"
+        "external library functions"
       ],
       "first": "external library functions",
       "reason": "libraries/library_function_named_parameters.sol: FunctionDefinition 48: only internal library functions are supported",
@@ -11069,7 +11051,6 @@
         "external library functions",
         "library structs and events",
         "local reference bindings",
-        "named arguments",
         "public state variables",
         "structs"
       ],
@@ -11089,12 +11070,10 @@
       "test": "libraries/using_for_function_on_int.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "named arguments"
-      ],
-      "first": "named arguments",
-      "reason": "libraries/using_for_named_parameters.sol: FunctionCall 41: named arguments are not supported",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "libraries/using_for_named_parameters.sol"
     },
@@ -13418,7 +13397,7 @@
         "structs"
       ],
       "first": "named arguments",
-      "reason": "storage/static_array_copy_cleanup.sol: FunctionCall 75: named arguments are not supported",
+      "reason": "storage/static_array_copy_cleanup.sol: FunctionCall 75: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "storage/static_array_copy_cleanup.sol"
     },
@@ -13557,7 +13536,7 @@
         "structs"
       ],
       "first": "named arguments",
-      "reason": "storage/storage_boundary_struct_array_mixed_types.sol: FunctionCall 130: named arguments are not supported",
+      "reason": "storage/storage_boundary_struct_array_mixed_types.sol: FunctionCall 130: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "storage/storage_boundary_struct_array_mixed_types.sol"
     },
@@ -13574,7 +13553,7 @@
         "structs"
       ],
       "first": "named arguments",
-      "reason": "storage/storage_boundary_struct_array_multislot.sol: FunctionCall 108: named arguments are not supported",
+      "reason": "storage/storage_boundary_struct_array_multislot.sol: FunctionCall 108: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "storage/storage_boundary_struct_array_multislot.sol"
     },
@@ -13591,7 +13570,7 @@
         "structs"
       ],
       "first": "named arguments",
-      "reason": "storage/storage_boundary_struct_array_packed.sol: FunctionCall 127: named arguments are not supported",
+      "reason": "storage/storage_boundary_struct_array_packed.sol: FunctionCall 127: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "storage/storage_boundary_struct_array_packed.sol"
     },
@@ -14206,7 +14185,7 @@
         "structs"
       ],
       "first": "named arguments",
-      "reason": "structs/copy_from_mapping.sol: FunctionCall 42: named arguments are not supported",
+      "reason": "structs/copy_from_mapping.sol: FunctionCall 42: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "structs/copy_from_mapping.sol"
     },
@@ -14304,7 +14283,7 @@
         "structs"
       ],
       "first": "named arguments",
-      "reason": "structs/copy_substructures_from_mapping.sol: FunctionCall 42: named arguments are not supported",
+      "reason": "structs/copy_substructures_from_mapping.sol: FunctionCall 42: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "structs/copy_substructures_from_mapping.sol"
     },
@@ -14405,7 +14384,7 @@
         "structs"
       ],
       "first": "named arguments",
-      "reason": "structs/memory_struct_named_constructor.sol: FunctionCall 15: named arguments are not supported",
+      "reason": "structs/memory_struct_named_constructor.sol: FunctionCall 15: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "structs/memory_struct_named_constructor.sol"
     },
@@ -14801,7 +14780,7 @@
         "structs"
       ],
       "first": "named arguments",
-      "reason": "structs/struct_named_constructor.sol: FunctionCall 15: named arguments are not supported",
+      "reason": "structs/struct_named_constructor.sol: FunctionCall 15: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "structs/struct_named_constructor.sol"
     },
@@ -15265,7 +15244,7 @@
         "structs"
       ],
       "first": "named arguments",
-      "reason": "types/mapping/copy_struct_to_array_stored_in_mapping.sol: FunctionCall 10: named arguments are not supported",
+      "reason": "types/mapping/copy_struct_to_array_stored_in_mapping.sol: FunctionCall 10: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "types/mapping/copy_struct_to_array_stored_in_mapping.sol"
     },
@@ -15788,7 +15767,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "named arguments",
         "public state variables",
         "user-defined value types"
       ],
@@ -16510,7 +16488,7 @@
         "structs"
       ],
       "first": "named arguments",
-      "reason": "various/cross_contract_types.sol: FunctionCall 20: named arguments are not supported",
+      "reason": "various/cross_contract_types.sol: FunctionCall 20: unsupported call kind structConstructorCall",
       "scan_agrees": true,
       "test": "various/cross_contract_types.sol"
     },

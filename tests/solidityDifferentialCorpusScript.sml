@@ -31,6 +31,7 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/contract_types.json",
   "../testdata/differential/expected/enums.json",
   "../testdata/differential/expected/hashes.json",
+  "../testdata/differential/expected/named_arguments.json",
   "../testdata/differential/expected/struct_getters.json",
   "../testdata/differential/expected/conditionals.json",
   "../testdata/differential/expected/storage_bytes.json",
