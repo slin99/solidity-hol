@@ -179,6 +179,7 @@ Datatype:
   | SrcLiteral node_info string string string
   | SrcUnaryOperation node_info string bool src_expr string
   | SrcBinaryOperation node_info string src_expr src_expr string string
+  | SrcConditional node_info src_expr src_expr src_expr string
   | SrcAssignment node_info string src_expr src_expr string
   | SrcIndexAccess node_info src_expr src_expr string
   | SrcTupleExpression node_info (src_expr option list) string
@@ -878,6 +879,8 @@ Definition expr_ids_def:
   (expr_ids (SrcUnaryOperation info _ _ e _) = info.node_id :: expr_ids e) ∧
   (expr_ids (SrcBinaryOperation info _ l r _ _) =
     info.node_id :: expr_ids l ++ expr_ids r) ∧
+  (expr_ids (SrcConditional info c t f _) =
+    info.node_id :: expr_ids c ++ expr_ids t ++ expr_ids f) ∧
   (expr_ids (SrcIndexAccess info b i _) =
     info.node_id :: expr_ids b ++ expr_ids i) ∧
   (expr_ids (SrcAssignment info _ l r _) =
@@ -1154,6 +1157,14 @@ Definition check_expr_def:
       | (_, SOME (SrcRational i d)) => if d = 1 then SOME (SrcRational i d) else NONE
       | _ => NONE
     else NONE) ∧
+  (check_expr env (SrcConditional _ c t f tid) =
+    case (check_expr env c, decode_type_identifier tid) of
+      (SOME (SrcType BoolT), SOME (SrcType ty)) =>
+        (* a value or a memory reference, which the result local can hold *)
+        if (case ty of LocatedT loc _ => loc = MemoryLoc | _ => is_stored_scalar_type ty) ∧
+           IS_SOME (check_expr env t) ∧ IS_SOME (check_expr env f)
+        then SOME (SrcType ty) else NONE
+    | _ => NONE) ∧
   (check_expr env (SrcAssignment _ op l r tid) =
     if assignment_operator_ok op ∧ IS_SOME (check_expr env l) ∧
        IS_SOME (check_expr env r)

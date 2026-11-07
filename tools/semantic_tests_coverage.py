@@ -178,7 +178,7 @@ class Blocker:
 
 EXPRESSIONS = {
     "Identifier", "Literal", "UnaryOperation", "BinaryOperation", "Assignment",
-    "TupleExpression", "FunctionCall", "IndexAccess",
+    "TupleExpression", "FunctionCall", "IndexAccess", "Conditional",
 }
 STATEMENTS = {
     "Block", "UncheckedBlock", "ExpressionStatement", "VariableDeclarationStatement",
@@ -199,7 +199,6 @@ STRUCTURAL = {
     "EnumValue",
 }
 FEATURES = {
-    "Conditional": "conditional expressions",
     "FunctionTypeName": "function types",
     "IndexRangeAccess": "array slices",
     "TryCatchClause": "try/catch",
@@ -858,6 +857,13 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
             elif not (VALUE_TYPE.fullmatch(element := base_type[len("t_array$_"):-len("_$dyn_storage")])
                       or ENUM.fullmatch(element)):
                 found.append("aggregate array mutation")
+    elif kind == "Conditional":
+        # the checker and elaborator take a value or a memory reference
+        type_identifier = node["typeDescriptions"].get("typeIdentifier") or ""
+        if not (VALUE_TYPE.fullmatch(type_identifier) or ENUM.fullmatch(type_identifier)
+                or type_identifier in ("t_bytes_memory_ptr", "t_string_memory_ptr")
+                or (located_array(type_identifier) and type_identifier.endswith("_memory_ptr"))):
+            found.append("conditional expressions")
     elif kind == "SourceUnit":
         if len(deployable(node)) != 1:
             found.append("source units without exactly one contract")

@@ -24,7 +24,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/type_bounds.json",
   "../testdata/differential/expected/using_for.json",
   "../testdata/differential/expected/contract_types.json",
-  "../testdata/differential/expected/hashes.json"
+  "../testdata/differential/expected/hashes.json",
+  "../testdata/differential/expected/conditionals.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -177,7 +178,7 @@ val edited_unit = edited_unit_with contracts
 val () = import_error "unknown statement"
   (edit_first "Break" (set_field "nodeType" (JSON.STRING "TryStatement")) ast)
 val () = import_error "unknown expression"
-  (edit_first "Literal" (set_field "nodeType" (JSON.STRING "Conditional")) ast)
+  (edit_first "Literal" (set_field "nodeType" (JSON.STRING "IndexRangeAccess")) ast)
 val () = malformed_input "missing type annotation"
   (edit_first "Identifier" (drop_field "typeDescriptions") ast)
 val () = malformed_input "missing declaration reference"
@@ -1022,3 +1023,69 @@ val () = hashes_error "selector of a state variable by name"
   (edit_first_where (named "Identifier" "Denied") "Denied"
      (set_field "referencedDeclaration"
         (declaration_id "VariableDeclaration" "total" hashes_ast)) hashes_ast)
+
+(* Conditionals: the checker takes one whose type is a value or a memory
+ * reference. The first conditional is c ? 1 : 300, typed uint16. *)
+
+val conditionals_fixture = "../testdata/differential/expected/conditionals.json"
+val conditionals_source = "testdata/differential/conditionals.sol"
+val conditionals_ast = artifact_part conditionals_fixture ["sources", conditionals_source, "ast"]
+val conditionals_contracts = artifact_part conditionals_fixture ["contracts", conditionals_source]
+
+Definition conditionals_unit_def:
+  conditionals_unit = ^(import_artifact conditionals_fixture conditionals_source)
+End
+
+val () = cv_auto_trans conditionals_unit_def;
+
+Theorem conditionals_unit_valid:
+  valid_src_unit conditionals_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+val () = edited_unit_with conditionals_contracts "storage_conditional"
+  (edit_first "Conditional" (type_identifier "t_bytes_storage_ptr") conditionals_ast)
+
+(* a storage bytes variable's own type, which decodes unlocated *)
+val () = edited_unit_with conditionals_contracts "stored_bytes_conditional"
+  (edit_first "Conditional" (type_identifier "t_bytes_storage") conditionals_ast)
+
+val () = edited_unit_with conditionals_contracts "tuple_conditional"
+  (edit_first "Conditional" (type_identifier "t_tuple$_t_uint16_$_t_uint16_$") conditionals_ast)
+
+val () = edited_unit_with conditionals_contracts "calldata_conditional"
+  (edit_first "Conditional" (type_identifier "t_bytes_calldata_ptr") conditionals_ast)
+
+val () = edited_unit_with conditionals_contracts "function_conditional"
+  (edit_first "Conditional" (type_identifier "t_function_internal_pure$__$returns$__$") conditionals_ast)
+
+Theorem storage_conditional_rejected:
+  ¬valid_src_unit storage_conditional
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem stored_bytes_conditional_rejected:
+  ¬valid_src_unit stored_bytes_conditional
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem tuple_conditional_rejected:
+  ¬valid_src_unit tuple_conditional
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem calldata_conditional_rejected:
+  ¬valid_src_unit calldata_conditional
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem function_conditional_rejected:
+  ¬valid_src_unit function_conditional
+Proof
+  CONV_TAC cv_eval
+QED
