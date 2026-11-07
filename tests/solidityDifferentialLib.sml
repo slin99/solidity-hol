@@ -957,12 +957,12 @@ fun run_expectations {root, manifest} =
                            val blk = eval “differential_block with
                              <| number := ^bn; timeStamp := 15 * ^bn;
                                 coinBase := 0x7878787878787878787878787878787878787878w;
-                                gasLimit := 20000000;
+                                baseFeePerGas := 0; gasLimit := 100000000;
                                 prevRandao := ^fr.tx_params.prevRandao |>”
                            val tx = eval “(differential_tx ^sender ^value
                              (^initcode ++ ^data)) with
                              <| to := NONE; nonce := 1; gasLimit := 10000000;
-                                gasPrice := 3000000000 |>”
+                                gasPrice := 0 |>”
                            val start = keep “run_create (Collect empty_domain) F 1 []
                              ^blk ^(!evm_accounts) ^tx”
                            val runnable = eval “case ^start of
@@ -974,8 +974,14 @@ fun run_expectations {root, manifest} =
                              let
                                val acc = keep “FST (THE (case ^start of
                                  SOME (INR p) => SOME p | _ => NONE))”
-                               val state = keep “FST (SND (THE (case ^start of
+                               val initial = keep “FST (SND (THE (case ^start of
                                  SOME (INR p) => SOME p | _ => NONE))) with txParams := ^fr.tx_params”
+                               val state = keep “^initial with contexts :=
+                                 (case ^initial.contexts of
+                                    [] => []
+                                  | (ctxt, rb)::rest =>
+                                      (ctxt with msgParams updated_by
+                                        (λmsg. msg with gasLimit := 100000000), rb)::rest)”
                                val ran = keep “run ^state”
                                val finished = eval “case ^ran of
                                  SOME (INR _, _) => 1n | _ => 0”
@@ -985,19 +991,25 @@ fun run_expectations {root, manifest} =
                                else
                                  let
                                    val resultvalue = eval “OUTR (FST (THE ^ran))”
-                                   val post = keep “post_transaction_accounting ^blk ^tx
+                                   val post = keep “post_transaction_accounting ^blk
+                                     (^tx with gasLimit := 100000000)
                                      ^resultvalue ^acc (SND (THE ^ran))”
                                    val success = aconv “1n” (eval “if IS_NONE (FST ^post).result then 1n else 0”)
                                    val () = evm_accounts := keep “SND ^post”
                                    val outcome = con (if success then "Returned" else "Reverted")
                                      [bytes_term []]
-                                 in observed outcome (eval “(FST ^post).logs”) end
+                                 in
+                                   if aconv resultvalue “SOME OutOfGas” then
+                                     [("bytecode_reason", json_string "creation EVM ran out of gas")]
+                                   else observed outcome (eval “(FST ^post).logs”)
+                                 end
                              end
                          end
                        else
                          let
                            val result = keep “run_external_call ^sender ^address ^data
-                             ^value F 20000000 ^(!evm_accounts) empty_transient_storage ^fr.tx_params”
+                             ^value F (100000000 - (if ^value = 0 then 0 else call_stipend))
+                             ^(!evm_accounts) empty_transient_storage ^fr.tx_params”
                            val unavailable = aconv “1n” (eval “if IS_NONE ^result then 1n else 0”)
                          in
                            if unavailable then
@@ -1016,9 +1028,12 @@ fun run_expectations {root, manifest} =
                    val bytecode_fields = bytecode ()
                    val entered = “^prior_world with accounts :=
                      transfer_value ^sender ^address ^value ^prior_world.accounts”
-                   val result = keep (if creating then
+                   val invocation = if creating then
                      “deploy_contract 10000 ^program ^fr ^entered”
-                     else “call_contract 10000 ^program ^(!imm) ^fr ^entered”)
+                     else “call_contract 10000 ^program ^(!imm) ^fr ^entered”
+                   val result = keep “if
+                     (lookup_account ^sender ^prior_world.accounts).balance < ^value then
+                       ContractReverted [] ^prior_world else ^invocation”
                    val r = eval “case ^result of
                      ContractCreated im _ => ContractCreated im (differential_world empty_accounts)
                    | ContractReturned bs _ => ContractReturned bs (differential_world empty_accounts)

@@ -247,6 +247,7 @@ def parse_calls(text: str, methods: dict[str, str]) -> list[Call]:
 def classify(calls: list[Call], executed: dict[int, dict[str, Any]]) -> list[dict[str, Any]]:
     """Combine parsing and execution evidence; diagnostics never agree."""
     results: list[dict[str, Any]] = []
+    transaction_logs: list[dict[str, Any]] = []
     for call in calls:
         result = call.manifest()
         actual = executed.get(call.index)
@@ -255,12 +256,16 @@ def classify(calls: list[Call], executed: dict[int, dict[str, Any]]) -> list[dic
         else:
             result.update(actual)
             if actual["status"] == "executed":
+                if call.builtin:
+                    result["logs"] = transaction_logs
+                else:
+                    transaction_logs = actual.get("logs", [])
                 if call.reason:
                     result.update(status="not-runnable", reason=call.reason)
                 elif call.builtin and call.events:
                     result.update(status="not-runnable", reason="event observations after builtin directives are not supported")
                 elif (actual["actual"] == call.expected
-                      and (call.implicit or actual.get("logs", []) == actual.get("expected_logs", []))):
+                      and (call.implicit or result.get("logs", []) == actual.get("expected_logs", []))):
                     result["status"] = "agree"
                 else:
                     result["status"] = "disagree"

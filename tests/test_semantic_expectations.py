@@ -84,6 +84,20 @@ class ExpectationTests(unittest.TestCase):
         with self.assertRaises(json.JSONDecodeError):
             runner.result_records(runner.PREFIX + '{"test":\n')
 
+    def test_builtin_without_expected_events_observes_previous_transaction_logs(self) -> None:
+        calls = runner.parse_calls('// ----\n// f() ->\n// balance -> 0\n// f() ->\n// balance -> 0', {"f()": "12345678"})
+        logs = [{"data": "0x"}]
+        empty = {"returned": "0x"}
+        zero = {"returned": runner.encode_bytes("0")}
+        actual = {-1: {"status": "executed", "actual": empty},
+                  0: {"status": "executed", "actual": empty, "logs": logs, "expected_logs": logs},
+                  1: {"status": "executed", "actual": zero},
+                  2: {"status": "executed", "actual": empty, "logs": [], "expected_logs": []},
+                  3: {"status": "executed", "actual": zero}}
+        results = runner.classify(calls, actual)
+        self.assertEqual([c["status"] for c in results], ["agree", "disagree", "agree", "agree"])
+        self.assertEqual(results[1]["logs"], logs)
+
     def test_unknown_input_is_not_encoded(self) -> None:
         calls = runner.parse_calls('// ----\n// f(): something -> 1', {"f()": "12345678"})
         self.assertIsNone(calls[1].calldata)

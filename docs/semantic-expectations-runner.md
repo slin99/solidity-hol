@@ -64,8 +64,8 @@ Calls agree only when their return/revert bytes and event logs match. Core
 invalid completions and fuel exhaustion are not runnable. Unsupported input
 syntax stops subsequent replay, since its effects on state are unknown;
 unsupported output observations can still allow later transactions to run.
-Event observations after builtin directives are not runnable; this runner does
-not retain the preceding transaction's logs for builtin observations.
+Builtins observe the preceding transaction's logs, including when they expect
+no events. Explicit event expectations after builtin directives are not runnable.
 Calls explicitly marked as out-of-gas are not runnable: the core does not charge
 gas, so success cannot be checked against that failure expectation. Gas
 observations are explicitly recorded as not runnable and counted separately
@@ -81,6 +81,9 @@ storage against compiler bytecode as well.
 For mismatch triage, add `--verify-bytecode` to run the same ordered transactions
 in Verifereum from the pinned compiler's creation and runtime bytecode. The JSON
 then retains the bytecode outcome beside the core outcome.
+Creation and runtime execution use isoltest's 100,000,000 gas budget, with no
+outer transaction fees. Creation gas exhaustion is recorded as unavailable
+bytecode evidence, rather than an ordinary revert.
 
 ## Format reference
 
