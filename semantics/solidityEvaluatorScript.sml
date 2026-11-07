@@ -535,6 +535,16 @@ End
  * data the decoder rejects reverts with none. A successful call leaves the
  * world the callee left, with its logs after the caller's.
  *)
+(* The unused success fields of a failed try call still have their declared
+ * scalar types. *)
+Definition default_call_results_def:
+  (default_call_results [] = SOME []) ∧
+  (default_call_results (ty :: rets) =
+    case (default_elementary ty, default_call_results rets) of
+      (SOME v, SOME vs) => SOME (v :: vs)
+    | _ => NONE)
+End
+
 Definition call_external_mode_def:
   call_external_mode catching env x ty kind selector params rets target value args
                 (st : source_state) gas =
@@ -560,7 +570,7 @@ Definition call_external_mode_def:
                if ¬r.call_success then
                  if ¬catching then abrupt_result (RevertCompletion r.call_return) st gas
                  else
-                   (case OPT_MMAP default_elementary rets of
+                   (case default_call_results rets of
                       NONE => abrupt_result (InvalidCompletion "bad try return types") st gas
                     | SOME defaults =>
                         let values = ScalarValue (BoolValue F) :: MAP ScalarValue defaults in
