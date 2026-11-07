@@ -924,6 +924,16 @@ val using_source = "testdata/differential/using_for.sol"
 val using_ast = artifact_part using_fixture ["sources", using_source, "ast"]
 val using_contracts = artifact_part using_fixture ["contracts", using_source]
 
+(* A virtual modifier rejects the unit, like a function header would: only a
+ * modifier's body failing import is confined to the functions using it. *)
+val () =
+  (import_source_unit []
+     (edit_first "ModifierDefinition" (set_field "virtual" (JSON.BOOL true))
+        using_ast)
+     using_contracts;
+   raise Fail "virtual modifier: imported")
+  handle ImportError _ => ()
+
 Definition using_unit_def:
   using_unit = ^(import_artifact using_fixture using_source)
 End

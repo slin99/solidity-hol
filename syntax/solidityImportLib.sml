@@ -1037,7 +1037,10 @@ fun function v = within v (fn v =>
   end)
 
 (* A modifier invocation runs the modifier it names, so one that could be
- * overridden is not supported. *)
+ * overridden is not supported. A modifier whose body fails to import is
+ * left out and recorded in failed_modifiers, which makes the functions
+ * invoking it unsupported; its parameters and the virtual check reject the
+ * unit, like a function's header. *)
 fun modifier v = within v (fn v =>
   let
     val (params_id, params) = parameter_list (field v "parameters")
@@ -1046,22 +1049,19 @@ fun modifier v = within v (fn v =>
     require v (not (bool_field v "virtual") andalso
                not (isSome (optional_field v "overrides")))
       "virtual modifiers are not supported";
-    record "src_modifier"
-      [("modifier_info", info v), ("modifier_parameters_id", params_id),
-       ("modifier_parameters", params),
-       ("modifier_body", stmt (field v "body"))]
+    case SOME (stmt (field v "body"))
+         handle ImportError reason =>
+           (failed_modifiers := !failed_modifiers @ [(int_field v "id", reason)];
+            NONE) of
+      NONE => NONE
+    | SOME body =>
+        SOME (record "src_modifier"
+          [("modifier_info", info v), ("modifier_parameters_id", params_id),
+           ("modifier_parameters", params), ("modifier_body", body)])
   end)
 
-(* The modifiers that import, recording those that fail in failed_modifiers:
- * the functions invoking one are unsupported. *)
-fun modifiers ms =
-  (failed_modifiers := [];
-   List.mapPartial
-     (fn m => SOME (modifier m)
-              handle ImportError reason =>
-                (failed_modifiers := !failed_modifiers @ [(int_field m "id", reason)];
-                 NONE))
-     ms)
+(* The modifiers whose bodies import. *)
+fun modifiers ms = (failed_modifiers := []; List.mapPartial modifier ms)
 
 fun event v = within v (fn v =>
   (expect v "EventDefinition";

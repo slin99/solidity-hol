@@ -392,8 +392,11 @@ return, a revert or the fallback. The prepared unit lists each function
 calls can reach, with its reason if unsupported.
 
 What storage layout or dispatch depends on still rejects the whole unit:
-function headers, state variables, constants, bases and their linearization,
-using directives, and a core program that fails `wf_core_program`.
+function headers, modifier parameters and `virtual` modifiers, state
+variables, constants, bases and their linearization, using directives, and a
+core program that fails `wf_core_program`. A contract left with no supported
+procedure and an unsupported constructor has nothing to admit, so elaboration
+rejects it whole too, without the constructor's reason.
 
 ## Built-in failures
 
