@@ -1359,6 +1359,11 @@ def special_forms(reached: dict[int, dict[str, Any]],
                     block(argument, "abi.* functions", "elaboration")
         elif kind == "MemberAccess" and node.get("referencedDeclaration") is None:
             base = node["expression"]
+            if (node["memberName"] == "length" and base["nodeType"] == "MemberAccess"
+                    and base.get("referencedDeclaration") is None and base["memberName"] == "code"
+                    and base["expression"]["typeDescriptions"].get("typeIdentifier")
+                    in {"t_address", "t_address_payable"}):
+                unread.add(base["id"])
             if base["nodeType"] == "Identifier" and base.get("referencedDeclaration", 0) < 0:
                 unread.add(base["id"])
             elif is_type_call(base):

@@ -38,15 +38,11 @@
  *)
 Theory solidityDifferential
 Ancestors
-  solidityElaborate solidityEntry contractABI keccak vfmCompute
+  solidityElaborate solidityEntry solidityBytecode
 Libs
   cv_transLib wordsLib intLib
 
 (* Inputs *)
-
-Datatype:
-  argument = IntArg int | BoolArg bool | BytesArg (byte list)
-End
 
 Definition argument_scalar_def:
   (argument_scalar (IntArg i) = IntegerValue i) ∧
@@ -83,32 +79,6 @@ Definition argument_values_def:
       (SOME v, SOME vs) => SOME (v :: vs)
     | _ => NONE) ∧
   (argument_values _ _ = NONE)
-End
-
-(* Outcomes *)
-
-Datatype:
-  diagnostic =
-    UnknownFunction
-  | UnencodableArguments
-  | UnencodableResult
-  | OutOfFuel
-  | InvalidCompletion
-  | ExceptionalHalt
-  | InvalidTransaction
-End
-
-Datatype:
-  call_outcome = Returned (byte list) | Reverted (byte list) | Diagnostic diagnostic
-End
-
-Definition is_diagnostic_def:
-  (is_diagnostic (Diagnostic _) ⇔ T) ∧
-  (is_diagnostic _ ⇔ F)
-End
-
-Definition returned_def:
-  returned tys vs = Returned (enc (Tuple tys) (ListV vs))
 End
 
 (* Functions of the unit's contract *)
@@ -185,27 +155,6 @@ Definition case_immutable_values_def:
       | NONE => NONE) imms)
 End
 
-Definition patch_word_def:
-  patch_word w code i = TAKE i code ++ w ++ DROP (i + LENGTH w) code
-End
-
-(* The deployed code holding the immutables' words at their offsets. *)
-Definition patch_immutables_def:
-  (patch_immutables refs [] code = code) ∧
-  (patch_immutables refs ((x, _, w) :: vs) code =
-    patch_immutables refs vs
-      (FOLDL (patch_word w) code
-         (case ALOOKUP refs x of SOME offsets => offsets | NONE => [])))
-End
-
-(* The words a deployed code holds at the immutables' first offsets. *)
-Definition code_immutable_words_def:
-  code_immutable_words refs code =
-    FLAT (MAP (λ(_, offsets).
-                 case offsets of i :: _ => TAKE 32 (DROP i code) | [] => [])
-              refs)
-End
-
 (* The same words for the values a creation yields; one it did not assign
  * is zero. *)
 Definition created_immutable_words_def:
@@ -223,36 +172,6 @@ End
 
 (* Storage *)
 
-Definition contract_address_def:
-  contract_address = 0x1000w : address
-End
-
-Definition peer_address_def:
-  peer_address = 0x5000w : address
-End
-
-Definition seed_storage_def:
-  (seed_storage [] = empty_storage) ∧
-  (seed_storage ((k, v) :: kvs) =
-    update_storage (n2w k) (n2w v) (seed_storage kvs))
-End
-
-(* The contract, with its code and initial storage, and no other account. *)
-Definition contract_accounts_def:
-  contract_accounts code storage =
-    update_account contract_address
-      (empty_account_state with <| code := code;
-                                   storage := seed_storage storage |>)
-      empty_accounts
-End
-
-(* The contract and a sender funded for the value it sends. *)
-Definition differential_accounts_def:
-  differential_accounts code storage sender =
-    update_account sender (empty_account_state with balance := 2 ** 128)
-      (contract_accounts code storage)
-End
-
 Definition observed_slots_def:
   observed_slots (prog : core_program) storage final =
     nub
@@ -260,72 +179,7 @@ Definition observed_slots_def:
        MAP FST final)
 End
 
-Definition storage_values_def:
-  storage_values st slots = MAP (λk. (k, w2n (lookup_storage (n2w k) st))) slots
-End
-
-(* A projection for diagnostics and the retained listed-slot interface. *)
-Definition project_observation_def:
-  project_observation slots (outcome, st, logs : event list) =
-    (outcome, case st of NONE => [] | SOME store => storage_values store slots)
-End
-
-(* A listed slot ends with its listed value, any other with its initial one. *)
-Definition expected_storage_def:
-  expected_storage storage final slots =
-    MAP (λk. (k, case ALOOKUP final k of
-                   SOME v => v
-                 | NONE => (case ALOOKUP storage k of SOME v => v | NONE => 0)))
-      slots
-End
-
-(* The contract and the sender, with the peer's code and storage. *)
-Definition case_accounts_def:
-  case_accounts code storage sender peer_code peer_storage =
-    update_account peer_address
-      (empty_account_state with <| code := peer_code;
-                                   storage := seed_storage peer_storage |>)
-      (differential_accounts code storage sender)
-End
-
 (* Cases *)
-
-(* A call to the deployed contract, or its creation from initcode with
- * constructor arguments, given as values or as raw bytes. *)
-Datatype:
-  call_input =
-    NamedCall string (argument list)
-  | RawCall (byte list)
-  | Deploy (byte list) (argument list + byte list)
-End
-
-Datatype:
-  expectation =
-    ExpectReturn (argument list) | ExpectRawReturn (byte list)
-  | ExpectPanic num | ExpectRevert (byte list)
-End
-
-(* A transaction from the sender to the contract, from the initial storage
- * of the contract and of the peer (no code for none), with its expected
- * outcome, final storage entries and logs, each log given by its logger,
- * topics and data. A call gives values to immutables, by declaration; the
- * deployed code holds each immutable it reads at the offsets listed.
- *)
-Datatype:
-  differential_case = <|
-    case_sender : address;
-    case_value : num;
-    case_input : call_input;
-    case_immutables : (num # argument) list;
-    case_immutable_refs : (num # num list) list;
-    case_storage : (num # num) list;
-    case_peer_code : byte list;
-    case_peer_storage : (num # num) list;
-    case_expect : expectation;
-    case_final : (num # num) list;
-    case_logs : (address # bytes32 list # byte list) list
-  |>
-End
 
 Definition call_data_def:
   call_data name params vs =
@@ -370,59 +224,6 @@ Definition input_call_def:
             case encoded_values params vs of
               NONE => INL UnencodableArguments
             | SOME data => INR (data, []))
-End
-
-Definition expected_logs_def:
-  (expected_logs [] = []) ∧
-  (expected_logs ((logger, topics, data) :: logs) =
-    <| logger := logger; topics := topics; data := data |> ::
-    expected_logs logs)
-End
-
-(* The transaction *)
-
-(* Distinct values for each field a contract can read, so that reading the
- * wrong one shows up as a mismatch.
- *)
-Definition differential_chain_id_def:
-  differential_chain_id = 5n
-End
-
-Definition differential_block_def:
-  differential_block = <|
-    baseFeePerGas := 7; excessBlobGas := 0; gasUsed := 0; blobGasUsed := 0;
-    number := 11; timeStamp := 1700000000; coinBase := 0xC0FFEEw;
-    gasLimit := 30000000;
-    prevRandao := 0w; hash := 0w; parentBeaconBlockRoot := 0w;
-    stateRoot := 0w; transactions := []; withdrawals := [];
-    requestsHash := 0w; withdrawalsRoot := 0w; rlpSize := 0
-  |>
-End
-
-Definition differential_tx_def:
-  differential_tx sender value data = <|
-    from := sender; to := SOME contract_address; data := data; nonce := 0;
-    value := value; gasLimit := 10000000; gasPrice := 9; accessList := [];
-    blobVersionedHashes := []; maxFeePerBlobGas := NONE; maxFeePerGas := NONE;
-    authorizationList := []
-  |>
-End
-
-(* The account a case observes: the contract, or the one its creation
- * transaction makes. *)
-Definition case_address_def:
-  case_address c =
-    case c.case_input of
-      Deploy _ _ => address_for_create c.case_sender 0
-    | _ => contract_address
-End
-
-Definition case_tx_def:
-  case_tx c data =
-    case c.case_input of
-      Deploy code _ =>
-        differential_tx c.case_sender c.case_value (code ++ data) with to := NONE
-    | _ => differential_tx c.case_sender c.case_value data
 End
 
 (* The evaluator run *)
@@ -490,31 +291,22 @@ End
 
 (* The bytecode run *)
 
+Definition prepared_evm_input_def:
+  prepared_evm_input code u c =
+    case (input_call u c.case_input, case_immutable_values u c.case_immutables) of
+      (INL d, _) => INL d
+    | (_, NONE) => INL UnencodableArguments
+    | (INR (data, _), SOME imm) =>
+        INR (case_accounts (patch_immutables c.case_immutable_refs imm code)
+               c.case_storage c.case_sender c.case_peer_code c.case_peer_storage,
+             case_tx c data, c.case_immutable_refs)
+End
+
 Definition evm_execution_def:
   evm_execution code u c =
-    case (input_call u c.case_input, case_immutable_values u c.case_immutables) of
-      (INL d, _) => (Diagnostic d, NONE, [])
-    | (_, NONE) => (Diagnostic UnencodableArguments, NONE, [])
-    | (INR (data, _), SOME imm) =>
-        case run_transaction (Collect empty_domain) F differential_chain_id []
-               differential_block
-               (case_accounts (patch_immutables c.case_immutable_refs imm code)
-                  c.case_storage c.case_sender c.case_peer_code
-                  c.case_peer_storage)
-               (case_tx c data) of
-          SOME (r, accounts) =>
-            (let account = lookup_account (case_address c) accounts in
-             let st = SOME account.storage in
-             case r.result of
-               NONE =>
-                 (case c.case_input of
-                    Deploy _ _ =>
-                      (Returned (code_immutable_words c.case_immutable_refs
-                                   account.code), st, r.logs)
-                  | _ => (Returned r.output, st, r.logs))
-             | SOME Reverted => (Reverted r.output, st, r.logs)
-             | SOME _ => (Diagnostic ExceptionalHalt, NONE, []))
-        | NONE => (Diagnostic InvalidTransaction, NONE, [])
+    case prepared_evm_input code u c of
+      INL d => (Diagnostic d, NONE, [])
+    | INR input => bytecode_execution input
 End
 
 Definition evm_observation_def:
@@ -679,38 +471,23 @@ val () = cv_auto_trans argument_scalar_def;
 val () = cv_auto_trans solidityCoreWfTheory.elementary_scalar_has_type_def;
 val () = cv_auto_trans argument_value_def;
 val () = cv_auto_trans argument_values_def;
-val () = cv_auto_trans is_diagnostic_def;
-val () = cv_auto_trans returned_def;
 val () = cv_auto_trans unit_function_def;
 val () = cv_auto_trans function_types_def;
 val () = cv_auto_trans unit_immutables_def;
 val () = cv_auto_trans immutable_word_def;
 val () = cv_auto_trans case_immutable_values_def;
-val () = cv_auto_trans patch_word_def;
-val () = cv_auto_trans patch_immutables_def;
-val () = cv_auto_trans code_immutable_words_def;
 val () = cv_auto_trans created_immutable_words_def;
-val () = cv_auto_trans seed_storage_def;
-val () = cv_auto_trans contract_accounts_def;
-val () = cv_auto_trans differential_accounts_def;
-val () = cv_auto_trans case_accounts_def;
 val () = cv_auto_trans listTheory.nub_def;
 val () = cv_auto_trans observed_slots_def;
-val () = cv_auto_trans storage_values_def;
-val () = cv_auto_trans project_observation_def;
-val () = cv_auto_trans expected_storage_def;
 val () = cv_auto_trans call_data_def;
 val () = cv_auto_trans constructor_types_def;
 val () = cv_auto_trans input_call_def;
-val () = cv_auto_trans expected_logs_def;
-val () = cv_auto_trans differential_tx_def;
-val () = cv_auto_trans case_address_def;
-val () = cv_auto_trans case_tx_def;
 val () = cv_auto_trans differential_frame_def;
 val () = cv_auto_trans differential_world_def;
 val () = cv_auto_trans contract_observation_def;
 val () = cv_auto_trans source_execution_def;
 val () = cv_auto_trans source_observation_def;
+val () = cv_auto_trans prepared_evm_input_def;
 val () = cv_auto_trans evm_execution_def;
 val () = cv_auto_trans evm_observation_def;
 val () = cv_auto_trans expected_outcome_def;

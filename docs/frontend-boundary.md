@@ -277,6 +277,10 @@ sequence as its contents. Arrays and structs as arguments, a selector that
 is not a `bytes4` value (a literal selector included), and a signature that is
 not a plain string literal are rejected.
 
+`address.code.length` reads the account's code size directly, including zero for
+an account without code. The receiver is evaluated once and no memory bytes
+object is allocated. Standalone `address.code` remains unsupported.
+
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
 from the functions calls can reach (an overridden function counts only when
