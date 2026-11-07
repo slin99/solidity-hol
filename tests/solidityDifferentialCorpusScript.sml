@@ -1,24 +1,54 @@
-(* The differential regression corpus, testdata/differential/corpus.json: every
- * case is a kernel-checked differential_agrees theorem relating the deployed
- * bytecode from the pinned compiler to the elaborated source. The build fails
- * if any suite or case does not agree. See docs/differential-testing.md.
- *)
+(* Compatibility roll-up; refreshed with the integration reports. *)
 Theory solidityDifferentialCorpus
 Ancestors
-  solidityDifferential
-Libs
-  solidityDifferentialLib
-
-(* Directories keep new suites and artifacts in the build's hashed,
- * staged inputs without a shared per-feature list. *)
-fun holbuild_extra_deps (_ : string list) = ()
-val () = holbuild_extra_deps [
-  "../SOLIDITY_PIN",
-  "../profiles/solc-0.8.37-via-ir-osaka.json",
-  "../testdata/differential/corpus.json",
-  "../testdata/differential/suites",
-  "../testdata/differential/expected",
-  "../testdata/frontend/expected/pure_core.json"
-]
-
-val () = run_corpus {root = "..", corpus = "testdata/differential/corpus.json"}
+  solidityDifferentialCorpus_abi_encoding
+  solidityDifferentialCorpus_builtins
+  solidityDifferentialCorpus_calldata_arrays
+  solidityDifferentialCorpus_calldata_bytes
+  solidityDifferentialCorpus_calls
+  solidityDifferentialCorpus_conditionals
+  solidityDifferentialCorpus_constants
+  solidityDifferentialCorpus_constructors
+  solidityDifferentialCorpus_context
+  solidityDifferentialCorpus_contract_types
+  solidityDifferentialCorpus_control
+  solidityDifferentialCorpus_dynamic_bytes
+  solidityDifferentialCorpus_dynamic_storage_arrays
+  solidityDifferentialCorpus_enums
+  solidityDifferentialCorpus_errors
+  solidityDifferentialCorpus_external
+  solidityDifferentialCorpus_fallback
+  solidityDifferentialCorpus_hashes
+  solidityDifferentialCorpus_immutables
+  solidityDifferentialCorpus_immutables_creation
+  solidityDifferentialCorpus_imports
+  solidityDifferentialCorpus_inheritance
+  solidityDifferentialCorpus_inheritance_diamond
+  solidityDifferentialCorpus_inherited_payable
+  solidityDifferentialCorpus_initializers_only
+  solidityDifferentialCorpus_inline_assembly
+  solidityDifferentialCorpus_interface_ids
+  solidityDifferentialCorpus_mappings
+  solidityDifferentialCorpus_memory_arrays
+  solidityDifferentialCorpus_memory_bytes
+  solidityDifferentialCorpus_modifiers
+  solidityDifferentialCorpus_named_arguments
+  solidityDifferentialCorpus_oz_erc20
+  solidityDifferentialCorpus_public_getters
+  solidityDifferentialCorpus_pure_core
+  solidityDifferentialCorpus_receive
+  solidityDifferentialCorpus_scalars
+  solidityDifferentialCorpus_shadowed_builtins
+  solidityDifferentialCorpus_storage
+  solidityDifferentialCorpus_storage_array_growth
+  solidityDifferentialCorpus_storage_array_values
+  solidityDifferentialCorpus_storage_arrays
+  solidityDifferentialCorpus_storage_bytes
+  solidityDifferentialCorpus_storage_bytes_aliases
+  solidityDifferentialCorpus_storage_structs
+  solidityDifferentialCorpus_storage_structs_top_level
+  solidityDifferentialCorpus_struct_getters
+  solidityDifferentialCorpus_super_calls
+  solidityDifferentialCorpus_token
+  solidityDifferentialCorpus_type_bounds
+  solidityDifferentialCorpus_using_for
