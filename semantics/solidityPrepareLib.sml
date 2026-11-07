@@ -3,6 +3,11 @@ struct
 
 open HolKernel boolLib solidityElaborateTheory solidityCoreWfTheory cv_transLib
 
+(* cv_eval sizes word literals (selectors, assembly numbers) with the rules
+ * wordsLib adds to the compset when it loads; without it, it fails with
+ * "non-cv constant: (:256)". *)
+val _ = wordsLib.WORD_CONV
+
 datatype failure = MalformedInput | UnsupportedImport | UnsupportedLowering
                    | SourceRejected | InvalidCore
 exception PreparationError of failure * string
