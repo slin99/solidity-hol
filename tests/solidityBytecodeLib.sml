@@ -262,13 +262,22 @@ fun code_constant name kind artifact source contract =
     code_definition name hex
   end
 
+fun read_bytecode_artifact path =
+  let
+    val artifact = JSONParser.parseFile path
+    val format = string_field artifact "format"
+  in
+    if format = "solidity-hol-solc-artifact-v1" then artifact
+    else fail (path ^ ": expected solidity-hol-solc-artifact-v1, got " ^ format)
+  end
+
 (* The peer's code, from its own artifact; no code without a peer. *)
 fun peer_code root prefix s =
   case JSONUtil.findField s "peer" of
     NONE => listSyntax.mk_nil byte_ty
   | SOME p =>
       code_constant (prefix ^ "_peer_code") "deployedBytecode"
-        (JSONParser.parseFile (root ^ "/" ^ string_field p "artifact"))
+        (read_bytecode_artifact (root ^ "/" ^ string_field p "artifact"))
         (string_field p "source") (string_field p "contract")
 
 
@@ -516,7 +525,7 @@ fun run_suite_file {root, suite_file} =
     val suite = name_field s "name"
     val source = string_field s "source"
     val contract = string_field s "contract"
-    val artifact = JSONParser.parseFile (root ^ "/" ^ string_field s "artifact")
+    val artifact = read_bytecode_artifact (root ^ "/" ^ string_field s "artifact")
     val target = artifact_contract artifact source contract
     val prefix = "bytecode_" ^ suite
     val code = code_constant (prefix ^ "_code") "deployedBytecode" artifact source contract
