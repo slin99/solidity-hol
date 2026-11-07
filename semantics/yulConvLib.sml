@@ -69,6 +69,12 @@ val eval_yul_builtin_c =
 val yul_lookup_c = prim_mk_const {Thy = "yulEvaluator", Name = "yul_lookup"}
 val yul_lookup_names_c =
   prim_mk_const {Thy = "yulEvaluator", Name = "yul_lookup_names"}
+(* The message call a `call` or `staticcall` makes.  It is a whole EVM run of
+ * the callee, so it stays folded: a form carries it as the call it is, and a
+ * client takes its outcome from a fact about that call, as it takes a callee's
+ * from the callee's own theorem. *)
+val run_external_call_c =
+  prim_mk_const {Thy = "externalCall", Name = "run_external_call"}
 
 
 (* The constants are recognised by theory and name, reading the record
@@ -215,7 +221,7 @@ val test_compset =
     (List.foldl (fn (c, cs) => computeLib.scrub_const cs c)
        (computeLib.copy (computeLib.the_compset ()))
        [eval_yul_block_c, invoke_c, eval_yul_loop_c, word_exp_c,
-        word_exp_tailrec_c])
+        word_exp_tailrec_c, run_external_call_c])
 
 fun eval_test tm = computeLib.CBV_CONV test_compset tm
 
@@ -309,8 +315,16 @@ val helper_defs = [
  * spine -- `HD vals`, `HD (TL vals)`, ... -- in the branch, where the arity the
  * clause tests and the binding the block writes can read it.  `helper_defs` is
  * the list a form's residues are read against, and this is not one of them: it
- * is this conversion's own construction and never part of an evaluator clause. *)
-val shape_defs = [yul_take_shape_def]
+ * is this conversion's own construction and never part of an evaluator clause.
+ *
+ * With it, the fields a memory write leaves alone, read through a write that
+ * stays folded.  A call writes the output it got back, `TAKE n
+ * outcome.call_return`, which is no list the write's clauses recurse on; without
+ * these the binding after the call could not read `.scopes` off the machine,
+ * and every scope after it would be one the form does not have.  Their heads
+ * are the record's own field readers, which are no step of the evaluator's, so
+ * they are not in `helper_defs` either. *)
+val shape_defs = [yul_take_shape_def, yul_memory_write_fields]
 
 (* The operations that read or build a machine, a scope, memory or storage, and
  * the builtin dispatch that reaches them.  `yul_bind` is the shape of them all:
@@ -1460,8 +1474,10 @@ val eval_compset =
                eval_yul_block_c)
             invoke_c
         val cs1 = computeLib.scrub_const
-                    (computeLib.scrub_const cs0 eval_yul_builtin_c)
-                    eval_yul_loop_c
+                    (computeLib.scrub_const
+                       (computeLib.scrub_const cs0 eval_yul_builtin_c)
+                       eval_yul_loop_c)
+                    run_external_call_c
         val cs2 = wordsLib.add_words_compset true cs1
         val cs3 =
           computeLib.scrub_const
@@ -1834,7 +1850,7 @@ fun yul_loop_conv defs tm =
 val conversion_consts =
   List.map (const_key o dest_thy_const)
     (flookup_tm :: invoke_c :: eval_yul_loop_c :: eval_yul_builtin_c ::
-     yul_lookup_c ::
+     run_external_call_c :: yul_lookup_c ::
      yul_lookup_names_c ::
      (clause_heads (evaluator_clauses @ helper_defs @ block_def_clauses) @
       List.map (fn (c, _, _) => c) guarded_helpers))
@@ -1843,7 +1859,8 @@ fun residues tm =
   Lib.mk_set (List.filter (fn k => Lib.mem k conversion_consts) (consts_in tm))
 
 (* What a form may still be standing on: the call and the loop it left folded,
- * and the operations whose input is a value nobody has -- the frame and memory
+ * the message call a `call` builtin made (`run_external_call`), and the
+ * operations whose input is a value nobody has -- the frame and memory
  * operations of `guarded_helper_defs` (a binding over a machine that holds a
  * call, an `FLOOKUP` of a scope that came out of the callee's frame), the scope
  * readers, which are unguarded and so always unfold, but whose read of a scope
@@ -1857,6 +1874,7 @@ fun residues tm =
  * one of these. *)
 val permitted_residues =
   ("yulEvaluator", "invoke_yul") :: ("yulEvaluator", "eval_yul_loop")
+  :: ("externalCall", "run_external_call")
   :: List.map (const_key o dest_thy_const)
        (flookup_tm :: yul_lookup_c :: yul_lookup_names_c ::
         (clause_heads helper_defs @
