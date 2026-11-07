@@ -98,6 +98,12 @@ preparation acceptance; it does not execute the tests' call expectations.
 See [differential-testing.md](docs/differential-testing.md),
 [profiles.md](docs/profiles.md) and
 [semantic-tests-coverage.md](docs/semantic-tests-coverage.md).
+Feature PRs include their own suite and compiler artifact; shared report
+snapshots are refreshed after merges. See
+[generated-artifacts.md](docs/generated-artifacts.md) for the commands and ownership.
+Run admitted upstream call expectations separately with
+[`tools/run_semantic_expectations.py`](docs/semantic-expectations-runner.md);
+this on-demand sweep does not run in per-PR CI.
 
 See [implementation-blueprint.md](docs/implementation-blueprint.md) for module
 ownership, evaluator interfaces and extension points.

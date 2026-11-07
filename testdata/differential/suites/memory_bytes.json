@@ -1,0 +1,181 @@
+{
+  "name": "memory_bytes",
+  "source": "testdata/differential/memory_bytes.sol",
+  "contract": "MemoryBytes",
+  "artifact": "testdata/differential/expected/memory_bytes.json",
+  "cases": [
+    {
+      "name": "literal_zero",
+      "function": "literal",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x00"
+        ]
+      }
+    },
+    {
+      "name": "literal_high_bit",
+      "function": "literal",
+      "args": [
+        4
+      ],
+      "expect": {
+        "return": [
+          "0x80"
+        ]
+      }
+    },
+    {
+      "name": "literal_index_at_length_panics",
+      "function": "literal",
+      "args": [
+        5
+      ],
+      "expect": {
+        "panic": "0x32"
+      }
+    },
+    {
+      "name": "literal_huge_index_panics",
+      "function": "literal",
+      "args": [
+        115792089237316195423570985008687907853269984665640564039457584007913129639935
+      ],
+      "expect": {
+        "panic": "0x32"
+      }
+    },
+    {
+      "name": "memory_assignment_aliases",
+      "function": "aliasWrite",
+      "args": [
+        "0xff"
+      ],
+      "expect": {
+        "return": [
+          "0xff"
+        ]
+      }
+    },
+    {
+      "name": "memory_rebinding_preserves_original",
+      "function": "rebind",
+      "args": [
+        "0xaa"
+      ],
+      "expect": {
+        "return": [
+          "0x01",
+          "0xaa"
+        ]
+      }
+    },
+    {
+      "name": "internal_parameters_and_returns_alias",
+      "function": "internalAlias",
+      "args": [
+        "0x7f"
+      ],
+      "expect": {
+        "return": [
+          "0x7f",
+          "0x7f"
+        ]
+      }
+    },
+    {
+      "name": "default_memory_return_is_empty",
+      "function": "defaultLength",
+      "args": [],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "default_memory_return_index_panics",
+      "function": "defaultIndex",
+      "args": [],
+      "expect": {
+        "panic": "0x32"
+      }
+    },
+    {
+      "name": "string_bytes_conversion_aliases_utf8_and_nul",
+      "function": "stringAlias",
+      "args": [
+        "0xff"
+      ],
+      "expect": {
+        "return": [
+          "0xff",
+          4,
+          "0xa9",
+          "0x00"
+        ]
+      }
+    },
+    {
+      "name": "calldata_to_memory_copies",
+      "function": "calldataCopy",
+      "args": [
+        "0xab"
+      ],
+      "expect": {
+        "return": [
+          "0x2b",
+          36,
+          "0xab"
+        ]
+      }
+    },
+    {
+      "name": "index_read_snapshots_base",
+      "function": "indexedReadSnapshot",
+      "args": [],
+      "expect": {
+        "return": [
+          "0xaa"
+        ]
+      }
+    },
+    {
+      "name": "index_write_snapshots_base",
+      "function": "indexedWriteSnapshot",
+      "args": [
+        "0xdd"
+      ],
+      "expect": {
+        "return": [
+          "0xdd",
+          "0xbb"
+        ]
+      }
+    },
+    {
+      "name": "parenthesized_byte_literal",
+      "function": "parenthesizedLiteral",
+      "args": [],
+      "expect": {
+        "return": [
+          "0xaa"
+        ]
+      }
+    },
+    {
+      "name": "multiple_byte_literal_returns",
+      "function": "multipleLiteralReturns",
+      "args": [],
+      "expect": {
+        "return": [
+          "0xbb",
+          "0x78"
+        ]
+      }
+    }
+  ]
+}

@@ -24,10 +24,10 @@ tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc
 | --- | ---: |
 | admitted | 579 |
 | elaboration-rejected | 73 |
-| import-rejected | 581 |
+| import-rejected | 582 |
 | compile-failure | 0 |
 | malformed-input | 0 |
-| source-rejected | 337 |
+| source-rejected | 336 |
 | invalid-core | 0 |
 | skipped | 100 |
 | total | 1670 |
@@ -44,15 +44,15 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | local reference bindings | `VariableDeclaration` | 156 | 0 | 0 |
 | source units without exactly one contract | `SourceUnit` | 129 | 7 | 0 |
 | arrays | `ArrayTypeName`, `IndexAccess`, `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 124 | 3 | 6 |
+| address members (balance, call, transfer, …) | `MemberAccess` | 108 | 16 | 25 |
 | struct values and copying | `Identifier`, `IndexAccess`, `MemberAccess` | 108 | 2 | 0 |
-| address members (balance, call, transfer, …) | `MemberAccess` | 106 | 16 | 26 |
 | function members (selector, address, …) | `MemberAccess`, `TupleExpression`, `VariableDeclaration` | 105 | 0 | 9 |
 | function types | `FunctionTypeName` | 96 | 0 | 87 |
 | inline assembly memory references | `InlineAssembly` | 87 | 8 | 0 |
 | contract creation (new C) | `FunctionCall` | 78 | 0 | 50 |
 | operator delete | `UnaryOperation` | 75 | 13 | 0 |
 | free functions | `FunctionDefinition` | 73 | 11 | 31 |
-| abi.* functions | `FunctionCall`, `Identifier`, `IndexRangeAccess`, `MemberAccess` | 68 | 17 | 8 |
+| abi.* functions | `FunctionCall`, `Identifier`, `IndexRangeAccess`, `MemberAccess` | 70 | 16 | 10 |
 | array values | `Identifier`, `IndexAccess`, `MemberAccess` | 65 | 0 | 0 |
 | functions as values | `Identifier`, `MemberAccess` | 58 | 1 | 0 |
 | type names as values | `ElementaryTypeNameExpression` | 55 | 1 | 9 |
@@ -61,7 +61,7 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | inline arrays | `TupleExpression` | 47 | 13 | 38 |
 | external library functions | `FunctionDefinition` | 45 | 9 | 31 |
 | transient storage | `VariableDeclaration` | 41 | 19 | 0 |
-| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 39 | 21 | 0 |
+| string literals as fixed-size bytes | `Assignment`, `BinaryOperation`, `EmitStatement`, `FunctionCall`, `Return`, `VariableDeclaration`, `VariableDeclarationStatement` | 38 | 21 | 0 |
 | aggregate array mutation | `MemberAccess` | 37 | 10 | 0 |
 | mappings | `IndexAccess`, `TupleExpression`, `VariableDeclaration` | 33 | 9 | 0 |
 | inline assembly | `InlineAssembly` | 32 | 11 | 22 |
@@ -69,8 +69,8 @@ The scan disagrees with the HOL run on 4 tests, listed at the end.
 | external calls to getters | `MemberAccess` | 30 | 1 | 4 |
 | bytes.concat and string.concat | `MemberAccess`, `TupleExpression` | 30 | 0 | 14 |
 | using for with functions | `UsingForDirective` | 29 | 0 | 27 |
-| library calls and contract-name members | `IndexAccess`, `MemberAccess` | 25 | 14 | 0 |
-| tuples of literals | `TupleExpression` | 24 | 5 | 0 |
+| tuples of literals | `TupleExpression` | 28 | 5 | 0 |
+| library calls and contract-name members | `IndexAccess`, `MemberAccess` | 27 | 14 | 0 |
 | members of elementary type names | `IndexAccess`, `TupleExpression` | 24 | 0 | 0 |
 | bytes push and pop | `MemberAccess` | 23 | 15 | 0 |
 | memory arrays (new T[](n)) | `NewExpression` | 23 | 0 | 0 |
@@ -135,22 +135,22 @@ Supporting the features in this order admits the most rejected tests at each ste
 | 2 | transient storage | 40 |
 | 3 | operator delete | 62 |
 | 4 | address members (balance, call, transfer, …) | 79 |
-| 5 | abi.* functions | 98 |
-| 6 | literals of non-integer types | 115 |
-| 7 | bytes push and pop | 133 |
-| 8 | require with a custom error | 150 |
-| 9 | inline arrays | 166 |
-| 10 | aggregate array mutation | 181 |
-| 11 | library calls and contract-name members | 195 |
-| 12 | struct values and copying | 206 |
-| 13 | structs | 237 |
-| 14 | local reference bindings | 273 |
-| 15 | arrays | 297 |
-| 16 | array values | 332 |
-| 17 | inline assembly memory references | 360 |
-| 18 | inline assembly memory outside the scratch space | 386 |
-| 19 | inline assembly | 403 |
-| 20 | free functions | 416 |
+| 5 | abi.* functions | 97 |
+| 6 | literals of non-integer types | 114 |
+| 7 | bytes push and pop | 132 |
+| 8 | require with a custom error | 149 |
+| 9 | inline arrays | 165 |
+| 10 | aggregate array mutation | 180 |
+| 11 | library calls and contract-name members | 194 |
+| 12 | struct values and copying | 205 |
+| 13 | structs | 236 |
+| 14 | local reference bindings | 272 |
+| 15 | arrays | 296 |
+| 16 | array values | 331 |
+| 17 | inline assembly memory references | 359 |
+| 18 | inline assembly memory outside the scratch space | 385 |
+| 19 | inline assembly | 402 |
+| 20 | free functions | 415 |
 
 ## Skipped and compile failures
 
@@ -755,7 +755,6 @@ Supporting the features in this order admits the most rejected tests at each ste
 
 ## Source validation rejections
 
-- `abicoder/abi_encode_call_special_args_v2.sol`: abicoder/abi_encode_call_special_args_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/abi_encode_memory_dynamic_array_and_calldata_bytes_v1.sol`: abicoder/abi_encode_memory_dynamic_array_and_calldata_bytes_v1.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/abi_encode_storage_array_v2.sol`: abicoder/abi_encode_storage_array_v2.sol: valid_src_unit failed (source validation/subset restriction)
 - `abicoder/abi_encode_v2.sol`: abicoder/abi_encode_v2.sol: valid_src_unit failed (source validation/subset restriction)

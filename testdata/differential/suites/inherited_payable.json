@@ -1,0 +1,28 @@
+{
+  "name": "inherited_payable",
+  "source": "testdata/differential/inherited_payable.sol",
+  "contract": "Plain",
+  "artifact": "testdata/differential/expected/inherited_payable.json",
+  "cases": [
+    {
+      "name": "creation_runs_base_constructor",
+      "deploy": true,
+      "args": [],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "creation_with_value_reverts_despite_payable_base",
+      "deploy": true,
+      "args": [],
+      "value": 1,
+      "expect": {
+        "revert": "0x"
+      }
+    }
+  ]
+}

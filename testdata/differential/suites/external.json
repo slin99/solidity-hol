@@ -1,0 +1,198 @@
+{
+  "name": "external",
+  "source": "testdata/differential/external.sol",
+  "contract": "Caller",
+  "artifact": "testdata/differential/expected/external.json",
+  "peer": {
+    "source": "testdata/differential/token.sol",
+    "contract": "Token",
+    "artifact": "testdata/differential/expected/token.json"
+  },
+  "cases": [
+    {
+      "name": "pay_transfers_then_reads_balance",
+      "function": "pay",
+      "args": [
+        20480,
+        12288,
+        20
+      ],
+      "peer_storage": {
+        "105429781766569857922126575625563349147740172486500053377004878340415369987525": 50
+      },
+      "expect": {
+        "return": [
+          20
+        ]
+      },
+      "final_storage": {
+        "0": 1
+      },
+      "logs": [
+        {
+          "logger": "0x5000",
+          "topics": [
+            "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+            "0x0000000000000000000000000000000000000000000000000000000000001000",
+            "0x0000000000000000000000000000000000000000000000000000000000003000"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000014"
+        },
+        {
+          "topics": [
+            "0x737c69225d647e5994eab1a6c301bf6d9232beb2759ae1e27a8966b4732bc489",
+            "0x0000000000000000000000000000000000000000000000000000000000003000"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000014"
+        }
+      ]
+    },
+    {
+      "name": "pay_bubbles_callee_revert",
+      "function": "pay",
+      "args": [
+        20480,
+        12288,
+        20
+      ],
+      "peer_storage": {
+        "105429781766569857922126575625563349147740172486500053377004878340415369987525": 5
+      },
+      "expect": {
+        "revert": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014696e73756666696369656e742062616c616e6365000000000000000000000000"
+      }
+    },
+    {
+      "name": "pay_without_code_fails_decoding",
+      "function": "pay",
+      "args": [
+        24576,
+        12288,
+        1
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "mint_via_calls_token",
+      "function": "mintVia",
+      "args": [
+        20480,
+        12288,
+        7
+      ],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 1
+      },
+      "logs": [
+        {
+          "logger": "0x5000",
+          "topics": [
+            "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+            "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000000000000000000000003000"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000007"
+        }
+      ]
+    },
+    {
+      "name": "mint_via_bubbles_callee_revert",
+      "function": "mintVia",
+      "args": [
+        20480,
+        0,
+        1
+      ],
+      "expect": {
+        "revert": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c6d696e7420746f207a65726f0000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "name": "mint_via_without_code_reverts",
+      "function": "mintVia",
+      "args": [
+        24576,
+        12288,
+        1
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "balance_via_static_call",
+      "function": "balanceVia",
+      "args": [
+        20480,
+        12288
+      ],
+      "peer_storage": {
+        "68113724183316182233052564790125915752421945217496801851705428207216635038832": 9
+      },
+      "expect": {
+        "return": [
+          9
+        ]
+      }
+    },
+    {
+      "name": "bump_self_sees_callee_write",
+      "function": "bumpSelf",
+      "args": [
+        3
+      ],
+      "storage": {
+        "0": 4
+      },
+      "expect": {
+        "return": [
+          14
+        ]
+      },
+      "final_storage": {
+        "0": 7
+      }
+    },
+    {
+      "name": "bump_static_halts_on_write",
+      "function": "bumpStatic",
+      "args": [
+        3
+      ],
+      "storage": {
+        "0": 4
+      },
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "forward_passes_value",
+      "function": "forward",
+      "args": [
+        3
+      ],
+      "value": 5,
+      "expect": {
+        "return": [
+          3
+        ]
+      }
+    },
+    {
+      "name": "forward_without_balance_reverts",
+      "function": "forward",
+      "args": [
+        3
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    }
+  ]
+}
