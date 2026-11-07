@@ -1172,11 +1172,12 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
                 and INTEGER_RATIONAL.fullmatch(value_type))):
             continue
         conversion = kind == "FunctionCall" and node["kind"] == "typeConversion"
-        # an integer literal as a bytesN: the compiler takes only zero and
-        # hex digits that fill it, which elaboration takes as their bytes
-        fixed_bytes = (value["nodeType"] == "Literal"
-                       and re.fullmatch(r"t_bytes[0-9]+", target_type) is not None
-                       and re.fullmatch(r"t_rational_[0-9]+_by_1", value_type) is not None)
+        # a number as a bytesN: the compiler takes only zero and hex digits
+        # that fill it, which elaboration folds and takes as their bytes
+        width = re.fullmatch(r"t_bytes([0-9]+)", target_type)
+        number = re.fullmatch(r"t_rational_([0-9]+)_by_1", value_type)
+        fixed_bytes = (width is not None and number is not None
+                       and int(number[1]) < 256 ** int(width[1]))
         if (RATIONAL.fullmatch(value_type) and not INTEGER_TYPE.fullmatch(target_type)
                 and not fixed_bytes and not conversion):
             found.append("literals of non-integer types")

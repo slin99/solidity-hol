@@ -44,4 +44,10 @@ contract BytesConstants {
     function zero() public pure returns (bytes4) {
         return 0x00000000;
     }
+
+    function foldedZeros() public pure returns (bytes2, bytes2) {
+        bytes2 negated = -0;
+        bytes2 difference = 1 - 1;
+        return (negated, difference);
+    }
 }
