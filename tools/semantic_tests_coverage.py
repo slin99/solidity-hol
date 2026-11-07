@@ -1289,7 +1289,7 @@ def encode_call_parameter(parameter: dict[str, Any]) -> bool:
     """Whether the elaborator takes a parameter of the function abi.encodeCall
     names: a scalar, or a byte sequence in any location (abi_call_parameter)."""
     tid = parameter["typeDescriptions"].get("typeIdentifier") or ""
-    return (VALUE_TYPE.match(tid) is not None or tid.startswith(("t_enum$_", "t_contract$_"))
+    return (VALUE_TYPE.match(tid) is not None or tid.startswith(("t_enum_", "t_enum$_", "t_contract$_"))
             or tid.startswith(("t_bytes_", "t_string_")))
 
 

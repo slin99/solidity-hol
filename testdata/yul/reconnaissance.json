@@ -4689,6 +4689,174 @@
     {
       "contracts": [
         {
+          "contract": "Counter",
+          "objects": [
+            {
+              "builtins": {
+                "address": 1,
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1,
+                "setimmutable": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "Counter_18",
+              "nodeKinds": {
+                "assignment": 1,
+                "block": 5,
+                "expressionStatement": 6,
+                "functionCall": 14,
+                "functionDefinition": 3,
+                "identifier": 3,
+                "if": 1,
+                "literal:number": 5,
+                "literal:string": 4,
+                "variableDeclaration": 1
+              },
+              "role": "creation",
+              "stage": "ir",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "address": 1,
+                "eq": 1,
+                "iszero": 1,
+                "loadimmutable": 1,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 1,
+                "revert": 1,
+                "shr": 1
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "Counter_18_deployed",
+              "nodeKinds": {
+                "assignment": 2,
+                "block": 4,
+                "expressionStatement": 3,
+                "functionCall": 10,
+                "functionDefinition": 3,
+                "identifier": 1,
+                "literal:number": 6,
+                "literal:string": 1,
+                "variableDeclaration": 1
+              },
+              "role": "runtime",
+              "stage": "ir",
+              "subobjects": 0
+            },
+            {
+              "builtins": {
+                "address": 1,
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 2,
+                "memoryguard": 1,
+                "mload": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1,
+                "setimmutable": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "Counter_18",
+              "nodeKinds": {
+                "assignment": 1,
+                "block": 5,
+                "expressionStatement": 6,
+                "functionCall": 14,
+                "functionDefinition": 2,
+                "identifier": 3,
+                "if": 1,
+                "literal:number": 5,
+                "literal:string": 4,
+                "variableDeclaration": 1
+              },
+              "role": "creation",
+              "stage": "ir-optimized-off",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "memoryguard": 1,
+                "mstore": 1,
+                "revert": 1
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "Counter_18_deployed",
+              "nodeKinds": {
+                "block": 3,
+                "expressionStatement": 3,
+                "functionCall": 4,
+                "functionDefinition": 1,
+                "literal:number": 4
+              },
+              "role": "runtime",
+              "stage": "ir-optimized-off",
+              "subobjects": 0
+            },
+            {
+              "builtins": {
+                "address": 1,
+                "callvalue": 1,
+                "codecopy": 1,
+                "dataoffset": 1,
+                "datasize": 1,
+                "memoryguard": 1,
+                "mstore": 1,
+                "return": 1,
+                "revert": 1,
+                "setimmutable": 1
+              },
+              "dataSections": 0,
+              "depth": 0,
+              "name": "Counter_18",
+              "nodeKinds": {
+                "block": 3,
+                "expressionStatement": 5,
+                "functionCall": 10,
+                "identifier": 6,
+                "if": 1,
+                "literal:number": 4,
+                "literal:string": 3,
+                "variableDeclaration": 2
+              },
+              "role": "creation",
+              "stage": "ir-optimized-on",
+              "subobjects": 1
+            },
+            {
+              "builtins": {
+                "revert": 1
+              },
+              "dataSections": 1,
+              "depth": 1,
+              "name": "Counter_18_deployed",
+              "nodeKinds": {
+                "block": 2,
+                "expressionStatement": 1,
+                "functionCall": 1,
+                "literal:number": 2
+              },
+              "role": "runtime",
+              "stage": "ir-optimized-on",
+              "subobjects": 0
+            }
+          ]
+        },
+        {
           "contract": "EncodeCalls",
           "objects": [
             {
@@ -4705,7 +4873,7 @@
               },
               "dataSections": 0,
               "depth": 0,
-              "name": "EncodeCalls_330",
+              "name": "EncodeCalls_379",
               "nodeKinds": {
                 "assignment": 1,
                 "block": 5,
@@ -4724,55 +4892,56 @@
             },
             {
               "builtins": {
-                "add": 144,
+                "add": 149,
                 "address": 1,
                 "and": 25,
                 "calldatacopy": 1,
                 "calldataload": 13,
-                "calldatasize": 16,
-                "callvalue": 15,
+                "calldatasize": 18,
+                "callvalue": 17,
                 "div": 3,
                 "eq": 9,
                 "gt": 18,
-                "iszero": 19,
+                "iszero": 20,
                 "keccak256": 2,
-                "lt": 12,
+                "linkersymbol": 1,
+                "lt": 13,
                 "mcopy": 1,
                 "memoryguard": 1,
                 "mload": 9,
-                "mstore": 70,
+                "mstore": 75,
                 "mul": 10,
                 "not": 10,
                 "or": 6,
-                "return": 15,
-                "revert": 17,
+                "return": 17,
+                "revert": 18,
                 "shl": 3,
                 "shr": 3,
                 "signextend": 2,
                 "sload": 13,
                 "slt": 10,
                 "sstore": 11,
-                "sub": 57
+                "sub": 61
               },
               "dataSections": 1,
               "depth": 1,
-              "name": "EncodeCalls_330_deployed",
+              "name": "EncodeCalls_379_deployed",
               "nodeKinds": {
-                "assignment": 217,
-                "block": 310,
-                "case": 21,
+                "assignment": 227,
+                "block": 326,
+                "case": 23,
                 "default": 3,
-                "expressionStatement": 235,
+                "expressionStatement": 253,
                 "for": 5,
-                "functionCall": 916,
-                "functionDefinition": 199,
-                "identifier": 923,
-                "if": 58,
-                "leave": 12,
-                "literal:number": 339,
-                "literal:string": 1,
+                "functionCall": 967,
+                "functionDefinition": 210,
+                "identifier": 966,
+                "if": 61,
+                "leave": 15,
+                "literal:number": 359,
+                "literal:string": 2,
                 "switch": 5,
-                "variableDeclaration": 278
+                "variableDeclaration": 300
               },
               "role": "runtime",
               "stage": "ir",
@@ -4792,7 +4961,7 @@
               },
               "dataSections": 0,
               "depth": 0,
-              "name": "EncodeCalls_330",
+              "name": "EncodeCalls_379",
               "nodeKinds": {
                 "assignment": 1,
                 "block": 5,
@@ -4811,55 +4980,55 @@
             },
             {
               "builtins": {
-                "add": 144,
+                "add": 149,
                 "and": 25,
                 "calldatacopy": 1,
                 "calldataload": 13,
-                "calldatasize": 16,
-                "callvalue": 15,
+                "calldatasize": 18,
+                "callvalue": 17,
                 "div": 3,
                 "eq": 9,
                 "gt": 18,
-                "iszero": 19,
+                "iszero": 20,
                 "keccak256": 2,
-                "lt": 12,
+                "lt": 13,
                 "mcopy": 1,
                 "memoryguard": 1,
                 "mload": 9,
-                "mstore": 68,
+                "mstore": 73,
                 "mul": 10,
                 "not": 13,
                 "or": 6,
                 "pop": 1,
-                "return": 15,
-                "revert": 16,
-                "shl": 20,
+                "return": 17,
+                "revert": 17,
+                "shl": 22,
                 "shr": 3,
                 "signextend": 2,
                 "sload": 13,
                 "slt": 10,
                 "sstore": 11,
-                "sub": 60
+                "sub": 64
               },
               "dataSections": 1,
               "depth": 1,
-              "name": "EncodeCalls_330_deployed",
+              "name": "EncodeCalls_379_deployed",
               "nodeKinds": {
-                "assignment": 216,
-                "block": 295,
-                "case": 21,
+                "assignment": 226,
+                "block": 311,
+                "case": 23,
                 "default": 3,
-                "expressionStatement": 232,
+                "expressionStatement": 250,
                 "for": 5,
-                "functionCall": 930,
-                "functionDefinition": 196,
-                "identifier": 892,
-                "if": 58,
-                "leave": 12,
-                "literal:number": 350,
+                "functionCall": 982,
+                "functionDefinition": 207,
+                "identifier": 935,
+                "if": 61,
+                "leave": 15,
+                "literal:number": 372,
                 "literal:string": 1,
                 "switch": 5,
-                "variableDeclaration": 244
+                "variableDeclaration": 265
               },
               "role": "runtime",
               "stage": "ir-optimized-off",
@@ -4878,7 +5047,7 @@
               },
               "dataSections": 0,
               "depth": 0,
-              "name": "EncodeCalls_330",
+              "name": "EncodeCalls_379",
               "nodeKinds": {
                 "block": 3,
                 "expressionStatement": 4,
@@ -4895,12 +5064,12 @@
             },
             {
               "builtins": {
-                "add": 144,
+                "add": 149,
                 "and": 28,
                 "calldatacopy": 1,
                 "calldataload": 13,
-                "calldatasize": 20,
-                "callvalue": 15,
+                "calldatasize": 22,
+                "callvalue": 17,
                 "div": 2,
                 "eq": 9,
                 "gt": 17,
@@ -4909,40 +5078,40 @@
                 "lt": 12,
                 "mcopy": 1,
                 "memoryguard": 1,
-                "mload": 35,
-                "mstore": 103,
+                "mload": 38,
+                "mstore": 108,
                 "mul": 2,
-                "not": 34,
+                "not": 36,
                 "or": 5,
                 "pop": 1,
-                "return": 15,
-                "revert": 53,
-                "shl": 39,
+                "return": 17,
+                "revert": 57,
+                "shl": 40,
                 "shr": 9,
                 "signextend": 1,
                 "sload": 13,
-                "slt": 17,
+                "slt": 19,
                 "sstore": 12,
-                "sub": 26
+                "sub": 27
               },
               "dataSections": 1,
               "depth": 1,
-              "name": "EncodeCalls_330_deployed",
+              "name": "EncodeCalls_379_deployed",
               "nodeKinds": {
-                "assignment": 34,
-                "block": 113,
-                "case": 21,
+                "assignment": 36,
+                "block": 119,
+                "case": 23,
                 "default": 2,
-                "expressionStatement": 201,
+                "expressionStatement": 213,
                 "for": 5,
-                "functionCall": 692,
+                "functionCall": 723,
                 "functionDefinition": 9,
-                "identifier": 361,
-                "if": 64,
-                "literal:number": 571,
+                "identifier": 372,
+                "if": 68,
+                "literal:number": 601,
                 "literal:string": 1,
                 "switch": 5,
-                "variableDeclaration": 101
+                "variableDeclaration": 104
               },
               "role": "runtime",
               "stage": "ir-optimized-on",
@@ -4951,7 +5120,7 @@
           ]
         }
       ],
-      "sha256": "82b6a922ae4eb43fa1be35e36c559b46326d781280914c123c09a986482b4196",
+      "sha256": "07eb06c88e94b779e764628e27daa6092167af5408fca1ed35410a66f0f9aa3e",
       "source": "testdata/differential/encode_calls.sol"
     },
     {
@@ -19795,11 +19964,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 3138,
+          "runtime": 3143,
           "subobject": 0
         },
         "address": {
-          "creation": 8,
+          "creation": 9,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/conditionals.sol",
@@ -19812,7 +19981,7 @@
             "testdata/differential/named_arguments.sol",
             "testdata/differential/using_for.sol"
           ],
-          "runtime": 27,
+          "runtime": 28,
           "subobject": 0
         },
         "and": {
@@ -20053,7 +20222,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 742,
+          "runtime": 744,
           "subobject": 0
         },
         "caller": {
@@ -20073,7 +20242,7 @@
           "subobject": 0
         },
         "callvalue": {
-          "creation": 82,
+          "creation": 83,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -20134,7 +20303,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 635,
+          "runtime": 637,
           "subobject": 0
         },
         "chainid": {
@@ -20146,7 +20315,7 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 95,
+          "creation": 96,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -20236,7 +20405,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -20301,7 +20470,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 176,
+          "creation": 178,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -20466,7 +20635,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 322,
+          "runtime": 323,
           "subobject": 0
         },
         "exp": {
@@ -20640,7 +20809,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 762,
+          "runtime": 764,
           "subobject": 0
         },
         "keccak256": {
@@ -20680,17 +20849,19 @@
         "linkersymbol": {
           "creation": 0,
           "fixtures": [
+            "testdata/differential/encode_calls.sol",
             "testdata/differential/enums.sol",
             "testdata/differential/hashes.sol",
             "testdata/differential/using_for.sol"
           ],
-          "runtime": 7,
+          "runtime": 8,
           "subobject": 0
         },
         "loadimmutable": {
           "creation": 0,
           "fixtures": [
             "testdata/differential/contract_types.sol",
+            "testdata/differential/encode_calls.sol",
             "testdata/differential/enums.sol",
             "testdata/differential/hashes.sol",
             "testdata/differential/immutables.sol",
@@ -20698,7 +20869,7 @@
             "testdata/differential/named_arguments.sol",
             "testdata/differential/using_for.sol"
           ],
-          "runtime": 24,
+          "runtime": 25,
           "subobject": 0
         },
         "log0": {
@@ -20813,7 +20984,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 479,
+          "runtime": 480,
           "subobject": 0
         },
         "mcopy": {
@@ -20839,7 +21010,7 @@
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -20900,11 +21071,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 78,
+          "runtime": 79,
           "subobject": 0
         },
         "mload": {
-          "creation": 133,
+          "creation": 134,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -20965,7 +21136,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 245,
+          "runtime": 246,
           "subobject": 0
         },
         "mod": {
@@ -20993,7 +21164,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 199,
+          "creation": 200,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -21054,7 +21225,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1306,
+          "runtime": 1312,
           "subobject": 0
         },
         "mstore8": {
@@ -21260,7 +21431,7 @@
           "subobject": 0
         },
         "return": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -21321,7 +21492,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 637,
+          "runtime": 639,
           "subobject": 0
         },
         "returndatacopy": {
@@ -21357,7 +21528,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 164,
+          "creation": 165,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -21418,7 +21589,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 699,
+          "runtime": 701,
           "subobject": 0
         },
         "sar": {
@@ -21439,9 +21610,10 @@
           "subobject": 0
         },
         "setimmutable": {
-          "creation": 22,
+          "creation": 23,
           "fixtures": [
             "testdata/differential/contract_types.sol",
+            "testdata/differential/encode_calls.sol",
             "testdata/differential/enums.sol",
             "testdata/differential/hashes.sol",
             "testdata/differential/immutables.sol",
@@ -21583,7 +21755,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 197,
+          "runtime": 198,
           "subobject": 0
         },
         "signextend": {
@@ -21870,7 +22042,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1350,
+          "runtime": 1354,
           "subobject": 0
         },
         "timestamp": {
@@ -21892,7 +22064,7 @@
       },
       "nodeKinds": {
         "assignment": {
-          "creation": 583,
+          "creation": 584,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -21953,11 +22125,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 8169,
+          "runtime": 8181,
           "subobject": 0
         },
         "block": {
-          "creation": 1138,
+          "creation": 1143,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -22018,7 +22190,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 11362,
+          "runtime": 11382,
           "subobject": 0
         },
         "break": {
@@ -22095,7 +22267,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 752,
+          "runtime": 754,
           "subobject": 0
         },
         "continue": {
@@ -22169,7 +22341,7 @@
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 981,
+          "creation": 987,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -22230,7 +22402,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 7266,
+          "runtime": 7287,
           "subobject": 0
         },
         "for": {
@@ -22263,7 +22435,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 2892,
+          "creation": 2906,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -22324,11 +22496,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 30216,
+          "runtime": 30277,
           "subobject": 0
         },
         "functionDefinition": {
-          "creation": 822,
+          "creation": 825,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -22389,11 +22561,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 7227,
+          "runtime": 7241,
           "subobject": 0
         },
         "identifier": {
-          "creation": 1943,
+          "creation": 1946,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -22454,11 +22626,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 32284,
+          "runtime": 32328,
           "subobject": 0
         },
         "if": {
-          "creation": 191,
+          "creation": 192,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -22519,7 +22691,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2170,
+          "runtime": 2173,
           "subobject": 0
         },
         "leave": {
@@ -22579,11 +22751,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 548,
+          "runtime": 551,
           "subobject": 0
         },
         "literal:number": {
-          "creation": 1164,
+          "creation": 1169,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -22644,11 +22816,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 11381,
+          "runtime": 11407,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 281,
+          "creation": 285,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -22709,7 +22881,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 71,
+          "runtime": 73,
           "subobject": 0
         },
         "switch": {
@@ -22773,7 +22945,7 @@
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 662,
+          "creation": 663,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -22834,7 +23006,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 14312,
+          "runtime": 14335,
           "subobject": 0
         }
       },
@@ -22901,7 +23073,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 81,
+          "runtime": 82,
           "subobject": 0
         },
         "datacopy": {
@@ -22911,7 +23083,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -22976,7 +23148,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 176,
+          "creation": 178,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -23041,7 +23213,7 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -23178,16 +23350,17 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 3123,
+          "runtime": 3128,
           "subobject": 0
         },
         "address": {
-          "creation": 8,
+          "creation": 9,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/conditionals.sol",
             "testdata/differential/context.sol",
             "testdata/differential/contract_types.sol",
+            "testdata/differential/encode_calls.sol",
             "testdata/differential/enums.sol",
             "testdata/differential/external.sol",
             "testdata/differential/hashes.sol",
@@ -23435,7 +23608,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 742,
+          "runtime": 744,
           "subobject": 0
         },
         "caller": {
@@ -23455,7 +23628,7 @@
           "subobject": 0
         },
         "callvalue": {
-          "creation": 82,
+          "creation": 83,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -23516,7 +23689,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 635,
+          "runtime": 637,
           "subobject": 0
         },
         "chainid": {
@@ -23528,7 +23701,7 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 95,
+          "creation": 96,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -23618,7 +23791,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -23683,7 +23856,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 176,
+          "creation": 178,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -24019,7 +24192,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 755,
+          "runtime": 756,
           "subobject": 0
         },
         "keccak256": {
@@ -24177,7 +24350,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 479,
+          "runtime": 480,
           "subobject": 0
         },
         "mcopy": {
@@ -24203,7 +24376,7 @@
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -24264,11 +24437,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 78,
+          "runtime": 79,
           "subobject": 0
         },
         "mload": {
-          "creation": 133,
+          "creation": 134,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -24352,7 +24525,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 193,
+          "creation": 194,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -24413,7 +24586,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1289,
+          "runtime": 1295,
           "subobject": 0
         },
         "mstore8": {
@@ -24634,7 +24807,7 @@
           "subobject": 0
         },
         "return": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -24695,7 +24868,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 637,
+          "runtime": 639,
           "subobject": 0
         },
         "returndatacopy": {
@@ -24731,7 +24904,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 150,
+          "creation": 151,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -24792,7 +24965,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 648,
+          "runtime": 650,
           "subobject": 0
         },
         "sar": {
@@ -24813,9 +24986,10 @@
           "subobject": 0
         },
         "setimmutable": {
-          "creation": 22,
+          "creation": 23,
           "fixtures": [
             "testdata/differential/contract_types.sol",
+            "testdata/differential/encode_calls.sol",
             "testdata/differential/enums.sol",
             "testdata/differential/hashes.sol",
             "testdata/differential/immutables.sol",
@@ -24901,7 +25075,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 406,
+          "runtime": 408,
           "subobject": 0
         },
         "shr": {
@@ -25252,7 +25426,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1388,
+          "runtime": 1392,
           "subobject": 0
         },
         "timestamp": {
@@ -25274,7 +25448,7 @@
       },
       "nodeKinds": {
         "assignment": {
-          "creation": 583,
+          "creation": 584,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -25335,11 +25509,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 8079,
+          "runtime": 8089,
           "subobject": 0
         },
         "block": {
-          "creation": 1088,
+          "creation": 1093,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -25400,7 +25574,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 10825,
+          "runtime": 10844,
           "subobject": 0
         },
         "break": {
@@ -25477,7 +25651,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 752,
+          "runtime": 754,
           "subobject": 0
         },
         "continue": {
@@ -25551,7 +25725,7 @@
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 870,
+          "creation": 876,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -25612,7 +25786,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 7205,
+          "runtime": 7226,
           "subobject": 0
         },
         "for": {
@@ -25645,7 +25819,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 2894,
+          "creation": 2908,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -25706,11 +25880,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 30414,
+          "runtime": 30470,
           "subobject": 0
         },
         "functionDefinition": {
-          "creation": 709,
+          "creation": 711,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -25771,11 +25945,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 7103,
+          "runtime": 7115,
           "subobject": 0
         },
         "identifier": {
-          "creation": 1903,
+          "creation": 1906,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -25836,11 +26010,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 31755,
+          "runtime": 31798,
           "subobject": 0
         },
         "if": {
-          "creation": 191,
+          "creation": 192,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -25901,7 +26075,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2170,
+          "runtime": 2173,
           "subobject": 0
         },
         "leave": {
@@ -25961,11 +26135,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 548,
+          "runtime": 551,
           "subobject": 0
         },
         "literal:number": {
-          "creation": 1216,
+          "creation": 1221,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -26026,11 +26200,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 11437,
+          "runtime": 11463,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 281,
+          "creation": 285,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -26155,7 +26329,7 @@
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 618,
+          "creation": 619,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -26216,7 +26390,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 13766,
+          "runtime": 13787,
           "subobject": 0
         }
       },
@@ -26283,7 +26457,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 81,
+          "runtime": 82,
           "subobject": 0
         },
         "datacopy": {
@@ -26293,7 +26467,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -26358,7 +26532,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 176,
+          "creation": 178,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -26423,7 +26597,7 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -26559,16 +26733,17 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2869,
+          "runtime": 2874,
           "subobject": 0
         },
         "address": {
-          "creation": 8,
+          "creation": 9,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/conditionals.sol",
             "testdata/differential/context.sol",
             "testdata/differential/contract_types.sol",
+            "testdata/differential/encode_calls.sol",
             "testdata/differential/enums.sol",
             "testdata/differential/external.sol",
             "testdata/differential/hashes.sol",
@@ -26807,7 +26982,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 846,
+          "runtime": 848,
           "subobject": 0
         },
         "caller": {
@@ -26827,7 +27002,7 @@
           "subobject": 0
         },
         "callvalue": {
-          "creation": 82,
+          "creation": 83,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -26888,7 +27063,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 635,
+          "runtime": 637,
           "subobject": 0
         },
         "chainid": {
@@ -26900,7 +27075,7 @@
           "subobject": 0
         },
         "codecopy": {
-          "creation": 95,
+          "creation": 96,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -26990,7 +27165,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -27055,7 +27230,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 95,
+          "creation": 96,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -27556,7 +27731,7 @@
           "subobject": 0
         },
         "memoryguard": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -27676,7 +27851,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1071,
+          "runtime": 1074,
           "subobject": 0
         },
         "mod": {
@@ -27691,7 +27866,7 @@
           "subobject": 0
         },
         "mstore": {
-          "creation": 249,
+          "creation": 250,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -27752,7 +27927,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2989,
+          "runtime": 2994,
           "subobject": 0
         },
         "mstore8": {
@@ -27854,7 +28029,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1006,
+          "runtime": 1008,
           "subobject": 0
         },
         "number": {
@@ -27940,7 +28115,7 @@
           "subobject": 0
         },
         "return": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -28001,7 +28176,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 617,
+          "runtime": 619,
           "subobject": 0
         },
         "returndatacopy": {
@@ -28037,7 +28212,7 @@
           "subobject": 0
         },
         "revert": {
-          "creation": 176,
+          "creation": 177,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -28098,7 +28273,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2244,
+          "runtime": 2249,
           "subobject": 0
         },
         "sar": {
@@ -28118,9 +28293,10 @@
           "subobject": 0
         },
         "setimmutable": {
-          "creation": 22,
+          "creation": 23,
           "fixtures": [
             "testdata/differential/contract_types.sol",
+            "testdata/differential/encode_calls.sol",
             "testdata/differential/enums.sol",
             "testdata/differential/hashes.sol",
             "testdata/differential/immutables.sol",
@@ -28205,7 +28381,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1265,
+          "runtime": 1266,
           "subobject": 0
         },
         "shr": {
@@ -28401,7 +28577,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 671,
+          "runtime": 673,
           "subobject": 0
         },
         "smod": {
@@ -28540,7 +28716,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 423,
+          "runtime": 424,
           "subobject": 0
         },
         "timestamp": {
@@ -28618,11 +28794,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 1662,
+          "runtime": 1664,
           "subobject": 0
         },
         "block": {
-          "creation": 420,
+          "creation": 423,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -28683,7 +28859,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 4514,
+          "runtime": 4522,
           "subobject": 0
         },
         "break": {
@@ -28755,7 +28931,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 749,
+          "runtime": 751,
           "subobject": 0
         },
         "continue": {
@@ -28790,7 +28966,7 @@
           "subobject": 0
         },
         "expressionStatement": {
-          "creation": 699,
+          "creation": 704,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -28851,7 +29027,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 6930,
+          "runtime": 6943,
           "subobject": 0
         },
         "for": {
@@ -28884,7 +29060,7 @@
           "subobject": 0
         },
         "functionCall": {
-          "creation": 1896,
+          "creation": 1906,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -28945,7 +29121,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 22569,
+          "runtime": 22601,
           "subobject": 0
         },
         "functionDefinition": {
@@ -29004,7 +29180,7 @@
           "subobject": 0
         },
         "identifier": {
-          "creation": 1095,
+          "creation": 1101,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -29065,11 +29241,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 11126,
+          "runtime": 11137,
           "subobject": 0
         },
         "if": {
-          "creation": 205,
+          "creation": 206,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -29130,7 +29306,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 2553,
+          "runtime": 2557,
           "subobject": 0
         },
         "leave": {
@@ -29152,7 +29328,7 @@
           "subobject": 0
         },
         "literal:number": {
-          "creation": 1410,
+          "creation": 1414,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -29213,11 +29389,11 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 19038,
+          "runtime": 19070,
           "subobject": 0
         },
         "literal:string": {
-          "creation": 200,
+          "creation": 203,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -29339,7 +29515,7 @@
           "subobject": 0
         },
         "variableDeclaration": {
-          "creation": 380,
+          "creation": 382,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -29400,7 +29576,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 4119,
+          "runtime": 4122,
           "subobject": 0
         }
       },
@@ -29467,7 +29643,7 @@
             "testdata/frontend/storage_references.sol",
             "testdata/frontend/types.sol"
           ],
-          "runtime": 81,
+          "runtime": 82,
           "subobject": 0
         },
         "datacopy": {
@@ -29477,7 +29653,7 @@
           "subobject": 0
         },
         "dataoffset": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -29542,7 +29718,7 @@
           "subobject": 0
         },
         "datasize": {
-          "creation": 95,
+          "creation": 96,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",
@@ -29607,7 +29783,7 @@
           "subobject": 0
         },
         "subobject": {
-          "creation": 81,
+          "creation": 82,
           "fixtures": [
             "testdata/differential/abi_encoding.sol",
             "testdata/differential/builtins.sol",

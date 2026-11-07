@@ -1433,6 +1433,8 @@
         {"name": "no_arguments", "function": "noneCall", "args": [], "expect": {"return": ["0xa877db9f"]}},
         {"name": "contract_argument", "function": "holderCall", "args": [], "storage": {"0": "4660"}, "expect": {"return": ["0x1eb7caba0000000000000000000000000000000000000000000000000000000000001234"]}},
         {"name": "this_receiver", "function": "selfCall", "args": [], "expect": {"return": ["0xc290d6910000000000000000000000000000000000000000000000000000000000000003"]}},
+        {"name": "enum_argument", "function": "enumCall", "args": [], "expect": {"return": ["0x92feb99a0000000000000000000000000000000000000000000000000000000000000002"]}},
+        {"name": "member_named_encode_call", "function": "namedLikeEncodeCall", "args": [], "expect": {"return": [8]}},
         {"name": "argument_order", "function": "orderedCall", "args": [], "expect": {"return": ["0xa9059cbb00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002", 12]}, "final_storage": {"3": 12}}
       ]
     }

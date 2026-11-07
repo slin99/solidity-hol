@@ -610,10 +610,13 @@ fun expr v = within v (fn v =>
   | "FunctionCall" =>
       let
         val callee = field v "expression"
+        val abi_member =
+          node_type callee = "MemberAccess" andalso
+          node_type (field callee "expression") = "Identifier" andalso
+          int_field (field callee "expression") "referencedDeclaration" = ~1
         (* abi.encodeCall reads its arguments itself *)
         val args =
-          if node_type callee = "MemberAccess" andalso
-             string_field callee "memberName" = "encodeCall" then []
+          if abi_member andalso string_field callee "memberName" = "encodeCall" then []
           else JSONUtil.arrayMap expr (field v "arguments")
         val no_names = null (JSONUtil.arrayMap I (field v "names"))
         fun positional () = require v no_names "named arguments are not supported here"
@@ -629,9 +632,7 @@ fun expr v = within v (fn v =>
               (positional ();
                require v (length args = 1) "keccak256 takes one argument";
                con "SrcKeccak256" [info v, info callee, hd args, type_id v])
-            else if node_type callee = "MemberAccess" andalso
-               node_type (field callee "expression") = "Identifier" andalso
-               int_field (field callee "expression") "referencedDeclaration" = ~1 then
+            else if abi_member then
               (positional (); abi_encode v callee args)
             else if node_type callee = "Identifier" andalso
                int_field callee "referencedDeclaration" < 0 then

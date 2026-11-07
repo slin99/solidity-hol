@@ -497,6 +497,7 @@ class ClassifyTests(unittest.TestCase):
             encode_call(140, interface_name(145), 60, value(146, "t_array$_t_uint256_$dyn_memory_ptr")),
             encode_call(150, computed, 51, pair(156)),
             encode_call(160, constant(165), 51, pair(166)),
+            encode_call(170, interface_name(175), 70, value(176, "t_enum$_E_$80")),
         ]
         k = variable(9, state=True, type_identifier="t_contract$_I_$50")
         k.update(constant=True, mutability="constant")
@@ -504,7 +505,10 @@ class ClassifyTests(unittest.TestCase):
         ast["nodes"].append({"nodeType": "ContractDefinition", "id": 50, "contractKind": "interface",
                              "abstract": False, "baseContracts": [], "linearizedBaseContracts": [50],
                              "nodes": [declaration(51, "t_uint8", "t_bytes_calldata_ptr"),
-                                       declaration(60, "t_array$_t_uint256_$dyn_memory_ptr")]})
+                                       declaration(60, "t_array$_t_uint256_$dyn_memory_ptr"),
+                                       declaration(70, "t_enum$_E_$80")]})
+        ast["nodes"].append({"nodeType": "EnumDefinition", "id": 80, "name": "E",
+                             "members": [{"nodeType": "EnumValue", "id": 81, "name": "A"}]})
         found = coverage.scan({"t.sol": ast})
         abi = {node_id: blockers for node_id, blockers in found.items()
                if any(b.feature == "abi.* functions" for b in blockers)}

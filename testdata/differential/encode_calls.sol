@@ -1,6 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+enum Color { Red, Green, Blue }
+
+// A function named encodeCall is an ordinary function.
+library Counter {
+    function encodeCall(uint256 x) internal pure returns (uint256) {
+        return x + 1;
+    }
+}
+
 interface IToken {
     function transfer(address to, uint256 value) external returns (bool);
     function approve(address spender, uint256 value) external returns (bool);
@@ -12,6 +21,7 @@ interface IShapes {
     function one(uint64 x) external;
     function none() external;
     function holder(IToken t) external;
+    function pick(Color c) external;
 }
 
 contract EncodeCalls {
@@ -79,6 +89,16 @@ contract EncodeCalls {
     // this.f names a function of this contract.
     function selfCall() external view returns (bytes memory) {
         return abi.encodeCall(this.pay, (3));
+    }
+
+    // An enum argument is encoded as its index.
+    function enumCall() external pure returns (bytes memory) {
+        return abi.encodeCall(IShapes.pick, (Color.Blue));
+    }
+
+    // A call of another member named encodeCall keeps its arguments.
+    function namedLikeEncodeCall() external pure returns (uint256) {
+        return Counter.encodeCall(7);
     }
 
     // The arguments are evaluated in order.
