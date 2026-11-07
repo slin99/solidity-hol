@@ -21,6 +21,14 @@ The pure-subset importer fixture
 [`testdata/frontend/expected/pure_core.json`](../testdata/frontend/expected/pure_core.json)
 is generated the same way from `testdata/frontend/pure_core.sol`.
 
+Core artifacts retain the analyzed AST, ABI, storage layouts, initcode, deployed
+bytecode, immutable references and method identifiers. They omit textual `ir`
+and `irOptimized`, which the core importer does not read. Checked preparation
+requires this output selection; regenerate older artifacts with the exporter.
+For the compiler's Yul, use `tools/export_solc_yul.py` (ASTs) or
+`tools/yul_reconnaissance.py` (textual IR analysis); those tools request their
+own outputs.
+
 ## Boundary layers
 
 The implementation should distinguish three representations:

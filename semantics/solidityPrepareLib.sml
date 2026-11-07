@@ -68,8 +68,7 @@ val output_selection = JSON.OBJECT [("*", JSON.OBJECT [
   ("", JSON.ARRAY [JSON.STRING "ast"]),
   ("*", JSON.ARRAY (map JSON.STRING ["abi", "storageLayout", "transientStorageLayout",
     "evm.bytecode.object", "evm.deployedBytecode.object",
-    "evm.deployedBytecode.immutableReferences", "evm.methodIdentifiers",
-    "ir", "irOptimized"]))])]
+    "evm.deployedBytecode.immutableReferences", "evm.methodIdentifiers"]))])]
 
 fun read_artifact {root, path} = json_input (fn () =>
   let
