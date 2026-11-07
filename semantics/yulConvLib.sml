@@ -1760,6 +1760,24 @@ fun body_set base defs table =
    The conversion.
  ---------------------------------------------------------------------------*)
 
+(* `let_yul_conv` counts a binding's uses in its body as the body stands when
+ * the set first meets the `let`, before the body is reduced; the set reduces
+ * the body afterwards but does not go back to the `let`.  A body that reduces
+ * to fewer uses -- `if T then r else r` to `r` -- leaves a `let` the rule would
+ * now take, so the evaluation is run again while one is left. *)
+fun has_takeable_let tm =
+  can (find_term (fn t => boolSyntax.is_let t andalso can let_yul_conv t)) tm
+
+fun cbv_lets cs tm =
+  let
+    val th = computeLib.CBV_CONV cs tm
+    val tm' = rhs (concl th)
+  in
+    if not (aconv tm' tm) andalso has_takeable_let tm'
+    then Thm.TRANS th (cbv_lets cs tm')
+    else th
+  end
+
 fun yul_invoke_conv defs tm =
   let
     val (f, tms) = strip_comb tm
@@ -1784,7 +1802,7 @@ fun yul_invoke_conv defs tm =
      * one, for the same reason. *)
     val () = set_block_compset cs (clause_set cs)
     val () = set_frame_defs defs
-    val res = computeLib.CBV_CONV cs (rhs (concl step))
+    val res = cbv_lets cs (rhs (concl step))
   in
     Thm.TRANS step res
   end
@@ -1798,7 +1816,7 @@ fun yul_eval_conv defs fns tm =
     val () = set_block_compset cs (clause_set cs)
     val () = set_frame_defs defs
   in
-    computeLib.CBV_CONV cs tm
+    cbv_lets cs tm
   end
 
 (* One iteration of a loop: its clause, then the evaluation above on what the
