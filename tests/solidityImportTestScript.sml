@@ -150,11 +150,37 @@ fun type_identifier tid =
 
 datatype import_failure = Unsupported | Malformed
 
+(* Why an edited unit is not imported whole: the import error that rejects
+ * it, or the reason of a function import marked unsupported, since an
+ * unsupported construct in a body or a modifier rejects that function only.
+ * NONE when everything imports. *)
+fun import_rejection units v contracts =
+  let
+    fun reason t =
+      if type_of t <> ``:src_function`` then NONE else
+      case Lib.total TypeBase.dest_record t of
+        SOME (_, fields) =>
+          (case Lib.assoc1 "fn_unsupported" fields of
+             SOME (_, r) =>
+               if optionSyntax.is_some r
+               then SOME (stringSyntax.fromHOLstring (optionSyntax.dest_some r))
+               else NONE
+           | NONE => NONE)
+      | NONE => NONE
+    val tm = import_source_unit units v contracts
+  in
+    case find_terms (isSome o reason) tm of
+      t :: _ => reason t
+    | [] => NONE
+  end
+  handle ImportError msg => SOME msg
+
 fun import_units_error_with expected units contracts name v =
-  (import_source_unit units v contracts; raise Fail (name ^ ": imported"))
-  handle ImportError _ =>
-           if expected = Unsupported then () else raise Fail (name ^ ": expected malformed input")
-       | MalformedInput _ =>
+  (case import_rejection units v contracts of
+     NONE => raise Fail (name ^ ": imported")
+   | SOME _ =>
+       if expected = Unsupported then () else raise Fail (name ^ ": expected malformed input"))
+  handle MalformedInput _ =>
            if expected = Malformed then () else raise Fail (name ^ ": expected unsupported input")
 
 fun import_error_with expected = import_units_error_with expected []
@@ -215,11 +241,11 @@ val () =
             (set_field "expression" (parenthesize callee) call)
       | NONE => raise Fail "a call without a callee"
   in
-    (import_source_unit [] (edit_first "FunctionCall" edit ast) contracts;
-     raise Fail "named arguments of a parenthesized callee: imported")
-    handle ImportError msg =>
-      if String.isSubstring "named arguments are not supported" msg then ()
-      else raise Fail ("named arguments of a parenthesized callee: " ^ msg)
+    case import_rejection [] (edit_first "FunctionCall" edit ast) contracts of
+      NONE => raise Fail "named arguments of a parenthesized callee: imported"
+    | SOME msg =>
+        if String.isSubstring "named arguments are not supported" msg then ()
+        else raise Fail ("named arguments of a parenthesized callee: " ^ msg)
   end
 val () = import_error "base outside the compilation"
   (edit_first "ContractDefinition"
@@ -231,15 +257,15 @@ val () = import_error "base outside the compilation"
  * names the identifier's node.
  *)
 val () =
-  (import_source_unit []
-     (edit_first "Identifier"
-        (set_field "referencedDeclaration" (JSON.INT ~18)) ast) contracts;
-   raise Fail "built-in: imported")
-  handle ImportError msg =>
-    if String.isPrefix "Identifier " msg andalso
-       String.isSubstring ": built-in " msg
-    then ()
-    else raise Fail ("built-in: " ^ msg)
+  case import_rejection []
+         (edit_first "Identifier"
+            (set_field "referencedDeclaration" (JSON.INT ~18)) ast) contracts of
+    NONE => raise Fail "built-in: imported"
+  | SOME msg =>
+      if String.isPrefix "Identifier " msg andalso
+         String.isSubstring ": built-in " msg
+      then ()
+      else raise Fail ("built-in: " ^ msg)
 
 (* Duplicate and dangling ids and inconsistent types import but are invalid. *)
 
@@ -526,11 +552,10 @@ val array_contracts = artifact_part array_fixture ["contracts", array_source]
 
 (* A null index is a valid array type expression, not malformed compiler JSON. *)
 val () =
-  (import_source_unit []
-     (edit_first "IndexAccess" (set_field "indexExpression" JSON.NULL) array_ast)
-     array_contracts;
-   raise Fail "array type expression imported")
-  handle ImportError _ => ();
+  if isSome (import_rejection []
+       (edit_first "IndexAccess" (set_field "indexExpression" JSON.NULL) array_ast)
+       array_contracts)
+  then () else raise Fail "array type expression imported";
 
 Definition array_unit_def:
   array_unit = ^(import_artifact array_fixture array_source)

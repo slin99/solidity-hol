@@ -498,6 +498,15 @@ fun check_unit_contracts prepared contract =
                "], not " ^ contract)
   end
 
+(* The corpus checks supported features, so each of its functions must be
+ * supported: a function the frontend marks unsupported fails the suite. *)
+fun check_supported (prepared : solidityPrepareLib.prepared) =
+  case List.filter (isSome o #reason) (#functions prepared) of
+    [] => ()
+  | fs => fail ("unsupported functions: " ^
+                String.concatWith "; "
+                  (map (fn {name, reason, ...} => name ^ ": " ^ valOf reason) fs))
+
 fun run_suite root fuel s =
   let
     val suite = name_field s "name"
@@ -511,6 +520,7 @@ fun run_suite root fuel s =
       val checked = solidityPrepareLib.prepare_artifact
         {root = root, path = artifact, source = source}
       val () = check_unit_contracts (#prepared checked) contract
+      val () = check_supported (#prepared checked)
       val (unit, program) = prepared_constants prefix (#prepared checked)
       val code = code_constant (prefix ^ "_code") "deployedBytecode"
                    (#artifact checked) source contract
@@ -771,6 +781,7 @@ fun run_suite_three_way root yul_root s =
     val checked = solidityPrepareLib.prepare_artifact
       {root = root, path = artifact, source = source}
     val () = check_unit_contracts (#prepared checked) contract
+    val () = check_supported (#prepared checked)
     val (unit, program) = prepared_constants prefix (#prepared checked)
     val code = code_constant (prefix ^ "_code") "deployedBytecode"
                  (#artifact checked) source contract

@@ -1252,7 +1252,9 @@ End
 
 (* Calldata reaches procedures whose parameters and returns are ABI values,
  * the types the entry ABI-decodes and encodes; receive and the fallback take
- * and return nothing, and the creation procedure returns nothing.
+ * and return nothing, and the creation procedure returns nothing. Each may
+ * instead be an unsupported procedure, which has none, so that the entry
+ * refuses rather than falling through to another one.
  *)
 Definition abi_procedure_def:
   abi_procedure env f ⇔
@@ -1273,18 +1275,21 @@ End
 Definition wf_core_dispatch_def:
   wf_core_dispatch env (prog : core_program) ⇔
     ALL_DISTINCT (MAP (λe. e.selector) prog.external_functions) ∧
-    EVERY (λe. LENGTH e.selector = 4 ∧ abi_procedure env e.external_procedure)
+    EVERY (λe. LENGTH e.selector = 4 ∧
+               (abi_procedure env e.external_procedure ∨
+                MEM e.external_procedure prog.unsupported_procedures))
       prog.external_functions ∧
     (case prog.receive_procedure of
-       SOME f => plain_procedure env f
+       SOME f => plain_procedure env f ∨ MEM f prog.unsupported_procedures
      | NONE => T) ∧
     (case prog.fallback_procedure of
-       SOME (f, _) => plain_procedure env f
+       SOME (f, _) => plain_procedure env f ∨ MEM f prog.unsupported_procedures
      | NONE => T) ∧
     (case prog.creation_procedure of
        SOME (f, _) =>
-         abi_procedure env f ∧
-         (case lookup_procedure env f of
+         MEM f prog.unsupported_procedures ∨
+         (abi_procedure env f ∧
+          case lookup_procedure env f of
             SOME p => p.return_bindings = [] ∧
               EVERY (λ(_, ty). is_elementary_type ty ∨
                        case ty of
@@ -1303,6 +1308,7 @@ Definition wf_core_program_def:
     env.struct_layouts = MAP (λs. (s.struct_id, s)) prog.struct_layouts ∧
     wf_core_environment env ∧
     IS_SOME (lookup_procedure env prog.entry_procedure) ∧
+    EVERY (λf. lookup_procedure env f = NONE) prog.unsupported_procedures ∧
     wf_core_dispatch env prog
 End
 
