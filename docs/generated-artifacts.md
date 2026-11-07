@@ -66,6 +66,10 @@ integrated branch:
 python3 tools/run_yul_differential.py --solc /path/to/pinned/solc -j4
 ```
 
+The Yul runner evaluates runtime objects only. Deployment cases currently fail
+with `Yul deployment is unsupported`; a full snapshot refresh requires those
+cases to be supported first. Keep the last snapshot until the full run succeeds.
+
 Its large Yul ASTs under `testdata/yul/generated/` stay ignored. The per-feature
 compiler artifacts are inputs to regression tests and stay committed; the
 refresh job does not rewrite them or their hand-written call expectations.
