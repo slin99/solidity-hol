@@ -29,8 +29,6 @@ OUTPUT_SELECTION: dict[str, dict[str, list[str]]] = {
             "evm.deployedBytecode.object",
             "evm.deployedBytecode.immutableReferences",
             "evm.methodIdentifiers",
-            "ir",
-            "irOptimized",
         ],
     }
 }
