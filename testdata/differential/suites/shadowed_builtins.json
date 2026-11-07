@@ -1,0 +1,36 @@
+{
+  "name": "shadowed_builtins",
+  "source": "testdata/differential/shadowed_builtins.sol",
+  "contract": "ShadowedBuiltins",
+  "artifact": "testdata/differential/expected/shadowed_builtins.json",
+  "cases": [
+    {
+      "name": "shadowed_true",
+      "function": "run",
+      "args": [
+        true
+      ],
+      "expect": {
+        "return": [
+          1,
+          3,
+          5
+        ]
+      }
+    },
+    {
+      "name": "shadowed_false",
+      "function": "run",
+      "args": [
+        false
+      ],
+      "expect": {
+        "return": [
+          2,
+          4,
+          5
+        ]
+      }
+    }
+  ]
+}

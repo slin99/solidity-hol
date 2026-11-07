@@ -1,0 +1,248 @@
+{
+  "name": "control",
+  "source": "testdata/differential/control.sol",
+  "contract": "Control",
+  "artifact": "testdata/differential/expected/control.json",
+  "cases": [
+    {
+      "name": "inner_break_outer_continue",
+      "function": "pairs",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          9
+        ]
+      }
+    },
+    {
+      "name": "inner_break_outer_continue_empty",
+      "function": "pairs",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "inner_continue",
+      "function": "threshold",
+      "args": [
+        4,
+        100
+      ],
+      "expect": {
+        "return": [
+          14,
+          4
+        ]
+      }
+    },
+    {
+      "name": "outer_break",
+      "function": "threshold",
+      "args": [
+        10,
+        6
+      ],
+      "expect": {
+        "return": [
+          6,
+          3
+        ]
+      }
+    },
+    {
+      "name": "return_from_nested_loops",
+      "function": "find",
+      "args": [
+        5,
+        6
+      ],
+      "expect": {
+        "return": [
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "name": "return_after_nested_loops",
+      "function": "find",
+      "args": [
+        3,
+        7
+      ],
+      "expect": {
+        "return": [
+          3,
+          3
+        ]
+      }
+    },
+    {
+      "name": "return_at_first_iteration",
+      "function": "find",
+      "args": [
+        4,
+        0
+      ],
+      "expect": {
+        "return": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "do_while_continue_reaches_condition",
+      "function": "doContinue",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          5,
+          3
+        ]
+      }
+    },
+    {
+      "name": "do_while_continue_exits",
+      "function": "doContinue",
+      "args": [
+        4
+      ],
+      "expect": {
+        "return": [
+          4,
+          2
+        ]
+      }
+    },
+    {
+      "name": "do_while_body_once",
+      "function": "doContinue",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "name": "break_in_nested_do_while",
+      "function": "nestedDo",
+      "args": [
+        4
+      ],
+      "expect": {
+        "return": [
+          4,
+          10
+        ]
+      }
+    },
+    {
+      "name": "for_without_condition",
+      "function": "forever",
+      "args": [
+        10
+      ],
+      "expect": {
+        "return": [
+          12
+        ]
+      }
+    },
+    {
+      "name": "for_without_condition_immediate_break",
+      "function": "forever",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "else_if_negative",
+      "function": "classify",
+      "args": [
+        -5
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "else_if_zero",
+      "function": "classify",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          1
+        ]
+      }
+    },
+    {
+      "name": "else_if_small",
+      "function": "classify",
+      "args": [
+        42
+      ],
+      "expect": {
+        "return": [
+          2
+        ]
+      }
+    },
+    {
+      "name": "fall_through",
+      "function": "classify",
+      "args": [
+        100
+      ],
+      "expect": {
+        "return": [
+          3
+        ]
+      }
+    },
+    {
+      "name": "loop_overflow_panics",
+      "function": "overflowInLoop",
+      "args": [
+        1
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "loop_without_overflow",
+      "function": "overflowInLoop",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    }
+  ]
+}

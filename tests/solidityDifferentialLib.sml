@@ -556,6 +556,21 @@ fun run_suite root fuel s =
        | e as HOL_ERR _ => suite_failure (string_field s "name" handle _ => "?")
                              "error" (General.exnMessage e)
 
+(* Suite paths are relative to the corpus config; artifact/source paths remain
+ * relative to the repository root. Inline suites support standalone corpora. *)
+fun corpus_suites path v =
+  case JSONUtil.findField v "suite_directory" of
+      NONE => array_field v "suites"
+    | SOME value =>
+        let
+          val () = if JSONUtil.hasField "suites" v then
+                     fail "suite_directory excludes suites" else ()
+          val dir = OS.Path.concat (OS.Path.dir path, JSONUtil.asString value)
+          val names = Listsort.sort String.compare
+                        (List.filter (String.isSuffix ".json") (Portable.listDir dir))
+          val () = if null names then fail (dir ^ ": no suite JSON files") else ()
+        in map (fn name => JSONParser.parseFile (OS.Path.concat (dir, name))) names end
+
 fun run_corpus {root, corpus} =
   let
     val path = root ^ "/" ^ corpus
@@ -564,7 +579,7 @@ fun run_corpus {root, corpus} =
              then () else raise ERR "run_corpus" (path ^ ": unsupported format")
     val fuel = integer (field v "fuel")
     val ok = List.foldl (fn (s, ok) => run_suite root fuel s andalso ok) true
-               (array_field v "suites")
+               (corpus_suites path v)
   in
     if ok then ()
     else raise ERR "run_corpus" "differential corpus failed; see the \
@@ -829,7 +844,7 @@ fun run_three_way {root, corpus, yul_root} =
              then () else raise ERR "run_three_way" (path ^ ": unsupported format")
     val ok = List.foldl (fn (s, ok) =>
                            run_suite_three_way root yul_root s andalso ok)
-               true (array_field v "suites")
+               true (corpus_suites path v)
   in
     if ok then ()
     else raise ERR "run_three_way" "the Yul corpus failed; see the \

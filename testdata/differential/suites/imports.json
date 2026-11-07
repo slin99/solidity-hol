@@ -1,0 +1,101 @@
+{
+  "name": "imports",
+  "source": "testdata/differential/imports.sol",
+  "contract": "Imports",
+  "artifact": "testdata/differential/expected/imports.json",
+  "cases": [
+    {
+      "name": "imported_base_and_struct_update",
+      "function": "bump",
+      "args": [
+        3
+      ],
+      "storage": {
+        "0": 4
+      },
+      "expect": {
+        "return": [
+          10
+        ]
+      },
+      "final_storage": {
+        "0": 10,
+        "1": 4,
+        "2": 3
+      },
+      "logs": [
+        {
+          "topics": [
+            "0xc081b7755956fdb9d6a5482bb04a62dbb62ad944141e7ff6ff2adad34bb1efb9"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000000a"
+        }
+      ]
+    },
+    {
+      "name": "imported_struct_reads",
+      "function": "lastSum",
+      "args": [],
+      "storage": {
+        "1": 5,
+        "2": 7
+      },
+      "expect": {
+        "return": [
+          12
+        ]
+      }
+    },
+    {
+      "name": "implements_imported_interface",
+      "function": "count",
+      "args": [],
+      "storage": {
+        "0": 9
+      },
+      "expect": {
+        "return": [
+          9
+        ]
+      }
+    },
+    {
+      "name": "calls_through_imported_interface",
+      "function": "countOf",
+      "args": [
+        4096
+      ],
+      "storage": {
+        "0": 9
+      },
+      "expect": {
+        "return": [
+          9
+        ]
+      }
+    },
+    {
+      "name": "imported_interface_call_without_code_reverts",
+      "function": "countOf",
+      "args": [
+        24576
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "imported_base_overflow_panics",
+      "function": "bump",
+      "args": [
+        1
+      ],
+      "storage": {
+        "0": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+      },
+      "expect": {
+        "panic": "0x11"
+      }
+    }
+  ]
+}

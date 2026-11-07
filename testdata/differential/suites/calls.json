@@ -1,0 +1,283 @@
+{
+  "name": "calls",
+  "source": "testdata/differential/calls.sol",
+  "contract": "Calls",
+  "artifact": "testdata/differential/expected/calls.json",
+  "cases": [
+    {
+      "name": "mutual_recursion_even",
+      "function": "isEven",
+      "args": [
+        10
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "mutual_recursion_odd",
+      "function": "isOdd",
+      "args": [
+        7
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "mutual_recursion_not_even",
+      "function": "isEven",
+      "args": [
+        7
+      ],
+      "expect": {
+        "return": [
+          false
+        ]
+      }
+    },
+    {
+      "name": "tree_recursion",
+      "function": "fib",
+      "args": [
+        10
+      ],
+      "expect": {
+        "return": [
+          55
+        ]
+      }
+    },
+    {
+      "name": "nested_recursion",
+      "function": "ackermann",
+      "args": [
+        2,
+        3
+      ],
+      "expect": {
+        "return": [
+          9
+        ]
+      }
+    },
+    {
+      "name": "multiple_returns",
+      "function": "pair",
+      "args": [
+        1,
+        2
+      ],
+      "expect": {
+        "return": [
+          1,
+          2
+        ]
+      }
+    },
+    {
+      "name": "tuple_from_call_ordered",
+      "function": "minMax",
+      "args": [
+        3,
+        5
+      ],
+      "expect": {
+        "return": [
+          3,
+          5
+        ]
+      }
+    },
+    {
+      "name": "tuple_from_call_swapped",
+      "function": "minMax",
+      "args": [
+        5,
+        3
+      ],
+      "expect": {
+        "return": [
+          3,
+          5
+        ]
+      }
+    },
+    {
+      "name": "checked_call",
+      "function": "narrowSum",
+      "args": [
+        100,
+        100
+      ],
+      "expect": {
+        "return": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "checked_call_panics",
+      "function": "narrowSum",
+      "args": [
+        200,
+        100
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "arguments_left_to_right",
+      "function": "argumentEffects",
+      "args": [
+        7
+      ],
+      "expect": {
+        "return": [
+          7,
+          8
+        ]
+      }
+    },
+    {
+      "name": "operands_left_to_right",
+      "function": "operandPanics",
+      "args": [
+        200
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "tuple_writes_right_to_left",
+      "function": "sameTarget",
+      "args": [
+        1,
+        2
+      ],
+      "expect": {
+        "return": [
+          1
+        ]
+      }
+    },
+    {
+      "name": "rotate",
+      "function": "rotate",
+      "args": [
+        1,
+        2,
+        3
+      ],
+      "expect": {
+        "return": [
+          2,
+          3,
+          1
+        ]
+      }
+    },
+    {
+      "name": "swap_through_call",
+      "function": "swapThroughCall",
+      "args": [
+        1,
+        2
+      ],
+      "expect": {
+        "return": [
+          2,
+          1
+        ]
+      }
+    },
+    {
+      "name": "tuple_holes",
+      "function": "holes",
+      "args": [
+        4
+      ],
+      "expect": {
+        "return": [
+          10
+        ]
+      }
+    },
+    {
+      "name": "result_widened",
+      "function": "widenResult",
+      "args": [
+        100
+      ],
+      "expect": {
+        "return": [
+          200
+        ]
+      }
+    },
+    {
+      "name": "result_widened_after_panic",
+      "function": "widenResult",
+      "args": [
+        200
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "prefix_and_postfix",
+      "function": "prefixPostfix",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          5,
+          7,
+          13
+        ]
+      }
+    },
+    {
+      "name": "decrement_underflow_panics",
+      "function": "decrementUnderflow",
+      "args": [
+        0
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "decrement",
+      "function": "decrementUnderflow",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          4
+        ]
+      }
+    },
+    {
+      "name": "wrapping_decrement",
+      "function": "wrappingDecrement",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+        ]
+      }
+    }
+  ]
+}

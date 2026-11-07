@@ -1,0 +1,94 @@
+{
+  "name": "inheritance",
+  "source": "testdata/differential/inheritance.sol",
+  "contract": "Doubling",
+  "artifact": "testdata/differential/expected/inheritance.json",
+  "cases": [
+    {
+      "name": "base_calls_run_overrides",
+      "function": "bump",
+      "args": [
+        3
+      ],
+      "expect": {
+        "return": [
+          6
+        ]
+      },
+      "final_storage": {
+        "0": 6,
+        "2": 1,
+        "103313835155301363846162118174845647368154603271475845237394604746666688557604": 6
+      },
+      "logs": [
+        {
+          "topics": [
+            "0x5311a32e1bc07c65f9f3c57e845d29af6c46065a94add70de6af009b370c3389",
+            "0x0000000000000000000000000000000000000000000000000000000000002001"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000006"
+        }
+      ]
+    },
+    {
+      "name": "inherited_state_accumulates",
+      "function": "bump",
+      "args": [
+        5
+      ],
+      "sender": 12288,
+      "storage": {
+        "0": 10,
+        "2": 4
+      },
+      "expect": {
+        "return": [
+          20
+        ]
+      },
+      "final_storage": {
+        "0": 20,
+        "2": 5,
+        "60568389429590227216419292344626149978884848567213664897345794229810750430236": 10
+      },
+      "logs": [
+        {
+          "topics": [
+            "0x5311a32e1bc07c65f9f3c57e845d29af6c46065a94add70de6af009b370c3389",
+            "0x0000000000000000000000000000000000000000000000000000000000003001"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000014"
+        }
+      ]
+    },
+    {
+      "name": "base_update_overflow_panics",
+      "function": "bump",
+      "args": [
+        1
+      ],
+      "storage": {
+        "0": "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+      },
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "dispatch_reaches_override",
+      "function": "peek",
+      "args": [
+        8193
+      ],
+      "storage": {
+        "2": 7,
+        "103313835155301363846162118174845647368154603271475845237394604746666688557604": 5
+      },
+      "expect": {
+        "return": [
+          12
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "name": "inheritance_diamond",
+  "source": "testdata/differential/inheritance_diamond.sol",
+  "contract": "D",
+  "artifact": "testdata/differential/expected/inheritance_diamond.json",
+  "cases": [
+    {
+      "name": "base_call_reaches_diamond_override",
+      "function": "run",
+      "args": [],
+      "expect": {
+        "return": [
+          4
+        ]
+      },
+      "final_storage": {
+        "0": 4
+      }
+    },
+    {
+      "name": "diamond_override_reads_state",
+      "function": "run",
+      "args": [],
+      "storage": {
+        "0": 5
+      },
+      "expect": {
+        "return": [
+          9
+        ]
+      },
+      "final_storage": {
+        "0": 9
+      }
+    },
+    {
+      "name": "fallback_override_runs",
+      "calldata": "0xdeadbeef",
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 200
+      }
+    },
+    {
+      "name": "call_reaches_implementation_through_redeclaration",
+      "function": "viaH",
+      "args": [],
+      "expect": {
+        "return": [
+          7
+        ]
+      }
+    }
+  ]
+}

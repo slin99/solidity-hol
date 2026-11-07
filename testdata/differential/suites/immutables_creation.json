@@ -1,0 +1,70 @@
+{
+  "name": "immutables_creation",
+  "source": "testdata/differential/immutables_creation.sol",
+  "contract": "ImmutableCreation",
+  "artifact": "testdata/differential/expected/immutables_creation.json",
+  "cases": [
+    {
+      "name": "creation_reads_immutables_in_base_argument_modifier_and_function",
+      "deploy": true,
+      "args": [
+        "0x010203",
+        false
+      ],
+      "expect": {
+        "returned": "0x00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000001"
+      },
+      "final_storage": {
+        "0": 8,
+        "1": 5
+      }
+    },
+    {
+      "name": "creation_reverts_after_assigning",
+      "deploy": true,
+      "args": [
+        "0x",
+        true
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "argument_allocation_counts_the_immutables",
+      "deploy": true,
+      "calldata": "0x00000000000000000000000000000000000000000000000000000000000000400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000fffffffffffffee0",
+      "expect": {
+        "panic": "0x41"
+      }
+    },
+    {
+      "name": "immutables_read_at_runtime",
+      "function": "sizes",
+      "args": [],
+      "immutables": {
+        "size": 4,
+        "fromArg": 9
+      },
+      "expect": {
+        "return": [
+          4,
+          9
+        ]
+      }
+    },
+    {
+      "name": "base_immutable_getter",
+      "function": "fromArg",
+      "args": [],
+      "immutables": {
+        "fromArg": 6
+      },
+      "expect": {
+        "return": [
+          6
+        ]
+      }
+    }
+  ]
+}

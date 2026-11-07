@@ -1,0 +1,39 @@
+{
+  "name": "fallback",
+  "source": "testdata/differential/fallback.sol",
+  "contract": "FallbackOnly",
+  "artifact": "testdata/differential/expected/fallback.json",
+  "cases": [
+    {
+      "name": "empty_calldata_runs_fallback",
+      "calldata": "0x",
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "selector_runs_fallback",
+      "calldata": "0xdeadbeef",
+      "storage": {
+        "0": 4
+      },
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 5
+      }
+    },
+    {
+      "name": "value_reverts",
+      "calldata": "0x",
+      "value": 1,
+      "expect": {
+        "revert": "0x"
+      }
+    }
+  ]
+}
