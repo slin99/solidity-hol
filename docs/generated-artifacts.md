@@ -20,6 +20,8 @@ Commit the implementation, its tests and documentation, and these fixture files:
 `suites` array instead. Do not edit the config or either corpus theory's
 staging list to add a feature: their directory dependencies include new suite and
 artifact files in the build inputs automatically.
+Directory discovery requires holbuild 0.12.1 or later, which isolates staged
+inputs per action so removed or renamed suites cannot survive from an older build.
 
 Compile only the feature's artifact with `tools/export_solc_artifacts.py`, using
 the pinned compiler and profile; see `--help` for multi-source inputs. Check the
