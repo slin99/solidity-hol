@@ -264,6 +264,12 @@ Definition eval_operation_def:
                   INL (_, _, _, v) => ValueOk v
                 | INR c => ValueAbrupt c)
          | _ => ValueAbrupt (InvalidCompletion "bad array index operands"))
+    | CodeLengthOperation a =>
+        (case eval_atom st.scopes a of
+           SOME (ScalarValue (AddressValue address)) =>
+             ValueOk (ScalarValue (IntegerValue
+               (&(LENGTH (lookup_account address st.world.accounts).code))))
+         | _ => ValueAbrupt (InvalidCompletion "bad code length operand"))
     | Keccak256Operation a =>
         (case eval_atom st.scopes a of
            SOME (ReferenceValue r) =>

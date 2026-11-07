@@ -295,6 +295,15 @@ fun is_concat kind callee =
   String.isPrefix ("t_function_" ^ kind ^ "concat_")
     (string_field (field callee "typeDescriptions") "typeIdentifier")
 
+(* The compiler reads address.code.length directly, without allocating bytes. *)
+fun is_address_code v =
+  node_type v = "MemberAccess" andalso
+  not (isSome (optional_field v "referencedDeclaration")) andalso
+  string_field v "memberName" = "code" andalso
+  List.exists (fn ty => ty = normalize_type_id
+    (string_field (field (field v "expression") "typeDescriptions") "typeIdentifier"))
+    ["t_address", "t_address_payable"]
+
 (* super.f, as a callee. *)
 fun is_super_member callee =
   node_type callee = "MemberAccess" andalso
@@ -557,8 +566,11 @@ fun expr v = within v (fn v =>
             else if string_field v "memberName" = "selector" then
               con "SrcSelector" [info v, selector_bytes v base, type_id v]
             else case string_field v "memberName" of
-              "length" => con "SrcArrayLength"
-                [info v, expr (field v "expression"), type_id v]
+              "length" =>
+                if is_address_code base then
+                  con "SrcAddressCodeLength"
+                    [info v, info base, expr (field base "expression"), type_id v]
+                else con "SrcArrayLength" [info v, expr base, type_id v]
             | member =>
                 (require v (member = "push" orelse member = "pop")
                    "unsupported built-in member";

@@ -282,6 +282,10 @@ and literals. `string.concat(...)` concatenates strings and string literals.
 Both allocate a fresh memory object, with the corresponding `bytes` or `string`
 type, including the zero-argument and single-argument forms.
 
+`address.code.length` reads the account's code size directly, including zero for
+an account without code. The receiver is evaluated once and no memory bytes
+object is allocated. Standalone `address.code` remains unsupported.
+
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
 from the functions calls can reach (an overridden function counts only when
