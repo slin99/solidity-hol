@@ -1,13 +1,13 @@
 {
   "counts": {
-    "admitted": 548,
+    "admitted": 562,
     "compile-failure": 0,
-    "elaboration-rejected": 68,
-    "import-rejected": 656,
+    "elaboration-rejected": 71,
+    "import-rejected": 635,
     "invalid-core": 0,
     "malformed-input": 0,
     "skipped": 100,
-    "source-rejected": 298
+    "source-rejected": 302
   },
   "features": [
     {
@@ -76,7 +76,7 @@
     },
     {
       "feature": "function members (selector, address, \u2026)",
-      "first_rejection": 9,
+      "first_rejection": 8,
       "node_types": [
         "MemberAccess",
         "TupleExpression",
@@ -215,26 +215,8 @@
       "node_types": [
         "VariableDeclaration"
       ],
-      "only_blocker": 17,
+      "only_blocker": 19,
       "tests": 41
-    },
-    {
-      "feature": "conditional expressions",
-      "first_rejection": 25,
-      "node_types": [
-        "Conditional"
-      ],
-      "only_blocker": 12,
-      "tests": 40
-    },
-    {
-      "feature": "public state variables",
-      "first_rejection": 0,
-      "node_types": [
-        "VariableDeclaration"
-      ],
-      "only_blocker": 5,
-      "tests": 39
     },
     {
       "feature": "string literals as fixed-size bytes",
@@ -248,7 +230,7 @@
         "VariableDeclaration",
         "VariableDeclarationStatement"
       ],
-      "only_blocker": 18,
+      "only_blocker": 20,
       "tests": 38
     },
     {
@@ -257,7 +239,7 @@
       "node_types": [
         "MemberAccess"
       ],
-      "only_blocker": 8,
+      "only_blocker": 10,
       "tests": 37
     },
     {
@@ -423,6 +405,15 @@
       "tests": 19
     },
     {
+      "feature": "public state variables",
+      "first_rejection": 0,
+      "node_types": [
+        "VariableDeclaration"
+      ],
+      "only_blocker": 0,
+      "tests": 19
+    },
+    {
       "feature": "require with a custom error",
       "first_rejection": 0,
       "node_types": [
@@ -441,6 +432,24 @@
       ],
       "only_blocker": 0,
       "tests": 17
+    },
+    {
+      "feature": "type(\u2026)",
+      "first_rejection": 11,
+      "node_types": [
+        "Identifier"
+      ],
+      "only_blocker": 4,
+      "tests": 16
+    },
+    {
+      "feature": "conditional expressions",
+      "first_rejection": 0,
+      "node_types": [
+        "Conditional"
+      ],
+      "only_blocker": 0,
+      "tests": 16
     },
     {
       "feature": "constants",
@@ -462,7 +471,7 @@
     },
     {
       "feature": "built-in erc7201",
-      "first_rejection": 8,
+      "first_rejection": 9,
       "node_types": [
         "Identifier"
       ],
@@ -485,15 +494,6 @@
         "Literal"
       ],
       "only_blocker": 6,
-      "tests": 11
-    },
-    {
-      "feature": "type(\u2026)",
-      "first_rejection": 7,
-      "node_types": [
-        "Identifier"
-      ],
-      "only_blocker": 1,
       "tests": 11
     },
     {
@@ -645,6 +645,15 @@
       "tests": 4
     },
     {
+      "feature": "overriding state variables",
+      "first_rejection": 3,
+      "node_types": [
+        "VariableDeclaration"
+      ],
+      "only_blocker": 3,
+      "tests": 3
+    },
+    {
       "feature": "built-in blobhash",
       "first_rejection": 3,
       "node_types": [
@@ -686,15 +695,6 @@
       "node_types": [
         "Identifier",
         "MemberAccess"
-      ],
-      "only_blocker": 1,
-      "tests": 3
-    },
-    {
-      "feature": "overriding state variables",
-      "first_rejection": 3,
-      "node_types": [
-        "VariableDeclaration"
       ],
       "only_blocker": 1,
       "tests": 3
@@ -825,80 +825,80 @@
       "feature": "abi.* functions"
     },
     {
-      "admitted": 44,
+      "admitted": 46,
       "feature": "string literals as fixed-size bytes"
     },
     {
-      "admitted": 62,
-      "feature": "address members (balance, call, transfer, \u2026)"
-    },
-    {
-      "admitted": 80,
+      "admitted": 65,
       "feature": "transient storage"
     },
     {
-      "admitted": 102,
+      "admitted": 87,
       "feature": "operator delete"
     },
     {
-      "admitted": 119,
+      "admitted": 106,
+      "feature": "address members (balance, call, transfer, \u2026)"
+    },
+    {
+      "admitted": 123,
       "feature": "literals of non-integer types"
     },
     {
-      "admitted": 137,
+      "admitted": 141,
       "feature": "bytes push and pop"
     },
     {
-      "admitted": 153,
+      "admitted": 157,
       "feature": "inline arrays"
     },
     {
-      "admitted": 167,
-      "feature": "conditional expressions"
-    },
-    {
-      "admitted": 180,
+      "admitted": 172,
       "feature": "aggregate array mutation"
     },
     {
-      "admitted": 193,
+      "admitted": 185,
       "feature": "library calls and contract-name members"
     },
     {
-      "admitted": 206,
+      "admitted": 198,
       "feature": "require with a custom error"
     },
     {
-      "admitted": 217,
+      "admitted": 209,
       "feature": "struct values and copying"
     },
     {
-      "admitted": 245,
+      "admitted": 240,
       "feature": "structs"
     },
     {
-      "admitted": 280,
+      "admitted": 276,
       "feature": "local reference bindings"
     },
     {
-      "admitted": 304,
+      "admitted": 300,
       "feature": "arrays"
     },
     {
-      "admitted": 339,
+      "admitted": 335,
       "feature": "array values"
     },
     {
-      "admitted": 365,
+      "admitted": 363,
       "feature": "inline assembly memory references"
     },
     {
-      "admitted": 391,
+      "admitted": 389,
       "feature": "inline assembly memory outside the scratch space"
     },
     {
-      "admitted": 410,
+      "admitted": 409,
       "feature": "named arguments"
+    },
+    {
+      "admitted": 426,
+      "feature": "inline assembly"
     }
   ],
   "profile": "solc-0.8.37-via-ir-osaka",
@@ -4697,7 +4697,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -4725,7 +4724,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -4909,12 +4907,11 @@
       "features": [
         "built-in erc7201",
         "bytes.concat and string.concat",
-        "conditional expressions",
         "free functions",
         "type names as values"
       ],
-      "first": "conditional expressions",
-      "reason": "builtinFunctions/erc7201_param_ternary_operator.sol: Conditional 50: unsupported expression Conditional",
+      "first": "built-in erc7201",
+      "reason": "builtinFunctions/erc7201_param_ternary_operator.sol: Identifier 46: unsupported built-in declaration ~30",
       "scan_agrees": true,
       "test": "builtinFunctions/erc7201_param_ternary_operator.sol"
     },
@@ -7044,22 +7041,18 @@
       "test": "expressions/bytes_comparison.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conditional expressions"
-      ],
-      "first": "conditional expressions",
-      "reason": "expressions/conditional_expression_different_types.sol: Conditional 18: unsupported expression Conditional",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "expressions/conditional_expression_different_types.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conditional expressions"
-      ],
-      "first": "conditional expressions",
-      "reason": "expressions/conditional_expression_false_literal.sol: Conditional 8: unsupported expression Conditional",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "expressions/conditional_expression_false_literal.sol"
     },
@@ -7077,65 +7070,57 @@
       "test": "expressions/conditional_expression_functions.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conditional expressions"
-      ],
-      "first": "conditional expressions",
-      "reason": "expressions/conditional_expression_multiple.sol: Conditional 22: unsupported expression Conditional",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "expressions/conditional_expression_multiple.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "conditional expressions",
         "string literals as fixed-size bytes"
       ],
-      "first": "conditional expressions",
-      "reason": "expressions/conditional_expression_storage_memory_1.sol: Conditional 41: unsupported expression Conditional",
+      "first": null,
+      "reason": "expressions/conditional_expression_storage_memory_1.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "expressions/conditional_expression_storage_memory_1.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "conditional expressions",
         "string literals as fixed-size bytes"
       ],
-      "first": "conditional expressions",
-      "reason": "expressions/conditional_expression_storage_memory_2.sol: Conditional 41: unsupported expression Conditional",
+      "first": null,
+      "reason": "expressions/conditional_expression_storage_memory_2.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "expressions/conditional_expression_storage_memory_2.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conditional expressions"
-      ],
-      "first": "conditional expressions",
-      "reason": "expressions/conditional_expression_true_literal.sol: Conditional 8: unsupported expression Conditional",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "expressions/conditional_expression_true_literal.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "conditional expressions",
         "tuples of literals"
       ],
-      "first": "conditional expressions",
-      "reason": "expressions/conditional_expression_tuples.sol: Conditional 16: unsupported expression Conditional",
+      "first": null,
+      "reason": "expressions/conditional_expression_tuples.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "expressions/conditional_expression_tuples.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conditional expressions"
-      ],
-      "first": "conditional expressions",
-      "reason": "expressions/conditional_expression_with_return_values.sol: Conditional 18: unsupported expression Conditional",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "expressions/conditional_expression_with_return_values.sol"
     },
@@ -7172,24 +7157,24 @@
       "test": "expressions/inc_dec_operators.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "conditional expressions",
         "imports"
       ],
-      "first": "conditional expressions",
-      "reason": "B: Conditional 17: unsupported expression Conditional",
+      "first": null,
+      "reason": "B: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "expressions/module_from_ternary_expression.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "conditional expressions",
         "tuples of literals"
       ],
-      "first": "conditional expressions",
-      "reason": "expressions/tuple_from_ternary_expression.sol: Conditional 20: unsupported expression Conditional",
+      "first": null,
+      "reason": "expressions/tuple_from_ternary_expression.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "expressions/tuple_from_ternary_expression.sol"
     },
@@ -7228,16 +7213,15 @@
       "test": "externalContracts/FixedFeeRegistrar.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "elaboration-rejected",
       "features": [
-        "conditional expressions",
         "inline assembly memory outside the scratch space",
         "inline assembly memory references",
         "literals of non-integer types",
         "source units without exactly one contract"
       ],
-      "first": "conditional expressions",
-      "reason": "base64.sol: Conditional 144: unsupported expression Conditional",
+      "first": null,
+      "reason": "_base64/base64_inline_asm.sol: elaborate_unit returned NONE (unsupported lowering)",
       "scan_agrees": true,
       "test": "externalContracts/base64.sol"
     },
@@ -7249,7 +7233,8 @@
         "arrays",
         "fixed-size bytes members and indexing",
         "hash and signature built-ins",
-        "literal subdenominations (ether, days, \u2026)"
+        "literal subdenominations (ether, days, \u2026)",
+        "type(\u2026)"
       ],
       "first": "arrays",
       "reason": "externalContracts/deposit_contract.sol: ArrayTypeName 66: array length is not a positive integer constant",
@@ -7259,7 +7244,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "conditional expressions",
         "inline assembly",
         "inline assembly memory references",
         "source units without exactly one contract"
@@ -7272,7 +7256,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "conditional expressions",
         "inline assembly",
         "inline assembly memory references",
         "source units without exactly one contract"
@@ -7285,7 +7268,6 @@
     {
       "category": "import-rejected",
       "features": [
-        "conditional expressions",
         "free functions",
         "inline assembly",
         "inline assembly memory references",
@@ -7917,14 +7899,14 @@
       "test": "functionCall/calling_uninitialized_function_through_array.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "conditional expressions",
         "function members (selector, address, \u2026)",
         "functions as values"
       ],
-      "first": "conditional expressions",
-      "reason": "functionCall/conditional_with_arguments.sol: Conditional 36: unsupported expression Conditional",
+      "first": null,
+      "reason": "functionCall/conditional_with_arguments.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "functionCall/conditional_with_arguments.sol"
     },
@@ -8681,39 +8663,39 @@
       "test": "functionTypes/struct_with_functions.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "conditional expressions",
         "function members (selector, address, \u2026)",
         "library calls and contract-name members"
       ],
-      "first": "conditional expressions",
-      "reason": "functionTypes/ternary_contract_internal_function.sol: Conditional 28: unsupported expression Conditional",
+      "first": null,
+      "reason": "functionTypes/ternary_contract_internal_function.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "functionTypes/ternary_contract_internal_function.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "conditional expressions",
         "function members (selector, address, \u2026)",
         "functions as values",
         "library calls and contract-name members"
       ],
-      "first": "conditional expressions",
-      "reason": "functionTypes/ternary_contract_library_internal_function.sol: Conditional 29: unsupported expression Conditional",
+      "first": null,
+      "reason": "functionTypes/ternary_contract_library_internal_function.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "functionTypes/ternary_contract_library_internal_function.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "conditional expressions",
         "function members (selector, address, \u2026)",
         "library calls and contract-name members"
       ],
-      "first": "conditional expressions",
-      "reason": "functionTypes/ternary_contract_public_function.sol: Conditional 28: unsupported expression Conditional",
+      "first": null,
+      "reason": "functionTypes/ternary_contract_public_function.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "functionTypes/ternary_contract_public_function.sol"
     },
@@ -8768,8 +8750,7 @@
     {
       "category": "source-rejected",
       "features": [
-        "aggregate array mutation",
-        "public state variables"
+        "aggregate array mutation"
       ],
       "first": null,
       "reason": "getters/array_mapping_struct.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -8803,8 +8784,7 @@
     {
       "category": "source-rejected",
       "features": [
-        "aggregate array mutation",
-        "public state variables"
+        "aggregate array mutation"
       ],
       "first": null,
       "reason": "getters/mapping_array_struct.sol: valid_src_unit failed (source validation/subset restriction)",
@@ -8823,12 +8803,10 @@
       "test": "getters/mapping_of_string.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "public state variables"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "getters/mapping_to_struct.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "getters/mapping_to_struct.sol"
     },
@@ -8849,22 +8827,18 @@
       "test": "getters/string_and_bytes.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "public state variables"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "getters/struct_with_bytes.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "getters/struct_with_bytes.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "public state variables"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "getters/struct_with_bytes_simple.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "getters/struct_with_bytes_simple.sol"
     },
@@ -9869,7 +9843,6 @@
       "features": [
         "inline assembly memory references",
         "local reference bindings",
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -10077,7 +10050,6 @@
         "abi.* functions",
         "inline assembly memory references",
         "local reference bindings",
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -10265,18 +10237,22 @@
       "test": "interfaceID/homer.sol"
     },
     {
-      "category": "admitted",
-      "features": [],
-      "first": null,
-      "reason": null,
+      "category": "import-rejected",
+      "features": [
+        "type(\u2026)"
+      ],
+      "first": "type(\u2026)",
+      "reason": "interfaceID/homer_interfaceId.sol: Identifier 34: expected ElementaryTypeNameExpression",
       "scan_agrees": true,
       "test": "interfaceID/homer_interfaceId.sol"
     },
     {
-      "category": "admitted",
-      "features": [],
-      "first": null,
-      "reason": null,
+      "category": "import-rejected",
+      "features": [
+        "type(\u2026)"
+      ],
+      "first": "type(\u2026)",
+      "reason": "interfaceID/interfaceId_events.sol: Identifier 23: expected ElementaryTypeNameExpression",
       "scan_agrees": true,
       "test": "interfaceID/interfaceId_events.sol"
     },
@@ -10285,10 +10261,11 @@
       "features": [
         "address members (balance, call, transfer, \u2026)",
         "function members (selector, address, \u2026)",
-        "literals of non-integer types"
+        "literals of non-integer types",
+        "type(\u2026)"
       ],
-      "first": "function members (selector, address, \u2026)",
-      "reason": "interfaceID/interfaces.sol: MemberAccess 47: selectors of computed values are not supported",
+      "first": "type(\u2026)",
+      "reason": "interfaceID/interfaces.sol: Identifier 27: expected ElementaryTypeNameExpression",
       "scan_agrees": true,
       "test": "interfaceID/interfaces.sol"
     },
@@ -10301,10 +10278,12 @@
       "test": "interfaceID/lisa.sol"
     },
     {
-      "category": "admitted",
-      "features": [],
-      "first": null,
-      "reason": null,
+      "category": "import-rejected",
+      "features": [
+        "type(\u2026)"
+      ],
+      "first": "type(\u2026)",
+      "reason": "interfaceID/lisa_interfaceId.sol: Identifier 62: expected ElementaryTypeNameExpression",
       "scan_agrees": true,
       "test": "interfaceID/lisa_interfaceId.sol"
     },
@@ -10854,7 +10833,6 @@
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
         "arrays",
-        "conditional expressions",
         "external library functions",
         "local reference bindings",
         "members of elementary type names",
@@ -10871,7 +10849,6 @@
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
         "arrays",
-        "conditional expressions",
         "external library functions",
         "local reference bindings",
         "members of elementary type names",
@@ -10888,7 +10865,6 @@
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
         "arrays",
-        "conditional expressions",
         "external library functions",
         "local reference bindings",
         "members of elementary type names",
@@ -10904,7 +10880,6 @@
       "features": [
         "abi.* functions",
         "address members (balance, call, transfer, \u2026)",
-        "conditional expressions",
         "contract creation (new C)",
         "external calls to getters",
         "external library functions",
@@ -11036,15 +11011,15 @@
       "test": "libraries/mapping_arguments_in_library.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "conditional expressions",
         "local reference bindings",
         "mapping values",
         "mappings"
       ],
-      "first": "conditional expressions",
-      "reason": "libraries/mapping_returns_in_library.sol: Conditional 20: unsupported expression Conditional",
+      "first": null,
+      "reason": "libraries/mapping_returns_in_library.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "libraries/mapping_returns_in_library.sol"
     },
@@ -11275,12 +11250,10 @@
       "test": "literals/scientific_notation.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conditional expressions"
-      ],
-      "first": "conditional expressions",
-      "reason": "literals/ternary_operator_with_literal_types_overflow.sol: Conditional 9: unsupported expression Conditional",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "literals/ternary_operator_with_literal_types_overflow.sol"
     },
@@ -11566,12 +11539,10 @@
       "test": "modifiers/function_return_parameter_complex.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conditional expressions"
-      ],
-      "first": "conditional expressions",
-      "reason": "modifiers/modifer_recursive.sol: Conditional 29: unsupported expression Conditional",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "modifiers/modifer_recursive.sol"
     },
@@ -13145,12 +13116,10 @@
       "test": "storage/accessors_mapping_for_array.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "public state variables"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "storage/array_accessor.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "storage/array_accessor.sol"
     },
@@ -13635,12 +13604,10 @@
       "test": "storage/storage_packed_array_copy.sol"
     },
     {
-      "category": "source-rejected",
-      "features": [
-        "public state variables"
-      ],
+      "category": "admitted",
+      "features": [],
       "first": null,
-      "reason": "storage/struct_accessor.sol: valid_src_unit failed (source validation/subset restriction)",
+      "reason": null,
       "scan_agrees": true,
       "test": "storage/struct_accessor.sol"
     },
@@ -13955,7 +13922,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "public state variables",
         "transient storage"
       ],
       "first": null,
@@ -13974,7 +13940,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "public state variables",
         "transient storage"
       ],
       "first": null,
@@ -14007,7 +13972,6 @@
       "category": "source-rejected",
       "features": [
         "local reference bindings",
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -14021,7 +13985,6 @@
       "features": [
         "external library functions",
         "local reference bindings",
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -14834,7 +14797,6 @@
       "category": "import-rejected",
       "features": [
         "named arguments",
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -16208,8 +16170,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "overriding state variables",
-        "public state variables"
+        "overriding state variables"
       ],
       "first": "overriding state variables",
       "reason": "variables/public_state_overridding_dynamic_struct.sol: VariableDeclaration 29: overriding state variables are not supported",
@@ -16219,8 +16180,7 @@
     {
       "category": "import-rejected",
       "features": [
-        "overriding state variables",
-        "public state variables"
+        "overriding state variables"
       ],
       "first": "overriding state variables",
       "reason": "variables/public_state_overridding_mapping_to_dynamic_struct.sol: VariableDeclaration 33: overriding state variables are not supported",
@@ -16532,7 +16492,6 @@
       "features": [
         "abi.* functions",
         "bytes.concat and string.concat",
-        "conditional expressions",
         "inline assembly",
         "string literals as fixed-size bytes",
         "type names as values"
@@ -16862,8 +16821,7 @@
       "category": "import-rejected",
       "features": [
         "external calls to getters",
-        "inline arrays",
-        "public state variables"
+        "inline arrays"
       ],
       "first": "inline arrays",
       "reason": "various/skip_dynamic_types_for_structs.sol: TupleExpression 38: inline arrays are not supported",
@@ -16969,7 +16927,6 @@
     {
       "category": "source-rejected",
       "features": [
-        "public state variables",
         "struct values and copying",
         "structs"
       ],
@@ -16979,12 +16936,10 @@
       "test": "various/swap_in_storage_overwrite.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conditional expressions"
-      ],
-      "first": "conditional expressions",
-      "reason": "various/test_underscore_in_hex.sol: Conditional 18: unsupported expression Conditional",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "various/test_underscore_in_hex.sol"
     },
@@ -17103,53 +17058,45 @@
       "test": "viaYul/comparison_functions.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conditional expressions"
-      ],
-      "first": "conditional expressions",
-      "reason": "viaYul/conditional/conditional_multiple.sol: Conditional 22: unsupported expression Conditional",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/conditional/conditional_multiple.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conditional expressions"
-      ],
-      "first": "conditional expressions",
-      "reason": "viaYul/conditional/conditional_true_false_literal.sol: Conditional 10: unsupported expression Conditional",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/conditional/conditional_true_false_literal.sol"
     },
     {
-      "category": "import-rejected",
+      "category": "source-rejected",
       "features": [
         "conditional expressions",
         "tuples of literals"
       ],
-      "first": "conditional expressions",
-      "reason": "viaYul/conditional/conditional_tuple.sol: Conditional 20: unsupported expression Conditional",
+      "first": null,
+      "reason": "viaYul/conditional/conditional_tuple.sol: valid_src_unit failed (source validation/subset restriction)",
       "scan_agrees": true,
       "test": "viaYul/conditional/conditional_tuple.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conditional expressions"
-      ],
-      "first": "conditional expressions",
-      "reason": "viaYul/conditional/conditional_with_assignment.sol: Conditional 28: unsupported expression Conditional",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/conditional/conditional_with_assignment.sol"
     },
     {
-      "category": "import-rejected",
-      "features": [
-        "conditional expressions"
-      ],
-      "first": "conditional expressions",
-      "reason": "viaYul/conditional/conditional_with_variables.sol: Conditional 27: unsupported expression Conditional",
+      "category": "admitted",
+      "features": [],
+      "first": null,
+      "reason": null,
       "scan_agrees": true,
       "test": "viaYul/conditional/conditional_with_variables.sol"
     },

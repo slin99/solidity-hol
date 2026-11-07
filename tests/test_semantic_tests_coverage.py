@@ -155,11 +155,42 @@ class GetterTests(unittest.TestCase):
         nested = mapping(10, elementary(11, "t_address"),
                          {"nodeType": "ArrayTypeName", "id": 12, "baseType": elementary(13, "t_string_storage_ptr"),
                           "typeDescriptions": {"typeIdentifier": "t_array"}})
-        self.assertTrue(coverage.has_getter(nested))
+        self.assertTrue(coverage.has_getter(nested, {}, set()))
         self.assertFalse(coverage.has_getter(mapping(20, elementary(21, "t_string_memory_ptr"),
-                                                     elementary(22, "t_uint256"))))
-        self.assertFalse(coverage.has_getter({"nodeType": "UserDefinedTypeName", "id": 30,
-                                              "typeDescriptions": {"typeIdentifier": "t_struct$_S_$1_storage_ptr"}}))
+                                                     elementary(22, "t_uint256")), {}, set()))
+
+        def struct(members):
+            definition = {"nodeType": "StructDefinition", "id": 1,
+                          "members": [{"nodeType": "VariableDeclaration", "id": 40 + i, "typeName": t}
+                                      for i, t in enumerate(members)]}
+            return ({"nodeType": "UserDefinedTypeName", "id": 30, "referencedDeclaration": 1,
+                     "typeDescriptions": {"typeIdentifier": "t_struct$_S_$1_storage_ptr"}},
+                    {1: dict(definition, scope=9), 9: {"nodeType": "SourceUnit", "id": 9}}, set())
+
+        def array(node_id, base):
+            return {"nodeType": "ArrayTypeName", "id": node_id, "baseType": base,
+                    "typeDescriptions": {"typeIdentifier": "t_array"}}
+
+        # A struct's getter returns its values and byte sequences, skipping
+        # mappings and other arrays.
+        returned = struct([elementary(50, "t_uint8"), elementary(51, "t_bytes_storage_ptr"),
+                           elementary(59, "t_enum_7"), elementary(65, "t_address"),
+                           mapping(52, elementary(53, "t_uint256"), elementary(54, "t_uint256")),
+                           array(55, elementary(56, "t_uint256"))])
+        self.assertTrue(coverage.has_getter(*returned))
+        self.assertTrue(coverage.has_getter(mapping(57, elementary(58, "t_uint256"), returned[0]), *returned[1:]))
+        # A struct of a contract that is not a base of the deployed one is not
+        # the contract's; one of a base is.
+        type_name, by_id, _ = returned
+        elsewhere = {**by_id, 1: dict(by_id[1], scope=8), 8: {"nodeType": "ContractDefinition", "id": 8}}
+        self.assertFalse(coverage.has_getter(type_name, elsewhere, set()))
+        self.assertTrue(coverage.has_getter(type_name, elsewhere, {8}))
+        self.assertFalse(coverage.has_getter(*struct([mapping(60, elementary(61, "t_uint256"),
+                                                              elementary(62, "t_uint256"))])))
+        nested = struct([elementary(63, "t_uint256"),
+                         {"nodeType": "UserDefinedTypeName", "id": 64, "referencedDeclaration": 2,
+                          "typeDescriptions": {"typeIdentifier": "t_struct$_T_$2_storage_ptr"}}])
+        self.assertFalse(coverage.has_getter(*nested))
         # A contract type is read as address.
         contract_typed = {"nodeType": "UserDefinedTypeName", "id": 31,
                           "typeDescriptions": {"typeIdentifier": "t_contract$_C_$2"}}
@@ -171,6 +202,45 @@ class GetterTests(unittest.TestCase):
         overriding = dict(state, overrides={"nodeType": "OverrideSpecifier", "id": 104, "overrides": []})
         self.assertEqual({b.feature for b in coverage.scan({"t.sol": unit([overriding, function(4, [])])})[3]},
                          {"overriding state variables"})
+
+    def test_struct_getters_need_the_contracts_structs(self) -> None:
+        """A getter of a struct the deployed contract doesn't inherit, such as
+        one of a contract deployed beside it, is rejected as the importer
+        rejects it."""
+        artifact = json.loads((ROOT / "testdata/differential/expected/struct_getters.json").read_text())
+        asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
+        self.assertEqual(coverage.scan(asts), {})
+        (unit_ast,) = asts.values()
+        contracts = {n["name"]: n for n in unit_ast["nodes"] if n["nodeType"] == "ContractDefinition"}
+        getters = contracts["StructGetters"]
+        getters["linearizedBaseContracts"] = [getters["id"]]
+        based = next(n for n in getters["nodes"] if n.get("name") == "based")
+        self.assertIn(coverage.Blocker("VariableDeclaration", "public state variables", "elaboration"),
+                      coverage.scan(asts).get(based["id"], []))
+
+    def test_struct_getters_need_the_structs_in_every_deployment(self) -> None:
+        """A base's getter of a struct one deploying contract inherits and
+        another doesn't is rejected, as the importer rejects it in the other."""
+        def contract(node_id, bases, members):
+            return {"nodeType": "ContractDefinition", "id": node_id, "contractKind": "contract",
+                    "abstract": False, "baseContracts": [], "linearizedBaseContracts": bases,
+                    "nodes": members}
+
+        struct = {"nodeType": "StructDefinition", "id": 11, "name": "S", "scope": 10,
+                  "members": [dict(variable(12), typeName={
+                      "nodeType": "ElementaryTypeName", "id": 112, "name": "uint256",
+                      "typeDescriptions": {"typeIdentifier": "t_uint256"}})]}
+        getter = dict(variable(21, state=True, visibility="public", type_identifier="t_struct$_S_$11_storage"),
+                      scope=20, typeName={"nodeType": "UserDefinedTypeName", "id": 121, "referencedDeclaration": 11,
+                                          "typeDescriptions": {"typeIdentifier": "t_struct$_S_$11_storage_ptr"}})
+        # contract C is B, A, where A declares S and B has the getter
+        a = {"nodeType": "SourceUnit", "id": 1, "nodes": [
+            contract(10, [10], [struct]), contract(20, [20], [getter]), contract(30, [30, 10, 20], [])]}
+        rejected = coverage.Blocker("VariableDeclaration", "public state variables", "elaboration")
+        self.assertNotIn(rejected, coverage.scan({"a.sol": a}).get(21, []))
+        # contract D is B, in another unit
+        b = {"nodeType": "SourceUnit", "id": 2, "nodes": [contract(40, [40, 20], [])]}
+        self.assertIn(rejected, coverage.scan({"a.sol": a, "b.sol": b}).get(21, []))
 
     def test_external_calls_to_getters_are_blocked(self) -> None:
         # C(a).x() for the public state variable x of C
@@ -839,6 +909,39 @@ class ClassifyTests(unittest.TestCase):
                   "typeDescriptions": {"typeIdentifier": "t_uint256"}}
         self.assertEqual(coverage.scan({"t.sol": unit([function(4, [length])])}), {})
 
+    def test_named_arguments_need_a_declared_callee(self) -> None:
+        def call(callee, kind="functionCall"):
+            return {"nodeType": "FunctionCall", "id": 9, "kind": kind, "names": ["b", "a"],
+                    "tryCall": False, "expression": callee, "arguments": []}
+
+        declared = {"nodeType": "Identifier", "id": 5, "name": "f", "referencedDeclaration": 3}
+        named = coverage.Blocker("FunctionCall", "named arguments", "import")
+        self.assertNotIn(named, coverage.node_blockers(call(declared)))
+        parenthesized = {"nodeType": "TupleExpression", "id": 6, "components": [declared],
+                         "isInlineArray": False}
+        self.assertIn(named, coverage.node_blockers(call(parenthesized)))
+        builtin = dict(declared, referencedDeclaration=-8)
+        self.assertIn(named, coverage.node_blockers(call(builtin)))
+        self.assertIn(named, coverage.node_blockers(call(declared, kind="structConstructorCall")))
+        # c.f{value: v}({...}): the callee is the call options' expression.
+        member = {"nodeType": "MemberAccess", "id": 7, "memberName": "f", "referencedDeclaration": 3}
+        options = {"nodeType": "FunctionCallOptions", "id": 8, "expression": member,
+                   "names": ["value"], "options": []}
+        self.assertNotIn(named, coverage.node_blockers(call(options)))
+        self.assertIn(named, coverage.node_blockers(call(dict(options, expression={
+            "nodeType": "NewExpression", "id": 10, "typeName": {"nodeType": "ElementaryTypeName"}}))))
+        self.assertIn(named, coverage.node_blockers(call({"nodeType": "NewExpression", "id": 10, "typeName": {"nodeType": "ElementaryTypeName"}})))
+
+    def test_named_arguments_of_events_and_errors_are_taken(self) -> None:
+        statement = revert(40, 30, [])
+        statement["errorCall"]["names"] = ["a"]
+        event = {"nodeType": "EmitStatement", "id": 50, "eventCall": dict(
+            statement["errorCall"], id=51, names=["a"],
+            expression=dict(statement["errorCall"]["expression"], id=52, name="Ev"))}
+        reached = {n["id"]: n for n in (statement, event)}
+        _, found = coverage.special_forms(reached, reached)
+        self.assertNotIn("named arguments", {b.feature for bs in found.values() for b in bs})
+
     def test_array_type_expression_without_index_is_import_rejection(self) -> None:
         node = {"nodeType": "IndexAccess", "id": 13}
         self.assertEqual(coverage.node_blockers(node),
@@ -1040,6 +1143,18 @@ class ClassifyTests(unittest.TestCase):
         self.assertIsNotNone(coverage.selector_declaration(selector, by_id))
         receiver["typeDescriptions"]["typeIdentifier"] = "t_contract$_IReceiver_$1"
         self.assertIsNone(coverage.selector_declaration(selector, by_id))
+
+    def test_conditionals_of_values_and_memory_only(self) -> None:
+        def blockers(tid: str) -> list[tuple[str, str]]:
+            node = {"nodeType": "Conditional", "typeDescriptions": {"typeIdentifier": tid}}
+            return [(b.feature, b.stage) for b in
+                    coverage.node_blockers(node) + coverage.elaboration_blockers(node)]
+        for tid in ("t_uint16", "t_bool", "t_string_memory_ptr", "t_array$_t_uint256_$dyn_memory_ptr"):
+            self.assertEqual(blockers(tid), [], tid)
+        for tid in ("t_tuple$__$", "t_tuple$_t_uint256_$_t_uint256_$", "t_function_internal_pure$__$returns$__$",
+                    "t_bytes_storage", "t_bytes_storage_ptr", "t_array$_t_uint256_$dyn_calldata_ptr",
+                    "t_mapping$_t_uint256_$_t_uint256_$", "t_struct$_S_$5_memory_ptr"):
+            self.assertEqual(blockers(tid), [("conditional expressions", "elaboration")], tid)
 
     def test_state_variable_selectors_only_through_this(self) -> None:
         artifact = json.loads((ROOT / "testdata/differential/expected/hashes.json").read_text())
