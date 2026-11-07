@@ -746,7 +746,8 @@ Definition wf_core_operation_def:
     LIST_REL (wf_abi_atom env ctx) tys args) ∧
   (* A byte sequence argument is encoded where it is, in any location. *)
   (wf_core_operation env ctx annotation (AbiEncodePackedOperation tys args) ⇔
-    annotation = SingleType (LocatedT MemoryLoc BytesT) ∧
+    (annotation = SingleType (LocatedT MemoryLoc BytesT) ∨
+     annotation = SingleType (LocatedT MemoryLoc StringT)) ∧
     EVERY (λty. is_stored_scalar_type ty ∨
                 case ty of
                   LocatedT MemoryLoc element => byte_sequence_type element

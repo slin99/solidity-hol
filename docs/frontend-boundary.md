@@ -277,6 +277,11 @@ sequence as its contents. Arrays and structs as arguments, a selector that
 is not a `bytes4` value (a literal selector included), and a signature that is
 not a plain string literal are rejected.
 
+`bytes.concat(...)` uses packed encoding of its byte sequences, fixed-size bytes
+and literals. `string.concat(...)` concatenates strings and string literals.
+Both allocate a fresh memory object, with the corresponding `bytes` or `string`
+type, including the zero-argument and single-argument forms.
+
 `address.code.length` reads the account's code size directly, including zero for
 an account without code. The receiver is evaluated once and no memory bytes
 object is allocated. Standalone `address.code` remains unsupported.

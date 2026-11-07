@@ -100,6 +100,32 @@ class BuiltinCoverageTests(unittest.TestCase):
         self.assertEqual(coverage.scan({"t.sol": unit([function(4, [statement])])})[5], [
             coverage.Blocker("FunctionCall", "messages that are not literals", "elaboration")])
 
+    def test_only_a_named_concat_is_admitted(self) -> None:
+        concat_type = {"typeIdentifier": "t_function_bytesconcat_pure$__$returns$_t_bytes_memory_ptr_$"}
+        member = {"nodeType": "MemberAccess", "id": 6, "memberName": "concat",
+                  "typeDescriptions": concat_type,
+                  "expression": {"nodeType": "ElementaryTypeNameExpression", "id": 7,
+                                 "typeName": {"nodeType": "ElementaryTypeName", "id": 8, "name": "bytes"},
+                                 "typeDescriptions": {"typeIdentifier": "t_type$_t_bytes_storage_ptr_$"}}}
+
+        def statement(callee):
+            return {"nodeType": "ExpressionStatement", "id": 9, "expression": {
+                "nodeType": "FunctionCall", "id": 5, "kind": "functionCall", "names": [],
+                "tryCall": False, "arguments": [],
+                "typeDescriptions": {"typeIdentifier": "t_bytes_memory_ptr"}, "expression": callee}}
+
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [statement(member)])])}), {})
+        # (bytes).concat(): the type name is not read.
+        base = member["expression"]
+        member["expression"] = {"nodeType": "TupleExpression", "id": 11, "isInlineArray": False,
+                                "components": [base], "typeDescriptions": base["typeDescriptions"]}
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [statement(member)])])}), {})
+        # (bytes.concat)(): the compiler gives the parenthesized callee the same type.
+        parenthesized = {"nodeType": "TupleExpression", "id": 10, "isInlineArray": False,
+                         "components": [member], "typeDescriptions": concat_type}
+        self.assertNotEqual(
+            coverage.scan({"t.sol": unit([function(4, [statement(parenthesized)])])}), {})
+
     def test_shadowed_names_are_ordinary_calls(self) -> None:
         artifact = json.loads((ROOT / "testdata/differential/expected/shadowed_builtins.json").read_text())
         ast = artifact["output"]["sources"]["testdata/differential/shadowed_builtins.sol"]["ast"]

@@ -591,13 +591,16 @@ Definition selector_bytes_def:
         | _ => NONE
 End
 
-(* An ABI encoding as a new memory bytes, allocated as the compiler does:
- * Panic(0x41) when the free memory pointer would pass 2^64. *)
+(* An ABI encoding as a new memory bytes, or string (string.concat),
+ * allocated as the compiler does: Panic(0x41) when the free memory pointer
+ * would pass 2^64. *)
 Definition allocate_encoding_def:
   allocate_encoding x ty bs st gas =
     if 2 ** 64 ≤ 128 + st.memory_allocated + 32 + 32 * ((LENGTH bs + 31) DIV 32)
     then abrupt_result (PanicCompletion 65) st gas
-    else let (v, st') = allocate_bytes BytesT bs st in
+    else let element = if ty = SingleType (LocatedT MemoryLoc StringT) then StringT
+                       else BytesT in
+         let (v, st') = allocate_bytes element bs st in
          normal_result (define_binding x ty v st') gas
 End
 

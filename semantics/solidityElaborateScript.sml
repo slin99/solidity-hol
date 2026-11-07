@@ -525,6 +525,10 @@ Definition abi_encoding_def:
         (case abi_arguments T vs of
            SOME (tys, args) => SOME (([], AbiEncodePackedOperation tys args), n)
          | NONE => NONE)
+    | (AbiStringConcat, _) =>
+        (case abi_arguments T vs of
+           SOME (tys, args) => SOME (([], AbiEncodePackedOperation tys args), n)
+         | NONE => NONE)
     | (AbiPlain, _) =>
         (case abi_arguments F vs of
            SOME (tys, args) => SOME (([], AbiEncodeOperation NONE tys args), n)
@@ -948,7 +952,8 @@ Definition elab_expr_def:
            SOME ((ss, vs), n1) =>
              (case abi_encoding n1 form vs of
                 SOME ((cs, op), n2) =>
-                  let ty = LocatedT MemoryLoc BytesT in
+                  let ty = LocatedT MemoryLoc
+                             (if form = AbiStringConcat then StringT else BytesT) in
                   let (es, r) = bind_value n2 ty op in
                   SOME ((ss ++ cs ++ es, r, ElabType ty), n2 + 1)
               | NONE => NONE)
