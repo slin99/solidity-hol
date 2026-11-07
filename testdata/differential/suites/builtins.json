@@ -1,0 +1,501 @@
+{
+  "name": "builtins",
+  "source": "testdata/differential/builtins.sol",
+  "contract": "Builtins",
+  "artifact": "testdata/differential/expected/builtins.json",
+  "cases": [
+    {
+      "name": "require_true",
+      "function": "requirePlain",
+      "args": [
+        true
+      ],
+      "expect": {
+        "return": [
+          22
+        ]
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 22
+      }
+    },
+    {
+      "name": "require_false",
+      "function": "requirePlain",
+      "args": [
+        false
+      ],
+      "expect": {
+        "revert": "0x"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "requireMessage_true",
+      "function": "requireMessage",
+      "args": [
+        true
+      ],
+      "expect": {
+        "return": [
+          8
+        ]
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 8,
+        "1": 8
+      }
+    },
+    {
+      "name": "requireMessage_false",
+      "function": "requireMessage",
+      "args": [
+        false
+      ],
+      "expect": {
+        "revert": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000f6c69746572616c206d6573736167650000000000000000000000000000000000"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "requireEmpty_true",
+      "function": "requireEmpty",
+      "args": [
+        true
+      ],
+      "expect": {
+        "return": []
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "requireEmpty_false",
+      "function": "requireEmpty",
+      "args": [
+        false
+      ],
+      "expect": {
+        "revert": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "requireUnicode_true",
+      "function": "requireUnicode",
+      "args": [
+        true
+      ],
+      "expect": {
+        "return": []
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "requireUnicode_false",
+      "function": "requireUnicode",
+      "args": [
+        false
+      ],
+      "expect": {
+        "revert": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000006c3a9f09f99820000000000000000000000000000000000000000000000000000"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "requireLong_true",
+      "function": "requireLong",
+      "args": [
+        true
+      ],
+      "expect": {
+        "return": []
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "requireLong_false",
+      "function": "requireLong",
+      "args": [
+        false
+      ],
+      "expect": {
+        "revert": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000041303132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333400000000000000000000000000000000000000000000000000000000000000"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "assert_true",
+      "function": "assertion",
+      "args": [
+        true
+      ],
+      "expect": {
+        "return": [
+          8
+        ]
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 8,
+        "1": 33
+      }
+    },
+    {
+      "name": "assert_false",
+      "function": "assertion",
+      "args": [
+        false
+      ],
+      "expect": {
+        "panic": 1
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "bareRevert",
+      "function": "bareRevert",
+      "args": [],
+      "expect": {
+        "revert": "0x"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "emptyRevert",
+      "function": "emptyRevert",
+      "args": [],
+      "expect": {
+        "revert": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "messageRevert",
+      "function": "messageRevert",
+      "args": [],
+      "expect": {
+        "revert": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000f6c69746572616c206d6573736167650000000000000000000000000000000000"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "unicodeRevert",
+      "function": "unicodeRevert",
+      "args": [],
+      "expect": {
+        "revert": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000006c3a9f09f99820000000000000000000000000000000000000000000000000000"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "boundaryRevert",
+      "function": "boundaryRevert",
+      "args": [],
+      "expect": {
+        "revert": "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000203031323334353637383930313233343536373839303132333435363738393031"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "longRevert",
+      "function": "longRevert",
+      "args": [],
+      "expect": {
+        "revert": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000041303132333435363738393031323334353637383930313233343536373839303132333435363738393031323334353637383930313233343536373839303132333400000000000000000000000000000000000000000000000000000000000000"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "nulRevert",
+      "function": "nulRevert",
+      "args": [],
+      "expect": {
+        "revert": "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000036100620000000000000000000000000000000000000000000000000000000000"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "hexRevert",
+      "function": "hexRevert",
+      "args": [],
+      "expect": {
+        "revert": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000004c3a9006100000000000000000000000000000000000000000000000000000000"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "internal_require_success",
+      "function": "propagation",
+      "args": [
+        true
+      ],
+      "expect": {
+        "return": [
+          56,
+          67
+        ]
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 56,
+        "1": 67
+      }
+    },
+    {
+      "name": "internal_require_rollback",
+      "function": "propagation",
+      "args": [
+        false
+      ],
+      "expect": {
+        "revert": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000005696e6e6572000000000000000000000000000000000000000000000000000000"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "internal_assert_rollback",
+      "function": "assertPropagation",
+      "args": [],
+      "expect": {
+        "panic": 1
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "internal_revert_rollback",
+      "function": "revertPropagation",
+      "args": [],
+      "expect": {
+        "revert": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c696e6e6572207265766572740000000000000000000000000000000000000000"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "condition_panic_before_require",
+      "function": "conditionPanic",
+      "args": [
+        0
+      ],
+      "expect": {
+        "panic": 18
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "condition_failure",
+      "function": "conditionPanic",
+      "args": [
+        1
+      ],
+      "expect": {
+        "revert": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000f636f6e646974696f6e2066616c73650000000000000000000000000000000000"
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    },
+    {
+      "name": "condition_success",
+      "function": "conditionPanic",
+      "args": [
+        2
+      ],
+      "expect": {
+        "return": []
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 99
+      }
+    },
+    {
+      "name": "local_condition_once",
+      "function": "localCondition",
+      "args": [],
+      "expect": {
+        "return": [
+          2
+        ]
+      },
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 8
+      }
+    }
+  ]
+}

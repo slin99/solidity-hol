@@ -12,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
 import semantic_tests_coverage as coverage  # noqa: E402
+import run_differential  # noqa: E402
 
 PROFILE = {"settings": {"evmVersion": "osaka", "debug": {"revertStrings": "default"}}}
 
@@ -994,7 +995,7 @@ class ClassifyTests(unittest.TestCase):
         """The scan admits what the differential corpus prepares: each suite's
         own source. Its other sources only hold bases, interfaces and errors,
         so they are units without exactly one contract."""
-        corpus = json.loads((ROOT / "testdata/differential/corpus.json").read_text())
+        corpus = run_differential.load_corpus(ROOT / run_differential.CORPUS)
         for suite in corpus["suites"]:
             with self.subTest(suite=suite["name"]):
                 artifact = json.loads((ROOT / suite["artifact"]).read_text())

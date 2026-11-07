@@ -1,0 +1,88 @@
+{
+  "name": "interface_ids",
+  "source": "testdata/differential/interface_ids.sol",
+  "contract": "InterfaceIds",
+  "artifact": "testdata/differential/expected/interface_ids.json",
+  "cases": [
+    {
+      "name": "interface_ids",
+      "function": "ids",
+      "args": [],
+      "expect": {
+        "return": [
+          "0xe8df712d",
+          "0x5001f3b5",
+          "0x4d43ffa2",
+          "0x00000000"
+        ]
+      }
+    },
+    {
+      "name": "interface_id_constant",
+      "function": "fromConstant",
+      "args": [],
+      "expect": {
+        "return": [
+          "0xe8df712d"
+        ]
+      }
+    },
+    {
+      "name": "interface_id_converted",
+      "function": "converted",
+      "args": [],
+      "expect": {
+        "return": [
+          "0xe8df712d00000000000000000000000000000000000000000000000000000000",
+          1342305205
+        ]
+      }
+    },
+    {
+      "name": "fallback_and_receive_not_included",
+      "function": "payableId",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x1b9265b8"
+        ]
+      }
+    },
+    {
+      "name": "supports_own_interface",
+      "function": "supportsInterface",
+      "args": [
+        "0xe8df712d"
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "supports_base_interface",
+      "function": "supportsInterface",
+      "args": [
+        "0x5001f3b5"
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "inherited_selectors_not_included",
+      "function": "supportsInterface",
+      "args": [
+        "0xb8de8298"
+      ],
+      "expect": {
+        "return": [
+          false
+        ]
+      }
+    }
+  ]
+}

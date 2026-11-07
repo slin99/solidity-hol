@@ -1,0 +1,20 @@
+{
+  "name": "initializers_only",
+  "source": "testdata/differential/initializers_only.sol",
+  "contract": "Init",
+  "artifact": "testdata/differential/expected/initializers_only.json",
+  "cases": [
+    {
+      "name": "creation_runs_initializers",
+      "deploy": true,
+      "args": [],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 5,
+        "1": 6
+      }
+    }
+  ]
+}
