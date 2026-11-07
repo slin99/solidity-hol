@@ -25,7 +25,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/using_for.json",
   "../testdata/differential/expected/contract_types.json",
   "../testdata/differential/expected/hashes.json",
-  "../testdata/differential/expected/conditionals.json"
+  "../testdata/differential/expected/conditionals.json",
+  "../testdata/differential/expected/encode_calls.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -1137,3 +1138,38 @@ Theorem function_conditional_rejected:
 Proof
   CONV_TAC cv_eval
 QED
+
+(* abi.encodeCall leaves out its receiver's read, which a constant's would
+ * not be: the compiler evaluates its initializer, which may fail. *)
+
+val encode_calls_fixture = "../testdata/differential/expected/encode_calls.json"
+val encode_calls_source = "testdata/differential/encode_calls.sol"
+val encode_calls_ast = artifact_part encode_calls_fixture ["sources", encode_calls_source, "ast"]
+val encode_calls_contracts = artifact_part encode_calls_fixture ["contracts", encode_calls_source]
+
+val _ = import_source_unit [] encode_calls_ast encode_calls_contracts
+
+(* token made a constant, initialized by a literal of the fixture. *)
+val encode_calls_literal =
+  let
+    val found = ref NONE
+    val _ = edit_first_where (is_node "Literal") "Literal"
+              (fn v => (found := SOME v; v)) encode_calls_ast
+  in
+    valOf (!found)
+  end
+
+fun make_constant (JSON.OBJECT kvs) =
+      set_field "constant" (JSON.BOOL true)
+        (JSON.OBJECT (kvs @ [("value", encode_calls_literal)]))
+  | make_constant v = v
+
+val () =
+  (import_source_unit []
+     (edit_first_where (named "VariableDeclaration" "token") "token"
+        make_constant encode_calls_ast)
+     encode_calls_contracts;
+   raise Fail "encodeCall through a constant: imported")
+  handle ImportError msg =>
+    if String.isSubstring "constant receiver" msg then ()
+    else raise Fail ("encodeCall through a constant: " ^ msg)

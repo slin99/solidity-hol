@@ -510,7 +510,7 @@ Definition abi_arguments_def:
 End
 
 (* The operation of abi.encode* on the values of its arguments, after any
- * statements converting the selector. *)
+ * statements converting the selector or the arguments. *)
 Definition abi_encoding_def:
   abi_encoding n form vs =
     case (form, vs) of
@@ -520,6 +520,18 @@ Definition abi_encoding_def:
              SOME ((cs, AbiEncodeOperation (SOME s') tys args), n1)
          | _ => NONE)
     | (AbiWithSelector, []) => NONE
+    | (AbiCall tids, (s, svt) :: rest) =>
+        (case coerce n (FixedBytesT 4) s svt of
+           SOME ((cs, s'), n1) =>
+             (case all_some (MAP abi_call_parameter tids) of
+                SOME tys =>
+                  (case coerce_abi_values n1 tys rest of
+                     SOME (css, args, n2) =>
+                       SOME ((cs ++ css, AbiEncodeOperation (SOME s') tys args), n2)
+                   | NONE => NONE)
+              | NONE => NONE)
+         | NONE => NONE)
+    | (AbiCall _, []) => NONE
     | (AbiPacked, _) =>
         (case abi_arguments T vs of
            SOME (tys, args) => SOME (([], AbiEncodePackedOperation tys args), n)
