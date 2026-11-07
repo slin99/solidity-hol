@@ -151,14 +151,16 @@ Datatype:
 End
 
 (* What an inline assembly block's Yul variable stands for: a local of value
- * type (read on entry, written back on exit), or the storage slot or byte
- * offset of a state variable (x.slot, x.offset; read-only).
+ * type (read on entry, written back on exit), the storage slot or byte offset
+ * of a state variable (x.slot, x.offset), or the value of a constant of value
+ * type, held in an atom. The last three are read-only.
  *)
 Datatype:
   assembly_reference
   = AssemblyLocal ast_id sol_type
   | AssemblySlot ast_id
   | AssemblyOffset ast_id
+  | AssemblyConstant core_atom sol_type
 End
 
 (* Explicitly separate scalar writes, reference binding, and content copying.

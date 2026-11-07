@@ -1,0 +1,60 @@
+{
+  "name": "assembly_constants",
+  "source": "testdata/differential/assembly_constants.sol",
+  "contract": "AssemblyConstants",
+  "artifact": "testdata/differential/expected/assembly_constants.json",
+  "cases": [
+    {
+      "name": "constant_values",
+      "function": "values",
+      "args": [],
+      "expect": {
+        "return": [
+          5,
+          7,
+          115792089237316195423570985008687907853269984665640564039457584007913129639935,
+          1,
+          255
+        ]
+      }
+    },
+    {
+      "name": "constants_in_yul_functions",
+      "function": "inFunction",
+      "args": [
+        3
+      ],
+      "expect": {
+        "return": [
+          15,
+          5,
+          12
+        ]
+      }
+    },
+    {
+      "name": "constants_in_unchecked_block",
+      "function": "unchecked_",
+      "args": [],
+      "expect": {
+        "return": [
+          254
+        ]
+      }
+    },
+    {
+      "name": "locations_in_yul_function",
+      "function": "locationsInFunction",
+      "args": [],
+      "expect": {
+        "return": [
+          2,
+          7
+        ]
+      },
+      "final_storage": {
+        "1": 7
+      }
+    }
+  ]
+}

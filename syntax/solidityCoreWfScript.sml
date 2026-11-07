@@ -1042,6 +1042,8 @@ Definition assembly_reference_ok_def:
         ALOOKUP ctx.bindings x = SOME (SingleType ty) ∧ assembly_value_type ty
     | AssemblySlot x => IS_SOME (lookup_state_variable env x)
     | AssemblyOffset x => IS_SOME (lookup_state_variable env x)
+    | AssemblyConstant a ty =>
+        wf_core_atom env ctx (SingleType ty) a ∧ assembly_value_type ty
 End
 
 Definition check_core_stmts_def:

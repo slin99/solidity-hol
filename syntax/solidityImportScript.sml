@@ -1419,12 +1419,12 @@ End
 
 (* Statement lists return the environment after their declarations. *)
 (* A local is checked for its type by the core program's check; here only
- * that each name resolves: a value to a local, a location to a state
- * variable, which a pure function can also name.
+ * that each name resolves: a value to a local or a constant, a location to a
+ * state variable, which a pure function can also name.
  *)
 Definition check_assembly_reference_def:
   (check_assembly_reference env (SrcAssemblyValue x) ⇔
-    IS_SOME (ALOOKUP env.variables x)) ∧
+    IS_SOME (ALOOKUP (env.variables ++ env.constants) x)) ∧
   (check_assembly_reference env (SrcAssemblySlot x) ⇔
     IS_SOME (ALOOKUP env.locations x)) ∧
   (check_assembly_reference env (SrcAssemblyOffset x) ⇔
