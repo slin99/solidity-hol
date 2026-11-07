@@ -3,10 +3,10 @@
     "agree": 2249,
     "not-runnable": 11
   },
-  "core_revision": "8b07ae5c2eee70123bd19d5fdfbb02f98dccfd04",
+  "core_revision": "281e7e4b973be48f06fbacd251acc637558cff23",
   "format": "solidity-hol-semantic-expectations-v1",
   "solidity_pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
-  "source_hash": "2302076a113a0c8c053faf2ebc476ddd52f2309631c4fcdbb16ba9aa5a390ddf",
+  "source_hash": "8f49e49642b752276865f0705369ae10f4dc2e8156c4780786187b73da63fc3f",
   "test_counts": {
     "agree": 538,
     "not-runnable": 7
@@ -25697,10 +25697,13 @@
         {
           "deploy": false,
           "events": [],
+          "expected": {
+            "returned": "0x0000000000000000000000000000000000000000000000000000000000001234"
+          },
           "implicit": false,
           "index": 0,
           "observations": [],
-          "reason": "unsupported expectation syntax or builtin directive",
+          "reason": "unsupported isoltest builtin directive",
           "sender": "103164821458651970696730694074090566015747358738",
           "status": "not-runnable",
           "text": "isoltest_builtin_test -> 0x1234",
@@ -25715,10 +25718,13 @@
         {
           "deploy": false,
           "events": [],
+          "expected": {
+            "returned": "0x0000000000000000000000000000000000000000000000000000000000000000"
+          },
           "implicit": false,
           "index": 0,
           "observations": [],
-          "reason": "unsupported expectation syntax or builtin directive",
+          "reason": "unsupported side-effect observation",
           "sender": "103164821458651970696730694074090566015747358738",
           "status": "not-runnable",
           "text": "isoltest_side_effects_test -> 0",
@@ -25727,10 +25733,13 @@
         {
           "deploy": false,
           "events": [],
+          "expected": {
+            "returned": "0x0000000000000000000000000000000000000000000000000000000000001234"
+          },
           "implicit": false,
           "index": 1,
           "observations": [],
-          "reason": "earlier transaction not runnable: unsupported expectation syntax or builtin directive",
+          "reason": "earlier transaction not runnable: unsupported side-effect observation",
           "sender": "103164821458651970696730694074090566015747358738",
           "status": "not-runnable",
           "text": "isoltest_side_effects_test: 0x1234 -> 0x1234 ~ 0000000000000000000000000000000000000000000000000000000000001234",
@@ -25739,10 +25748,13 @@
         {
           "deploy": false,
           "events": [],
+          "expected": {
+            "returned": "0x00000000000000000000000000000000000000000000000000000000000012340000000000000000000000000000000000000000000000000000000000002345"
+          },
           "implicit": false,
           "index": 2,
           "observations": [],
-          "reason": "earlier transaction not runnable: unsupported expectation syntax or builtin directive",
+          "reason": "earlier transaction not runnable: unsupported side-effect observation",
           "sender": "103164821458651970696730694074090566015747358738",
           "status": "not-runnable",
           "text": "isoltest_side_effects_test: 0x1234, 0x2345 # comment # -> 0x1234, 0x2345 ~ 0000000000000000000000000000000000000000000000000000000000001234 ~ 0000000000000000000000000000000000000000000000000000000000002345",
@@ -25751,10 +25763,13 @@
         {
           "deploy": false,
           "events": [],
+          "expected": {
+            "returned": "0x000000000000000000000000000000000000000000000000000000000000123400000000000000000000000000000000000000000000000000000000000023450000000000000000000000000000000000000000000000000000000000003456"
+          },
           "implicit": false,
           "index": 3,
           "observations": [],
-          "reason": "earlier transaction not runnable: unsupported expectation syntax or builtin directive",
+          "reason": "earlier transaction not runnable: unsupported side-effect observation",
           "sender": "103164821458651970696730694074090566015747358738",
           "status": "not-runnable",
           "text": "isoltest_side_effects_test: 0x1234, 0x2345, 0x3456 -> 0x1234, 0x2345, 0x3456 # comment # ~ 0000000000000000000000000000000000000000000000000000000000001234 ~ 0000000000000000000000000000000000000000000000000000000000002345 ~ 0000000000000000000000000000000000000000000000000000000000003456",
@@ -33161,7 +33176,7 @@
           "sender": "103164821458651970696730694074090566015747358738",
           "signature": "g()",
           "status": "agree",
-          "text": "g() -> FAILURE",
+          "text": "g() # g() does not exist # -> FAILURE",
           "value": 0
         }
       ],
@@ -33187,7 +33202,7 @@
           "observations": [],
           "sender": "103164821458651970696730694074090566015747358738",
           "status": "agree",
-          "text": "f(uint256,uint256,uint256,uint256,uint256): 1, 1, 1, 1, 1 -> 5",
+          "text": "f(uint256,uint256,uint256,uint256,uint256): 1, 1, 1, 1, 1 # A comment on the function parameters. # -> 5",
           "value": 0
         },
         {
@@ -33207,7 +33222,7 @@
           "observations": [],
           "sender": "103164821458651970696730694074090566015747358738",
           "status": "agree",
-          "text": "f(uint256,uint256,uint256,uint256,uint256): 1, 1, 1, 1, 1 -> 5",
+          "text": "f(uint256,uint256,uint256,uint256,uint256): 1, 1, 1, 1, 1 -> 5 # Should return sum of all parameters. #",
           "value": 0
         }
       ],
