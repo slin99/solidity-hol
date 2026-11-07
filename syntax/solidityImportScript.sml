@@ -1744,6 +1744,28 @@ Definition check_modifier_def:
         | _ => F
 End
 
+(* What a function's header must satisfy, whether or not its body is
+ * supported: its declaring base, its kind and mutability, and the types of
+ * its parameters and results. A failing header rejects the unit, since only
+ * a body is confined to its function. *)
+Definition function_header_ok_def:
+  function_header_ok bases (f : src_function) ⇔
+    MEM f.fn_scope bases ∧
+    (f.fn_kind = "function" ∨ f.fn_kind = "receive" ∨ f.fn_kind = "fallback" ∨
+     f.fn_kind = "constructor") ∧
+    (f.fn_mutability = "pure" ∨ f.fn_mutability = "view" ∨
+     f.fn_mutability = "nonpayable" ∨ f.fn_mutability = "payable") ∧
+    IS_SOME (all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_parameters)) ∧
+    IS_SOME (all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_returns))
+End
+
+(* Likewise the types of a modifier's parameters. *)
+Definition modifier_header_ok_def:
+  modifier_header_ok (m : src_modifier) ⇔
+    IS_SOME (all_some (MAP (scoped_variable m.modifier_info.node_id)
+                         m.modifier_parameters))
+End
+
 (* A pure function sees no state variables. Whether a view function writes
  * one is the compiler's check. Modifier arguments see the parameters but not
  * the return variables: the compiler's IR passes each modifier its own copies
@@ -1752,11 +1774,7 @@ End
 Definition check_function_def:
   check_function structs enums events functions fs modifiers state constants
                  bases (f : src_function) ⇔
-    MEM f.fn_scope bases ∧
-    (f.fn_kind = "function" ∨ f.fn_kind = "receive" ∨ f.fn_kind = "fallback" ∨
-     f.fn_kind = "constructor") ∧
-    (f.fn_mutability = "pure" ∨ f.fn_mutability = "view" ∨
-     f.fn_mutability = "nonpayable" ∨ f.fn_mutability = "payable") ∧
+    function_header_ok bases f ∧
     case (all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_parameters),
           all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_returns),
           f.fn_body) of
@@ -1880,6 +1898,10 @@ Definition check_contract_def:
     EVERY (λ(_, members). 0 < members ∧ members ≤ 256) c.contract_enums ∧
     EVERY check_event c.contract_events ∧
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
+    EVERY (function_header_ok c.contract_bases)
+      (checked_functions c.contract_functions c.contract_bases) ∧
+    EVERY (function_header_ok c.contract_libraries) c.contract_library_functions ∧
+    EVERY modifier_header_ok c.contract_modifiers ∧
     case (all_some (MAP (state_variable c.contract_bases)
                       c.contract_state_variables), constant_table c,
           immutable_table c) of
@@ -2071,6 +2093,8 @@ val () = cv_auto_trans reached_functions_def;
 val () = cv_auto_trans checked_functions_def;
 val () = cv_auto_trans storage_layout_ok_def;
 val () = cv_auto_trans check_modifier_def;
+val () = cv_auto_trans function_header_ok_def;
+val () = cv_auto_trans modifier_header_ok_def;
 val () = cv_auto_trans check_function_def;
 val () = cv_auto_trans check_struct_def;
 val () = cv_auto_trans check_event_def;

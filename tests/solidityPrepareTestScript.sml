@@ -63,6 +63,13 @@ val () = rejects solidityPrepareLib.UnsupportedLowering
   (fn () => ignore (solidityPrepareLib.prepare_unit
     “pure_core with unit_contracts := []”));
 
+(* A function header the source check rejects (here a parameter's scope or
+ * type) rejects the unit: only a body is confined to its function. *)
+val () = rejects solidityPrepareLib.SourceRejected
+  (fn () => ignore (solidityPrepareLib.prepare_unit “wrong_scope”));
+val () = rejects solidityPrepareLib.SourceRejected
+  (fn () => ignore (solidityPrepareLib.prepare_unit “declaration_type_mismatch”));
+
 val bad_artifact_path = OS.FileSys.tmpName ();
 val bad_artifact_stream = TextIO.openOut bad_artifact_path;
 val () = TextIO.output (bad_artifact_stream,

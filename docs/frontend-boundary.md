@@ -379,24 +379,27 @@ ABI-encoded outcomes; see [differential-testing.md](differential-testing.md).
 
 ## Partial admission
 
-A contract is admitted per function. When a function's body or one of its
-modifiers falls outside the subset, import keeps the function with its header,
-an empty body and the reason (`fn_unsupported`) rather than rejecting the unit.
-`solidityPrepareLib` then marks, until nothing changes, every function that
-fails the source check, calls an unsupported one (by a call or a super call),
-or fails to elaborate. The elaborator builds no procedure for them and lists
-their ids in `core_program.unsupported_procedures`, so their selectors, and
-receive, fallback or the constructor when unsupported, still dispatch to them
-and an external call of one is invalid (`call_contract_unsupported`), never a
-return, a revert or the fallback. The prepared unit lists each function
-calls can reach, with its reason if unsupported.
+A contract is admitted per function. When a function's body or the body of
+one of its modifiers falls outside the subset, import keeps the function with
+its header, an empty body and the reason (`fn_unsupported`) rather than
+rejecting the unit. `solidityPrepareLib` then marks, until nothing changes,
+every function whose body fails the source check, calls an unsupported one (by
+a call or a super call), or fails to elaborate. The elaborator builds no
+procedure for them and lists their ids in `core_program.unsupported_procedures`,
+so their selectors, and receive, fallback or the constructor when unsupported,
+still dispatch to them and an external call of one is invalid
+(`call_contract_unsupported`), never a return or the fallback; it still
+reverts first, as a supported one would, when it is sent value it does not
+accept. The prepared unit lists each function calls can reach, with its reason
+if unsupported.
 
 What storage layout or dispatch depends on still rejects the whole unit:
-function headers, modifier parameters and `virtual` modifiers, state
-variables, constants, bases and their linearization, using directives, and a
-core program that fails `wf_core_program`. A contract left with no supported
-procedure and an unsupported constructor has nothing to admit, so elaboration
-rejects it whole too, without the constructor's reason.
+function headers (declaring base, kind, mutability, parameter and result
+types), modifier parameters and `virtual` modifiers, state variables,
+constants, bases and their linearization, using directives, and a core program
+that fails `wf_core_program`. A contract left with no supported procedure and
+an unsupported constructor has nothing to admit, so elaboration rejects it
+whole too, without the constructor's reason.
 
 ## Built-in failures
 

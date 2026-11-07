@@ -21,26 +21,32 @@ val prepared = #prepared (solidityPrepareLib.prepare_artifact
 
 (* add is supported; digest and the fallback use sha256, as does Mid.twice,
  * which Partial.twice reaches by super; digestTwice and callsTwice call
- * unsupported functions. Base.twice, which only the unsupported Mid.twice
+ * unsupported functions; the constructor's halting assembly does not
+ * elaborate. Base.twice, which only the unsupported Mid.twice
  * would reach, is not among the functions calls reach. *)
 val outcomes = map (fn {name, reason, ...} => (name, reason)) (#functions prepared);
 fun reasons name =
   map #2 (List.filter (fn (n, _) => n = name) outcomes);
 val calls_unsupported = SOME "calls an unsupported function";
+val fails_to_elaborate = SOME "fails to elaborate (unsupported lowering)";
 fun imported_failure r =
-  case r of SOME m => not (String.isPrefix "calls" m) | NONE => false;
+  case r of
+    SOME m => not (String.isPrefix "calls" m) andalso r <> fails_to_elaborate
+  | NONE => false;
 val () =
   if reasons "add" = [NONE] andalso
      reasons "total" = [] andalso
      List.all imported_failure (reasons "digest") andalso
      length (reasons "digest") = 1 andalso
-     List.all imported_failure (reasons "") andalso length (reasons "") = 1 andalso
+     length (reasons "") = 2 andalso
+     List.exists imported_failure (reasons "") andalso
+     List.exists (fn r => r = fails_to_elaborate) (reasons "") andalso
      reasons "digestTwice" = [calls_unsupported] andalso
      reasons "callsTwice" = [calls_unsupported] andalso
      length (reasons "twice") = 2 andalso
      List.exists (fn r => r = calls_unsupported) (reasons "twice") andalso
      List.exists imported_failure (reasons "twice") andalso
-     length outcomes = 7
+     length outcomes = 8
   then ()
   else raise Fail ("unexpected function outcomes: " ^
     String.concatWith "; " (map (fn (n, r) => n ^ " " ^
@@ -103,6 +109,14 @@ QED
  * than reverting as a contract without one would. *)
 Theorem partial_fallback_refused:
   partial_call [1w; 2w; 3w; 4w] = ContractInvalid "unknown procedure"
+Proof
+  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
+QED
+
+(* The constructor is unsupported, so creation is refused. *)
+Theorem partial_creation_refused:
+  deploy_contract 1000 partial_program (differential_frame (n2w 0x1212) 0 [])
+    (differential_world empty_accounts) = ContractInvalid "unknown procedure"
 Proof
   CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
 QED

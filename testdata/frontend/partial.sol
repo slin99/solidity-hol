@@ -2,8 +2,8 @@
 pragma solidity >=0.8.0;
 
 // A contract of supported and unsupported functions (sha256 is not
-// modelled): the unsupported ones, and those calling them, have no
-// procedure, and calls of them are refused.
+// modelled, nor is halting assembly in a constructor): the unsupported ones,
+// and those calling them, have no procedure, and calls of them are refused.
 contract Base {
     function twice(uint256 x) public pure virtual returns (uint256) {
         return x * 2;
@@ -18,6 +18,11 @@ contract Mid is Base {
 
 contract Partial is Mid {
     uint256 public total;
+
+    // imports and passes the source check, but does not elaborate
+    constructor() {
+        assembly { stop() }
+    }
 
     function add(uint256 x) public returns (uint256) {
         total += x;
