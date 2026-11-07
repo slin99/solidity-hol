@@ -18,7 +18,7 @@ Commit the implementation, its tests and documentation, and these fixture files:
 `suite_directory`, relative to that config file. Python and HOL read every
 `*.json` suite in filename order. Standalone corpora may still supply an inline
 `suites` array instead. Do not edit the config or either corpus theory's
-staging list to add a feature: their glob dependencies include new suite and
+staging list to add a feature: their directory dependencies include new suite and
 artifact files in the build inputs automatically.
 
 Compile only the feature's artifact with `tools/export_solc_artifacts.py`, using

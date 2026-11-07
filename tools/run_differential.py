@@ -20,7 +20,6 @@ on any failure.
 from __future__ import annotations
 
 import argparse
-import fnmatch
 import json
 from pathlib import Path
 import re
@@ -376,11 +375,12 @@ def check_artifacts(root: Path, corpus: dict[str, Any]) -> list[dict[str, str]]:
 
 
 def unstaged_files(script: str, wanted: set[str]) -> list[str]:
-    """Find inputs not covered by the theory's literal or glob declarations."""
+    """Find inputs not covered by the theory's file or directory declarations."""
     match = re.search(r"holbuild_extra_deps\s*\[(.*?)\]", script.split("fun holbuild_extra_deps", 1)[-1], re.S)
     patterns = re.findall(r'"([^"]*)"', match.group(1)) if match else []
     return sorted(path for path in wanted
-                  if not any(fnmatch.fnmatchcase(path, pattern) for pattern in patterns))
+                  if not any(path == pattern or path.startswith(pattern.rstrip("/") + "/")
+                             for pattern in patterns))
 
 
 def check_staging(root: Path, corpus_path: Path, corpus: dict[str, Any]) -> dict[str, str]:

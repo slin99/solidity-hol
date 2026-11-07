@@ -15,17 +15,17 @@ Ancestors
 Libs
   solidityDifferentialLib yulImportLib
 
-(* Directory patterns keep new suites and artifacts in the build's hashed,
+(* Directories keep new suites and artifacts in the build's hashed,
  * staged inputs without a shared per-feature list. *)
 fun holbuild_extra_deps (_ : string list) = ()
 val () = holbuild_extra_deps [
   "../SOLIDITY_PIN",
   "../profiles/solc-0.8.37-via-ir-osaka.json",
   "../testdata/differential/corpus.json",
-  "../testdata/differential/suites/*.json",
-  "../testdata/differential/expected/*.json",
+  "../testdata/differential/suites",
+  "../testdata/differential/expected",
   "../testdata/frontend/expected/pure_core.json",
-  "../testdata/yul/generated/*.json"
+  "../testdata/yul/generated"
 ]
 
 val () = solidityDifferentialLib.run_three_way
