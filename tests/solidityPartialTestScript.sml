@@ -20,10 +20,11 @@ val prepared = #prepared (solidityPrepareLib.prepare_artifact
    source = "testdata/frontend/partial.sol"});
 
 (* add is supported; digest and the fallback use sha256, as does Mid.twice,
- * which Partial.twice reaches by super; digestTwice and callsTwice call
- * unsupported functions; the constructor's halting assembly does not
- * elaborate. Base.twice, which only the unsupported Mid.twice
- * would reach, is not among the functions calls reach. *)
+ * which Partial.twice reaches by super, so Partial.twice, digestTwice and
+ * callsTwice call unsupported functions; the constructor's halting assembly
+ * does not elaborate. Once Partial.twice is unsupported its super calls
+ * reach nothing, so neither Mid.twice nor Base.twice is among the
+ * functions calls reach. *)
 val outcomes = map (fn {name, reason, ...} => (name, reason)) (#functions prepared);
 fun reasons name =
   map #2 (List.filter (fn (n, _) => n = name) outcomes);
@@ -43,10 +44,8 @@ val () =
      List.exists (fn r => r = fails_to_elaborate) (reasons "") andalso
      reasons "digestTwice" = [calls_unsupported] andalso
      reasons "callsTwice" = [calls_unsupported] andalso
-     length (reasons "twice") = 2 andalso
-     List.exists (fn r => r = calls_unsupported) (reasons "twice") andalso
-     List.exists imported_failure (reasons "twice") andalso
-     length outcomes = 8
+     reasons "twice" = [calls_unsupported] andalso
+     length outcomes = 7
   then ()
   else raise Fail ("unexpected function outcomes: " ^
     String.concatWith "; " (map (fn (n, r) => n ^ " " ^

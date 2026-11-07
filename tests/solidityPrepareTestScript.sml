@@ -73,6 +73,19 @@ val () = rejects solidityPrepareLib.SourceRejected
   (fn () => ignore (solidityPrepareLib.prepare_unit
                       (edited_unit "declaration_type_mismatch")));
 
+(* A modifier whose body fails import makes its invokers unsupported, but its
+ * header is still checked with the unit. *)
+val modifier_failed = solidityPrepareLib.prepare_unit
+  (edited_unit "modifier_failed_body");
+val () =
+  case List.find (fn {name, ...} => name = "inverse")
+         (#functions modifier_failed) of
+    SOME {reason = SOME _, ...} => ()
+  | _ => raise Fail "inverse: not marked unsupported";
+val () = rejects solidityPrepareLib.SourceRejected
+  (fn () => ignore (solidityPrepareLib.prepare_unit
+                      (edited_unit "modifier_failed_body_wrong_scope")));
+
 val bad_artifact_path = OS.FileSys.tmpName ();
 val bad_artifact_stream = TextIO.openOut bad_artifact_path;
 val () = TextIO.output (bad_artifact_stream,

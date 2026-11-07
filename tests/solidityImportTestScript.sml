@@ -943,6 +943,21 @@ val () =
    raise Fail "virtual modifier: imported")
   handle ImportError _ => ()
 
+(* A modifier whose body fails import keeps its header, so the source check
+ * still sees it (here a parameter's scope); the functions invoking it are
+ * unsupported. *)
+fun failed_modifier_body v =
+  edit_first "ModifierDefinition"
+    (edit_first "ExpressionStatement"
+       (set_field "nodeType" (JSON.STRING "TryStatement"))) v
+val () = edited_unit_with using_contracts "modifier_failed_body"
+  (failed_modifier_body using_ast)
+val () = edited_unit_with using_contracts "modifier_failed_body_wrong_scope"
+  (failed_modifier_body
+     (edit_first "ModifierDefinition"
+        (edit_first "VariableDeclaration"
+           (set_field "scope" (JSON.INT 999999))) using_ast))
+
 Definition using_unit_def:
   using_unit = ^(import_artifact using_fixture using_source)
 End

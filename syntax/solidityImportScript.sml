@@ -1629,10 +1629,13 @@ Definition super_table_def:
       | [] => NONE) f.fn_super_calls)
 End
 
+(* The functions super calls reach from rs; an unsupported function never
+ * runs, so its super calls reach nothing. *)
 Definition super_targets_def:
   (super_targets fs bases [] = []) ∧
   (super_targets fs bases (f :: rs) =
-    (case super_table fs bases f of SOME t => MAP SND t | NONE => []) ++
+    (if f.fn_unsupported ≠ NONE then [] else
+     case super_table fs bases f of SOME t => MAP SND t | NONE => []) ++
     super_targets fs bases rs)
 End
 
@@ -1879,8 +1882,6 @@ Definition function_checks_def:
       (FILTER (λf. f.fn_unsupported = NONE)
          (checked_functions c.contract_functions c.contract_bases)) ++
     MAP (λf. (f.fn_info.node_id,
-              f.fn_kind = "function" ∧
-              (f.fn_visibility = "internal" ∨ f.fn_visibility = "private") ∧
               check_function c.contract_structs c.contract_enums
                 (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
                 table c.contract_library_functions
@@ -1900,7 +1901,10 @@ Definition check_contract_def:
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
     EVERY (function_header_ok c.contract_bases)
       (checked_functions c.contract_functions c.contract_bases) ∧
-    EVERY (function_header_ok c.contract_libraries) c.contract_library_functions ∧
+    EVERY (λf. f.fn_kind = "function" ∧
+               (f.fn_visibility = "internal" ∨ f.fn_visibility = "private") ∧
+               function_header_ok c.contract_libraries f)
+      c.contract_library_functions ∧
     EVERY modifier_header_ok c.contract_modifiers ∧
     case (all_some (MAP (state_variable c.contract_bases)
                       c.contract_state_variables), constant_table c,
