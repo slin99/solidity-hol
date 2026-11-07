@@ -1,0 +1,35 @@
+{
+  "name": "storage",
+  "source": "testdata/differential/storage.sol",
+  "contract": "Storage",
+  "artifact": "testdata/differential/expected/storage.json",
+  "cases": [
+    {
+      "name": "set_total",
+      "function": "setTotal",
+      "args": [
+        7
+      ],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 7
+      },
+      "sender": "0x2001"
+    },
+    {
+      "name": "get_total_reads_storage",
+      "function": "missing_function",
+      "args": [],
+      "storage": {
+        "0": 42
+      },
+      "expect": {
+        "return": [
+          42
+        ]
+      }
+    }
+  ]
+}
