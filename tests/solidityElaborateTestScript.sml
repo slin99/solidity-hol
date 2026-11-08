@@ -246,16 +246,18 @@ QED
 Theorem asm_halt_rejected_in_constructor:
   ∀info.
     IS_SOME (elab_stmt
-      <| functions := []; supers := []; structs := []; events := []; variables := [];
-         state := []; immutables := []; constants := [];
-         returns := []; placeholder := NONE;
-         mode := CheckedArithmetic; creation := F |> 0
+      <| functions := []; supers := []; structs := []; enums := []; events := [];
+         variables := []; state := []; locations := []; immutables := [];
+         constants := []; returns := []; placeholder := NONE;
+         mode := CheckedArithmetic; creation := F; scope := 0;
+         returns_id := 0; in_loop := F |> 0
       (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] [])) ∧
     elab_stmt
-      <| functions := []; supers := []; structs := []; events := []; variables := [];
-         state := []; immutables := []; constants := [];
-         returns := []; placeholder := NONE;
-         mode := CheckedArithmetic; creation := T |> 0
+      <| functions := []; supers := []; structs := []; enums := []; events := [];
+         variables := []; state := []; locations := []; immutables := [];
+         constants := []; returns := []; placeholder := NONE;
+         mode := CheckedArithmetic; creation := T; scope := 0;
+         returns_id := 0; in_loop := F |> 0
       (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] []) = NONE
 Proof
   gen_tac >> EVAL_TAC
