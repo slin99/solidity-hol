@@ -500,6 +500,7 @@ annotations, at the node whose type it computes:
   list; `break` and `continue` occur in loop bodies; conditions are boolean;
   modifier bodies make no super call, and modifier arguments see the
   function's parameters but not its return variables;
+- a fallback takes no parameters and returns nothing, as the core's does;
 - operators belong to the admitted set; every scalar result is annotated with
   its own type, and every other annotation decodes to an elementary, rational
   literal or tuple type.
@@ -511,7 +512,8 @@ function overrides, and that functions come most derived first).
 ## Partial admission
 
 A contract is admitted per function. When a function's body or the body of
-one of its modifiers falls outside the subset, import keeps the function with
+one of its modifiers falls outside the subset, or a fallback has parameters or
+returns, import keeps the function with
 its header, an empty body and the reason (`fn_unsupported`) rather than
 rejecting the unit. `solidityPrepareLib` then marks, until nothing changes,
 every function that fails to elaborate, also by calling an unsupported one (by

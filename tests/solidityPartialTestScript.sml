@@ -168,3 +168,30 @@ Theorem fallback_params_fallback_refused:
 Proof
   CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
 QED
+
+(* The elaborator refuses such a fallback even when the importer has not
+ * marked it: the unit elaborates as imported, and with the mark removed it
+ * fails elaboration. *)
+Definition fallback_params_unit_def:
+  fallback_params_unit = ^(#unit fallback_prepared)
+End
+
+val () = cv_auto_trans fallback_params_unit_def;
+
+Definition fallback_params_unmarked_def:
+  fallback_params_unmarked =
+    fallback_params_unit with unit_contracts :=
+      MAP (λc. c with contract_functions :=
+             MAP (λf. if f.fn_kind = "fallback" then f with fn_unsupported := NONE
+                      else f) c.contract_functions)
+        fallback_params_unit.unit_contracts
+End
+
+val () = cv_auto_trans fallback_params_unmarked_def;
+
+Theorem fallback_params_unmarked_fails_elaboration:
+  unit_elaboration_failures T fallback_params_unit = [] ∧
+  LENGTH (unit_elaboration_failures T fallback_params_unmarked) = 1
+Proof
+  CONV_TAC cv_eval
+QED
