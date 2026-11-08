@@ -2957,11 +2957,13 @@ Proof
   (* Unfold before splitting on the expression: after a case split, every
    * constructor's goal would rewrite and normalise the whole precondition. *)
   >~ [‘elab_expr_pre ctx n e’] >-
-    (simp_tac std_ss [Once elab_expr_pre_def] >> Cases_on ‘e’ >>
-     simp[src_expr_distinct, src_expr_11, solidityImportTheory.src_expr_size_def])
+    (PURE_ONCE_REWRITE_TAC [elab_expr_pre_def] >>
+     rpt conj_tac >> rpt gen_tac >> disch_then SUBST_ALL_TAC >>
+     simp[solidityImportTheory.src_expr_size_def])
   >~ [‘elab_location_pre ctx n e’] >-
-    (simp_tac std_ss [Once elab_expr_pre_def] >> Cases_on ‘e’ >>
-     simp[src_expr_distinct, src_expr_11, solidityImportTheory.src_expr_size_def])
+    (PURE_ONCE_REWRITE_TAC [elab_expr_pre_def] >>
+     rpt conj_tac >> rpt gen_tac >> disch_then SUBST_ALL_TAC >>
+     simp[solidityImportTheory.src_expr_size_def])
   >~ [‘elab_args_pre ctx n id order tys es’] >-
     (Cases_on ‘es’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
      simp[listTheory.list_size_def])
@@ -3047,7 +3049,14 @@ val () = cv_auto_trans flag_def;
 val () = cv_auto_trans set_flag_def;
 
 val () = cv_auto_trans try_external_call_def;
-val () = cv_auto_trans bind_failed_def;
+val bind_failed_pre_def = cv_auto_trans_pre "bind_failed_pre" bind_failed_def;
+
+Theorem bind_failed_pre[cv_pre,local]:
+  ∀ds ctx. bind_failed_pre ctx ds
+Proof
+  Induct >> simp[Once bind_failed_pre_def]
+QED
+
 val () = cv_auto_trans after_failure_def;
 
 val elab_stmts_pre_def = cv_auto_trans_pre_rec
