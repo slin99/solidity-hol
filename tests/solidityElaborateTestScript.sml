@@ -262,6 +262,32 @@ Proof
   gen_tac >> EVAL_TAC
 QED
 
+(* Statements the compiler does not produce: a declaration as the body of an
+ * if or a loop (it must be a statement of a block), and a fractional literal
+ * in a tuple, even at a hole. *)
+Theorem declaration_body_and_tuple_fraction_rejected:
+  let info = <| node_id := 0;
+                node_location := <| loc_start := 0; loc_length := 0;
+                                    loc_source := 0 |> |>;
+      x = <| var_info := info with node_id := 1; var_name := "x"; var_scope := 0;
+             var_type_name := SrcElementaryTypeName info "uint256" NONE;
+             var_type_id := "t_uint256"; var_location := NONE |>;
+      d = SrcVariableDeclarationStatement info [SOME 1] [SOME x] NONE;
+      c = SrcLiteral info BoolLiteral "true" "t_bool";
+      half = SrcLiteral info NumberLiteral "" "t_rational_1_by_2";
+      ctx = <| functions := []; supers := []; structs := []; enums := [];
+               events := []; variables := []; state := []; locations := [];
+               immutables := []; constants := []; returns := [];
+               placeholder := NONE; mode := CheckedArithmetic; creation := F;
+               scope := 0; returns_id := 0; in_loop := F |> in
+    IS_SOME (elab_stmt ctx 2 d) ∧
+    elab_stmt ctx 2 (SrcIfStatement info c d NONE) = NONE ∧
+    elab_stmt ctx 2 (SrcWhileStatement info c d) = NONE ∧
+    elab_stmt ctx 2 (SrcVariableDeclarationStatement info [NONE] [NONE] (SOME half)) = NONE
+Proof
+  EVAL_TAC
+QED
+
 (* Edited units of solidityImportTest that pass valid_src_unit but whose
  * edited function fails elaboration, which checks it against the compiler's
  * annotations: preparation marks it unsupported. *)
@@ -276,6 +302,13 @@ QED
 (* an identifier annotated with another type than its variable's *)
 Theorem identifier_type_mismatch_fails_elaboration:
   unit_elaboration_failures T identifier_type_mismatch ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a comparison annotated with another type than bool *)
+Theorem comparison_type_mismatch_fails_elaboration:
+  unit_elaboration_failures T comparison_type_mismatch ≠ []
 Proof
   CONV_TAC cv_eval
 QED
