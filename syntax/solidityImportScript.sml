@@ -597,13 +597,19 @@ Proof
 QED
 
 (* A tuple component "_c_", from "t_tuple$_c1_$_c2_$...$". Literal
- * byte sequences retain their source string kind here; elaboration supplies
- * the destination's bytes/string type and location when coercing the value. *)
+ * byte sequences retain their source string kind here, and integer literals
+ * stand as uint256 (int256 when negative); elaboration coerces the literal
+ * itself to its destination's type. *)
 Definition tuple_component_def:
   tuple_component p =
     if 2 ≤ LENGTH p ∧ isPREFIX "_" p ∧ isPREFIX "_" (REVERSE p) then
       let tid = TAKE (LENGTH p - 2) (DROP 1 p) in
       if isPREFIX "t_stringliteral_" tid then SOME StringT
+      else if isPREFIX "t_rational_" tid then
+        case decode_rational (DROP 11 tid) of
+          SOME (SrcRational i d) =>
+            if d = 1 then SOME (if i < 0 then IntT 256 else UintT 256) else NONE
+        | _ => NONE
       else decode_elementary_identifier tid
     else NONE
 End
@@ -691,7 +697,8 @@ QED
 Theorem tuple_component_valid[local]:
   tuple_component p = SOME ty ⇒ valid_type_shape ty
 Proof
-  rw[tuple_component_def] >> gvs[valid_type_shape_def] >>
+  rw[tuple_component_def, AllCaseEqs()] >>
+  gvs[valid_type_shape_def, solidityASTTheory.valid_int_width_def] >>
   metis_tac[decode_elementary_identifier_valid]
 QED
 
