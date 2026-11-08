@@ -307,7 +307,8 @@ fun import_unit_blockers artifact source =
         (map (fn (_, s) => field s "ast") (object (field output "sources")))
         (JSONUtil.get (output, map JSONUtil.SEL ["sources", source, "ast"])) contracts
     end)
-  handle solidityImportLib.MalformedInput message => reject MalformedInput message
+  handle solidityImportLib.ImportError message => reject UnsupportedImport message
+       | solidityImportLib.MalformedInput message => reject MalformedInput message
 
 fun import_unit artifact source =
   (case import_unit_blockers artifact source of
@@ -329,7 +330,5 @@ fun prepare_artifact {root, path, source} =
   in
     {artifact = artifact, prepared = prepared}
   end
-
-end
 
 end

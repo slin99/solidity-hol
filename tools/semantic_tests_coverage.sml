@@ -79,6 +79,9 @@ local
                ("unsupported", json_list reasons)]
           end
     end
+    handle solidityPrepareLib.PreparationError (kind, message) =>
+      emit test (status_name kind)
+        [("blockers", json_list (String.fields (fn c => c = #"\n") message))]
 
   val manifest =
     case OS.Process.getEnv "SEMANTIC_TESTS_MANIFEST" of
