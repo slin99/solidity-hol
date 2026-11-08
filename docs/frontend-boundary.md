@@ -528,14 +528,18 @@ still dispatch to them and an external call of one is invalid
 (`call_contract_unsupported`), never a return or the fallback; it still
 reverts first, as a supported one would, when it is sent value it does not
 accept. An unsupported function never runs, so its super calls reach nothing:
-a base function only they reach is neither checked nor elaborated. A modifier
+a base function only they reach is neither checked nor elaborated. A constant
+whose value does not elaborate, also by reading such a constant, has no
+procedure either: its getter is listed as unsupported, and a function reading
+it fails to elaborate. A modifier
 whose body fails import keeps its header with an empty body. The prepared unit
 lists each function calls can reach, with its reason if unsupported.
 
 What storage layout or dispatch depends on still rejects the whole unit:
 function headers (declaring base, kind, mutability, parameter and result
 types; a library function must be an internal or private `function`),
-modifier parameters and `virtual` modifiers, state variables, constants, bases
+modifier parameters and `virtual` modifiers, state variables, constant
+declarations, bases
 and their linearization, using directives, and a core program that fails
 `wf_core_program`. A core program needs an entry procedure, so a unit whose
 lowering has no procedure at all (no supported function, getter, library

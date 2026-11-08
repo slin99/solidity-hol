@@ -2,7 +2,8 @@
 pragma solidity >=0.8.0;
 
 // A contract of supported and unsupported functions (sha256 is not
-// modelled, nor is halting assembly in a constructor): the unsupported ones,
+// modelled, nor are halting assembly in a constructor, a string literal as a
+// bytes16 constant, or a bytes local in assembly): the unsupported ones,
 // and those calling them, have no procedure, and calls of them are refused.
 contract Base {
     function twice(uint256 x) public pure virtual returns (uint256) {
@@ -18,6 +19,10 @@ contract Mid is Base {
 
 contract Partial is Mid {
     uint256 public total;
+
+    // a string literal does not elaborate as a bytes16, so the constant has no
+    // procedure: its getter and the functions reading it are unsupported
+    bytes16 public constant DIGITS = "0123456789abcdef";
 
     // imports and passes the source check, but does not elaborate
     constructor() {
@@ -44,6 +49,15 @@ contract Partial is Mid {
 
     function callsTwice(uint256 x) public pure returns (uint256) {
         return twice(x);
+    }
+
+    function digits() public pure returns (bytes16) {
+        return DIGITS;
+    }
+
+    // imports, but assembly reads only value-type locals
+    function pointer(bytes memory b) public pure returns (uint256 p) {
+        assembly { p := b }
     }
 
     fallback() external {
