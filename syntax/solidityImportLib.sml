@@ -129,6 +129,7 @@ val abi_id : IntInf.int = ~1
 val addmod_id : IntInf.int = ~2
 val assert_id : IntInf.int = ~3
 val block_id : IntInf.int = ~4
+val ecrecover_id : IntInf.int = ~6
 val keccak256_id : IntInf.int = ~8
 val msg_id : IntInf.int = ~15
 val mulmod_id : IntInf.int = ~16
@@ -716,6 +717,12 @@ fun expr v = within v (fn v =>
               (positional ();
                require v (length args = 1) "keccak256 takes one argument";
                con "SrcKeccak256" [info v, info callee, hd args, type_id v])
+            else if node_type callee = "Identifier" andalso
+               int_field callee "referencedDeclaration" = ecrecover_id then
+              (positional ();
+               require v (length args = 4) "ecrecover takes four arguments";
+               con "SrcEcrecover"
+                 [info v, info callee, listSyntax.mk_list (args, expr_ty), type_id v])
             else if node_type callee = "Identifier" andalso
                (int_field callee "referencedDeclaration" = addmod_id orelse
                 int_field callee "referencedDeclaration" = mulmod_id) then

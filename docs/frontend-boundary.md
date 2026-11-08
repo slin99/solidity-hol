@@ -247,6 +247,10 @@ external call, `type(E).min/max` and `delete` are rejected.
 `keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
 a `bytes32`. A literal argument is first made a memory `bytes`, and one in
 storage or calldata is copied to memory, as for an internal call's argument.
+`ecrecover(h, v, r, s)` is the address that the signature `(v, r, s)` of the
+hash `h` recovers, or `address(0)` for an invalid signature, as the compiler's
+call to the precompile at address 1 gives. Its arguments are converted to
+`bytes32`, `uint8`, `bytes32` and `bytes32` as an internal call's are.
 `f.selector`, `I.f.selector` and `E.selector` are constants: the selector the
 compiler records on the function, error or event they name (four bytes, or 32
 for an event), also of a library's public function or event, and
@@ -258,8 +262,8 @@ module (`M.E.selector`), none of which the compiler evaluates.
 the interface `I` declares itself, not those it inherits, nor its `fallback`
 or `receive`; `I` must name an interface directly, not through a module, and
 an abstract contract's `interfaceId` is rejected. A selector of any other
-function-typed value is rejected, and so are `sha256`, `ripemd160`,
-`ecrecover` and `abi.decode`.
+function-typed value is rejected, and so are `sha256`, `ripemd160` and
+`abi.decode`.
 
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
 type the compiler gives the whole expression, which must be a value type or
@@ -409,7 +413,7 @@ are import errors), visibilities, state mutabilities, address payability,
 data locations (`transient` is an import error), literal kinds and the
 unary, binary and assignment operators. It also holds the one table of the
 compiler's built-in declaration ids (`abi`, `msg`, `block`, `tx`, `this`,
-`keccak256`, `addmod`, `mulmod`, `require`, `assert`, `revert`).
+`keccak256`, `ecrecover`, `addmod`, `mulmod`, `require`, `assert`, `revert`).
 `tests/solidityImportTestScript.sml` holds the positive fixtures and negative
 fixtures derived from them.
 
