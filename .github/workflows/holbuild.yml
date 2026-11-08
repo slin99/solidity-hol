@@ -2,14 +2,20 @@ name: holbuild
 
 on:
   workflow_dispatch:
+    inputs:
+      skip-snapshot:
+        description: 'Start without the Actions cache project snapshot, so theories come from the remote cache or are built'
+        type: boolean
+        default: false
   pull_request:
   merge_group:
   push:
     branches: [main]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Only a PR's runs share a group; runs on main never cancel each other.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -53,6 +59,7 @@ jobs:
 
       - name: Restore latest compatible project snapshot
         id: cache-project
+        if: ${{ !inputs.skip-snapshot }}
         uses: actions/cache/restore@v6
         with:
           path: ~/.cache/holbuild
@@ -62,7 +69,9 @@ jobs:
 
       - name: Restore toolchain cache
         id: cache-toolchain
-        if: steps.cache-project.outputs.cache-matched-key == ''
+        # The toolchain entry holds the whole cache it was saved from, theories
+        # included, so skip-snapshot skips it too.
+        if: ${{ !inputs.skip-snapshot && steps.cache-project.outputs.cache-matched-key == '' }}
         uses: actions/cache/restore@v6
         with:
           path: ~/.cache/holbuild
@@ -80,8 +89,19 @@ jobs:
           echo "toolchain cache hit: ${TOOLCHAIN_CACHE_HIT:-false}"
           echo "toolchain cache key: ${TOOLCHAIN_CACHE_KEY:-<none>}"
 
+      # On a snapshot miss, buildhol and the builds fetch from the remote what
+      # other runs published, and publish what they build. Only main (pushes
+      # and dispatches), merge groups and PRs from this repository's branches
+      # get the login; fork PRs build without the remote.
+      - name: Configure remote cache
+        uses: ./.github/actions/setup-remote-cache
+        with:
+          curl-config: ${{ ((github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && secrets.HOLBUILD_REMOTE_CACHE_CURL_CONFIG || '' }}
+
       - name: Build HOL toolchain
-        run: holbuild buildhol
+        run: |
+          set -o pipefail
+          holbuild buildhol 2>&1 | tee -a "$RUNNER_TEMP/holbuild.log"
 
       - name: Save toolchain cache
         uses: actions/cache/save@v6
@@ -95,10 +115,11 @@ jobs:
       - name: Run differential regression corpus
         env:
           TMPDIR: ${{ runner.temp }}
-        run: >-
-          python3 tools/run_differential.py -j"$(nproc)" --allow-cached
-          --report-dir "$RUNNER_TEMP/differential-report"
-          -- --skip-checkpoints --skip-proof-steps
+        run: |
+          set -o pipefail
+          python3 tools/run_differential.py -j"$(nproc)" --allow-cached \
+            --report-dir "$RUNNER_TEMP/differential-report" \
+            -- --skip-checkpoints --skip-proof-steps 2>&1 | tee -a "$RUNNER_TEMP/holbuild.log"
 
       - name: Upload differential report
         if: failure()
@@ -111,7 +132,29 @@ jobs:
       - name: Build project roll-up
         env:
           TMPDIR: ${{ runner.temp }}
-        run: holbuild --verbose -j"$(nproc)" build --skip-checkpoints --skip-proof-steps solidityHolTheory
+        run: |
+          set -o pipefail
+          holbuild --verbose -j"$(nproc)" build --skip-checkpoints --skip-proof-steps solidityHolTheory \
+            2>&1 | tee -a "$RUNNER_TEMP/holbuild.log"
+
+      - name: Report holbuild cache use
+        if: always()
+        run: |
+          log="$RUNNER_TEMP/holbuild.log"
+          touch "$log"
+          # Distinct lines, so a theory built twice or a key both prefetched and
+          # hydrated counts once.
+          count() { grep -E -- "$1" "$log" | sed -E 's/ in [0-9.]+s$//; s/^remote cache (hydrated|prefetched):/remote cache fetched:/' | sort -u | grep -c . || true; }
+          warnings=$(grep -E '^holbuild: warning: .*remote' "$log" || true)
+          remote=off
+          [ -n "${HOLBUILD_REMOTE_CACHE_URL:-}" ] && remote=on
+          {
+            echo '## holbuild cache use'
+            echo '| remote cache | theories built | theories restored from cache (incl. fetched) | fetched from remote | remote misses | published to remote | remote cache warnings |'
+            echo '| -- | -- | -- | -- | -- | -- | -- |'
+            echo "| $remote | $(count '^[^ ]+Theory built( in |$)') | $(count '^[^ ]+Theory restored from cache( in |$)') | $(count '^remote cache (hydrated|prefetched): ') | $(count '^remote cache miss: ') | $(count '^remote cache published: ') | $(printf '%s' "$warnings" | grep -c . || true) |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          printf '%s\n' "$warnings" | sed -n 's/^./::warning::&/p'
 
       - name: Save project snapshot
         if: always()
