@@ -100,6 +100,8 @@ The differential corpus compares source evaluation with pinned compiler
 bytecode in Verifereum, including complete committed contract storage. Slot
 lists select diagnostics; they do not limit comparison. The upstream `semanticTests` coverage tool checks
 preparation acceptance; it does not execute the tests' call expectations.
+Each rejected test lists every blocker preparation reports, with its node
+id; the tool only groups those lines under feature labels.
 The coverage tool stages its compiler artifacts and pin/profile files for a
 cached `holbuild run-action` batches of up to 128 tests on the configured
 remote-execution fleet. Batches run serially because their startup/export
