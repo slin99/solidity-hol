@@ -2290,19 +2290,47 @@ Definition unsupported_creation_def:
       c.contract_functions
 End
 
+(* The contract without the constants whose values do not elaborate, given
+ * the constants that remain: a constant may read another, so dropping one can
+ * make another fail; each round drops one or more, or ends. A function
+ * reading a dropped constant then fails to elaborate on its own.
+ *)
+Definition live_constants_def:
+  (live_constants 0 c = c) ∧
+  (live_constants (SUC k) (c : src_contract) =
+    case constant_table c of
+      NONE => c
+    | SOME table =>
+        let ctx = contract_ctx c [] [] [] (number_constants 0 table) in
+        let cs = FILTER (λx. IS_SOME (elab_constant ctx 0 x)) c.contract_constants in
+        if LENGTH cs = LENGTH c.contract_constants then c
+        else live_constants k (c with contract_constants := cs))
+End
+
+(* The checked procedures of the constants live_constants dropped, which a
+ * getter may still name. *)
+Definition dropped_constants_def:
+  dropped_constants (c0 : src_contract) (c : src_contract) =
+    MAP (λx. AstId (FST x).var_info.node_id)
+      (FILTER (λx. ¬MEM (FST x).var_info.node_id
+                       (MAP (λy. (FST y).var_info.node_id) c.contract_constants))
+         c0.contract_constants)
+End
+
 (* Raw lowering of a valid unit of one contract, with fresh ids above its
  * node ids; the first live function or getter is the entry procedure, or the
  * creation procedure when there is none, and a unit with neither has no
- * lowering. The procedures of unsupported functions, and an unsupported
- * creation's, are left out and listed as unsupported, with their dispatch
- * entries kept. A SOME result is not yet a checked program: consumers must
+ * lowering. The procedures of unsupported functions, of constants that do not
+ * elaborate, and of an unsupported creation are left out and listed as
+ * unsupported, with their dispatch entries kept. A SOME result is not yet a checked program: consumers must
  * establish wf_core_program through solidityPrepareLib before execution.
  *)
 Definition elaborate_unit_def:
   elaborate_unit (u : src_unit) =
     if ¬valid_src_unit u then NONE else
     case u.unit_contracts of
-      [c] =>
+      [c0] =>
+        let c = live_constants (LENGTH c0.contract_constants) c0 in
         let fs = live_functions c.contract_functions in
         let calls = function_table (c.contract_functions ++
                                     c.contract_library_functions) in
@@ -2346,7 +2374,7 @@ Definition elaborate_unit_def:
                  SOME <| procedures :=
                            ps ++ (case creation of INL p => [p] | INR _ => []);
                          unsupported_procedures :=
-                           unsupported_functions c ++
+                           unsupported_functions c ++ dropped_constants c0 c ++
                            (case creation of INL _ => [] | INR x => [x]);
                          state_variables := cvs;
                          immutables := MAP (λ(x, ty). (AstId x, ty)) immutables;
@@ -2380,7 +2408,8 @@ End
 Definition unit_elaboration_failures_def:
   unit_elaboration_failures strict (u : src_unit) =
     case u.unit_contracts of
-      [c] =>
+      [c0] =>
+        let c = live_constants (LENGTH c0.contract_constants) c0 in
         (case (all_some (MAP (state_variable c.contract_bases) c.contract_state_variables),
                constant_table c, immutable_table c) of
            (SOME state, SOME constants, SOME immutables) =>
@@ -2687,5 +2716,7 @@ val () = cv_auto_trans elaborated_functions_def;
 val () = cv_auto_trans elaborated_library_functions_def;
 val () = cv_auto_trans unsupported_functions_def;
 val () = cv_auto_trans unsupported_creation_def;
+val () = cv_auto_trans live_constants_def;
+val () = cv_auto_trans dropped_constants_def;
 val () = cv_auto_trans elaborate_unit_def;
 val () = cv_auto_trans unit_elaboration_failures_def;
