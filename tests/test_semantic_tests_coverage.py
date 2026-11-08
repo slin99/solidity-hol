@@ -1021,6 +1021,24 @@ class ClassifyTests(unittest.TestCase):
         declaration["initialValue"] = {"nodeType": "Identifier", "id": 4}
         self.assertEqual(coverage.elaboration_blockers(declaration), [])
 
+    def test_tuples_elaborate_only_as_several_values(self) -> None:
+        def literal(node_id: int, value: str) -> dict:
+            return {"nodeType": "Literal", "id": node_id, "kind": "number", "value": value,
+                    "typeDescriptions": {"typeIdentifier": f"t_rational_{value}_by_1"}}
+
+        def pair(node_id: int) -> dict:
+            return {"nodeType": "TupleExpression", "id": node_id, "isInlineArray": False,
+                    "components": [literal(node_id + 1, "1"), literal(node_id + 2, "0")],
+                    "typeDescriptions": {"typeIdentifier":
+                                         "t_tuple$_t_rational_1_by_1_$_t_rational_0_by_1_$"}}
+
+        returned = {"nodeType": "Return", "id": 9, "expression": pair(10)}
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [returned])])}), {})
+        discarded = {"nodeType": "ExpressionStatement", "id": 9, "expression": pair(10)}
+        self.assertEqual(
+            [b.feature for bs in coverage.scan({"t.sol": unit([function(4, [discarded])])}).values()
+             for b in bs], ["tuples as values"])
+
     def test_tuple_assignments_to_elements_are_blocked(self) -> None:
         ident = {"nodeType": "Identifier", "id": 5, "name": "x"}
         element = {"nodeType": "IndexAccess", "id": 6}

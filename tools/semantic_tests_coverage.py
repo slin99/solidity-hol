@@ -1212,6 +1212,28 @@ def copies_receiver(member: dict[str, Any], function: dict[str, Any]) -> bool:
             and (parameters[0]["typeDescriptions"].get("typeIdentifier") or "").endswith("_memory_ptr"))
 
 
+def several_values(reached: dict[int, dict[str, Any]]) -> set[int]:
+    """The tuples elab_values takes as several values: what a function
+    returns, a declaration's initial value, and both sides of an assignment to
+    a tuple. elab_expr admits a tuple of several components nowhere else."""
+    found: set[int] = set()
+    for node in reached.values():
+        kind = node["nodeType"]
+        if kind == "Return":
+            values = [node.get("expression")]
+        elif kind == "VariableDeclarationStatement":
+            values = [node.get("initialValue")]
+        elif kind == "Assignment" and unwrap(node["leftHandSide"])["nodeType"] == "TupleExpression":
+            values = [node["leftHandSide"], node["rightHandSide"]]
+        else:
+            continue
+        for value in values:
+            value = unwrap(value)
+            if value is not None and value["nodeType"] == "TupleExpression":
+                found.add(value["id"])
+    return found
+
+
 def unwrap(value: dict[str, Any] | None) -> dict[str, Any] | None:
     """A value without the parentheses around it."""
     while (value is not None and value["nodeType"] == "TupleExpression"
@@ -1613,6 +1635,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                      if n["nodeType"] == "IndexAccess"}
     storage_bases.update(n["expression"]["id"] for n in reached.values()
                          if n["nodeType"] == "MemberAccess")
+    value_tuples = several_values(reached)
     for node in reached.values():
         if node["id"] in unread:
             continue
@@ -1637,6 +1660,9 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                for declaration, signature in signatures(node, by_id)):
             # The checker admits no enum in what an external call returns.
             blockers.append(Blocker("FunctionCall", "enums returned by external calls", "elaboration"))
+        if (node["nodeType"] == "TupleExpression" and not node["isInlineArray"]
+                and len(node["components"]) != 1 and node["id"] not in value_tuples):
+            blockers.append(Blocker("TupleExpression", "tuples as values", "elaboration"))
         if node["id"] in builtin_callees:
             call = next(c for c in calls if c["expression"]["id"] == node["id"])
             if len(call["arguments"]) not in ({1, 2} if node["referencedDeclaration"] == REQUIRE else
