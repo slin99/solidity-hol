@@ -1537,7 +1537,9 @@ Definition elab_expr_def:
               | INR bs => INR bs)
          | INL _ => INR [(info.node_id, "index access on this type")]
          | INR _ =>
-             INR (blockers (reject (info.node_id, "index access on this type") r) ++
+             INR ((case r of
+                     INL _ => [(info.node_id, "index access on this type")]
+                   | INR bs => bs) ++
                   blockers (elab_expr ctx n index)))
     | SrcFunctionCall info (SrcArrayMember _ member root_expr _) [] [] tid =>
         (case elab_location ctx n root_expr of
