@@ -1013,11 +1013,15 @@ Definition assembly_writable_def:
     | NONE => assembly_writable heap i)
 End
 
-(* Memory with the ranges rs removed. *)
+(* Memory with the n bytes from a, and then the ranges rs, removed. *)
+Definition without_range_def:
+  (without_range a 0 (mem : num |-> word8) = mem) ∧
+  (without_range a (SUC n) mem = without_range (a + 1) n (mem \\ a))
+End
+
 Definition without_ranges_def:
   (without_ranges [] (mem : num |-> word8) = mem) ∧
-  (without_ranges ((a, n) :: rs) mem =
-    without_ranges rs (FOLDR (λi mem. mem \\ (a + i)) mem (COUNT_LIST n)))
+  (without_ranges ((a, n) :: rs) mem = without_ranges rs (without_range a n mem))
 End
 
 (* The heap with the bytes of each byte sequence object with id 1 to i read
@@ -1262,6 +1266,7 @@ val () = cv_auto_trans yul_substitute_stmt_def;
 val () = cv_auto_trans assembly_project_def;
 val () = cv_auto_trans assembly_machine_def;
 val () = cv_auto_trans assembly_writable_def;
+val () = cv_auto_trans without_range_def;
 val () = cv_auto_trans without_ranges_def;
 val () = cv_auto_trans assembly_read_back_def;
 val () = cv_auto_trans assembly_world_def;
