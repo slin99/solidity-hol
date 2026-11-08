@@ -681,7 +681,8 @@ def decodes_component(type_identifier: str) -> bool:
             or ENUM.fullmatch(type_identifier) is not None
             or BYTE_SEQUENCE.fullmatch(type_identifier) is not None
             or located_array(type_identifier) or storage_array_value(type_identifier)
-            or type_identifier.startswith("t_stringliteral_"))
+            or type_identifier.startswith("t_stringliteral_")
+            or INTEGER_RATIONAL.fullmatch(type_identifier) is not None)
 
 
 def decodes(type_identifier: str) -> bool:
@@ -844,9 +845,10 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
         type_identifier = node["typeDescriptions"]["typeIdentifier"]
         found.append("tuples of literals" if "t_rational" in type_identifier
                      else type_feature(type_identifier))
-    elif (kind == "Assignment" and unwrap(node["leftHandSide"])["nodeType"] == "TupleExpression"
-          and any(c is not None and unwrap(c)["nodeType"] != "Identifier"
-                  for c in unwrap(node["leftHandSide"])["components"])):
+    elif (kind == "Assignment" and node["leftHandSide"]["nodeType"] == "TupleExpression"
+          and any(c is not None and c["nodeType"] != "Identifier"
+                  for c in node["leftHandSide"]["components"])):
+        # tuple_writes takes holes and bare names, parenthesized ones not.
         found.append("tuple assignments to element or member targets")
     elif (kind == "VariableDeclarationStatement" and node.get("initialValue") is None
           and any(d is not None and d["storageLocation"] == "calldata"
@@ -1229,6 +1231,30 @@ def copies_receiver(member: dict[str, Any], function: dict[str, Any]) -> bool:
     return (receiver.endswith(("_storage", "_storage_ptr", "_calldata", "_calldata_ptr"))
             and bool(parameters)
             and (parameters[0]["typeDescriptions"].get("typeIdentifier") or "").endswith("_memory_ptr"))
+
+
+def several_values(reached: dict[int, dict[str, Any]]) -> set[int]:
+    """The tuples elab_values takes as several values: what a function
+    returns, a declaration's initial value, and both sides of an assignment to
+    a tuple, the left one without parentheses around it. elab_expr admits a
+    tuple of several components nowhere else."""
+    found: set[int] = set()
+    for node in reached.values():
+        kind = node["nodeType"]
+        if kind == "Return":
+            values = [node.get("expression")]
+        elif kind == "VariableDeclarationStatement":
+            values = [node.get("initialValue")]
+        elif kind == "Assignment" and node["leftHandSide"]["nodeType"] == "TupleExpression":
+            found.add(node["leftHandSide"]["id"])
+            values = [node["rightHandSide"]]
+        else:
+            continue
+        for value in values:
+            value = unwrap(value)
+            if value is not None and value["nodeType"] == "TupleExpression":
+                found.add(value["id"])
+    return found
 
 
 def unwrap(value: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -1656,6 +1682,9 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                      if n["nodeType"] == "IndexAccess"}
     storage_bases.update(n["expression"]["id"] for n in reached.values()
                          if n["nodeType"] == "MemberAccess")
+    value_tuples = several_values(reached)
+    statements = {unwrap(n["expression"])["id"] for n in reached.values()
+                  if n["nodeType"] == "ExpressionStatement"}
     for node in reached.values():
         if node["id"] in unread:
             continue
@@ -1680,6 +1709,15 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                for declaration, signature in signatures(node, by_id)):
             # The checker admits no enum in what an external call returns.
             blockers.append(Blocker("FunctionCall", "enums returned by external calls", "elaboration"))
+        if (node["nodeType"] == "Assignment" and node["leftHandSide"]["nodeType"] == "TupleExpression"
+                and len(node["leftHandSide"]["components"]) == 1
+                and (node["operator"] != "=" or node["id"] not in statements)):
+            # elab_expr takes (a) as a tuple target: plain assignment only,
+            # with no value.
+            blockers.append(Blocker("Assignment", "parenthesized assignment targets", "elaboration"))
+        if (node["nodeType"] == "TupleExpression" and not node["isInlineArray"]
+                and len(node["components"]) != 1 and node["id"] not in value_tuples):
+            blockers.append(Blocker("TupleExpression", "tuples as values", "elaboration"))
         if node["id"] in builtin_callees:
             call = next(c for c in calls if c["expression"]["id"] == node["id"])
             if len(call["arguments"]) not in ({1, 2} if node["referencedDeclaration"] == REQUIRE else
