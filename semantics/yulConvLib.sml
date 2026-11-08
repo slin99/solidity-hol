@@ -1383,6 +1383,16 @@ fun with_zero_conv tm =
   then Conv.REWR_CONV vfmExecutionTheory.with_zero_def tm
   else raise Conv.UNCHANGED
 
+(* addmod and mulmod, `modular_word f a b n`, likewise: unfolded only for a
+ * literal modulus. *)
+val modular_word_c =
+  prim_mk_const {Thy = "yulEvaluator", Name = "modular_word"}
+
+fun modular_word_conv tm =
+  if wordsSyntax.is_word_literal (rand tm)
+  then Conv.REWR_CONV yulEvaluatorTheory.modular_word_def tm
+  else raise Conv.UNCHANGED
+
 (* `yul_pop_result D`, as a compute rule in place of its definition.  Over a
  * decision the pop goes into the branches (`pop_result_conv`), and is only
  * unfolded on what reaches a branch.  Unfolded over the decision itself, the
@@ -1486,6 +1496,8 @@ val eval_compset =
         val cs4 = computeLib.add_conv (word_exp_c, 2, word_exp_conv) cs3
         val cs4 = computeLib.add_conv (with_zero_c, 3, with_zero_conv)
                     (computeLib.scrub_const cs4 with_zero_c)
+        val cs4 = computeLib.add_conv (modular_word_c, 4, modular_word_conv)
+                    (computeLib.scrub_const cs4 modular_word_c)
         (* A fuel written as a successor, which is how a caller states a run at
          * a fuel it does not know but knows is not zero: a call's test `n = 0`
          * and its decrement `n - 1` reduce on it, so the call is the folded

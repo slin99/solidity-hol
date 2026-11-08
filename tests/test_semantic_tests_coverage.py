@@ -105,6 +105,23 @@ class BuiltinCoverageTests(unittest.TestCase):
         self.assertEqual(coverage.scan({"t.sol": unit([function(4, [statement])])})[5], [
             coverage.Blocker("FunctionCall", "messages that are not literals", "elaboration")])
 
+    def test_modular_builtins_are_admitted(self) -> None:
+        def call(declaration: int, name: str) -> dict:
+            operand = {"nodeType": "Literal", "id": 7, "kind": "number", "value": "3",
+                       "typeDescriptions": {"typeIdentifier": "t_rational_3_by_1"}}
+            return {"nodeType": "ExpressionStatement", "id": 8, "expression": {
+                "nodeType": "FunctionCall", "id": 5, "kind": "functionCall", "names": [],
+                "tryCall": False, "typeDescriptions": {"typeIdentifier": "t_uint256"},
+                "expression": {"nodeType": "Identifier", "id": 6, "name": name,
+                               "referencedDeclaration": declaration,
+                               "typeDescriptions": {"typeIdentifier": "t_function_" + name}},
+                "arguments": [operand, dict(operand, id=9), dict(operand, id=10)]}}
+
+        for declaration, name in ((coverage.ADDMOD, "addmod"), (coverage.MULMOD, "mulmod")):
+            self.assertEqual(coverage.scan({"t.sol": unit([function(4, [call(declaration, name)])])}), {})
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [call(-5, "sha256")])])})[6], [
+            coverage.Blocker("Identifier", "hash and signature built-ins", "import")])
+
     def test_only_a_named_concat_is_admitted(self) -> None:
         concat_type = {"typeIdentifier": "t_function_bytesconcat_pure$__$returns$_t_bytes_memory_ptr_$"}
         member = {"nodeType": "MemberAccess", "id": 6, "memberName": "concat",
@@ -369,6 +386,22 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(admitted.blockers, [])
         self.assertTrue(admitted.scan_agrees)
 
+    def test_partial_admission_counts_functions_and_reasons(self) -> None:
+        source = unit([function(4, [])])
+        partial = coverage.classify(
+            "p.sol", coverage.scan({"p.sol": source}),
+            {"status": "partially-admitted", "functions": 3,
+             "unsupported": ["FunctionCall 7: unsupported builtin sha256",
+                             "calls an unsupported function"]})
+        self.assertEqual(partial.category, coverage.PARTIALLY_ADMITTED)
+        self.assertEqual((partial.functions, len(partial.unsupported)), (3, 2))
+        admitted = coverage.classify(
+            "a.sol", coverage.scan({"a.sol": source}), {"status": "admitted", "functions": 2})
+        report = coverage.Report("pin", "profile", [partial, admitted])
+        self.assertEqual(report.function_reasons(),
+                         {"FunctionCall: unsupported builtin sha256": 1, "calls an unsupported function": 1})
+        self.assertEqual(report.json()["functions"], {"total": 5, "unsupported": 2})
+
     def test_scan_records_every_property_of_a_variable(self) -> None:
         constant = dict(variable(3, state=True), constant=True, mutability="constant",
                         value={"nodeType": "Literal", "id": 4, "kind": "number",
@@ -499,6 +532,131 @@ class ClassifyTests(unittest.TestCase):
         ]
         self.assertEqual(abi_blockers(rejected), {110, 130, 140, 160, 180, 190})
 
+    def test_abi_decode_reads_type_names_and_takes_memory_bytes_into_elementary_types(self) -> None:
+        def type_name(node_id, name, type_identifier):
+            return {"nodeType": "ElementaryTypeNameExpression", "id": node_id,
+                    "typeName": {"nodeType": "ElementaryTypeName", "id": node_id + 1, "name": name,
+                                 "typeDescriptions": {}},
+                    "typeDescriptions": {"typeIdentifier": f"t_type$_{type_identifier}_$"}}
+
+        def types(node_id, *components, inline=False):
+            return {"nodeType": "TupleExpression", "id": node_id, "isInlineArray": inline,
+                    "components": list(components),
+                    "typeDescriptions": {"typeIdentifier": "t_tuple$_t_type$_t_uint256_$_$"}}
+
+        def data(node_id, type_identifier="t_bytes_memory_ptr"):
+            return {"nodeType": "Identifier", "id": node_id, "name": "b", "referencedDeclaration": 3,
+                    "typeDescriptions": {"typeIdentifier": type_identifier}}
+
+        def decode(node_id, arguments, result="t_uint256"):
+            abi = {"nodeType": "Identifier", "id": node_id + 1, "name": "abi", "referencedDeclaration": -1,
+                   "typeDescriptions": {"typeIdentifier": "t_magic_abi"}}
+            callee = {"nodeType": "MemberAccess", "id": node_id + 2, "memberName": "decode",
+                      "expression": abi,
+                      "typeDescriptions": {"typeIdentifier": "t_function_abidecode_pure$__$returns$__$"}}
+            return {"nodeType": "FunctionCall", "id": node_id, "kind": "functionCall", "names": [],
+                    "tryCall": False, "expression": callee, "arguments": arguments,
+                    "typeDescriptions": {"typeIdentifier": result}}
+
+        def blockers(call):
+            found = coverage.scan({"t.sol": unit([variable(3, state=True), function(4, [call])])})
+            return {(node_id, b.stage) for node_id, bs in found.items() for b in bs}
+
+        self.assertEqual(blockers(decode(10, [data(20), types(21, type_name(22, "bytes4", "t_bytes4"))],
+                                         "t_bytes4")), set())
+        self.assertEqual(blockers(decode(10, [data(20), types(21, type_name(22, "uint256", "t_uint256"),
+                                                              type_name(24, "bool", "t_bool"))],
+                                         "t_tuple$_t_uint256_$_t_bool_$")), set())
+        # bytes results and calldata data are rejected by the checker
+        self.assertEqual(blockers(decode(10, [data(20), types(21, type_name(22, "bytes", "t_bytes_memory_ptr"))],
+                                         "t_bytes_memory_ptr")), {(10, "elaboration")})
+        self.assertEqual(blockers(decode(10, [data(20, "t_bytes_calldata_ptr"),
+                                              types(21, type_name(22, "uint256", "t_uint256"))])),
+                         {(10, "elaboration")})
+        # a type that isn't an elementary type name is rejected by the importer
+        struct = {"nodeType": "Identifier", "id": 22, "name": "S", "referencedDeclaration": 7,
+                  "typeDescriptions": {"typeIdentifier": "t_type$_t_struct$_S_$7_storage_ptr_$"}}
+        self.assertEqual(blockers(decode(10, [data(20), types(21, struct)], "t_struct$_S_$7_memory_ptr")),
+                         {(10, "import")})
+        self.assertEqual(blockers(decode(10, [data(20)])), {(10, "import")})
+        # an empty type list decodes nothing, which the checker rejects
+        self.assertEqual(blockers(decode(10, [data(20), types(21)], "t_tuple$__$")),
+                         {(10, "elaboration")})
+
+    def test_encode_calls_need_a_named_function_of_scalar_and_byte_parameters(self) -> None:
+        def parameter(node_id, type_identifier):
+            return variable(node_id, type_identifier=type_identifier)
+
+        def declaration(node_id, *types):
+            return {"nodeType": "FunctionDefinition", "id": node_id, "kind": "function",
+                    "functionSelector": "12345678",
+                    "parameters": {"nodeType": "ParameterList", "id": node_id + 1,
+                                   "parameters": [parameter(node_id + 2 + i, t) for i, t in enumerate(types)]}}
+
+        def encode_call(node_id, receiver, target, values):
+            abi = {"nodeType": "Identifier", "id": node_id + 1, "name": "abi", "referencedDeclaration": -1,
+                   "typeDescriptions": {"typeIdentifier": "t_magic_abi"}}
+            callee = {"nodeType": "MemberAccess", "id": node_id + 2, "memberName": "encodeCall", "expression": abi,
+                      "typeDescriptions": {"typeIdentifier": "t_function_abiencodecall_pure$__$returns$__$"}}
+            f = {"nodeType": "MemberAccess", "id": node_id + 3, "memberName": "f", "expression": receiver,
+                 "referencedDeclaration": target,
+                 "typeDescriptions": {"typeIdentifier": "t_function_declaration_nonpayable$__$returns$__$"}}
+            return {"nodeType": "FunctionCall", "id": node_id, "kind": "functionCall", "names": [],
+                    "tryCall": False, "expression": callee, "arguments": [f, values],
+                    "typeDescriptions": {"typeIdentifier": "t_bytes_memory_ptr"}}
+
+        def interface_name(node_id):
+            return {"nodeType": "Identifier", "id": node_id, "name": "I", "referencedDeclaration": 50,
+                    "typeDescriptions": {"typeIdentifier": "t_type$_t_contract$_I_$50_$"}}
+
+        def state(node_id):
+            return {"nodeType": "Identifier", "id": node_id, "name": "x", "referencedDeclaration": 3,
+                    "typeDescriptions": {"typeIdentifier": "t_contract$_I_$50"}}
+
+        def value(node_id, type_identifier="t_uint8"):
+            return {"nodeType": "Identifier", "id": node_id, "name": "x", "referencedDeclaration": 3,
+                    "typeDescriptions": {"typeIdentifier": type_identifier}}
+
+        def pair(node_id):
+            return {"nodeType": "TupleExpression", "id": node_id, "isInlineArray": False,
+                    "components": [value(node_id + 1), value(node_id + 2, "t_bytes_memory_ptr")],
+                    "typeDescriptions": {"typeIdentifier": "t_tuple$_t_uint8_$_t_bytes_memory_ptr_$"}}
+
+        def constant(node_id):
+            return {"nodeType": "Identifier", "id": node_id, "name": "k", "referencedDeclaration": 9,
+                    "typeDescriptions": {"typeIdentifier": "t_contract$_I_$50"}}
+
+        computed = {"nodeType": "FunctionCall", "id": 151, "kind": "functionCall", "names": [],
+                    "tryCall": False, "expression": value(152), "arguments": [],
+                    "typeDescriptions": {"typeIdentifier": "t_contract$_I_$50"}}
+        statements = [
+            encode_call(100, interface_name(105), 51, pair(106)),
+            encode_call(120, state(125), 51, pair(126)),
+            encode_call(140, interface_name(145), 60, value(146, "t_array$_t_uint256_$dyn_memory_ptr")),
+            encode_call(150, computed, 51, pair(156)),
+            encode_call(160, constant(165), 51, pair(166)),
+            encode_call(170, interface_name(175), 70, value(176, "t_enum$_E_$80")),
+        ]
+        k = variable(9, state=True, type_identifier="t_contract$_I_$50")
+        k.update(constant=True, mutability="constant")
+        ast = unit([variable(3, state=True), k, function(4, statements)])
+        ast["nodes"].append({"nodeType": "ContractDefinition", "id": 50, "contractKind": "interface",
+                             "abstract": False, "baseContracts": [], "linearizedBaseContracts": [50],
+                             "nodes": [declaration(51, "t_uint8", "t_bytes_calldata_ptr"),
+                                       declaration(60, "t_array$_t_uint256_$dyn_memory_ptr"),
+                                       declaration(70, "t_enum$_E_$80")]})
+        ast["nodes"].append({"nodeType": "EnumDefinition", "id": 80, "name": "E",
+                             "members": [{"nodeType": "EnumValue", "id": 81, "name": "A"}]})
+        found = coverage.scan({"t.sol": ast})
+        abi = {node_id: blockers for node_id, blockers in found.items()
+               if any(b.feature == "abi.* functions" for b in blockers)}
+        self.assertEqual(abi, {
+            140: [coverage.Blocker("FunctionCall", "abi.* functions", "elaboration")],
+            150: [coverage.Blocker("FunctionCall", "abi.* functions", "import")],
+            160: [coverage.Blocker("FunctionCall", "abi.* functions", "import")]})
+        # f and its receiver are read as the selector, not as expressions
+        self.assertFalse({103, 105, 123, 125} & set(found))
+
     def test_interface_ids_are_admitted_and_other_contract_type_members_blocked(self) -> None:
         def type_member(node_id, member, target=50):
             interface = {"nodeType": "Identifier", "id": node_id + 1, "name": "I",
@@ -601,8 +759,11 @@ class ClassifyTests(unittest.TestCase):
                        [{"declaration": 5, "suffix": "length"}])
         self.assertEqual(coverage.assembly_blockers(own, by_id),
                          [coverage.Blocker("InlineAssembly", "inline assembly", "import")])
-        constant = dict(variable(8, type_identifier="t_uint256"), constant=True)
-        self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 8}]), {8: constant}),
+        # Constants of value type are read before the block; others are not.
+        constant = dict(variable(8, state=True, type_identifier="t_uint256"), constant=True)
+        self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 8}]), {8: constant}), [])
+        string = dict(variable(9, state=True, type_identifier="t_string_memory_ptr"), constant=True)
+        self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 9}]), {9: string}),
                          [coverage.Blocker("InlineAssembly", "inline assembly memory references", "elaboration")])
 
     def test_inline_assembly_halts_in_constructors(self) -> None:
@@ -728,6 +889,27 @@ class ClassifyTests(unittest.TestCase):
                                               "referencedDeclaration": 400}}}
         self.assertEqual(coverage.coerced_literals(call, {400: callee}),
                          [coverage.Blocker("FunctionCall", feature, "elaboration")])
+
+    def test_ecrecover_arguments_are_coerced_to_its_parameters(self) -> None:
+        def literal(node_id, kind, value, tid):
+            return {"nodeType": "Literal", "id": node_id, "kind": kind, "value": value,
+                    "typeDescriptions": {"typeIdentifier": tid}}
+
+        def call(*arguments):
+            return {"nodeType": "FunctionCall", "id": 90, "kind": "functionCall",
+                    "arguments": list(arguments),
+                    "expression": {"nodeType": "Identifier", "id": 91, "name": "ecrecover",
+                                   "referencedDeclaration": -6}}
+
+        hash_ = {"nodeType": "Identifier", "id": 92, "name": "h", "referencedDeclaration": 5,
+                 "typeDescriptions": {"typeIdentifier": "t_bytes32"}}
+        v = literal(93, "number", "27", "t_rational_27_by_1")
+        self.assertEqual(coverage.coerced_literals(call(hash_, v, hash_, hash_), {}), [])
+        self.assertEqual(coverage.coerced_literals(
+            call(literal(94, "string", "abcd", "t_stringliteral_abcd"), v, hash_, hash_), {}),
+            [coverage.Blocker("FunctionCall", "string literals as fixed-size bytes", "elaboration")])
+        self.assertEqual(coverage.coerced_literals(
+            call(hash_, v, literal(95, "number", "5", "t_rational_5_by_1"), hash_), {}), [])
 
     def test_functions_live_in_their_own_source_keep_their_blockers(self) -> None:
         coerced = {"nodeType": "VariableDeclarationStatement", "id": 6,
@@ -913,6 +1095,15 @@ class ClassifyTests(unittest.TestCase):
         by_id = {n["id"]: n for n in coverage.nodes(ast)}
         self.assertIn(struct, coverage.imported({"t.sol": ast}, by_id))
 
+    def test_library_constants_only_assembly_refers_to_are_imported(self) -> None:
+        constant = dict(variable(51, state=True), constant=True)
+        ast = unit([function(4, [assembly([], [{"declaration": 51}])])])
+        ast["nodes"].append({"nodeType": "ContractDefinition", "id": 50, "contractKind": "library",
+                             "abstract": False, "baseContracts": [],
+                             "linearizedBaseContracts": [50], "nodes": [constant]})
+        by_id = {n["id"]: n for n in coverage.nodes(ast)}
+        self.assertIn(constant, coverage.imported({"t.sol": ast}, by_id))
+
     def test_memory_and_calldata_arrays_of_elementary_leaves_decode(self) -> None:
         self.assertTrue(coverage.decodes("t_array$_t_uint8_$dyn_memory_ptr"))
         self.assertTrue(coverage.decodes("t_array$_t_array$_t_bytes_memory_ptr_$2_memory_ptr_$dyn_memory_ptr"))
@@ -930,6 +1121,9 @@ class ClassifyTests(unittest.TestCase):
         self.assertTrue(coverage.decodes(
             "t_tuple$_t_array$_t_array$_t_uint8_$2_memory_ptr_$dyn_memory_ptr_$_t_uint256_$"))
         self.assertFalse(coverage.decodes("t_tuple$_t_bool_$_t_array$_t_uint8_$dyn_storage_ptr_$"))
+        self.assertTrue(coverage.decodes("t_tuple$_t_bool_$_t_rational_0_by_1_$"))
+        self.assertTrue(coverage.decodes("t_tuple$_t_rational_minus_1_by_1_$_t_bool_$"))
+        self.assertFalse(coverage.decodes("t_tuple$_t_rational_1_by_2_$_t_bool_$"))
         self.assertEqual(coverage.type_feature("t_tuple$_t_bool_$_t_array$_t_uint8_$dyn_storage_ptr_$"),
                          "arrays")
         self.assertEqual(coverage.type_feature("t_bytes32"),
@@ -944,6 +1138,52 @@ class ClassifyTests(unittest.TestCase):
         declaration["initialValue"] = {"nodeType": "Identifier", "id": 4}
         self.assertEqual(coverage.elaboration_blockers(declaration), [])
 
+    def test_tuples_elaborate_only_as_several_values(self) -> None:
+        def literal(node_id: int, value: str) -> dict:
+            return {"nodeType": "Literal", "id": node_id, "kind": "number", "value": value,
+                    "typeDescriptions": {"typeIdentifier": f"t_rational_{value}_by_1"}}
+
+        def pair(node_id: int) -> dict:
+            return {"nodeType": "TupleExpression", "id": node_id, "isInlineArray": False,
+                    "components": [literal(node_id + 1, "1"), literal(node_id + 2, "0")],
+                    "typeDescriptions": {"typeIdentifier":
+                                         "t_tuple$_t_rational_1_by_1_$_t_rational_0_by_1_$"}}
+
+        returned = {"nodeType": "Return", "id": 9, "expression": pair(10)}
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [returned])])}), {})
+        returned["expression"] = {"nodeType": "TupleExpression", "id": 20, "isInlineArray": False,
+                                  "components": [pair(10)],
+                                  "typeDescriptions": pair(10)["typeDescriptions"]}
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [returned])])}), {})
+        discarded = {"nodeType": "ExpressionStatement", "id": 9, "expression": pair(10)}
+        self.assertEqual(
+            [b.feature for bs in coverage.scan({"t.sol": unit([function(4, [discarded])])}).values()
+             for b in bs], ["tuples as values"])
+
+    def test_parenthesized_targets_only_in_plain_assignment_statements(self) -> None:
+        def assignment(operator: str) -> dict:
+            target = {"nodeType": "Identifier", "id": 11, "name": "a", "referencedDeclaration": 3,
+                      "typeDescriptions": {"typeIdentifier": "t_uint256"}}
+            one = {"nodeType": "Literal", "id": 12, "kind": "number", "value": "1",
+                   "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}}
+            return {"nodeType": "Assignment", "id": 10, "operator": operator,
+                    "leftHandSide": {"nodeType": "TupleExpression", "id": 13, "isInlineArray": False,
+                                     "components": [target],
+                                     "typeDescriptions": {"typeIdentifier": "t_uint256"}},
+                    "rightHandSide": one, "typeDescriptions": {"typeIdentifier": "t_uint256"}}
+
+        def features(statement: dict) -> list:
+            body = [variable(3), statement]
+            return [b.feature for bs in coverage.scan({"t.sol": unit([function(4, body)])}).values()
+                    for b in bs]
+
+        statement = {"nodeType": "ExpressionStatement", "id": 9, "expression": assignment("=")}
+        self.assertNotIn("parenthesized assignment targets", features(statement))
+        statement["expression"] = assignment("+=")
+        self.assertIn("parenthesized assignment targets", features(statement))
+        returned = {"nodeType": "Return", "id": 9, "expression": assignment("=")}
+        self.assertIn("parenthesized assignment targets", features(returned))
+
     def test_tuple_assignments_to_elements_are_blocked(self) -> None:
         ident = {"nodeType": "Identifier", "id": 5, "name": "x"}
         element = {"nodeType": "IndexAccess", "id": 6}
@@ -952,6 +1192,10 @@ class ClassifyTests(unittest.TestCase):
                                    "components": [ident, None]}}
         self.assertEqual(coverage.elaboration_blockers(assign), [])
         assign["leftHandSide"]["components"] = [ident, element]
+        self.assertEqual({b.feature for b in coverage.elaboration_blockers(assign)},
+                         {"tuple assignments to element or member targets"})
+        parenthesized = {"nodeType": "TupleExpression", "isInlineArray": False, "components": [ident]}
+        assign["leftHandSide"]["components"] = [ident, parenthesized]
         self.assertEqual({b.feature for b in coverage.elaboration_blockers(assign)},
                          {"tuple assignments to element or member targets"})
 

@@ -155,7 +155,7 @@ def build_report(corpus_path: Path, corpus: dict[str, Any], solc: Path,
         expected = sum(len(suite["cases"]) for suite in corpus["suites"]) * len(STAGES)
         for suite in corpus["suites"]:
             suite_result = suite_results.get(suite["name"])
-            if suite_result is None and built and hol["ran"]:
+            if suite_result is None and built:
                 suite_result = {"kind": "suite", "suite": suite["name"], "status": "missing",
                                 "message": "no suite result was reported"}
             if suite_result is not None and suite_result.get("status") != "ok":
@@ -202,7 +202,7 @@ def build_report(corpus_path: Path, corpus: dict[str, Any], solc: Path,
                                                "outcome": result.get("outcome")})
                     elif result is not None:
                         failures.append({"kind": "case", "theorem": theorem, **result})
-                    elif built and hol["ran"]:
+                    elif built:
                         failures.append({"kind": "case", "theorem": theorem,
                                          "suite": suite["name"], "case": case["name"],
                                          "stage": stage, "status": "missing",
@@ -325,6 +325,8 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--report-dir", type=Path, default=ROOT / "docs")
     parser.add_argument("--holbuild", default="holbuild")
     parser.add_argument("-j", "--jobs", type=int)
+    parser.add_argument("--force", action="store_true",
+                        help="rebuild suite theories instead of using cached verdicts")
     parser.add_argument("--no-hol", action="store_true",
                         help="generate the artifacts and run the external checks only")
     parser.add_argument("build_args", nargs="*",
@@ -344,7 +346,7 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
     checks.append(check_staging(root, written))
     hol = None
     if not args.no_hol:
-        hol = core.run_hol(root, args.holbuild, args.jobs, True, args.build_args,
+        hol = core.run_hol(root, args.holbuild, args.jobs, args.force, args.build_args,
                            prefix=RESULT_PREFIX,
                            suite_targets={core.theories.theory_name(suite["name"], "yul") + "Theory":
                                           suite["name"] for suite in corpus["suites"]})

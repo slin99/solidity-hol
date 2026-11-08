@@ -6,6 +6,29 @@ open HolKernel boolLib bossLib solidityDifferentialTheory solidityBytecodeTheory
 
 val ERR = mk_HOL_ERR "solidityDifferentialLib"
 
+val result_output = ref (NONE : TextIO.outstream option)
+
+fun with_results path run =
+  let
+    val stream = TextIO.openOut path
+    val previous = !result_output
+    fun close () = (result_output := previous; TextIO.closeOut stream)
+  in
+    result_output := SOME stream;
+    (run () handle e => (close (); raise e));
+    close ()
+  end
+
+fun emit_result prefix fields =
+  let val line = prefix ^ json_object fields ^ "\n" in
+    print line;
+    case !result_output of
+      NONE => ()
+    | SOME stream => (TextIO.output (stream, line); TextIO.flushOut stream)
+  end
+
+fun emit fields = emit_result "differential-result: " fields
+
 fun prepared_constants prefix (prepared : solidityPrepareLib.prepared) =
   let
     val unit_def = define (prefix ^ "_unit") (#unit prepared)
@@ -216,6 +239,15 @@ fun check_unit_contracts prepared contract =
                "], not " ^ contract)
   end
 
+(* The corpus checks supported features, so each of its functions must be
+ * supported: a function the frontend marks unsupported fails the suite. *)
+fun check_supported (prepared : solidityPrepareLib.prepared) =
+  case List.filter (isSome o #reason) (#functions prepared) of
+    [] => ()
+  | fs => fail ("unsupported functions: " ^
+                String.concatWith "; "
+                  (map (fn {name, reason, ...} => name ^ ": " ^ valOf reason) fs))
+
 fun run_suite_with_bytecode bytecode root fuel s =
   let
     val suite = name_field s "name"
@@ -229,6 +261,7 @@ fun run_suite_with_bytecode bytecode root fuel s =
       val checked = solidityPrepareLib.prepare_artifact
         {root = root, path = artifact, source = source}
       val () = check_unit_contracts (#prepared checked) contract
+      val () = check_supported (#prepared checked)
       val (unit, program) = prepared_constants prefix (#prepared checked)
       val code = code_constant (prefix ^ "_code") "deployedBytecode"
                    (#artifact checked) source contract
@@ -312,7 +345,7 @@ fun run_corpus {root, corpus} =
  *)
 
 fun emit_yul fields =
-  print ("yul-differential-result: " ^ json_object fields ^ "\n")
+  emit_result "yul-differential-result: " fields
 
 (* A stage as the name its theorem carries, the name the report uses, the
  * artifact it is imported from, and which of the two ASTs in that artifact to
@@ -539,6 +572,7 @@ fun run_suite_three_way root yul_root s =
     val checked = solidityPrepareLib.prepare_artifact
       {root = root, path = artifact, source = source}
     val () = check_unit_contracts (#prepared checked) contract
+    val () = check_supported (#prepared checked)
     val (unit, program) = prepared_constants prefix (#prepared checked)
     val code = code_constant (prefix ^ "_code") "deployedBytecode"
                  (#artifact checked) source contract

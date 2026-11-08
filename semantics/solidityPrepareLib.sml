@@ -3,6 +3,11 @@ struct
 
 open HolKernel boolLib solidityElaborateTheory solidityCoreWfTheory cv_transLib
 
+(* cv_eval sizes word literals (selectors, assembly numbers) with the rules
+ * wordsLib adds to the compset when it loads; without it, it fails with
+ * "non-cv constant: (:256)". *)
+val _ = wordsLib.WORD_CONV
+
 datatype failure = MalformedInput | UnsupportedImport | UnsupportedLowering
                    | SourceRejected | InvalidCore
 exception PreparationError of failure * string
@@ -114,8 +119,10 @@ fun read_artifact {root, path} = json_input (fn () =>
     artifact
   end)
 
+type function_outcome = {id : int, name : string, reason : string option}
 type prepared = {unit : term, program : term, source_valid : thm,
-                 elaborates : thm, core_wf : thm}
+                 elaborates : thm, core_wf : thm,
+                 functions : function_outcome list}
 
 fun checked_predicate kind message tm =
   let val evaluated = cv_eval tm in
@@ -125,12 +132,99 @@ fun checked_predicate kind message tm =
   end
 
 val elaborate_unit_tm = prim_mk_const {Thy = "solidityElaborate", Name = "elaborate_unit"}
+fun import_const name = prim_mk_const {Thy = "solidityImport", Name = name}
 
-fun prepare_unit unit =
+fun cv_value tm = rhs (concl (cv_eval tm))
+
+(* The unit with the functions of the given ids marked unsupported, each
+ * with its reason. *)
+fun mark_unsupported reasons unit0 =
   let
+    val unit = if TypeBase.is_record unit0 then unit0 else rhs (concl (computeLib.EVAL_CONV unit0))
+    fun mark_function f =
+      let
+        val fields = #2 (TypeBase.dest_record f)
+        fun field r name = snd (valOf (List.find (fn (n, _) => n = name) r))
+        val id = numSyntax.int_of_term
+          (field (#2 (TypeBase.dest_record (field fields "fn_info"))) "node_id")
+      in
+        case List.find (fn (x, _) => id = x) reasons of
+          NONE => f
+        | SOME (_, reason) =>
+            TypeBase.mk_record (type_of f,
+              map (fn ("fn_unsupported", _) =>
+                        ("fn_unsupported", optionSyntax.mk_some (stringSyntax.fromMLstring reason))
+                    | field => field) fields)
+      end
+    fun mark_list tm =
+      listSyntax.mk_list (map mark_function (listSyntax.dest_list tm |> #1),
+                          listSyntax.dest_list tm |> #2)
+    fun mark_contract c =
+      TypeBase.mk_record (type_of c,
+        map (fn (name, value) =>
+               if name = "contract_functions" orelse name = "contract_library_functions"
+               then (name, mark_list value) else (name, value))
+          (#2 (TypeBase.dest_record c)))
+  in
+    TypeBase.mk_record (type_of unit,
+      map (fn ("unit_contracts", cs) =>
+                ("unit_contracts",
+                 listSyntax.mk_list (map mark_contract (#1 (listSyntax.dest_list cs)),
+                                     #2 (listSyntax.dest_list cs)))
+            | field => field) (#2 (TypeBase.dest_record unit)))
+  end
+
+(* The (id, passes) pairs of unit_function_checks. *)
+fun function_checks strict unit =
+  map (fn p => let val (x, ok) = pairSyntax.dest_pair p in
+                 (numSyntax.int_of_term x, ok ~~ T) end)
+    (#1 (listSyntax.dest_list
+      (cv_value (list_mk_comb (import_const "unit_function_checks",
+                               [if strict then T else F, unit])))))
+
+(* Mark unsupported the supported functions that fail the source check, also
+ * because they call an unsupported function, or fail to elaborate, until
+ * none does. Each round marks at least one function or ends. *)
+fun mark_failures unit =
+  case List.filter (not o #2) (function_checks true unit) of
+    failing as (_ :: _) =>
+      let
+        val loose = function_checks false unit
+        fun reason x =
+          if List.exists (fn (y, ok) => x = y andalso ok) loose
+          then "calls an unsupported function"
+          else "fails the source check (valid_src_unit)"
+      in
+        mark_failures
+          (mark_unsupported (map (fn (x, _) => (x, reason x)) failing) unit)
+      end
+  | [] =>
+      case #1 (listSyntax.dest_list (cv_value (mk_comb (prim_mk_const
+             {Thy = "solidityElaborate", Name = "unit_elaboration_failures"}, unit)))) of
+        [] => unit
+      | xs => mark_failures (mark_unsupported
+                (map (fn x => (numSyntax.int_of_term x,
+                               "fails to elaborate (unsupported lowering)")) xs) unit)
+
+fun function_outcomes unit =
+  map (fn t =>
+         case pairSyntax.strip_pair t of
+           [x, name, reason] =>
+             {id = numSyntax.int_of_term x,
+              name = stringSyntax.fromHOLstring name,
+              reason = if optionSyntax.is_some reason
+                       then SOME (stringSyntax.fromHOLstring (optionSyntax.dest_some reason))
+                       else NONE}
+         | _ => raise mk_HOL_ERR "solidityPrepareLib" "function_outcomes" "bad entry")
+    (#1 (listSyntax.dest_list
+      (cv_value (mk_comb (import_const "unit_functions", unit)))))
+
+fun prepare_unit imported =
+  let
+    val unit = mark_failures imported
     val source_valid = checked_predicate SourceRejected
       "valid_src_unit failed (source validation/subset restriction)"
-      (mk_comb (prim_mk_const {Thy = "solidityImport", Name = "valid_src_unit"}, unit))
+      (mk_comb (import_const "valid_src_unit", unit))
     val elaborates = (REWRITE_CONV [elaborate_unit_def, source_valid] THENC cv_eval)
       (mk_comb (elaborate_unit_tm, unit))
     val result = rhs (concl elaborates)
@@ -142,7 +236,8 @@ fun prepare_unit unit =
       “wf_core_program (core_program_environment ^program) ^program”
   in
     {unit = unit, program = program, source_valid = source_valid,
-     elaborates = elaborates, core_wf = core_wf}
+     elaborates = elaborates, core_wf = core_wf,
+     functions = function_outcomes unit}
   end
 
 

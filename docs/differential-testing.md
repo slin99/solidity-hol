@@ -79,15 +79,19 @@ transaction setup and EVM observation functions live in `solidityBytecode`;
 
 The runner targets the suite theories directly. Their explicit fixture
 lists let holbuild schedule them independently and reuse unchanged bytecode
-results after a frontend change. `--allow-cached` accepts successful builds
-from identical inputs; the default forces both halves to execute again.
+results after a frontend change. Both runners reuse cached suite verdicts by
+default; `--force` explicitly rebuilds suites. The source runner still accepts
+`--allow-cached` for compatibility.
 Push builds on `main` and `bot/opus/solidity-e2e` save snapshots that their
 feature PRs can restore; PR-only snapshots are scoped to that PR and cannot
 warm sibling PRs. Branch runs have separate concurrency groups so a later
 merge cannot cancel a cache-warming run. Remove the integration-branch push
 trigger when that branch is merged into `main`.
-Cached suites need no old result log. A missing result from a suite that ran,
-or a failed dependency, fails the report.
+Source and Yul suite theories declare a `.results.jsonl` extra output beside
+their scripts. holbuild caches and restores it with the theory, so reports
+retain outcomes and stage admissions without an old build log. Missing suite
+or case records fail the report, including on cache hits. Failed builds use
+their diagnostic logs and ignore possibly stale result files.
 
 `solidityDifferentialCorpus` remains a compatibility roll-up, refreshed with
 integration reports. It owns no case definitions: ML consumers enumerating
@@ -121,7 +125,7 @@ selected-slot lists. The negative mapping regression demonstrates this case.
 Run the same checks as CI with:
 
 ```sh
-python3 tools/run_differential.py -j2 --allow-cached \
+python3 tools/run_differential.py -j2 \
   -- --max-heap 6000 --skip-checkpoints --skip-proof-steps
 holbuild -j8 build --skip-checkpoints --skip-proof-steps solidityHolTheory
 ```

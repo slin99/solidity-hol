@@ -23,6 +23,8 @@ Definition builtin_name_def:
   builtin_name YSDiv = "sdiv" ∧
   builtin_name YMod = "mod" ∧
   builtin_name YSMod = "smod" ∧
+  builtin_name YAddMod = "addmod" ∧
+  builtin_name YMulMod = "mulmod" ∧
   builtin_name YExp = "exp" ∧
   builtin_name YSignExtend = "signextend" ∧
   builtin_name YLt = "lt" ∧
@@ -96,6 +98,8 @@ Definition builtin_of_name_def:
     else if name = "sdiv" then SOME YSDiv
     else if name = "mod" then SOME YMod
     else if name = "smod" then SOME YSMod
+    else if name = "addmod" then SOME YAddMod
+    else if name = "mulmod" then SOME YMulMod
     else if name = "exp" then SOME YExp
     else if name = "signextend" then SOME YSignExtend
     else if name = "lt" then SOME YLt
@@ -195,6 +199,8 @@ Definition builtin_effect_def:
   builtin_effect YSDiv = EffectPure ∧
   builtin_effect YMod = EffectPure ∧
   builtin_effect YSMod = EffectPure ∧
+  builtin_effect YAddMod = EffectPure ∧
+  builtin_effect YMulMod = EffectPure ∧
   builtin_effect YExp = EffectPure ∧
   builtin_effect YSignExtend = EffectPure ∧
   builtin_effect YLt = EffectPure ∧

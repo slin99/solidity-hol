@@ -23,12 +23,20 @@ local
       "\"" ^ String.translate escape s ^ "\""
     end
 
-  fun emit test status message =
+  (* An admitted unit reports how many functions calls reach and why the
+   * unsupported ones among them are. *)
+  fun emit test status message functions =
     (print ("coverage-result: {\"test\":" ^ json_string test ^
             ",\"status\":" ^ json_string status ^
             (case message of
                NONE => ""
-             | SOME m => ",\"message\":" ^ json_string m) ^ "}\n");
+             | SOME m => ",\"message\":" ^ json_string m) ^
+            (case functions of
+               NONE => ""
+             | SOME (n, reasons) =>
+                 ",\"functions\":" ^ Int.toString n ^
+                 ",\"unsupported\":[" ^
+                 String.concatWith "," (map json_string reasons) ^ "]") ^ "}\n");
      TextIO.flushOut TextIO.stdOut)
 
   fun run_test test path =
@@ -41,18 +49,21 @@ local
       (* Report import blockers before lowering any source of a multi-source test. *)
       val units = map (fn source =>
         (source, solidityPrepareLib.import_unit artifact source)) sources
-      val _ = map (fn (source, unit) => solidityPrepareLib.prepare_unit unit
+      val prepared = map (fn (source, unit) => solidityPrepareLib.prepare_unit unit
         handle solidityPrepareLib.PreparationError (kind, message) =>
           raise solidityPrepareLib.PreparationError (kind, source ^ ": " ^ message)) units
+      val functions = List.concat (map #functions prepared)
+      val reasons = List.mapPartial #reason functions
     in
-      emit test "admitted" NONE
+      emit test (if null reasons then "admitted" else "partially-admitted") NONE
+        (SOME (length functions, reasons))
     end
     handle solidityPrepareLib.PreparationError (kind, message) =>
       let val status = case kind of
         solidityPrepareLib.UnsupportedImport => "import-rejected"
       | solidityPrepareLib.UnsupportedLowering => "elaboration-rejected"
       | _ => solidityPrepareLib.failure_name kind
-      in emit test status (SOME message) end
+      in emit test status (SOME message) NONE end
 
   val manifest =
     case OS.Process.getEnv "SEMANTIC_TESTS_MANIFEST" of

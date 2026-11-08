@@ -72,6 +72,7 @@ End
 Datatype:
   core_operator
   = AddOp | SubtractOp | MultiplyOp | DivideOp | RemainderOp | ExponentOp
+  | AddModOp | MulModOp
   | ShiftLeftOp | ShiftRightOp
   | EqualOp | LessThanOp | BitAndOp | BitOrOp | BitXorOp
   | NegateOp | BitNotOp | BoolNotOp
@@ -112,7 +113,11 @@ End
  * dynamic array of length n. ArrayIndexOperation a i: element i of the memory
  * or calldata array a. CopyToMemoryOperation a: a new memory copy of the
  * calldata array a. Keccak256Operation a: the Keccak-256 hash of the memory
- * byte sequence a, as bytes32.
+ * byte sequence a, as bytes32. EcrecoverOperation h v r s: ecrecover(h, v, r,
+ * s), the address the signature (v, r, s) of the bytes32 hash h recovers, or
+ * address(0) if it is invalid; v is a uint8 and r and s are bytes32.
+ * AbiDecodeOperation types a: abi.decode(a, (types)) of the memory bytes a
+ * into values of those elementary types, one value or a tuple of them.
  * AbiEncodeOperation selector types arguments: abi.encode(arguments) of the
  * arguments as those ABI types, after the four bytes of the selector if any,
  * as a new memory bytes. AbiEncodePackedOperation types arguments:
@@ -141,10 +146,12 @@ Datatype:
   | CopyToMemoryOperation core_atom
   | ArrayLengthOperation core_atom
   | Keccak256Operation core_atom
+  | EcrecoverOperation core_atom core_atom core_atom core_atom
   (* The addressed account's code size, without a memory bytes allocation. *)
   | CodeLengthOperation core_atom
   | AbiEncodeOperation (core_atom option) (sol_type list) (core_atom list)
   | AbiEncodePackedOperation (sol_type list) (core_atom list)
+  | AbiDecodeOperation (sol_type list) core_atom
   | ArrayPushOperation core_atom (core_atom option)
   | ArrayPopOperation core_atom
   | InternalCallOperation ast_id (core_atom list)
@@ -158,14 +165,16 @@ Datatype:
 End
 
 (* What an inline assembly block's Yul variable stands for: a local of value
- * type (read on entry, written back on exit), or the storage slot or byte
- * offset of a state variable (x.slot, x.offset; read-only).
+ * type (read on entry, written back on exit), the storage slot or byte offset
+ * of a state variable (x.slot, x.offset), or the value of a constant of value
+ * type, held in an atom. The last three are read-only.
  *)
 Datatype:
   assembly_reference
   = AssemblyLocal ast_id sol_type
   | AssemblySlot ast_id
   | AssemblyOffset ast_id
+  | AssemblyConstant core_atom sol_type
 End
 
 (* Explicitly separate scalar writes, reference binding, and content copying.
@@ -252,10 +261,13 @@ End
  * payable. Creation runs the creation procedure on the constructor's
  * arguments, given with whether it accepts value. The immutables are all the
  * contract's immutables, unread ones included, with their types: creation
- * reserves a memory word for each. *)
+ * reserves a memory word for each. The unsupported procedures are those of
+ * functions the frontend could not model: they have no procedure, so the
+ * dispatch entries naming them refuse, and no procedure can call them. *)
 Datatype:
   core_program = <|
     procedures : core_procedure list;
+    unsupported_procedures : ast_id list;
     state_variables : core_state_variable list;
     immutables : (ast_id # sol_type) list;
     struct_layouts : core_struct_layout list;

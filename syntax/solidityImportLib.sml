@@ -57,6 +57,7 @@ fun mk_opt ty NONE = optionSyntax.mk_none ty
 
 fun import_type name = mk_thy_type {Thy = "solidityImport", Tyop = name, Args = []}
 val expr_ty = import_type "src_expr"
+val type_name_ty = import_type "src_type_name"
 val stmt_ty = import_type "src_stmt"
 val variable_ty = import_type "src_variable"
 val function_ty = import_type "src_function"
@@ -627,8 +628,20 @@ fun expr v = within v (fn v =>
           type_id v])
   | "FunctionCall" =>
       let
-        val args = JSONUtil.arrayMap expr (field v "arguments")
         val callee = field v "expression"
+        val abi_member =
+          node_type callee = "MemberAccess" andalso
+          node_type (field callee "expression") = "Identifier" andalso
+          int_field (field callee "expression") "referencedDeclaration" = ~1
+        val abi_decode = abi_member andalso string_field callee "memberName" = "decode"
+        (* abi.decode's second argument names types, which abi_decode reads;
+         * abi.encodeCall reads its arguments itself *)
+        val args =
+          case (abi_decode, JSONUtil.arrayMap I (field v "arguments")) of
+            (true, data :: _) => [expr data]
+          | (_, raw) =>
+              if abi_member andalso string_field callee "memberName" = "encodeCall" then []
+              else map expr raw
         val no_names = null (JSONUtil.arrayMap I (field v "names"))
         fun positional () = require v no_names "named arguments are not supported here"
       in
@@ -643,6 +656,26 @@ fun expr v = within v (fn v =>
               (positional ();
                require v (length args = 1) "keccak256 takes one argument";
                con "SrcKeccak256" [info v, info callee, hd args, type_id v])
+            else if node_type callee = "Identifier" andalso
+               int_field callee "referencedDeclaration" = ~6 then
+              (positional ();
+               require v (length args = 4) "ecrecover takes four arguments";
+               con "SrcEcrecover"
+                 [info v, info callee, listSyntax.mk_list (args, expr_ty), type_id v])
+            else if abi_decode then
+              (positional (); abi_decode_call v callee args)
+            else if node_type callee = "Identifier" andalso
+               (int_field callee "referencedDeclaration" = ~2 orelse
+                int_field callee "referencedDeclaration" = ~16) then
+              (positional ();
+               require v (length args = 3) "addmod and mulmod take three arguments";
+               con "SrcModular"
+                 [info v, info callee,
+                  prim_mk_const
+                    {Thy = "solidityCore",
+                     Name = if int_field callee "referencedDeclaration" = ~2
+                            then "AddModOp" else "MulModOp"},
+                  listSyntax.mk_list (args, expr_ty), type_id v])
             else if is_concat "bytes" callee orelse is_concat "string" callee then
               (* bytes.concat is abi.encodePacked; string.concat is too, as a string *)
               (positional ();
@@ -650,9 +683,7 @@ fun expr v = within v (fn v =>
                  [info v, info callee,
                   con (if is_concat "string" callee then "AbiStringConcat" else "AbiPacked") [],
                   listSyntax.mk_list (args, expr_ty), type_id v])
-            else if node_type callee = "MemberAccess" andalso
-               node_type (field callee "expression") = "Identifier" andalso
-               int_field (field callee "expression") "referencedDeclaration" = ~1 then
+            else if abi_member then
               (positional (); abi_encode v callee args)
             else if node_type callee = "Identifier" andalso
                int_field callee "referencedDeclaration" < 0 then
@@ -745,6 +776,7 @@ fun expr v = within v (fn v =>
  * abi.encodeWithSignature of a literal signature; the signature's bytes are
  * taken from the literal, which is not kept as an argument. *)
 and abi_encode v callee args =
+  if string_field callee "memberName" = "encodeCall" then abi_encode_call v callee else
   let
     val form =
       case string_field callee "memberName" of
@@ -767,6 +799,80 @@ and abi_encode v callee args =
   in
     con "SrcAbiEncode"
       [info v, info callee, form, listSyntax.mk_list (args, expr_ty), type_id v]
+  end
+
+(* abi.decode(data, (T1, ..., Tk)) of elementary types; the parenthesised
+ * types are a tuple expression even for one type. *)
+and abi_decode_call v callee args =
+  let
+    val components =
+      case JSONUtil.arrayMap I (field v "arguments") of
+        [_, types] =>
+          if node_type types = "TupleExpression" andalso
+             not (bool_field types "isInlineArray")
+          then JSONUtil.arrayMap I (field types "components")
+          else [types]
+      | _ => fail (describe v ^ ": abi.decode takes data and a list of types")
+    fun decoded_type c =
+      (require v (case c of
+                    JSON.NULL => false
+                  | _ => node_type c = "ElementaryTypeNameExpression")
+         "abi.decode of a non-elementary type is not supported";
+       type_name (field c "typeName"))
+  in
+    con "SrcAbiDecode"
+      [info v, info callee, hd args,
+       listSyntax.mk_list (map decoded_type components, type_name_ty), type_id v]
+  end
+
+(* abi.encodeCall(f, (a, b)): f's selector, then the arguments, which the
+ * elaborator converts to the types of f's parameters, given by their type
+ * identifiers. A single argument may stand without parentheses. f's receiver
+ * is one the compiler does not evaluate, or a variable other than a
+ * constant, whose read has no effect and is left out (a constant's
+ * initializer is evaluated, and may fail). *)
+and abi_encode_call v callee =
+  let
+    val (f, values) =
+      case JSONUtil.arrayMap I (field v "arguments") of
+        [f, values] => (f, values)
+      | _ => fail (describe v ^ ": encodeCall takes a function and its arguments")
+    val () = require v (node_type f = "MemberAccess") "abi.encodeCall of an unnamed function"
+    val receiver = field f "expression"
+    val () =
+      require v (unevaluated_receiver receiver orelse
+                 (node_type receiver = "Identifier" andalso
+                  int_field receiver "referencedDeclaration" > 0))
+        "abi.encodeCall through a computed receiver is not supported"
+    val () =
+      require v (unevaluated_receiver receiver orelse
+                 (case List.find (fn (i, _) => i = int_field receiver "referencedDeclaration")
+                                 (!selector_declarations) of
+                    SOME (_, rdecl) => not (bool_field rdecl "constant")
+                  | NONE => true))
+        "abi.encodeCall through a constant receiver is not supported"
+    val d =
+      case optional_field f "referencedDeclaration" of
+        SOME id =>
+          (case List.find (fn (i, _) => i = JSONUtil.asIntInf id) (!selector_declarations) of
+             SOME (_, d) => d
+           | NONE => fail (describe v ^ ": encodeCall of a function outside the compilation"))
+      | NONE => fail (describe v ^ ": unsupported encodeCall function")
+    val () = require v (node_type d = "FunctionDefinition") "abi.encodeCall of a getter is not supported"
+    val selector =
+      con "SrcSelector" [info f, mk_bytes d (string_field d "functionSelector"), mk_str "t_bytes4"]
+    val arguments =
+      if node_type values = "TupleExpression" andalso not (bool_field values "isInlineArray")
+      then JSONUtil.arrayMap I (field values "components")
+      else [values]
+    val parameters = JSONUtil.arrayMap I (field (field d "parameters") "parameters")
+    val () = require v (length arguments = length parameters)
+               "abi.encodeCall takes one argument per parameter"
+  in
+    con "SrcAbiEncode"
+      [info v, info callee,
+       con "AbiCall" [listSyntax.mk_list (map type_id parameters, stringSyntax.string_ty)],
+       listSyntax.mk_list (selector :: map expr arguments, expr_ty), type_id v]
   end
 
 (* c.f{value: v}(args), with c of a contract type. *)
@@ -1007,31 +1113,60 @@ fun overridden v =
     close (direct v)
   end
 
+(* The modifiers whose bodies failed to import, with the reason, which
+ * makes a function invoking one unsupported. *)
+val failed_modifiers : (IntInf.int * string) list ref = ref []
+
+(* A function whose modifier invocations or body fail to import is
+ * unsupported, with the error as its reason: it keeps its header, so that
+ * calls, overrides and super calls resolve to it, with no modifiers and an
+ * empty body. Its header failing still fails the import. *)
 fun function v = within v (fn v =>
   let
     val () = super_calls := []
     val (params_id, params) = parameter_list (field v "parameters")
     val (returns_id, returns) = parameter_list (field v "returnParameters")
-    val () = in_function := true
-    (* the modifier invocations; base constructor arguments are imported
-     * with the contract *)
-    val modifiers =
-      List.mapPartial (fn m => within m (fn m =>
-        if string_field m "kind" = "baseConstructorSpecifier" then NONE
-        else
-          (require m (string_field m "kind" = "modifierInvocation")
-             ("unsupported modifier invocation kind " ^ string_field m "kind");
-           SOME (pairSyntax.mk_pair
-             (mk_num (int_field (field m "modifierName") "referencedDeclaration"),
-              listSyntax.mk_list
-                (case optional_field m "arguments" of
-                   SOME args => JSONUtil.arrayMap expr args
-                 | NONE => [],
-                 expr_ty))))))
-      (JSONUtil.arrayMap I (field v "modifiers"))
+    val invocations = JSONUtil.arrayMap I (field v "modifiers")
+    fun failed_invocation m =
+      case optional_field m "kind" of
+        SOME (JSON.STRING "modifierInvocation") =>
+          List.find (fn (i, _) =>
+                       i = int_field (field m "modifierName") "referencedDeclaration")
+            (!failed_modifiers)
+      | _ => NONE
+    fun import_body () =
+      let
+        val () = in_function := true
+        (* the modifier invocations; base constructor arguments are imported
+         * with the contract *)
+        val modifiers =
+          List.mapPartial (fn m => within m (fn m =>
+            if string_field m "kind" = "baseConstructorSpecifier" then NONE
+            else
+              (require m (string_field m "kind" = "modifierInvocation")
+                 ("unsupported modifier invocation kind " ^ string_field m "kind");
+               SOME (pairSyntax.mk_pair
+                 (mk_num (int_field (field m "modifierName") "referencedDeclaration"),
+                  listSyntax.mk_list
+                    (case optional_field m "arguments" of
+                       SOME args => JSONUtil.arrayMap expr args
+                     | NONE => [],
+                     expr_ty))))))
+          invocations
+        val body = stmt (field v "body")
+        val () = in_function := false
+      in
+        (modifiers, body, NONE)
+      end
       handle e => (in_function := false; raise e)
-    val body = stmt (field v "body") handle e => (in_function := false; raise e)
-    val () = in_function := false
+    fun unsupported reason =
+      (super_calls := [];
+       ([], con "SrcBlock" [info (field v "body"), listSyntax.mk_nil stmt_ty],
+        SOME reason))
+    val (modifiers, body, reason) =
+      case List.mapPartial failed_invocation invocations of
+        (_, r) :: _ => unsupported r
+      | [] => import_body () handle ImportError r => unsupported r
     val supers = !super_calls
   in
     expect v "FunctionDefinition";
@@ -1056,24 +1191,34 @@ fun function v = within v (fn v =>
           (modifiers, pairSyntax.mk_prod
                         (numSyntax.num, listSyntax.mk_list_type expr_ty))),
        ("fn_super_calls", listSyntax.mk_list (map mk_num supers, numSyntax.num)),
-       ("fn_body", body)]
+       ("fn_body", body),
+       ("fn_unsupported", mk_opt stringSyntax.string_ty (Option.map mk_str reason))]
   end)
 
 (* A modifier invocation runs the modifier it names, so one that could be
- * overridden is not supported. *)
+ * overridden is not supported. A modifier whose body fails to import keeps
+ * its header with an empty body and is recorded in failed_modifiers, which
+ * makes the functions invoking it unsupported; its parameters and the
+ * virtual check reject the unit, like a function's header. *)
 fun modifier v = within v (fn v =>
   let
     val (params_id, params) = parameter_list (field v "parameters")
+    val () = expect v "ModifierDefinition"
+    val () = require v (not (bool_field v "virtual") andalso
+                        not (isSome (optional_field v "overrides")))
+               "virtual modifiers are not supported"
+    val body =
+      stmt (field v "body")
+      handle ImportError reason =>
+        (failed_modifiers := !failed_modifiers @ [(int_field v "id", reason)];
+         con "SrcBlock" [info (field v "body"), listSyntax.mk_nil stmt_ty])
   in
-    expect v "ModifierDefinition";
-    require v (not (bool_field v "virtual") andalso
-               not (isSome (optional_field v "overrides")))
-      "virtual modifiers are not supported";
     record "src_modifier"
       [("modifier_info", info v), ("modifier_parameters_id", params_id),
-       ("modifier_parameters", params),
-       ("modifier_body", stmt (field v "body"))]
+       ("modifier_parameters", params), ("modifier_body", body)]
   end)
+
+fun modifiers ms = (failed_modifiers := []; map modifier ms)
 
 fun event v = within v (fn v =>
   (expect v "EventDefinition";
@@ -1141,6 +1286,8 @@ fun references (v as JSON.OBJECT fields) =
       if is_selector v then [] else
       List.concat
         (map (fn ("referencedDeclaration", JSON.INT i) => [i]
+               (* an inline assembly block's reference *)
+               | ("declaration", JSON.INT i) => [i]
                | (_, w) => references w) fields)
   | references (JSON.ARRAY vs) = List.concat (map references vs)
   | references _ = []
@@ -1383,6 +1530,11 @@ fun contract external_structs contracts declared v = within v (fn v =>
                    | NONE => NONE)
           (JSONUtil.arrayMap JSONUtil.asIntInf (field x "linearizedBaseContracts"))
       end
+    (* before the functions, which need the modifiers that failed *)
+    val imported_modifiers =
+      modifiers (members_of "ModifierDefinition" bases @
+                 List.filter (fn m => node_type m = "ModifierDefinition")
+                   used_members)
   in
     expect v "ContractDefinition";
     record "src_contract"
@@ -1430,10 +1582,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
        ("contract_events", listSyntax.mk_list
           (map event (members_of "EventDefinition" bases), event_ty)),
        ("contract_modifiers", listSyntax.mk_list
-          (map modifier (members_of "ModifierDefinition" bases @
-                         List.filter (fn m => node_type m = "ModifierDefinition")
-                           used_members),
-           import_type "src_modifier")),
+          (imported_modifiers, import_type "src_modifier")),
        ("contract_functions",
         listSyntax.mk_list
           (map function
