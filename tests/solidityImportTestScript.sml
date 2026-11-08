@@ -563,10 +563,13 @@ val array_contracts = artifact_part array_fixture ["contracts", array_source]
 
 (* A null index is a valid array type expression, not malformed compiler JSON. *)
 val () =
-  if isSome (import_rejection []
-       (edit_first "IndexAccess" (set_field "indexExpression" JSON.NULL) array_ast)
-       array_contracts)
-  then () else raise Fail "array type expression imported";
+  case import_rejection []
+         (edit_first "IndexAccess" (set_field "indexExpression" JSON.NULL) array_ast)
+         array_contracts of
+    NONE => raise Fail "array type expression imported"
+  | SOME (Malformed, msg) =>
+      raise Fail ("array type expression: malformed input: " ^ msg)
+  | SOME _ => ();
 
 Definition array_unit_def:
   array_unit = ^(import_artifact array_fixture array_source)
