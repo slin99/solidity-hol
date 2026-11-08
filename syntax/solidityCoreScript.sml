@@ -119,7 +119,8 @@ End
  * arguments as those ABI types, after the four bytes of the selector if any,
  * as a new memory bytes. AbiEncodePackedOperation types arguments:
  * abi.encodePacked(arguments), each value in its own width and each byte
- * sequence as its contents, as a new memory bytes.
+ * sequence as its contents, as a new memory bytes, or as a new memory string
+ * (string.concat) when the result is defined as one.
  * ExternalCallOperation kind selector parameter_types return_types target
  * value arguments: a high-level call I(target).f{value: value}(arguments) of
  * the function with that selector and those ABI types.
@@ -143,12 +144,18 @@ Datatype:
   | ArrayLengthOperation core_atom
   | Keccak256Operation core_atom
   | EcrecoverOperation core_atom core_atom core_atom core_atom
+  (* The addressed account's code size, without a memory bytes allocation. *)
+  | CodeLengthOperation core_atom
   | AbiEncodeOperation (core_atom option) (sol_type list) (core_atom list)
   | AbiEncodePackedOperation (sol_type list) (core_atom list)
   | ArrayPushOperation core_atom (core_atom option)
   | ArrayPopOperation core_atom
   | InternalCallOperation ast_id (core_atom list)
   | ExternalCallOperation external_kind (byte list) (sol_type list)
+      (sol_type list) core_atom core_atom (core_atom list)
+  (* success flag, scalar returns, raw failure bytes; only a failed EVM call
+   * is caught. Operand and return-decoding failures still propagate. *)
+  | TryExternalCallOperation external_kind (byte list) (sol_type list)
       (sol_type list) core_atom core_atom (core_atom list)
   | EnvironmentOperation environment_field
 End

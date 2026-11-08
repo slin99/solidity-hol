@@ -6,6 +6,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+import run_differential
+import differential_theories
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -15,6 +18,8 @@ def main() -> None:
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     solc = str(args.solc.resolve())
+    corpus = run_differential.load_corpus(root / run_differential.CORPUS)
+    differential_theories.refresh_rollup(root, corpus)
     subprocess.run([
         sys.executable, "tools/semantic_tests_coverage.py", str(args.solidity.resolve()),
         "--solc", solc, "-j", str(args.jobs),

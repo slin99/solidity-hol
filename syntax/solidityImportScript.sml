@@ -172,10 +172,12 @@ End
 
 (* abi.encode, abi.encodePacked, abi.encodeWithSelector (the selector is the
  * first argument) and abi.encodeWithSignature (of the bytes of a literal
- * signature, which is not among the arguments).
+ * signature, which is not among the arguments). bytes.concat is
+ * abi.encodePacked, and string.concat (AbiStringConcat) is too, as a string.
  *)
 Datatype:
   abi_form = AbiPlain | AbiPacked | AbiWithSelector | AbiWithSignature (byte list)
+           | AbiStringConcat
 End
 
 Datatype:
@@ -202,6 +204,7 @@ Datatype:
   | SrcNew node_info src_type_name src_expr string
   | SrcEnumValue node_info src_type_name num string
   | SrcKeccak256 node_info node_info src_expr string
+  | SrcAddressCodeLength node_info node_info src_expr string
   | SrcSelector node_info (byte list) string
   | SrcEcrecover node_info node_info (src_expr list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
@@ -229,6 +232,8 @@ Datatype:
   | SrcVariableDeclarationStatement node_info (num option list)
       (src_variable option list) (src_expr option)
   | SrcIfStatement node_info src_expr src_stmt (src_stmt option)
+  | SrcTryStatement node_info src_expr
+      node_info (src_variable list) src_stmt node_info src_variable src_stmt
   | SrcWhileStatement node_info src_expr src_stmt
   | SrcDoWhileStatement node_info src_stmt src_expr
   | SrcForStatement node_info (src_stmt option) (src_expr option)
@@ -911,6 +916,8 @@ Definition expr_ids_def:
   (expr_ids (SrcEnumValue info tn _ _) = info.node_id :: type_name_ids tn) ∧
   (expr_ids (SrcKeccak256 info callee e _) =
     info.node_id :: callee.node_id :: expr_ids e) ∧
+  (expr_ids (SrcAddressCodeLength info member e _) =
+    info.node_id :: member.node_id :: expr_ids e) ∧
   (expr_ids (SrcSelector info _ _) = [info.node_id]) ∧
   (expr_ids (SrcEcrecover info callee args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
@@ -946,6 +953,10 @@ Definition stmt_ids_def:
     info.node_id :: declarations_ids decls ++ option_expr_ids init) ∧
   (stmt_ids (SrcIfStatement info c t e) =
     info.node_id :: expr_ids c ++ stmt_ids t ++ option_stmt_ids e) ∧
+  (stmt_ids (SrcTryStatement info call ok ps body err reason handler) =
+    [info.node_id; ok.node_id; err.node_id] ++ expr_ids call ++
+    FLAT (MAP variable_ids ps) ++ variable_ids reason ++
+    stmt_ids body ++ stmt_ids handler) ∧
   (stmt_ids (SrcWhileStatement info c body) =
     info.node_id :: expr_ids c ++ stmt_ids body) ∧
   (stmt_ids (SrcDoWhileStatement info body c) =
@@ -1160,6 +1171,11 @@ Definition check_expr_def:
             | _ => F)
         then SOME (SrcType element) else NONE
     | _ => NONE) ∧
+  (check_expr env (SrcAddressCodeLength _ _ e tid) =
+    case check_expr env e of
+      SOME (SrcType (AddressT _)) =>
+        if tid = "t_uint256" then SOME (SrcType (UintT 256)) else NONE
+    | _ => NONE) ∧
   (check_expr env (SrcArrayLength _ root_expr tid) =
     case check_expr env root_expr of
       SOME (SrcType BytesT) =>
@@ -1333,19 +1349,22 @@ Definition check_expr_def:
            source_type_matches (LocatedT MemoryLoc ty) tid
         then SOME (SrcType (LocatedT MemoryLoc ty)) else NONE
     | _ => NONE) ∧
-  (* abi.encode* to memory bytes; a selector given as an argument is a bytes4,
-     and the other arguments are scalars or byte sequences (integer literals
-     only unpacked, as the compiler requires). *)
+  (* abi.encode* to memory bytes, or string.concat to a memory string; a
+     selector given as an argument is a bytes4, and the other arguments are
+     scalars or byte sequences (integer literals only unpacked, as the
+     compiler requires). *)
   (check_expr env (SrcAbiEncode _ _ form args tid) =
-    if source_type_matches (LocatedT MemoryLoc BytesT) tid ∧
+    let ty = LocatedT MemoryLoc (if form = AbiStringConcat then StringT else BytesT) in
+    if source_type_matches ty tid ∧
        (case (form, args) of
           (AbiWithSelector, s :: rest) =>
             check_expr env s = SOME (SrcType (FixedBytesT 4)) ∧
             check_abi_args env F rest
         | (AbiWithSelector, []) => F
         | (AbiPacked, _) => check_abi_args env T args
+        | (AbiStringConcat, _) => check_abi_args env T args
         | _ => check_abi_args env F args)
-    then SOME (SrcType (LocatedT MemoryLoc BytesT)) else NONE) ∧
+    then SOME (SrcType ty) else NONE) ∧
   (* ecrecover(hash, v, r, s): its arguments convert to bytes32, uint8, bytes32
      and bytes32 as an internal call's do, in elaboration. *)
   (check_expr env (SrcEcrecover _ _ args tid) =
@@ -1440,6 +1459,17 @@ Definition check_assembly_reference_def:
     IS_SOME (ALOOKUP env.locations x))
 End
 
+(* A parameter, return variable, state variable, or catch binding declared by
+ * the node scope. *)
+Definition scoped_variable_def:
+  scoped_variable scope (v : src_variable) =
+    if v.var_scope = scope then
+      case variable_type v of
+        SOME ty => SOME (v.var_info.node_id, ty)
+      | NONE => NONE
+    else NONE
+End
+
 Definition check_stmts_def:
   (check_stmts env [] = SOME env) ∧
   (check_stmts env (s :: ss) =
@@ -1451,6 +1481,17 @@ Definition check_stmts_def:
     IS_SOME (check_stmts (env with scope := info.node_id) ss)) ∧
   (check_stmt env (SrcUncheckedBlock info ss) ⇔
     IS_SOME (check_stmts (env with scope := info.node_id) ss)) ∧
+  (check_stmt env (SrcTryStatement _ call ok ps body err reason handler) ⇔
+    case (call, all_some (MAP (scoped_variable ok.node_id) ps),
+          scoped_variable err.node_id reason) of
+      (SrcExternalCall _ callee _ _ _ _, SOME locals,
+       SOME (x, LocatedT MemoryLoc BytesT)) =>
+        IS_SOME (check_expr env call) ∧ EVERY (is_stored_scalar_type o SND) locals ∧
+        all_some (MAP variable_type callee.ext_returns) = SOME (MAP SND locals) ∧
+        check_stmt (env with variables := locals ++ env.variables) body ∧
+        check_stmt (env with variables :=
+          (x, LocatedT MemoryLoc BytesT) :: env.variables) handler
+    | _ => F) ∧
   (check_stmt env (SrcExpressionStatement _ e) ⇔
     IS_SOME (check_expr env e)) ∧
   (check_stmt env (SrcVariableDeclarationStatement _ _ _ _) ⇔ F) ∧
@@ -1498,18 +1539,6 @@ Termination
                  INL (env, ss) => list_size src_stmt_size ss
                | INR (env, s) => src_stmt_size s)’ >>
   rw[fetch "-" "src_stmt_size_def", listTheory.list_size_def]
-End
-
-(* A variable declared by the node scope: a parameter or return variable of a
- * function, or a state variable of a contract.
- *)
-Definition scoped_variable_def:
-  scoped_variable scope (v : src_variable) =
-    if v.var_scope = scope then
-      case variable_type v of
-        SOME ty => SOME (v.var_info.node_id, ty)
-      | NONE => NONE
-    else NONE
 End
 
 (* A state variable, declared by one of the contract's bases. *)
@@ -1969,6 +1998,8 @@ val () = cv_auto_trans declaration_env_def;
 val () = cv_auto_trans check_condition_def;
 val () = cv_auto_trans check_assembly_reference_def;
 
+val () = cv_auto_trans scoped_variable_def;
+
 val check_stmts_pre_def = cv_auto_trans_pre_rec
   "check_stmts_pre check_stmt_pre" check_stmts_def (
   WF_REL_TAC ‘measure (λx. case x of
@@ -1988,7 +2019,6 @@ Proof
   Cases_on ‘env'’ >> gvs[fetch "-" "import_env_fn_updates"]
 QED
 
-val () = cv_auto_trans scoped_variable_def;
 val () = cv_auto_trans state_variable_def;
 val () = cv_auto_trans constant_variable_def;
 val () = cv_auto_trans constant_table_def;
