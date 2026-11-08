@@ -153,6 +153,7 @@ Datatype:
   | SrcSelector node_info (byte list) string
   | SrcEcrecover node_info node_info (src_expr list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
+  | SrcAbiDecode node_info node_info src_expr (src_type_name list) string
 End
 
 (* VariableDeclarationStatement: assignments, declarations (NONE for a hole),
@@ -813,6 +814,13 @@ Definition call_value_type_def:
   (call_value_type tys = SrcTupleType tys)
 End
 
+(* The type abi.decode gives a value it decodes as this type: the compiler
+ * types a decoded address as address payable. *)
+Definition decoded_type_def:
+  (decoded_type (AddressT _) = AddressT PayableAddress) ∧
+  (decoded_type ty = ty)
+End
+
 (* Ids *)
 
 Definition type_name_ids_def:
@@ -875,6 +883,8 @@ Definition expr_ids_def:
     info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcAbiEncode info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
+  (expr_ids (SrcAbiDecode info callee e tns _) =
+    info.node_id :: callee.node_id :: expr_ids e ++ FLAT (MAP type_name_ids tns)) ∧
   (expr_ids (SrcExternalCall info _ _ operands _ _) =
     info.node_id :: exprs_ids operands) ∧
   (expr_ids (SrcNew info tn e _) =
@@ -1423,6 +1433,7 @@ val () = cv_auto_trans call_variable_type_def;
 val () = cv_auto_trans event_variable_type_def;
 val () = cv_auto_trans field_variable_type_def;
 val () = cv_auto_trans call_value_type_def;
+val () = cv_auto_trans decoded_type_def;
 val () = cv_auto_trans_rec expr_ids_def (
   WF_REL_TAC ‘measure (λx. case x of
                  INL e => cv_size e
