@@ -746,7 +746,8 @@ Definition wf_core_operation_def:
     LIST_REL (wf_abi_atom env ctx) tys args) ∧
   (* A byte sequence argument is encoded where it is, in any location. *)
   (wf_core_operation env ctx annotation (AbiEncodePackedOperation tys args) ⇔
-    annotation = SingleType (LocatedT MemoryLoc BytesT) ∧
+    (annotation = SingleType (LocatedT MemoryLoc BytesT) ∨
+     annotation = SingleType (LocatedT MemoryLoc StringT)) ∧
     EVERY (λty. is_stored_scalar_type ty ∨
                 case ty of
                   LocatedT MemoryLoc element => byte_sequence_type element
@@ -805,6 +806,17 @@ Definition wf_core_operation_def:
     (kind = ExternalStaticCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
     LIST_REL (wf_abi_atom env ctx) params args ∧
     annotation = call_result_type rets) ∧
+  (wf_core_operation env ctx annotation
+     (TryExternalCallOperation kind selector params rets target value args) ⇔
+    kind ≠ ExternalDelegateCall ∧ LENGTH selector = 4 ∧
+    EVERY (λty. abi_value_type ty ∧ valid_type_shape ty) params ∧
+    EVERY (λty. is_stored_scalar_type ty ∧ valid_type_shape ty) rets ∧
+    wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
+    wf_core_atom env ctx (SingleType (UintT 256)) value ∧
+    (kind = ExternalStaticCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
+    LIST_REL (wf_abi_atom env ctx) params args ∧
+    annotation = ProductType
+      (MAP SingleType (BoolT :: rets ++ [LocatedT MemoryLoc BytesT]))) ∧
   (wf_core_operation env ctx annotation _ ⇔ F)
 End
 

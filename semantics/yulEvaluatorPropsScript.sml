@@ -684,3 +684,26 @@ Proof
   gvs [yul_take_shape_id, yul_machine_scopes_update_eq]
 QED
 
+
+(* A memory write changes only the memory, whatever the bytes written.  Its
+ * clauses recurse on the list, so a write of bytes the evaluator cannot list
+ * -- the output a call returned, `TAKE n outcome.call_return` -- stays folded,
+ * and these read the other fields through it. *)
+Theorem yul_memory_write_fields:
+  ∀bs m off.
+    (yul_memory_write m off bs).accounts = m.accounts ∧
+    (yul_memory_write m off bs).transient = m.transient ∧
+    (yul_memory_write m off bs).logs = m.logs ∧
+    (yul_memory_write m off bs).self_address = m.self_address ∧
+    (yul_memory_write m off bs).caller_address = m.caller_address ∧
+    (yul_memory_write m off bs).call_value = m.call_value ∧
+    (yul_memory_write m off bs).call_data = m.call_data ∧
+    (yul_memory_write m off bs).return_data = m.return_data ∧
+    (yul_memory_write m off bs).immutables = m.immutables ∧
+    (yul_memory_write m off bs).memory_size = m.memory_size ∧
+    (yul_memory_write m off bs).gas_limit = m.gas_limit ∧
+    (yul_memory_write m off bs).scopes = m.scopes ∧
+    (yul_memory_write m off bs).transaction_parameters = m.transaction_parameters
+Proof
+  Induct >> simp [yul_memory_write_def]
+QED

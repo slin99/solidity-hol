@@ -289,6 +289,12 @@ fun is_external_call callee =
   String.isPrefix "t_function_external_"
     (string_field (field callee "typeDescriptions") "typeIdentifier")
 
+(* bytes.concat or string.concat, as a callee: kind is "bytes" or "string". *)
+fun is_concat kind callee =
+  node_type callee = "MemberAccess" andalso
+  String.isPrefix ("t_function_" ^ kind ^ "concat_")
+    (string_field (field callee "typeDescriptions") "typeIdentifier")
+
 (* The compiler reads address.code.length directly, without allocating bytes. *)
 fun is_address_code v =
   node_type v = "MemberAccess" andalso
@@ -637,6 +643,13 @@ fun expr v = within v (fn v =>
               (positional ();
                require v (length args = 1) "keccak256 takes one argument";
                con "SrcKeccak256" [info v, info callee, hd args, type_id v])
+            else if is_concat "bytes" callee orelse is_concat "string" callee then
+              (* bytes.concat is abi.encodePacked; string.concat is too, as a string *)
+              (positional ();
+               con "SrcAbiEncode"
+                 [info v, info callee,
+                  con (if is_concat "string" callee then "AbiStringConcat" else "AbiPacked") [],
+                  listSyntax.mk_list (args, expr_ty), type_id v])
             else if node_type callee = "MemberAccess" andalso
                node_type (field callee "expression") = "Identifier" andalso
                int_field (field callee "expression") "referencedDeclaration" = ~1 then
@@ -901,6 +914,34 @@ fun stmt v = within v (fn v =>
          optional_expr v "condition", optional_stmt v "loopExpression",
          stmt (field v "body")]
   | "InlineAssembly" => inline_assembly v
+  | "TryStatement" =>
+      let
+        val call = field v "externalCall"
+        val () = require call
+          (node_type call = "FunctionCall" andalso
+           string_field call "kind" = "functionCall" andalso bool_field call "tryCall")
+          "try supports only external function calls"
+        val (ok, err) = case JSONUtil.arrayMap I (field v "clauses") of
+          [ok, err] => (ok, err)
+        | _ => fail (describe v ^ ": try requires one catch(bytes memory) clause")
+        val () = require v
+          (string_field ok "errorName" = "" andalso string_field err "errorName" = "")
+          "typed catch clauses are not supported"
+        val reason = case optional_field err "parameters" of
+          SOME ps => (case JSONUtil.arrayMap variable (field ps "parameters") of
+                        [p] => p
+                      | _ => fail (describe err ^ ": catch requires one bytes parameter"))
+        | NONE => fail (describe err ^ ": catch requires one bytes parameter")
+        val imported = external_call call (field call "expression")
+          (JSONUtil.arrayMap expr (field call "arguments"))
+        val parameters = case optional_field ok "parameters" of
+          SOME ps => #2 (parameter_list ps)
+        | NONE => listSyntax.mk_list ([], variable_ty)
+      in
+        con "SrcTryStatement"
+          [info v, imported, info ok, parameters,
+           stmt (field ok "block"), info err, reason, stmt (field err "block")]
+      end
   | "Break" => con "SrcBreak" [info v]
   | "Continue" => con "SrcContinue" [info v]
   | "Return" =>
