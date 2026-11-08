@@ -113,11 +113,12 @@ class ReportTests(unittest.TestCase):
         self.assertEqual(ranking["inline assembly"]["only_blocker"], 0)
         self.assertEqual(report.greedy_order(5), [("array slices", 1), ("inline assembly", 2)])
 
-    def test_function_reasons_count_each_line(self) -> None:
+    def test_function_reasons_count_each_reason_once_per_function(self) -> None:
         admitted = coverage.classify("t.sol", {
             "status": "partially-admitted", "functions": 3,
             "unsupported": ["IndexRangeAccess 4: unsupported expression IndexRangeAccess\n"
-                            "8: unsupported member access", "calls an unsupported function"]})
+                            "8: unsupported member access\n9: unsupported member access",
+                            "calls an unsupported function"]})
         report = coverage.Report("pin", "profile", [admitted])
         self.assertEqual(report.function_reasons(), {
             "IndexRangeAccess: unsupported expression IndexRangeAccess": 1,

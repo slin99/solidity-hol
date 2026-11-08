@@ -376,10 +376,10 @@ class Report:
         return Counter(r.category for r in self.results)
 
     def function_reasons(self) -> Counter[str]:
-        """The reasons functions of admitted units are unsupported, one per
-        blocker line, without node ids."""
-        return Counter(reason(line) for r in self.results
-                       for unsupported in r.unsupported for line in unsupported.splitlines())
+        """The reasons functions of admitted units are unsupported, without
+        node ids, each counted once per function."""
+        return Counter(line for r in self.results for unsupported in r.unsupported
+                       for line in {reason(line) for line in unsupported.splitlines()})
 
     def rejected(self) -> list[Classification]:
         return [r for r in self.results if r.category in (IMPORT_REJECTED, ELABORATION_REJECTED, SOURCE_REJECTED)]
