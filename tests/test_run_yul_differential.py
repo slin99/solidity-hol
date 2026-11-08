@@ -84,8 +84,8 @@ class FakeRoot:
         path.chmod(0o755)
         return path
 
-    def holbuild(self, results: list[dict], status: int) -> Path:
-        """A holbuild that writes the given result lines to its child log."""
+    def holbuild(self, results: list[dict], status: int, *, cached: bool = False) -> Path:
+        """Write declared verdict outputs on success and diagnostic logs on failure."""
         path = self.root / "holbuild"
         path.write_text(textwrap.dedent(f"""\
             #!{sys.executable}
@@ -101,17 +101,25 @@ class FakeRoot:
                 log.parent.mkdir(parents=True, exist_ok=True)
                 log.write_text(''.join({driver.RESULT_PREFIX!r} + json.dumps(r) + '\\n'
                                       for r in results if r.get('suite') == suite))
-                print('child log: ' + str(log.resolve()))
+                if {status} == 0:
+                    output = Path('tests/yul-generated') / (target.removesuffix('Theory') + '.results.jsonl')
+                    output.write_text(log.read_text())
+                if {cached!r}:
+                    log.unlink()
+                    print(target + ' restored from cache')
+                else:
+                    print('child log: ' + str(log.resolve()))
             sys.exit({status})
             """), encoding="utf-8")
         path.chmod(0o755)
         return path
 
-    def run(self, results: list[dict], status: int = 0) -> tuple[int, dict]:
+    def run(self, results: list[dict], status: int = 0, *, cached: bool = False) -> tuple[int, dict]:
         report_dir = self.root / "report"
         with contextlib.redirect_stdout(io.StringIO()):
             exit_status = driver.main(
-                ["--solc", str(self.fake_solc()), "--holbuild", str(self.holbuild(results, status)),
+                ["--solc", str(self.fake_solc()), "--holbuild",
+                 str(self.holbuild(results, status, cached=cached)),
                  "--report-dir", str(report_dir)],
                 root=self.root)
         report = json.loads((report_dir / "yul-differential.json").read_text(encoding="utf-8"))
@@ -145,10 +153,15 @@ def all_agree() -> list[dict]:
 
 
 class DriverTests(unittest.TestCase):
+    def test_cache_is_default_and_force_is_explicit(self) -> None:
+        self.assertFalse(driver.parse_args(["--solc", "solc"]).force)
+        self.assertTrue(driver.parse_args(["--solc", "solc", "--force"]).force)
+
     def test_agreement_passes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             status, report = FakeRoot(Path(temporary)).run(all_agree())
         self.assertEqual(status, 0)
+        self.assertNotIn("--force=theory", report["hol"]["command"])
         self.assertEqual(report["failures"], [])
         self.assertEqual(report["totals"], {"stages_admitted": 3, "stages_expected": 3,
                                             "cases_run": 3, "cases_expected": 3,
@@ -156,6 +169,24 @@ class DriverTests(unittest.TestCase):
         self.assertEqual([w["theorem"] for w in report["kernel_checked"]],
                          ["yul_a_f_returns_ir", "yul_a_f_returns_ir_optimized",
                           "yul_a_f_returns_optimized"])
+
+    def test_cached_verdicts_keep_outcomes_and_stage_admissions_without_logs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            status, report = FakeRoot(Path(temporary)).run(all_agree(), cached=True)
+        self.assertEqual(status, 0)
+        self.assertEqual(report["failures"], [])
+        self.assertEqual(report["totals"]["agreements"], 3)
+        self.assertTrue(all(a["admitted"] for a in report["admissions"]))
+        self.assertTrue(all(w["outcome"] == RETURNED and w["status"] == "proved (cached)"
+                            for w in report["kernel_checked"]))
+
+    def test_cached_partial_verdict_file_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            status, report = FakeRoot(Path(temporary)).run(
+                [suite_result("a", list(driver.STAGES))], cached=True)
+        self.assertEqual(status, 1)
+        self.assertEqual(report["totals"]["agreements"], 0)
+        self.assertEqual([f["status"] for f in report["failures"]], ["missing"] * 3)
 
     def test_a_stage_that_is_not_admitted_is_counted_separately(self) -> None:
         """Its cases are not run there, so they are an admission, not a
