@@ -15,6 +15,12 @@ def theory_name(suite: str, side: str) -> str:
     return prefixes[side] + suite
 
 
+def results_path(theory: str) -> Path:
+    """The declared verdict output of a source or Yul suite theory."""
+    directory = YUL_DIRECTORY if theory.startswith("yul") else DIRECTORY
+    return directory / (theory.removesuffix("Theory") + ".results.jsonl")
+
+
 def suite_files(root: Path, corpus_path: Path, corpus: dict[str, Any]) -> dict[str, Path]:
     directory = root / corpus_path.parent / corpus["suite_directory"]
     return {json.loads(path.read_text(encoding="utf-8"))["name"]: path.relative_to(root)
@@ -59,7 +65,15 @@ def wrapper(root: Path, suite: dict[str, Any], path: Path, fuel: int,
             "fun holbuild_extra_deps (_ : string list) = ()\n"
             "val () = holbuild_extra_deps [\n" +
             ",\n".join(f'  "../../{p.as_posix()}"' for p in sorted(deps)) +
-            f"\n]\nval () = {library}.{entry}\n" + call)
+            "\n]\n")
+    if side == "bytecode":
+        text += f"val () = {library}.{entry}\n" + call
+    else:
+        output = results_path(name + "Theory").name
+        text += ('fun holbuild_extra_outputs (_ : string list) = ()\n'
+                 f'val () = holbuild_extra_outputs ["{output}"]\n'
+                 f'val () = {library}.with_results "{output}" (fn () =>\n'
+                 f'  {library}.{entry}\n' + call.rstrip() + ")\n")
     directory = YUL_DIRECTORY if side == "yul" else DIRECTORY
     return directory / f"{name}Script.sml", text
 

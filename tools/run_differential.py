@@ -473,7 +473,11 @@ def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
             root / ".holbuild" / "logs" / "current" / "solidity-hol" / target / "build.log")
         ran = bool(target_logs) or re.search(rf"^{re.escape(target)} built$", output, re.M) is not None
         results = []
-        if ran:
+        if status == 0:
+            result_file = root / theories.results_path(target)
+            if result_file.is_file():
+                results = parse_results(result_file.read_text(encoding="utf-8"), prefix)
+        elif ran:
             try:
                 results = parse_results(log.read_text(encoding="utf-8", errors="replace"), prefix)
             except OSError:
@@ -587,7 +591,7 @@ def build_report(root: Path, corpus_path: Path, corpus: dict[str, Any],
             case_results = {(r.get("suite"), r.get("case")): r for r in results if r.get("kind") == "case"}
             built = run["status"] == 0
             suite_result = suite_results.get(suite["name"])
-            if suite_result is None and built and run["ran"]:
+            if suite_result is None and built:
                 suite_result = {"kind": "suite", "suite": suite["name"], "status": "missing",
                                 "message": "no suite result was reported"}
             if suite_result is not None and suite_result.get("status") != "ok":
@@ -604,16 +608,14 @@ def build_report(root: Path, corpus_path: Path, corpus: dict[str, Any],
                 result = case_results.get((suite["name"], case["name"]))
                 if result is not None and result.get("status") == "agree":
                     kernel_checked.append({"theorem": theorem, "suite": suite["name"],
-                                           "case": case["name"], "status": "proved",
+                                           "case": case["name"],
+                                           "status": "proved" if run["ran"] else "proved (cached)",
                                            "outcome": result.get("outcome")})
-                elif result is None and built and not run["ran"]:
-                    kernel_checked.append({"theorem": theorem, "suite": suite["name"],
-                                           "case": case["name"], "status": "proved (cached)"})
                 elif result is not None:
                     failures.append({"kind": "case", **result})
                     write_reproduction(root, report_dir / "failures" / suite["name"] / case["name"],
                                        suite, case, result, fuel)
-                elif run["ran"] and suite_result is not None:
+                elif built or suite_result is not None:
                     failures.append({"kind": "case", "suite": suite["name"], "case": case["name"],
                                      "status": "missing", "message": "no result was reported"})
         if hol["status"] != 0 and not any(f["kind"] in ("suite", "case") for f in failures):
@@ -639,8 +641,10 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
                         help="rewrite the artifacts with --solc instead of checking them")
     parser.add_argument("--holbuild", default="holbuild")
     parser.add_argument("-j", "--jobs", type=int)
-    parser.add_argument("--allow-cached", action="store_true",
-                        help="accept a cached corpus theory instead of rebuilding it")
+    rebuild = parser.add_mutually_exclusive_group()
+    rebuild.add_argument("--force", action="store_true",
+                         help="rebuild suite theories instead of using cached verdicts")
+    rebuild.add_argument("--allow-cached", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--write-theories", action="store_true",
                         help="write the per-suite HOL wrappers (commit them with the suite)")
     parser.add_argument("--no-hol", action="store_true", help="run the external checks only")
@@ -672,7 +676,7 @@ def main(argv: list[str] | None = None, root: Path = ROOT) -> int:
                    for suite in corpus["suites"]}
         bytecode_targets = [theories.theory_name(suite["name"], "bytecode") + "Theory"
                             for suite in corpus["suites"]]
-        hol = run_hol(root, args.holbuild, args.jobs, not args.allow_cached, args.build_args,
+        hol = run_hol(root, args.holbuild, args.jobs, args.force, args.build_args,
                       suite_targets=targets, force_targets=bytecode_targets)
     report_dir = args.report_dir.resolve()
     if (report_dir / "failures").exists():
