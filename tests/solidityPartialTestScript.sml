@@ -25,8 +25,8 @@ val prepared = #prepared (solidityPrepareLib.prepare_artifact
  * does not elaborate. Once Partial.twice is unsupported its super calls
  * reach nothing, so neither Mid.twice nor Base.twice is among the
  * functions calls reach. The constant DIGITS does not elaborate, so it has
- * no procedure and digits, which reads it, fails to elaborate; so does
- * pointer, whose assembly names a bytes local. *)
+ * no procedure and digits, which reads it, uses an unsupported declaration;
+ * pointer fails to elaborate, since its assembly names a bytes local. *)
 val outcomes = map (fn {name, reason, ...} => (name, reason)) (#functions prepared);
 fun reasons name =
   map #2 (List.filter (fn (n, _) => n = name) outcomes);
@@ -56,8 +56,7 @@ val () =
      reasons "digestTwice" = [calls_unsupported] andalso
      reasons "callsTwice" = [calls_unsupported] andalso
      reasons "twice" = [calls_unsupported] andalso
-     List.all elaboration_failure (reasons "digits") andalso
-     length (reasons "digits") = 1 andalso
+     reasons "digits" = [SOME "uses an unsupported declaration"] andalso
      List.all elaboration_failure (reasons "pointer") andalso
      length (reasons "pointer") = 1 andalso
      length outcomes = 9
