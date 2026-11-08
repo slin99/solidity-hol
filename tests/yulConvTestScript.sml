@@ -674,3 +674,56 @@ val () =
   in
     List.app check ["f", "g"]
   end
+
+(* A message call's frame.  `call` hands its outcome to `run_external_call`,
+ * a whole EVM run of the callee, which the form keeps folded, and writes the
+ * output it got back -- `TAKE 32 outcome.call_return`, bytes no clause of the
+ * memory write can list -- into memory.  The write then stays folded too, and
+ * the statements after the call bind and assign locals on the machine it
+ * returns: those have to read the scopes through the write, or every lookup
+ * after the call comes out as a read of a scope the form does not have.  So
+ * the form is held to what a call-free body's is, with the call and the write
+ * it made as the only other steps standing. *)
+Definition call_scope_object_def:
+  call_scope_object =
+    let lit = λn. YulLit (LitNumber n) in
+      [YulFunction "f" ["a"] ["r"]
+         [YulLet ["s"]
+            (SOME (YulBuiltin YCall
+                     [YulBuiltin YGas []; YulName "a"; lit 0w; lit 0w; lit 0w;
+                      lit 0w; lit 32w]));
+          YulLet ["x"] (SOME (YulBuiltin YMLoad [lit 0w]));
+          YulAssign ["x"] (YulBuiltin YAdd [YulName "x"; YulName "s"]);
+          YulAssign ["r"] (YulBuiltin YAdd [YulName "x"; YulName "a"])]]
+End
+
+Definition call_scope_table_def:
+  call_scope_table = yul_env call_scope_object
+End
+
+val () =
+  let
+    val defs = [call_scope_table_def, call_scope_object_def]
+    val t = list_mk_comb (invoke_c,
+              [``20n``, ``call_scope_table``, stringSyntax.fromMLstring "f",
+               listSyntax.mk_list ([hd arg_names], bytes32_ty),
+               yul_conv_machine_term])
+    val form =
+      case under_clock 60.0 (fn () => yulConvLib.yul_invoke_conv defs t) of
+        NONE => fail "the call's frame did not come back within 60s"
+      | SOME th => rhs (concl th)
+    val res = yulConvLib.residues form
+    val allowed = [("externalCall", "run_external_call"), memory_read_residue,
+                   ("yulEvaluator", "yul_memory_write")]
+  in
+    if not (yulConvLib.is_closed_form form) then
+      fail ("the call's frame is not closed: " ^ show_residues res)
+    else if not (yulConvLib.is_fixed_point defs form) then
+      fail "the conversion left something to evaluate in the call's frame"
+    else if not (Lib.mem ("externalCall", "run_external_call") res) then
+      fail "the call's frame keeps no folded run_external_call"
+    else if not (List.all (fn k => Lib.mem k allowed) res) then
+      fail ("the scopes after the call are not resolved: " ^ show_residues res)
+    else print ("yulConvTest: the call's frame closes at " ^
+                Int.toString (size_of form) ^ " nodes\n")
+  end
