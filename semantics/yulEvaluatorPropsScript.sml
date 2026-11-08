@@ -89,6 +89,21 @@ Proof
   simp[yul_running_def] >> disch_then SUBST1_TAC >> simp[]
 QED
 
+Theorem yul_fuel_expr_checked[local]:
+  !n fns op args m.
+    (!k. yul_running (eval_yul_args n fns (yul_builtin_value_args op args) m) /\ n <= k ==>
+         eval_yul_args k fns (yul_builtin_value_args op args) m = eval_yul_args n fns (yul_builtin_value_args op args) m) ==>
+    !k. yul_running (eval_yul_expr n fns (YulCheckedBuiltin op args) m) /\ n <= k ==>
+        eval_yul_expr k fns (YulCheckedBuiltin op args) m =
+        eval_yul_expr n fns (YulCheckedBuiltin op args) m
+Proof
+  rpt gen_tac >> strip_tac >> gen_tac >>
+  once_rewrite_tac[eval_yul_block_def] >>
+  Cases_on `eval_yul_args n fns (yul_builtin_value_args op args) m` >> simp[yul_running_def] >>
+  strip_tac >> first_x_assum (qspec_then `k` mp_tac) >>
+  simp[yul_running_def] >> disch_then SUBST1_TAC >> simp[]
+QED
+
 Theorem yul_fuel_cases_nil[local]:
   !n fns v default m.
     (!k. (eval_yul_block n fns default (yul_push_scope m)).completion <>
@@ -405,6 +420,7 @@ Proof
   >- MATCH_ACCEPT_TAC (cj 1 yul_fuel_expr_base)
   >- MATCH_ACCEPT_TAC (cj 2 yul_fuel_expr_base)
   >- MATCH_ACCEPT_TAC yul_fuel_expr_builtin
+  >- MATCH_ACCEPT_TAC yul_fuel_expr_checked
   >- MATCH_ACCEPT_TAC yul_fuel_expr_apply
   >- MATCH_ACCEPT_TAC (cj 3 yul_fuel_expr_base)
   >- MATCH_ACCEPT_TAC yul_fuel_args_cons

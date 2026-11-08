@@ -75,6 +75,9 @@ Datatype:
   | YulName string
   | YulBuiltin yul_builtin (yul_expr list)
   | YulApply string (yul_expr list)
+    (* a builtin call in inline assembly, whose memory reads must stay in the
+     * memory the block was given; the parser never produces it *)
+  | YulCheckedBuiltin yul_builtin (yul_expr list)
 End
 
 Datatype:

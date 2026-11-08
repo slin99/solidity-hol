@@ -584,6 +584,47 @@ Definition eval_yul_builtin_call_def:
     | _ => eval_yul_builtin op vs m
 End
 
+(* Inline assembly may read only memory the block was given: the zero slot, the
+ * bytes the Solidity side laid out for it, and the bytes it has written
+ * since; the rest of solc's memory (the free memory pointer, other objects,
+ * leftover scratch) is not modelled.  yul_read_regions gives the (offset,
+ * size) regions a builtin reads from memory, on its evaluated arguments.
+ *)
+Definition yul_read_regions_def:
+  yul_read_regions op (vs : bytes32 list) : (num # num) list =
+    case (op, vs) of
+      (YMLoad, [p]) => [(w2n p, 32)]
+    | (YKeccak256, [p; s]) => [(w2n p, w2n s)]
+    | (YMCopy, [_; s; l]) => [(w2n s, w2n l)]
+    | (YReturn, [p; s]) => [(w2n p, w2n s)]
+    | (YRevert, [p; s]) => [(w2n p, w2n s)]
+    | (YLog0, [p; s]) => [(w2n p, w2n s)]
+    | (YLog1, [p; s; _]) => [(w2n p, w2n s)]
+    | (YLog2, [p; s; _; _]) => [(w2n p, w2n s)]
+    | (YLog3, [p; s; _; _; _]) => [(w2n p, w2n s)]
+    | (YLog4, [p; s; _; _; _; _]) => [(w2n p, w2n s)]
+    | (YCall, [_; _; _; i; isz; _; _]) => [(w2n i, w2n isz)]
+    | (YStaticCall, [_; _; i; isz; _; _]) => [(w2n i, w2n isz)]
+    | _ => []
+End
+
+(* The l bytes from p are in the zero slot or in memory's domain.  The walk
+ * stops at the first byte that is neither, so a huge region fails after at
+ * most the domain's size plus the zero slot's 32 bytes. *)
+Definition yul_region_readable_def:
+  (yul_region_readable (mem : num |-> word8) p 0 ⇔ T) ∧
+  (yul_region_readable mem p (SUC l) ⇔
+     if (0x60 ≤ p ∧ p < 0x80) ∨ IS_SOME (FLOOKUP mem p) then
+       yul_region_readable mem (p + 1) l
+     else F)
+End
+
+Definition yul_regions_readable_def:
+  (yul_regions_readable (mem : num |-> word8) [] ⇔ T) ∧
+  (yul_regions_readable mem ((p, l) :: rs) ⇔
+     if yul_region_readable mem p l then yul_regions_readable mem rs else F)
+End
+
 (* Termination measures, one per group of the mutual recursion: the relation
  * handed to WF_REL_TAC is then small, and the obligations it leaves are
  * applications of these, which the step after it reduces to arithmetic.
@@ -711,6 +752,13 @@ Definition eval_yul_block_def:
      case eval_yul_args n fns (yul_builtin_value_args op args) m of
        EvalAbrupt c m' => EvalAbrupt c m'
      | EvalValues vs m' => eval_yul_builtin_call op args vs m') ∧
+  (eval_yul_expr n fns (YulCheckedBuiltin op args) m =
+     case eval_yul_args n fns (yul_builtin_value_args op args) m of
+       EvalAbrupt c m' => EvalAbrupt c m'
+     | EvalValues vs m' =>
+         if yul_regions_readable m'.memory (yul_read_regions op vs) then
+           eval_yul_builtin_call op args vs m'
+         else EvalAbrupt (YulInvalid "assembly read memory it was not given") m') ∧
   (eval_yul_expr n fns (YulApply f args) m =
      if n = 0 then EvalAbrupt YulOutOfFuel m
      else
@@ -888,6 +936,9 @@ QED
 
 val () = cv_auto_trans yul_set_immutable_def;
 val () = cv_auto_trans eval_yul_builtin_call_def;
+val () = cv_auto_trans yul_read_regions_def;
+val () = cv_auto_trans yul_region_readable_def;
+val () = cv_auto_trans yul_regions_readable_def;
 val () = cv_auto_trans yul_env_def;
 
 (* Termination of the translated evaluator: a scaled (fuel, size) order on the
