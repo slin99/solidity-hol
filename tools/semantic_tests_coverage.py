@@ -265,6 +265,7 @@ ENVIRONMENT = {
 # require, assert and revert.
 REQUIRE, ASSERT, REVERT = -18, -3, -19
 KECCAK256 = -8
+ADDMOD, MULMOD = -2, -16
 ABI = -1
 # The field holding the selector the compiler records on each kind of
 # declaration that has one.
@@ -922,7 +923,8 @@ INTEGER_TYPE = re.compile(r"t_u?int[0-9]+")
 # The builtins of the Yul dialect (yulDialect's builtin_name), and those an
 # inline assembly block may not use (assembly_unsupported).
 YUL_BUILTINS = {
-    "add", "sub", "mul", "div", "sdiv", "mod", "smod", "exp", "signextend", "lt", "gt",
+    "add", "sub", "mul", "div", "sdiv", "mod", "smod", "addmod", "mulmod", "exp", "signextend",
+    "lt", "gt",
     "slt", "sgt", "eq", "iszero", "and", "or", "xor", "not", "shl", "shr", "sar", "byte",
     "keccak256", "mload", "mstore", "mstore8", "mcopy", "sload", "sstore", "tload", "tstore",
     "calldataload", "calldatasize", "calldatacopy", "callvalue", "memoryguard", "caller",
@@ -1604,10 +1606,10 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     super_bases = {n["expression"]["expression"]["id"]
                    for f in reached.values() if f["nodeType"] == "FunctionDefinition"
                    for n in super_calls(f)}
-    hash_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
+    operation_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
                     and n["expression"]["nodeType"] == "Identifier"
-                    and n["expression"].get("referencedDeclaration") == KECCAK256}
-    plain_callees = builtin_callees | super_bases | hash_callees
+                    and n["expression"].get("referencedDeclaration") in {KECCAK256, ADDMOD, MULMOD}}
+    plain_callees = builtin_callees | super_bases | operation_callees
     unread, found = special_forms(reached, by_id)
     try_callees = {n["externalCall"]["id"] for n in reached.values()
                    if n["nodeType"] == "TryStatement" and n["id"] in unread}

@@ -72,6 +72,7 @@ End
 Datatype:
   core_operator
   = AddOp | SubtractOp | MultiplyOp | DivideOp | RemainderOp | ExponentOp
+  | AddModOp | MulModOp
   | ShiftLeftOp | ShiftRightOp
   | EqualOp | LessThanOp | BitAndOp | BitOrOp | BitXorOp
   | NegateOp | BitNotOp | BoolNotOp

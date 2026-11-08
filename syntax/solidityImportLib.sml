@@ -650,6 +650,18 @@ fun expr v = within v (fn v =>
               (positional ();
                require v (length args = 1) "keccak256 takes one argument";
                con "SrcKeccak256" [info v, info callee, hd args, type_id v])
+            else if node_type callee = "Identifier" andalso
+               (int_field callee "referencedDeclaration" = ~2 orelse
+                int_field callee "referencedDeclaration" = ~16) then
+              (positional ();
+               require v (length args = 3) "addmod and mulmod take three arguments";
+               con "SrcModular"
+                 [info v, info callee,
+                  prim_mk_const
+                    {Thy = "solidityCore",
+                     Name = if int_field callee "referencedDeclaration" = ~2
+                            then "AddModOp" else "MulModOp"},
+                  listSyntax.mk_list (args, expr_ty), type_id v])
             else if is_concat "bytes" callee orelse is_concat "string" callee then
               (* bytes.concat is abi.encodePacked; string.concat is too, as a string *)
               (positional ();

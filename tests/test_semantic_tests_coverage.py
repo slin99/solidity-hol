@@ -105,6 +105,23 @@ class BuiltinCoverageTests(unittest.TestCase):
         self.assertEqual(coverage.scan({"t.sol": unit([function(4, [statement])])})[5], [
             coverage.Blocker("FunctionCall", "messages that are not literals", "elaboration")])
 
+    def test_modular_builtins_are_admitted(self) -> None:
+        def call(declaration: int, name: str) -> dict:
+            operand = {"nodeType": "Literal", "id": 7, "kind": "number", "value": "3",
+                       "typeDescriptions": {"typeIdentifier": "t_rational_3_by_1"}}
+            return {"nodeType": "ExpressionStatement", "id": 8, "expression": {
+                "nodeType": "FunctionCall", "id": 5, "kind": "functionCall", "names": [],
+                "tryCall": False, "typeDescriptions": {"typeIdentifier": "t_uint256"},
+                "expression": {"nodeType": "Identifier", "id": 6, "name": name,
+                               "referencedDeclaration": declaration,
+                               "typeDescriptions": {"typeIdentifier": "t_function_" + name}},
+                "arguments": [operand, dict(operand, id=9), dict(operand, id=10)]}}
+
+        for declaration, name in ((coverage.ADDMOD, "addmod"), (coverage.MULMOD, "mulmod")):
+            self.assertEqual(coverage.scan({"t.sol": unit([function(4, [call(declaration, name)])])}), {})
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [call(-5, "sha256")])])})[6], [
+            coverage.Blocker("Identifier", "hash and signature built-ins", "import")])
+
     def test_only_a_named_concat_is_admitted(self) -> None:
         concat_type = {"typeIdentifier": "t_function_bytesconcat_pure$__$returns$_t_bytes_memory_ptr_$"}
         member = {"nodeType": "MemberAccess", "id": 6, "memberName": "concat",

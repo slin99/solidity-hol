@@ -354,6 +354,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcExternalCall _ _ _ operands _ _) ⇔ exprs_assign operands) ∧
   (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcKeccak256 _ _ e _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcModular _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcAddressCodeLength _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcSuperCall _ _ args _ _) ⇔ exprs_assign args) ∧
@@ -966,6 +967,17 @@ Definition elab_expr_def:
                 SOME ((cs, b), n2) =>
                   let (hs, h) = bind_value n2 (FixedBytesT 32) (Keccak256Operation b) in
                   SOME ((ss ++ cs ++ hs, h, ElabType (FixedBytesT 32)), n2 + 1)
+              | NONE => NONE)
+         | NONE => NONE)
+    | SrcModular _ _ op args _ =>
+        (* the operands in order, then the modulus check and the operation *)
+        (case elab_arg_values ctx n args of
+           SOME ((ss, vs), n1) =>
+             (case coerce_values n1 [UintT 256; UintT 256; UintT 256] vs of
+                SOME (cs, as, n2) =>
+                  let (rs, r) = bind_value n2 (UintT 256)
+                                  (ScalarOperation (UintT 256) CheckedArithmetic op as) in
+                  SOME ((ss ++ cs ++ rs, r, ElabType (UintT 256)), n2 + 1)
               | NONE => NONE)
          | NONE => NONE)
     | SrcAbiEncode _ _ form args _ =>
