@@ -1200,7 +1200,8 @@ Proof
 QED
 
 (* abi.encodeCall leaves out its receiver's read, which a constant's would
- * not be: the compiler evaluates its initializer, which may fail. *)
+ * not be: the compiler evaluates its initializer, which may fail. So a
+ * function encoding a call through a constant receiver is unsupported. *)
 
 val encode_calls_fixture = "../testdata/differential/expected/encode_calls.json"
 val encode_calls_source = "testdata/differential/encode_calls.sol"
@@ -1225,14 +1226,17 @@ fun make_constant (JSON.OBJECT kvs) =
   | make_constant v = v
 
 val () =
-  (import_source_unit []
-     (edit_first_where (named "VariableDeclaration" "token") "token"
-        make_constant encode_calls_ast)
-     encode_calls_contracts;
-   raise Fail "encodeCall through a constant: imported")
-  handle ImportError msg =>
-    if String.isSubstring "constant receiver" msg then ()
-    else raise Fail ("encodeCall through a constant: " ^ msg)
+  case import_rejection []
+         (edit_first_where (named "VariableDeclaration" "token") "token"
+            make_constant encode_calls_ast)
+         encode_calls_contracts of
+    NONE => raise Fail "encodeCall through a constant: imported"
+  | SOME (UnsupportedFunction, msg) =>
+      if String.isSubstring "constant receiver" msg then ()
+      else raise Fail ("encodeCall through a constant: " ^ msg)
+  | SOME (actual, msg) =>
+      raise Fail ("encodeCall through a constant: expected unsupported " ^
+                  "function, got " ^ failure_name actual ^ ": " ^ msg)
 
 (* Constants: a number literal initializes a bytes32 constant. *)
 
