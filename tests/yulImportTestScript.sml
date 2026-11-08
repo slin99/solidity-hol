@@ -185,3 +185,22 @@ val () = expect_unknown "unsupported literal kind"
            (call "pop" [obj [("nodeType", str "YulLiteral"),
                              ("kind", str "address"), ("value", str "0")]])]]
      creation_code)
+
+(* The import goes on past an unknown node: each is a line of the refusal,
+ * also one under another. *)
+val () =
+  (ignore (import
+     (output_with
+        [runtime_object
+           [expression_statement (call "first_unknown" [call "nested_unknown" []]),
+            expression_statement (call "second_unknown" [])]]
+        creation_code));
+   raise ERR "yulImportTest" "three unknown calls: admitted")
+  handle yulImportLib.ImportError msg =>
+    (case String.fields (fn c => c = #"\n") msg of
+       [a, b, c] =>
+         if String.isSubstring "nested_unknown" a andalso
+            String.isSubstring "first_unknown" b andalso
+            String.isSubstring "second_unknown" c then ()
+         else raise ERR "yulImportTest" ("three unknown calls: " ^ msg)
+     | _ => raise ERR "yulImportTest" ("three unknown calls: " ^ msg))
