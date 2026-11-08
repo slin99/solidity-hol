@@ -114,6 +114,12 @@ contract Modular {
         return addmod(step(1), step(2), step(k));
     }
 
+    // An operand is read before a later operand assigns it.
+    function snapshot() public pure returns (uint256) {
+        uint256 x = 1;
+        return addmod(x, addmod(x = 2, 0, 10), 10);
+    }
+
     function stop(uint256 x) internal pure returns (uint256) {
         if (x == 0) revert Stop();
         return x;

@@ -176,6 +176,16 @@
       }
     },
     {
+      "name": "snapshot",
+      "function": "snapshot",
+      "args": [],
+      "expect": {
+        "return": [
+          3
+        ]
+      }
+    },
+    {
       "name": "stop_first",
       "function": "stopFirst",
       "args": [
