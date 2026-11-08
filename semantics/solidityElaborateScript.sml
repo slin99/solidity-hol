@@ -3068,16 +3068,43 @@ val elab_stmts_pre_def = cv_auto_trans_pre_rec
   cv_termination_tac
 );
 
+(* By the size of the syntax, so that each hypothesis is for every context;
+ * the precondition is unfolded once before splitting on the statement. *)
+Theorem elab_stmts_pre_bounded[local]:
+  !b.
+  (!ctx n ss. list_size src_stmt_size ss < b ==> elab_stmts_pre ctx n ss) /\
+  (!ctx n st. src_stmt_size st < b ==> elab_stmt_pre ctx n st) /\
+  (!ctx n st. option_size src_stmt_size st < b ==> elab_for_init_pre ctx n st)
+Proof
+  completeInduct_on ‘b’ >> rpt conj_tac >> rpt gen_tac >> disch_tac >>
+  qpat_x_assum ‘!m. m < b ==> _’ (drule_then strip_assume_tac)
+  >~ [‘elab_stmt_pre ctx n st’] >-
+    (PURE_ONCE_REWRITE_TAC [elab_stmts_pre_def] >>
+     rpt conj_tac >> rpt gen_tac >> disch_then strip_assume_tac >>
+     rpt BasicProvers.VAR_EQ_TAC >>
+     simp[solidityImportTheory.src_stmt_size_def, listTheory.list_size_def,
+          basicSizeTheory.option_size_def, elab_expr_pre, elab_arg_values_pre,
+          declare_values_pre, elab_assembly_references_pre, bind_failed_pre])
+  >~ [‘elab_stmts_pre ctx n ss’] >-
+    (Cases_on ‘ss’ >> simp_tac std_ss [Once elab_stmts_pre_def] >>
+     simp[listTheory.list_size_def, bind_failed_pre]) >>
+  Cases_on ‘st’ >> simp_tac std_ss [Once elab_stmts_pre_def] >>
+  simp[basicSizeTheory.option_size_def]
+QED
+
 Theorem elab_stmts_pre[cv_pre,local]:
   (∀ctx n ss. elab_stmts_pre ctx n ss) ∧
   (∀ctx n st. elab_stmt_pre ctx n st) ∧
   (∀ctx n st. elab_for_init_pre ctx n st)
 Proof
-  ho_match_mp_tac elab_stmts_ind >> rpt strip_tac >>
-  simp[Once elab_stmts_pre_def, elab_expr_pre] >> rw[] >> fs[] >>
-  (* a record update appears as a case on the context it updates *)
-  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"] >>
-  rpt (CASE_TAC >> gvs[fetch "-" "elab_ctx_fn_updates"])
+  rpt conj_tac >> rpt gen_tac >| [
+    irule (cj 1 elab_stmts_pre_bounded) >>
+    qexists_tac ‘list_size src_stmt_size ss + 1’,
+    irule (cj 2 elab_stmts_pre_bounded) >>
+    qexists_tac ‘src_stmt_size st + 1’,
+    irule (cj 3 elab_stmts_pre_bounded) >>
+    qexists_tac ‘option_size src_stmt_size st + 1’] >>
+  simp[]
 QED
 
 val () = cv_auto_trans variable_binding_def;
@@ -3090,18 +3117,16 @@ Theorem elab_modifier_args_pre[cv_pre,local]:
   ∀ctx n id tys es. elab_modifier_args_pre ctx n id tys es
 Proof
   ho_match_mp_tac elab_modifier_args_ind >> rpt strip_tac >>
-  simp[Once elab_modifier_args_pre_def]
+  simp[Once elab_modifier_args_pre_def, elab_expr_pre]
 QED
 val elab_levels_pre_def = cv_auto_trans_pre "elab_levels_pre" elab_levels_def;
 
 Theorem elab_levels_pre[cv_pre,local]:
-  ∀ctx modifiers ps rs x n ms ss. elab_levels_pre ctx modifiers ps rs x n ms ss
+  ∀ms ctx modifiers ps rs x n ss. elab_levels_pre ctx modifiers ps rs x n ms ss
 Proof
-  ho_match_mp_tac elab_levels_ind >> rpt strip_tac >>
-  simp[Once elab_levels_pre_def] >> rw[] >> fs[] >>
-  (* a record update appears as a case on the context it updates *)
-  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"] >>
-  rpt (CASE_TAC >> gvs[fetch "-" "elab_ctx_fn_updates"])
+  Induct >- simp[Once elab_levels_pre_def, elab_stmts_pre] >>
+  Cases >>
+  simp[Once elab_levels_pre_def, elab_stmts_pre, elab_modifier_args_pre]
 QED
 
 val () = cv_auto_trans elab_function_def;
