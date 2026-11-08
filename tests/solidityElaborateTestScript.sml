@@ -244,20 +244,21 @@ QED
  * runtime code from the returned bytes; elsewhere it may. *)
 Theorem asm_halt_rejected_in_constructor:
   ∀info.
-    IS_SOME (elab_stmt
+    ISL (elab_stmt
       <| functions := []; supers := []; structs := []; enums := []; events := [];
          variables := []; state := []; locations := []; immutables := [];
          constants := []; returns := []; placeholder := NONE;
          mode := CheckedArithmetic; creation := F; scope := 0;
-         returns_id := 0; in_loop := F |> 0
+         returns_id := 0; in_loop := F; bad_ids := [] |> 0
       (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] [])) ∧
     elab_stmt
       <| functions := []; supers := []; structs := []; enums := []; events := [];
          variables := []; state := []; locations := []; immutables := [];
          constants := []; returns := []; placeholder := NONE;
          mode := CheckedArithmetic; creation := T; scope := 0;
-         returns_id := 0; in_loop := F |> 0
-      (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] []) = NONE
+         returns_id := 0; in_loop := F; bad_ids := [] |> 0
+      (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] []) =
+    INR [(info.node_id, "assembly halt in a constructor")]
 Proof
   gen_tac >> EVAL_TAC
 QED
@@ -286,13 +287,63 @@ Theorem declaration_body_and_tuple_fraction_rejected:
                events := []; variables := []; state := []; locations := [];
                immutables := []; constants := []; returns := [];
                placeholder := NONE; mode := CheckedArithmetic; creation := F;
-               scope := 0; returns_id := 0; in_loop := F |> in
-    IS_SOME (elab_stmt ctx 2 d) ∧
-    elab_stmt ctx 2 (SrcIfStatement info c d NONE) = NONE ∧
-    elab_stmt ctx 2 (SrcWhileStatement info c d) = NONE ∧
-    elab_stmt ctx 2 (SrcVariableDeclarationStatement info [NONE] [NONE] (SOME half)) = NONE
+               scope := 0; returns_id := 0; in_loop := F; bad_ids := [] |> in
+    ISL (elab_stmt ctx 2 d) ∧
+    elab_stmt ctx 2 (SrcIfStatement info c d NONE) = INR [(0, "declaration as a body")] ∧
+    elab_stmt ctx 2 (SrcWhileStatement info c d) = INR [(0, "declaration as a body")] ∧
+    elab_stmt ctx 2 (SrcVariableDeclarationStatement info [NONE] [NONE] (SOME half)) =
+    INR [(0, "rational number value")]
 Proof
   EVAL_TAC
+QED
+
+(* Rejection reasons: a list of statements reports every statement that
+ * fails, and a statement after a failed declaration only its own blockers.
+ * The declared variable is bound if its type is supported, and otherwise
+ * a reference to it adds no blocker, the declaration having reported it. *)
+val info0 = “<| node_id := 0;
+                node_location := <| loc_start := 0; loc_length := 0;
+                                    loc_source := 0 |> |>”;
+fun at id = “^info0 with node_id := ^(numSyntax.term_of_int id)”;
+val ctx0 = “<| functions := []; supers := []; structs := []; enums := [];
+               events := []; variables := []; state := []; locations := [];
+               immutables := []; constants := []; returns := [];
+               placeholder := NONE; mode := CheckedArithmetic; creation := F;
+               scope := 0; returns_id := 0; in_loop := F; bad_ids := [] |>”;
+fun local_y tn = “<| var_info := ^(at 4); var_name := "y"; var_scope := 0;
+                     var_type_name := ^tn; var_type_id := "t_uint256";
+                     var_location := NONE |>”;
+val supported_y = local_y “SrcElementaryTypeName ^(at 7) "uint256" NONE”;
+val unsupported_y = local_y “SrcUnsupportedTypeName ^(at 7) "function type"”;
+val read_y = “SrcExpressionStatement ^(at 5) (SrcIdentifier ^(at 6) "y" 4 "t_uint256")”;
+
+Theorem independent_failures_all_report:
+  elab_stmts ^ctx0 10 [SrcBreak ^(at 1); SrcContinue ^(at 2)] =
+  INR [(1, "break outside a loop"); (2, "continue outside a loop")]
+Proof
+  EVAL_TAC
+QED
+
+Theorem failed_declaration_reference_adds_no_blocker:
+  elab_stmts ^ctx0 10
+    [SrcVariableDeclarationStatement ^(at 3) [SOME 4] [SOME ^unsupported_y]
+       (SOME (SrcLiteral ^(at 8) NumberLiteral "1" "t_rational_1_by_1"));
+     ^read_y] =
+  INR [(7, "function type")] ∧
+  elab_stmts ^ctx0 10
+    [SrcVariableDeclarationStatement ^(at 3) [SOME 4] [SOME ^supported_y]
+       (SOME (SrcLiteral ^(at 8) NumberLiteral "" "t_rational_1_by_2"));
+     ^read_y] =
+  INR [(8, "rational number value")]
+Proof
+  EVAL_TAC
+QED
+
+(* The unit elaborates, so nothing in it fails. *)
+Theorem pure_core_has_no_failures:
+  unit_elaboration_failures T pure_core = []
+Proof
+  CONV_TAC cv_eval
 QED
 
 (* Edited units of solidityImportTest that pass valid_src_unit but whose
