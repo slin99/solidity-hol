@@ -24,7 +24,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROFILE = ROOT / "profiles" / "solc-0.8.37-via-ir-osaka.json"
 
 OUTPUT_SELECTION: dict[str, dict[str, list[str]]] = {
-    "*": {"*": ["irAst", "irOptimizedAst", "evm.deployedBytecode.object"]}
+    "*": {"*": ["irAst", "irOptimizedAst", "evm.deployedBytecode.object",
+               "evm.bytecode.object", "evm.deployedBytecode.immutableReferences"]}
 }
 
 # The AST outputs are gated behind this option, which changes no codegen.

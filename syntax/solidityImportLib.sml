@@ -290,6 +290,15 @@ fun is_external_call callee =
   String.isPrefix "t_function_external_"
     (string_field (field callee "typeDescriptions") "typeIdentifier")
 
+(* a.staticcall, as a callee: the address member, not a function attached to
+ * addresses by using for. *)
+fun is_bare_staticcall callee =
+  node_type callee = "MemberAccess" andalso
+  string_field callee "memberName" = "staticcall" andalso
+  not (isSome (optional_field callee "referencedDeclaration")) andalso
+  List.exists (fn t => t = raw_type_id (field callee "expression"))
+    ["t_address", "t_address_payable"]
+
 (* bytes.concat or string.concat, as a callee: kind is "bytes" or "string". *)
 fun is_concat kind callee =
   node_type callee = "MemberAccess" andalso
@@ -662,6 +671,11 @@ fun expr v = within v (fn v =>
                require v (length args = 4) "ecrecover takes four arguments";
                con "SrcEcrecover"
                  [info v, info callee, listSyntax.mk_list (args, expr_ty), type_id v])
+            else if is_bare_staticcall callee then
+              (positional ();
+               require v (length args = 1) "staticcall takes one argument";
+               con "SrcStaticCall"
+                 [info v, info callee, expr (field callee "expression"), hd args, type_id v])
             else if abi_decode then
               (positional (); abi_decode_call v callee args)
             else if node_type callee = "Identifier" andalso
@@ -1120,7 +1134,9 @@ val failed_modifiers : (IntInf.int * string) list ref = ref []
 (* A function whose modifier invocations or body fail to import is
  * unsupported, with the error as its reason: it keeps its header, so that
  * calls, overrides and super calls resolve to it, with no modifiers and an
- * empty body. Its header failing still fails the import. *)
+ * empty body. Its header failing still fails the import. A fallback with
+ * parameters or returns is unsupported likewise: the core's fallback takes
+ * neither. *)
 fun function v = within v (fn v =>
   let
     val () = super_calls := []
@@ -1164,6 +1180,10 @@ fun function v = within v (fn v =>
        ([], con "SrcBlock" [info (field v "body"), listSyntax.mk_nil stmt_ty],
         SOME reason))
     val (modifiers, body, reason) =
+      if string_field v "kind" = "fallback" andalso
+         not (listSyntax.is_nil params andalso listSyntax.is_nil returns)
+      then unsupported "fallback with parameters or returns"
+      else
       case List.mapPartial failed_invocation invocations of
         (_, r) :: _ => unsupported r
       | [] => import_body () handle ImportError r => unsupported r

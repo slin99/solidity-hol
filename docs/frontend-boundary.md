@@ -316,6 +316,18 @@ encoding, or a word that is not a value of its type, reverts with no data, and
 data after the encoding is ignored. It allocates nothing. Data in calldata or
 storage, and types other than elementary ones, are rejected.
 
+`a.staticcall(data)`, with `a` an address and `data` a memory `bytes`,
+evaluates `a`, then `data`, and makes a static call to `a` with the bytes of
+`data` as its input, giving the success flag and the return data. The source
+does not track gas: the callee gets the same fixed budget a high-level call
+gives it (`external_call_gas`), where the compiled code forwards all but a 64th
+of what is left. A failed call, the callee's revert included, gives
+`false` and leaves the caller's state as it was; a call to an address without
+code succeeds with no data. Return data is copied into a new memory `bytes`,
+allocated as the compiler allocates it, and no return data gives the shared
+empty `bytes`, allocating nothing. Data in calldata, storage or a literal, gas
+options, `call` and `delegatecall` are rejected.
+
 `bytes.concat(...)` uses packed encoding of its byte sequences, fixed-size bytes
 and literals. `string.concat(...)` concatenates strings and string literals.
 Both allocate a fresh memory object, with the corresponding `bytes` or `string`
@@ -516,6 +528,7 @@ annotations, at the node whose type it computes:
   list; `break` and `continue` occur in loop bodies; conditions are boolean;
   modifier bodies make no super call, and modifier arguments see the
   function's parameters but not its return variables;
+- a fallback takes no parameters and returns nothing, as the core's does;
 - operators belong to the admitted set; every scalar result is annotated with
   its own type, and every other annotation decodes to an elementary, rational
   literal or tuple type.
@@ -527,7 +540,8 @@ function overrides, and that functions come most derived first).
 ## Partial admission
 
 A contract is admitted per function. When a function's body or the body of
-one of its modifiers falls outside the subset, import keeps the function with
+one of its modifiers falls outside the subset, or a fallback has parameters or
+returns, import keeps the function with
 its header, an empty body and the reason (`fn_unsupported`) rather than
 rejecting the unit. `solidityPrepareLib` then marks, until nothing changes,
 every function that fails to elaborate, also by calling an unsupported one (by

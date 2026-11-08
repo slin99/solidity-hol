@@ -154,6 +154,7 @@ Datatype:
   | SrcEcrecover node_info node_info (src_expr list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
   | SrcAbiDecode node_info node_info src_expr (src_type_name list) string
+  | SrcStaticCall node_info node_info src_expr src_expr string
 End
 
 (* VariableDeclarationStatement: assignments, declarations (NONE for a hole),
@@ -890,6 +891,8 @@ Definition expr_ids_def:
     info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcAbiEncode info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
+  (expr_ids (SrcStaticCall info callee target data _) =
+    info.node_id :: callee.node_id :: expr_ids target ++ expr_ids data) ∧
   (expr_ids (SrcAbiDecode info callee e tns _) =
     info.node_id :: callee.node_id :: expr_ids e ++ FLAT (MAP type_name_ids tns)) ∧
   (expr_ids (SrcExternalCall info _ _ operands _ _) =
