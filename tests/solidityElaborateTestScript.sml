@@ -232,12 +232,11 @@ val () = cv_auto_trans missing_struct_layout_unit_def;
 Theorem struct_layout_required_for_execution:
   IS_SOME (elaborate_unit struct_unit) ∧
   valid_src_unit missing_struct_layout_unit ∧
-  IS_SOME (elaborate_unit missing_struct_layout_unit) ∧
-  ¬wf_core_program
-    (core_program_environment (THE (elaborate_unit missing_struct_layout_unit)))
-    (THE (elaborate_unit missing_struct_layout_unit))
+  case elaborate_unit missing_struct_layout_unit of
+    SOME p => ¬wf_core_program (core_program_environment p) p
+  | NONE => F
 Proof
-  simp_tac std_ss [cv_eval “elaborate_unit missing_struct_layout_unit”] >>
+  rpt conj_tac >- CONV_TAC cv_eval >- CONV_TAC cv_eval >>
   CONV_TAC cv_eval
 QED
 
