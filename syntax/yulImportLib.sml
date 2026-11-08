@@ -324,12 +324,9 @@ fun import_runtime output source contract stage =
                   "expected exactly one subobject, the runtime object"
        val runtime = hd subs
        val () = within runtime (fn runtime => expect runtime "YulObject")
-       (* A runtime object's own subobjects are its data sections, which the
-        * AST has no node for: the code block the frame runs names them only
-        * through the object-level builtins, which the evaluator rejects, so
-        * dropping them cannot change what a run computes. Anything else
-        * nested in the runtime object is an object form this importer does
-        * not read.
+       (* Runtime data sections have no statement node or named extent in
+        * the execution context, so references to them fail as unknown objects.
+        * Other nested object forms are outside the importer's subset.
         *)
        val () = List.app (fn d => within d (fn d => expect d "YulData"))
                   (array_field runtime "subObjects")

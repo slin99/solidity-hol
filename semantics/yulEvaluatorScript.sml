@@ -381,10 +381,8 @@ Definition yul_return_data_copy_def:
            (w2n dest) (TAKE (w2n size) (DROP (w2n source) m.return_data)))
 End
 
-(* One builtin, on values that have already been evaluated, left to right.
- * Anything the pinned dialect does not define -- a wrong number of arguments,
- * or one of the object-level builtins, whose code and object the evaluator
- * does not model -- is an error rather than a silent no-op.
+(* One builtin on evaluated values. Literal-name operands are dispatched by
+ * eval_yul_builtin_call; unsupported builtins and wrong arities fail closed.
  *)
 Definition eval_yul_builtin_def:
   eval_yul_builtin op args m =
