@@ -222,13 +222,26 @@ and import_expr defined v = recorded dummy_expr (fn v => within v (fn v =>
   | "YulLiteral" => yul "YulLit" [import_literal v]
   | other => fail (describe v ^ ": unsupported expression " ^ other))) v
 
+fun is_function v =
+  (case JSONUtil.findField v "nodeType" of
+     SOME (JSON.STRING s) => s = "YulFunctionDefinition"
+   | _ => false)
+
 (* Statements of a body. A function definition is not one of them: the
  * evaluator collects the object's own top-level definitions, so a nested one
- * would be unreachable, and the compiler never emits one.
+ * would be unreachable, and the compiler never emits one. A nested one is
+ * still imported for the blockers in its body, with the names its block
+ * defines in scope, as for the object's own.
  *)
 fun import_statements defined v = within v (fn v =>
   (expect v "YulBlock";
-   map (import_statement defined) (array_field v "statements")))
+   let
+     val statements = array_field v "statements"
+     val defined = defined @ map (fn s => string_field s "name")
+                               (List.filter is_function statements)
+   in
+     map (import_statement defined) statements
+   end))
 
 and import_statement defined v = recorded dummy_stmt (fn v => within v (fn v =>
   case node_type v of
@@ -261,6 +274,9 @@ and import_statement defined v = recorded dummy_stmt (fn v => within v (fn v =>
   | "YulBreak" => yul "YulBreak" []
   | "YulContinue" => yul "YulContinue" []
   | "YulLeave" => yul "YulLeave" []
+  | "YulFunctionDefinition" =>
+      (import_function defined v;
+       fail (describe v ^ ": unsupported statement YulFunctionDefinition"))
   | other => fail (describe v ^ ": unsupported statement " ^ other))) v
 
 and import_switch defined v =
@@ -317,11 +333,6 @@ fun runtime_ast output source contract stage =
       handle e => fail ("no " ^ key ^ " for " ^ contract ^ ": " ^
                         JSONUtil.exnMessage e)
   end
-
-fun is_function v =
-  (case JSONUtil.findField v "nodeType" of
-     SOME (JSON.STRING s) => s = "YulFunctionDefinition"
-   | _ => false)
 
 (* A code block: its top-level function definitions, which the evaluator
  * collects, and its statements. Every unknown node is a line of the
