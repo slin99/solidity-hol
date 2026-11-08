@@ -421,22 +421,104 @@ initial corpus, so transient layout remains unvalidated.
 
 ## Normalized AST
 
-`syntax/solidityImportScript.sml` defines the second layer for the admitted
-pure subset, and `syntax/solidityImportLib.sml` imports it from an exporter
-artifact, failing closed. The theory's header lists what `valid_src_unit`
-establishes and what is left to elaboration; `tests/solidityImportTestScript.sml`
-holds the positive fixture and negative fixtures derived from it.
+`syntax/solidityImportScript.sml` defines the second layer, and
+`syntax/solidityImportLib.sml` imports it from an exporter artifact, failing
+closed: an unknown node type, a missing required field or a construct outside
+the admitted subset below is an import error (for a function body, the
+function is kept unsupported; see Partial admission).
+`tests/solidityImportTestScript.sml` holds the positive fixtures and negative
+fixtures derived from them.
+
+`valid_src_unit` checks what holds for the unit as a whole:
+
+- each contract's node ids, with the unit's, are distinct, and the unit is
+  among its compilation's source units;
+- the contract's bases are distinct and start with the contract itself;
+  contracts are scoped by the unit, functions by a base of their contract,
+  structs by a base or a source unit of the compilation;
+- function headers: kind (`function`, `receive`, `fallback`, `constructor`),
+  mutability (`pure`, `view`, `nonpayable`, `payable`), and parameters and
+  returns of normalized types scoped by the function; library functions are
+  internal or private `function`s scoped by a library distinct from the
+  bases; modifier parameters likewise;
+- every state variable has a normalized type and a type identifier agreeing
+  with it; the storage layout lists the state variables in linearization
+  order, bases first, each with its own type identifier;
+- constants are of elementary value types or byte sequences, declared by a
+  base or a library; event parameters are elementary, scoped by their event;
+- initializers name state variables or immutables, base-constructor
+  arguments name a constructor, and getters name a state variable, an
+  immutable or a constant.
 
 ## Elaboration
 
-`semantics/solidityElaborateScript.sml` elaborates a valid unit of the pure
-subset to `core_program`. Its header lists the admitted constructs and the
-evaluation schedules, which were read from the via-IR output in
-`testdata/frontend/expected/pure_core.json`. `tests/solidityElaborateTestScript.sml`
-checks the elaborated fixture with `wf_core_program` and runs it in the
-evaluator. The differential corpus runs the same inputs, and a wider corpus of
-sources, through the deployed bytecode in Verifereum and requires equal
-ABI-encoded outcomes; see [differential-testing.md](differential-testing.md).
+`semantics/solidityElaborateScript.sml` elaborates a valid unit to
+`core_program`; its header records the evaluation schedules, read from the
+via-IR output in `testdata/frontend/expected/pure_core.json`.
+`tests/solidityElaborateTestScript.sml` checks the elaborated fixture with
+`wf_core_program` and runs it in the evaluator. The differential corpus runs
+the same inputs, and a wider corpus of sources, through the deployed bytecode
+in Verifereum and requires equal ABI-encoded outcomes; see
+[differential-testing.md](differential-testing.md).
+
+Admitted: one contract, flattened along its bases, with
+
+- functions over elementary value types, value-type state variables and
+  immutables, storage structs, scalar-key mappings and fixed or dynamic
+  storage arrays; member and indexed scalar reads and updates, array lengths,
+  scalar push and pop; bytes and string literals and memory or calldata
+  values, which keep their locations (memory assignments alias,
+  calldata-to-memory assignments copy); storage byte sequences and dynamic
+  ABI values are rejected;
+- locals, including tuple declarations with holes; simple and compound
+  assignment to locals and state variables, tuple assignment, `++` and `--`;
+- literals (no subdenominations), explicit elementary conversions,
+  `type(T).max` and `.min` of integer types, unary, binary, comparison and
+  short-circuit operators, conditional expressions over value types; an
+  operation over literals that the compiler types as an integer is that
+  integer, as the compiler folds it;
+- `if`, `while`, `do`-`while`, `for`, `break`, `continue`, `return`,
+  unchecked blocks, inline assembly over locals and state-variable slots;
+- internal calls with single or multiple returns, library calls (`L.f(args)`
+  and `x.f(args)` through a using directive) and library constants (`L.c`),
+  `super` in calls, external calls of contract types;
+- `require`, `assert` and `revert` with boolean conditions and literal string
+  messages; reads of `msg`, `tx` and `block` members and `address(this)`;
+  emits of events and reverts with custom errors, both with elementary
+  parameters; `keccak256`, `abi.encode*`, selectors;
+- constants, state-variable initializers, constructors and base-constructor
+  arguments (inheritance specifiers or constructor modifiers), which form one
+  creation procedure.
+
+A contract or interface type is read as address, its value at run time,
+stored and ABI encoded as one: in type names, type identifiers and storage
+layouts, and as the target of a conversion `I(a)`. `this` is the contract's
+own address.
+
+Elaboration also checks each function body against the compiler's
+annotations, at the node whose type it computes:
+
+- every identifier resolves, within its lexical scope, to a variable whose
+  type agrees with its annotation, or, as the callee of a call, to the most
+  derived override of the function it names (`call_table`) or an internal
+  library function; a pure function reads no state variable;
+- calls have matching arity, ordered arguments and are annotated with the
+  callee's return types; conversions are annotated with their target type,
+  environment reads with their member's type; emits and reverts with an
+  error carry as many arguments as the event or error has parameters;
+- declaration statements are statements of a block or a `for` initializer,
+  list exactly their declarations' ids, and are scoped by that block or
+  `for`; returns name the enclosing function's return
+  list; `break` and `continue` occur in loop bodies; conditions are boolean;
+  modifier bodies make no super call, and modifier arguments see the
+  function's parameters but not its return variables;
+- operators belong to the admitted set; every scalar result is annotated with
+  its own type, and every other annotation decodes to an elementary, rational
+  literal or tuple type.
+
+Left to the compiler: storage layout calculation, that view functions write
+no state variable, and the override metadata (which declarations each
+function overrides, and that functions come most derived first).
 
 ## Partial admission
 
@@ -444,8 +526,8 @@ A contract is admitted per function. When a function's body or the body of
 one of its modifiers falls outside the subset, import keeps the function with
 its header, an empty body and the reason (`fn_unsupported`) rather than
 rejecting the unit. `solidityPrepareLib` then marks, until nothing changes,
-every function whose body fails the source check, calls an unsupported one (by
-a call or a super call), or fails to elaborate. The elaborator builds no
+every function that fails to elaborate, also by calling an unsupported one (by
+a call or a super call). The elaborator builds no
 procedure for them and lists their ids in `core_program.unsupported_procedures`,
 so their selectors, and receive, fallback or the constructor when unsupported,
 still dispatch to them and an external call of one is invalid

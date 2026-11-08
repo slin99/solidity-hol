@@ -174,37 +174,32 @@ fun mark_unsupported reasons unit0 =
             | field => field) (#2 (TypeBase.dest_record unit)))
   end
 
-(* The (id, passes) pairs of unit_function_checks. *)
-fun function_checks strict unit =
-  map (fn p => let val (x, ok) = pairSyntax.dest_pair p in
-                 (numSyntax.int_of_term x, ok ~~ T) end)
+(* The ids of the supported functions that fail to elaborate, strictly (as
+ * elaborate_unit does) or not (calls may reach unsupported functions). *)
+fun elaboration_failures strict unit =
+  map numSyntax.int_of_term
     (#1 (listSyntax.dest_list
-      (cv_value (list_mk_comb (import_const "unit_function_checks",
-                               [if strict then T else F, unit])))))
+      (cv_value (list_mk_comb (prim_mk_const
+         {Thy = "solidityElaborate", Name = "unit_elaboration_failures"},
+         [if strict then T else F, unit])))))
 
-(* Mark unsupported the supported functions that fail the source check, also
- * because they call an unsupported function, or fail to elaborate, until
- * none does. Each round marks at least one function or ends. *)
+(* Mark unsupported the supported functions that fail to elaborate, also
+ * because they call an unsupported function, until none does. Each round
+ * marks at least one function or ends. *)
 fun mark_failures unit =
-  case List.filter (not o #2) (function_checks true unit) of
-    failing as (_ :: _) =>
+  case elaboration_failures true unit of
+    [] => unit
+  | failing =>
       let
-        val loose = function_checks false unit
+        val loose = elaboration_failures false unit
         fun reason x =
-          if List.exists (fn (y, ok) => x = y andalso ok) loose
-          then "calls an unsupported function"
-          else "fails the source check (valid_src_unit)"
+          if List.exists (fn y => x = y) loose
+          then "fails to elaborate (unsupported lowering)"
+          else "calls an unsupported function"
       in
         mark_failures
-          (mark_unsupported (map (fn (x, _) => (x, reason x)) failing) unit)
+          (mark_unsupported (map (fn x => (x, reason x)) failing) unit)
       end
-  | [] =>
-      case #1 (listSyntax.dest_list (cv_value (mk_comb (prim_mk_const
-             {Thy = "solidityElaborate", Name = "unit_elaboration_failures"}, unit)))) of
-        [] => unit
-      | xs => mark_failures (mark_unsupported
-                (map (fn x => (numSyntax.int_of_term x,
-                               "fails to elaborate (unsupported lowering)")) xs) unit)
 
 fun function_outcomes unit =
   map (fn t =>

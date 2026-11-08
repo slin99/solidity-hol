@@ -1,7 +1,7 @@
-(* Run by tools/semantic_tests_coverage.py under `holbuild run`. Checks the
- * preparation of every test in SEMANTIC_TESTS_MANIFEST: one "name<TAB>path"
- * line per test, where path holds the complete compiler artifact. Prints one
- * coverage-result line per test.
+(* Run by tools/semantic_tests_coverage.py under `holbuild run-action`, or
+ * `holbuild run` without a fleet. The manifest has one "name<TAB>path" line
+ * per compiler artifact. Results go to the declared output on the fleet,
+ * or stdout locally.
  *)
 load "wordsLib";
 load "solidityPrepareLib";
@@ -11,6 +11,12 @@ val () = Theory.new_theory "semanticTestsCoverage";
 
 local
   open HolKernel boolLib
+
+  val output_dir = OS.Process.getEnv "HOLBUILD_RUN_OUTPUT_DIR"
+  val output =
+    case output_dir of
+      SOME dir => TextIO.openOut (OS.Path.concat (dir, "results.jsonl"))
+    | NONE => TextIO.stdOut
 
   fun json_string s =
     let
@@ -26,7 +32,7 @@ local
   (* An admitted unit reports how many functions calls reach and why the
    * unsupported ones among them are. *)
   fun emit test status message functions =
-    (print ("coverage-result: {\"test\":" ^ json_string test ^
+    (TextIO.output (output, "coverage-result: {\"test\":" ^ json_string test ^
             ",\"status\":" ^ json_string status ^
             (case message of
                NONE => ""
@@ -37,7 +43,7 @@ local
                  ",\"functions\":" ^ Int.toString n ^
                  ",\"unsupported\":[" ^
                  String.concatWith "," (map json_string reasons) ^ "]") ^ "}\n");
-     TextIO.flushOut TextIO.stdOut)
+     TextIO.flushOut output)
 
   fun run_test test path =
     let
@@ -68,7 +74,7 @@ local
   val manifest =
     case OS.Process.getEnv "SEMANTIC_TESTS_MANIFEST" of
       SOME m => m
-    | NONE => raise Fail "SEMANTIC_TESTS_MANIFEST is not set"
+    | NONE => "manifest.txt"
 
   fun lines stream =
     case TextIO.inputLine stream of
@@ -82,4 +88,5 @@ in
            [test, path] => run_test test path
          | _ => raise Fail ("malformed manifest line " ^ line))
       (lines (TextIO.openIn manifest))
+  val () = case output_dir of NONE => () | SOME _ => TextIO.closeOut output
 end;

@@ -24,8 +24,8 @@ sig
 
   (* Checked semantic preparation for an already imported unit. The caller
    * owns compiler/profile provenance when using this lower-level entry point.
-   * A function that fails the source check, also by calling an unsupported
-   * function, or fails to elaborate, is marked unsupported, until none does;
+   * A function that fails to elaborate, also by calling an unsupported
+   * function, is marked unsupported, until none does;
    * what remains must pass for the unit as a whole.
    * SourceRejected includes source-subset restrictions of valid_src_unit.
    * HOL evaluation failures propagate; they are never input rejections.

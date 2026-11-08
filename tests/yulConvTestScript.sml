@@ -147,6 +147,32 @@ fun call_term (nm, arity, _) =
 
 fun fail msg = raise Fail ("yulConvTest: " ^ msg)
 
+(* Transient helpers must not copy a machine that still contains a call. *)
+val () =
+  let
+    val m = “(h : yul_expr_result -> yul_machine)
+               (invoke_yul 1 fns "f" [] m)”
+    val unfolded = List.filter
+      (fn (_, t) => not (yulConvLib.is_fixed_point [] t))
+      [("yul_tload", “yul_tload ^m 0w”),
+       ("yul_tstore", “yul_tstore ^m 0w 42w”)]
+  in
+    if null unfolded then ()
+    else fail ("transient helpers unfolded over a call: " ^
+               String.concatWith ", " (List.map #1 unfolded))
+  end
+
+val () =
+  let
+    val m = “^yul_conv_machine_term with transient := empty_transient_storage”
+    val t = “yul_tload (yul_tstore ^m 0w 42w) 0w”
+    val th = yulConvLib.yul_eval_conv []
+               “fns : (string |-> yul_function)” t
+  in
+    if aconv (rhs (concl th)) “42w : bytes32” then ()
+    else fail "transient store/load on a known machine did not evaluate"
+  end
+
 val functions = object_functions ()
 val loop_free = List.filter (fn (_, _, body) => not (has_loop body)) functions
 val looping = List.filter (fn (_, _, body) => has_loop body) functions
