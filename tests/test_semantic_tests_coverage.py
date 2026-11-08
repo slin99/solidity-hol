@@ -1057,6 +1057,9 @@ class ClassifyTests(unittest.TestCase):
         assign["leftHandSide"]["components"] = [ident, parenthesized]
         self.assertEqual({b.feature for b in coverage.elaboration_blockers(assign)},
                          {"tuple assignments to element or member targets"})
+        assign["leftHandSide"] = parenthesized
+        self.assertEqual({b.feature for b in coverage.elaboration_blockers(assign)},
+                         {"parenthesized assignment targets"})
 
     def test_storage_and_every_mutability_are_admitted(self) -> None:
         f = function(4, [])

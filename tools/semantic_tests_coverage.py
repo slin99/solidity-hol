@@ -833,6 +833,11 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
         found.append("tuples of literals" if "t_rational" in type_identifier
                      else type_feature(type_identifier))
     elif (kind == "Assignment" and node["leftHandSide"]["nodeType"] == "TupleExpression"
+          and len(node["leftHandSide"]["components"]) == 1):
+        # elab_expr takes (a) as a tuple target: plain assignment only, with
+        # no value.
+        found.append("parenthesized assignment targets")
+    elif (kind == "Assignment" and node["leftHandSide"]["nodeType"] == "TupleExpression"
           and any(c is not None and c["nodeType"] != "Identifier"
                   for c in node["leftHandSide"]["components"])):
         # tuple_writes takes holes and bare names, parenthesized ones not.
