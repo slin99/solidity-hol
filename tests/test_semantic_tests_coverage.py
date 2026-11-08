@@ -546,6 +546,9 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(blockers(decode(10, [data(20), types(21, struct)], "t_struct$_S_$7_memory_ptr")),
                          {(10, "import")})
         self.assertEqual(blockers(decode(10, [data(20)])), {(10, "import")})
+        # an empty type list decodes nothing, which the checker rejects
+        self.assertEqual(blockers(decode(10, [data(20), types(21)], "t_tuple$__$")),
+                         {(10, "elaboration")})
 
     def test_interface_ids_are_admitted_and_other_contract_type_members_blocked(self) -> None:
         def type_member(node_id, member, target=50):
