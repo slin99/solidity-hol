@@ -1,38 +1,26 @@
 (* Elaboration of the normalised source AST (solidityImport) to the ordered
  * core, for the pinned profile solc-0.8.37-via-ir-osaka.
+ * docs/frontend-boundary.md lists the admitted subset.
  *
- * Admitted: one contract, flattened along its bases, of functions over
- * elementary value types, with value-type state variables, storage structs,
- * scalar-key mappings and fixed/dynamic storage arrays, member/indexed scalar
- * reads and updates, array lengths, scalar push/pop and locals
- * (including tuple declarations with holes), internal calls with single or
- * multiple returns, explicit elementary conversions, literals, type(T).max
- * and .min of integer types (values of type T), unary, binary,
- * comparison and short-circuit operators, simple and compound assignment to
- * locals and state variables, tuple assignment, ++ and --, if, while,
- * do-while, for, break, continue, return and unchecked blocks. Built-in
- * require/assert/revert admit boolean conditions and literal string messages.
- * Reads of msg.sender, msg.value, tx.origin, tx.gasprice, block members and
- * address(this), emits of events and reverts with custom errors, both with
- * elementary parameters. An internal
- * call runs the most derived override of the function it names (call_table),
- * and a super call the function super_table finds along the bases after the
+ * Elaboration also checks each function body against the compiler's
+ * annotations, at the node whose type it computes: every type annotation
+ * agrees with the elaborated type (source_type_matches), operators and
+ * literal kinds are in the admitted sets, calls and emits have matching
+ * arity, declarations, returns, break, continue and placeholders occur
+ * where the source allows them, and a pure function reads no state
+ * variable. A function that fails elaborates to NONE, which preparation
+ * (solidityPrepareLib) turns into marking that function unsupported.
+ *
+ * One contract is elaborated, flattened along its bases. An internal call
+ * runs the most derived override of the function it names (call_table), and
+ * a super call the function super_table finds along the bases after the
  * caller's; the functions no other overrides are elaborated, and the external
  * and public ones among them, receive and fallback form the dispatch table.
- * The overridden functions super calls reach are elaborated too, but not
- * dispatched.
  * Each constant is two procedures that return its value converted to its
  * type, one with checked and one with wrapping arithmetic, and a reference
  * to it calls the one of its own arithmetic, as the compiler's IR calls a
- * function per constant; a public constant's getter is the checked one. An
- * operation over literals that the compiler types as an integer is that
- * integer, as the compiler folds it.
- * State-variable initializers, constructors and base-constructor arguments
- * (inheritance specifiers or constructor modifiers) form one creation
- * procedure.
- * Bytes/string literals and memory/calldata values retain their locations.
- * Memory assignments alias; calldata-to-memory assignments copy contents.
- * Storage byte sequences and dynamic ABI values are rejected (NONE).
+ * function per constant. State-variable initializers, constructors and
+ * base-constructor arguments form one creation procedure.
  *
  * Schedules, read from the compiler's IR for this profile (the ir output in
  * testdata/frontend/expected/pure_core.json) and checked against the compiled
@@ -69,30 +57,50 @@ Ancestors
 Libs
   cv_transLib wordsLib
 
+(* What an expression or statement sees: the functions callable by id, and
+ * those super calls run, by the declaration they name; the struct, enum
+ * (member count) and event declarations; the variables in lexical scope; the
+ * state variables it may read and write (none in a pure or library
+ * function), and those inline assembly may name by slot and offset; the
+ * immutables and constants (with the id of the constant's wrapping
+ * procedure); the enclosing function's return variables and, in a modifier,
+ * the procedure its placeholder calls with the function's parameters; the
+ * arithmetic mode; whether in the creation; the innermost scope node, which
+ * declares the locals of a declaration statement; the id of the return
+ * parameter list a return names; whether in a loop body.
+ *)
 Datatype:
   elab_ctx = <|
     functions : (num # src_function) list;
     supers : (num # src_function) list;
     structs : src_struct list;
+    enums : (num # num) list;
     events : (num # src_event) list;
     variables : (num # sol_type) list;
     state : (num # sol_type) list;
+    locations : (num # sol_type) list;
     immutables : (num # sol_type) list;
     constants : (num # sol_type # num) list;
     returns : (num # sol_type) list;
     placeholder : (num # (num # sol_type) list) option;
     mode : arithmetic_mode;
-    creation : bool
+    creation : bool;
+    scope : num;
+    returns_id : num;
+    in_loop : bool
   |>
 End
 
 (* Values and conversions *)
 
 (* The type of an elaborated value: an elementary type, an integer literal
- * (whose atom is its value), or several values.
+ * (whose atom is its value), a fractional literal, which only an operation
+ * over literals the compiler folds to an integer takes, a bytes or string
+ * literal, or several values.
  *)
 Datatype:
-  elab_type = ElabType sol_type | ElabLiteral | ElabBytesLiteral | ElabTuple (sol_type list)
+  elab_type = ElabType sol_type | ElabLiteral | ElabRational | ElabBytesLiteral
+            | ElabTuple (sol_type list)
 End
 
 Definition bind_value_def:
@@ -146,6 +154,7 @@ Definition coerce_def:
                SOME (([], ConstantAtom (BytesValue (num_to_bytes k (Num i)))), n)
              else NONE
          | _ => NONE)
+    | ElabRational => NONE
     | ElabTuple _ => NONE
 End
 
@@ -188,20 +197,27 @@ Definition destination_type_def:
   (destination_type (ElementDestination _ _ ty) = ty)
 End
 
+(* The variable an identifier annotated with tid names, of that type. *)
 Definition variable_destination_def:
-  variable_destination ctx (n : num) x =
+  variable_destination ctx (n : num) x tid =
     case ALOOKUP ctx.variables x of
-      SOME ty => SOME (([], LocalDestination x ty), n)
+      SOME ty =>
+        if source_type_matches ty tid then SOME (([], LocalDestination x ty), n)
+        else NONE
     | NONE =>
         (case ALOOKUP ctx.state x of
-           SOME ty => SOME (([DefineStmt (AstId n) (ReferenceType ty)
-                                (StateReferenceOperation (AstId x))],
-                             ReferenceDestination (BoundAtom (AstId n)) ty), n + 1)
+           SOME ty =>
+             if ¬source_type_matches ty tid then NONE else
+             SOME (([DefineStmt (AstId n) (ReferenceType ty)
+                       (StateReferenceOperation (AstId x))],
+                    ReferenceDestination (BoundAtom (AstId n)) ty), n + 1)
          | NONE =>
              case ALOOKUP ctx.immutables x of
-               SOME ty => SOME (([DefineStmt (AstId n) (ReferenceType ty)
-                                    (ImmutableReferenceOperation (AstId x))],
-                                 ReferenceDestination (BoundAtom (AstId n)) ty), n + 1)
+               SOME ty =>
+                 if ¬source_type_matches ty tid then NONE else
+                 SOME (([DefineStmt (AstId n) (ReferenceType ty)
+                           (ImmutableReferenceOperation (AstId x))],
+                        ReferenceDestination (BoundAtom (AstId n)) ty), n + 1)
              | NONE => NONE)
 End
 
@@ -409,10 +425,10 @@ End
 Definition tuple_writes_def:
   (tuple_writes ctx n [] [] = SOME ([], n)) ∧
   (tuple_writes ctx n (NONE :: cs) (_ :: vs) = tuple_writes ctx n cs vs) ∧
-  (tuple_writes ctx n (SOME (SrcIdentifier _ _ x _) :: cs) ((a, vt) :: vs) =
+  (tuple_writes ctx n (SOME (SrcIdentifier _ _ x tid) :: cs) ((a, vt) :: vs) =
     case tuple_writes ctx n cs vs of
       SOME (ws, n1) =>
-        (case variable_destination ctx n1 x of
+        (case variable_destination ctx n1 x tid of
            SOME ((ls, target), n2) =>
              (case plain_assignment n2 target a vt of
                 SOME ((ss, _, _), n3) => SOME (ws ++ ls ++ ss, n3)
@@ -523,25 +539,26 @@ Definition abi_arguments_def:
 End
 
 (* The operation of abi.encode* on the values of its arguments, after any
- * statements converting the selector or the arguments. *)
+ * statements converting the arguments: a selector given as an argument is
+ * a bytes4, and the other arguments are scalars or byte sequences (integer
+ * literals only unpacked, as the compiler requires). *)
 Definition abi_encoding_def:
   abi_encoding n form vs =
     case (form, vs) of
       (AbiWithSelector, (s, svt) :: rest) =>
-        (case (coerce n (FixedBytesT 4) s svt, abi_arguments F rest) of
-           (SOME ((cs, s'), n1), SOME (tys, args)) =>
-             SOME ((cs, AbiEncodeOperation (SOME s') tys args), n1)
-         | _ => NONE)
+        (case abi_arguments F rest of
+           SOME (tys, args) =>
+             if svt = ElabType (FixedBytesT 4)
+             then SOME (([], AbiEncodeOperation (SOME s) tys args), n) else NONE
+         | NONE => NONE)
     | (AbiWithSelector, []) => NONE
     | (AbiCall tids, (s, svt) :: rest) =>
-        (case coerce n (FixedBytesT 4) s svt of
-           SOME ((cs, s'), n1) =>
-             (case all_some (MAP abi_call_parameter tids) of
-                SOME tys =>
-                  (case coerce_abi_values n1 tys rest of
-                     SOME (css, args, n2) =>
-                       SOME ((cs ++ css, AbiEncodeOperation (SOME s') tys args), n2)
-                   | NONE => NONE)
+        (if svt ≠ ElabType (FixedBytesT 4) then NONE else
+         case all_some (MAP abi_call_parameter tids) of
+           SOME tys =>
+             (case coerce_abi_values n tys rest of
+                SOME (css, args, n1) =>
+                  SOME ((css, AbiEncodeOperation (SOME s) tys args), n1)
               | NONE => NONE)
          | NONE => NONE)
     | (AbiCall _, []) => NONE
@@ -566,6 +583,33 @@ Definition abi_encoding_def:
          | NONE => NONE)
 End
 
+(* An array or byte index, or an allocation length: an unsigned integer or a
+ * non-negative integer literal. *)
+Definition index_value_ok_def:
+  index_value_ok a vt ⇔
+    case vt of
+      ElabType (UintT _) => T
+    | ElabLiteral => (case a of ConstantAtom (IntegerValue i) => 0 ≤ i | _ => F)
+    | _ => F
+End
+
+(* An element dynamic storage arrays push and pop. *)
+Definition push_element_ok_def:
+  push_element_ok element ⇔
+    case element of EnumT _ => T | _ => elementary_storage_type_ok element
+End
+
+(* A call of an internal function or a super call, annotated with tid: as
+ * many arguments as parameters, in a valid order, a callee that is not
+ * external, and the callee's return types as its type. *)
+Definition internal_call_ok_def:
+  internal_call_ok (callee : src_function) rets args order tid ⇔
+    LENGTH args = LENGTH callee.fn_parameters ∧
+    argument_order_ok order (LENGTH args) ∧
+    callee.fn_visibility ≠ "external" ∧
+    decode_type_identifier tid = SOME (call_value_type rets)
+End
+
 (* A call's argument values, evaluated in the call's order, in its
  * parameters' order: order gives, for each parameter, the position of its
  * argument (argument_order_ok). The values are those of the call's
@@ -577,11 +621,30 @@ Definition arrange_def:
     OPTION_MAP (λws. TAKE k vs ++ ws) (all_some (MAP (λi. oEL (k + i) vs) order))
 End
 
+(* An expression the compiler annotated with tid may elaborate to a value of
+ * type vt: a scalar of the annotated type, or anything else whose annotation
+ * decodes. *)
+Definition annotation_matches_def:
+  annotation_matches tid vt ⇔
+    case vt of
+      ElabType ty =>
+        if is_stored_scalar_type ty then source_type_matches ty tid
+        else IS_SOME (decode_type_identifier tid)
+    | _ => IS_SOME (decode_type_identifier tid)
+End
+
+(* A declaration is a statement of a block, never the body of an if, a loop
+ * or a try clause. *)
+Definition is_declaration_def:
+  (is_declaration (SrcVariableDeclarationStatement _ _ _ _) ⇔ T) ∧
+  (is_declaration _ ⇔ F)
+End
+
 Definition elab_expr_def:
   (elab_expr ctx n expression =
     case expression of
-      SrcIdentifier _ _ x _ =>
-        (case variable_destination ctx n x of
+      SrcIdentifier _ _ x tid =>
+        (case variable_destination ctx n x tid of
            SOME ((ls, target), n1) =>
              let ty = destination_type target in
              if ¬(is_stored_scalar_type ty ∨ memory_object_type ty ∨ located_value_type ty) then NONE else
@@ -591,12 +654,14 @@ Definition elab_expr_def:
          | NONE =>
              case ALOOKUP ctx.constants x of
                SOME (ty, w) =>
+                 if ¬source_type_matches ty tid then NONE else
                  let p = if ctx.mode = CheckedArithmetic then x else w in
                  let (ss, a) = bind_value n ty (InternalCallOperation (AstId p) []) in
                  SOME ((ss, a, ElabType ty), n + 1)
              | NONE => NONE)
-    | SrcArrayLength _ root_expr _ =>
-        (case elab_expr ctx n root_expr of
+    | SrcArrayLength _ root_expr tid =>
+        (if tid ≠ "t_uint256" then NONE else
+         case elab_expr ctx n root_expr of
            SOME ((ss, ref, ElabType (LocatedT loc BytesT)), n1) =>
              let (rs, a) = bind_value n1 (UintT 256) (ArrayLengthOperation ref) in
              SOME ((ss ++ rs, a, ElabType (UintT 256)), n1 + 1)
@@ -616,15 +681,20 @@ Definition elab_expr_def:
            | _ => NONE)
     | SrcLiteral _ kind value tid =>
         (if kind = "bool" then
-           SOME (([], ConstantAtom (BoolValue (value = "true")), ElabType BoolT), n)
+           if (value = "true" ∨ value = "false") ∧ tid = "t_bool" then
+             SOME (([], ConstantAtom (BoolValue (value = "true")), ElabType BoolT), n)
+           else NONE
          else if (kind = "string" ∨ kind = "unicodeString" ∨ kind = "hexString") ∧
                  isPREFIX "t_stringliteral_" tid then
            SOME (([], ConstantAtom (BytesValue (MAP (n2w o ORD) value)),
                   ElabBytesLiteral), n)
+         else if kind ≠ "number" then NONE
          else
-           case identifier_integer tid of
-             SOME i => SOME (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
-           | NONE => NONE)
+           case decode_type_identifier tid of
+             SOME (SrcRational i d) =>
+               if d = 1 then SOME (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
+               else SOME (([], ConstantAtom (BoolValue F), ElabRational), n)
+           | _ => NONE)
     | SrcMemberAccess _ _ _ _ =>
         (case elab_location ctx n expression of
            SOME ((ss, ref, ty), n1) =>
@@ -638,8 +708,10 @@ Definition elab_expr_def:
            SOME ((ss, ref, ElabType (LocatedT loc BytesT)), n1) =>
              let (captured, next) = snapshot n1 ref (ElabType (LocatedT loc BytesT)) in
              let (saved, ref') = captured in
-             (case elab_expr ctx next index of
+             (if tid ≠ "t_bytes1" then NONE else
+              case elab_expr ctx next index of
                 SOME ((si, i, vt), n2) =>
+                  if ¬index_value_ok i vt then NONE else
                   (case coerce n2 (UintT 256) i vt of
                      SOME ((cs, i'), n3) =>
                        let (rs, a) = bind_value n3 (FixedBytesT 1)
@@ -651,8 +723,13 @@ Definition elab_expr_def:
              let ty = LocatedT loc (ArrayT element length) in
              let (captured, next) = snapshot n1 ref (ElabType ty) in
              let (saved, ref') = captured in
-             (case elab_expr ctx next index of
+             (* a storage array's elements are annotated as stored, unlocated *)
+             (if ¬source_type_matches
+                    (if loc = StorageLoc then element else element_type loc element) tid
+              then NONE else
+              case elab_expr ctx next index of
                 SOME ((si, i, vt), n2) =>
+                  if ¬index_value_ok i vt then NONE else
                   (case coerce n2 (UintT 256) i vt of
                      SOME ((cs, i'), n3) =>
                        let ety = element_type loc element in
@@ -670,12 +747,20 @@ Definition elab_expr_def:
            | NONE => NONE)
     | SrcUnaryOperation _ op prefix e tid =>
         (case identifier_integer tid of
-           SOME i => SOME (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
+           SOME i =>
+             (* folded by the compiler: the operand is a literal operation *)
+             (case elab_expr ctx n e of
+                SOME (([], _, _), _) =>
+                  if unary_operator_ok op then
+                    SOME (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
+                  else NONE
+              | _ => NONE)
          | NONE =>
          if op = "++" ∨ op = "--" then
            case elab_destination ctx n e of
              SOME ((ls, target), n1) =>
                let ty = destination_type target in
+               if ¬annotation_matches tid (ElabType ty) then NONE else
                let (read, n2) = read_destination n1 target in
                let (rs, cur) = read in
                let (old, n3) = if prefix then (([], cur), n2)
@@ -701,11 +786,19 @@ Definition elab_expr_def:
            | _ => NONE)
     | SrcBinaryOperation _ op l r common tid =>
         (case identifier_integer tid of
-           SOME i => SOME (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
+           SOME i =>
+             (* folded by the compiler: the operands are literal operations *)
+             (case (elab_expr ctx n l, elab_expr ctx n r) of
+                (SOME (([], _, _), _), SOME (([], _, _), _)) =>
+                  if binary_operator_ok op then
+                    SOME (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
+                  else NONE
+              | _ => NONE)
          | NONE =>
-         case (identifier_type common, elab_expr ctx n l) of
-           (SOME ty, SOME ((sl, al, vl), n1)) =>
+         case (identifier_type common, identifier_type tid, elab_expr ctx n l) of
+           (SOME ty, SOME _, SOME ((sl, al, vl), n1)) =>
              if op = "&&" ∨ op = "||" then
+               if ¬annotation_matches tid (ElabType BoolT) then NONE else
                (case coerce n1 BoolT al vl of
                   SOME ((cl, al'), n2) =>
                     (case elab_expr ctx (n2 + 2) r of
@@ -732,6 +825,7 @@ Definition elab_expr_def:
                   SOME ((sr, ar, vr), n3) =>
                     (case arithmetic_operator op of
                        SOME aop =>
+                         if ¬annotation_matches tid (ElabType ty) then NONE else
                          (case coerce n3 ty al' vl of
                             SOME ((cl, al''), n4) =>
                               (case coerce n4 (right_operand_type aop ty) ar vr of
@@ -744,6 +838,7 @@ Definition elab_expr_def:
                                | NONE => NONE)
                           | NONE => NONE)
                      | NONE =>
+                         if ¬annotation_matches tid (ElabType BoolT) then NONE else
                          (case coerce n3 ty al' vl of
                             SOME ((cl, al''), n4) =>
                               (case coerce n4 ty ar vr of
@@ -758,9 +853,11 @@ Definition elab_expr_def:
                 | NONE => NONE)
          | _ => NONE)
     | SrcAssignment _ op lhs rhs tid =>
-        (case lhs of
-           SrcTupleExpression _ cs _ =>
-             (if op = "=" then
+        (if ¬assignment_operator_ok op ∨ IS_NONE (decode_type_identifier tid)
+         then NONE else
+         case lhs of
+           SrcTupleExpression _ cs ltid =>
+             (if op = "=" ∧ IS_SOME (decode_type_identifier ltid) then
                 case elab_values ctx n rhs of
                   SOME ((sr, vs), n1) =>
                     let (ss, vs', n2) = snapshot_values n1 vs in
@@ -784,11 +881,14 @@ Definition elab_expr_def:
                        if op = "=" then
                          (case plain_assignment n3 target ar' vr of
                             SOME ((cr, a, value_ty), n4) =>
-                              SOME ((sr ++ sc ++ ls ++ cr, a, ElabType value_ty), n4)
+                              if annotation_matches tid (ElabType value_ty) then
+                                SOME ((sr ++ sc ++ ls ++ cr, a, ElabType value_ty), n4)
+                              else NONE
                           | NONE => NONE)
                        else
                          (case compound_operator op of
                             SOME aop =>
+                              if ¬annotation_matches tid (ElabType ty) then NONE else
                               (case coerce n3 (right_operand_type aop ty) ar' vr of
                                  SOME ((cr, a), n4) =>
                                    let (read, n5) = read_destination n4 target in
@@ -802,20 +902,25 @@ Definition elab_expr_def:
                           | NONE => NONE)
                    | NONE => NONE)
               | NONE => NONE))
-    | SrcTupleExpression _ [SOME e] _ =>
-        (elab_expr ctx n e)
+    | SrcTupleExpression _ [SOME e] tid =>
+        (case elab_expr ctx n e of
+           SOME ((ss, a, vt), n1) =>
+             if annotation_matches tid vt then SOME ((ss, a, vt), n1) else NONE
+         | NONE => NONE)
     | SrcTupleExpression _ _ _ =>
         (NONE)
     | SrcArrayMember _ _ _ _ => NONE
-    | SrcFunctionCall _ callee args order _ =>
+    | SrcFunctionCall _ callee args order tid =>
         (case callee of
            SrcArrayMember _ member root_expr _ =>
              (if order ≠ [] then NONE else
               case elab_location ctx n root_expr of
                 SOME ((ss, ref, ArrayT element NONE), n1) =>
+                  if ¬push_element_ok element then NONE else
                   if member = "push" then
                     (case args of
                        [] =>
+                         if ¬source_type_matches element tid then NONE else
                          let target = BoundAtom (AstId n1) in
                          let (rs, a) = bind_value (n1 + 1) element
                                          (ReadOperation element target) in
@@ -823,6 +928,7 @@ Definition elab_expr_def:
                                          (ArrayPushOperation ref NONE)] ++ rs,
                                 a, ElabType element), n1 + 2)
                      | [arg] =>
+                         if tid ≠ "t_tuple$__$" then NONE else
                          (case elab_expr ctx n1 arg of
                             SOME ((sa, a, vt), n2) =>
                               (case coerce n2 element a vt of
@@ -834,7 +940,7 @@ Definition elab_expr_def:
                                | NONE => NONE)
                           | NONE => NONE)
                      | _ => NONE)
-                  else if member = "pop" ∧ args = [] then
+                  else if member = "pop" ∧ args = [] ∧ tid = "t_tuple$__$" then
                     SOME ((ss ++ [DefineStmt (AstId n1) (ProductType [])
                                     (ArrayPopOperation ref)],
                            ConstantAtom (BoolValue F), ElabTuple []), n1 + 1)
@@ -845,6 +951,7 @@ Definition elab_expr_def:
                 SOME callee =>
                   (case callee_types callee of
                      SOME (params, rets) =>
+                       if ¬internal_call_ok callee rets args order tid then NONE else
                        (case elab_args ctx n order params args of
                           SOME ((sa, atoms), n1) =>
                             SOME ((sa ++ [DefineStmt (AstId n1) (call_result_type rets)
@@ -855,11 +962,12 @@ Definition elab_expr_def:
                    | NONE => NONE)
               | NONE => NONE)
          | _ => NONE)
-    | SrcSuperCall _ r args order _ =>
+    | SrcSuperCall _ r args order tid =>
         (case ALOOKUP ctx.supers r of
            SOME callee =>
              (case callee_types callee of
                 SOME (params, rets) =>
+                  if ¬internal_call_ok callee rets args order tid then NONE else
                   (case elab_args ctx n order params args of
                      SOME ((sa, atoms), n1) =>
                        SOME ((sa ++ [DefineStmt (AstId n1) (call_result_type rets)
@@ -869,8 +977,8 @@ Definition elab_expr_def:
                    | NONE => NONE)
               | NONE => NONE)
          | NONE => NONE)
-    | SrcBuiltinCall _ _ builtin condition message _ =>
-        (if ¬builtin_shape builtin condition message then NONE else
+    | SrcBuiltinCall _ _ builtin condition message tid =>
+        (if ¬builtin_shape builtin condition message ∨ tid ≠ "t_tuple$__$" then NONE else
          let failure = builtin_failure builtin message in
          case condition of
            NONE => SOME (([failure;
@@ -878,18 +986,24 @@ Definition elab_expr_def:
              BoundAtom (AstId n), ElabTuple []), n + 1)
          | SOME c =>
              (case elab_expr ctx n c of
-                SOME ((ss, a, vt), n1) =>
-                  (case coerce n1 BoolT a vt of
-                     SOME ((cs, v), n2) =>
-                       SOME ((ss ++ cs ++ [IfStmt v [] [failure];
-                         DefineStmt (AstId n2) (ProductType []) (TupleOperation [])],
-                         BoundAtom (AstId n2), ElabTuple []), n2 + 1)
-                   | NONE => NONE)
-              | NONE => NONE))
-    | SrcExternalCall _ callee with_value operands order _ =>
+                SOME ((ss, v, ElabType BoolT), n1) =>
+                  SOME ((ss ++ [IfStmt v [] [failure];
+                    DefineStmt (AstId n1) (ProductType []) (TupleOperation [])],
+                    BoundAtom (AstId n1), ElabTuple []), n1 + 1)
+              | _ => NONE))
+    (* Value only for a payable callee, as the compiler requires; calls
+       returning enums are not supported yet. *)
+    | SrcExternalCall _ callee with_value operands order tid =>
         (case (all_some (MAP call_variable_type callee.ext_parameters),
                all_some (MAP call_variable_type callee.ext_returns)) of
            (SOME params, SOME rets) =>
+             if ¬(MEM callee.ext_mutability ["pure"; "view"; "nonpayable"; "payable"] ∧
+                  (with_value ⇒ callee.ext_mutability = "payable") ∧
+                  LENGTH operands = LENGTH params + (if with_value then 2 else 1) ∧
+                  argument_order_ok order (LENGTH params) ∧
+                  decode_type_identifier tid = SOME (call_value_type rets) ∧
+                  EVERY (λty. case ty of EnumT _ => F | _ => T) rets)
+             then NONE else
              (case OPTION_BIND (elab_arg_values ctx n operands)
                      (λ((ss, vs), next). OPTION_MAP (λvs'. ((ss, vs'), next))
                                            (arrange order vs)) of
@@ -910,9 +1024,14 @@ Definition elab_expr_def:
                    | _ => NONE)
               | NONE => NONE)
          | _ => NONE)
+    (* new T(n) of a byte sequence or dynamic memory array type *)
     | SrcNew _ tn e tid =>
         (case (normalize_type_name tn, elab_expr ctx n e) of
            (SOME ty, SOME ((ss, a, vt), n1)) =>
+             if ¬((byte_sequence_type ty ∨
+                   (memory_object_type ty ∧ case ty of ArrayT _ NONE => T | _ => F)) ∧
+                  index_value_ok a vt ∧
+                  source_type_matches (LocatedT MemoryLoc ty) tid) then NONE else
              (case coerce n1 (UintT 256) a vt of
                 SOME ((cs, a'), n2) =>
                   let (rs, v) = bind_value n2 (LocatedT MemoryLoc ty)
@@ -920,22 +1039,32 @@ Definition elab_expr_def:
                   SOME ((ss ++ cs ++ rs, v, ElabType (LocatedT MemoryLoc ty)), n2 + 1)
               | NONE => NONE)
          | _ => NONE)
-    | SrcEnvironment _ f _ =>
+    | SrcEnvironment _ f tid =>
+        if ¬source_type_matches (environment_type f) tid then NONE else
         let (ss, a) = bind_value n (environment_type f) (EnvironmentOperation f) in
         SOME ((ss, a, ElabType (environment_type f)), n + 1)
-    | SrcEnumValue _ tn index _ =>
+    | SrcEnumValue _ tn index tid =>
         (case normalize_type_name tn of
-           SOME ty =>
-             let (ss, a) = bind_value n ty
-                             (ConvertOperation ty (ConstantAtom (IntegerValue (&index)))) in
-             SOME ((ss, a, ElabType ty), n + 1)
-         | NONE => NONE)
+           SOME (EnumT (AstId id)) =>
+             (case ALOOKUP ctx.enums id of
+                SOME members =>
+                  if ¬(index < members ∧ source_type_matches (EnumT (AstId id)) tid)
+                  then NONE else
+                  let ty = EnumT (AstId id) in
+                  let (ss, a) = bind_value n ty
+                                  (ConvertOperation ty (ConstantAtom (IntegerValue (&index)))) in
+                  SOME ((ss, a, ElabType ty), n + 1)
+              | NONE => NONE)
+         | _ => NONE)
     | SrcConditional _ c t f tid =>
-        (* the result is declared first, and each branch writes it *)
+        (* the result is declared first, and each branch writes it: a value
+           or a memory reference, which the result local can hold *)
         (case (identifier_type tid, elab_expr ctx n c) of
-           (SOME ty, SOME ((sc, ac, vc), n1)) =>
-             (case (default_operation ty, coerce n1 BoolT ac vc) of
-                (SOME op, SOME ((cc, ac'), n2)) =>
+           (SOME ty, SOME ((sc, ac', ElabType BoolT), n2)) =>
+             if ¬(case ty of LocatedT loc _ => loc = MemoryLoc
+                           | _ => is_stored_scalar_type ty) then NONE else
+             (case default_operation ty of
+                SOME op =>
                   (case elab_expr ctx (n2 + 2) t of
                      SOME ((st, at, vt), n3) =>
                        (case coerce n3 ty at vt of
@@ -945,7 +1074,7 @@ Definition elab_expr_def:
                                  (case coerce n5 ty af vf of
                                     SOME ((cf, af'), n6) =>
                                       let (rs, res) = bind_value n2 ty op in
-                                      SOME ((sc ++ cc ++ rs ++
+                                      SOME ((sc ++ rs ++
                                              [IfStmt ac'
                                                 (st ++ ct ++ assign_local (n2 + 1) n2 ty at')
                                                 (sf ++ cf ++ assign_local n4 n2 ty af')],
@@ -954,26 +1083,35 @@ Definition elab_expr_def:
                              | NONE => NONE)
                         | NONE => NONE)
                    | NONE => NONE)
-              | _ => NONE)
+              | NONE => NONE)
          | _ => NONE)
-    | SrcAddressCodeLength _ _ e _ =>
+    | SrcAddressCodeLength _ _ e tid =>
         (case elab_expr ctx n e of
            SOME ((ss, a, ElabType (AddressT _)), n1) =>
+             if tid ≠ "t_uint256" then NONE else
              let (rs, r) = bind_value n1 (UintT 256) (CodeLengthOperation a) in
              SOME ((ss ++ rs, r, ElabType (UintT 256)), n1 + 1)
          | _ => NONE)
-    | SrcKeccak256 _ _ e _ =>
+    (* keccak256 takes bytes memory; a literal, or bytes in another location,
+       converts to it as an argument would *)
+    | SrcKeccak256 _ _ e tid =>
         (case elab_expr ctx n e of
            SOME ((ss, a, vt), n1) =>
+             if ¬(source_type_matches (FixedBytesT 32) tid ∧
+                  case vt of
+                    ElabBytesLiteral => T
+                  | ElabType (LocatedT _ BytesT) => T
+                  | _ => F) then NONE else
              (case coerce n1 (LocatedT MemoryLoc BytesT) a vt of
                 SOME ((cs, b), n2) =>
                   let (hs, h) = bind_value n2 (FixedBytesT 32) (Keccak256Operation b) in
                   SOME ((ss ++ cs ++ hs, h, ElabType (FixedBytesT 32)), n2 + 1)
               | NONE => NONE)
          | NONE => NONE)
-    | SrcModular _ _ op args _ =>
+    | SrcModular _ _ op args tid =>
         (* the operands in order, then the modulus check and the operation *)
-        (case elab_arg_values ctx n args of
+        (if ¬source_type_matches (UintT 256) tid then NONE else
+         case elab_arg_values ctx n args of
            SOME ((ss, vs), n1) =>
              (case coerce_values n1 [UintT 256; UintT 256; UintT 256] vs of
                 SOME (cs, as, n2) =>
@@ -982,47 +1120,55 @@ Definition elab_expr_def:
                   SOME ((ss ++ cs ++ rs, r, ElabType (UintT 256)), n2 + 1)
               | NONE => NONE)
          | NONE => NONE)
-    | SrcAbiEncode _ _ form args _ =>
-        (case elab_arg_values ctx n args of
+    | SrcAbiEncode _ _ form args tid =>
+        (let ty = LocatedT MemoryLoc
+                    (if form = AbiStringConcat then StringT else BytesT) in
+         if ¬source_type_matches ty tid then NONE else
+         case elab_arg_values ctx n args of
            SOME ((ss, vs), n1) =>
              (case abi_encoding n1 form vs of
                 SOME ((cs, op), n2) =>
-                  let ty = LocatedT MemoryLoc
-                             (if form = AbiStringConcat then StringT else BytesT) in
                   let (es, r) = bind_value n2 ty op in
                   SOME ((ss ++ cs ++ es, r, ElabType ty), n2 + 1)
               | NONE => NONE)
          | NONE => NONE)
-    | SrcEcrecover _ _ args _ =>
+    | SrcEcrecover _ _ args tid =>
+        let ty = AddressT NonpayableAddress in
+        if ¬annotation_matches tid (ElabType ty) then NONE else
         (case elab_arg_values ctx n args of
            SOME ((ss, vs), n1) =>
              (case coerce_values n1 [FixedBytesT 32; UintT 8; FixedBytesT 32;
                                      FixedBytesT 32] vs of
                 SOME (cs, [h; v; r; s], n2) =>
-                  let ty = AddressT NonpayableAddress in
                   let (es, a) = bind_value n2 ty (EcrecoverOperation h v r s) in
                   SOME ((ss ++ cs ++ es, a, ElabType ty), n2 + 1)
               | _ => NONE)
          | NONE => NONE)
-    | SrcAbiDecode _ _ e tns _ =>
+    | SrcAbiDecode _ _ e tns tid =>
         (* the data is decoded where it is, so it must already be memory bytes *)
         (case (elab_expr ctx n e,
                OPTION_MAP (MAP decoded_type) (all_some (MAP normalize_type_name tns))) of
            (SOME ((ss, a, ElabType (LocatedT MemoryLoc BytesT)), n1), SOME (ty :: tys)) =>
              (* only elementary types decode: bytes and string are type names too *)
-             if ¬EVERY is_elementary_type (ty :: tys) then NONE else
+             if ¬EVERY is_elementary_type (ty :: tys) ∨
+                decode_type_identifier tid ≠ SOME (call_value_type (ty :: tys))
+             then NONE else
              SOME ((ss ++ [DefineStmt (AstId n1) (call_result_type (ty :: tys))
                                 (AbiDecodeOperation (ty :: tys) a)],
                     BoundAtom (AstId n1), call_value (ty :: tys)), n1 + 1)
          | _ => NONE)
-    | SrcSelector _ bs _ =>
-        (* bound, so that a later conversion converts a bytesN local *)
+    (* f.selector, E.selector: the selector the compiler records on the
+       declaration, bytes4 or (for an event) bytes32; bound, so that a later
+       conversion converts a bytesN local *)
+    | SrcSelector _ bs tid =>
         let ty = FixedBytesT (LENGTH bs) in
+        if ¬((LENGTH bs = 4 ∨ LENGTH bs = 32) ∧ source_type_matches ty tid) then NONE else
         let (ss, a) = bind_value n ty (ConvertOperation ty (ConstantAtom (BytesValue bs))) in
         SOME ((ss, a, ElabType ty), n + 1)
-    | SrcTypeMember _ member tn _ =>
+    | SrcTypeMember _ member tn tid =>
         (case normalize_type_name tn of
            SOME ty =>
+             if ¬source_type_matches ty tid then NONE else
              (* bound to a local of type T, the source type of any
                 later conversion *)
              (case type_bound member ty of
@@ -1032,11 +1178,16 @@ Definition elab_expr_def:
                   SOME ((ss, a, ElabType ty), n + 1)
               | NONE => NONE)
          | NONE => NONE)
+    (* to the target type, or a byte sequence to the annotated location *)
     | SrcTypeConversion _ tn e tid =>
-        (case (identifier_type tid, elab_expr ctx n e) of
-           (SOME ty, SOME ((ss, a, vt), n1)) =>
+        (case (normalize_type_name tn, identifier_type tid, elab_expr ctx n e) of
+           (SOME target, SOME ty, SOME ((ss, a, vt), n1)) =>
+             if ¬(ty = target ∨ (byte_sequence_type target ∧
+                    case ty of LocatedT _ element => target = element | _ => F))
+             then NONE else
              (case (vt, ty, a) of
                 (ElabTuple _, _, _) => NONE
+              | (ElabRational, _, _) => NONE
               | (ElabBytesLiteral, _, _) =>
                   (case coerce n1 ty a vt of
                      SOME ((cs, v), n2) => SOME ((ss ++ cs, v, ElabType ty), n2)
@@ -1076,8 +1227,9 @@ Definition elab_expr_def:
   (* Multiple values: tuple expressions, and calls with several returns. *)
   (elab_values ctx n e =
     case e of
-      SrcTupleExpression _ cs _ =>
-        (case cs of
+      SrcTupleExpression _ cs tid =>
+        (if IS_NONE (decode_type_identifier tid) then NONE else
+         case cs of
            [SOME e'] => elab_values ctx n e'
          | _ => elab_components ctx n cs)
     | _ =>
@@ -1085,12 +1237,14 @@ Definition elab_expr_def:
         SOME ((ss, a, ElabTuple tys), n1) =>
           let (cs, vs, n2) = tuple_components n1 a 0 tys in
           SOME ((ss ++ cs, vs), n2)
-      | SOME ((ss, a, vt), n1) => SOME ((ss, [(a, vt)]), n1)
+      | SOME ((ss, a, vt), n1) =>
+          if vt = ElabRational then NONE else SOME ((ss, [(a, vt)]), n1)
       | NONE => NONE) ∧
   (elab_components ctx n [] = SOME (([], []), n)) ∧
   (elab_components ctx n (SOME e :: cs) =
     case elab_expr ctx n e of
       SOME ((ss, a, vt), n1) =>
+        if vt = ElabRational then NONE else
         let (copied, n2) =
           if components_assign cs then snapshot n1 a vt else (([], a), n1) in
         let (ss1, a1) = copied in
@@ -1105,32 +1259,35 @@ Definition elab_expr_def:
    *)
   (elab_location ctx n e =
     case e of
-      SrcIdentifier _ _ x _ =>
+      SrcIdentifier _ _ x tid =>
         (case ALOOKUP ctx.state x of
            SOME ty =>
+             if ¬source_type_matches ty tid then NONE else
              SOME (([DefineStmt (AstId n) (ReferenceType ty)
                        (StateReferenceOperation (AstId x))],
                     BoundAtom (AstId n), ty), n + 1)
          | NONE => NONE)
-    | SrcMemberAccess _ root_expr member_id _ =>
+    | SrcMemberAccess _ root_expr member_id tid =>
         (case elab_location ctx n root_expr of
            SOME ((ss, ref, StructT (AstId id)), n1) =>
              (case source_struct_field ctx.structs id member_id of
                 SOME ty =>
+                  if ¬source_type_matches ty tid then NONE else
                   SOME ((ss ++
                     [DefineStmt (AstId n1) (ReferenceType ty)
                       (NavigateOperation ty ref (FieldNavigation (AstId member_id)))],
                     BoundAtom (AstId n1), ty), n1 + 1)
               | NONE => NONE)
          | _ => NONE)
-    | SrcIndexAccess _ root_expr index _ =>
+    | SrcIndexAccess _ root_expr index tid =>
         (case elab_expr ctx n root_expr of
            SOME ((ss, ref, ElabType (LocatedT loc BytesT)), n1) =>
              let (captured, next) = snapshot n1 ref (ElabType (LocatedT loc BytesT)) in
              let (saved, ref') = captured in
-             (if loc = CalldataLoc then NONE else
+             (if loc = CalldataLoc ∨ tid ≠ "t_bytes1" then NONE else
               case elab_expr ctx next index of
                 SOME ((si, a, vt), n2) =>
+                  if ¬index_value_ok a vt then NONE else
                   (case coerce n2 (UintT 256) a vt of
                      SOME ((cs, a'), n3) =>
                        SOME ((ss ++ saved ++ si ++ cs ++
@@ -1141,6 +1298,7 @@ Definition elab_expr_def:
               | NONE => NONE)
          | _ => case elab_location ctx n root_expr of
            SOME ((ss, ref, MappingT key value), n1) =>
+             if ¬source_type_matches value tid then NONE else
              (case elab_expr ctx n1 index of
                 SOME ((si, a, vt), n2) =>
                   (case coerce n2 key a vt of
@@ -1152,8 +1310,10 @@ Definition elab_expr_def:
                    | NONE => NONE)
               | NONE => NONE)
          | SOME ((ss, ref, ArrayT element _), n1) =>
+             if ¬source_type_matches element tid then NONE else
              (case elab_expr ctx n1 index of
                 SOME ((si, a, vt), n2) =>
+                  if ¬index_value_ok a vt then NONE else
                   (case coerce n2 (UintT 256) a vt of
                      SOME ((cs, a'), n3) =>
                        SOME ((ss ++ si ++ cs ++
@@ -1163,10 +1323,12 @@ Definition elab_expr_def:
                    | NONE => NONE)
               | NONE => NONE)
          | _ => NONE)
-    | SrcFunctionCall _ (SrcArrayMember _ member root_expr _) [] [] _ =>
+    | SrcFunctionCall _ (SrcArrayMember _ member root_expr _) [] [] tid =>
         (if member ≠ "push" then NONE else
          case elab_location ctx n root_expr of
            SOME ((ss, ref, ArrayT element NONE), n1) =>
+             if ¬(push_element_ok element ∧ source_type_matches element tid)
+             then NONE else
              SOME ((ss ++ [DefineStmt (AstId n1) (ReferenceType element)
                              (ArrayPushOperation ref NONE)],
                     BoundAtom (AstId n1), element), n1 + 1)
@@ -1174,15 +1336,17 @@ Definition elab_expr_def:
     | _ => NONE) ∧
   (elab_destination ctx n e =
     case e of
-      SrcIdentifier _ _ x _ => variable_destination ctx n x
-    | SrcIndexAccess _ root_expr index _ =>
+      SrcIdentifier _ _ x tid => variable_destination ctx n x tid
+    | SrcIndexAccess _ root_expr index tid =>
           (case elab_expr ctx n root_expr of
              SOME ((ss, ref, ElabType (LocatedT MemoryLoc (ArrayT element length))), n1) =>
                let (captured, next) =
                  snapshot n1 ref (ElabType (LocatedT MemoryLoc (ArrayT element length))) in
                let (saved, ref') = captured in
-               (case elab_expr ctx next index of
+               (if ¬source_type_matches (element_type MemoryLoc element) tid then NONE else
+                case elab_expr ctx next index of
                   SOME ((si, i, vt), n2) =>
+                    if ¬index_value_ok i vt then NONE else
                     (case coerce n2 (UintT 256) i vt of
                        SOME ((cs, i'), n3) =>
                          SOME ((ss ++ saved ++ si ++ cs,
@@ -1232,11 +1396,18 @@ End
 Definition elab_condition_def:
   elab_condition ctx n c =
     case elab_expr ctx n c of
-      SOME ((ss, a, vt), n1) =>
-        (case coerce n1 BoolT a vt of
-           SOME ((cs, a'), n2) => SOME ((ss ++ cs, a'), n2)
-         | NONE => NONE)
-    | NONE => NONE
+      SOME ((ss, a, ElabType BoolT), n1) => SOME ((ss, a), n1)
+    | _ => NONE
+End
+
+(* A declaration statement lists its declarations' ids as assignments, and
+ * declares its locals in the current scope; the locals are visible after the
+ * statement only. *)
+Definition declaration_ok_def:
+  declaration_ok ctx assigned decls ⇔
+    decls ≠ [] ∧
+    assigned = MAP (OPTION_MAP (λ(v : src_variable). v.var_info.node_id)) decls ∧
+    EVERY (λd. case d of NONE => T | SOME v => v.var_scope = ctx.scope) decls
 End
 
 (* The variables of a declaration statement, defined from its values, which
@@ -1343,10 +1514,10 @@ Definition elab_assembly_reference_def:
           else NONE
       | NONE => NONE) ∧
   (elab_assembly_reference ctx n (SrcAssemblySlot x) =
-    if IS_SOME (ALOOKUP ctx.state x) then SOME (([], AssemblySlot (AstId x)), n)
+    if IS_SOME (ALOOKUP ctx.locations x) then SOME (([], AssemblySlot (AstId x)), n)
     else NONE) ∧
   (elab_assembly_reference ctx n (SrcAssemblyOffset x) =
-    if IS_SOME (ALOOKUP ctx.state x) then SOME (([], AssemblyOffset (AstId x)), n)
+    if IS_SOME (ALOOKUP ctx.locations x) then SOME (([], AssemblyOffset (AstId x)), n)
     else NONE)
 End
 
@@ -1386,21 +1557,30 @@ Definition elab_stmts_def:
            SOME ((cs', ctx''), n2) => SOME ((cs ++ cs', ctx''), n2)
          | NONE => NONE)
     | NONE => NONE) ∧
-  (elab_stmt ctx n (SrcBlock _ ss) =
-    case elab_stmts ctx n ss of
+  (elab_stmt ctx n (SrcBlock info ss) =
+    case elab_stmts (ctx with scope := info.node_id) n ss of
       SOME ((cs, _), n1) => SOME ((cs, ctx), n1)
     | NONE => NONE) ∧
-  (elab_stmt ctx n (SrcUncheckedBlock _ ss) =
-    case elab_stmts (ctx with mode := UncheckedArithmetic) n ss of
+  (elab_stmt ctx n (SrcUncheckedBlock info ss) =
+    case elab_stmts (ctx with <| mode := UncheckedArithmetic;
+                                 scope := info.node_id |>) n ss of
       SOME ((cs, _), n1) => SOME ((cs, ctx), n1)
     | NONE => NONE) ∧
   (elab_stmt ctx n (SrcExpressionStatement _ e) =
     case elab_expr ctx n e of
-      SOME ((ss, _, _), n1) => SOME ((ss, ctx), n1)
+      SOME ((ss, _, vt), n1) =>
+        if vt = ElabRational then NONE else SOME ((ss, ctx), n1)
     | NONE => NONE) ∧
-  (elab_stmt ctx n (SrcTryStatement _ call _ ps body _ reason handler) =
-    case elab_expr ctx n call of
-      SOME ((ss, r, _), n1) =>
+  (* try of an external call returning scalars, its success clause binding
+     them and its catch clause the revert data *)
+  (elab_stmt ctx n (SrcTryStatement _ call ok ps body err reason handler) =
+    case (call, all_some (MAP (scoped_variable ok.node_id) ps),
+          scoped_variable err.node_id reason, elab_expr ctx n call) of
+      (SrcExternalCall _ callee _ _ _ _, SOME locals,
+       SOME (_, LocatedT MemoryLoc BytesT), SOME ((ss, r, _), n1)) =>
+        if ¬(EVERY (is_stored_scalar_type o SND) locals ∧
+             all_some (MAP variable_type callee.ext_returns) = SOME (MAP SND locals))
+        then NONE else
         (case try_external_call ss r of
            SOME (cs, types) =>
              let (xs, values, n2) = tuple_components n1 r 0 types in
@@ -1411,11 +1591,13 @@ Definition elab_stmts_def:
                        (case declare_values ctx n2 (MAP SOME ps)
                           (TAKE (LENGTH ps) rest) of
                      SOME (ds, ctx1, n3) =>
-                       (case elab_stmt ctx1 n3 body of
+                       (case if is_declaration body then NONE
+                             else elab_stmt ctx1 n3 body of
                           SOME ((bs, _), n4) =>
                             (case declare_values ctx n4 [SOME reason] [failure] of
                                SOME (es, ctx2, n5) =>
-                                 (case elab_stmt ctx2 n5 handler of
+                                 (case if is_declaration handler then NONE
+                                       else elab_stmt ctx2 n5 handler of
                                     SOME ((hs, _), n6) =>
                                       SOME ((cs ++ xs ++
                                         [IfStmt condition (ds ++ bs) (es ++ hs)], ctx), n6)
@@ -1426,17 +1608,19 @@ Definition elab_stmts_def:
                    | _ => NONE)
               | [] => NONE)
          | NONE => NONE)
-    | NONE => NONE) ∧
-  (elab_stmt ctx n (SrcVariableDeclarationStatement _ _ [SOME v] NONE) =
+    | _ => NONE) ∧
+  (elab_stmt ctx n (SrcVariableDeclarationStatement _ assigned [SOME v] NONE) =
     case variable_type v of
       SOME ty =>
+        if ¬declaration_ok ctx assigned [SOME v] then NONE else
         (case default_operation ty of
            SOME op =>
              SOME (([DefineStmt (AstId v.var_info.node_id) (SingleType ty) op],
                     ctx with variables := (v.var_info.node_id, ty) :: ctx.variables), n)
          | NONE => NONE)
     | NONE => NONE) ∧
-  (elab_stmt ctx n (SrcVariableDeclarationStatement _ _ decls (SOME e)) =
+  (elab_stmt ctx n (SrcVariableDeclarationStatement _ assigned decls (SOME e)) =
+    if ¬declaration_ok ctx assigned decls then NONE else
     case elab_values ctx n e of
       SOME ((ss, vs), n1) =>
         (case declare_values ctx n1 decls vs of
@@ -1445,6 +1629,8 @@ Definition elab_stmts_def:
     | NONE => NONE) ∧
   (elab_stmt ctx n (SrcVariableDeclarationStatement _ _ _ _) = NONE) ∧
   (elab_stmt ctx n (SrcIfStatement _ c t e) =
+    if is_declaration t ∨ (case e of SOME e => is_declaration e | NONE => F)
+    then NONE else
     case elab_condition ctx n c of
       SOME ((cs, a), n1) =>
         (case elab_stmt ctx n1 t of
@@ -1459,17 +1645,19 @@ Definition elab_stmts_def:
          | NONE => NONE)
     | NONE => NONE) ∧
   (elab_stmt ctx n (SrcWhileStatement _ c bd) =
+    if is_declaration bd then NONE else
     case elab_condition ctx n c of
       SOME ((cs, a), n1) =>
-        (case elab_stmt ctx n1 bd of
+        (case elab_stmt (ctx with in_loop := T) n1 bd of
            SOME ((bs, _), n2) => SOME (([WhileStmt cs a bs], ctx), n2)
          | NONE => NONE)
     | NONE => NONE) ∧
   (elab_stmt ctx n (SrcDoWhileStatement _ bd c) =
     (* n: first-iteration flag; n + 1: condition result; n + 2, n + 3: targets *)
+    if is_declaration bd then NONE else
     case elab_condition ctx (n + 4) c of
       SOME ((cs, a), n1) =>
-        (case elab_stmt ctx n1 bd of
+        (case elab_stmt (ctx with in_loop := T) n1 bd of
            SOME ((bs, _), n2) =>
              SOME (([flag n; flag (n + 1);
                      WhileStmt
@@ -1479,8 +1667,18 @@ Definition elab_stmts_def:
                        (BoundAtom (AstId (n + 1))) bs], ctx), n2)
          | NONE => NONE)
     | NONE => NONE) ∧
-  (elab_stmt ctx n (SrcForStatement _ ini c nx bd) =
-    case elab_for_init ctx n ini of
+  (* for (init; c; next): init a declaration or an expression statement,
+     next an expression statement, in the scope of the for statement *)
+  (elab_stmt ctx n (SrcForStatement info ini c nx bd) =
+    if ¬((case ini of
+            NONE => T
+          | SOME (SrcVariableDeclarationStatement _ _ _ _) => T
+          | SOME (SrcExpressionStatement _ _) => T
+          | _ => F) ∧
+         (case nx of NONE => T | SOME (SrcExpressionStatement _ _) => T | _ => F) ∧
+         ¬is_declaration bd)
+    then NONE else
+    case elab_for_init (ctx with scope := info.node_id) n ini of
       SOME ((is, ctx1), n1) =>
         (* n1: first-iteration flag; n1 + 1: its target *)
         (case (case c of
@@ -1489,7 +1687,7 @@ Definition elab_stmts_def:
            SOME ((cs, a), n2) =>
              (case elab_for_init ctx1 n2 nx of
                 SOME ((ns, _), n3) =>
-                  (case elab_stmt ctx1 n3 bd of
+                  (case elab_stmt (ctx1 with in_loop := T) n3 bd of
                      SOME ((bs, _), n4) =>
                        SOME ((is ++
                               [flag n1;
@@ -1508,11 +1706,17 @@ Definition elab_stmts_def:
         let (ss, n1) = placeholder_call n next ps ctx.returns in
         SOME ((ss, ctx), n1)
     | NONE => NONE) ∧
-  (elab_stmt ctx n (SrcBreak _) = SOME (([BreakStmt], ctx), n)) ∧
-  (elab_stmt ctx n (SrcContinue _) = SOME (([ContinueStmt], ctx), n)) ∧
-  (elab_stmt ctx n (SrcReturn _ _ NONE) =
-    SOME (([ReturnStmt (return_atoms ctx.returns)], ctx), n)) ∧
-  (elab_stmt ctx n (SrcReturn _ _ (SOME e)) =
+  (elab_stmt ctx n (SrcBreak _) =
+    if ctx.in_loop then SOME (([BreakStmt], ctx), n) else NONE) ∧
+  (elab_stmt ctx n (SrcContinue _) =
+    if ctx.in_loop then SOME (([ContinueStmt], ctx), n) else NONE) ∧
+  (* a return names the enclosing function's return list (none, 0, in a
+     modifier) *)
+  (elab_stmt ctx n (SrcReturn _ returns_id NONE) =
+    if returns_id = ctx.returns_id
+    then SOME (([ReturnStmt (return_atoms ctx.returns)], ctx), n) else NONE) ∧
+  (elab_stmt ctx n (SrcReturn _ returns_id (SOME e)) =
+    if returns_id ≠ ctx.returns_id then NONE else
     case elab_values ctx n e of
       SOME ((ss, vs), n1) =>
         (case coerce_values n1 (MAP SND ctx.returns) vs of
@@ -1523,6 +1727,8 @@ Definition elab_stmts_def:
     case ALOOKUP ctx.events ev of
       NONE => NONE
     | SOME e =>
+        if LENGTH args ≠ LENGTH e.event_parameters ∨
+           ¬argument_order_ok order (LENGTH args) then NONE else
         case all_some (MAP event_parameter e.event_parameters) of
           NONE => NONE
         | SOME ps =>
@@ -1542,7 +1748,9 @@ Definition elab_stmts_def:
     case all_some (MAP variable_type err.error_parameters) of
       NONE => NONE
     | SOME params =>
-        if ¬EVERY is_elementary_type params then NONE else
+        if ¬EVERY is_elementary_type params ∨ LENGTH err.error_selector ≠ 4 ∨
+           LENGTH args ≠ LENGTH params ∨ ¬argument_order_ok order (LENGTH args)
+        then NONE else
         case elab_args ctx n order params args of
           SOME ((ss, as), n1) =>
             SOME ((ss ++ [RevertErrorStmt err.error_selector params as], ctx), n1)
@@ -1552,7 +1760,7 @@ Definition elab_stmts_def:
   (elab_stmt ctx n (SrcInlineAssembly _ code refs) =
     if ¬assembly_stmts_ok (if ctx.creation then YReturn :: YStop :: assembly_unsupported
                            else assembly_unsupported) code ∨
-       ¬assembly_memory_ok code then NONE else
+       ¬assembly_memory_ok code ∨ ¬ALL_DISTINCT (MAP FST refs) then NONE else
     case elab_assembly_references ctx n refs of
       SOME ((ss, rs), n1) => SOME ((ss ++ [AssemblyStmt code rs], ctx), n1)
     | NONE => NONE) ∧
@@ -1639,6 +1847,11 @@ End
  * arguments define the modifier's parameters, and the modifier's
  * placeholder calls the next procedure (the compiler's IR does the same).
  * Fresh ids name the procedures after the first.
+ *
+ * Modifier arguments see the parameters but not the return variables: the
+ * compiler's IR passes each modifier its own copies of the return variables,
+ * which are not modelled. A modifier body has no super calls and no return
+ * values (return list id 0).
  *)
 Definition elab_levels_def:
   (elab_levels ctx modifiers ps rs x n [] ss =
@@ -1654,12 +1867,14 @@ Definition elab_levels_def:
     | SOME (md : src_modifier) =>
         case (all_some (MAP variable_binding md.modifier_parameters),
               md.modifier_body) of
-          (SOME mps, SrcBlock _ mss) =>
+          (SOME mps, SrcBlock minfo mss) =>
             if static_memory_returns rs then NONE else
-            (case elab_modifier_args ctx (n + 1) mps args of
+            (case elab_modifier_args (ctx with variables := ps) (n + 1) mps args of
                SOME (sa, n1) =>
                  (case elab_stmts (ctx with <| supers := []; variables := mps;
-                                               placeholder := SOME (n, ps) |>)
+                                               placeholder := SOME (n, ps);
+                                               scope := minfo.node_id;
+                                               returns_id := 0 |>)
                          n1 mss of
                     SOME ((code, _), n2) =>
                       (case elab_levels ctx modifiers ps rs n n2 ms ss of
@@ -1674,39 +1889,54 @@ Definition elab_levels_def:
         | _ => NONE)
 End
 
+(* The context of a contract's code: the callable functions calls, its
+ * structs, enums and events, and its state variables, immutables and
+ * constants. Inline assembly may name any state variable's slot. *)
+Definition contract_ctx_def:
+  contract_ctx (c : src_contract) calls state immutables constants =
+    <| functions := calls; supers := []; structs := c.contract_structs;
+       enums := c.contract_enums;
+       events := MAP (λe. (e.event_info.node_id, e)) c.contract_events;
+       variables := []; state := state; locations := state;
+       immutables := immutables; constants := constants; returns := [];
+       placeholder := NONE; mode := CheckedArithmetic; creation := F;
+       scope := 0; returns_id := 0; in_loop := F |>
+End
+
 (* A function's procedures, checked arithmetic by default; parameters and
- * returns keep their declaration ids.
+ * returns keep their declaration ids. A pure function reads no state
+ * variable, and a library function has no state variables or immutables.
+ * When strict, every super call must reach a supported function.
  *)
 Definition elab_function_def:
-  elab_function structs events functions fs bases modifiers state immutables
-                constants n
-                (f : src_function) =
+  elab_function ctx (c : src_contract) strict library n (f : src_function) =
+    let (fs, bases) = if library then (c.contract_library_functions, c.contract_libraries)
+                      else (c.contract_functions, c.contract_bases) in
     case (all_some (MAP variable_binding f.fn_parameters),
           all_some (MAP variable_binding f.fn_returns), f.fn_body,
           super_table fs bases f) of
-      (SOME ps, SOME rs, SrcBlock _ ss, SOME supers) =>
-        elab_levels <| functions := functions; supers := supers; structs := structs;
-                       events := events; variables := ps ++ rs;
-                       state := state; immutables := immutables;
-                       constants := constants;
-                       returns := rs; placeholder := NONE;
-                       mode := CheckedArithmetic;
-                       creation := (f.fn_kind = "constructor") |>
-          modifiers ps rs f.fn_info.node_id n f.fn_modifiers ss
+      (SOME ps, SOME rs, SrcBlock info ss, SOME supers) =>
+        if strict ∧ ¬EVERY (λ(_, g). g.fn_unsupported = NONE) supers then NONE
+        else
+        elab_levels
+          (ctx with <| supers := supers; variables := ps ++ rs;
+                       state := if library ∨ f.fn_mutability = "pure" then []
+                                else ctx.state;
+                       locations := if library then [] else ctx.locations;
+                       immutables := if library then [] else ctx.immutables;
+                       returns := rs; creation := (f.fn_kind = "constructor");
+                       scope := info.node_id; returns_id := f.fn_returns_id |>)
+          (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
+          ps rs f.fn_info.node_id n f.fn_modifiers ss
     | _ => NONE
 End
 
 Definition elab_functions_def:
-  (elab_functions structs events functions all bases modifiers state immutables
-     constants n [] =
-    SOME ([], n)) ∧
-  (elab_functions structs events functions all bases modifiers state immutables
-     constants n (f :: fs) =
-    case elab_function structs events functions all bases modifiers state
-           immutables constants n f of
+  (elab_functions ctx c strict library n [] = SOME ([], n)) ∧
+  (elab_functions ctx c strict library n (f :: fs) =
+    case elab_function ctx c strict library n f of
       SOME (ps, n1) =>
-        (case elab_functions structs events functions all bases modifiers state
-                immutables constants n1 fs of
+        (case elab_functions ctx c strict library n1 fs of
            SOME (ps', n2) => SOME (ps ++ ps', n2)
          | NONE => NONE)
     | NONE => NONE)
@@ -2031,13 +2261,17 @@ Definition creation_payable_def:
     | NONE => F
 End
 
-(* The functions elaborated: the supported functions calls reach, then the
+(* The functions elaborated: the supported functions calls reach, and the
  * supported library functions. The unsupported ones get no procedure. *)
 Definition elaborated_functions_def:
   elaborated_functions (c : src_contract) =
     FILTER (λf. f.fn_unsupported = NONE)
-      (checked_functions c.contract_functions c.contract_bases ++
-       c.contract_library_functions)
+      (checked_functions c.contract_functions c.contract_bases)
+End
+
+Definition elaborated_library_functions_def:
+  elaborated_library_functions (c : src_contract) =
+    FILTER (λf. f.fn_unsupported = NONE) c.contract_library_functions
 End
 
 Definition unsupported_functions_def:
@@ -2076,45 +2310,31 @@ Definition elaborate_unit_def:
                constant_table c, immutable_table c) of
            (SOME state, SOME table, SOME immutables) =>
              let constants = number_constants (MAX_LIST (unit_ids u) + 1) table in
+             let ctx = contract_ctx c calls state immutables constants in
              (case (elab_type_declarations c.contract_enums c.contract_structs,
                    elab_struct_layouts c.contract_structs,
                    core_state_variables state c.contract_storage,
-                   elab_functions c.contract_structs
-                     (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
-                     calls c.contract_functions c.contract_bases
-                     (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
-                     state immutables constants
+                   elab_functions ctx c T F
                      (MAX_LIST (unit_ids u) + 1 + LENGTH table)
                      (elaborated_functions c)) of
-               (SOME decls, SOME layouts, SOME cvs, SOME (fps, n0)) =>
+               (SOME decls, SOME layouts, SOME cvs, SOME (cfps, n00)) =>
+                 (case elab_functions ctx c T T n00 (elaborated_library_functions c) of
+                   NONE => NONE
+                 | SOME (lfps, n0) =>
+                 let fps = cfps ++ lfps in
                  (case elab_getters c.contract_structs state immutables n0
                          (FILTER (λx. IS_SOME (ALOOKUP (state ++ immutables) x))
                             (MAP FST c.contract_getters)) of
                     NONE => NONE
                   | SOME (gps, n1) =>
-                 case elab_constants
-                        <| functions := []; supers := [];
-                           structs := c.contract_structs; events := [];
-                           variables := []; state := []; immutables := [];
-                           constants := constants;
-                           returns := []; placeholder := NONE;
-                           mode := CheckedArithmetic; creation := F |>
+                 case elab_constants (contract_ctx c [] [] [] constants)
                         n1 c.contract_constants of
                    NONE => NONE
                  | SOME (cps, n) =>
                  let ps = fps ++ gps ++ cps in
                  (case (if unsupported_creation c then SOME (INR (AstId n))
-                        else OPTION_MAP (λ(p, _). INL p) (elab_creation
-                         <| functions := calls;
-                            supers := [];
-                            structs := c.contract_structs;
-                            events := MAP (λe. (e.event_info.node_id, e))
-                                        c.contract_events;
-                            variables := []; state := state;
-                            immutables := immutables;
-                            constants := constants; returns := [];
-                            placeholder := NONE; mode := CheckedArithmetic;
-                            creation := T |> c n)) of
+                        else OPTION_MAP (λ(p, _). INL p)
+                               (elab_creation (ctx with creation := T) c n)) of
                     NONE => NONE
                   | SOME creation =>
                  let creation_id = (case creation of
@@ -2146,34 +2366,35 @@ Definition elaborate_unit_def:
                          fallback_procedure :=
                            special_function "fallback" fs;
                          creation_procedure :=
-                           SOME (creation_id, creation_payable c) |>))
+                           SOME (creation_id, creation_payable c) |>)))
               | _ => NONE)
          | _ => NONE)
     | _ => NONE
 End
 
 (* Each supported function of a unit's contract whose elaboration fails, by
- * id, elaborated as elaborate_unit elaborates it, for preparation to find
- * those to mark unsupported. *)
+ * id, elaborated as elaborate_unit elaborates it when strict, for
+ * preparation to find those to mark unsupported. When not strict, calls and
+ * super calls may reach unsupported functions: a function failing only
+ * strictly fails because it calls one. *)
 Definition unit_elaboration_failures_def:
-  unit_elaboration_failures (u : src_unit) =
+  unit_elaboration_failures strict (u : src_unit) =
     case u.unit_contracts of
       [c] =>
         (case (all_some (MAP (state_variable c.contract_bases) c.contract_state_variables),
                constant_table c, immutable_table c) of
            (SOME state, SOME constants, SOME immutables) =>
+             let fs = c.contract_functions ++ c.contract_library_functions in
+             let ctx = contract_ctx c
+                         (if strict then function_table fs else call_table fs)
+                         state immutables
+                         (number_constants (MAX_LIST (unit_ids u) + 1) constants) in
+             let n = MAX_LIST (unit_ids u) + 1 + LENGTH constants in
              MAP (λf. f.fn_info.node_id)
-               (FILTER (λf.
-                  IS_NONE (elab_function c.contract_structs
-                    (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
-                    (function_table (c.contract_functions ++
-                                     c.contract_library_functions))
-                    c.contract_functions c.contract_bases
-                    (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
-                    state immutables
-                    (number_constants (MAX_LIST (unit_ids u) + 1) constants)
-                    (MAX_LIST (unit_ids u) + 1 + LENGTH constants) f))
-                  (elaborated_functions c))
+               (FILTER (λf. IS_NONE (elab_function ctx c strict F n f))
+                  (elaborated_functions c) ++
+                FILTER (λf. IS_NONE (elab_function ctx c strict T n f))
+                  (elaborated_library_functions c))
          | _ => [])
     | _ => []
 End
@@ -2185,6 +2406,8 @@ End
 val () = cv_auto_trans bind_value_def;
 val () = cv_auto_trans default_operation_def;
 val () = cv_auto_trans coerce_def;
+val () = cv_auto_trans annotation_matches_def;
+val () = cv_auto_trans is_declaration_def;
 val () = cv_auto_trans snapshot_def;
 val () = cv_auto_trans store_target_def;
 val () = cv_auto_trans assign_local_def;
@@ -2281,13 +2504,11 @@ Proof
   (* Unfold before splitting on the expression: after a case split, every
    * constructor's goal would rewrite and normalise the whole precondition. *)
   >~ [‘elab_expr_pre ctx n e’] >-
-    (PURE_ONCE_REWRITE_TAC [elab_expr_pre_def] >>
-     rpt conj_tac >> rpt gen_tac >> disch_then SUBST_ALL_TAC >>
-     simp[solidityImportTheory.src_expr_size_def])
+    (simp_tac std_ss [Once elab_expr_pre_def] >> Cases_on ‘e’ >>
+     simp[src_expr_distinct, src_expr_11, solidityImportTheory.src_expr_size_def])
   >~ [‘elab_location_pre ctx n e’] >-
-    (PURE_ONCE_REWRITE_TAC [elab_expr_pre_def] >>
-     rpt conj_tac >> rpt gen_tac >> disch_then SUBST_ALL_TAC >>
-     simp[solidityImportTheory.src_expr_size_def])
+    (simp_tac std_ss [Once elab_expr_pre_def] >> Cases_on ‘e’ >>
+     simp[src_expr_distinct, src_expr_11, solidityImportTheory.src_expr_size_def])
   >~ [‘elab_args_pre ctx n order tys es’] >-
     (Cases_on ‘es’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
      simp[listTheory.list_size_def])
@@ -2349,8 +2570,9 @@ Theorem declare_values_pre[cv_pre,local]:
 Proof
   ho_match_mp_tac declare_values_ind >> rpt strip_tac >>
   simp[Once declare_values_pre_def] >> rw[] >> fs[] >>
-  (* the record update appears as a case on the context *)
-  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"]
+  (* a record update appears as a case on the context it updates *)
+  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"] >>
+  rpt (CASE_TAC >> gvs[fetch "-" "elab_ctx_fn_updates"])
 QED
 
 val () = cv_auto_trans return_atoms_def;
@@ -2389,8 +2611,9 @@ Theorem elab_stmts_pre[cv_pre,local]:
 Proof
   ho_match_mp_tac elab_stmts_ind >> rpt strip_tac >>
   simp[Once elab_stmts_pre_def, elab_expr_pre] >> rw[] >> fs[] >>
-  (* the record update appears as a case on the context *)
-  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"]
+  (* a record update appears as a case on the context it updates *)
+  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"] >>
+  rpt (CASE_TAC >> gvs[fetch "-" "elab_ctx_fn_updates"])
 QED
 
 val () = cv_auto_trans variable_binding_def;
@@ -2412,11 +2635,13 @@ Theorem elab_levels_pre[cv_pre,local]:
 Proof
   ho_match_mp_tac elab_levels_ind >> rpt strip_tac >>
   simp[Once elab_levels_pre_def] >> rw[] >> fs[] >>
-  (* the record update appears as a case on the context *)
-  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"]
+  (* a record update appears as a case on the context it updates *)
+  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"] >>
+  rpt (CASE_TAC >> gvs[fetch "-" "elab_ctx_fn_updates"])
 QED
 
 val () = cv_auto_trans elab_function_def;
+val () = cv_auto_trans contract_ctx_def;
 val () = cv_auto_trans elab_functions_def;
 val () = cv_auto_trans core_state_variables_def;
 val () = cv_auto_trans elab_type_declarations_def;
@@ -2459,6 +2684,7 @@ val () = cv_auto_trans elab_constructors_def;
 val () = cv_auto_trans elab_creation_def;
 val () = cv_auto_trans creation_payable_def;
 val () = cv_auto_trans elaborated_functions_def;
+val () = cv_auto_trans elaborated_library_functions_def;
 val () = cv_auto_trans unsupported_functions_def;
 val () = cv_auto_trans unsupported_creation_def;
 val () = cv_auto_trans elaborate_unit_def;

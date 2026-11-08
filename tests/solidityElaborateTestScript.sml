@@ -232,12 +232,11 @@ val () = cv_auto_trans missing_struct_layout_unit_def;
 Theorem struct_layout_required_for_execution:
   IS_SOME (elaborate_unit struct_unit) ∧
   valid_src_unit missing_struct_layout_unit ∧
-  IS_SOME (elaborate_unit missing_struct_layout_unit) ∧
-  ¬wf_core_program
-    (core_program_environment (THE (elaborate_unit missing_struct_layout_unit)))
-    (THE (elaborate_unit missing_struct_layout_unit))
+  case elaborate_unit missing_struct_layout_unit of
+    SOME p => ¬wf_core_program (core_program_environment p) p
+  | NONE => F
 Proof
-  simp_tac std_ss [cv_eval “elaborate_unit missing_struct_layout_unit”] >>
+  rpt conj_tac >- CONV_TAC cv_eval >- CONV_TAC cv_eval >>
   CONV_TAC cv_eval
 QED
 
@@ -246,17 +245,175 @@ QED
 Theorem asm_halt_rejected_in_constructor:
   ∀info.
     IS_SOME (elab_stmt
-      <| functions := []; supers := []; structs := []; events := []; variables := [];
-         state := []; immutables := []; constants := [];
-         returns := []; placeholder := NONE;
-         mode := CheckedArithmetic; creation := F |> 0
+      <| functions := []; supers := []; structs := []; enums := []; events := [];
+         variables := []; state := []; locations := []; immutables := [];
+         constants := []; returns := []; placeholder := NONE;
+         mode := CheckedArithmetic; creation := F; scope := 0;
+         returns_id := 0; in_loop := F |> 0
       (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] [])) ∧
     elab_stmt
-      <| functions := []; supers := []; structs := []; events := []; variables := [];
-         state := []; immutables := []; constants := [];
-         returns := []; placeholder := NONE;
-         mode := CheckedArithmetic; creation := T |> 0
+      <| functions := []; supers := []; structs := []; enums := []; events := [];
+         variables := []; state := []; locations := []; immutables := [];
+         constants := []; returns := []; placeholder := NONE;
+         mode := CheckedArithmetic; creation := T; scope := 0;
+         returns_id := 0; in_loop := F |> 0
       (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] []) = NONE
 Proof
   gen_tac >> EVAL_TAC
+QED
+
+(* Statements the compiler does not produce: a declaration as the body of an
+ * if or a loop (it must be a statement of a block), and a fractional literal
+ * in a tuple, even at a hole. *)
+Theorem declaration_body_and_tuple_fraction_rejected:
+  let info = <| node_id := 0;
+                node_location := <| loc_start := 0; loc_length := 0;
+                                    loc_source := 0 |> |>;
+      x = <| var_info := info with node_id := 1; var_name := "x"; var_scope := 0;
+             var_type_name := SrcElementaryTypeName info "uint256" NONE;
+             var_type_id := "t_uint256"; var_location := "default" |>;
+      d = SrcVariableDeclarationStatement info [SOME 1] [SOME x] NONE;
+      c = SrcLiteral info "bool" "true" "t_bool";
+      half = SrcLiteral info "number" "" "t_rational_1_by_2";
+      ctx = <| functions := []; supers := []; structs := []; enums := [];
+               events := []; variables := []; state := []; locations := [];
+               immutables := []; constants := []; returns := [];
+               placeholder := NONE; mode := CheckedArithmetic; creation := F;
+               scope := 0; returns_id := 0; in_loop := F |> in
+    IS_SOME (elab_stmt ctx 2 d) ∧
+    elab_stmt ctx 2 (SrcIfStatement info c d NONE) = NONE ∧
+    elab_stmt ctx 2 (SrcWhileStatement info c d) = NONE ∧
+    elab_stmt ctx 2 (SrcVariableDeclarationStatement info [NONE] [NONE] (SOME half)) = NONE
+Proof
+  EVAL_TAC
+QED
+
+(* Edited units of solidityImportTest that pass valid_src_unit but whose
+ * edited function fails elaboration, which checks it against the compiler's
+ * annotations: preparation marks it unsupported. *)
+
+(* an identifier naming no declaration *)
+Theorem dangling_reference_fails_elaboration:
+  unit_elaboration_failures T dangling_reference ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* an identifier annotated with another type than its variable's *)
+Theorem identifier_type_mismatch_fails_elaboration:
+  unit_elaboration_failures T identifier_type_mismatch ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a comparison annotated with another type than bool *)
+Theorem comparison_type_mismatch_fails_elaboration:
+  unit_elaboration_failures T comparison_type_mismatch ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a function used as a value *)
+Theorem function_as_value_fails_elaboration:
+  unit_elaboration_failures T function_as_value ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a declaration statement whose assignments do not list its declaration *)
+Theorem unlinked_declaration_fails_elaboration:
+  unit_elaboration_failures T unlinked_declaration ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a call with fewer arguments than parameters *)
+Theorem call_arity_fails_elaboration:
+  unit_elaboration_failures T call_arity ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a pure function using a state variable *)
+Theorem pure_writes_state_fails_elaboration:
+  unit_elaboration_failures T pure_writes_state ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a mapping read annotated with another value type *)
+Theorem mapping_leaf_metadata_mismatch_fails_elaboration:
+  unit_elaboration_failures T mapping_leaf_metadata_mismatch ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* an array read annotated with another element type *)
+Theorem array_leaf_mismatch_fails_elaboration:
+  unit_elaboration_failures T array_leaf_mismatch ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a require message that is not a literal *)
+Theorem nonliteral_builtin_message_fails_elaboration:
+  unit_elaboration_failures T nonliteral_builtin_message ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a struct member naming no member *)
+Theorem struct_field_identity_mismatch_fails_elaboration:
+  unit_elaboration_failures T struct_field_identity_mismatch ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a struct member annotated with another type *)
+Theorem struct_field_type_mismatch_fails_elaboration:
+  unit_elaboration_failures T struct_field_type_mismatch ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a call reaching no implemented function *)
+Theorem unresolved_override_fails_elaboration:
+  unit_elaboration_failures T unresolved_override ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a conditional over storage references *)
+Theorem storage_conditional_fails_elaboration:
+  unit_elaboration_failures T storage_conditional ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a conditional over stored bytes *)
+Theorem stored_bytes_conditional_fails_elaboration:
+  unit_elaboration_failures T stored_bytes_conditional ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a conditional over tuples *)
+Theorem tuple_conditional_fails_elaboration:
+  unit_elaboration_failures T tuple_conditional ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a conditional over calldata references *)
+Theorem calldata_conditional_fails_elaboration:
+  unit_elaboration_failures T calldata_conditional ≠ []
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* a conditional over functions *)
+Theorem function_conditional_fails_elaboration:
+  unit_elaboration_failures T function_conditional ≠ []
+Proof
+  CONV_TAC cv_eval
 QED
