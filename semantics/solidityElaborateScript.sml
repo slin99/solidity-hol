@@ -1607,10 +1607,11 @@ Termination
    | INR (INR (INR (INR (INR (INL (ctx, n, e)))))) => 3 * src_expr_size e + 2
    | INR (INR (INR (INR (INR (INR (ctx, n, es)))))) => 3 * list_size src_expr_size es)’ >>
   conj_tac >- simp[prim_recTheory.WF_measure] >>
-  rpt conj_tac >>
-  rw[prim_recTheory.measure_thm, solidityImportTheory.src_expr_size_def,
-     listTheory.list_size_def,
-     basicSizeTheory.option_size_def]
+  (* only the equations naming the node matter: the case hypotheses about
+     the children's results are large, so they are dropped, not simplified *)
+  rpt strip_tac >> rpt BasicProvers.VAR_EQ_TAC >> rpt (pop_assum kall_tac) >>
+  simp[prim_recTheory.measure_thm, solidityImportTheory.src_expr_size_def,
+       listTheory.list_size_def, basicSizeTheory.option_size_def]
 End
 
 (* A boolean condition. *)
