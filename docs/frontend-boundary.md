@@ -415,6 +415,34 @@ evaluator. The differential corpus runs the same inputs, and a wider corpus of
 sources, through the deployed bytecode in Verifereum and requires equal
 ABI-encoded outcomes; see [differential-testing.md](differential-testing.md).
 
+## Partial admission
+
+A contract is admitted per function. When a function's body or the body of
+one of its modifiers falls outside the subset, import keeps the function with
+its header, an empty body and the reason (`fn_unsupported`) rather than
+rejecting the unit. `solidityPrepareLib` then marks, until nothing changes,
+every function whose body fails the source check, calls an unsupported one (by
+a call or a super call), or fails to elaborate. The elaborator builds no
+procedure for them and lists their ids in `core_program.unsupported_procedures`,
+so their selectors, and receive, fallback or the constructor when unsupported,
+still dispatch to them and an external call of one is invalid
+(`call_contract_unsupported`), never a return or the fallback; it still
+reverts first, as a supported one would, when it is sent value it does not
+accept. An unsupported function never runs, so its super calls reach nothing:
+a base function only they reach is neither checked nor elaborated. A modifier
+whose body fails import keeps its header with an empty body. The prepared unit
+lists each function calls can reach, with its reason if unsupported.
+
+What storage layout or dispatch depends on still rejects the whole unit:
+function headers (declaring base, kind, mutability, parameter and result
+types; a library function must be an internal or private `function`),
+modifier parameters and `virtual` modifiers, state variables, constants, bases
+and their linearization, using directives, and a core program that fails
+`wf_core_program`. A core program needs an entry procedure, so a unit whose
+lowering has no procedure at all (no supported function, getter, library
+function or constant procedure, and an unsupported constructor) is rejected
+whole too, without the constructor's reason.
+
 ## Built-in failures
 
 The pinned compiler represents `require`, `assert` and built-in `revert` as
@@ -456,7 +484,9 @@ Before elaboration, a well-formed imported program should at least establish:
   contracts.
 
 Anything outside the admitted node and annotation vocabulary must produce an
-import error, not a partial semantic result.
+import error, which rejects the unit or, inside a function's body or a
+modifier, marks the function unsupported (see Partial admission), never a
+partial semantic result.
 
 ## Open reconnaissance work
 

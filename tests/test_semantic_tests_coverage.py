@@ -369,6 +369,22 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(admitted.blockers, [])
         self.assertTrue(admitted.scan_agrees)
 
+    def test_partial_admission_counts_functions_and_reasons(self) -> None:
+        source = unit([function(4, [])])
+        partial = coverage.classify(
+            "p.sol", coverage.scan({"p.sol": source}),
+            {"status": "partially-admitted", "functions": 3,
+             "unsupported": ["FunctionCall 7: unsupported builtin sha256",
+                             "calls an unsupported function"]})
+        self.assertEqual(partial.category, coverage.PARTIALLY_ADMITTED)
+        self.assertEqual((partial.functions, len(partial.unsupported)), (3, 2))
+        admitted = coverage.classify(
+            "a.sol", coverage.scan({"a.sol": source}), {"status": "admitted", "functions": 2})
+        report = coverage.Report("pin", "profile", [partial, admitted])
+        self.assertEqual(report.function_reasons(),
+                         {"FunctionCall: unsupported builtin sha256": 1, "calls an unsupported function": 1})
+        self.assertEqual(report.json()["functions"], {"total": 5, "unsupported": 2})
+
     def test_scan_records_every_property_of_a_variable(self) -> None:
         constant = dict(variable(3, state=True), constant=True, mutability="constant",
                         value={"nodeType": "Literal", "id": 4, "kind": "number",
