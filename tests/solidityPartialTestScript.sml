@@ -31,10 +31,19 @@ val outcomes = map (fn {name, reason, ...} => (name, reason)) (#functions prepar
 fun reasons name =
   map #2 (List.filter (fn (n, _) => n = name) outcomes);
 val calls_unsupported = SOME "calls an unsupported function";
-val fails_to_elaborate = SOME "fails to elaborate (unsupported lowering)";
+(* HOL's blocker lines are "<id>: <tag>"; the importer's name their node
+ * type first ("<node type> <id>: <reason>"). *)
+fun hol_blocker line =
+  case String.fields (fn c => c = #":") line of
+    id :: _ :: _ => id <> "" andalso CharVector.all Char.isDigit id
+  | _ => false;
+fun elaboration_failure r =
+  case r of
+    SOME m => List.all hol_blocker (String.tokens (fn c => c = #"\n") m)
+  | NONE => false;
 fun imported_failure r =
   case r of
-    SOME m => not (String.isPrefix "calls" m) andalso r <> fails_to_elaborate
+    SOME m => not (String.isPrefix "calls" m) andalso not (elaboration_failure r)
   | NONE => false;
 val () =
   if reasons "add" = [NONE] andalso
@@ -43,12 +52,14 @@ val () =
      length (reasons "digest") = 1 andalso
      length (reasons "") = 2 andalso
      List.exists imported_failure (reasons "") andalso
-     List.exists (fn r => r = fails_to_elaborate) (reasons "") andalso
+     List.exists elaboration_failure (reasons "") andalso
      reasons "digestTwice" = [calls_unsupported] andalso
      reasons "callsTwice" = [calls_unsupported] andalso
      reasons "twice" = [calls_unsupported] andalso
-     reasons "digits" = [fails_to_elaborate] andalso
-     reasons "pointer" = [fails_to_elaborate] andalso
+     List.all elaboration_failure (reasons "digits") andalso
+     length (reasons "digits") = 1 andalso
+     List.all elaboration_failure (reasons "pointer") andalso
+     length (reasons "pointer") = 1 andalso
      length outcomes = 9
   then ()
   else raise Fail ("unexpected function outcomes: " ^
