@@ -24,6 +24,16 @@
  * directive, are internal calls of f, the latter with x as the first
  * argument, and L.c names the constant c.
  *
+ * A function whose body or modifiers fall outside the subset is kept with
+ * its header and the reason (fn_unsupported), and an empty body: dropping it
+ * would let a lookup or a super call fall through to a function it overrides,
+ * and its selector to the fallback. Calls of unsupported functions resolve
+ * to nothing (function_table), and checks and elaboration skip them, so the
+ * rest of the unit is admitted; a function that reaches one, by a call or a
+ * super call, is itself unsupported (solidityPrepareLib marks these).
+ * Everything storage layout or dispatch depends on (headers, state
+ * variables, constants, bases, using directives) still rejects the unit.
+ *
  * A contract or interface type is read as address, its value at run time,
  * stored and ABI encoded as one: in type names, type identifiers and storage
  * layouts, and as the target of a conversion I(a). this is the contract's
@@ -205,6 +215,7 @@ Datatype:
   | SrcNew node_info src_type_name src_expr string
   | SrcEnumValue node_info src_type_name num string
   | SrcKeccak256 node_info node_info src_expr string
+  | SrcModular node_info node_info core_operator (src_expr list) string
   | SrcAddressCodeLength node_info node_info src_expr string
   | SrcSelector node_info (byte list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
@@ -265,7 +276,11 @@ End
  * directly or through other overridden declarations (the closure of the
  * compiler's baseFunctions). The modifiers are the modifier invocations, in
  * order: the modifier's id and the arguments. The super calls are the
- * declarations the body's super calls name.
+ * declarations the body's super calls name. An unsupported function is one
+ * the frontend could not model, with the reason: it keeps its place, so that
+ * overrides and super calls resolve as the compiler resolves them, but it is
+ * neither checked nor elaborated, and nothing may call it; one whose body
+ * failed to import has an empty body and no modifiers.
  *)
 Datatype:
   src_function = <|
@@ -283,7 +298,8 @@ Datatype:
     fn_returns : src_variable list;
     fn_modifiers : (num # src_expr list) list;
     fn_super_calls : num list;
-    fn_body : src_stmt
+    fn_body : src_stmt;
+    fn_unsupported : string option
   |>
 End
 
@@ -923,6 +939,8 @@ Definition expr_ids_def:
   (expr_ids (SrcEnumValue info tn _ _) = info.node_id :: type_name_ids tn) ∧
   (expr_ids (SrcKeccak256 info callee e _) =
     info.node_id :: callee.node_id :: expr_ids e) ∧
+  (expr_ids (SrcModular info callee _ args _) =
+    info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcAddressCodeLength info member e _) =
     info.node_id :: member.node_id :: expr_ids e) ∧
   (expr_ids (SrcSelector info _ _) = [info.node_id]) ∧
@@ -1329,6 +1347,12 @@ Definition check_expr_def:
         | SOME (SrcType (LocatedT _ BytesT)) => T
         | _ => F)
     then SOME (SrcType (FixedBytesT 32)) else NONE) ∧
+  (* addmod/mulmod: three operands, each converting to uint256 as an
+     argument would. *)
+  (check_expr env (SrcModular _ _ _ args tid) =
+    if source_type_matches (UintT 256) tid ∧ LENGTH args = 3 ∧
+       check_exprs env args
+    then SOME (SrcType (UintT 256)) else NONE) ∧
   (* f.selector, E.selector: the selector the compiler records on the
      declaration, bytes4 or (for an event) bytes32. *)
   (check_expr env (SrcSelector _ bs tid) =
@@ -1467,12 +1491,12 @@ End
 
 (* Statement lists return the environment after their declarations. *)
 (* A local is checked for its type by the core program's check; here only
- * that each name resolves: a value to a local, a location to a state
- * variable, which a pure function can also name.
+ * that each name resolves: a value to a local or a constant, a location to a
+ * state variable, which a pure function can also name.
  *)
 Definition check_assembly_reference_def:
   (check_assembly_reference env (SrcAssemblyValue x) ⇔
-    IS_SOME (ALOOKUP env.variables x)) ∧
+    IS_SOME (ALOOKUP (env.variables ++ env.constants) x)) ∧
   (check_assembly_reference env (SrcAssemblySlot x) ⇔
     IS_SOME (ALOOKUP env.locations x)) ∧
   (check_assembly_reference env (SrcAssemblyOffset x) ⇔
@@ -1619,6 +1643,17 @@ Definition call_table_def:
       (call_table fs))
 End
 
+(* The call table of what may be called: without the entries of a key whose
+ * function is unsupported, all of them, so that a lookup never falls through
+ * to a function that one overrides. *)
+Definition function_table_def:
+  function_table fs =
+    let table = call_table fs in
+    FILTER (λ(x, _). case ALOOKUP table x of
+                       SOME (g : src_function) => g.fn_unsupported = NONE
+                     | NONE => F) table
+End
+
 (* The functions no other function overrides: those calls and the dispatch
  * table can reach. *)
 Definition live_functions_def:
@@ -1661,10 +1696,13 @@ Definition super_table_def:
       | [] => NONE) f.fn_super_calls)
 End
 
+(* The functions super calls reach from rs; an unsupported function never
+ * runs, so its super calls reach nothing. *)
 Definition super_targets_def:
   (super_targets fs bases [] = []) ∧
   (super_targets fs bases (f :: rs) =
-    (case super_table fs bases f of SOME t => MAP SND t | NONE => []) ++
+    (if f.fn_unsupported ≠ NONE then [] else
+     case super_table fs bases f of SOME t => MAP SND t | NONE => []) ++
     super_targets fs bases rs)
 End
 
@@ -1776,6 +1814,28 @@ Definition check_modifier_def:
         | _ => F
 End
 
+(* What a function's header must satisfy, whether or not its body is
+ * supported: its declaring base, its kind and mutability, and the types of
+ * its parameters and results. A failing header rejects the unit, since only
+ * a body is confined to its function. *)
+Definition function_header_ok_def:
+  function_header_ok bases (f : src_function) ⇔
+    MEM f.fn_scope bases ∧
+    (f.fn_kind = "function" ∨ f.fn_kind = "receive" ∨ f.fn_kind = "fallback" ∨
+     f.fn_kind = "constructor") ∧
+    (f.fn_mutability = "pure" ∨ f.fn_mutability = "view" ∨
+     f.fn_mutability = "nonpayable" ∨ f.fn_mutability = "payable") ∧
+    IS_SOME (all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_parameters)) ∧
+    IS_SOME (all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_returns))
+End
+
+(* Likewise the types of a modifier's parameters. *)
+Definition modifier_header_ok_def:
+  modifier_header_ok (m : src_modifier) ⇔
+    IS_SOME (all_some (MAP (scoped_variable m.modifier_info.node_id)
+                         m.modifier_parameters))
+End
+
 (* A pure function sees no state variables. Whether a view function writes
  * one is the compiler's check. Modifier arguments see the parameters but not
  * the return variables: the compiler's IR passes each modifier its own copies
@@ -1784,11 +1844,7 @@ End
 Definition check_function_def:
   check_function structs enums events functions fs modifiers state constants
                  bases (f : src_function) ⇔
-    MEM f.fn_scope bases ∧
-    (f.fn_kind = "function" ∨ f.fn_kind = "receive" ∨ f.fn_kind = "fallback" ∨
-     f.fn_kind = "constructor") ∧
-    (f.fn_mutability = "pure" ∨ f.fn_mutability = "view" ∨
-     f.fn_mutability = "nonpayable" ∨ f.fn_mutability = "payable") ∧
+    function_header_ok bases f ∧
     case (all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_parameters),
           all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_returns),
           f.fn_body) of
@@ -1848,8 +1904,8 @@ End
  * parameters of the constructor of the base giving them. *)
 Definition initializer_env_def:
   initializer_env (c : src_contract) state constants =
-    <| functions := call_table (c.contract_functions ++
-                                c.contract_library_functions);
+    <| functions := function_table (c.contract_functions ++
+                                    c.contract_library_functions);
        supers := [];
        structs := c.contract_structs;
        enums := c.contract_enums;
@@ -1867,6 +1923,40 @@ Definition constant_env_def:
     initializer_env c [] constants with functions := []
 End
 
+(* The super calls of f reach supported functions. *)
+Definition supported_supers_def:
+  supported_supers (c : src_contract) (f : src_function) ⇔
+    case super_table c.contract_functions c.contract_bases f of
+      SOME supers => EVERY (λ(_, g). g.fn_unsupported = NONE) supers
+    | NONE => T
+End
+
+(* Each supported function to check, by id, with whether it passes: those
+ * calls reach, then the library functions, which see no state. Strictly, a
+ * call or super call reaching an unsupported function fails; otherwise the
+ * unsupported functions are taken as supported. *)
+Definition function_checks_def:
+  function_checks strict (c : src_contract) state constants immutables =
+    let fs = c.contract_functions ++ c.contract_library_functions in
+    let table = if strict then function_table fs else call_table fs in
+    MAP (λf. (f.fn_info.node_id,
+              check_function c.contract_structs c.contract_enums
+                (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
+                table c.contract_functions
+                (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
+                state (constants ++ immutables) c.contract_bases f ∧
+              (strict ⇒ supported_supers c f)))
+      (FILTER (λf. f.fn_unsupported = NONE)
+         (checked_functions c.contract_functions c.contract_bases)) ++
+    MAP (λf. (f.fn_info.node_id,
+              check_function c.contract_structs c.contract_enums
+                (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
+                table c.contract_library_functions
+                (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
+                [] constants c.contract_libraries f))
+      (FILTER (λf. f.fn_unsupported = NONE) c.contract_library_functions)
+End
+
 Definition check_contract_def:
   check_contract unit_id sources (c : src_contract) ⇔
     c.contract_scope = unit_id ∧
@@ -1876,29 +1966,18 @@ Definition check_contract_def:
     EVERY (λ(_, members). 0 < members ∧ members ≤ 256) c.contract_enums ∧
     EVERY check_event c.contract_events ∧
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
+    EVERY (function_header_ok c.contract_bases)
+      (checked_functions c.contract_functions c.contract_bases) ∧
+    EVERY (λf. f.fn_kind = "function" ∧
+               (f.fn_visibility = "internal" ∨ f.fn_visibility = "private") ∧
+               function_header_ok c.contract_libraries f)
+      c.contract_library_functions ∧
+    EVERY modifier_header_ok c.contract_modifiers ∧
     case (all_some (MAP (state_variable c.contract_bases)
                       c.contract_state_variables), constant_table c,
           immutable_table c) of
       (SOME state, SOME constants, SOME immutables) =>
-        EVERY (check_function c.contract_structs c.contract_enums
-                 (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
-                 (call_table (c.contract_functions ++
-                              c.contract_library_functions))
-                 c.contract_functions
-                 (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
-                 state (constants ++ immutables) c.contract_bases)
-          (checked_functions c.contract_functions c.contract_bases) ∧
-        (* library functions see no state *)
-        EVERY (λf. f.fn_kind = "function" ∧
-                   (f.fn_visibility = "internal" ∨ f.fn_visibility = "private") ∧
-                   check_function c.contract_structs c.contract_enums
-                     (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
-                     (call_table (c.contract_functions ++
-                                  c.contract_library_functions))
-                     c.contract_library_functions
-                     (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
-                     [] constants c.contract_libraries f)
-          c.contract_library_functions ∧
+        EVERY SND (function_checks T c state constants immutables) ∧
         EVERY (λ(x, e). IS_SOME (ALOOKUP (state ++ immutables) x) ∧
                         IS_SOME (check_expr (initializer_env c state
                                                (constants ++ immutables)) e))
@@ -1928,6 +2007,31 @@ Definition valid_src_unit_def:
       u.unit_contracts ∧
     MEM u.unit_info.node_id u.unit_sources ∧
     EVERY (check_contract u.unit_info.node_id u.unit_sources) u.unit_contracts
+End
+
+(* The checks of each contract's supported functions, for preparation to
+ * find those to mark unsupported: strictly, as valid_src_unit checks them, or
+ * as if every function were supported. Empty when a contract's state,
+ * constants or immutables fail. *)
+Definition unit_function_checks_def:
+  unit_function_checks strict (u : src_unit) =
+    FLAT (MAP (λc.
+      case (all_some (MAP (state_variable c.contract_bases)
+                        c.contract_state_variables), constant_table c,
+            immutable_table c) of
+        (SOME state, SOME constants, SOME immutables) =>
+          function_checks strict c state constants immutables
+      | _ => []) u.unit_contracts)
+End
+
+(* The functions of a unit's contracts that calls reach, then their library
+ * functions: each one's id, name, and reason if unsupported. *)
+Definition unit_functions_def:
+  unit_functions (u : src_unit) =
+    FLAT (MAP (λc.
+      MAP (λ(f : src_function). (f.fn_info.node_id, f.fn_name, f.fn_unsupported))
+        (checked_functions c.contract_functions c.contract_bases ++
+         c.contract_library_functions)) u.unit_contracts)
 End
 
 (* cv translation, so that imported units are checked by cv_eval. The
@@ -2048,6 +2152,7 @@ val () = cv_auto_trans getter_member_def;
 val () = cv_auto_trans getter_results_def;
 val () = cv_auto_trans getter_shape_def;
 val () = cv_auto_trans call_table_def;
+val () = cv_auto_trans function_table_def;
 val () = cv_auto_trans contract_constructor_def;
 val () = cv_auto_trans constructor_parameters_def;
 val () = cv_auto_trans live_functions_def;
@@ -2060,10 +2165,16 @@ val () = cv_auto_trans reached_functions_def;
 val () = cv_auto_trans checked_functions_def;
 val () = cv_auto_trans storage_layout_ok_def;
 val () = cv_auto_trans check_modifier_def;
+val () = cv_auto_trans function_header_ok_def;
+val () = cv_auto_trans modifier_header_ok_def;
 val () = cv_auto_trans check_function_def;
 val () = cv_auto_trans check_struct_def;
 val () = cv_auto_trans check_event_def;
 val () = cv_auto_trans initializer_env_def;
 val () = cv_auto_trans constant_env_def;
+val () = cv_auto_trans supported_supers_def;
+val () = cv_auto_trans function_checks_def;
 val () = cv_auto_trans check_contract_def;
 val () = cv_auto_trans valid_src_unit_def;
+val () = cv_auto_trans unit_function_checks_def;
+val () = cv_auto_trans unit_functions_def;

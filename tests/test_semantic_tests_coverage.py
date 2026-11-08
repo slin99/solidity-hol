@@ -105,6 +105,23 @@ class BuiltinCoverageTests(unittest.TestCase):
         self.assertEqual(coverage.scan({"t.sol": unit([function(4, [statement])])})[5], [
             coverage.Blocker("FunctionCall", "messages that are not literals", "elaboration")])
 
+    def test_modular_builtins_are_admitted(self) -> None:
+        def call(declaration: int, name: str) -> dict:
+            operand = {"nodeType": "Literal", "id": 7, "kind": "number", "value": "3",
+                       "typeDescriptions": {"typeIdentifier": "t_rational_3_by_1"}}
+            return {"nodeType": "ExpressionStatement", "id": 8, "expression": {
+                "nodeType": "FunctionCall", "id": 5, "kind": "functionCall", "names": [],
+                "tryCall": False, "typeDescriptions": {"typeIdentifier": "t_uint256"},
+                "expression": {"nodeType": "Identifier", "id": 6, "name": name,
+                               "referencedDeclaration": declaration,
+                               "typeDescriptions": {"typeIdentifier": "t_function_" + name}},
+                "arguments": [operand, dict(operand, id=9), dict(operand, id=10)]}}
+
+        for declaration, name in ((coverage.ADDMOD, "addmod"), (coverage.MULMOD, "mulmod")):
+            self.assertEqual(coverage.scan({"t.sol": unit([function(4, [call(declaration, name)])])}), {})
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [call(-5, "sha256")])])})[6], [
+            coverage.Blocker("Identifier", "hash and signature built-ins", "import")])
+
     def test_only_a_named_concat_is_admitted(self) -> None:
         concat_type = {"typeIdentifier": "t_function_bytesconcat_pure$__$returns$_t_bytes_memory_ptr_$"}
         member = {"nodeType": "MemberAccess", "id": 6, "memberName": "concat",
@@ -368,6 +385,22 @@ class ClassifyTests(unittest.TestCase):
             "a.sol", coverage.scan({"a.sol": unit([function(4, [])])}), {"status": "admitted"})
         self.assertEqual(admitted.blockers, [])
         self.assertTrue(admitted.scan_agrees)
+
+    def test_partial_admission_counts_functions_and_reasons(self) -> None:
+        source = unit([function(4, [])])
+        partial = coverage.classify(
+            "p.sol", coverage.scan({"p.sol": source}),
+            {"status": "partially-admitted", "functions": 3,
+             "unsupported": ["FunctionCall 7: unsupported builtin sha256",
+                             "calls an unsupported function"]})
+        self.assertEqual(partial.category, coverage.PARTIALLY_ADMITTED)
+        self.assertEqual((partial.functions, len(partial.unsupported)), (3, 2))
+        admitted = coverage.classify(
+            "a.sol", coverage.scan({"a.sol": source}), {"status": "admitted", "functions": 2})
+        report = coverage.Report("pin", "profile", [partial, admitted])
+        self.assertEqual(report.function_reasons(),
+                         {"FunctionCall: unsupported builtin sha256": 1, "calls an unsupported function": 1})
+        self.assertEqual(report.json()["functions"], {"total": 5, "unsupported": 2})
 
     def test_scan_records_every_property_of_a_variable(self) -> None:
         constant = dict(variable(3, state=True), constant=True, mutability="constant",
@@ -675,8 +708,11 @@ class ClassifyTests(unittest.TestCase):
                        [{"declaration": 5, "suffix": "length"}])
         self.assertEqual(coverage.assembly_blockers(own, by_id),
                          [coverage.Blocker("InlineAssembly", "inline assembly", "import")])
-        constant = dict(variable(8, type_identifier="t_uint256"), constant=True)
-        self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 8}]), {8: constant}),
+        # Constants of value type are read before the block; others are not.
+        constant = dict(variable(8, state=True, type_identifier="t_uint256"), constant=True)
+        self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 8}]), {8: constant}), [])
+        string = dict(variable(9, state=True, type_identifier="t_string_memory_ptr"), constant=True)
+        self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 9}]), {9: string}),
                          [coverage.Blocker("InlineAssembly", "inline assembly memory references", "elaboration")])
 
     def test_inline_assembly_halts_in_constructors(self) -> None:
@@ -986,6 +1022,15 @@ class ClassifyTests(unittest.TestCase):
         ast["nodes"].insert(0, struct)
         by_id = {n["id"]: n for n in coverage.nodes(ast)}
         self.assertIn(struct, coverage.imported({"t.sol": ast}, by_id))
+
+    def test_library_constants_only_assembly_refers_to_are_imported(self) -> None:
+        constant = dict(variable(51, state=True), constant=True)
+        ast = unit([function(4, [assembly([], [{"declaration": 51}])])])
+        ast["nodes"].append({"nodeType": "ContractDefinition", "id": 50, "contractKind": "library",
+                             "abstract": False, "baseContracts": [],
+                             "linearizedBaseContracts": [50], "nodes": [constant]})
+        by_id = {n["id"]: n for n in coverage.nodes(ast)}
+        self.assertIn(constant, coverage.imported({"t.sol": ast}, by_id))
 
     def test_memory_and_calldata_arrays_of_elementary_leaves_decode(self) -> None:
         self.assertTrue(coverage.decodes("t_array$_t_uint8_$dyn_memory_ptr"))

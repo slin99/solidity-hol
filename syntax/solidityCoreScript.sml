@@ -72,6 +72,7 @@ End
 Datatype:
   core_operator
   = AddOp | SubtractOp | MultiplyOp | DivideOp | RemainderOp | ExponentOp
+  | AddModOp | MulModOp
   | ShiftLeftOp | ShiftRightOp
   | EqualOp | LessThanOp | BitAndOp | BitOrOp | BitXorOp
   | NegateOp | BitNotOp | BoolNotOp
@@ -158,14 +159,16 @@ Datatype:
 End
 
 (* What an inline assembly block's Yul variable stands for: a local of value
- * type (read on entry, written back on exit), or the storage slot or byte
- * offset of a state variable (x.slot, x.offset; read-only).
+ * type (read on entry, written back on exit), the storage slot or byte offset
+ * of a state variable (x.slot, x.offset), or the value of a constant of value
+ * type, held in an atom. The last three are read-only.
  *)
 Datatype:
   assembly_reference
   = AssemblyLocal ast_id sol_type
   | AssemblySlot ast_id
   | AssemblyOffset ast_id
+  | AssemblyConstant core_atom sol_type
 End
 
 (* Explicitly separate scalar writes, reference binding, and content copying.
@@ -252,10 +255,13 @@ End
  * payable. Creation runs the creation procedure on the constructor's
  * arguments, given with whether it accepts value. The immutables are all the
  * contract's immutables, unread ones included, with their types: creation
- * reserves a memory word for each. *)
+ * reserves a memory word for each. The unsupported procedures are those of
+ * functions the frontend could not model: they have no procedure, so the
+ * dispatch entries naming them refuse, and no procedure can call them. *)
 Datatype:
   core_program = <|
     procedures : core_procedure list;
+    unsupported_procedures : ast_id list;
     state_variables : core_state_variable list;
     immutables : (ast_id # sol_type) list;
     struct_layouts : core_struct_layout list;

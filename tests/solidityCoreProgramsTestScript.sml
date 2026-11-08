@@ -263,7 +263,7 @@ End
 
 Definition programs_def:
   programs = <|
-    procedures := [
+    unsupported_procedures := []; procedures := [
       binop_proc 1 u8 CheckedArithmetic AddOp;
       binop_proc 2 u8 UncheckedArithmetic AddOp;
       binop_proc 3 u256 CheckedArithmetic SubtractOp;

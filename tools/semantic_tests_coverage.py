@@ -6,7 +6,10 @@ SOLIDITY_PIN is compiled with the pinned compiler and profile, then imported
 (syntax/solidityImportLib.sml) and elaborated (elaborate_unit) in HOL by
 tools/semantic_tests_coverage.sml. Each test is classified as skipped by its
 own settings, a compile failure, an importer rejection, an elaborator
-rejection, or admitted. The tests' call expectations are not run.
+rejection, partially admitted (the unit is admitted with some of its functions
+unsupported) or admitted (every function supported). Admitted and partially
+admitted tests also count their functions and the reasons of the unsupported
+ones. The tests' call expectations are not run.
 
 The importer stops at its first rejection. To rank features by how many tests
 they block, and by how many they alone block, this tool also scans each AST
@@ -53,11 +56,12 @@ COMPILE_FAILURE = "compile-failure"
 IMPORT_REJECTED = "import-rejected"
 ELABORATION_REJECTED = "elaboration-rejected"
 ADMITTED = "admitted"
+PARTIALLY_ADMITTED = "partially-admitted"
 MALFORMED_INPUT = "malformed-input"
 INVALID_CORE = "invalid-core"
 SOURCE_REJECTED = "source-rejected"
 GREEDY_STEPS = 20
-CATEGORIES = [ADMITTED, ELABORATION_REJECTED, IMPORT_REJECTED, COMPILE_FAILURE,
+CATEGORIES = [ADMITTED, PARTIALLY_ADMITTED, ELABORATION_REJECTED, IMPORT_REJECTED, COMPILE_FAILURE,
               MALFORMED_INPUT, SOURCE_REJECTED, INVALID_CORE, SKIPPED]
 
 
@@ -261,6 +265,7 @@ ENVIRONMENT = {
 # require, assert and revert.
 REQUIRE, ASSERT, REVERT = -18, -3, -19
 KECCAK256 = -8
+ADDMOD, MULMOD = -2, -16
 ABI = -1
 # The field holding the selector the compiler records on each kind of
 # declaration that has one.
@@ -379,18 +384,21 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
             seen.add(node["id"])
             for _, signature in signatures(node, by_id):
                 add(signature)
-            target = by_id.get(node.get("referencedDeclaration"))
-            if (target is not None and target["nodeType"] == "StructDefinition"
-                    and by_id.get(target.get("scope"), {}).get("nodeType") == "SourceUnit"):
-                add(target)
-            elif (target is not None and target["id"] in members
-                  and target["nodeType"] != "ErrorDefinition" and node["id"] not in unreachable):
-                add(target)
-                # The using directives of a library whose functions run.
-                if target["nodeType"] == "FunctionDefinition":
-                    for directive in by_id[target["scope"]]["nodes"]:
-                        if directive["nodeType"] == "UsingForDirective":
-                            add(directive)
+            # Inline assembly refers to declarations through its external references.
+            referenced = [node.get("referencedDeclaration")] + [
+                reference["declaration"] for reference in node.get("externalReferences", [])]
+            for target in filter(None, map(by_id.get, referenced)):
+                if (target["nodeType"] == "StructDefinition"
+                        and by_id.get(target.get("scope"), {}).get("nodeType") == "SourceUnit"):
+                    add(target)
+                elif (target["id"] in members and target["nodeType"] != "ErrorDefinition"
+                      and node["id"] not in unreachable):
+                    add(target)
+                    # The using directives of a library whose functions run.
+                    if target["nodeType"] == "FunctionDefinition":
+                        for directive in by_id[target["scope"]]["nodes"]:
+                            if directive["nodeType"] == "UsingForDirective":
+                                add(directive)
     return roots
 
 
@@ -920,7 +928,8 @@ INTEGER_TYPE = re.compile(r"t_u?int[0-9]+")
 # The builtins of the Yul dialect (yulDialect's builtin_name), and those an
 # inline assembly block may not use (assembly_unsupported).
 YUL_BUILTINS = {
-    "add", "sub", "mul", "div", "sdiv", "mod", "smod", "exp", "signextend", "lt", "gt",
+    "add", "sub", "mul", "div", "sdiv", "mod", "smod", "addmod", "mulmod", "exp", "signextend",
+    "lt", "gt",
     "slt", "sgt", "eq", "iszero", "and", "or", "xor", "not", "shl", "shr", "sar", "byte",
     "keccak256", "mload", "mstore", "mstore8", "mcopy", "sload", "sstore", "tload", "tstore",
     "calldataload", "calldatasize", "calldatacopy", "callvalue", "memoryguard", "caller",
@@ -1073,11 +1082,15 @@ def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]],
     for reference in node.get("externalReferences", []):
         suffix = reference.get("suffix")
         declaration = by_id.get(reference["declaration"], {})
+        value_type = VALUE_TYPE.fullmatch(
+            declaration.get("typeDescriptions", {}).get("typeIdentifier") or "")
         if suffix not in (None, "slot", "offset"):
             blocker("inline assembly", "import")
-        elif suffix is None and (declaration.get("stateVariable", True) or declaration.get("constant", False)
-                                 or not VALUE_TYPE.fullmatch(
-                declaration.get("typeDescriptions", {}).get("typeIdentifier") or "")):
+        elif suffix is None and declaration.get("constant", False):
+            # a constant of value type is read before the block
+            if not value_type:
+                blocker("inline assembly memory references", "elaboration")
+        elif suffix is None and (declaration.get("stateVariable", True) or not value_type):
             blocker("inline assembly memory references", "elaboration")
         elif suffix is not None and not declaration.get("stateVariable", False):
             blocker("inline assembly memory references", "elaboration")
@@ -1626,10 +1639,10 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     super_bases = {n["expression"]["expression"]["id"]
                    for f in reached.values() if f["nodeType"] == "FunctionDefinition"
                    for n in super_calls(f)}
-    hash_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
+    operation_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
                     and n["expression"]["nodeType"] == "Identifier"
-                    and n["expression"].get("referencedDeclaration") == KECCAK256}
-    plain_callees = builtin_callees | super_bases | hash_callees
+                    and n["expression"].get("referencedDeclaration") in {KECCAK256, ADDMOD, MULMOD}}
+    plain_callees = builtin_callees | super_bases | operation_callees
     unread, found = special_forms(reached, by_id)
     try_callees = {n["externalCall"]["id"] for n in reached.values()
                    if n["nodeType"] == "TryStatement" and n["id"] in unread}
@@ -1769,6 +1782,10 @@ class Classification:
     first: Blocker | None = None
     blockers: list[Blocker] = field(default_factory=list)
     scan_agrees: bool = True
+    # of an admitted unit: the functions calls reach, and the reasons of the
+    # unsupported ones
+    functions: int = 0
+    unsupported: list[str] = field(default_factory=list)
 
 
 def classify(test: str, scanned: dict[int, list[Blocker]], hol: dict[str, Any]) -> Classification:
@@ -1782,7 +1799,12 @@ def classify(test: str, scanned: dict[int, list[Blocker]], hol: dict[str, Any]) 
     status = hol["status"]
     message = hol.get("message")
     if status == ADMITTED:
-        return Classification(test, ADMITTED, blockers=blockers, scan_agrees=not blockers)
+        return Classification(test, ADMITTED, blockers=blockers, scan_agrees=not blockers,
+                              functions=hol.get("functions", 0))
+    if status == PARTIALLY_ADMITTED:
+        # The scan doesn't tell functions apart, so it isn't compared here.
+        return Classification(test, PARTIALLY_ADMITTED, blockers=blockers,
+                              functions=hol["functions"], unsupported=hol["unsupported"])
     if status in (ELABORATION_REJECTED, SOURCE_REJECTED):
         return Classification(test, status, message, blockers=blockers,
                               scan_agrees=stages == {"elaboration"})
@@ -1808,6 +1830,16 @@ class Report:
 
     def counts(self) -> Counter[str]:
         return Counter(r.category for r in self.results)
+
+    def function_reasons(self) -> Counter[str]:
+        """The reasons functions of admitted units are unsupported, without the
+        node ids of import errors."""
+        reasons: Counter[str] = Counter()
+        for r in self.results:
+            for reason in r.unsupported:
+                match = IMPORT_ERROR_NODE.match(reason)
+                reasons[f"{match.group(1)}: {match.group(3)}" if match else reason] += 1
+        return reasons
 
     def rejected(self) -> list[Classification]:
         return [r for r in self.results if r.category in (IMPORT_REJECTED, ELABORATION_REJECTED, SOURCE_REJECTED)]
@@ -1858,13 +1890,16 @@ class Report:
             "solidity_pin": self.pin,
             "profile": self.profile,
             "counts": {c: self.counts()[c] for c in CATEGORIES},
+            "functions": {"total": sum(r.functions for r in self.results),
+                          "unsupported": sum(len(r.unsupported) for r in self.results)},
             "features": self.feature_ranking(),
             "greedy_order": [{"feature": f, "admitted": n} for f, n in self.greedy_order(GREEDY_STEPS)],
             "tests": [
                 {"test": r.test, "category": r.category, "reason": r.reason,
                  "first": r.first.feature if r.first else None,
                  "features": sorted({b.feature for b in r.blockers}),
-                 "scan_agrees": r.scan_agrees}
+                 "scan_agrees": r.scan_agrees,
+                 "functions": r.functions, "unsupported": r.unsupported}
                 for r in self.results
             ],
         }
@@ -1882,7 +1917,10 @@ class Report:
             f"`{self.pin}` was compiled with profile `{self.profile}`, imported by "
             "`solidityPrepareLib`, including source validation, elaboration and full core checking. Call expectations "
             "(the `// ----` sections) are not run, so an admitted test is one the "
-            "semantics accepts, not one it is known to agree on.",
+            "semantics accepts, not one it is known to agree on. A test is admitted "
+            "when every function calls reach is supported, and partially admitted "
+            "when the unit is admitted with some of them unsupported: those have no "
+            "procedure and a call of them is refused.",
             "",
             "`source-rejected` records a failed `valid_src_unit` check. That check",
             "mixes subset restrictions and consistency checks; this category does",
@@ -1906,6 +1944,22 @@ class Report:
         ]
         lines += [f"| {c} | {counts[c]} |" for c in CATEGORIES]
         lines += [f"| total | {total} |", ""]
+        functions = sum(r.functions for r in self.results)
+        unsupported = sum(len(r.unsupported) for r in self.results)
+        lines += [
+            "## Functions of admitted units",
+            "",
+            f"The {counts[ADMITTED] + counts[PARTIALLY_ADMITTED]} admitted and partially "
+            f"admitted tests have {functions} functions that calls reach, library "
+            f"functions included; {functions - unsupported} are supported and "
+            f"{unsupported} unsupported, for these reasons (an import error by the "
+            "node type it stopped at):",
+            "",
+            "| reason | functions |",
+            "| --- | ---: |",
+        ]
+        lines += [f"| {reason} | {n} |" for reason, n in self.function_reasons().most_common()]
+        lines += [""]
         lines += [
             "## Features blocking rejected tests",
             "",
@@ -1942,6 +1996,7 @@ class Report:
                           for r in self.results if r.category in (SKIPPED, COMPILE_FAILURE))
         lines += [f"| {reason} | {n} |" for reason, n in sorted(reasons.items(), key=lambda kv: -kv[1])]
         for title, category in (("Admitted", ADMITTED),
+                                ("Partially admitted", PARTIALLY_ADMITTED),
                                 ("Source validation rejections", SOURCE_REJECTED),
                                 ("Elaborator rejections", ELABORATION_REJECTED)):
             lines += ["", f"## {title}", ""]

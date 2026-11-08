@@ -381,6 +381,16 @@ Definition yul_return_data_copy_def:
            (w2n dest) (TAKE (w2n size) (DROP (w2n source) m.return_data)))
 End
 
+(* addmod and mulmod as the EVM computes them (verifereum's step_modop): the
+ * sum or product of the full values, without wrapping, modulo n, and 0 for a
+ * zero modulus.  The words are pinned, since a and b reach the result only
+ * through w2n.
+ *)
+Definition modular_word_def:
+  modular_word f (a : bytes32) (b : bytes32) (n : bytes32) : bytes32 =
+    if n = 0w then 0w else n2w (f (w2n a) (w2n b) MOD w2n n)
+End
+
 (* One builtin, on values that have already been evaluated, left to right.
  * Anything the pinned dialect does not define -- a wrong number of arguments,
  * or one of the object-level builtins, whose code and object the evaluator
@@ -396,6 +406,8 @@ Definition eval_yul_builtin_def:
     | (YSDiv, [a; b]) => EvalValues [with_zero word_quot a b] m
     | (YMod, [a; b]) => EvalValues [with_zero word_mod a b] m
     | (YSMod, [a; b]) => EvalValues [with_zero word_rem a b] m
+    | (YAddMod, [a; b; n]) => EvalValues [modular_word $+ a b n] m
+    | (YMulMod, [a; b; n]) => EvalValues [modular_word $* a b n] m
     | (YExp, [a; b]) => EvalValues [word_exp a b] m
     | (YSignExtend, [a; b]) => EvalValues [yul_sign_extend a b] m
     | (YLt, [a; b]) => EvalValues [b2w (w2n a < w2n b)] m
@@ -827,7 +839,7 @@ val () = cv_auto_trans yul_call_def;
 val () = cv_auto_trans yul_return_data_copy_def;
 (* Bound left shifts before computing powers, as in the EVM translation. *)
 val () = cv_auto_trans
-  (REWRITE_RULE [word_lsl_modexp] eval_yul_builtin_def);
+  (REWRITE_RULE [word_lsl_modexp, modular_word_def] eval_yul_builtin_def);
 val () = cv_auto_trans eval_yul_builtin_call_def;
 val () = cv_auto_trans yul_env_def;
 
