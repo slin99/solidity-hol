@@ -66,8 +66,17 @@ local
     in
       case List.find (fn kind => List.exists (fn (k, _) => k = kind) failures) severity of
         SOME kind =>
-          emit test (status_name kind)
-            [("blockers", json_list (List.concat (map #2 failures)))]
+          let
+            (* The reasons of the unsupported functions of the sources that
+             * did prepare block the test too. *)
+            val reasons = List.concat (map (fn Prepared p =>
+                List.concat (map (String.fields (fn c => c = #"\n"))
+                  (List.mapPartial #reason (#functions p)))
+              | Rejected _ => []) outcomes)
+          in
+            emit test (status_name kind)
+              [("blockers", json_list (List.concat (map #2 failures) @ reasons))]
+          end
       | NONE =>
           let
             val functions = List.concat

@@ -206,7 +206,8 @@ fun elaboration_failures strict unit =
          case pairSyntax.strip_pair t of
            [x, blockers] =>
              (numSyntax.int_of_term x,
-              map blocker_line (#1 (listSyntax.dest_list blockers)))
+              List.concat (map (String.fields (fn c => c = #"\n") o blocker_line)
+                (#1 (listSyntax.dest_list blockers))))
          | _ => raise mk_HOL_ERR "solidityPrepareLib" "elaboration_failures" "bad entry")
     (#1 (listSyntax.dest_list
       (cv_value (list_mk_comb (prim_mk_const
@@ -236,6 +237,31 @@ fun mark_failures unit =
           mark_failures
             (mark_unsupported (map (fn (x, _) => (x, reason x)) failing) unit)
         end
+  end
+
+(* The functions the importer marked unsupported, with their elaboration
+ * blockers added to their reasons, so a reason lists every blocker of its
+ * function. Only reasons change: the marked functions stay marked. *)
+fun add_elaboration_reasons unit =
+  let
+    val marked = List.mapPartial (fn f =>
+        let val r = record_field f "fn_unsupported" in
+          if optionSyntax.is_none r then NONE
+          else SOME (function_id f,
+                     String.fields (fn c => c = #"\n")
+                       (stringSyntax.fromHOLstring (optionSyntax.dest_some r)))
+        end) (unit_function_terms unit)
+    val loose = if null marked then [] else elaboration_failures false unit
+    val reasons = List.mapPartial (fn (x, lines) =>
+        case List.find (fn (y, _) => x = y) loose of
+          NONE => NONE
+        | SOME (_, bs) =>
+            let val all = dedup (lines @ bs) in
+              if length all = length lines then NONE
+              else SOME (x, String.concatWith "\n" all)
+            end) marked
+  in
+    if null reasons then unit else mark_unsupported reasons unit
   end
 
 (* Every blocker of a unit that is rejected: the whole-unit checks', the
@@ -272,7 +298,7 @@ fun function_outcomes unit =
 
 fun prepare_unit imported =
   let
-    val unit = mark_failures imported
+    val unit = mark_failures (add_elaboration_reasons imported)
     val source_valid = checked_predicate SourceRejected
       (rejection_message "valid_src_unit failed (source validation/subset restriction)" imported)
       (mk_comb (import_const "valid_src_unit", unit))
