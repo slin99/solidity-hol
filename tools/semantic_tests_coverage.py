@@ -265,6 +265,10 @@ ENVIRONMENT = {
 # require, assert and revert.
 REQUIRE, ASSERT, REVERT = -18, -3, -19
 KECCAK256 = -8
+ECRECOVER = -6
+# ecrecover's parameters, to which its arguments convert as a call's do.
+ECRECOVER_PARAMETERS = [{"typeDescriptions": {"typeIdentifier": t}}
+                        for t in ("t_bytes32", "t_uint8", "t_bytes32", "t_bytes32")]
 ADDMOD, MULMOD = -2, -16
 ABI = -1
 # The field holding the selector the compiler records on each kind of
@@ -1158,6 +1162,8 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
                 expected.append((name["expression"], parameters[0]))
                 parameters = parameters[1:]
             expected.extend(arguments(node, parameters))
+        if name.get("nodeType") == "Identifier" and name.get("referencedDeclaration") == ECRECOVER:
+            expected.extend(zip(node["arguments"], ECRECOVER_PARAMETERS))
         if is_encode_call(node):
             function = by_id.get(node["arguments"][0].get("referencedDeclaration"), {})
             if function.get("nodeType") == "FunctionDefinition":
@@ -1641,7 +1647,7 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                    for n in super_calls(f)}
     operation_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
                     and n["expression"]["nodeType"] == "Identifier"
-                    and n["expression"].get("referencedDeclaration") in {KECCAK256, ADDMOD, MULMOD}}
+                    and n["expression"].get("referencedDeclaration") in {KECCAK256, ECRECOVER, ADDMOD, MULMOD}}
     plain_callees = builtin_callees | super_bases | operation_callees
     unread, found = special_forms(reached, by_id)
     try_callees = {n["externalCall"]["id"] for n in reached.values()

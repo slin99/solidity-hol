@@ -839,6 +839,27 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(coverage.coerced_literals(call, {400: callee}),
                          [coverage.Blocker("FunctionCall", feature, "elaboration")])
 
+    def test_ecrecover_arguments_are_coerced_to_its_parameters(self) -> None:
+        def literal(node_id, kind, value, tid):
+            return {"nodeType": "Literal", "id": node_id, "kind": kind, "value": value,
+                    "typeDescriptions": {"typeIdentifier": tid}}
+
+        def call(*arguments):
+            return {"nodeType": "FunctionCall", "id": 90, "kind": "functionCall",
+                    "arguments": list(arguments),
+                    "expression": {"nodeType": "Identifier", "id": 91, "name": "ecrecover",
+                                   "referencedDeclaration": -6}}
+
+        hash_ = {"nodeType": "Identifier", "id": 92, "name": "h", "referencedDeclaration": 5,
+                 "typeDescriptions": {"typeIdentifier": "t_bytes32"}}
+        v = literal(93, "number", "27", "t_rational_27_by_1")
+        self.assertEqual(coverage.coerced_literals(call(hash_, v, hash_, hash_), {}), [])
+        self.assertEqual(coverage.coerced_literals(
+            call(literal(94, "string", "abcd", "t_stringliteral_abcd"), v, hash_, hash_), {}),
+            [coverage.Blocker("FunctionCall", "string literals as fixed-size bytes", "elaboration")])
+        self.assertEqual(coverage.coerced_literals(
+            call(hash_, v, literal(95, "number", "5", "t_rational_5_by_1"), hash_), {}), [])
+
     def test_functions_live_in_their_own_source_keep_their_blockers(self) -> None:
         coerced = {"nodeType": "VariableDeclarationStatement", "id": 6,
                    "declarations": [variable(7, type_identifier="t_bytes4")],
