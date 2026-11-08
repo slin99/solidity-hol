@@ -218,6 +218,7 @@ Datatype:
   | SrcModular node_info node_info core_operator (src_expr list) string
   | SrcAddressCodeLength node_info node_info src_expr string
   | SrcSelector node_info (byte list) string
+  | SrcEcrecover node_info node_info (src_expr list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
 End
 
@@ -937,6 +938,8 @@ Definition expr_ids_def:
   (expr_ids (SrcAddressCodeLength info member e _) =
     info.node_id :: member.node_id :: expr_ids e) ∧
   (expr_ids (SrcSelector info _ _) = [info.node_id]) ∧
+  (expr_ids (SrcEcrecover info callee args _) =
+    info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcAbiEncode info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcExternalCall info _ _ operands _ _) =
@@ -1408,6 +1411,12 @@ Definition check_expr_def:
         | (AbiStringConcat, _) => check_abi_args env T args
         | _ => check_abi_args env F args)
     then SOME (SrcType ty) else NONE) ∧
+  (* ecrecover(hash, v, r, s): its arguments convert to bytes32, uint8, bytes32
+     and bytes32 as an internal call's do, in elaboration. *)
+  (check_expr env (SrcEcrecover _ _ args tid) =
+    if source_type_matches (AddressT NonpayableAddress) tid ∧
+       LENGTH args = 4 ∧ check_exprs env args
+    then SOME (SrcType (AddressT NonpayableAddress)) else NONE) ∧
   (check_components env [] ⇔ T) ∧
   (check_components env (NONE :: cs) ⇔ check_components env cs) ∧
   (check_components env (SOME e :: cs) ⇔

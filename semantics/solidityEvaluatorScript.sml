@@ -278,6 +278,19 @@ Definition eval_operation_def:
                             (w2n (word_of_bytes_be (Keccak_256_w64 bs) : bytes32)))))
               | INR c => ValueAbrupt c)
          | _ => ValueAbrupt (InvalidCompletion "bad keccak256 operand"))
+    (* The precompile at address 1, as the compiler calls it: an invalid
+     * signature returns nothing, which reads as address(0). *)
+    | EcrecoverOperation h v r s =>
+        (case (eval_atom st.scopes h, eval_atom st.scopes v,
+               eval_atom st.scopes r, eval_atom st.scopes s) of
+           (SOME (ScalarValue (BytesValue hb)), SOME (ScalarValue (IntegerValue vi)),
+            SOME (ScalarValue (BytesValue rb)), SOME (ScalarValue (BytesValue sb))) =>
+             ValueOk (ScalarValue (AddressValue
+               (case ecrecover (word_of_bytes_be hb) (Num vi)
+                       (num_of_be_bytes rb) (num_of_be_bytes sb) of
+                  SOME a => a
+                | NONE => 0w)))
+         | _ => ValueAbrupt (InvalidCompletion "bad ecrecover operands"))
     | ArrayLengthOperation a =>
         (case eval_atom st.scopes a of
            SOME (ReferenceValue r) =>
