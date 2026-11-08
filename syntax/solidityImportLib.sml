@@ -651,6 +651,12 @@ fun expr v = within v (fn v =>
                require v (length args = 1) "keccak256 takes one argument";
                con "SrcKeccak256" [info v, info callee, hd args, type_id v])
             else if node_type callee = "Identifier" andalso
+               int_field callee "referencedDeclaration" = ~6 then
+              (positional ();
+               require v (length args = 4) "ecrecover takes four arguments";
+               con "SrcEcrecover"
+                 [info v, info callee, listSyntax.mk_list (args, expr_ty), type_id v])
+            else if node_type callee = "Identifier" andalso
                (int_field callee "referencedDeclaration" = ~2 orelse
                 int_field callee "referencedDeclaration" = ~16) then
               (positional ();

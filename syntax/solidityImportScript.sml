@@ -151,6 +151,7 @@ Datatype:
   | SrcModular node_info node_info core_operator (src_expr list) string
   | SrcAddressCodeLength node_info node_info src_expr string
   | SrcSelector node_info (byte list) string
+  | SrcEcrecover node_info node_info (src_expr list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
 End
 
@@ -870,6 +871,8 @@ Definition expr_ids_def:
   (expr_ids (SrcAddressCodeLength info member e _) =
     info.node_id :: member.node_id :: expr_ids e) ∧
   (expr_ids (SrcSelector info _ _) = [info.node_id]) ∧
+  (expr_ids (SrcEcrecover info callee args _) =
+    info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcAbiEncode info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcExternalCall info _ _ operands _ _) =
