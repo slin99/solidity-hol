@@ -950,7 +950,7 @@ val () =
 fun failed_modifier_body v =
   edit_first "ModifierDefinition"
     (edit_first "ExpressionStatement"
-       (set_field "nodeType" (JSON.STRING "TryStatement"))) v
+       (set_field "nodeType" (JSON.STRING "UnknownStatement"))) v
 val () = edited_unit_with using_contracts "modifier_failed_body"
   (failed_modifier_body using_ast)
 val () = edited_unit_with using_contracts "modifier_failed_body_wrong_scope"
