@@ -363,8 +363,8 @@ val break_11 = “SrcBreak ^(at 11)”;
 val return_1 = “SrcReturn ^(at 12) 3
                   (SOME (SrcLiteral ^(at 13) NumberLiteral "1" "t_rational_1_by_1"))”;
 
-val failed_parameter = function_of “[^unsupported_y]” “[]” “[^read_y; ^break_11]”;
-val failed_return = function_of “[]” “[^unsupported_y]” “[^return_1; ^break_11]”;
+val failed_parameter = function_of “[^unsupported_y]” “[] : src_variable list” “[^read_y; ^break_11]”;
+val failed_return = function_of “[] : src_variable list” “[^unsupported_y]” “[^return_1; ^break_11]”;
 
 Theorem failed_variables_keep_body_blockers:
   elab_function ^ctx0 ^empty_contract T F 10 ^failed_parameter =
