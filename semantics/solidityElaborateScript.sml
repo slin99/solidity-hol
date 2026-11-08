@@ -283,17 +283,17 @@ End
 
 Definition arithmetic_operator_def:
   arithmetic_operator op =
-    if op = "+" then SOME AddOp
-    else if op = "-" then SOME SubtractOp
-    else if op = "*" then SOME MultiplyOp
-    else if op = "/" then SOME DivideOp
-    else if op = "%" then SOME RemainderOp
-    else if op = "**" then SOME ExponentOp
-    else if op = "<<" then SOME ShiftLeftOp
-    else if op = ">>" then SOME ShiftRightOp
-    else if op = "&" then SOME BitAndOp
-    else if op = "|" then SOME BitOrOp
-    else if op = "^" then SOME BitXorOp
+    if op = SrcAdd then SOME AddOp
+    else if op = SrcSub then SOME SubtractOp
+    else if op = SrcMul then SOME MultiplyOp
+    else if op = SrcDiv then SOME DivideOp
+    else if op = SrcMod then SOME RemainderOp
+    else if op = SrcExp then SOME ExponentOp
+    else if op = SrcShl then SOME ShiftLeftOp
+    else if op = SrcShr then SOME ShiftRightOp
+    else if op = SrcBitAnd then SOME BitAndOp
+    else if op = SrcBitOr then SOME BitOrOp
+    else if op = SrcBitXor then SOME BitXorOp
     else NONE
 End
 
@@ -307,9 +307,7 @@ End
 (* The operator of a compound assignment such as "+=". *)
 Definition compound_operator_def:
   compound_operator op =
-    if op ≠ "=" ∧ isPREFIX "=" (REVERSE op) then
-      arithmetic_operator (TAKE (LENGTH op - 1) op)
-    else NONE
+    case op of SOME bop => arithmetic_operator bop | NONE => NONE
 End
 
 Definition compare_value_def:
@@ -327,23 +325,23 @@ End
 (* Comparisons of two operands of type ty, by equality and less-than. *)
 Definition comparison_def:
   comparison n ty op al ar =
-    if op = "==" then SOME (compare_value n ty EqualOp al ar, n + 1)
-    else if op = "!=" then
+    if op = SrcEq then SOME (compare_value n ty EqualOp al ar, n + 1)
+    else if op = SrcNe then
       SOME (negate_value (n + 1) (compare_value n ty EqualOp al ar))
-    else if op = "<" then SOME (compare_value n ty LessThanOp al ar, n + 1)
-    else if op = ">" then SOME (compare_value n ty LessThanOp ar al, n + 1)
-    else if op = "<=" then
+    else if op = SrcLt then SOME (compare_value n ty LessThanOp al ar, n + 1)
+    else if op = SrcGt then SOME (compare_value n ty LessThanOp ar al, n + 1)
+    else if op = SrcLe then
       SOME (negate_value (n + 1) (compare_value n ty LessThanOp ar al))
-    else if op = ">=" then
+    else if op = SrcGe then
       SOME (negate_value (n + 1) (compare_value n ty LessThanOp al ar))
     else NONE
 End
 
 Definition unary_operator_def:
   unary_operator op =
-    if op = "-" then SOME NegateOp
-    else if op = "~" then SOME BitNotOp
-    else if op = "!" then SOME BoolNotOp
+    if op = SrcNegate then SOME NegateOp
+    else if op = SrcBitNot then SOME BitNotOp
+    else if op = SrcNot then SOME BoolNotOp
     else NONE
 End
 
@@ -351,7 +349,7 @@ End
 Definition expr_assigns_def:
   (expr_assigns (SrcAssignment _ _ _ _ _) ⇔ T) ∧
   (expr_assigns (SrcUnaryOperation _ op _ e _) ⇔
-    op = "++" ∨ op = "--" ∨ expr_assigns e) ∧
+    op = SrcIncrement ∨ op = SrcDecrement ∨ expr_assigns e) ∧
   (expr_assigns (SrcBinaryOperation _ _ l r _ _) ⇔
     expr_assigns l ∨ expr_assigns r) ∧
   (expr_assigns (SrcTupleExpression _ cs _) ⇔ components_assign cs) ∧
@@ -402,7 +400,7 @@ End
 (* A high-level call of a view or pure function is a static call. *)
 Definition external_call_value_def:
   external_call_value n mutability selector params rets ss target value args =
-    let kind = if mutability = "view" ∨ mutability = "pure"
+    let kind = if mutability = ViewMut ∨ mutability = PureMut
                then ExternalStaticCall else ExternalCall in
     ((ss ++ [DefineStmt (AstId n) (call_result_type rets)
                (ExternalCallOperation kind selector params rets target value
@@ -604,7 +602,7 @@ Definition internal_call_ok_def:
   internal_call_ok (callee : src_function) rets args order tid ⇔
     LENGTH args = LENGTH callee.fn_parameters ∧
     argument_order_ok order (LENGTH args) ∧
-    callee.fn_visibility ≠ "external" ∧
+    callee.fn_visibility ≠ ExternalVisibility ∧
     decode_type_identifier tid = SOME (call_value_type rets)
 End
 
@@ -659,15 +657,14 @@ Definition elab_expr_def:
                SOME ((ss ++ rs, a, ElabType (UintT 256)), n1 + 1)
            | _ => NONE)
     | SrcLiteral _ kind value tid =>
-        (if kind = "bool" then
+        (if kind = BoolLiteral then
            if (value = "true" ∨ value = "false") ∧ tid = "t_bool" then
              SOME (([], ConstantAtom (BoolValue (value = "true")), ElabType BoolT), n)
            else NONE
-         else if (kind = "string" ∨ kind = "unicodeString" ∨ kind = "hexString") ∧
-                 isPREFIX "t_stringliteral_" tid then
+         else if kind ≠ NumberLiteral ∧ isPREFIX "t_stringliteral_" tid then
            SOME (([], ConstantAtom (BytesValue (MAP (n2w o ORD) value)),
                   ElabBytesLiteral), n)
-         else if kind ≠ "number" then NONE
+         else if kind ≠ NumberLiteral then NONE
          else
            case decode_type_identifier tid of
              SOME (SrcRational i d) =>
@@ -730,12 +727,11 @@ Definition elab_expr_def:
              (* folded by the compiler: the operand is a literal operation *)
              (case elab_expr ctx n e of
                 SOME (([], _, _), _) =>
-                  if unary_operator_ok op then
-                    SOME (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
-                  else NONE
+                  if op = SrcDelete then NONE
+                  else SOME (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
               | _ => NONE)
          | NONE =>
-         if op = "++" ∨ op = "--" then
+         if op = SrcIncrement ∨ op = SrcDecrement then
            if IS_NONE (identifier_type tid) then NONE else
            case elab_destination ctx n e of
              SOME ((ls, target), n1) =>
@@ -747,7 +743,7 @@ Definition elab_expr_def:
                let (ss, old_atom) = old in
                let (step, new_atom) = bind_value n3 ty
                  (ScalarOperation ty ctx.mode
-                   (if op = "++" then AddOp else SubtractOp)
+                   (if op = SrcIncrement then AddOp else SubtractOp)
                    [cur; ConstantAtom (IntegerValue 1)]) in
                SOME ((ls ++ rs ++ ss ++ step ++
                         write_destination (n3 + 1) target new_atom,
@@ -769,14 +765,12 @@ Definition elab_expr_def:
              (* folded by the compiler: the operands are literal operations *)
              (case (elab_expr ctx n l, elab_expr ctx n r) of
                 (SOME (([], _, _), _), SOME (([], _, _), _)) =>
-                  if binary_operator_ok op then
-                    SOME (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
-                  else NONE
+                  SOME (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
               | _ => NONE)
          | NONE =>
          case (identifier_type common, identifier_type tid, elab_expr ctx n l) of
            (SOME ty, SOME _, SOME ((sl, al, vl), n1)) =>
-             if op = "&&" ∨ op = "||" then
+             if op = SrcAnd ∨ op = SrcOr then
                (case coerce n1 BoolT al vl of
                   SOME ((cl, al'), n2) =>
                     (case elab_expr ctx (n2 + 2) r of
@@ -788,7 +782,7 @@ Definition elab_expr_def:
                               let rhs = sr ++ cr ++
                                         assign_local (n2 + 1) n2 BoolT ar' in
                               SOME ((sl ++ cl ++ rs ++
-                                     [if op = "&&" then IfStmt res rhs []
+                                     [if op = SrcAnd then IfStmt res rhs []
                                       else IfStmt res [] rhs],
                                      res, ElabType BoolT), n4)
                           | NONE => NONE)
@@ -829,11 +823,11 @@ Definition elab_expr_def:
                 | NONE => NONE)
          | _ => NONE)
     | SrcAssignment _ op lhs rhs tid =>
-        (if ¬assignment_operator_ok op ∨ IS_NONE (decode_type_identifier tid)
+        (if IS_NONE (decode_type_identifier tid)
          then NONE else
          case lhs of
            SrcTupleExpression _ cs ltid =>
-             (if op = "=" ∧ IS_SOME (decode_type_identifier ltid) then
+             (if op = NONE ∧ IS_SOME (decode_type_identifier ltid) then
                 case elab_values ctx n rhs of
                   SOME ((sr, vs), n1) =>
                     let (ss, vs', n2) = snapshot_values n1 vs in
@@ -854,7 +848,7 @@ Definition elab_expr_def:
                   (case elab_destination ctx n2 lhs of
                      SOME ((ls, target), n3) =>
                        let ty = destination_type target in
-                       if op = "=" then
+                       if op = NONE then
                          (case plain_assignment n3 target ar' vr of
                             SOME ((cr, a, value_ty), n4) =>
                               SOME ((sr ++ sc ++ ls ++ cr, a, ElabType value_ty), n4)
@@ -967,8 +961,7 @@ Definition elab_expr_def:
         (case (all_some (MAP call_variable_type callee.ext_parameters),
                all_some (MAP call_variable_type callee.ext_returns)) of
            (SOME params, SOME rets) =>
-             if ¬(MEM callee.ext_mutability ["pure"; "view"; "nonpayable"; "payable"] ∧
-                  (with_value ⇒ callee.ext_mutability = "payable") ∧
+             if ¬((with_value ⇒ callee.ext_mutability = PayableMut) ∧
                   LENGTH operands = LENGTH params + (if with_value then 2 else 1) ∧
                   argument_order_ok order (LENGTH params) ∧
                   decode_type_identifier tid = SOME (call_value_type rets) ∧
@@ -1856,11 +1849,11 @@ Definition elab_function_def:
         else
         elab_levels
           (ctx with <| supers := supers; variables := ps ++ rs;
-                       state := if library ∨ f.fn_mutability = "pure" then []
+                       state := if library ∨ f.fn_mutability = PureMut then []
                                 else ctx.state;
                        locations := if library then [] else ctx.locations;
                        immutables := if library then [] else ctx.immutables;
-                       returns := rs; creation := (f.fn_kind = "constructor");
+                       returns := rs; creation := (f.fn_kind = ConstructorKind);
                        scope := info.node_id; returns_id := f.fn_returns_id |>)
           (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
           ps rs f.fn_info.node_id n f.fn_modifiers ss
@@ -2090,7 +2083,7 @@ Definition external_functions_def:
     case f.fn_selector of
       SOME selector =>
         <| selector := selector; external_procedure := AstId f.fn_info.node_id;
-           payable := (f.fn_mutability = "payable") |> :: external_functions fs
+           payable := (f.fn_mutability = PayableMut) |> :: external_functions fs
     | NONE => external_functions fs)
 End
 
@@ -2099,7 +2092,7 @@ Definition special_function_def:
   (special_function kind [] = NONE) ∧
   (special_function kind ((f : src_function) :: fs) =
     if f.fn_kind = kind then
-      SOME (AstId f.fn_info.node_id, f.fn_mutability = "payable")
+      SOME (AstId f.fn_info.node_id, f.fn_mutability = PayableMut)
     else special_function kind fs)
 End
 
@@ -2141,7 +2134,7 @@ Definition elab_initializers_def:
     | SOME v =>
         if v.var_scope ≠ x then elab_initializers ctx n x vs inits else
         case elab_expr ctx n
-               (SrcAssignment v.var_info "="
+               (SrcAssignment v.var_info NONE
                   (SrcIdentifier v.var_info v.var_name v.var_info.node_id
                      v.var_type_id) e v.var_type_id) of
           SOME ((ss, _, _), n1) =>
@@ -2193,7 +2186,7 @@ End
 Definition creation_payable_def:
   creation_payable (c : src_contract) ⇔
     case contract_constructor c.contract_info.node_id c.contract_functions of
-      SOME f => f.fn_mutability = "payable"
+      SOME f => f.fn_mutability = PayableMut
     | NONE => F
 End
 
@@ -2222,7 +2215,7 @@ End
  * one of them is. *)
 Definition unsupported_creation_def:
   unsupported_creation (c : src_contract) ⇔
-    EXISTS (λf. f.fn_kind = "constructor" ∧ f.fn_unsupported ≠ NONE)
+    EXISTS (λf. f.fn_kind = ConstructorKind ∧ f.fn_unsupported ≠ NONE)
       c.contract_functions
 End
 
@@ -2298,9 +2291,9 @@ Definition elaborate_unit_def:
                                      external_procedure := AstId x;
                                      payable := F |>) c.contract_getters;
                          receive_procedure := OPTION_MAP FST
-                           (special_function "receive" fs);
+                           (special_function ReceiveKind fs);
                          fallback_procedure :=
-                           special_function "fallback" fs;
+                           special_function FallbackKind fs;
                          creation_procedure :=
                            SOME (creation_id, creation_payable c) |>)))
               | _ => NONE)

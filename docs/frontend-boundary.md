@@ -402,7 +402,14 @@ initial corpus, so transient layout remains unvalidated.
 `syntax/solidityImportLib.sml` imports it from an exporter artifact, failing
 closed: an unknown node type, a missing required field or a construct outside
 the admitted subset below is an import error (for a function body, the
-function is kept unsupported; see Partial admission).
+function is kept unsupported; see Partial admission). The importer decodes
+the compiler's string-valued kinds once, into datatypes: function kinds
+(`function`, `receive`, `fallback`, `constructor`; free functions and others
+are import errors), visibilities, state mutabilities, address payability,
+data locations (`transient` is an import error), literal kinds and the
+unary, binary and assignment operators. It also holds the one table of the
+compiler's built-in declaration ids (`abi`, `msg`, `block`, `tx`, `this`,
+`keccak256`, `addmod`, `mulmod`, `require`, `assert`, `revert`).
 `tests/solidityImportTestScript.sml` holds the positive fixtures and negative
 fixtures derived from them.
 
@@ -413,9 +420,8 @@ fixtures derived from them.
 - the contract's bases are distinct and start with the contract itself;
   contracts are scoped by the unit, functions by a base of their contract,
   structs by a base or a source unit of the compilation;
-- function headers: kind (`function`, `receive`, `fallback`, `constructor`),
-  mutability (`pure`, `view`, `nonpayable`, `payable`), and parameters and
-  returns of normalized types scoped by the function; library functions are
+- function headers: parameters and returns of normalized types scoped by the
+  function; library functions are
   internal or private `function`s scoped by a library distinct from the
   bases; modifier parameters likewise;
 - every state variable has a normalized type and a type identifier agreeing
@@ -483,13 +489,15 @@ annotations, at the node whose type it computes:
   callee's return types; conversions are annotated with their target type,
   environment reads with their member's type; emits and reverts with an
   error carry as many arguments as the event or error has parameters;
-- declaration statements list exactly their declarations' ids, scoped by the
-  enclosing block or `for`; returns name the enclosing function's return
+- declaration statements are statements of a block or a `for` initializer,
+  list exactly their declarations' ids, and are scoped by that block or
+  `for`; returns name the enclosing function's return
   list; `break` and `continue` occur in loop bodies; conditions are boolean;
   modifier bodies make no super call, and modifier arguments see the
   function's parameters but not its return variables;
-- operators belong to the admitted set and every other annotation decodes to
-  an elementary, rational literal or tuple type.
+- `delete` is not admitted; every scalar result is annotated with its own
+  type, and every other annotation decodes to an elementary, rational literal
+  or tuple type.
 
 Left to the compiler: storage layout calculation, that view functions write
 no state variable, and the override metadata (which declarations each

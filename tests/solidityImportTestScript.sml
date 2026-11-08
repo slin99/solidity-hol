@@ -80,10 +80,10 @@ Theorem type_name_normalization:
   normalize_type_name (SrcElementaryTypeName i "bytes33" NONE) = NONE ∧
   normalize_type_name (SrcElementaryTypeName i "bytes" NONE) = SOME BytesT ∧
   normalize_type_name (SrcElementaryTypeName i "string" NONE) = SOME StringT ∧
-  normalize_type_name (SrcElementaryTypeName i "address" (SOME "payable")) =
+  normalize_type_name (SrcElementaryTypeName i "address" (SOME PayableAddress)) =
     SOME (AddressT PayableAddress) ∧
   normalize_type_name (SrcElementaryTypeName i "address" NONE) = NONE ∧
-  normalize_type_name (SrcElementaryTypeName i "bool" (SOME "payable")) = NONE
+  normalize_type_name (SrcElementaryTypeName i "bool" (SOME PayableAddress)) = NONE
 Proof
   EVAL_TAC
 QED
@@ -432,7 +432,7 @@ val () = edited_unit_with storage_contracts "pure_writes_state"
 val () = edited_unit_with storage_contracts "payable_function"
   (edit_first "FunctionDefinition"
      (set_field "stateMutability" (JSON.STRING "payable")) storage_ast)
-val () = edited_unit_with storage_contracts "unknown_mutability"
+val () = import_error_with Unsupported storage_contracts "unknown mutability"
   (edit_first "FunctionDefinition"
      (set_field "stateMutability" (JSON.STRING "constant")) storage_ast)
 
@@ -462,12 +462,6 @@ QED
 
 Theorem payable_function_valid:
   valid_src_unit payable_function
-Proof
-  CONV_TAC cv_eval
-QED
-
-Theorem unknown_mutability_rejected:
-  ¬valid_src_unit unknown_mutability
 Proof
   CONV_TAC cv_eval
 QED
