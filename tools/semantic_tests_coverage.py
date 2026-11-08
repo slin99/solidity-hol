@@ -667,7 +667,8 @@ def decodes_component(type_identifier: str) -> bool:
             or ENUM.fullmatch(type_identifier) is not None
             or BYTE_SEQUENCE.fullmatch(type_identifier) is not None
             or located_array(type_identifier) or storage_array_value(type_identifier)
-            or type_identifier.startswith("t_stringliteral_"))
+            or type_identifier.startswith("t_stringliteral_")
+            or INTEGER_RATIONAL.fullmatch(type_identifier) is not None)
 
 
 def decodes(type_identifier: str) -> bool:

@@ -95,6 +95,11 @@ Theorem type_identifier_decoding:
   decode_type_identifier "t_tuple$_t_uint256_$_t_bool_$" =
     SOME (SrcTupleType [UintT 256; BoolT]) ∧
   decode_type_identifier "t_tuple$__$" = SOME (SrcTupleType []) ∧
+  decode_type_identifier "t_tuple$_t_bool_$_t_rational_0_by_1_$" =
+    SOME (SrcTupleType [BoolT; UintT 256]) ∧
+  decode_type_identifier "t_tuple$_t_rational_minus_1_by_1_$_t_bool_$" =
+    SOME (SrcTupleType [IntT 256; BoolT]) ∧
+  decode_type_identifier "t_tuple$_t_rational_1_by_2_$_t_bool_$" = NONE ∧
   decode_type_identifier "t_address_payable" =
     SOME (SrcType (AddressT PayableAddress)) ∧
   decode_type_identifier "t_uint7" = NONE ∧

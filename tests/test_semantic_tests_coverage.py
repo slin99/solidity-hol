@@ -1004,6 +1004,9 @@ class ClassifyTests(unittest.TestCase):
         self.assertTrue(coverage.decodes(
             "t_tuple$_t_array$_t_array$_t_uint8_$2_memory_ptr_$dyn_memory_ptr_$_t_uint256_$"))
         self.assertFalse(coverage.decodes("t_tuple$_t_bool_$_t_array$_t_uint8_$dyn_storage_ptr_$"))
+        self.assertTrue(coverage.decodes("t_tuple$_t_bool_$_t_rational_0_by_1_$"))
+        self.assertTrue(coverage.decodes("t_tuple$_t_rational_minus_1_by_1_$_t_bool_$"))
+        self.assertFalse(coverage.decodes("t_tuple$_t_rational_1_by_2_$_t_bool_$"))
         self.assertEqual(coverage.type_feature("t_tuple$_t_bool_$_t_array$_t_uint8_$dyn_storage_ptr_$"),
                          "arrays")
         self.assertEqual(coverage.type_feature("t_bytes32"),

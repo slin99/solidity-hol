@@ -1,0 +1,141 @@
+{
+  "name": "tuple_literals",
+  "source": "testdata/differential/tuple_literals.sol",
+  "contract": "TupleLiterals",
+  "artifact": "testdata/differential/expected/tuple_literals.json",
+  "cases": [
+    {
+      "name": "flagged_true",
+      "function": "flagged",
+      "args": [
+        true
+      ],
+      "expect": {
+        "return": [
+          true,
+          6
+        ]
+      }
+    },
+    {
+      "name": "flagged_false",
+      "function": "flagged",
+      "args": [
+        false
+      ],
+      "expect": {
+        "return": [
+          false,
+          0
+        ]
+      }
+    },
+    {
+      "name": "negative",
+      "function": "negative",
+      "args": [],
+      "expect": {
+        "return": [
+          -1,
+          true
+        ]
+      }
+    },
+    {
+      "name": "fixed_bytes",
+      "function": "fixedBytes",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x12345678",
+          65535
+        ]
+      }
+    },
+    {
+      "name": "declared",
+      "function": "declared",
+      "args": [],
+      "expect": {
+        "return": [
+          7,
+          true
+        ]
+      }
+    },
+    {
+      "name": "assigned",
+      "function": "assigned",
+      "args": [
+        42
+      ],
+      "expect": {
+        "return": [
+          1,
+          -300
+        ]
+      }
+    },
+    {
+      "name": "swap_in",
+      "function": "swapIn",
+      "args": [
+        3
+      ],
+      "expect": {
+        "return": [
+          5,
+          9
+        ]
+      }
+    },
+    {
+      "name": "decimals_in_range",
+      "function": "decimalsOr18",
+      "args": [
+        6
+      ],
+      "expect": {
+        "return": [
+          6
+        ]
+      }
+    },
+    {
+      "name": "decimals_max",
+      "function": "decimalsOr18",
+      "args": [
+        255
+      ],
+      "expect": {
+        "return": [
+          255
+        ]
+      }
+    },
+    {
+      "name": "decimals_over",
+      "function": "decimalsOr18",
+      "args": [
+        256
+      ],
+      "expect": {
+        "return": [
+          18
+        ]
+      }
+    },
+    {
+      "name": "decimals_huge",
+      "function": "decimalsOr18",
+      "args": [
+        "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+      ],
+      "expect": {
+        "return": [
+          18
+        ]
+      }
+    }
+  ]
+}
