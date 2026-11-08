@@ -500,6 +500,8 @@ Definition scalar_operator_signature_def:
     | RemainderOp => if is_integer_type ty then SOME ([ty; ty], ty) else NONE
     | ExponentOp =>
         if is_integer_type ty then SOME ([ty; UintT 256], ty) else NONE
+    | AddModOp => if ty = UintT 256 then SOME ([ty; ty; ty], ty) else NONE
+    | MulModOp => if ty = UintT 256 then SOME ([ty; ty; ty], ty) else NONE
     | ShiftLeftOp =>
         if is_bitwise_type ty then SOME ([ty; UintT 256], ty) else NONE
     | ShiftRightOp =>
@@ -1058,6 +1060,8 @@ Definition assembly_reference_ok_def:
         ALOOKUP ctx.bindings x = SOME (SingleType ty) ∧ assembly_value_type ty
     | AssemblySlot x => IS_SOME (lookup_state_variable env x)
     | AssemblyOffset x => IS_SOME (lookup_state_variable env x)
+    | AssemblyConstant a ty =>
+        wf_core_atom env ctx (SingleType ty) a ∧ assembly_value_type ty
 End
 
 Definition check_core_stmts_def:

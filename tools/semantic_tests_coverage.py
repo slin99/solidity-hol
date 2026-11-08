@@ -265,6 +265,7 @@ ENVIRONMENT = {
 # require, assert and revert.
 REQUIRE, ASSERT, REVERT = -18, -3, -19
 KECCAK256 = -8
+ADDMOD, MULMOD = -2, -16
 ABI = -1
 # The field holding the selector the compiler records on each kind of
 # declaration that has one.
@@ -383,18 +384,21 @@ def imported(asts: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[dic
             seen.add(node["id"])
             for _, signature in signatures(node, by_id):
                 add(signature)
-            target = by_id.get(node.get("referencedDeclaration"))
-            if (target is not None and target["nodeType"] == "StructDefinition"
-                    and by_id.get(target.get("scope"), {}).get("nodeType") == "SourceUnit"):
-                add(target)
-            elif (target is not None and target["id"] in members
-                  and target["nodeType"] != "ErrorDefinition" and node["id"] not in unreachable):
-                add(target)
-                # The using directives of a library whose functions run.
-                if target["nodeType"] == "FunctionDefinition":
-                    for directive in by_id[target["scope"]]["nodes"]:
-                        if directive["nodeType"] == "UsingForDirective":
-                            add(directive)
+            # Inline assembly refers to declarations through its external references.
+            referenced = [node.get("referencedDeclaration")] + [
+                reference["declaration"] for reference in node.get("externalReferences", [])]
+            for target in filter(None, map(by_id.get, referenced)):
+                if (target["nodeType"] == "StructDefinition"
+                        and by_id.get(target.get("scope"), {}).get("nodeType") == "SourceUnit"):
+                    add(target)
+                elif (target["id"] in members and target["nodeType"] != "ErrorDefinition"
+                      and node["id"] not in unreachable):
+                    add(target)
+                    # The using directives of a library whose functions run.
+                    if target["nodeType"] == "FunctionDefinition":
+                        for directive in by_id[target["scope"]]["nodes"]:
+                            if directive["nodeType"] == "UsingForDirective":
+                                add(directive)
     return roots
 
 
@@ -922,7 +926,8 @@ INTEGER_TYPE = re.compile(r"t_u?int[0-9]+")
 # The builtins of the Yul dialect (yulDialect's builtin_name), and those an
 # inline assembly block may not use (assembly_unsupported).
 YUL_BUILTINS = {
-    "add", "sub", "mul", "div", "sdiv", "mod", "smod", "exp", "signextend", "lt", "gt",
+    "add", "sub", "mul", "div", "sdiv", "mod", "smod", "addmod", "mulmod", "exp", "signextend",
+    "lt", "gt",
     "slt", "sgt", "eq", "iszero", "and", "or", "xor", "not", "shl", "shr", "sar", "byte",
     "keccak256", "mload", "mstore", "mstore8", "mcopy", "sload", "sstore", "tload", "tstore",
     "calldataload", "calldatasize", "calldatacopy", "callvalue", "memoryguard", "caller",
@@ -1075,11 +1080,15 @@ def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]],
     for reference in node.get("externalReferences", []):
         suffix = reference.get("suffix")
         declaration = by_id.get(reference["declaration"], {})
+        value_type = VALUE_TYPE.fullmatch(
+            declaration.get("typeDescriptions", {}).get("typeIdentifier") or "")
         if suffix not in (None, "slot", "offset"):
             blocker("inline assembly", "import")
-        elif suffix is None and (declaration.get("stateVariable", True) or declaration.get("constant", False)
-                                 or not VALUE_TYPE.fullmatch(
-                declaration.get("typeDescriptions", {}).get("typeIdentifier") or "")):
+        elif suffix is None and declaration.get("constant", False):
+            # a constant of value type is read before the block
+            if not value_type:
+                blocker("inline assembly memory references", "elaboration")
+        elif suffix is None and (declaration.get("stateVariable", True) or not value_type):
             blocker("inline assembly memory references", "elaboration")
         elif suffix is not None and not declaration.get("stateVariable", False):
             blocker("inline assembly memory references", "elaboration")
@@ -1604,10 +1613,10 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     super_bases = {n["expression"]["expression"]["id"]
                    for f in reached.values() if f["nodeType"] == "FunctionDefinition"
                    for n in super_calls(f)}
-    hash_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
+    operation_callees = {n["expression"]["id"] for n in calls if n["kind"] == "functionCall"
                     and n["expression"]["nodeType"] == "Identifier"
-                    and n["expression"].get("referencedDeclaration") == KECCAK256}
-    plain_callees = builtin_callees | super_bases | hash_callees
+                    and n["expression"].get("referencedDeclaration") in {KECCAK256, ADDMOD, MULMOD}}
+    plain_callees = builtin_callees | super_bases | operation_callees
     unread, found = special_forms(reached, by_id)
     try_callees = {n["externalCall"]["id"] for n in reached.values()
                    if n["nodeType"] == "TryStatement" and n["id"] in unread}

@@ -850,14 +850,82 @@ Definition assembly_reference_word_def:
         OPTION_MAP (λv. w2n v.state_slot) (lookup_state_variable env x)
     | AssemblyOffset x =>
         OPTION_MAP (λv. v.state_offset) (lookup_state_variable env x)
+    | AssemblyConstant a ty =>
+        (case eval_atom st.scopes a of
+           SOME (ScalarValue s) => assembly_word ty s
+         | _ => NONE)
 End
 
-Definition assembly_scope_def:
-  (assembly_scope env st [] = SOME (FEMPTY : string |-> bytes32)) ∧
-  (assembly_scope env st ((name, r) :: refs) =
-    case (assembly_reference_word env st r, assembly_scope env st refs) of
-      (SOME w, SOME scope) => SOME (scope |+ (name, n2w w))
+(* The words of a block's references: the locals' as the block's initial
+ * scope, and the read-only ones' by name, for the code to hold as literals. *)
+Definition assembly_inputs_def:
+  (assembly_inputs env st [] =
+    SOME (FEMPTY : string |-> bytes32, [] : (string # bytes32) list)) ∧
+  (assembly_inputs env st ((name, r) :: refs) =
+    case (assembly_reference_word env st r, assembly_inputs env st refs) of
+      (SOME w, SOME (scope, literals)) =>
+        (case r of
+           AssemblyLocal _ _ => SOME (scope |+ (name, n2w w), literals)
+         | _ => SOME (scope, (name, n2w w) :: literals))
     | _ => NONE)
+End
+
+(* The code with each name in sub read as its word, as the compiler puts the
+ * values of x.slot, x.offset and constants in the code. A Yul function's
+ * parameters and results may reuse a name for its body; a let may not.
+ * Nested function definitions aren't imported, so a body's narrowed sub never
+ * reaches an inner function, where the compiler would see the block's names. *)
+Definition yul_substitute_expr_def:
+  (yul_substitute_expr sub (YulLit l) = YulLit l) ∧
+  (yul_substitute_expr sub (YulName x) =
+    case ALOOKUP sub x of
+      SOME w => YulLit (LitNumber w)
+    | NONE => YulName x) ∧
+  (yul_substitute_expr sub (YulBuiltin b es) =
+    YulBuiltin b (yul_substitute_exprs sub es)) ∧
+  (yul_substitute_expr sub (YulApply f es) =
+    YulApply f (yul_substitute_exprs sub es)) ∧
+  (yul_substitute_exprs sub [] = []) ∧
+  (yul_substitute_exprs sub (e :: es) =
+    yul_substitute_expr sub e :: yul_substitute_exprs sub es)
+End
+
+(* sub without the names in xs. *)
+Definition yul_unbind_def:
+  (yul_unbind xs [] = ([] : (string # bytes32) list)) ∧
+  (yul_unbind xs ((x, w) :: sub) =
+    if MEM x xs then yul_unbind xs sub else (x, w) :: yul_unbind xs sub)
+End
+
+Definition yul_substitute_stmt_def:
+  (yul_substitute_stmt sub (YulBlock ss) = YulBlock (yul_substitute_stmts sub ss)) ∧
+  (yul_substitute_stmt sub (YulFunction f params results body) =
+    YulFunction f params results
+      (yul_substitute_stmts (yul_unbind (params ++ results) sub) body)) ∧
+  (yul_substitute_stmt sub (YulLet xs NONE) = YulLet xs NONE) ∧
+  (yul_substitute_stmt sub (YulLet xs (SOME e)) =
+    YulLet xs (SOME (yul_substitute_expr sub e))) ∧
+  (yul_substitute_stmt sub (YulAssign xs e) =
+    YulAssign xs (yul_substitute_expr sub e)) ∧
+  (yul_substitute_stmt sub (YulIf e body) =
+    YulIf (yul_substitute_expr sub e) (yul_substitute_stmts sub body)) ∧
+  (yul_substitute_stmt sub (YulSwitch e cases default) =
+    YulSwitch (yul_substitute_expr sub e) (yul_substitute_cases sub cases)
+      (yul_substitute_stmts sub default)) ∧
+  (yul_substitute_stmt sub (YulFor pre c post body) =
+    YulFor (yul_substitute_stmts sub pre) (yul_substitute_expr sub c)
+      (yul_substitute_stmts sub post) (yul_substitute_stmts sub body)) ∧
+  (yul_substitute_stmt sub YulBreak = YulBreak) ∧
+  (yul_substitute_stmt sub YulContinue = YulContinue) ∧
+  (yul_substitute_stmt sub YulLeave = YulLeave) ∧
+  (yul_substitute_stmt sub (YulExprStmt e) =
+    YulExprStmt (yul_substitute_expr sub e)) ∧
+  (yul_substitute_stmts sub [] = []) ∧
+  (yul_substitute_stmts sub (s :: ss) =
+    yul_substitute_stmt sub s :: yul_substitute_stmts sub ss) ∧
+  (yul_substitute_cases sub [] = []) ∧
+  (yul_substitute_cases sub ((l, body) :: cases) =
+    (l, yul_substitute_stmts sub body) :: yul_substitute_cases sub cases)
 End
 
 Definition assembly_machine_def:
@@ -887,7 +955,7 @@ Definition assembly_world_def:
 End
 
 (* Writes a referenced local back from the block's final scopes; a location
- * reference has nothing to write. *)
+ * or constant reference has nothing to write. *)
 Definition assembly_write_one_def:
   assembly_write_one (name, r) scopes (yscopes : (string |-> bytes32) list) =
     case r of
@@ -943,11 +1011,12 @@ Definition eval_assembly_def:
     if ¬assembly_stmts_ok bad code then
       abrupt_result (InvalidCompletion "unsupported assembly builtin") st gas
     else
-    case assembly_scope env st refs of
+    case assembly_inputs env st refs of
       NONE => abrupt_result (InvalidCompletion "bad assembly reference") st gas
-    | SOME scope =>
+    | SOME (scope, literals) =>
         let m0 = assembly_machine st scope in
-        assembly_result refs st m0 (run_yul n code m0) gas
+        assembly_result refs st m0
+          (run_yul n (yul_substitute_stmts literals code) m0) gas
 End
 
 (* Pieces of the recursive cases *)
@@ -1093,7 +1162,10 @@ val () = cv_auto_trans simple_stmt_def;
 val () = cv_auto_trans assembly_word_def;
 val () = cv_auto_trans assembly_value_def;
 val () = cv_auto_trans assembly_reference_word_def;
-val () = cv_auto_trans assembly_scope_def;
+val () = cv_auto_trans assembly_inputs_def;
+val () = cv_auto_trans yul_substitute_expr_def;
+val () = cv_auto_trans yul_unbind_def;
+val () = cv_auto_trans yul_substitute_stmt_def;
 val () = cv_auto_trans assembly_machine_def;
 val () = cv_auto_trans without_scratch_def;
 val () = cv_auto_trans assembly_world_def;

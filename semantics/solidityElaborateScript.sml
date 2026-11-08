@@ -370,6 +370,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcExternalCall _ _ _ operands _ _) ⇔ exprs_assign operands) ∧
   (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcKeccak256 _ _ e _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcModular _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcAddressCodeLength _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcSuperCall _ _ args _ _) ⇔ exprs_assign args) ∧
@@ -1077,6 +1078,18 @@ Definition elab_expr_def:
                   SOME ((ss ++ cs ++ hs, h, ElabType (FixedBytesT 32)), n2 + 1)
               | NONE => NONE)
          | NONE => NONE)
+    | SrcModular _ _ op args tid =>
+        (* the operands in order, then the modulus check and the operation *)
+        (if ¬source_type_matches (UintT 256) tid then NONE else
+         case elab_arg_values ctx n args of
+           SOME ((ss, vs), n1) =>
+             (case coerce_values n1 [UintT 256; UintT 256; UintT 256] vs of
+                SOME (cs, as, n2) =>
+                  let (rs, r) = bind_value n2 (UintT 256)
+                                  (ScalarOperation (UintT 256) CheckedArithmetic op as) in
+                  SOME ((ss ++ cs ++ rs, r, ElabType (UintT 256)), n2 + 1)
+              | NONE => NONE)
+         | NONE => NONE)
     | SrcAbiEncode _ _ form args tid =>
         (let ty = LocatedT MemoryLoc
                     (if form = AbiStringConcat then StringT else BytesT) in
@@ -1425,28 +1438,41 @@ End
  * scopes need not mirror the source blocks.
  *)
 (* A local keeps its declared type, one of the value types the block can read
- * and write as a word.
+ * and write as a word. A constant of such a type is read before the block,
+ * as an expression reads it.
  *)
 Definition elab_assembly_reference_def:
-  (elab_assembly_reference ctx (SrcAssemblyValue x) =
+  (elab_assembly_reference ctx n (SrcAssemblyValue x) =
     case ALOOKUP ctx.variables x of
       SOME ty =>
-        if assembly_value_type ty then SOME (AssemblyLocal (AstId x) ty) else NONE
-    | NONE => NONE) ∧
-  (elab_assembly_reference ctx (SrcAssemblySlot x) =
-    if IS_SOME (ALOOKUP ctx.locations x) then SOME (AssemblySlot (AstId x))
+        if assembly_value_type ty then SOME (([], AssemblyLocal (AstId x) ty), n)
+        else NONE
+    | NONE =>
+      case ALOOKUP ctx.constants x of
+        SOME (ty, w) =>
+          if assembly_value_type ty then
+            let p = if ctx.mode = CheckedArithmetic then x else w in
+            let (ss, a) = bind_value n ty (InternalCallOperation (AstId p) []) in
+            SOME ((ss, AssemblyConstant a ty), n + 1)
+          else NONE
+      | NONE => NONE) ∧
+  (elab_assembly_reference ctx n (SrcAssemblySlot x) =
+    if IS_SOME (ALOOKUP ctx.locations x) then SOME (([], AssemblySlot (AstId x)), n)
     else NONE) ∧
-  (elab_assembly_reference ctx (SrcAssemblyOffset x) =
-    if IS_SOME (ALOOKUP ctx.locations x) then SOME (AssemblyOffset (AstId x))
+  (elab_assembly_reference ctx n (SrcAssemblyOffset x) =
+    if IS_SOME (ALOOKUP ctx.locations x) then SOME (([], AssemblyOffset (AstId x)), n)
     else NONE)
 End
 
 Definition elab_assembly_references_def:
-  (elab_assembly_references ctx [] = SOME []) ∧
-  (elab_assembly_references ctx ((name, r) :: refs) =
-    case (elab_assembly_reference ctx r, elab_assembly_references ctx refs) of
-      (SOME r', SOME rs) => SOME ((name, r') :: rs)
-    | _ => NONE)
+  (elab_assembly_references ctx n [] = SOME (([], []), n)) ∧
+  (elab_assembly_references ctx n ((name, r) :: refs) =
+    case elab_assembly_reference ctx n r of
+      SOME ((ss, r'), n1) =>
+        (case elab_assembly_references ctx n1 refs of
+           SOME ((ss', rs), n2) => SOME ((ss ++ ss', (name, r') :: rs), n2)
+         | NONE => NONE)
+    | NONE => NONE)
 End
 
 (* Ordinary external-call lowering has already evaluated and coerced every
@@ -1671,8 +1697,8 @@ Definition elab_stmts_def:
     if ¬assembly_stmts_ok (if ctx.creation then YReturn :: YStop :: assembly_unsupported
                            else assembly_unsupported) code ∨
        ¬assembly_memory_ok code ∨ ¬ALL_DISTINCT (MAP FST refs) then NONE else
-    case elab_assembly_references ctx refs of
-      SOME rs => SOME (([AssemblyStmt code rs], ctx), n)
+    case elab_assembly_references ctx n refs of
+      SOME ((ss, rs), n1) => SOME ((ss ++ [AssemblyStmt code rs], ctx), n1)
     | NONE => NONE) ∧
   (* An optional for initialization or loop expression. *)
   (elab_for_init ctx n NONE = SOME (([], ctx), n)) ∧
@@ -2482,7 +2508,15 @@ QED
 
 val () = cv_auto_trans return_atoms_def;
 val () = cv_auto_trans elab_assembly_reference_def;
-val () = cv_auto_trans elab_assembly_references_def;
+val elab_assembly_references_pre_def =
+  cv_auto_trans_pre "elab_assembly_references_pre" elab_assembly_references_def;
+
+Theorem elab_assembly_references_pre[cv_pre,local]:
+  ∀ctx n refs. elab_assembly_references_pre ctx n refs
+Proof
+  ho_match_mp_tac elab_assembly_references_ind >> rpt strip_tac >>
+  simp[Once elab_assembly_references_pre_def] >> rw[] >> gvs[]
+QED
 val () = cv_auto_trans return_writes_def;
 val () = cv_auto_trans placeholder_call_def;
 val () = cv_auto_trans return_defaults_def;

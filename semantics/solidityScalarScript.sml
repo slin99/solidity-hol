@@ -172,7 +172,9 @@ QED
 
 (* Division rounds towards zero; the remainder takes the dividend's sign.
  * Division and remainder by zero panic even in unchecked mode, and
- * type(int).min / -1 is the only division that overflows.
+ * type(int).min / -1 is the only division that overflows. addmod and mulmod
+ * take the sum or product without wrapping, and panic on a zero modulus in
+ * either mode.
  *)
 Definition eval_integer_operation_def:
   eval_integer_operation mode signed n op args =
@@ -189,6 +191,12 @@ Definition eval_integer_operation_def:
     | (RemainderOp, [IntegerValue x; IntegerValue y]) =>
         if y = 0 then ScalarPanic panic_division_by_zero
         else integer_result signed n (truncating_rem x y)
+    | (AddModOp, [IntegerValue x; IntegerValue y; IntegerValue k]) =>
+        if k = 0 then ScalarPanic panic_division_by_zero
+        else integer_result signed n (truncating_rem (x + y) k)
+    | (MulModOp, [IntegerValue x; IntegerValue y; IntegerValue k]) =>
+        if k = 0 then ScalarPanic panic_division_by_zero
+        else integer_result signed n (truncating_rem (x * y) k)
     | (ExponentOp, [IntegerValue x; IntegerValue e]) =>
         integer_exponent mode signed n x (Num e)
     | (ShiftLeftOp, [IntegerValue x; IntegerValue y]) =>
