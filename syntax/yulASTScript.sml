@@ -39,7 +39,8 @@ Libs
 Datatype:
   yul_builtin
   = (* arithmetic *)
-    YAdd | YSub | YMul | YDiv | YSDiv | YMod | YSMod | YExp | YSignExtend
+    YAdd | YSub | YMul | YDiv | YSDiv | YMod | YSMod | YAddMod | YMulMod | YExp
+  | YSignExtend
     (* comparison and bitwise *)
   | YLt | YGt | YSLt | YSGt | YEq | YIsZero | YAnd | YOr | YXor | YNot
   | YShl | YShr | YSar | YByte

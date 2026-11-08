@@ -262,8 +262,7 @@ module (`M.E.selector`), none of which the compiler evaluates.
 the interface `I` declares itself, not those it inherits, nor its `fallback`
 or `receive`; `I` must name an interface directly, not through a module, and
 an abstract contract's `interfaceId` is rejected. A selector of any other
-function-typed value is rejected, and so are `sha256`, `ripemd160` and
-`abi.encodeCall`.
+function-typed value is rejected, and so are `sha256` and `ripemd160`.
 
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
 type the compiler gives the whole expression, which must be a value type or
@@ -283,6 +282,16 @@ gives each scalar in its own width, a `bytesN` as its N bytes, and a byte
 sequence as its contents. Arrays and structs as arguments, a selector that
 is not a `bytes4` value (a literal selector included), and a signature that is
 not a plain string literal are rejected.
+
+`abi.encodeCall(f, (a, b))` gives `f`'s selector followed by the standard ABI
+encoding of the arguments, each converted to its parameter's type as an
+internal call's argument is; a single argument may stand without parentheses.
+`f` is a member access naming a function whose receiver is one the compiler
+does not evaluate (as for `x.f.selector`), or a variable other than a
+constant, which is not read (reading it has no effect). Parameters must be
+scalars or byte sequences; other receivers (a constant, whose initializer the
+compiler evaluates and which may fail, included), and array and struct
+parameters, are rejected.
 
 `abi.decode(data, (T1, ..., Tk))` decodes a memory `bytes` into values of
 elementary types (booleans, integers, addresses and fixed-size byte
@@ -429,6 +438,34 @@ evaluator. The differential corpus runs the same inputs, and a wider corpus of
 sources, through the deployed bytecode in Verifereum and requires equal
 ABI-encoded outcomes; see [differential-testing.md](differential-testing.md).
 
+## Partial admission
+
+A contract is admitted per function. When a function's body or the body of
+one of its modifiers falls outside the subset, import keeps the function with
+its header, an empty body and the reason (`fn_unsupported`) rather than
+rejecting the unit. `solidityPrepareLib` then marks, until nothing changes,
+every function whose body fails the source check, calls an unsupported one (by
+a call or a super call), or fails to elaborate. The elaborator builds no
+procedure for them and lists their ids in `core_program.unsupported_procedures`,
+so their selectors, and receive, fallback or the constructor when unsupported,
+still dispatch to them and an external call of one is invalid
+(`call_contract_unsupported`), never a return or the fallback; it still
+reverts first, as a supported one would, when it is sent value it does not
+accept. An unsupported function never runs, so its super calls reach nothing:
+a base function only they reach is neither checked nor elaborated. A modifier
+whose body fails import keeps its header with an empty body. The prepared unit
+lists each function calls can reach, with its reason if unsupported.
+
+What storage layout or dispatch depends on still rejects the whole unit:
+function headers (declaring base, kind, mutability, parameter and result
+types; a library function must be an internal or private `function`),
+modifier parameters and `virtual` modifiers, state variables, constants, bases
+and their linearization, using directives, and a core program that fails
+`wf_core_program`. A core program needs an entry procedure, so a unit whose
+lowering has no procedure at all (no supported function, getter, library
+function or constant procedure, and an unsupported constructor) is rejected
+whole too, without the constructor's reason.
+
 ## Built-in failures
 
 The pinned compiler represents `require`, `assert` and built-in `revert` as
@@ -470,7 +507,9 @@ Before elaboration, a well-formed imported program should at least establish:
   contracts.
 
 Anything outside the admitted node and annotation vocabulary must produce an
-import error, not a partial semantic result.
+import error, which rejects the unit or, inside a function's body or a
+modifier, marks the function unsupported (see Partial admission), never a
+partial semantic result.
 
 ## Open reconnaissance work
 

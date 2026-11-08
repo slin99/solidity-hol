@@ -159,6 +159,20 @@ Proof
      solidityStateTheory.finish_source_frame_def, AllCaseEqs()] >> simp[]
 QED
 
+(* An external call of an unsupported function, one the program does not
+ * model, is refused: the call is invalid, never a return or a revert. *)
+Theorem call_contract_unsupported:
+  wf_core_program (core_program_environment prog) prog ∧
+  4 ≤ LENGTH fr.call_data ∧
+  lookup_external (TAKE 4 fr.call_data) prog.external_functions = SOME e ∧
+  MEM e.external_procedure prog.unsupported_procedures ∧
+  (e.payable ∨ fr.call_value = 0) ⇒
+  call_contract fuel prog imm fr w = ContractInvalid "unknown procedure"
+Proof
+  rw[solidityCoreWfTheory.wf_core_program_def, listTheory.EVERY_MEM] >> first_x_assum drule >>
+  rw[call_contract_def, dispatch_def]
+QED
+
 val () = cv_auto_trans lookup_external_def;
 val () = cv_auto_trans dispatch_procedure_def;
 val () = cv_auto_trans dispatch_def;
