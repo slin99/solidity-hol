@@ -105,6 +105,23 @@ class BuiltinCoverageTests(unittest.TestCase):
         self.assertEqual(coverage.scan({"t.sol": unit([function(4, [statement])])})[5], [
             coverage.Blocker("FunctionCall", "messages that are not literals", "elaboration")])
 
+    def test_modular_builtins_are_admitted(self) -> None:
+        def call(declaration: int, name: str) -> dict:
+            operand = {"nodeType": "Literal", "id": 7, "kind": "number", "value": "3",
+                       "typeDescriptions": {"typeIdentifier": "t_rational_3_by_1"}}
+            return {"nodeType": "ExpressionStatement", "id": 8, "expression": {
+                "nodeType": "FunctionCall", "id": 5, "kind": "functionCall", "names": [],
+                "tryCall": False, "typeDescriptions": {"typeIdentifier": "t_uint256"},
+                "expression": {"nodeType": "Identifier", "id": 6, "name": name,
+                               "referencedDeclaration": declaration,
+                               "typeDescriptions": {"typeIdentifier": "t_function_" + name}},
+                "arguments": [operand, dict(operand, id=9), dict(operand, id=10)]}}
+
+        for declaration, name in ((coverage.ADDMOD, "addmod"), (coverage.MULMOD, "mulmod")):
+            self.assertEqual(coverage.scan({"t.sol": unit([function(4, [call(declaration, name)])])}), {})
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [call(-5, "sha256")])])})[6], [
+            coverage.Blocker("Identifier", "hash and signature built-ins", "import")])
+
     def test_only_a_named_concat_is_admitted(self) -> None:
         concat_type = {"typeIdentifier": "t_function_bytesconcat_pure$__$returns$_t_bytes_memory_ptr_$"}
         member = {"nodeType": "MemberAccess", "id": 6, "memberName": "concat",
@@ -369,6 +386,22 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(admitted.blockers, [])
         self.assertTrue(admitted.scan_agrees)
 
+    def test_partial_admission_counts_functions_and_reasons(self) -> None:
+        source = unit([function(4, [])])
+        partial = coverage.classify(
+            "p.sol", coverage.scan({"p.sol": source}),
+            {"status": "partially-admitted", "functions": 3,
+             "unsupported": ["FunctionCall 7: unsupported builtin sha256",
+                             "calls an unsupported function"]})
+        self.assertEqual(partial.category, coverage.PARTIALLY_ADMITTED)
+        self.assertEqual((partial.functions, len(partial.unsupported)), (3, 2))
+        admitted = coverage.classify(
+            "a.sol", coverage.scan({"a.sol": source}), {"status": "admitted", "functions": 2})
+        report = coverage.Report("pin", "profile", [partial, admitted])
+        self.assertEqual(report.function_reasons(),
+                         {"FunctionCall: unsupported builtin sha256": 1, "calls an unsupported function": 1})
+        self.assertEqual(report.json()["functions"], {"total": 5, "unsupported": 2})
+
     def test_scan_records_every_property_of_a_variable(self) -> None:
         constant = dict(variable(3, state=True), constant=True, mutability="constant",
                         value={"nodeType": "Literal", "id": 4, "kind": "number",
@@ -549,6 +582,80 @@ class ClassifyTests(unittest.TestCase):
         # an empty type list decodes nothing, which the checker rejects
         self.assertEqual(blockers(decode(10, [data(20), types(21)], "t_tuple$__$")),
                          {(10, "elaboration")})
+
+    def test_encode_calls_need_a_named_function_of_scalar_and_byte_parameters(self) -> None:
+        def parameter(node_id, type_identifier):
+            return variable(node_id, type_identifier=type_identifier)
+
+        def declaration(node_id, *types):
+            return {"nodeType": "FunctionDefinition", "id": node_id, "kind": "function",
+                    "functionSelector": "12345678",
+                    "parameters": {"nodeType": "ParameterList", "id": node_id + 1,
+                                   "parameters": [parameter(node_id + 2 + i, t) for i, t in enumerate(types)]}}
+
+        def encode_call(node_id, receiver, target, values):
+            abi = {"nodeType": "Identifier", "id": node_id + 1, "name": "abi", "referencedDeclaration": -1,
+                   "typeDescriptions": {"typeIdentifier": "t_magic_abi"}}
+            callee = {"nodeType": "MemberAccess", "id": node_id + 2, "memberName": "encodeCall", "expression": abi,
+                      "typeDescriptions": {"typeIdentifier": "t_function_abiencodecall_pure$__$returns$__$"}}
+            f = {"nodeType": "MemberAccess", "id": node_id + 3, "memberName": "f", "expression": receiver,
+                 "referencedDeclaration": target,
+                 "typeDescriptions": {"typeIdentifier": "t_function_declaration_nonpayable$__$returns$__$"}}
+            return {"nodeType": "FunctionCall", "id": node_id, "kind": "functionCall", "names": [],
+                    "tryCall": False, "expression": callee, "arguments": [f, values],
+                    "typeDescriptions": {"typeIdentifier": "t_bytes_memory_ptr"}}
+
+        def interface_name(node_id):
+            return {"nodeType": "Identifier", "id": node_id, "name": "I", "referencedDeclaration": 50,
+                    "typeDescriptions": {"typeIdentifier": "t_type$_t_contract$_I_$50_$"}}
+
+        def state(node_id):
+            return {"nodeType": "Identifier", "id": node_id, "name": "x", "referencedDeclaration": 3,
+                    "typeDescriptions": {"typeIdentifier": "t_contract$_I_$50"}}
+
+        def value(node_id, type_identifier="t_uint8"):
+            return {"nodeType": "Identifier", "id": node_id, "name": "x", "referencedDeclaration": 3,
+                    "typeDescriptions": {"typeIdentifier": type_identifier}}
+
+        def pair(node_id):
+            return {"nodeType": "TupleExpression", "id": node_id, "isInlineArray": False,
+                    "components": [value(node_id + 1), value(node_id + 2, "t_bytes_memory_ptr")],
+                    "typeDescriptions": {"typeIdentifier": "t_tuple$_t_uint8_$_t_bytes_memory_ptr_$"}}
+
+        def constant(node_id):
+            return {"nodeType": "Identifier", "id": node_id, "name": "k", "referencedDeclaration": 9,
+                    "typeDescriptions": {"typeIdentifier": "t_contract$_I_$50"}}
+
+        computed = {"nodeType": "FunctionCall", "id": 151, "kind": "functionCall", "names": [],
+                    "tryCall": False, "expression": value(152), "arguments": [],
+                    "typeDescriptions": {"typeIdentifier": "t_contract$_I_$50"}}
+        statements = [
+            encode_call(100, interface_name(105), 51, pair(106)),
+            encode_call(120, state(125), 51, pair(126)),
+            encode_call(140, interface_name(145), 60, value(146, "t_array$_t_uint256_$dyn_memory_ptr")),
+            encode_call(150, computed, 51, pair(156)),
+            encode_call(160, constant(165), 51, pair(166)),
+            encode_call(170, interface_name(175), 70, value(176, "t_enum$_E_$80")),
+        ]
+        k = variable(9, state=True, type_identifier="t_contract$_I_$50")
+        k.update(constant=True, mutability="constant")
+        ast = unit([variable(3, state=True), k, function(4, statements)])
+        ast["nodes"].append({"nodeType": "ContractDefinition", "id": 50, "contractKind": "interface",
+                             "abstract": False, "baseContracts": [], "linearizedBaseContracts": [50],
+                             "nodes": [declaration(51, "t_uint8", "t_bytes_calldata_ptr"),
+                                       declaration(60, "t_array$_t_uint256_$dyn_memory_ptr"),
+                                       declaration(70, "t_enum$_E_$80")]})
+        ast["nodes"].append({"nodeType": "EnumDefinition", "id": 80, "name": "E",
+                             "members": [{"nodeType": "EnumValue", "id": 81, "name": "A"}]})
+        found = coverage.scan({"t.sol": ast})
+        abi = {node_id: blockers for node_id, blockers in found.items()
+               if any(b.feature == "abi.* functions" for b in blockers)}
+        self.assertEqual(abi, {
+            140: [coverage.Blocker("FunctionCall", "abi.* functions", "elaboration")],
+            150: [coverage.Blocker("FunctionCall", "abi.* functions", "import")],
+            160: [coverage.Blocker("FunctionCall", "abi.* functions", "import")]})
+        # f and its receiver are read as the selector, not as expressions
+        self.assertFalse({103, 105, 123, 125} & set(found))
 
     def test_interface_ids_are_admitted_and_other_contract_type_members_blocked(self) -> None:
         def type_member(node_id, member, target=50):
