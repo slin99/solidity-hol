@@ -1742,6 +1742,10 @@ def run_hol(holbuild: str, work: Path, units: list[tuple[str, Path]]) -> dict[st
                                capture_output=True, text=True).stdout
     result_file = log
     local = "run-action" not in help_text
+    if local and (os.environ.get("HOLBUILD_REMOTE_CACHE_URL")
+                  or os.environ.get("HOLBUILD_REMOTE_EXEC_CURL_CONFIG")):
+        raise SystemExit("holbuild has no run-action support; upgrade holbuild to use the "
+                         "configured remote execution/cache instead of running coverage locally")
     if not local:
         script = work / HOL_SCRIPT.name
         shutil.copyfile(HOL_SCRIPT, script)

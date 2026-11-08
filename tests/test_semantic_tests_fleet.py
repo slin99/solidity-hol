@@ -25,7 +25,7 @@ class FleetCoverageTests(unittest.TestCase):
             def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
                 if "--help" in command:
                     return subprocess.CompletedProcess(command, 0, stdout=(
-                        "build run" if mode == "old" else "build run run-action"))
+                        "build run" if mode.startswith("old") else "build run run-action"))
                 if "build" in command:
                     return subprocess.CompletedProcess(command, 0)
                 if "run" in command:
@@ -63,7 +63,10 @@ class FleetCoverageTests(unittest.TestCase):
                 result.write_text(line if mode != "missing" else "")
                 return subprocess.CompletedProcess(command, 0)
 
-            with patch.object(coverage.subprocess, "run", side_effect=run):
+            environment = ({"HOLBUILD_REMOTE_CACHE_URL": "https://cache.invalid"}
+                           if mode == "old-configured" else {})
+            with patch.dict(coverage.os.environ, environment, clear=True), \
+                    patch.object(coverage.subprocess, "run", side_effect=run):
                 return coverage.run_hol("holbuild", work, [("test.sol", artifact)])
 
     def test_remote_results_are_fetched_from_portable_inputs(self) -> None:
@@ -81,3 +84,7 @@ class FleetCoverageTests(unittest.TestCase):
         for mode in ("failed", "unavailable", "missing"):
             with self.subTest(mode=mode), self.assertRaisesRegex(SystemExit, "HOL .*failed"):
                 self.run_coverage(mode)
+
+    def test_older_tool_with_remote_configuration_requires_upgrade(self) -> None:
+        with self.assertRaisesRegex(SystemExit, "upgrade holbuild"):
+            self.run_coverage("old-configured")

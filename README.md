@@ -102,8 +102,9 @@ lists select diagnostics; they do not limit comparison. The upstream `semanticTe
 preparation acceptance; it does not execute the tests' call expectations.
 The coverage tool stages its compiler artifacts and pin/profile files for a
 cached `holbuild run-action` on the configured remote-execution fleet. Without
-a configured fleet (or with an older holbuild without `run-action`), it runs
-the preparation check locally. A configured fleet's execution failures stop
+a configured fleet, it runs the preparation check locally. An older holbuild
+without `run-action` needs an upgrade when remote execution/cache is configured;
+otherwise it can use the local check. A configured fleet's execution failures stop
 the coverage run instead of falling back locally.
 See [differential-testing.md](docs/differential-testing.md),
 [profiles.md](docs/profiles.md) and
