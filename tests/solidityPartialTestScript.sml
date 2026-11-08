@@ -12,7 +12,8 @@ Libs
 fun holbuild_extra_deps (_ : string list) = ()
 val () = holbuild_extra_deps [
   "../SOLIDITY_PIN", "../profiles/solc-0.8.37-via-ir-osaka.json",
-  "../testdata/frontend/expected/partial.json"
+  "../testdata/frontend/expected/partial.json",
+  "../testdata/frontend/expected/fallback_params.json"
 ]
 
 val prepared = #prepared (solidityPrepareLib.prepare_artifact
@@ -116,6 +117,54 @@ QED
 Theorem partial_creation_refused:
   deploy_contract 1000 partial_program (differential_frame (n2w 0x1212) 0 [])
     (differential_world empty_accounts) = ContractInvalid "unknown procedure"
+Proof
+  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
+QED
+
+(* A fallback with parameters and returns (testdata/frontend/fallback_params.sol)
+ * is unsupported, since the core's fallback takes neither: add runs, and a
+ * call reaching the fallback is refused. *)
+val fallback_prepared = #prepared (solidityPrepareLib.prepare_artifact
+  {root = "..", path = "../testdata/frontend/expected/fallback_params.json",
+   source = "testdata/frontend/fallback_params.sol"});
+
+val fallback_outcomes =
+  map (fn {name, reason, ...} => (name, reason)) (#functions fallback_prepared);
+val () =
+  if fallback_outcomes =
+     [("add", NONE), ("", SOME "fallback with parameters or returns")]
+  then ()
+  else raise Fail ("unexpected fallback_params outcomes: " ^
+    String.concatWith "; " (map (fn (n, r) => n ^ " " ^
+      (case r of SOME m => m | NONE => "supported")) fallback_outcomes));
+
+Definition fallback_params_program_def:
+  fallback_params_program = ^(#program fallback_prepared)
+End
+
+val () = cv_auto_trans fallback_params_program_def;
+
+Definition fallback_params_call_def:
+  fallback_params_call data =
+    call_contract 1000 fallback_params_program FEMPTY
+      (differential_frame (n2w 0x1212) 0 data)
+      (differential_world empty_accounts)
+End
+
+val () = cv_auto_trans fallback_params_call_def;
+
+(* add(2, 3) returns 5. *)
+Theorem fallback_params_add_runs:
+  ∃w. fallback_params_call (^(listSyntax.mk_list (selector "771602f7", “:word8”)) ++
+                            word_to_bytes (2w : bytes32) T ++
+                            word_to_bytes (3w : bytes32) T) =
+      ContractReturned (word_to_bytes (5w : bytes32) T) w
+Proof
+  CONV_TAC (QUANT_CONV (LAND_CONV cv_eval)) >> simp[] >> EVAL_TAC
+QED
+
+Theorem fallback_params_fallback_refused:
+  fallback_params_call [1w; 2w; 3w; 4w] = ContractInvalid "unknown procedure"
 Proof
   CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
 QED

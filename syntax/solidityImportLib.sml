@@ -1120,7 +1120,9 @@ val failed_modifiers : (IntInf.int * string) list ref = ref []
 (* A function whose modifier invocations or body fail to import is
  * unsupported, with the error as its reason: it keeps its header, so that
  * calls, overrides and super calls resolve to it, with no modifiers and an
- * empty body. Its header failing still fails the import. *)
+ * empty body. Its header failing still fails the import. A fallback with
+ * parameters or returns is unsupported likewise: the core's fallback takes
+ * neither. *)
 fun function v = within v (fn v =>
   let
     val () = super_calls := []
@@ -1164,6 +1166,10 @@ fun function v = within v (fn v =>
        ([], con "SrcBlock" [info (field v "body"), listSyntax.mk_nil stmt_ty],
         SOME reason))
     val (modifiers, body, reason) =
+      if string_field v "kind" = "fallback" andalso
+         not (listSyntax.is_nil params andalso listSyntax.is_nil returns)
+      then unsupported "fallback with parameters or returns"
+      else
       case List.mapPartial failed_invocation invocations of
         (_, r) :: _ => unsupported r
       | [] => import_body () handle ImportError r => unsupported r

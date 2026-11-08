@@ -71,11 +71,12 @@
  *    assignments, returns name the enclosing function's return list, break and
  *    continue occur in loop bodies, conditions are boolean;
  *  - functions, receive and fallback are pure, view, nonpayable or payable,
- *    and only non-pure ones refer to state variables; functions a more
- *    derived one overrides are checked only when a super call reaches
- *    them, since nothing else does; a super call runs the first function
- *    with the name and parameter types of the one it names in a base after
- *    the caller's, and modifier bodies make none;
+ *    a fallback takes no parameters and returns nothing, and only non-pure
+ *    ones refer to state variables; functions a more derived one overrides
+ *    are checked only when a super call reaches them, since nothing else
+ *    does; a super call runs the first function with the name and parameter
+ *    types of the one it names in a base after the caller's, and modifier
+ *    bodies make none;
  *    contracts are scoped by the unit, functions by a base of their contract,
  *    structs by a base or a source unit of the compilation;
  *  - library functions are internal or private, scoped by a library distinct
@@ -1858,8 +1859,10 @@ Definition modifier_header_ok_def:
                          m.modifier_parameters))
 End
 
-(* A pure function sees no state variables. Whether a view function writes
- * one is the compiler's check. Modifier arguments see the parameters but not
+(* A fallback takes no parameters and returns nothing, as the core's does
+ * (plain_procedure); the importer marks one that does unsupported. A pure
+ * function sees no state variables. Whether a view function writes one is
+ * the compiler's check. Modifier arguments see the parameters but not
  * the return variables: the compiler's IR passes each modifier its own copies
  * of the return variables, which the elaborator does not model.
  *)
@@ -1867,6 +1870,7 @@ Definition check_function_def:
   check_function structs enums events functions fs modifiers state constants
                  bases (f : src_function) ⇔
     function_header_ok bases f ∧
+    (f.fn_kind = "fallback" ⇒ f.fn_parameters = [] ∧ f.fn_returns = []) ∧
     case (all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_parameters),
           all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_returns),
           f.fn_body) of
