@@ -307,7 +307,7 @@ val evaluator_clauses =
  * result out of a completion and a machine and never copy one. *)
 val helper_defs = [
   yul_normal_def, yul_abrupt_def, yul_invalid_def,
-  yul_literal_value_def, yul_sign_extend_def
+  yul_literal_value_def, yul_sign_extend_def, yul_builtin_value_args_def
 ]
 
 (* The shaping the frame rule builds with, unfolded unconditionally: it is a
@@ -369,7 +369,7 @@ val guarded_helper_defs = [
   yul_memory_touch_def, yul_memory_region_def, yul_mload_def, yul_mstore_def,
   yul_sload_def, yul_sstore_def, yul_tload_def, yul_tstore_def, yul_call_def,
   yul_return_data_copy_def, yul_name_of_bytes_def,
-  eval_yul_builtin_call_def
+  eval_yul_builtin_call_def, yul_set_immutable_def
 ]
 
 (* Each of them as its constant and its clauses, and the arity the compute set

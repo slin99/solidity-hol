@@ -1,5 +1,5 @@
-(* The Yul evaluator: a fuel-indexed, executable interpreter for the runtime
- * object, written so that it cv_evals.
+(* The Yul evaluator: a fuel-indexed, executable interpreter for creation and
+ * runtime objects, written so that it cv_evals.
  *
  * Fuel: n bounds every recursive step that is not structural. Sibling
  * statements and the arguments of one call reuse the bound; entering a
@@ -23,9 +23,9 @@
  * number of them is an error rather than a silent truncation, as is an
  * argument that is not exactly one value, a literal too long for the dialect,
  * an unknown function, an unbound name, a builtin called with the wrong number
- * of arguments, an immutable the frame does not carry, and the object-level
- * builtins, which read the running code or the object's layout, neither of
- * which the evaluator models.
+ * of arguments, an immutable the frame does not carry, or an unknown object
+ * name. Object builtins read the frame's code, extents and immutable offsets;
+ * linker symbols remain unsupported.
  * So is a break or continue that leaves a loop's post statement: Yul allows
  * them only in a loop's body, and one from the post would otherwise reach an
  * enclosing loop.
@@ -391,10 +391,8 @@ Definition modular_word_def:
     if n = 0w then 0w else n2w (f (w2n a) (w2n b) MOD w2n n)
 End
 
-(* One builtin, on values that have already been evaluated, left to right.
- * Anything the pinned dialect does not define -- a wrong number of arguments,
- * or one of the object-level builtins, whose code and object the evaluator
- * does not model -- is an error rather than a silent no-op.
+(* One builtin on evaluated values. Literal-name operands are dispatched by
+ * eval_yul_builtin_call; unsupported builtins and wrong arities fail closed.
  *)
 Definition eval_yul_builtin_def:
   eval_yul_builtin op args m =
@@ -525,8 +523,11 @@ Definition eval_yul_builtin_def:
     | (YRevert, [p; s]) =>
         let (m', bs) = yul_memory_region m (w2n p) (w2n s) in
           EvalAbrupt (YulRevert bs) m'
-    | (YCodeSize, _) => EvalAbrupt (YulInvalid "object-level builtin") m
-    | (YCodeCopy, _) => EvalAbrupt (YulInvalid "object-level builtin") m
+    | (YCodeSize, []) => EvalValues [n2w (LENGTH m.code)] m
+    | (YCodeCopy, [dst; src; sz]) =>
+        EvalValues []
+          (yul_memory_write (yul_memory_touch m (w2n dst) (w2n sz))
+             (w2n dst) (take_pad_0 (w2n sz) (DROP (w2n src) m.code)))
     | (YDataSize, _) => EvalAbrupt (YulInvalid "object-level builtin") m
     | (YDataOffset, _) => EvalAbrupt (YulInvalid "object-level builtin") m
     | (YSetImmutable, _) => EvalAbrupt (YulInvalid "object-level builtin") m
@@ -534,20 +535,52 @@ Definition eval_yul_builtin_def:
     | _ => EvalAbrupt (YulInvalid "bad builtin call") m
 End
 
-(* loadimmutable is the one builtin whose operand is a name rather than a value:
- * the compiler writes loadimmutable("3"), and the name is the text between the
- * literal's quotes.  That form is dispatched here, on the argument's syntax;
- * everything else, a loadimmutable whose argument is not a name literal
- * included, goes to eval_yul_builtin on its values, where the default is an
- * error.
- *)
+(* Object and immutable names are identifiers, not 256-bit values. *)
+Definition yul_builtin_value_args_def:
+  yul_builtin_value_args op args =
+    case (op, args) of
+      (YLoadImmutable, [YulLit (LitBytes _)]) => []
+    | (YDataSize, [YulLit (LitBytes _)]) => []
+    | (YDataOffset, [YulLit (LitBytes _)]) => []
+    | (YSetImmutable, [position; YulLit (LitBytes _); value]) => [position; value]
+    | _ => args
+End
+
+Theorem yul_builtin_value_args_size:
+  list_size yul_expr_size (yul_builtin_value_args op args) ≤
+  list_size yul_expr_size args
+Proof
+  rw[yul_builtin_value_args_def] >>
+  BasicProvers.every_case_tac >> simp[listTheory.list_size_def]
+QED
+
+(* setimmutable patches every occurrence in the copied runtime object.
+ * An immutable unused by that object has no patch offsets. *)
+Definition yul_set_immutable_def:
+  yul_set_immutable name (position : bytes32) (value : bytes32) m =
+    let offsets = case FLOOKUP m.immutable_offsets name of
+                    NONE => [] | SOME offsets => offsets in
+    (FOLDL (λm off. yul_mstore m (w2n position + off) value) m offsets)
+      with immutables := m.immutables |+ (name, value)
+End
+
 Definition eval_yul_builtin_call_def:
   eval_yul_builtin_call op args vs m =
-    case (op, args) of
-      (YLoadImmutable, [YulLit (LitBytes nm)]) =>
+    case (op, args, vs) of
+      (YLoadImmutable, [YulLit (LitBytes nm)], []) =>
         (case FLOOKUP m.immutables (yul_name_of_bytes nm) of
            SOME v => EvalValues [v] m
          | NONE => EvalAbrupt (YulInvalid "unknown immutable") m)
+    | (YDataSize, [YulLit (LitBytes nm)], []) =>
+        (case FLOOKUP m.objects (yul_name_of_bytes nm) of
+           SOME extent => EvalValues [n2w (SND extent)] m
+         | NONE => EvalAbrupt (YulInvalid "unknown object") m)
+    | (YDataOffset, [YulLit (LitBytes nm)], []) =>
+        (case FLOOKUP m.objects (yul_name_of_bytes nm) of
+           SOME extent => EvalValues [n2w (FST extent)] m
+         | NONE => EvalAbrupt (YulInvalid "unknown object") m)
+    | (YSetImmutable, [_; YulLit (LitBytes nm); _], [position; value]) =>
+        EvalValues [] (yul_set_immutable (yul_name_of_bytes nm) position value m)
     | _ => eval_yul_builtin op vs m
 End
 
@@ -675,7 +708,7 @@ Definition eval_yul_block_def:
        SOME v => EvalValues [v] m
      | NONE => EvalAbrupt (YulInvalid "unbound name") m) ∧
   (eval_yul_expr n fns (YulBuiltin op args) m =
-     case eval_yul_args n fns args m of
+     case eval_yul_args n fns (yul_builtin_value_args op args) m of
        EvalAbrupt c m' => EvalAbrupt c m'
      | EvalValues vs m' => eval_yul_builtin_call op args vs m') ∧
   (eval_yul_expr n fns (YulApply f args) m =
@@ -775,7 +808,8 @@ Termination
      yul_measure_args_def, yul_measure_loop_def, yul_measure_cases_def,
      yul_measure_invoke_def, listTheory.list_size_def,
      basicSizeTheory.pair_size_def, yul_expr_size_pos,
-     yul_measure_loop_body_lt, yul_measure_loop_post_lt]
+     yul_measure_loop_body_lt, yul_measure_loop_post_lt] >>
+  mp_tac yul_builtin_value_args_size >> simp[]
 End
 
 
@@ -840,6 +874,19 @@ val () = cv_auto_trans yul_return_data_copy_def;
 (* Bound left shifts before computing powers, as in the EVM translation. *)
 val () = cv_auto_trans
   (REWRITE_RULE [word_lsl_modexp, modular_word_def] eval_yul_builtin_def);
+val () = cv_auto_trans yul_builtin_value_args_def;
+Theorem cv_yul_builtin_value_args_size[local]:
+  ∀op args. cv_size (cv_yul_builtin_value_args op args) ≤ cv_size args
+Proof
+  rw[DB.fetch "yulEvaluator" "cv_yul_builtin_value_args_def", cvTheory.cv_if_def] >>
+  cv_termination_tac >>
+  qspec_then ‘args’ assume_tac cv_size_cv_fst_cv_snd >>
+  qspec_then ‘cv_snd args’ assume_tac cv_size_cv_fst_cv_snd >>
+  qspec_then ‘cv_snd (cv_snd args)’ assume_tac cv_size_cv_fst_cv_snd >>
+  gvs[]
+QED
+
+val () = cv_auto_trans yul_set_immutable_def;
 val () = cv_auto_trans eval_yul_builtin_call_def;
 val () = cv_auto_trans yul_env_def;
 
@@ -869,7 +916,10 @@ val yul_pre_def = cv_auto_trans_pre_rec "" eval_yul_block_def
    qspec_then ‘x2’ assume_tac cv_size_cv_fst_cv_snd >>
    qspec_then ‘cv_snd x2’ assume_tac cv_size_cv_fst_cv_snd >>
    qspec_then ‘cv_snd (cv_snd x2)’ assume_tac cv_size_cv_fst_cv_snd >>
-   gvs []
+   gvs [] >>
+   qspecl_then [‘cv_fst z’, ‘cv_snd z’] assume_tac
+     cv_yul_builtin_value_args_size >>
+   qspec_then ‘z’ assume_tac cv_size_cv_fst_cv_snd >> gvs []
    );
 
 (* The pre-relation is total: every input of every function has a translated
