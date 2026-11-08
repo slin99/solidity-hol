@@ -375,6 +375,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcEcrecover _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcAbiDecode _ _ e _ _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcStaticCall _ _ target data _) ⇔ expr_assigns target ∨ expr_assigns data) ∧
   (expr_assigns (SrcSuperCall _ _ args _ _) ⇔ exprs_assign args) ∧
   (expr_assigns _ ⇔ F) ∧
   (components_assign [] ⇔ F) ∧
@@ -1142,6 +1143,29 @@ Definition elab_expr_def:
                 SOME (cs, [h; v; r; s], n2) =>
                   let (es, a) = bind_value n2 ty (EcrecoverOperation h v r s) in
                   SOME ((ss ++ cs ++ es, a, ElabType ty), n2 + 1)
+              | _ => NONE)
+         | NONE => NONE)
+    | SrcStaticCall _ _ target data tid =>
+        (* the data is passed where it is, so it must already be memory bytes *)
+        (case elab_expr ctx n target of
+           SOME ((st, t, tvt), n1) =>
+             if ¬(case tvt of ElabType (AddressT _) => T | _ => F) ∨
+                decode_type_identifier tid ≠
+                  SOME (call_value_type [BoolT; LocatedT MemoryLoc BytesT])
+             then NONE else
+             let (copied, n2) =
+               if expr_assigns data then snapshot n1 t tvt else (([], t), n1) in
+             let (st', t') = copied in
+             (case elab_expr ctx n2 data of
+                SOME ((sd, d, ElabType (LocatedT MemoryLoc BytesT)), n3) =>
+                  (case coerce n3 (AddressT NonpayableAddress) t' tvt of
+                     SOME ((cs, t''), n4) =>
+                       let tys = [BoolT; LocatedT MemoryLoc BytesT] in
+                       SOME ((st ++ st' ++ sd ++ cs ++
+                              [DefineStmt (AstId n4) (call_result_type tys)
+                                 (StaticCallOperation t'' d)],
+                              BoundAtom (AstId n4), call_value tys), n4 + 1)
+                   | NONE => NONE)
               | _ => NONE)
          | NONE => NONE)
     | SrcAbiDecode _ _ e tns tid =>

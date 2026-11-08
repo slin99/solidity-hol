@@ -301,6 +301,18 @@ encoding, or a word that is not a value of its type, reverts with no data, and
 data after the encoding is ignored. It allocates nothing. Data in calldata or
 storage, and types other than elementary ones, are rejected.
 
+`a.staticcall(data)`, with `a` an address and `data` a memory `bytes`,
+evaluates `a`, then `data`, and makes a static call to `a` with the bytes of
+`data` as its input, giving the success flag and the return data. The source
+does not track gas: the callee gets the same fixed budget a high-level call
+gives it (`external_call_gas`), where the compiled code forwards all but a 64th
+of what is left. A failed call, the callee's revert included, gives
+`false` and leaves the caller's state as it was; a call to an address without
+code succeeds with no data. Return data is copied into a new memory `bytes`,
+allocated as the compiler allocates it, and no return data gives the shared
+empty `bytes`, allocating nothing. Data in calldata, storage or a literal, gas
+options, `call` and `delegatecall` are rejected.
+
 `bytes.concat(...)` uses packed encoding of its byte sequences, fixed-size bytes
 and literals. `string.concat(...)` concatenates strings and string literals.
 Both allocate a fresh memory object, with the corresponding `bytes` or `string`
