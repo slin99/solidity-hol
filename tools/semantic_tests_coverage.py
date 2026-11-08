@@ -1283,6 +1283,13 @@ def selector_declaration(node: dict[str, Any], by_id: dict[int, dict[str, Any]]
     return declaration
 
 
+def type_of_type_name(node: dict[str, Any]) -> str:
+    """The type an ElementaryTypeNameExpression names: solc leaves its
+    typeName's typeDescriptions empty and types the expression type(T)."""
+    tid = node["typeDescriptions"].get("typeIdentifier") or ""
+    return tid[len("t_type$_"):-len("_$")] if tid.startswith("t_type$_") and tid.endswith("_$") else ""
+
+
 def abi_argument(node: dict[str, Any], packed: bool) -> bool:
     """Whether the checker takes this argument of abi.encode*: a scalar, a
     byte sequence in any location, a string literal, or, unpacked, an
@@ -1412,8 +1419,8 @@ def special_forms(reached: dict[int, dict[str, Any]],
               and node["expression"]["nodeType"] == "MemberAccess"
               and node["expression"]["expression"]["nodeType"] == "Identifier"
               and node["expression"]["expression"].get("referencedDeclaration") == ABI):
-            # abi.encode*: the importer reads the member as the form, and a
-            # literal signature as its bytes.
+            # abi.encode* and abi.decode: the importer reads the member as the
+            # form, and a literal signature as its bytes.
             callee = node["expression"]
             unread.update({callee["id"], callee["expression"]["id"]})
             member = callee["memberName"]
@@ -1448,6 +1455,23 @@ def special_forms(reached: dict[int, dict[str, Any]],
                 if not arguments or arguments[0]["typeDescriptions"].get("typeIdentifier") != "t_bytes4":
                     block(node, "abi.* functions", "elaboration")
                 arguments = arguments[1:]
+            elif member == "decode":
+                # abi.decode(data, (T1, ..., Tk)): the types are type names,
+                # and only memory bytes into elementary types are checked.
+                types = arguments[1] if len(arguments) == 2 else None
+                components = (types["components"] if types is not None
+                              and types["nodeType"] == "TupleExpression"
+                              and not types.get("isInlineArray") else [types])
+                if types is not None:
+                    unread.update(n["id"] for n in nodes(types))
+                if any(c is None or c["nodeType"] != "ElementaryTypeNameExpression"
+                       for c in components):
+                    block(node, "abi.* functions", "import")
+                elif (not components
+                      or arguments[0]["typeDescriptions"].get("typeIdentifier") != "t_bytes_memory_ptr"
+                      or not all(VALUE_TYPE.fullmatch(type_of_type_name(c)) for c in components)):
+                    block(node, "abi.* functions", "elaboration")
+                arguments = []
             elif member not in ("encode", "encodePacked"):
                 block(node, "abi.* functions", "import")
                 arguments = []

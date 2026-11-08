@@ -532,6 +532,57 @@ class ClassifyTests(unittest.TestCase):
         ]
         self.assertEqual(abi_blockers(rejected), {110, 130, 140, 160, 180, 190})
 
+    def test_abi_decode_reads_type_names_and_takes_memory_bytes_into_elementary_types(self) -> None:
+        def type_name(node_id, name, type_identifier):
+            return {"nodeType": "ElementaryTypeNameExpression", "id": node_id,
+                    "typeName": {"nodeType": "ElementaryTypeName", "id": node_id + 1, "name": name,
+                                 "typeDescriptions": {}},
+                    "typeDescriptions": {"typeIdentifier": f"t_type$_{type_identifier}_$"}}
+
+        def types(node_id, *components, inline=False):
+            return {"nodeType": "TupleExpression", "id": node_id, "isInlineArray": inline,
+                    "components": list(components),
+                    "typeDescriptions": {"typeIdentifier": "t_tuple$_t_type$_t_uint256_$_$"}}
+
+        def data(node_id, type_identifier="t_bytes_memory_ptr"):
+            return {"nodeType": "Identifier", "id": node_id, "name": "b", "referencedDeclaration": 3,
+                    "typeDescriptions": {"typeIdentifier": type_identifier}}
+
+        def decode(node_id, arguments, result="t_uint256"):
+            abi = {"nodeType": "Identifier", "id": node_id + 1, "name": "abi", "referencedDeclaration": -1,
+                   "typeDescriptions": {"typeIdentifier": "t_magic_abi"}}
+            callee = {"nodeType": "MemberAccess", "id": node_id + 2, "memberName": "decode",
+                      "expression": abi,
+                      "typeDescriptions": {"typeIdentifier": "t_function_abidecode_pure$__$returns$__$"}}
+            return {"nodeType": "FunctionCall", "id": node_id, "kind": "functionCall", "names": [],
+                    "tryCall": False, "expression": callee, "arguments": arguments,
+                    "typeDescriptions": {"typeIdentifier": result}}
+
+        def blockers(call):
+            found = coverage.scan({"t.sol": unit([variable(3, state=True), function(4, [call])])})
+            return {(node_id, b.stage) for node_id, bs in found.items() for b in bs}
+
+        self.assertEqual(blockers(decode(10, [data(20), types(21, type_name(22, "bytes4", "t_bytes4"))],
+                                         "t_bytes4")), set())
+        self.assertEqual(blockers(decode(10, [data(20), types(21, type_name(22, "uint256", "t_uint256"),
+                                                              type_name(24, "bool", "t_bool"))],
+                                         "t_tuple$_t_uint256_$_t_bool_$")), set())
+        # bytes results and calldata data are rejected by the checker
+        self.assertEqual(blockers(decode(10, [data(20), types(21, type_name(22, "bytes", "t_bytes_memory_ptr"))],
+                                         "t_bytes_memory_ptr")), {(10, "elaboration")})
+        self.assertEqual(blockers(decode(10, [data(20, "t_bytes_calldata_ptr"),
+                                              types(21, type_name(22, "uint256", "t_uint256"))])),
+                         {(10, "elaboration")})
+        # a type that isn't an elementary type name is rejected by the importer
+        struct = {"nodeType": "Identifier", "id": 22, "name": "S", "referencedDeclaration": 7,
+                  "typeDescriptions": {"typeIdentifier": "t_type$_t_struct$_S_$7_storage_ptr_$"}}
+        self.assertEqual(blockers(decode(10, [data(20), types(21, struct)], "t_struct$_S_$7_memory_ptr")),
+                         {(10, "import")})
+        self.assertEqual(blockers(decode(10, [data(20)])), {(10, "import")})
+        # an empty type list decodes nothing, which the checker rejects
+        self.assertEqual(blockers(decode(10, [data(20), types(21)], "t_tuple$__$")),
+                         {(10, "elaboration")})
+
     def test_encode_calls_need_a_named_function_of_scalar_and_byte_parameters(self) -> None:
         def parameter(node_id, type_identifier):
             return variable(node_id, type_identifier=type_identifier)
