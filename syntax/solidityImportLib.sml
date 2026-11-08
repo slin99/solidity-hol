@@ -1060,18 +1060,20 @@ and abi_encode_call v callee =
 (* c.f{value: v}(args), with c of a contract type. *)
 and external_call v callee args =
   let
-    val (member, value) =
+    val (member, options) =
       if node_type callee = "FunctionCallOptions" then
         within callee (fn opts =>
-          let val options = JSONUtil.arrayMap expr (field opts "options") in
-            require opts
-              (JSONUtil.arrayMap JSONUtil.asString (field opts "names") =
-               ["value"])
-              "only the value call option is supported";
-            (field opts "expression", SOME (hd options))
-          end)
+          (field opts "expression",
+           SOME (opts, JSONUtil.arrayMap expr (field opts "options"))))
       else (callee, NONE)
     val target = Option.map expr (optional_field member "expression")
+    val value =
+      Option.map (fn (opts, options) => within opts (fn opts =>
+        (require opts
+           (JSONUtil.arrayMap JSONUtil.asString (field opts "names") = ["value"])
+           "only the value call option is supported";
+         hd options)))
+        options
     val () = require member (is_external_call member)
                "unsupported call options"
     val () =

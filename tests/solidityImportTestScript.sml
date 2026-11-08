@@ -29,7 +29,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/encode_calls.json",
   "../testdata/differential/expected/bytes_constants.json",
   "../testdata/differential/expected/try_calls.json",
-  "../testdata/differential/expected/inline_assembly.json"
+  "../testdata/differential/expected/inline_assembly.json",
+  "../testdata/differential/expected/external.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -398,6 +399,19 @@ val () =
       "attempt" (edit_first "TryStatement" (typed_catch o in_call unknown_target))
       [": unsupported expression UnknownTarget", "typed catch clauses are not supported"]
   end
+
+(* An unsupported call option does not hide the blockers of the receiver. *)
+val () =
+  expect_function_lines "gas option on an unsupported receiver"
+    "../testdata/differential/expected/external.json" "testdata/differential/external.sol"
+    "forward"
+    (edit_first "FunctionCallOptions"
+       (set_field "names" (JSON.ARRAY [JSON.STRING "gas"]) o
+        edit_first_where
+          (fn v => is_node "Identifier" v andalso
+                   JSONUtil.testField "name" (fn JSON.STRING s => s = "this" | _ => false) v)
+          "this" (set_field "nodeType" (JSON.STRING "UnknownThis"))))
+    [": unsupported expression UnknownThis", "only the value call option is supported"]
 
 (* Every unsupported reference of an inline assembly block is a line. *)
 val () =
