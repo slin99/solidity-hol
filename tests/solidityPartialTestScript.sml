@@ -24,7 +24,9 @@ val prepared = #prepared (solidityPrepareLib.prepare_artifact
  * callsTwice call unsupported functions; the constructor's halting assembly
  * does not elaborate. Once Partial.twice is unsupported its super calls
  * reach nothing, so neither Mid.twice nor Base.twice is among the
- * functions calls reach. *)
+ * functions calls reach. The constant DIGITS does not elaborate, so it has
+ * no procedure and digits, which reads it, fails to elaborate; so does
+ * pointer, whose assembly names a bytes local. *)
 val outcomes = map (fn {name, reason, ...} => (name, reason)) (#functions prepared);
 fun reasons name =
   map #2 (List.filter (fn (n, _) => n = name) outcomes);
@@ -45,7 +47,9 @@ val () =
      reasons "digestTwice" = [calls_unsupported] andalso
      reasons "callsTwice" = [calls_unsupported] andalso
      reasons "twice" = [calls_unsupported] andalso
-     length outcomes = 7
+     reasons "digits" = [fails_to_elaborate] andalso
+     reasons "pointer" = [fails_to_elaborate] andalso
+     length outcomes = 9
   then ()
   else raise Fail ("unexpected function outcomes: " ^
     String.concatWith "; " (map (fn (n, r) => n ^ " " ^
@@ -100,6 +104,30 @@ QED
 
 Theorem partial_calls_twice_refused:
   partial_call ^(with_word "b8afe286" 5) = ContractInvalid "unknown procedure"
+Proof
+  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
+QED
+
+(* The getter of the constant that does not elaborate is refused, as are
+ * digits, which reads it, and pointer. *)
+Theorem partial_constant_getter_refused:
+  partial_call ^(listSyntax.mk_list (selector "d0263f8c", “:word8”)) =
+  ContractInvalid "unknown procedure"
+Proof
+  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
+QED
+
+Theorem partial_digits_refused:
+  partial_call ^(listSyntax.mk_list (selector "9e20437c", “:word8”)) =
+  ContractInvalid "unknown procedure"
+Proof
+  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
+QED
+
+Theorem partial_pointer_refused:
+  partial_call (^(listSyntax.mk_list (selector "8a237e56", “:word8”)) ++
+                word_to_bytes (32w : bytes32) T ++ REPLICATE 32 0w) =
+  ContractInvalid "unknown procedure"
 Proof
   CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
 QED
