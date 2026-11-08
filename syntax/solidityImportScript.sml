@@ -86,6 +86,7 @@ Datatype:
   | SrcMappingTypeName node_info src_type_name src_type_name
   | SrcStructTypeName node_info num string
   | SrcEnumTypeName node_info num
+  | SrcUnsupportedTypeName node_info string
 End
 
 Datatype:
@@ -117,6 +118,10 @@ End
  * ExternalCall (c.f{value: v}(args), c of a contract type): the declaration of f, whether
  * a value is given, and the operands in evaluation order: the target, the
  * value if given, the positional arguments.
+ * Unsupported (and its type name and statement counterparts): a node the
+ * importer can't represent, with the importer's line saying why and the
+ * children it could import, so that elaboration rejects it and still reports
+ * the blockers under and beside it.
  *)
 Datatype:
   src_builtin = RequireBuiltin | AssertBuiltin | RevertBuiltin
@@ -183,6 +188,7 @@ Datatype:
   | SrcEcrecover node_info node_info (src_expr list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
   | SrcAbiDecode node_info node_info src_expr (src_type_name list) string
+  | SrcUnsupportedExpr node_info string (src_expr list)
 End
 
 (* VariableDeclarationStatement: assignments, declarations (NONE for a hole),
@@ -221,6 +227,7 @@ Datatype:
   | SrcInlineAssembly node_info (yul_stmt list)
       ((string # src_assembly_reference) list)
   | SrcPlaceholder node_info
+  | SrcUnsupportedStmt node_info string (src_expr list) (src_stmt list)
 End
 
 (* A modifier: its parameters and its body, where SrcPlaceholder runs the
@@ -389,6 +396,7 @@ Definition normalize_type_name_def:
        isPREFIX (REVERSE ("_$" ++ toString id ++ "_storage_ptr")) (REVERSE tid)
     then SOME (StructT (AstId id)) else NONE) ∧
   (normalize_type_name (SrcEnumTypeName _ id) = SOME (EnumT (AstId id))) ∧
+  (normalize_type_name (SrcUnsupportedTypeName _ _) = NONE) ∧
   (normalize_type_name (SrcDynamicArrayTypeName _ element) =
     OPTION_MAP (λty. ArrayT ty NONE) (normalize_type_name element)) ∧
   (normalize_type_name (SrcMappingTypeName _ key value) =
@@ -860,6 +868,7 @@ Definition type_name_ids_def:
     info.node_id :: type_name_ids element) ∧
   (type_name_ids (SrcStructTypeName info _ _) = [info.node_id]) ∧
   (type_name_ids (SrcEnumTypeName info _) = [info.node_id]) ∧
+  (type_name_ids (SrcUnsupportedTypeName info _) = [info.node_id]) ∧
   (type_name_ids (SrcDynamicArrayTypeName info element) =
     info.node_id :: type_name_ids element) ∧
   (type_name_ids (SrcMappingTypeName info key value) =
@@ -920,6 +929,7 @@ Definition expr_ids_def:
     info.node_id :: exprs_ids operands) ∧
   (expr_ids (SrcNew info tn e _) =
     info.node_id :: type_name_ids tn ++ expr_ids e) ∧
+  (expr_ids (SrcUnsupportedExpr info _ es) = info.node_id :: exprs_ids es) ∧
   (component_ids [] = []) ∧
   (component_ids (NONE :: cs) = component_ids cs) ∧
   (component_ids (SOME e :: cs) = expr_ids e ++ component_ids cs) ∧
@@ -964,6 +974,8 @@ Definition stmt_ids_def:
   (stmt_ids (SrcRevertError info _ args _) = info.node_id :: exprs_ids args) ∧
   (stmt_ids (SrcInlineAssembly info _ _) = [info.node_id]) ∧
   (stmt_ids (SrcPlaceholder info) = [info.node_id]) ∧
+  (stmt_ids (SrcUnsupportedStmt info _ es ss) =
+    info.node_id :: exprs_ids es ++ stmts_ids ss) ∧
   (option_stmt_ids NONE = []) ∧
   (option_stmt_ids (SOME s) = stmt_ids s) ∧
   (stmts_ids [] = []) ∧
