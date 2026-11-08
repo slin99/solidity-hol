@@ -283,7 +283,8 @@ not a plain string literal are rejected.
 
 `abi.decode(data, (T1, ..., Tk))` decodes a memory `bytes` into values of
 elementary types (booleans, integers, addresses and fixed-size byte
-sequences), as the compiler's decoder from memory does: data shorter than the
+sequences; an `address` decodes as `address payable`, as the compiler types
+it), as the compiler's decoder from memory does: data shorter than the
 encoding, or a word that is not a value of its type, reverts with no data, and
 data after the encoding is ignored. It allocates nothing. Data in calldata or
 storage, and types other than elementary ones, are rejected.

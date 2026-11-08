@@ -859,6 +859,13 @@ Definition call_value_type_def:
   (call_value_type tys = SrcTupleType tys)
 End
 
+(* The type abi.decode gives a value it decodes as this type: the compiler
+ * types a decoded address as address payable. *)
+Definition decoded_type_def:
+  (decoded_type (AddressT _) = AddressT PayableAddress) ∧
+  (decoded_type ty = ty)
+End
+
 (* Ids *)
 
 Definition type_name_ids_def:
@@ -1360,7 +1367,8 @@ Definition check_expr_def:
   (check_expr env (SrcAbiDecode _ _ e tns tid) =
     case (all_some (MAP normalize_type_name tns), decode_type_identifier tid) of
       (SOME tys, SOME vt) =>
-        if tys ≠ [] ∧ EVERY is_elementary_type tys ∧ vt = call_value_type tys ∧
+        if tys ≠ [] ∧ EVERY is_elementary_type tys ∧
+           vt = call_value_type (MAP decoded_type tys) ∧
            check_expr env e = SOME (SrcType (LocatedT MemoryLoc BytesT))
         then SOME vt else NONE
     | _ => NONE) ∧
@@ -1921,6 +1929,7 @@ val () = cv_auto_trans call_variable_type_def;
 val () = cv_auto_trans event_variable_type_def;
 val () = cv_auto_trans field_variable_type_def;
 val () = cv_auto_trans call_value_type_def;
+val () = cv_auto_trans decoded_type_def;
 val () = cv_auto_trans_rec expr_ids_def (
   WF_REL_TAC ‘measure (λx. case x of
                  INL e => cv_size e
