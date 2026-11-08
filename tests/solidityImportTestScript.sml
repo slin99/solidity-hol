@@ -865,6 +865,14 @@ End
 
 val () = cv_auto_trans shared_library_unit_def;
 
+(* Two contracts share the library's node ids, which the corpus cannot
+ * exercise: its units have one contract each. *)
+Theorem shared_library_unit_valid:
+  valid_src_unit shared_library_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
 fun named ty name v =
   is_node ty v andalso
   JSONUtil.testField "name" (fn JSON.STRING s => s = name | _ => false) v
