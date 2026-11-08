@@ -111,8 +111,8 @@ Definition default_operation_def:
                 | NONE => NONE
 End
 
-(* A value of type ty: integer literals stand for themselves, other types are
- * converted.
+(* A value of type ty: integer literals stand for themselves, or for their
+ * bytes as a fixed-size bytes; other types are converted.
  *)
 Definition coerce_def:
   coerce n ty a vt =
@@ -136,7 +136,16 @@ Definition coerce_def:
                SOME (bind_value n ty (BytesLiteralOperation element bs), n + 1)
              else NONE
          | _ => NONE)
-    | ElabLiteral => if is_integer_type ty then SOME (([], a), n) else NONE
+    | ElabLiteral =>
+        if is_integer_type ty then SOME (([], a), n) else
+        (* a number literal the compiler takes as a bytesN: zero, or hex
+           digits that fill it *)
+        (case (ty, a) of
+           (FixedBytesT k, ConstantAtom (IntegerValue i)) =>
+             if 0 ≤ i ∧ Num i < 256 ** k then
+               SOME (([], ConstantAtom (BytesValue (num_to_bytes k (Num i)))), n)
+             else NONE
+         | _ => NONE)
     | ElabTuple _ => NONE
 End
 
@@ -345,6 +354,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcExternalCall _ _ _ operands _ _) ⇔ exprs_assign operands) ∧
   (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcKeccak256 _ _ e _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcAddressCodeLength _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcEcrecover _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcAbiDecode _ _ e _ _) ⇔ expr_assigns e) ∧
@@ -524,6 +534,10 @@ Definition abi_encoding_def:
          | _ => NONE)
     | (AbiWithSelector, []) => NONE
     | (AbiPacked, _) =>
+        (case abi_arguments T vs of
+           SOME (tys, args) => SOME (([], AbiEncodePackedOperation tys args), n)
+         | NONE => NONE)
+    | (AbiStringConcat, _) =>
         (case abi_arguments T vs of
            SOME (tys, args) => SOME (([], AbiEncodePackedOperation tys args), n)
          | NONE => NONE)
@@ -930,6 +944,12 @@ Definition elab_expr_def:
                    | NONE => NONE)
               | _ => NONE)
          | _ => NONE)
+    | SrcAddressCodeLength _ _ e _ =>
+        (case elab_expr ctx n e of
+           SOME ((ss, a, ElabType (AddressT _)), n1) =>
+             let (rs, r) = bind_value n1 (UintT 256) (CodeLengthOperation a) in
+             SOME ((ss ++ rs, r, ElabType (UintT 256)), n1 + 1)
+         | _ => NONE)
     | SrcKeccak256 _ _ e _ =>
         (case elab_expr ctx n e of
            SOME ((ss, a, vt), n1) =>
@@ -944,7 +964,8 @@ Definition elab_expr_def:
            SOME ((ss, vs), n1) =>
              (case abi_encoding n1 form vs of
                 SOME ((cs, op), n2) =>
-                  let ty = LocatedT MemoryLoc BytesT in
+                  let ty = LocatedT MemoryLoc
+                             (if form = AbiStringConcat then StringT else BytesT) in
                   let (es, r) = bind_value n2 ty op in
                   SOME ((ss ++ cs ++ es, r, ElabType ty), n2 + 1)
               | NONE => NONE)
@@ -1334,6 +1355,22 @@ Definition elab_assembly_references_def:
     | NONE => NONE)
 End
 
+(* Ordinary external-call lowering has already evaluated and coerced every
+ * operand; only its final operation belongs inside the catching boundary. *)
+Definition try_external_call_def:
+  try_external_call ss result =
+    case REVERSE ss of
+      DefineStmt x _ (ExternalCallOperation kind selector params rets target value args) :: pre =>
+        if result = BoundAtom x ∧ EVERY is_stored_scalar_type rets then
+          let types = BoolT :: rets ++ [LocatedT MemoryLoc BytesT] in
+          SOME (REVERSE pre ++
+            [DefineStmt x (ProductType (MAP SingleType types))
+              (TryExternalCallOperation kind selector params rets target value args)],
+            types)
+        else NONE
+    | _ => NONE
+End
+
 Definition elab_stmts_def:
   (elab_stmts ctx n [] = SOME (([], ctx), n)) ∧
   (elab_stmts ctx n (st :: ss) =
@@ -1354,6 +1391,35 @@ Definition elab_stmts_def:
   (elab_stmt ctx n (SrcExpressionStatement _ e) =
     case elab_expr ctx n e of
       SOME ((ss, _, _), n1) => SOME ((ss, ctx), n1)
+    | NONE => NONE) ∧
+  (elab_stmt ctx n (SrcTryStatement _ call _ ps body _ reason handler) =
+    case elab_expr ctx n call of
+      SOME ((ss, r, _), n1) =>
+        (case try_external_call ss r of
+           SOME (cs, types) =>
+             let (xs, values, n2) = tuple_components n1 r 0 types in
+             (case values of
+                (condition, _) :: rest =>
+                  (case DROP (LENGTH ps) rest of
+                     [failure] =>
+                       (case declare_values ctx n2 (MAP SOME ps)
+                          (TAKE (LENGTH ps) rest) of
+                     SOME (ds, ctx1, n3) =>
+                       (case elab_stmt ctx1 n3 body of
+                          SOME ((bs, _), n4) =>
+                            (case declare_values ctx n4 [SOME reason] [failure] of
+                               SOME (es, ctx2, n5) =>
+                                 (case elab_stmt ctx2 n5 handler of
+                                    SOME ((hs, _), n6) =>
+                                      SOME ((cs ++ xs ++
+                                        [IfStmt condition (ds ++ bs) (es ++ hs)], ctx), n6)
+                                  | NONE => NONE)
+                             | NONE => NONE)
+                        | NONE => NONE)
+                   | NONE => NONE)
+                   | _ => NONE)
+              | [] => NONE)
+         | NONE => NONE)
     | NONE => NONE) ∧
   (elab_stmt ctx n (SrcVariableDeclarationStatement _ _ [SOME v] NONE) =
     case variable_type v of
@@ -2231,6 +2297,8 @@ val () = cv_auto_trans return_defaults_def;
 val () = cv_auto_trans static_memory_returns_def;
 val () = cv_auto_trans flag_def;
 val () = cv_auto_trans set_flag_def;
+
+val () = cv_auto_trans try_external_call_def;
 
 val elab_stmts_pre_def = cv_auto_trans_pre_rec
   "elab_stmts_pre elab_stmt_pre elab_for_init_pre" elab_stmts_def (

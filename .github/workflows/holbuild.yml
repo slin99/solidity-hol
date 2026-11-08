@@ -5,11 +5,12 @@ on:
   pull_request:
   merge_group:
   push:
-    branches: [main]
+    branches: [main, bot/opus/solidity-e2e]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Only PR runs share a group; branch runs never cancel each other.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -96,9 +97,9 @@ jobs:
         env:
           TMPDIR: ${{ runner.temp }}
         run: >-
-          python3 tools/run_differential.py -j"$(nproc)" --allow-cached
+          /usr/bin/time -v python3 tools/run_differential.py -j2 --allow-cached
           --report-dir "$RUNNER_TEMP/differential-report"
-          -- --skip-checkpoints --skip-proof-steps
+          -- --max-heap 6000 --skip-checkpoints --skip-proof-steps
 
       - name: Upload differential report
         if: failure()

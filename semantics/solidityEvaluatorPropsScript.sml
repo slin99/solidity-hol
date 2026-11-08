@@ -12,11 +12,13 @@ Theorem eval_assembly_fuel_stable[local]:
   (eval_assembly n env code refs st gas).completion ≠ FuelExhausted ∧ n ≤ m ⇒
   eval_assembly m env code refs st gas = eval_assembly n env code refs st gas
 Proof
-  simp[eval_assembly_def] >> rw[] >> BasicProvers.TOP_CASE_TAC >> gvs[] >>
-  qmatch_goalsub_abbrev_tac ‘run_yul m code m0’ >>
-  Cases_on ‘(run_yul n code m0).completion = YulOutOfFuel’
+  simp[eval_assembly_def] >> rw[] >>
+  Cases_on ‘assembly_inputs env st refs’ >> gvs[] >>
+  rename1 ‘SOME p’ >> PairCases_on ‘p’ >> gvs[] >>
+  qmatch_goalsub_abbrev_tac ‘run_yul m c m0’ >>
+  Cases_on ‘(run_yul n c m0).completion = YulOutOfFuel’
   >- gvs[assembly_result_def, abrupt_result_def] >>
-  ‘run_yul m code m0 = run_yul n code m0’ by metis_tac[run_yul_fuel_stable] >>
+  ‘run_yul m c m0 = run_yul n c m0’ by metis_tac[run_yul_fuel_stable] >>
   simp[]
 QED
 
