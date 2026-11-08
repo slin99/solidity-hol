@@ -826,12 +826,16 @@ End
 
 (* Inline assembly. A block runs in the Yul evaluator on a machine built from
  * the source state: the world, the frame, a scope binding each referenced
- * declaration's Yul name to its word, and a fresh memory holding only the
- * free memory pointer. On normal exit the referenced locals are written back,
- * cleaned per type as the compiler cleans a value on every Solidity read;
- * writes to memory outside the scratch space [0, 0x40) fail closed, since the
- * source heap has no byte image. In a static frame, a block that names a
- * builtin changing the world fails closed, whether or not it would run it.
+ * declaration's Yul name to its word, and a memory holding each memory byte
+ * sequence (bytes, string) where the compiler keeps it: its length word at
+ * the object's address, then its bytes. Nothing else of the source heap has a
+ * byte image, so other memory reads 0, the free memory pointer included. On
+ * normal exit the referenced locals are written back, cleaned per type as the
+ * compiler cleans a value on every Solidity read, and each byte sequence's
+ * bytes are read back from memory; writes outside the scratch space
+ * [0, 0x40) and the byte sequences' data words fail closed, and so do writes
+ * to a length word. In a static frame, a block that names a builtin changing
+ * the world fails closed, whether or not it would run it.
  *
  * Known gap: source values carry no dirty bits, so a block reading a local
  * sees its clean word. The compiler's word for a bool local can be dirty: a
@@ -879,6 +883,16 @@ Definition assembly_reference_word_def:
         (case eval_atom st.scopes a of
            SOME (ScalarValue s) => assembly_word ty s
          | _ => NONE)
+    (* the shared empty byte sequence is the compiler's zero slot, 0x60 *)
+    | AssemblyMemory x ty =>
+        (case lookup_binding x st.scopes of
+           SOME b =>
+             (case b.binding_value of
+                ReferenceValue (MemoryReference (HeapId id) 0 _) =>
+                  if id = 0 then SOME 0x60
+                  else OPTION_MAP (λobj. obj.object_address) (FLOOKUP st.heap id)
+              | _ => NONE)
+         | NONE => NONE)
 End
 
 (* The words of a block's references: the locals' as the block's initial
@@ -953,9 +967,26 @@ Definition yul_substitute_stmt_def:
     (l, yul_substitute_stmts sub body) :: yul_substitute_cases sub cases)
 End
 
+(* m with the byte sequence objects with ids 1 to i written into memory. *)
+Definition assembly_project_def:
+  (assembly_project heap 0 (m : yul_machine) = SOME m) ∧
+  (assembly_project heap (SUC i) m =
+    case FLOOKUP heap (SUC i) of
+      SOME obj =>
+        if byte_sequence_type obj.object_type then
+          case heap_bytes obj 0 obj.object_length of
+            SOME bs =>
+              assembly_project heap i
+                (yul_memory_write m obj.object_address
+                   (word_to_bytes_be (n2w obj.object_length : bytes32) ++ bs))
+          | NONE => NONE
+        else assembly_project heap i m
+    | NONE => assembly_project heap i m)
+End
+
 Definition assembly_machine_def:
   assembly_machine (st : source_state) scope =
-    yul_mstore
+    assembly_project st.heap st.next_heap_id
       <| accounts := st.world.accounts; transient := st.world.transient;
          logs := st.world.logs; self_address := st.frame.self_address;
          caller_address := st.frame.sender_address;
@@ -964,13 +995,45 @@ Definition assembly_machine_def:
          immutables := FEMPTY; memory := FEMPTY; memory_size := 0;
          gas_limit := 0; scopes := [scope];
          transaction_parameters := st.frame.tx_params |>
-      0x40 (n2w (0x80 + st.memory_allocated) : bytes32)
 End
 
-(* Memory with the scratch space [0, 0x40) removed. *)
-Definition without_scratch_def:
-  without_scratch (mem : num |-> word8) =
-    FOLDR (λa mem. mem \\ a) mem (COUNT_LIST 64)
+(* The memory a block may change and still exit normally, as (start, length)
+ * ranges: the scratch space, and the data of each byte sequence object with
+ * id 1 to i in whole words (a 32-byte mstore at its last byte is in bounds),
+ * not its length word. *)
+Definition assembly_writable_def:
+  (assembly_writable heap 0 = [(0, 64)]) ∧
+  (assembly_writable heap (SUC i) =
+    case FLOOKUP heap (SUC i) of
+      SOME obj =>
+        if byte_sequence_type obj.object_type then
+          (obj.object_address + 32, 32 * ((obj.object_length + 31) DIV 32)) ::
+          assembly_writable heap i
+        else assembly_writable heap i
+    | NONE => assembly_writable heap i)
+End
+
+(* Memory with the ranges rs removed. *)
+Definition without_ranges_def:
+  (without_ranges [] (mem : num |-> word8) = mem) ∧
+  (without_ranges ((a, n) :: rs) mem =
+    without_ranges rs (FOLDR (λi mem. mem \\ (a + i)) mem (COUNT_LIST n)))
+End
+
+(* The heap with the bytes of each byte sequence object with id 1 to i read
+ * back from the block's final memory. *)
+Definition assembly_read_back_def:
+  (assembly_read_back heap 0 (m : yul_machine) = heap) ∧
+  (assembly_read_back heap (SUC i) m =
+    assembly_read_back
+      (case FLOOKUP heap (SUC i) of
+         SOME obj =>
+           if byte_sequence_type obj.object_type then
+             heap |+ (SUC i, obj with object_cells :=
+               byte_cells (yul_memory_read m (obj.object_address + 32)
+                             obj.object_length))
+           else heap
+       | NONE => heap) i m)
 End
 
 Definition assembly_world_def:
@@ -1007,14 +1070,17 @@ Definition assembly_result_def:
     let world = assembly_world r.machine in
     case r.completion of
       YulNormal =>
-        if without_scratch r.machine.memory ≠ without_scratch m0.memory then
+        let writable = assembly_writable st.heap st.next_heap_id in
+        if without_ranges writable r.machine.memory ≠
+           without_ranges writable m0.memory then
           abrupt_result
-            (InvalidCompletion "assembly wrote memory outside the scratch space")
+            (InvalidCompletion "assembly wrote memory outside the scratch space and byte sequence data")
             st gas
         else
           (case assembly_write_back refs st.scopes r.machine.scopes of
              SOME scopes =>
-               normal_result (st with <| world := world; scopes := scopes |>) gas
+               normal_result (st with <| world := world; scopes := scopes;
+                   heap := assembly_read_back st.heap st.next_heap_id r.machine |>) gas
            | NONE =>
                abrupt_result (InvalidCompletion "assembly write-back failed")
                  st gas)
@@ -1039,9 +1105,11 @@ Definition eval_assembly_def:
     case assembly_inputs env st refs of
       NONE => abrupt_result (InvalidCompletion "bad assembly reference") st gas
     | SOME (scope, literals) =>
-        let m0 = assembly_machine st scope in
-        assembly_result refs st m0
-          (run_yul n (yul_substitute_stmts literals code) m0) gas
+        case assembly_machine st scope of
+          NONE => abrupt_result (InvalidCompletion "bad memory object") st gas
+        | SOME m0 =>
+            assembly_result refs st m0
+              (run_yul n (yul_substitute_stmts literals code) m0) gas
 End
 
 (* Pieces of the recursive cases *)
@@ -1191,8 +1259,11 @@ val () = cv_auto_trans assembly_inputs_def;
 val () = cv_auto_trans yul_substitute_expr_def;
 val () = cv_auto_trans yul_unbind_def;
 val () = cv_auto_trans yul_substitute_stmt_def;
+val () = cv_auto_trans assembly_project_def;
 val () = cv_auto_trans assembly_machine_def;
-val () = cv_auto_trans without_scratch_def;
+val () = cv_auto_trans assembly_writable_def;
+val () = cv_auto_trans without_ranges_def;
+val () = cv_auto_trans assembly_read_back_def;
 val () = cv_auto_trans assembly_world_def;
 val () = cv_auto_trans assembly_write_one_def;
 val () = cv_auto_trans assembly_write_back_def;

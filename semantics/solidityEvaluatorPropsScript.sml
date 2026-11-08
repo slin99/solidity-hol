@@ -15,6 +15,7 @@ Proof
   simp[eval_assembly_def] >> rw[] >>
   Cases_on ‘assembly_inputs env st refs’ >> gvs[] >>
   rename1 ‘SOME p’ >> PairCases_on ‘p’ >> gvs[] >>
+  Cases_on ‘assembly_machine st p0’ >> gvs[] >>
   qmatch_goalsub_abbrev_tac ‘run_yul m c m0’ >>
   Cases_on ‘(run_yul n c m0).completion = YulOutOfFuel’
   >- gvs[assembly_result_def, abrupt_result_def] >>

@@ -930,15 +930,17 @@ Definition assembly_stmt_ok_def:
     assembly_stmts_ok bad body ∧ assembly_cases_ok bad cases)
 End
 
-(* The memory a block may touch. A block starts from a memory holding only
- * the free memory pointer, so it may read only what it wrote itself earlier
- * on the same path (not the free memory pointer, whose initial value the
- * compiler may raise to keep variables in memory); and a block that can exit
- * normally may write only the scratch space [0, 0x40), the one part of memory
- * the source keeps no contents for. Addresses and lengths are literals. A
- * read is covered by the mstore statements with literal addresses that come
- * before it in its statement list or an enclosing one; a block halts when its
- * last statement is return, revert or stop.
+(* The memory a block may touch, where its addresses are literals. A block
+ * starts from a memory holding the memory byte sequences (bytes and string)
+ * and nothing else, so at a literal address it may read only what it wrote
+ * itself earlier on the same path (not the free memory pointer, whose value
+ * the compiler may raise to keep variables in memory); and a block that can
+ * exit normally may write at a literal address only in the scratch space
+ * [0, 0x40). A read is covered by the mstore statements with literal
+ * addresses that come before it in its statement list or an enclosing one; a
+ * block halts when its last statement is return, revert or stop. An address
+ * the block computes (from a memory reference, say) is checked as the block
+ * runs instead (assembly_result), and a read of length zero touches nothing.
  *)
 Definition yul_lit_def:
   (yul_lit (YulLit (LitNumber w)) = SOME (w2n (w : bytes32))) ∧
@@ -959,17 +961,24 @@ End
 (* The bound keeps the check linear in the block's size. *)
 Definition memory_read_ok_def:
   memory_read_ok ws p l ⇔
-    case (yul_lit p, yul_lit l) of
-      (SOME a, SOME n) => n ≤ 32n * LENGTH ws ∧ memory_covered ws a n
-    | _ => F
+    yul_lit l = SOME 0 ∨
+    case yul_lit p of
+      NONE => T
+    | SOME a =>
+        case yul_lit l of
+          SOME n => n ≤ 32n * LENGTH ws ∧ memory_covered ws a n
+        | NONE => F
 End
 
 Definition memory_write_ok_def:
   memory_write_ok halts p l ⇔
     halts ∨
-    case (yul_lit p, l) of
-      (SOME a, SOME n) => a + n ≤ 64n
-    | _ => F
+    case yul_lit p of
+      NONE => T
+    | SOME a =>
+        case l of
+          SOME n => a + n ≤ 64n
+        | NONE => F
 End
 
 Definition builtin_memory_ok_def:
@@ -1072,6 +1081,40 @@ Definition assembly_reference_ok_def:
     | AssemblyOffset x => IS_SOME (lookup_state_variable env x)
     | AssemblyConstant a ty =>
         wf_core_atom env ctx (SingleType ty) a ∧ assembly_value_type ty
+    | AssemblyMemory x ty =>
+        ALOOKUP ctx.bindings x = SOME (SingleType (LocatedT MemoryLoc ty)) ∧
+        byte_sequence_type ty
+End
+
+(* The names of a block's memory references. The block reads each as a
+ * literal address, so it may not assign one; a Yul function's parameters and
+ * results may reuse such a name for its body. *)
+Definition assembly_memory_names_def:
+  (assembly_memory_names [] = []) ∧
+  (assembly_memory_names ((name, r) :: refs) =
+    case r of
+      AssemblyMemory _ _ => name :: assembly_memory_names refs
+    | _ => assembly_memory_names refs)
+End
+
+Definition assembly_assigns_ok_def:
+  (assembly_assign_ok xs (YulBlock ss) ⇔ assembly_assigns_ok xs ss) ∧
+  (assembly_assign_ok xs (YulFunction _ params results body) ⇔
+    assembly_assigns_ok (FILTER (λx. ¬MEM x (params ++ results)) xs) body) ∧
+  (assembly_assign_ok xs (YulAssign ys _) ⇔ EVERY (λy. ¬MEM y xs) ys) ∧
+  (assembly_assign_ok xs (YulIf _ body) ⇔ assembly_assigns_ok xs body) ∧
+  (assembly_assign_ok xs (YulSwitch _ cases default) ⇔
+    assembly_cases_assigns_ok xs cases ∧ assembly_assigns_ok xs default) ∧
+  (assembly_assign_ok xs (YulFor pre _ post body) ⇔
+    assembly_assigns_ok xs pre ∧ assembly_assigns_ok xs post ∧
+    assembly_assigns_ok xs body) ∧
+  (assembly_assign_ok xs _ ⇔ T) ∧
+  (assembly_assigns_ok xs [] ⇔ T) ∧
+  (assembly_assigns_ok xs (s :: ss) ⇔
+    assembly_assign_ok xs s ∧ assembly_assigns_ok xs ss) ∧
+  (assembly_cases_assigns_ok xs [] ⇔ T) ∧
+  (assembly_cases_assigns_ok xs ((_, body) :: cases) ⇔
+    assembly_assigns_ok xs body ∧ assembly_cases_assigns_ok xs cases)
 End
 
 Definition check_core_stmts_def:
@@ -1176,7 +1219,8 @@ Definition check_core_stmts_def:
   (check_core_stmts env ctx (AssemblyStmt code refs :: ss) =
     if assembly_stmts_ok assembly_unsupported code ∧ assembly_memory_ok code ∧
        ALL_DISTINCT (MAP FST refs) ∧
-       EVERY (assembly_reference_ok env ctx) (MAP SND refs)
+       EVERY (assembly_reference_ok env ctx) (MAP SND refs) ∧
+       assembly_assigns_ok (assembly_memory_names refs) code
     then check_core_stmts env ctx ss else NONE) ∧
   (check_core_stmts env ctx (_ :: _) = NONE)
 Termination
@@ -1430,6 +1474,8 @@ val () = cv_auto_trans block_halts_def;
 val () = cv_auto_trans assembly_memory_ok_def;
 val () = cv_auto_trans assembly_value_type_def;
 val () = cv_auto_trans assembly_reference_ok_def;
+val () = cv_auto_trans assembly_memory_names_def;
+val () = cv_auto_trans assembly_assigns_ok_def;
 val () = cv_auto_trans fresh_core_id_def;
 val () = cv_auto_trans bind_core_id_def;
 val () = cv_auto_trans capture_core_target_def;
