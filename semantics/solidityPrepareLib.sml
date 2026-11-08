@@ -264,8 +264,22 @@ fun add_elaboration_reasons unit =
     if null reasons then unit else mark_unsupported reasons unit
   end
 
+(* What elaborate_unit_reason reports for the unit as a whole when it
+ * rejects it (no contract, say), as lines. *)
+fun unit_reason_lines unit =
+  let
+    val result = cv_value (mk_comb (prim_mk_const
+      {Thy = "solidityElaborate", Name = "elaborate_unit_reason"}, unit))
+  in
+    if sumSyntax.is_inr result then
+      List.concat (map (String.fields (fn c => c = #"\n") o blocker_line)
+        (#1 (listSyntax.dest_list (#1 (sumSyntax.dest_inr result)))))
+    else []
+  end
+
 (* Every blocker of a unit that is rejected: the whole-unit checks', the
- * importer's in its functions, and what fails to elaborate. *)
+ * importer's in its functions, what fails to elaborate, and the unit's own
+ * elaboration blockers. *)
 fun rejection_lines unit =
   dedup
     (map blocker_line (#1 (listSyntax.dest_list
@@ -276,7 +290,8 @@ fun rejection_lines unit =
            else String.fields (fn c => c = #"\n")
                   (stringSyntax.fromHOLstring (optionSyntax.dest_some reason))
          end) (unit_function_terms unit)) @
-     List.concat (map #2 (elaboration_failures false unit)))
+     List.concat (map #2 (elaboration_failures false unit)) @
+     unit_reason_lines unit)
 
 fun rejection_message fallback unit () =
   case rejection_lines unit of
