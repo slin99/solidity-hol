@@ -2436,10 +2436,10 @@ Proof
   completeInduct_on ‘b’ >> rpt conj_tac >> rpt gen_tac >> disch_tac >>
   qpat_x_assum ‘!m. m < b ==> _’ (drule_then strip_assume_tac)
   >~ [‘elab_expr_pre ctx n e’] >-
-    (Cases_on ‘e’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
+    (simp_tac std_ss [Once elab_expr_pre_def] >> Cases_on ‘e’ >>
      simp[src_expr_distinct, src_expr_11, solidityImportTheory.src_expr_size_def])
   >~ [‘elab_location_pre ctx n e’] >-
-    (Cases_on ‘e’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
+    (simp_tac std_ss [Once elab_expr_pre_def] >> Cases_on ‘e’ >>
      simp[src_expr_distinct, src_expr_11, solidityImportTheory.src_expr_size_def])
   >~ [‘elab_args_pre ctx n order tys es’] >-
     (Cases_on ‘es’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
@@ -2502,8 +2502,9 @@ Theorem declare_values_pre[cv_pre,local]:
 Proof
   ho_match_mp_tac declare_values_ind >> rpt strip_tac >>
   simp[Once declare_values_pre_def] >> rw[] >> fs[] >>
-  (* the record update appears as a case on the context *)
-  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"]
+  (* a record update appears as a case on the context it updates *)
+  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"] >>
+  rpt (CASE_TAC >> gvs[fetch "-" "elab_ctx_fn_updates"])
 QED
 
 val () = cv_auto_trans return_atoms_def;
@@ -2542,8 +2543,9 @@ Theorem elab_stmts_pre[cv_pre,local]:
 Proof
   ho_match_mp_tac elab_stmts_ind >> rpt strip_tac >>
   simp[Once elab_stmts_pre_def, elab_expr_pre] >> rw[] >> fs[] >>
-  (* the record update appears as a case on the context *)
-  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"]
+  (* a record update appears as a case on the context it updates *)
+  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"] >>
+  rpt (CASE_TAC >> gvs[fetch "-" "elab_ctx_fn_updates"])
 QED
 
 val () = cv_auto_trans variable_binding_def;
@@ -2565,8 +2567,9 @@ Theorem elab_levels_pre[cv_pre,local]:
 Proof
   ho_match_mp_tac elab_levels_ind >> rpt strip_tac >>
   simp[Once elab_levels_pre_def] >> rw[] >> fs[] >>
-  (* the record update appears as a case on the context *)
-  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"]
+  (* a record update appears as a case on the context it updates *)
+  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"] >>
+  rpt (CASE_TAC >> gvs[fetch "-" "elab_ctx_fn_updates"])
 QED
 
 val () = cv_auto_trans elab_function_def;
