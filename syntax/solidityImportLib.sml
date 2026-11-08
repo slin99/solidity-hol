@@ -73,6 +73,72 @@ fun record name fields = TypeBase.mk_record (import_type name, fields)
 
 fun mk_bool b = if b then T else F
 
+(* The constant table gives the compiler's string s, read as what. *)
+fun decode v what table s =
+  case List.find (fn (k, _) => k = s) table of
+    SOME (_, tm) => tm
+  | NONE => fail (describe v ^ ": unsupported " ^ what ^ " " ^ s)
+
+fun constants thy table =
+  map (fn (s, name) => (s, prim_mk_const {Thy = thy, Name = name})) table
+
+val mutabilities = constants "solidityAST"
+  [("pure", "PureMut"), ("view", "ViewMut"), ("nonpayable", "NonpayableMut"),
+   ("payable", "PayableMut")]
+
+val payabilities = constants "solidityAST"
+  [("nonpayable", "NonpayableAddress"), ("payable", "PayableAddress")]
+
+val locations = constants "solidityAST"
+  [("storage", "StorageLoc"), ("memory", "MemoryLoc"), ("calldata", "CalldataLoc")]
+
+val function_kinds = constants "solidityImport"
+  [("function", "FunctionKind"), ("constructor", "ConstructorKind"),
+   ("receive", "ReceiveKind"), ("fallback", "FallbackKind")]
+
+val visibilities = constants "solidityImport"
+  [("public", "PublicVisibility"), ("external", "ExternalVisibility"),
+   ("internal", "InternalVisibility"), ("private", "PrivateVisibility")]
+
+val literal_kinds = constants "solidityImport"
+  [("number", "NumberLiteral"), ("bool", "BoolLiteral"), ("string", "StringLiteral"),
+   ("unicodeString", "UnicodeStringLiteral"), ("hexString", "HexStringLiteral")]
+
+val unary_operators = constants "solidityImport"
+  [("++", "SrcIncrement"), ("--", "SrcDecrement"), ("-", "SrcNegate"), ("!", "SrcNot"),
+   ("~", "SrcBitNot"), ("delete", "SrcDelete")]
+
+val binary_operators = constants "solidityImport"
+  [("+", "SrcAdd"), ("-", "SrcSub"), ("*", "SrcMul"), ("/", "SrcDiv"), ("%", "SrcMod"),
+   ("**", "SrcExp"), ("<<", "SrcShl"), (">>", "SrcShr"), ("&", "SrcBitAnd"),
+   ("|", "SrcBitOr"), ("^", "SrcBitXor"), ("==", "SrcEq"), ("!=", "SrcNe"),
+   ("<", "SrcLt"), ("<=", "SrcLe"), (">", "SrcGt"), (">=", "SrcGe"), ("&&", "SrcAnd"),
+   ("||", "SrcOr")]
+
+val binary_operator_ty = import_type "src_binary_operator"
+
+(* "=" or a compound assignment "op=" *)
+val assignment_operators =
+  ("=", optionSyntax.mk_none binary_operator_ty) ::
+  map (fn (s, tm) => (s ^ "=", optionSyntax.mk_some tm))
+      (List.filter (fn (s, _) => List.exists (fn k => k = s)
+                      ["+", "-", "*", "/", "%", "<<", ">>", "&", "|", "^"])
+         binary_operators)
+
+(* The declaration ids the pinned compiler gives its built-ins. *)
+val abi_id : IntInf.int = ~1
+val addmod_id : IntInf.int = ~2
+val assert_id : IntInf.int = ~3
+val block_id : IntInf.int = ~4
+val ecrecover_id : IntInf.int = ~6
+val keccak256_id : IntInf.int = ~8
+val msg_id : IntInf.int = ~15
+val mulmod_id : IntInf.int = ~16
+val require_id : IntInf.int = ~18
+val revert_id : IntInf.int = ~19
+val tx_id : IntInf.int = ~26
+val this_id : IntInf.int = ~28
+
 (* The bytes of a hex string without prefix. *)
 fun hex_bytes v hex =
   let
@@ -96,22 +162,17 @@ fun mk_bytes v hex =
  * pinned compiler. *)
 fun environment_field v base member =
   let
-    val name =
-      case (IntInf.toInt base, member) of
-        (~15, "sender") => "MsgSender"
-      | (~15, "value") => "MsgValue"
-      | (~15, "data") => "MsgData"
-      | (~26, "origin") => "TxOrigin"
-      | (~26, "gasprice") => "TxGasPrice"
-      | (~4, "number") => "BlockNumber"
-      | (~4, "timestamp") => "BlockTimestamp"
-      | (~4, "chainid") => "BlockChainId"
-      | (~4, "coinbase") => "BlockCoinbase"
-      | (~4, "basefee") => "BlockBaseFee"
-      | (~4, "gaslimit") => "BlockGasLimit"
-      | _ => fail (describe v ^ ": unsupported built-in member " ^ member)
+    val fields =
+      [((msg_id, "sender"), "MsgSender"), ((msg_id, "value"), "MsgValue"),
+       ((msg_id, "data"), "MsgData"), ((tx_id, "origin"), "TxOrigin"),
+       ((tx_id, "gasprice"), "TxGasPrice"), ((block_id, "number"), "BlockNumber"),
+       ((block_id, "timestamp"), "BlockTimestamp"), ((block_id, "chainid"), "BlockChainId"),
+       ((block_id, "coinbase"), "BlockCoinbase"), ((block_id, "basefee"), "BlockBaseFee"),
+       ((block_id, "gaslimit"), "BlockGasLimit")]
   in
-    prim_mk_const {Thy = "solidityCore", Name = name}
+    case List.find (fn (k, _) => k = (base, member)) fields of
+      SOME (_, name) => prim_mk_const {Thy = "solidityCore", Name = name}
+    | NONE => fail (describe v ^ ": unsupported built-in member " ^ member)
   end
 
 fun builtin_identifier v id =
@@ -173,7 +234,8 @@ fun type_id v = mk_str (normalize_type_id (raw_type_id v))
 
 fun address_type_name v =
   con "SrcElementaryTypeName"
-    [info v, mk_str "address", mk_opt stringSyntax.string_ty (SOME (mk_str "nonpayable"))]
+    [info v, mk_str "address",
+     optionSyntax.mk_some (decode v "address mutability" payabilities "nonpayable")]
 
 (* Type names *)
 
@@ -204,7 +266,9 @@ fun type_name v = within v (fn v =>
           | NONE => if name = "address" then SOME "nonpayable" else NONE
       in
         con "SrcElementaryTypeName"
-          [info v, mk_str name, mk_opt stringSyntax.string_ty (Option.map mk_str mutability)]
+          [info v, mk_str name,
+           mk_opt (mk_thy_type {Thy = "solidityAST", Tyop = "address_payability", Args = []})
+             (Option.map (decode v "address mutability" payabilities) mutability)]
       end
   | "ArrayTypeName" =>
       (case optional_field v "length" of
@@ -233,7 +297,10 @@ fun variable_record v =
      ("var_scope", mk_num (int_field v "scope")),
      ("var_type_name", type_name (field v "typeName")),
      ("var_type_id", type_id v),
-     ("var_location", mk_str (string_field v "storageLocation"))]
+     ("var_location",
+      case string_field v "storageLocation" of
+        "default" => mk_opt (mk_thy_type {Thy = "solidityAST", Tyop = "data_location", Args = []}) NONE
+      | l => optionSyntax.mk_some (decode v "storage location" locations l))]
 
 (* A local, parameter or return variable, or, given state, a state variable
  * or an immutable. *)
@@ -289,6 +356,15 @@ fun is_external_call callee =
   node_type callee = "MemberAccess" andalso
   String.isPrefix "t_function_external_"
     (string_field (field callee "typeDescriptions") "typeIdentifier")
+
+(* a.staticcall, as a callee: the address member, not a function attached to
+ * addresses by using for. *)
+fun is_bare_staticcall callee =
+  node_type callee = "MemberAccess" andalso
+  string_field callee "memberName" = "staticcall" andalso
+  not (isSome (optional_field callee "referencedDeclaration")) andalso
+  List.exists (fn t => t = raw_type_id (field callee "expression"))
+    ["t_address", "t_address_payable"]
 
 (* bytes.concat or string.concat, as a callee: kind is "bytes" or "string". *)
 fun is_concat kind callee =
@@ -404,7 +480,7 @@ fun unevaluated_receiver r =
                   String.isPrefix "t_module_" (raw_type_id r)
   in
     case node_type r of
-      "Identifier" => int_field r "referencedDeclaration" = ~28 orelse named
+      "Identifier" => int_field r "referencedDeclaration" = this_id orelse named
     | "MemberAccess" => named andalso unevaluated_receiver (field r "expression")
     | _ => false
   end
@@ -434,7 +510,7 @@ fun selector_bytes v base =
     val () = require v (node_type d <> "VariableDeclaration" orelse
                         (node_type base = "MemberAccess" andalso
                          node_type (field base "expression") = "Identifier" andalso
-                         int_field (field base "expression") "referencedDeclaration" = ~28))
+                         int_field (field base "expression") "referencedDeclaration" = this_id))
                "selectors of function values are not supported"
     val key =
       case node_type d of
@@ -501,7 +577,7 @@ fun copies_receiver v =
 fun expr v = within v (fn v =>
   case node_type v of
     "Identifier" =>
-      if builtin_identifier v ~28 then
+      if builtin_identifier v this_id then
         (* this, the contract's own address *)
         con "SrcEnvironment"
           [info v, prim_mk_const {Thy = "solidityCore", Name = "SelfAddress"},
@@ -582,7 +658,7 @@ fun expr v = within v (fn v =>
       (require v (not (isSome (optional_field v "subdenomination")))
          "literal subdenominations are not supported";
        con "SrcLiteral"
-         [info v, mk_str (string_field v "kind"),
+         [info v, decode v "literal kind" literal_kinds (string_field v "kind"),
           mk_str (if List.exists (fn k => k = string_field v "kind")
                        ["string", "unicodeString", "hexString"] then
                     String.implode
@@ -590,12 +666,12 @@ fun expr v = within v (fn v =>
                   else string_field v "value"), type_id v])
   | "UnaryOperation" =>
       con "SrcUnaryOperation"
-        [info v, mk_str (string_field v "operator"),
+        [info v, decode v "unary operator" unary_operators (string_field v "operator"),
          (if bool_field v "prefix" then T else F),
          expr (field v "subExpression"), type_id v]
   | "BinaryOperation" =>
       con "SrcBinaryOperation"
-        [info v, mk_str (string_field v "operator"),
+        [info v, decode v "binary operator" binary_operators (string_field v "operator"),
          expr (field v "leftExpression"), expr (field v "rightExpression"),
          mk_str (normalize_type_id (string_field (field v "commonType") "typeIdentifier")),
          type_id v]
@@ -605,7 +681,7 @@ fun expr v = within v (fn v =>
          expr (field v "falseExpression"), type_id v]
   | "Assignment" =>
       con "SrcAssignment"
-        [info v, mk_str (string_field v "operator"),
+        [info v, decode v "assignment operator" assignment_operators (string_field v "operator"),
          expr (field v "leftHandSide"), expr (field v "rightHandSide"),
          type_id v]
   | "IndexAccess" =>
@@ -632,7 +708,7 @@ fun expr v = within v (fn v =>
         val abi_member =
           node_type callee = "MemberAccess" andalso
           node_type (field callee "expression") = "Identifier" andalso
-          int_field (field callee "expression") "referencedDeclaration" = ~1
+          int_field (field callee "expression") "referencedDeclaration" = abi_id
         val abi_decode = abi_member andalso string_field callee "memberName" = "decode"
         (* abi.decode's second argument names types, which abi_decode reads;
          * abi.encodeCall reads its arguments itself *)
@@ -652,28 +728,33 @@ fun expr v = within v (fn v =>
                node_type callee = "FunctionCallOptions" then
               external_call v callee args
             else if node_type callee = "Identifier" andalso
-               int_field callee "referencedDeclaration" = ~8 then
+               int_field callee "referencedDeclaration" = keccak256_id then
               (positional ();
                require v (length args = 1) "keccak256 takes one argument";
                con "SrcKeccak256" [info v, info callee, hd args, type_id v])
             else if node_type callee = "Identifier" andalso
-               int_field callee "referencedDeclaration" = ~6 then
+               int_field callee "referencedDeclaration" = ecrecover_id then
               (positional ();
                require v (length args = 4) "ecrecover takes four arguments";
                con "SrcEcrecover"
                  [info v, info callee, listSyntax.mk_list (args, expr_ty), type_id v])
+            else if is_bare_staticcall callee then
+              (positional ();
+               require v (length args = 1) "staticcall takes one argument";
+               con "SrcStaticCall"
+                 [info v, info callee, expr (field callee "expression"), hd args, type_id v])
             else if abi_decode then
               (positional (); abi_decode_call v callee args)
             else if node_type callee = "Identifier" andalso
-               (int_field callee "referencedDeclaration" = ~2 orelse
-                int_field callee "referencedDeclaration" = ~16) then
+               (int_field callee "referencedDeclaration" = addmod_id orelse
+                int_field callee "referencedDeclaration" = mulmod_id) then
               (positional ();
                require v (length args = 3) "addmod and mulmod take three arguments";
                con "SrcModular"
                  [info v, info callee,
                   prim_mk_const
                     {Thy = "solidityCore",
-                     Name = if int_field callee "referencedDeclaration" = ~2
+                     Name = if int_field callee "referencedDeclaration" = addmod_id
                             then "AddModOp" else "MulModOp"},
                   listSyntax.mk_list (args, expr_ty), type_id v])
             else if is_concat "bytes" callee orelse is_concat "string" callee then
@@ -690,9 +771,9 @@ fun expr v = within v (fn v =>
               let
                 val () = positional ()
                 val id = int_field callee "referencedDeclaration"
-                val builtin = if id = ~18 then "RequireBuiltin"
-                              else if id = ~3 then "AssertBuiltin"
-                              else if id = ~19 then "RevertBuiltin"
+                val builtin = if id = require_id then "RequireBuiltin"
+                              else if id = assert_id then "AssertBuiltin"
+                              else if id = revert_id then "RevertBuiltin"
                               else fail (describe callee ^ ": unsupported built-in declaration " ^
                                          IntInf.toString id)
                 val (condition, message) =
@@ -913,7 +994,7 @@ and external_function v = within v (fn v =>
   (expect v "FunctionDefinition";
    record "src_external"
      [("ext_selector", mk_bytes v (string_field v "functionSelector")),
-      ("ext_mutability", mk_str (string_field v "stateMutability")),
+      ("ext_mutability", decode v "state mutability" mutabilities (string_field v "stateMutability")),
       ("ext_parameters", #2 (parameter_list (field v "parameters"))),
       ("ext_returns", #2 (parameter_list (field v "returnParameters")))]))
 
@@ -1120,7 +1201,9 @@ val failed_modifiers : (IntInf.int * string) list ref = ref []
 (* A function whose modifier invocations or body fail to import is
  * unsupported, with the error as its reason: it keeps its header, so that
  * calls, overrides and super calls resolve to it, with no modifiers and an
- * empty body. Its header failing still fails the import. *)
+ * empty body. Its header failing still fails the import. A fallback with
+ * parameters or returns is unsupported likewise: the core's fallback takes
+ * neither. *)
 fun function v = within v (fn v =>
   let
     val () = super_calls := []
@@ -1164,21 +1247,22 @@ fun function v = within v (fn v =>
        ([], con "SrcBlock" [info (field v "body"), listSyntax.mk_nil stmt_ty],
         SOME reason))
     val (modifiers, body, reason) =
+      if string_field v "kind" = "fallback" andalso
+         not (listSyntax.is_nil params andalso listSyntax.is_nil returns)
+      then unsupported "fallback with parameters or returns"
+      else
       case List.mapPartial failed_invocation invocations of
         (_, r) :: _ => unsupported r
       | [] => import_body () handle ImportError r => unsupported r
     val supers = !super_calls
   in
     expect v "FunctionDefinition";
-    require v (List.exists (fn k => k = string_field v "kind")
-                 ["function", "receive", "fallback", "constructor"])
-      ("unsupported function kind " ^ string_field v "kind");
     record "src_function"
       [("fn_info", info v), ("fn_name", mk_str (string_field v "name")),
        ("fn_scope", mk_num (int_field v "scope")),
-       ("fn_kind", mk_str (string_field v "kind")),
-       ("fn_visibility", mk_str (string_field v "visibility")),
-       ("fn_mutability", mk_str (string_field v "stateMutability")),
+       ("fn_kind", decode v "function kind" function_kinds (string_field v "kind")),
+       ("fn_visibility", decode v "visibility" visibilities (string_field v "visibility")),
+       ("fn_mutability", decode v "state mutability" mutabilities (string_field v "stateMutability")),
        ("fn_selector",
         mk_opt (listSyntax.mk_list_type (wordsSyntax.mk_int_word_type 8))
           (Option.map (mk_bytes v o JSONUtil.asString)

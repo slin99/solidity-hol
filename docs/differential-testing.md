@@ -143,8 +143,8 @@ program the source elaborates to, the other the bytecode solc recorded. The
 third run closes that gap, and it is the hinge the roadmap turns on — a
 disagreement between the compiler's own IR and the bytecode compiled from it
 is invisible to the two-sided comparison. `tools/run_yul_differential.py`
-compiles the same sources with the pinned compiler, imports the runtime Yul it
-emitted, and executes that in the Yul semantics.
+compiles the same sources with the pinned compiler and executes the imported
+runtime or creation object in the Yul semantics.
 
 It runs three stages separately, because they are three different programs:
 `irAst`, the code generator's output; the `irOptimizedAst` of that same
@@ -167,6 +167,16 @@ address, so that a case calling back into its own address runs the bytecode a
 real transaction would (`Caller.bumpSelf`). A message call a Yul frame makes is
 Verifereum's, through the same `run_external_call` the source evaluator's
 high-level calls use; `docs/yul-call-design.md` says how.
+
+A deployment executes the top-level creation code at the created address, with
+empty calldata and the encoded constructor arguments appended to the stage's
+actual initcode. Named object sizes and offsets come from the initcode and its
+runtime suffix; layouts without that suffix are rejected. `codecopy` reads those
+bytes, and `setimmutable` patches the copied runtime at its emitted offsets.
+The returned bytes must match that runtime with its immutable patches. The
+comparison then observes the immutable words, complete storage and logs, just
+as the source/bytecode deployment comparison does. Unsupported object names and
+layouts remain failures, including when the runtime object itself was admitted.
 
 `delegatecall` is not implemented and the dialect does not name it, so a stage
 that uses one is rejected at import rather than run wrongly.

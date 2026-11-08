@@ -50,9 +50,37 @@ Datatype:
   node_info = <| node_id : num; node_location : src_location |>
 End
 
+(* The compiler's kinds and operators, decoded once by the importer. *)
+Datatype:
+  src_function_kind = FunctionKind | ConstructorKind | ReceiveKind | FallbackKind
+End
+
+Datatype:
+  src_visibility
+  = PublicVisibility | ExternalVisibility | InternalVisibility | PrivateVisibility
+End
+
+Datatype:
+  literal_kind
+  = NumberLiteral | BoolLiteral | StringLiteral | UnicodeStringLiteral
+  | HexStringLiteral
+End
+
+Datatype:
+  src_unary_operator
+  = SrcIncrement | SrcDecrement | SrcNegate | SrcNot | SrcBitNot | SrcDelete
+End
+
+Datatype:
+  src_binary_operator
+  = SrcAdd | SrcSub | SrcMul | SrcDiv | SrcMod | SrcExp | SrcShl | SrcShr
+  | SrcBitAnd | SrcBitOr | SrcBitXor | SrcEq | SrcNe | SrcLt | SrcLe | SrcGt
+  | SrcGe | SrcAnd | SrcOr
+End
+
 (* ElementaryTypeName: name and, for addresses, stateMutability. *)
 Datatype:
-  src_type_name = SrcElementaryTypeName node_info string (string option)
+  src_type_name = SrcElementaryTypeName node_info string (address_payability option)
                 | SrcArrayTypeName node_info src_type_name num
                 | SrcDynamicArrayTypeName node_info src_type_name
   | SrcMappingTypeName node_info src_type_name src_type_name
@@ -67,7 +95,7 @@ Datatype:
     var_scope : num;
     var_type_name : src_type_name;
     var_type_id : string;
-    var_location : string
+    var_location : data_location option
   |>
 End
 
@@ -76,7 +104,8 @@ End
  * Literal: kind, value.
  * UnaryOperation: operator, prefix, operand.
  * BinaryOperation: operator, operands, commonType.
- * Assignment: operator, left and right hand sides.
+ * Assignment: the operator of a compound assignment, left and right hand
+ * sides.
  * TupleExpression: components, NONE for a hole.
  * FunctionCall (kind functionCall): callee, positional arguments.
  * SuperCall (super.f(args)): the declaration of f the compiler resolved
@@ -99,7 +128,7 @@ End
 Datatype:
   src_external = <|
     ext_selector : byte list;
-    ext_mutability : string;
+    ext_mutability : state_mutability;
     ext_parameters : src_variable list;
     ext_returns : src_variable list
   |>
@@ -130,11 +159,11 @@ Datatype:
   | SrcArrayLength node_info src_expr string
   | SrcMemberAccess node_info src_expr num string
   | SrcArrayMember node_info string src_expr string
-  | SrcLiteral node_info string string string
-  | SrcUnaryOperation node_info string bool src_expr string
-  | SrcBinaryOperation node_info string src_expr src_expr string string
+  | SrcLiteral node_info literal_kind string string
+  | SrcUnaryOperation node_info src_unary_operator bool src_expr string
+  | SrcBinaryOperation node_info src_binary_operator src_expr src_expr string string
   | SrcConditional node_info src_expr src_expr src_expr string
-  | SrcAssignment node_info string src_expr src_expr string
+  | SrcAssignment node_info (src_binary_operator option) src_expr src_expr string
   | SrcIndexAccess node_info src_expr src_expr string
   | SrcTupleExpression node_info (src_expr option list) string
   | SrcFunctionCall node_info src_expr (src_expr list) (num list) string
@@ -154,6 +183,7 @@ Datatype:
   | SrcEcrecover node_info node_info (src_expr list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
   | SrcAbiDecode node_info node_info src_expr (src_type_name list) string
+  | SrcStaticCall node_info node_info src_expr src_expr string
 End
 
 (* VariableDeclarationStatement: assignments, declarations (NONE for a hole),
@@ -222,9 +252,9 @@ Datatype:
     fn_info : node_info;
     fn_name : string;
     fn_scope : num;
-    fn_kind : string;
-    fn_visibility : string;
-    fn_mutability : string;
+    fn_kind : src_function_kind;
+    fn_visibility : src_visibility;
+    fn_mutability : state_mutability;
     fn_selector : byte list option;
     fn_base_functions : num list;
     fn_parameters_id : num;
@@ -347,10 +377,7 @@ End
 Definition normalize_type_name_def:
   (normalize_type_name (SrcElementaryTypeName _ name mutability) =
     case elementary_type name of
-      SOME (AddressT _) =>
-        if mutability = SOME "nonpayable" then SOME (AddressT NonpayableAddress)
-        else if mutability = SOME "payable" then SOME (AddressT PayableAddress)
-        else NONE
+      SOME (AddressT _) => OPTION_MAP AddressT mutability
     | SOME ty => if mutability = NONE then SOME ty else NONE
     | NONE => NONE) ∧
   (normalize_type_name (SrcArrayTypeName _ element n) =
@@ -762,17 +789,15 @@ Definition variable_type_def:
     case normalize_type_name v.var_type_name of
       SOME ty =>
         if byte_sequence_type ty ∨
-           (v.var_location ≠ "default" ∧ case ty of ArrayT _ _ => T | _ => F) then
-          case (if v.var_location = "memory" then SOME MemoryLoc
-                else if v.var_location = "calldata" then SOME CalldataLoc
-                else if v.var_location = "storage" then SOME StorageLoc else NONE) of
+           (IS_SOME v.var_location ∧ case ty of ArrayT _ _ => T | _ => F) then
+          case v.var_location of
             SOME loc =>
               if located_value_type (LocatedT loc ty) ∧
                  (loc = StorageLoc ⇒ byte_sequence_type ty) ∧
                  source_type_matches (LocatedT loc ty) v.var_type_id then
                 SOME (LocatedT loc ty) else NONE
           | NONE => NONE
-        else if v.var_location = "default" ∧ source_type_matches ty v.var_type_id
+        else if v.var_location = NONE ∧ source_type_matches ty v.var_type_id
         then SOME ty else NONE
     | NONE => NONE
 End
@@ -793,7 +818,7 @@ Definition event_variable_type_def:
     case normalize_type_name v.var_type_name of
       SOME ty =>
         if byte_sequence_type ty then
-          if v.var_location = "default" ∧
+          if v.var_location = NONE ∧
              source_type_matches (LocatedT MemoryLoc ty) v.var_type_id then
             SOME (LocatedT MemoryLoc ty) else NONE
         else variable_type v
@@ -808,7 +833,7 @@ Definition field_variable_type_def:
       SOME ty =>
         let suffix = case ty of ArrayT _ _ => "_ptr" | StructT _ => "_ptr"
                             | BytesT => "_ptr" | StringT => "_ptr" | _ => "" in
-        if v.var_location = "default" ∧
+        if v.var_location = NONE ∧
            canonical_storage_identifier 0 0 v.var_type_id =
              storage_type_identifier ty ++ suffix
         then SOME ty else NONE
@@ -890,6 +915,8 @@ Definition expr_ids_def:
     info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcAbiEncode info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
+  (expr_ids (SrcStaticCall info callee target data _) =
+    info.node_id :: callee.node_id :: expr_ids target ++ expr_ids data) ∧
   (expr_ids (SrcAbiDecode info callee e tns _) =
     info.node_id :: callee.node_id :: expr_ids e ++ FLAT (MAP type_name_ids tns)) ∧
   (expr_ids (SrcExternalCall info _ _ operands _ _) =
@@ -980,25 +1007,6 @@ End
 
 (* Checking *)
 
-Definition unary_operator_ok_def:
-  unary_operator_ok op ⇔
-    op = "++" ∨ op = "--" ∨ op = "-" ∨ op = "!" ∨ op = "~"
-End
-
-Definition binary_operator_ok_def:
-  binary_operator_ok op ⇔
-    op = "+" ∨ op = "-" ∨ op = "*" ∨ op = "/" ∨ op = "%" ∨ op = "**" ∨
-    op = "<<" ∨ op = ">>" ∨ op = "&" ∨ op = "|" ∨ op = "^" ∨ op = "==" ∨
-    op = "!=" ∨ op = "<" ∨ op = "<=" ∨ op = ">" ∨ op = ">=" ∨ op = "&&" ∨
-    op = "||"
-End
-
-Definition assignment_operator_ok_def:
-  assignment_operator_ok op ⇔
-    op = "=" ∨ op = "+=" ∨ op = "-=" ∨ op = "*=" ∨ op = "/=" ∨ op = "%=" ∨
-    op = "<<=" ∨ op = ">>=" ∨ op = "&=" ∨ op = "|=" ∨ op = "^="
-End
-
 (* The members of the struct with node id id. *)
 Definition source_struct_members_def:
   source_struct_members structs id =
@@ -1019,7 +1027,7 @@ End
  * Dynamic strings are a later runtime increment. *)
 Definition literal_message_def:
   (literal_message (SrcLiteral _ kind value tid) =
-    if (kind = "string" ∨ kind = "unicodeString" ∨ kind = "hexString") ∧
+    if kind ≠ NumberLiteral ∧ kind ≠ BoolLiteral ∧
        isPREFIX "t_stringliteral_" tid
     then SOME value else NONE) ∧
   (literal_message _ = NONE)
@@ -1092,7 +1100,7 @@ Definition state_variable_def:
     case normalize_type_name v.var_type_name of
       SOME ty =>
         if byte_sequence_type ty then
-          if v.var_location = "default" ∧ source_type_matches ty v.var_type_id then
+          if v.var_location = NONE ∧ source_type_matches ty v.var_type_id then
             SOME (v.var_info.node_id, ty) else NONE
         else scoped_variable v.var_scope v
     | NONE => NONE
@@ -1102,7 +1110,7 @@ End
  * type its references have: byte sequences are in memory. *)
 Definition constant_variable_def:
   constant_variable bases (v : src_variable) =
-    if ¬MEM v.var_scope bases ∨ v.var_location ≠ "default" then NONE else
+    if ¬MEM v.var_scope bases ∨ IS_SOME v.var_location then NONE else
     case normalize_type_name v.var_type_name of
       SOME ty =>
         let ty' = if byte_sequence_type ty then LocatedT MemoryLoc ty else ty in
@@ -1178,7 +1186,7 @@ Definition super_target_def:
   (super_target fs (d : src_function) [] = NONE) ∧
   (super_target fs d (x :: xs) =
     case FILTER (λ(g : src_function).
-                   g.fn_scope = x ∧ g.fn_kind = "function" ∧
+                   g.fn_scope = x ∧ g.fn_kind = FunctionKind ∧
                    g.fn_name = d.fn_name ∧
                    MAP variable_type g.fn_parameters =
                    MAP variable_type d.fn_parameters) fs of
@@ -1235,7 +1243,7 @@ End
 Definition contract_constructor_def:
   (contract_constructor x [] = NONE) ∧
   (contract_constructor x ((f : src_function) :: fs) =
-    if f.fn_kind = "constructor" ∧ f.fn_scope = x then SOME f
+    if f.fn_kind = ConstructorKind ∧ f.fn_scope = x then SOME f
     else contract_constructor x fs)
 End
 
@@ -1302,10 +1310,6 @@ End
 Definition function_header_ok_def:
   function_header_ok bases (f : src_function) ⇔
     MEM f.fn_scope bases ∧
-    (f.fn_kind = "function" ∨ f.fn_kind = "receive" ∨ f.fn_kind = "fallback" ∨
-     f.fn_kind = "constructor") ∧
-    (f.fn_mutability = "pure" ∨ f.fn_mutability = "view" ∨
-     f.fn_mutability = "nonpayable" ∨ f.fn_mutability = "payable") ∧
     IS_SOME (all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_parameters)) ∧
     IS_SOME (all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_returns))
 End
@@ -1370,8 +1374,9 @@ Definition check_contract_def:
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
     EVERY (function_header_ok c.contract_bases)
       (checked_functions c.contract_functions c.contract_bases) ∧
-    EVERY (λf. f.fn_kind = "function" ∧
-               (f.fn_visibility = "internal" ∨ f.fn_visibility = "private") ∧
+    EVERY (λf. f.fn_kind = FunctionKind ∧
+               (f.fn_visibility = InternalVisibility ∨
+                f.fn_visibility = PrivateVisibility) ∧
                function_header_ok c.contract_libraries f)
       c.contract_library_functions ∧
     EVERY modifier_header_ok c.contract_modifiers ∧

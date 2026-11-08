@@ -525,6 +525,15 @@ def is_external(node: dict[str, Any]) -> bool:
             and node["typeDescriptions"].get("typeIdentifier", "").startswith("t_function_external_"))
 
 
+def is_bare_staticcall(node: dict[str, Any]) -> bool:
+    """Whether a callee is a.staticcall, the address member, not a function
+    attached to addresses."""
+    return (node["nodeType"] == "MemberAccess" and node["memberName"] == "staticcall"
+            and node.get("referencedDeclaration") is None
+            and node["expression"]["typeDescriptions"].get("typeIdentifier")
+            in ("t_address", "t_address_payable"))
+
+
 def is_type_call(node: dict[str, Any]) -> bool:
     """Whether a node is type(T), which the importer reads with its member."""
     return (node["nodeType"] == "FunctionCall" and node["expression"]["nodeType"] == "Identifier"
@@ -603,6 +612,8 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False,
     elif kind == "VariableDeclaration":
         if node.get("overrides"):
             found.append("overriding state variables")
+        if node["storageLocation"] == "transient":
+            found.append("transient storage")
         if node["constant"] and not (
                 node.get("stateVariable") and node.get("value") is not None
                 and CONSTANT_TYPE.fullmatch(node["typeDescriptions"].get("typeIdentifier") or "")):
@@ -832,9 +843,8 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
             found.append(type_feature(type_identifier))
         if kind == "VariableDeclaration":
             location = node["storageLocation"]
-            if location == "transient":
-                found.append("transient storage")
-            elif (location not in ("default", "memory") and not BYTE_SEQUENCE.fullmatch(type_identifier)
+            # the importer rejects transient storage
+            if (location not in ("default", "memory", "transient") and not BYTE_SEQUENCE.fullmatch(type_identifier)
                   and not (location == "calldata" and located_array(type_identifier))):
                 found.append("local reference bindings")
             elif location == "default" and located_array(type_identifier):
@@ -1559,6 +1569,14 @@ def special_forms(reached: dict[int, dict[str, Any]],
                         "typeDescriptions"].get("typeIdentifier", "").startswith("t_function_error")
                     block(node, "require with a custom error" if error else "messages that are not literals",
                           "elaboration")
+            elif is_bare_staticcall(callee):
+                # a.staticcall(data): only of memory bytes
+                unread.add(callee["id"])
+                arguments = node["arguments"]
+                if len(arguments) != 1 or node.get("names"):
+                    block(node, "address members (balance, call, transfer, …)", "import")
+                elif arguments[0]["typeDescriptions"].get("typeIdentifier") != "t_bytes_memory_ptr":
+                    block(node, "address members (balance, call, transfer, …)", "elaboration")
         elif (kind == "FunctionCall" and node["kind"] == "typeConversion"
               and node["expression"]["typeDescriptions"].get("typeIdentifier", "").startswith(
                   ("t_type$_t_contract$_", "t_type$_t_enum$_"))):

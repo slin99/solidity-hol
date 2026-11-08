@@ -301,6 +301,18 @@ encoding, or a word that is not a value of its type, reverts with no data, and
 data after the encoding is ignored. It allocates nothing. Data in calldata or
 storage, and types other than elementary ones, are rejected.
 
+`a.staticcall(data)`, with `a` an address and `data` a memory `bytes`,
+evaluates `a`, then `data`, and makes a static call to `a` with the bytes of
+`data` as its input, giving the success flag and the return data. The source
+does not track gas: the callee gets the same fixed budget a high-level call
+gives it (`external_call_gas`), where the compiled code forwards all but a 64th
+of what is left. A failed call, the callee's revert included, gives
+`false` and leaves the caller's state as it was; a call to an address without
+code succeeds with no data. Return data is copied into a new memory `bytes`,
+allocated as the compiler allocates it, and no return data gives the shared
+empty `bytes`, allocating nothing. Data in calldata, storage or a literal, gas
+options, `call` and `delegatecall` are rejected.
+
 `bytes.concat(...)` uses packed encoding of its byte sequences, fixed-size bytes
 and literals. `string.concat(...)` concatenates strings and string literals.
 Both allocate a fresh memory object, with the corresponding `bytes` or `string`
@@ -413,7 +425,14 @@ initial corpus, so transient layout remains unvalidated.
 `syntax/solidityImportLib.sml` imports it from an exporter artifact, failing
 closed: an unknown node type, a missing required field or a construct outside
 the admitted subset below is an import error (for a function body, the
-function is kept unsupported; see Partial admission).
+function is kept unsupported; see Partial admission). The importer decodes
+the compiler's string-valued kinds once, into datatypes: function kinds
+(`function`, `receive`, `fallback`, `constructor`; free functions and others
+are import errors), visibilities, state mutabilities, address payability,
+data locations (`transient` is an import error), literal kinds and the
+unary, binary and assignment operators. It also holds the one table of the
+compiler's built-in declaration ids (`abi`, `msg`, `block`, `tx`, `this`,
+`keccak256`, `ecrecover`, `addmod`, `mulmod`, `require`, `assert`, `revert`).
 `tests/solidityImportTestScript.sml` holds the positive fixtures and negative
 fixtures derived from them.
 
@@ -424,9 +443,8 @@ fixtures derived from them.
 - the contract's bases are distinct and start with the contract itself;
   contracts are scoped by the unit, functions by a base of their contract,
   structs by a base or a source unit of the compilation;
-- function headers: kind (`function`, `receive`, `fallback`, `constructor`),
-  mutability (`pure`, `view`, `nonpayable`, `payable`), and parameters and
-  returns of normalized types scoped by the function; library functions are
+- function headers: parameters and returns of normalized types scoped by the
+  function; library functions are
   internal or private `function`s scoped by a library distinct from the
   bases; modifier parameters likewise;
 - every state variable has a normalized type and a type identifier agreeing
@@ -501,9 +519,10 @@ annotations, at the node whose type it computes:
   list; `break` and `continue` occur in loop bodies; conditions are boolean;
   modifier bodies make no super call, and modifier arguments see the
   function's parameters but not its return variables;
-- operators belong to the admitted set; every scalar result is annotated with
-  its own type, and every other annotation decodes to an elementary, rational
-  literal or tuple type.
+- a fallback takes no parameters and returns nothing, as the core's does;
+- `delete` is not admitted; every scalar result is annotated with its own
+  type, and every other annotation decodes to an elementary, rational literal
+  or tuple type.
 
 Left to the compiler: storage layout calculation, that view functions write
 no state variable, and the override metadata (which declarations each
@@ -512,7 +531,8 @@ function overrides, and that functions come most derived first).
 ## Partial admission
 
 A contract is admitted per function. When a function's body or the body of
-one of its modifiers falls outside the subset, import keeps the function with
+one of its modifiers falls outside the subset, or a fallback has parameters or
+returns, import keeps the function with
 its header, an empty body and the reason (`fn_unsupported`) rather than
 rejecting the unit. `solidityPrepareLib` then marks, until nothing changes,
 every function that fails to elaborate, also by calling an unsupported one (by
@@ -523,14 +543,18 @@ still dispatch to them and an external call of one is invalid
 (`call_contract_unsupported`), never a return or the fallback; it still
 reverts first, as a supported one would, when it is sent value it does not
 accept. An unsupported function never runs, so its super calls reach nothing:
-a base function only they reach is neither checked nor elaborated. A modifier
+a base function only they reach is neither checked nor elaborated. A constant
+whose value does not elaborate, also by reading such a constant, has no
+procedure either: its getter is listed as unsupported, and a function reading
+it fails to elaborate. A modifier
 whose body fails import keeps its header with an empty body. The prepared unit
 lists each function calls can reach, with its reason if unsupported.
 
 What storage layout or dispatch depends on still rejects the whole unit:
 function headers (declaring base, kind, mutability, parameter and result
 types; a library function must be an internal or private `function`),
-modifier parameters and `virtual` modifiers, state variables, constants, bases
+modifier parameters and `virtual` modifiers, state variables, constant
+declarations, bases
 and their linearization, using directives, and a core program that fails
 `wf_core_program`. A core program needs an entry procedure, so a unit whose
 lowering has no procedure at all (no supported function, getter, library
