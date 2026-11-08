@@ -29,6 +29,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -1726,26 +1727,67 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
 
 
 def run_hol(holbuild: str, work: Path, units: list[tuple[str, Path]]) -> dict[str, dict[str, Any]]:
-    """Import and elaborate every unit, in one HOL session; the result of each
-    test by name."""
+    """Prepare every unit on the fleet, or locally when no fleet is configured."""
+    work = work.resolve()
     manifest = work / "manifest.txt"
-    manifest.write_text("".join(f"{name}\t{path}\n" for name, path in units), encoding="utf-8")
+    manifest.write_text("".join(f"{name}\t{path.resolve().relative_to(work).as_posix()}\n"
+                                for name, path in units), encoding="utf-8")
     log = work / "hol.log"
     # `holbuild run` loads built theories but does not build them.
     build = [holbuild, "-j8", "build", "--skip-checkpoints", "--skip-proof-steps", "solidityPrepareLib",
              "solidityElaborateTheory"]
     print("+", " ".join(build), file=sys.stderr, flush=True)
     subprocess.run(build, cwd=ROOT, check=True)
-    command = [holbuild, "-j1", "run", str(HOL_SCRIPT)]
-    print("+", " ".join(command), file=sys.stderr, flush=True)
-    with log.open("w", encoding="utf-8") as stream:
-        status = subprocess.run(
-            command, cwd=ROOT, stdin=subprocess.DEVNULL, stdout=stream,
-            stderr=subprocess.STDOUT,
-            env={**os.environ, "SEMANTIC_TESTS_MANIFEST": str(manifest)},
-        ).returncode
+    help_text = subprocess.run([holbuild, "--help"], cwd=ROOT, check=True,
+                               capture_output=True, text=True).stdout
+    result_file = log
+    local = "run-action" not in help_text
+    if not local:
+        script = work / HOL_SCRIPT.name
+        shutil.copyfile(HOL_SCRIPT, script)
+        supports = [manifest]
+        for source in (exporter.PIN_FILE, exporter.DEFAULT_PROFILE):
+            target = work / source.relative_to(ROOT)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, target)
+            supports.append(target)
+        supports.extend(path.resolve() for _, path in units)
+        command = [holbuild, "-j1", "run-action", "--remote-only", "--skip-checkpoints",
+                   "--skip-proof-steps", "--script", str(script),
+                   "--load", "solidityPrepareLib", "--output", "results.jsonl",
+                   "--outputs-dir", str(work / "outputs")]
+        for support in supports:
+            command.extend(["--support", str(support)])
+        command.append("solidityElaborateTheory")
+        print(f"+ {holbuild} run-action solidityElaborateTheory ({len(units)} tests)",
+              file=sys.stderr, flush=True)
+        with log.open("w", encoding="utf-8") as stream:
+            status = subprocess.run(command, cwd=ROOT, stdin=subprocess.DEVNULL,
+                                    stdout=stream, stderr=subprocess.STDOUT).returncode
+        action_log = log.read_text(encoding="utf-8", errors="replace")
+        print(action_log, file=sys.stderr, end="", flush=True)
+        local = (status == 75 and "run-action --remote-only: no coordinator to run on; "
+                 "pass --remote-exec URL" in action_log)
+        if not local:
+            result_file = work / "outputs/solidity-hol/solidityElaborateTheory/results.jsonl"
+            completed = re.search(r"^solidity-hol:solidityElaborateTheory [0-9a-f]{64} "
+                                  r"(?:done|cached)\b", action_log, re.M)
+            if status != 0 or completed is None or not result_file.is_file():
+                raise SystemExit(f"the HOL fleet action failed (status {status}):\n{action_log}")
+    if local:
+        local_manifest = work / "local-manifest.txt"
+        local_manifest.write_text("".join(f"{name}\t{path.resolve()}\n" for name, path in units),
+                                  encoding="utf-8")
+        command = [holbuild, "-j1", "run", str(HOL_SCRIPT)]
+        print("+", " ".join(command), file=sys.stderr, flush=True)
+        with log.open("w", encoding="utf-8") as stream:
+            status = subprocess.run(
+                command, cwd=ROOT, stdin=subprocess.DEVNULL, stdout=stream,
+                stderr=subprocess.STDOUT,
+                env={**os.environ, "SEMANTIC_TESTS_MANIFEST": str(local_manifest)},
+            ).returncode
     results = {}
-    for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
+    for line in result_file.read_text(encoding="utf-8", errors="replace").splitlines():
         if line.startswith(RESULT_PREFIX):
             try:
                 result = json.loads(line[len(RESULT_PREFIX):])
