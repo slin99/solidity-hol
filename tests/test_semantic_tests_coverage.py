@@ -708,8 +708,11 @@ class ClassifyTests(unittest.TestCase):
                        [{"declaration": 5, "suffix": "length"}])
         self.assertEqual(coverage.assembly_blockers(own, by_id),
                          [coverage.Blocker("InlineAssembly", "inline assembly", "import")])
-        constant = dict(variable(8, type_identifier="t_uint256"), constant=True)
-        self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 8}]), {8: constant}),
+        # Constants of value type are read before the block; others are not.
+        constant = dict(variable(8, state=True, type_identifier="t_uint256"), constant=True)
+        self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 8}]), {8: constant}), [])
+        string = dict(variable(9, state=True, type_identifier="t_string_memory_ptr"), constant=True)
+        self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 9}]), {9: string}),
                          [coverage.Blocker("InlineAssembly", "inline assembly memory references", "elaboration")])
 
     def test_inline_assembly_halts_in_constructors(self) -> None:
@@ -1019,6 +1022,15 @@ class ClassifyTests(unittest.TestCase):
         ast["nodes"].insert(0, struct)
         by_id = {n["id"]: n for n in coverage.nodes(ast)}
         self.assertIn(struct, coverage.imported({"t.sol": ast}, by_id))
+
+    def test_library_constants_only_assembly_refers_to_are_imported(self) -> None:
+        constant = dict(variable(51, state=True), constant=True)
+        ast = unit([function(4, [assembly([], [{"declaration": 51}])])])
+        ast["nodes"].append({"nodeType": "ContractDefinition", "id": 50, "contractKind": "library",
+                             "abstract": False, "baseContracts": [],
+                             "linearizedBaseContracts": [50], "nodes": [constant]})
+        by_id = {n["id"]: n for n in coverage.nodes(ast)}
+        self.assertIn(constant, coverage.imported({"t.sol": ast}, by_id))
 
     def test_memory_and_calldata_arrays_of_elementary_leaves_decode(self) -> None:
         self.assertTrue(coverage.decodes("t_array$_t_uint8_$dyn_memory_ptr"))

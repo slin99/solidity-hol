@@ -1248,6 +1248,8 @@ fun references (v as JSON.OBJECT fields) =
       if is_selector v then [] else
       List.concat
         (map (fn ("referencedDeclaration", JSON.INT i) => [i]
+               (* an inline assembly block's reference *)
+               | ("declaration", JSON.INT i) => [i]
                | (_, w) => references w) fields)
   | references (JSON.ARRAY vs) = List.concat (map references vs)
   | references _ = []
