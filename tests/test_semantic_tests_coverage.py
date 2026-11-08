@@ -546,6 +546,9 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(blockers(decode(10, [data(20), types(21, struct)], "t_struct$_S_$7_memory_ptr")),
                          {(10, "import")})
         self.assertEqual(blockers(decode(10, [data(20)])), {(10, "import")})
+        # an empty type list decodes nothing, which the checker rejects
+        self.assertEqual(blockers(decode(10, [data(20), types(21)], "t_tuple$__$")),
+                         {(10, "elaboration")})
 
     def test_staticcall_of_memory_bytes_is_admitted_and_other_address_members_blocked(self) -> None:
         def target(node_id, type_identifier="t_address"):

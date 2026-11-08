@@ -1416,7 +1416,8 @@ def special_forms(reached: dict[int, dict[str, Any]],
                 if any(c is None or c["nodeType"] != "ElementaryTypeNameExpression"
                        for c in components):
                     block(node, "abi.* functions", "import")
-                elif (arguments[0]["typeDescriptions"].get("typeIdentifier") != "t_bytes_memory_ptr"
+                elif (not components
+                      or arguments[0]["typeDescriptions"].get("typeIdentifier") != "t_bytes_memory_ptr"
                       or not all(VALUE_TYPE.fullmatch(type_of_type_name(c)) for c in components)):
                     block(node, "abi.* functions", "elaboration")
                 arguments = []
