@@ -1121,6 +1121,9 @@ class ClassifyTests(unittest.TestCase):
         self.assertTrue(coverage.decodes(
             "t_tuple$_t_array$_t_array$_t_uint8_$2_memory_ptr_$dyn_memory_ptr_$_t_uint256_$"))
         self.assertFalse(coverage.decodes("t_tuple$_t_bool_$_t_array$_t_uint8_$dyn_storage_ptr_$"))
+        self.assertTrue(coverage.decodes("t_tuple$_t_bool_$_t_rational_0_by_1_$"))
+        self.assertTrue(coverage.decodes("t_tuple$_t_rational_minus_1_by_1_$_t_bool_$"))
+        self.assertFalse(coverage.decodes("t_tuple$_t_rational_1_by_2_$_t_bool_$"))
         self.assertEqual(coverage.type_feature("t_tuple$_t_bool_$_t_array$_t_uint8_$dyn_storage_ptr_$"),
                          "arrays")
         self.assertEqual(coverage.type_feature("t_bytes32"),
@@ -1135,6 +1138,52 @@ class ClassifyTests(unittest.TestCase):
         declaration["initialValue"] = {"nodeType": "Identifier", "id": 4}
         self.assertEqual(coverage.elaboration_blockers(declaration), [])
 
+    def test_tuples_elaborate_only_as_several_values(self) -> None:
+        def literal(node_id: int, value: str) -> dict:
+            return {"nodeType": "Literal", "id": node_id, "kind": "number", "value": value,
+                    "typeDescriptions": {"typeIdentifier": f"t_rational_{value}_by_1"}}
+
+        def pair(node_id: int) -> dict:
+            return {"nodeType": "TupleExpression", "id": node_id, "isInlineArray": False,
+                    "components": [literal(node_id + 1, "1"), literal(node_id + 2, "0")],
+                    "typeDescriptions": {"typeIdentifier":
+                                         "t_tuple$_t_rational_1_by_1_$_t_rational_0_by_1_$"}}
+
+        returned = {"nodeType": "Return", "id": 9, "expression": pair(10)}
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [returned])])}), {})
+        returned["expression"] = {"nodeType": "TupleExpression", "id": 20, "isInlineArray": False,
+                                  "components": [pair(10)],
+                                  "typeDescriptions": pair(10)["typeDescriptions"]}
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [returned])])}), {})
+        discarded = {"nodeType": "ExpressionStatement", "id": 9, "expression": pair(10)}
+        self.assertEqual(
+            [b.feature for bs in coverage.scan({"t.sol": unit([function(4, [discarded])])}).values()
+             for b in bs], ["tuples as values"])
+
+    def test_parenthesized_targets_only_in_plain_assignment_statements(self) -> None:
+        def assignment(operator: str) -> dict:
+            target = {"nodeType": "Identifier", "id": 11, "name": "a", "referencedDeclaration": 3,
+                      "typeDescriptions": {"typeIdentifier": "t_uint256"}}
+            one = {"nodeType": "Literal", "id": 12, "kind": "number", "value": "1",
+                   "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}}
+            return {"nodeType": "Assignment", "id": 10, "operator": operator,
+                    "leftHandSide": {"nodeType": "TupleExpression", "id": 13, "isInlineArray": False,
+                                     "components": [target],
+                                     "typeDescriptions": {"typeIdentifier": "t_uint256"}},
+                    "rightHandSide": one, "typeDescriptions": {"typeIdentifier": "t_uint256"}}
+
+        def features(statement: dict) -> list:
+            body = [variable(3), statement]
+            return [b.feature for bs in coverage.scan({"t.sol": unit([function(4, body)])}).values()
+                    for b in bs]
+
+        statement = {"nodeType": "ExpressionStatement", "id": 9, "expression": assignment("=")}
+        self.assertNotIn("parenthesized assignment targets", features(statement))
+        statement["expression"] = assignment("+=")
+        self.assertIn("parenthesized assignment targets", features(statement))
+        returned = {"nodeType": "Return", "id": 9, "expression": assignment("=")}
+        self.assertIn("parenthesized assignment targets", features(returned))
+
     def test_tuple_assignments_to_elements_are_blocked(self) -> None:
         ident = {"nodeType": "Identifier", "id": 5, "name": "x"}
         element = {"nodeType": "IndexAccess", "id": 6}
@@ -1143,6 +1192,10 @@ class ClassifyTests(unittest.TestCase):
                                    "components": [ident, None]}}
         self.assertEqual(coverage.elaboration_blockers(assign), [])
         assign["leftHandSide"]["components"] = [ident, element]
+        self.assertEqual({b.feature for b in coverage.elaboration_blockers(assign)},
+                         {"tuple assignments to element or member targets"})
+        parenthesized = {"nodeType": "TupleExpression", "isInlineArray": False, "components": [ident]}
+        assign["leftHandSide"]["components"] = [ident, parenthesized]
         self.assertEqual({b.feature for b in coverage.elaboration_blockers(assign)},
                          {"tuple assignments to element or member targets"})
 
