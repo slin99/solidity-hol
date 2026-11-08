@@ -589,7 +589,8 @@ Definition tuple_component_def:
       if isPREFIX "t_stringliteral_" tid then SOME StringT
       else if isPREFIX "t_rational_" tid then
         case decode_rational (DROP 11 tid) of
-          SOME (SrcRational i 1) => SOME (if i < 0 then IntT 256 else UintT 256)
+          SOME (SrcRational i d) =>
+            if d = 1 then SOME (if i < 0 then IntT 256 else UintT 256) else NONE
         | _ => NONE
       else decode_elementary_identifier tid
     else NONE
