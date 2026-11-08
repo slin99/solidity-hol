@@ -288,6 +288,27 @@ Proof
   EVAL_TAC
 QED
 
+(* bytesN(b) of a dynamic byte sequence fails elaboration, since the core
+ * has no such conversion; bytesN of a shorter or longer bytesM elaborates. *)
+Theorem bytes_to_fixed_bytes_rejected:
+  let info = <| node_id := 0;
+                node_location := <| loc_start := 0; loc_length := 0;
+                                    loc_source := 0 |> |>;
+      to16 e = SrcTypeConversion info
+                 (SrcElementaryTypeName info "bytes16" NONE) e "t_bytes16";
+      ctx = <| functions := []; supers := []; structs := []; enums := [];
+               events := [];
+               variables := [(1, LocatedT MemoryLoc BytesT); (2, FixedBytesT 32)];
+               state := []; locations := [];
+               immutables := []; constants := []; returns := [];
+               placeholder := NONE; mode := CheckedArithmetic; creation := F;
+               scope := 0; returns_id := 0; in_loop := F |> in
+    elab_expr ctx 3 (to16 (SrcIdentifier info "b" 1 "t_bytes_memory_ptr")) = NONE ∧
+    IS_SOME (elab_expr ctx 3 (to16 (SrcIdentifier info "w" 2 "t_bytes32")))
+Proof
+  EVAL_TAC
+QED
+
 (* Edited units of solidityImportTest that pass valid_src_unit but whose
  * edited function fails elaboration, which checks it against the compiler's
  * annotations: preparation marks it unsupported. *)
