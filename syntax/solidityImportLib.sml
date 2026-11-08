@@ -627,8 +627,15 @@ fun expr v = within v (fn v =>
           type_id v])
   | "FunctionCall" =>
       let
-        val args = JSONUtil.arrayMap expr (field v "arguments")
         val callee = field v "expression"
+        val abi_member =
+          node_type callee = "MemberAccess" andalso
+          node_type (field callee "expression") = "Identifier" andalso
+          int_field (field callee "expression") "referencedDeclaration" = ~1
+        (* abi.encodeCall reads its arguments itself *)
+        val args =
+          if abi_member andalso string_field callee "memberName" = "encodeCall" then []
+          else JSONUtil.arrayMap expr (field v "arguments")
         val no_names = null (JSONUtil.arrayMap I (field v "names"))
         fun positional () = require v no_names "named arguments are not supported here"
       in
@@ -650,9 +657,7 @@ fun expr v = within v (fn v =>
                  [info v, info callee,
                   con (if is_concat "string" callee then "AbiStringConcat" else "AbiPacked") [],
                   listSyntax.mk_list (args, expr_ty), type_id v])
-            else if node_type callee = "MemberAccess" andalso
-               node_type (field callee "expression") = "Identifier" andalso
-               int_field (field callee "expression") "referencedDeclaration" = ~1 then
+            else if abi_member then
               (positional (); abi_encode v callee args)
             else if node_type callee = "Identifier" andalso
                int_field callee "referencedDeclaration" < 0 then
@@ -745,6 +750,7 @@ fun expr v = within v (fn v =>
  * abi.encodeWithSignature of a literal signature; the signature's bytes are
  * taken from the literal, which is not kept as an argument. *)
 and abi_encode v callee args =
+  if string_field callee "memberName" = "encodeCall" then abi_encode_call v callee else
   let
     val form =
       case string_field callee "memberName" of
@@ -767,6 +773,56 @@ and abi_encode v callee args =
   in
     con "SrcAbiEncode"
       [info v, info callee, form, listSyntax.mk_list (args, expr_ty), type_id v]
+  end
+
+(* abi.encodeCall(f, (a, b)): f's selector, then the arguments, which the
+ * elaborator converts to the types of f's parameters, given by their type
+ * identifiers. A single argument may stand without parentheses. f's receiver
+ * is one the compiler does not evaluate, or a variable other than a
+ * constant, whose read has no effect and is left out (a constant's
+ * initializer is evaluated, and may fail). *)
+and abi_encode_call v callee =
+  let
+    val (f, values) =
+      case JSONUtil.arrayMap I (field v "arguments") of
+        [f, values] => (f, values)
+      | _ => fail (describe v ^ ": encodeCall takes a function and its arguments")
+    val () = require v (node_type f = "MemberAccess") "abi.encodeCall of an unnamed function"
+    val receiver = field f "expression"
+    val () =
+      require v (unevaluated_receiver receiver orelse
+                 (node_type receiver = "Identifier" andalso
+                  int_field receiver "referencedDeclaration" > 0))
+        "abi.encodeCall through a computed receiver is not supported"
+    val () =
+      require v (unevaluated_receiver receiver orelse
+                 (case List.find (fn (i, _) => i = int_field receiver "referencedDeclaration")
+                                 (!selector_declarations) of
+                    SOME (_, rdecl) => not (bool_field rdecl "constant")
+                  | NONE => true))
+        "abi.encodeCall through a constant receiver is not supported"
+    val d =
+      case optional_field f "referencedDeclaration" of
+        SOME id =>
+          (case List.find (fn (i, _) => i = JSONUtil.asIntInf id) (!selector_declarations) of
+             SOME (_, d) => d
+           | NONE => fail (describe v ^ ": encodeCall of a function outside the compilation"))
+      | NONE => fail (describe v ^ ": unsupported encodeCall function")
+    val () = require v (node_type d = "FunctionDefinition") "abi.encodeCall of a getter is not supported"
+    val selector =
+      con "SrcSelector" [info f, mk_bytes d (string_field d "functionSelector"), mk_str "t_bytes4"]
+    val arguments =
+      if node_type values = "TupleExpression" andalso not (bool_field values "isInlineArray")
+      then JSONUtil.arrayMap I (field values "components")
+      else [values]
+    val parameters = JSONUtil.arrayMap I (field (field d "parameters") "parameters")
+    val () = require v (length arguments = length parameters)
+               "abi.encodeCall takes one argument per parameter"
+  in
+    con "SrcAbiEncode"
+      [info v, info callee,
+       con "AbiCall" [listSyntax.mk_list (map type_id parameters, stringSyntax.string_ty)],
+       listSyntax.mk_list (selector :: map expr arguments, expr_ty), type_id v]
   end
 
 (* c.f{value: v}(args), with c of a contract type. *)

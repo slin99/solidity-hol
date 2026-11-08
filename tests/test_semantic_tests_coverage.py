@@ -499,6 +499,80 @@ class ClassifyTests(unittest.TestCase):
         ]
         self.assertEqual(abi_blockers(rejected), {110, 130, 140, 160, 180, 190})
 
+    def test_encode_calls_need_a_named_function_of_scalar_and_byte_parameters(self) -> None:
+        def parameter(node_id, type_identifier):
+            return variable(node_id, type_identifier=type_identifier)
+
+        def declaration(node_id, *types):
+            return {"nodeType": "FunctionDefinition", "id": node_id, "kind": "function",
+                    "functionSelector": "12345678",
+                    "parameters": {"nodeType": "ParameterList", "id": node_id + 1,
+                                   "parameters": [parameter(node_id + 2 + i, t) for i, t in enumerate(types)]}}
+
+        def encode_call(node_id, receiver, target, values):
+            abi = {"nodeType": "Identifier", "id": node_id + 1, "name": "abi", "referencedDeclaration": -1,
+                   "typeDescriptions": {"typeIdentifier": "t_magic_abi"}}
+            callee = {"nodeType": "MemberAccess", "id": node_id + 2, "memberName": "encodeCall", "expression": abi,
+                      "typeDescriptions": {"typeIdentifier": "t_function_abiencodecall_pure$__$returns$__$"}}
+            f = {"nodeType": "MemberAccess", "id": node_id + 3, "memberName": "f", "expression": receiver,
+                 "referencedDeclaration": target,
+                 "typeDescriptions": {"typeIdentifier": "t_function_declaration_nonpayable$__$returns$__$"}}
+            return {"nodeType": "FunctionCall", "id": node_id, "kind": "functionCall", "names": [],
+                    "tryCall": False, "expression": callee, "arguments": [f, values],
+                    "typeDescriptions": {"typeIdentifier": "t_bytes_memory_ptr"}}
+
+        def interface_name(node_id):
+            return {"nodeType": "Identifier", "id": node_id, "name": "I", "referencedDeclaration": 50,
+                    "typeDescriptions": {"typeIdentifier": "t_type$_t_contract$_I_$50_$"}}
+
+        def state(node_id):
+            return {"nodeType": "Identifier", "id": node_id, "name": "x", "referencedDeclaration": 3,
+                    "typeDescriptions": {"typeIdentifier": "t_contract$_I_$50"}}
+
+        def value(node_id, type_identifier="t_uint8"):
+            return {"nodeType": "Identifier", "id": node_id, "name": "x", "referencedDeclaration": 3,
+                    "typeDescriptions": {"typeIdentifier": type_identifier}}
+
+        def pair(node_id):
+            return {"nodeType": "TupleExpression", "id": node_id, "isInlineArray": False,
+                    "components": [value(node_id + 1), value(node_id + 2, "t_bytes_memory_ptr")],
+                    "typeDescriptions": {"typeIdentifier": "t_tuple$_t_uint8_$_t_bytes_memory_ptr_$"}}
+
+        def constant(node_id):
+            return {"nodeType": "Identifier", "id": node_id, "name": "k", "referencedDeclaration": 9,
+                    "typeDescriptions": {"typeIdentifier": "t_contract$_I_$50"}}
+
+        computed = {"nodeType": "FunctionCall", "id": 151, "kind": "functionCall", "names": [],
+                    "tryCall": False, "expression": value(152), "arguments": [],
+                    "typeDescriptions": {"typeIdentifier": "t_contract$_I_$50"}}
+        statements = [
+            encode_call(100, interface_name(105), 51, pair(106)),
+            encode_call(120, state(125), 51, pair(126)),
+            encode_call(140, interface_name(145), 60, value(146, "t_array$_t_uint256_$dyn_memory_ptr")),
+            encode_call(150, computed, 51, pair(156)),
+            encode_call(160, constant(165), 51, pair(166)),
+            encode_call(170, interface_name(175), 70, value(176, "t_enum$_E_$80")),
+        ]
+        k = variable(9, state=True, type_identifier="t_contract$_I_$50")
+        k.update(constant=True, mutability="constant")
+        ast = unit([variable(3, state=True), k, function(4, statements)])
+        ast["nodes"].append({"nodeType": "ContractDefinition", "id": 50, "contractKind": "interface",
+                             "abstract": False, "baseContracts": [], "linearizedBaseContracts": [50],
+                             "nodes": [declaration(51, "t_uint8", "t_bytes_calldata_ptr"),
+                                       declaration(60, "t_array$_t_uint256_$dyn_memory_ptr"),
+                                       declaration(70, "t_enum$_E_$80")]})
+        ast["nodes"].append({"nodeType": "EnumDefinition", "id": 80, "name": "E",
+                             "members": [{"nodeType": "EnumValue", "id": 81, "name": "A"}]})
+        found = coverage.scan({"t.sol": ast})
+        abi = {node_id: blockers for node_id, blockers in found.items()
+               if any(b.feature == "abi.* functions" for b in blockers)}
+        self.assertEqual(abi, {
+            140: [coverage.Blocker("FunctionCall", "abi.* functions", "elaboration")],
+            150: [coverage.Blocker("FunctionCall", "abi.* functions", "import")],
+            160: [coverage.Blocker("FunctionCall", "abi.* functions", "import")]})
+        # f and its receiver are read as the selector, not as expressions
+        self.assertFalse({103, 105, 123, 125} & set(found))
+
     def test_interface_ids_are_admitted_and_other_contract_type_members_blocked(self) -> None:
         def type_member(node_id, member, target=50):
             interface = {"nodeType": "Identifier", "id": node_id + 1, "name": "I",

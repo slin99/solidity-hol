@@ -177,6 +177,7 @@ End
  *)
 Datatype:
   abi_form = AbiPlain | AbiPacked | AbiWithSelector | AbiWithSignature (byte list)
+           | AbiCall (string list)
            | AbiStringConcat
 End
 
@@ -1124,6 +1125,22 @@ Definition abi_argument_type_def:
     | _ => F
 End
 
+(* The ABI type of a parameter of the function abi.encodeCall names, by its
+ * type identifier: a scalar as itself; a byte sequence in any location as a
+ * memory one, whose encoding does not depend on its location. *)
+Definition abi_call_parameter_def:
+  abi_call_parameter tid =
+    case decode_type_identifier tid of
+      SOME (SrcType ty) =>
+        if is_stored_scalar_type ty then SOME ty else
+        (case ty of
+           LocatedT _ element =>
+             if byte_sequence_type element
+             then SOME (LocatedT MemoryLoc element) else NONE
+         | _ => NONE)
+    | _ => NONE
+End
+
 Definition check_expr_def:
   (check_expr (env : import_env) (SrcIdentifier _ _ x tid) =
     case ALOOKUP (env.variables ++ env.state ++ env.constants) x of
@@ -1358,6 +1375,11 @@ Definition check_expr_def:
             check_expr env s = SOME (SrcType (FixedBytesT 4)) ∧
             check_abi_args env F rest
         | (AbiWithSelector, []) => F
+        | (AbiCall tids, s :: rest) =>
+            check_expr env s = SOME (SrcType (FixedBytesT 4)) ∧
+            LENGTH tids = LENGTH rest ∧ EVERY (IS_SOME o abi_call_parameter) tids ∧
+            check_exprs env rest
+        | (AbiCall _, []) => F
         | (AbiPacked, _) => check_abi_args env T args
         | (AbiStringConcat, _) => check_abi_args env T args
         | _ => check_abi_args env F args)

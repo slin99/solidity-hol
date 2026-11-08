@@ -1143,6 +1143,10 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
                 expected.append((name["expression"], parameters[0]))
                 parameters = parameters[1:]
             expected.extend(arguments(node, parameters))
+        if is_encode_call(node):
+            function = by_id.get(node["arguments"][0].get("referencedDeclaration"), {})
+            if function.get("nodeType") == "FunctionDefinition":
+                expected.extend(zip(encode_call_arguments(node), function["parameters"]["parameters"]))
         member = node["expression"]
         if (member.get("nodeType") == "MemberAccess" and member["memberName"] == "push"
                 and len(node["arguments"]) == 1):
@@ -1271,6 +1275,33 @@ def abi_argument(node: dict[str, Any], packed: bool) -> bool:
     return not packed and re.fullmatch(r"t_rational_(minus_)?[0-9]+_by_1", tid) is not None
 
 
+def is_encode_call(node: dict[str, Any]) -> bool:
+    """Whether a call is abi.encodeCall(f, args)."""
+    callee = node["expression"]
+    return (node["nodeType"] == "FunctionCall" and callee["nodeType"] == "MemberAccess"
+            and callee["memberName"] == "encodeCall"
+            and callee["expression"]["nodeType"] == "Identifier"
+            and callee["expression"].get("referencedDeclaration") == ABI
+            and len(node["arguments"]) == 2)
+
+
+def encode_call_arguments(node: dict[str, Any]) -> list[dict[str, Any]]:
+    """The arguments abi.encodeCall passes: a tuple's components, or the one
+    argument standing without parentheses."""
+    values = node["arguments"][1]
+    if values["nodeType"] == "TupleExpression" and not values.get("isInlineArray"):
+        return values["components"]
+    return [values]
+
+
+def encode_call_parameter(parameter: dict[str, Any]) -> bool:
+    """Whether the elaborator takes a parameter of the function abi.encodeCall
+    names: a scalar, or a byte sequence in any location (abi_call_parameter)."""
+    tid = parameter["typeDescriptions"].get("typeIdentifier") or ""
+    return (VALUE_TYPE.match(tid) is not None or tid.startswith(("t_enum_", "t_enum$_", "t_contract$_"))
+            or tid.startswith(("t_bytes_", "t_string_")))
+
+
 def special_forms(reached: dict[int, dict[str, Any]],
                   by_id: dict[int, dict[str, Any]]) -> tuple[set[int], dict[int, list[Blocker]]]:
     """The nodes the importer reads as part of a larger form rather than as
@@ -1367,7 +1398,29 @@ def special_forms(reached: dict[int, dict[str, Any]],
             unread.update({callee["id"], callee["expression"]["id"]})
             member = callee["memberName"]
             arguments = node["arguments"]
-            if member == "encodeWithSignature":
+            if member == "encodeCall" and is_encode_call(node):
+                # The importer reads f as its selector, without evaluating its
+                # receiver (which must not be a constant, whose initializer is
+                # evaluated), and the tuple as the list of arguments.
+                function, values = node["arguments"]
+                unread.update(n["id"] for n in nodes(function))
+                if values["nodeType"] == "TupleExpression" and not values.get("isInlineArray"):
+                    unread.add(values["id"])
+                receiver = function["expression"] if function["nodeType"] == "MemberAccess" else None
+                declaration = by_id.get(function.get("referencedDeclaration"), {})
+                if receiver is None or not (
+                        unevaluated_receiver(receiver)
+                        or (receiver["nodeType"] == "Identifier"
+                            and receiver.get("referencedDeclaration", 0) > 0
+                            and not by_id.get(receiver["referencedDeclaration"], {})
+                            .get("constant", False))):
+                    block(node, "abi.* functions", "import")
+                elif declaration.get("nodeType") != "FunctionDefinition" or "functionSelector" not in declaration:
+                    block(node, "abi.* functions", "import")
+                elif not all(map(encode_call_parameter, declaration["parameters"]["parameters"])):
+                    block(node, "abi.* functions", "elaboration")
+                arguments = []
+            elif member == "encodeWithSignature":
                 if not arguments or arguments[0]["nodeType"] != "Literal" or arguments[0]["kind"] != "string":
                     block(node, "abi.* functions", "import")
                 arguments = arguments[1:]

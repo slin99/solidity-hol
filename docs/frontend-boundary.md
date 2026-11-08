@@ -259,7 +259,7 @@ the interface `I` declares itself, not those it inherits, nor its `fallback`
 or `receive`; `I` must name an interface directly, not through a module, and
 an abstract contract's `interfaceId` is rejected. A selector of any other
 function-typed value is rejected, and so are `sha256`, `ripemd160`,
-`ecrecover`, `abi.decode` and `abi.encodeCall`.
+`ecrecover` and `abi.decode`.
 
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
 type the compiler gives the whole expression, which must be a value type or
@@ -279,6 +279,16 @@ gives each scalar in its own width, a `bytesN` as its N bytes, and a byte
 sequence as its contents. Arrays and structs as arguments, a selector that
 is not a `bytes4` value (a literal selector included), and a signature that is
 not a plain string literal are rejected.
+
+`abi.encodeCall(f, (a, b))` gives `f`'s selector followed by the standard ABI
+encoding of the arguments, each converted to its parameter's type as an
+internal call's argument is; a single argument may stand without parentheses.
+`f` is a member access naming a function whose receiver is one the compiler
+does not evaluate (as for `x.f.selector`), or a variable other than a
+constant, which is not read (reading it has no effect). Parameters must be
+scalars or byte sequences; other receivers (a constant, whose initializer the
+compiler evaluates and which may fail, included), and array and struct
+parameters, are rejected.
 
 `bytes.concat(...)` uses packed encoding of its byte sequences, fixed-size bytes
 and literals. `string.concat(...)` concatenates strings and string literals.
