@@ -506,6 +506,7 @@ annotations, at the node whose type it computes:
   list; `break` and `continue` occur in loop bodies; conditions are boolean;
   modifier bodies make no super call, and modifier arguments see the
   function's parameters but not its return variables;
+- a fallback takes no parameters and returns nothing, as the core's does;
 - `delete` is not admitted; every scalar result is annotated with its own
   type, and every other annotation decodes to an elementary, rational literal
   or tuple type.
@@ -517,7 +518,8 @@ function overrides, and that functions come most derived first).
 ## Partial admission
 
 A contract is admitted per function. When a function's body or the body of
-one of its modifiers falls outside the subset, import keeps the function with
+one of its modifiers falls outside the subset, or a fallback has parameters or
+returns, import keeps the function with
 its header, an empty body and the reason (`fn_unsupported`) rather than
 rejecting the unit. `solidityPrepareLib` then marks, until nothing changes,
 every function that fails to elaborate, also by calling an unsupported one (by
@@ -528,14 +530,18 @@ still dispatch to them and an external call of one is invalid
 (`call_contract_unsupported`), never a return or the fallback; it still
 reverts first, as a supported one would, when it is sent value it does not
 accept. An unsupported function never runs, so its super calls reach nothing:
-a base function only they reach is neither checked nor elaborated. A modifier
+a base function only they reach is neither checked nor elaborated. A constant
+whose value does not elaborate, also by reading such a constant, has no
+procedure either: its getter is listed as unsupported, and a function reading
+it fails to elaborate. A modifier
 whose body fails import keeps its header with an empty body. The prepared unit
 lists each function calls can reach, with its reason if unsupported.
 
 What storage layout or dispatch depends on still rejects the whole unit:
 function headers (declaring base, kind, mutability, parameter and result
 types; a library function must be an internal or private `function`),
-modifier parameters and `virtual` modifiers, state variables, constants, bases
+modifier parameters and `virtual` modifiers, state variables, constant
+declarations, bases
 and their linearization, using directives, and a core program that fails
 `wf_core_program`. A core program needs an entry procedure, so a unit whose
 lowering has no procedure at all (no supported function, getter, library

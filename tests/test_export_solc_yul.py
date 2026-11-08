@@ -56,7 +56,8 @@ class ExportTests(unittest.TestCase):
         self.assertIs(settings["experimental"], True)
         self.assertEqual(
             settings["outputSelection"],
-            {"*": {"*": ["irAst", "irOptimizedAst", "evm.deployedBytecode.object"]}},
+            {"*": {"*": ["irAst", "irOptimizedAst", "evm.deployedBytecode.object",
+                           "evm.bytecode.object", "evm.deployedBytecode.immutableReferences"]}},
         )
 
     def test_the_profile_is_the_only_other_setting(self) -> None:
