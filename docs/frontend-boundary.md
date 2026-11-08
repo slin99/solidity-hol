@@ -202,7 +202,10 @@ one. So a value that overflows its type panics with `0x11` when it is
 referenced in checked code, and wraps inside `unchecked`. File-level constants and references through a contract name
 other than a library (`C.X`) are rejected. An operation over literals that the compiler types
 as an integer (`10 ** 27`, `-1`) elaborates to that integer, as the compiler
-folds it; one over other rational constants is still rejected.
+folds it; one over other rational constants is still rejected. A number
+literal the compiler takes as a fixed-size bytes (zero, or hex digits that
+fill it, as in `bytes32 constant ROLE = 0x00`) stands for its big-endian
+bytes, here and wherever a value is converted.
 
 Immutables of elementary value types, declared in the contract or a base, are
 implemented, with getters for public ones. The source state holds a table of
@@ -288,6 +291,23 @@ it), as the compiler's decoder from memory does: data shorter than the
 encoding, or a word that is not a value of its type, reverts with no data, and
 data after the encoding is ignored. It allocates nothing. Data in calldata or
 storage, and types other than elementary ones, are rejected.
+
+`bytes.concat(...)` uses packed encoding of its byte sequences, fixed-size bytes
+and literals. `string.concat(...)` concatenates strings and string literals.
+Both allocate a fresh memory object, with the corresponding `bytes` or `string`
+type, including the zero-argument and single-argument forms.
+
+`address.code.length` reads the account's code size directly, including zero for
+an account without code. The receiver is evaluated once and no memory bytes
+object is allocated. Standalone `address.code` remains unsupported.
+
+External calls returning scalar values admit `try ... returns (...) { ... }
+catch (bytes memory reason) { ... }`. Only failure of the external call selects
+the catch body; argument evaluation, missing-code checks, return decoding and
+the success/catch bodies keep their ordinary failure behavior. Nonempty revert
+data is copied into a fresh memory bytes object; empty data uses the default
+empty bytes reference. Contract creation, typed `Error`/`Panic` handlers and
+catch clauses without a bytes parameter remain unsupported.
 
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,

@@ -525,7 +525,8 @@ def is_type_call(node: dict[str, Any]) -> bool:
             and node["expression"].get("referencedDeclaration", 0) < 0)
 
 
-def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list[Blocker]:
+def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False,
+                  try_callee: bool = False) -> list[Blocker]:
     """What the importer rejects at this node itself; children are checked as
     nodes of their own. Member and index accesses are classified by the type
     of the value accessed."""
@@ -576,7 +577,7 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False) -> list
         if node["names"] and (node["kind"] != "functionCall"
                               or callee.get("referencedDeclaration", -1) < 0):
             found.append("named arguments")
-        if node["tryCall"]:
+        if node["tryCall"] and not try_callee:
             found.append("try/catch")
         if node["kind"] == "structConstructorCall":
             found.append("structs")
@@ -1094,8 +1095,9 @@ def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]],
 
 def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[Blocker]:
     """Integer literals used where a value of another type is expected, which
-    elaborate_unit converts only to integer types, and string literals used
-    as fixed-size bytes, which it does not convert: initial values of locals
+    elaborate_unit converts only to integer types and fixed-size bytes, and
+    string literals used as fixed-size bytes, which it does not convert:
+    initial values of locals
     and state variables, returned and assigned values, tuple components
     included, operands, mapping keys, arguments of calls, emits and reverts,
     and conversions."""
@@ -1184,7 +1186,14 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
                 and INTEGER_RATIONAL.fullmatch(value_type))):
             continue
         conversion = kind == "FunctionCall" and node["kind"] == "typeConversion"
-        if RATIONAL.fullmatch(value_type) and not INTEGER_TYPE.fullmatch(target_type) and not conversion:
+        # a number as a bytesN: the compiler takes only zero and hex digits
+        # that fill it, which elaboration folds and takes as their bytes
+        width = re.fullmatch(r"t_bytes([0-9]+)", target_type)
+        number = re.fullmatch(r"t_rational_([0-9]+)_by_1", value_type)
+        fixed_bytes = (width is not None and number is not None
+                       and int(number[1]) < 256 ** int(width[1]))
+        if (RATIONAL.fullmatch(value_type) and not INTEGER_TYPE.fullmatch(target_type)
+                and not fixed_bytes and not conversion):
             found.append("literals of non-integer types")
         if value_type.startswith("t_stringliteral_"):
             found.append("string literals as fixed-size bytes")
@@ -1318,6 +1327,25 @@ def special_forms(reached: dict[int, dict[str, Any]],
         kind = node["nodeType"]
         # Any other name of an enum type is imported as an identifier that
         # source validation rejects.
+        if kind == "TryStatement":
+            call, clauses = node["externalCall"], node["clauses"]
+            callee = call["expression"]
+            member = callee["expression"] if callee["nodeType"] == "FunctionCallOptions" else callee
+            declaration = by_id.get(member.get("referencedDeclaration"), {})
+            returns = declaration.get("returnParameters", {}).get("parameters", [])
+            if (call["nodeType"] == "FunctionCall" and call["kind"] == "functionCall"
+                    and is_external(member) and declaration.get("nodeType") == "FunctionDefinition"
+                    and len(clauses) == 2 and all(c["errorName"] == "" for c in clauses)
+                    and len(clauses[1].get("parameters", {}).get("parameters", [])) == 1
+                    and clauses[1]["parameters"]["parameters"][0]["typeDescriptions"]["typeIdentifier"]
+                    == "t_bytes_memory_ptr"
+                    and all(VALUE_TYPE.fullmatch(p["typeDescriptions"]["typeIdentifier"])
+                            or ENUM.fullmatch(p["typeDescriptions"]["typeIdentifier"]) for p in returns)
+                    and [p["typeDescriptions"]["typeIdentifier"] for p in returns]
+                    == [p["typeDescriptions"]["typeIdentifier"]
+                        for p in clauses[0].get("parameters", {}).get("parameters", [])]):
+                # Clause bodies, operands and signatures are still read normally.
+                unread.update([node["id"], *(c["id"] for c in clauses)])
         if (kind in ("Identifier", "MemberAccess") and node["id"] not in enum_names
                 and by_id.get(node.get("referencedDeclaration"), {}).get("nodeType") == "EnumDefinition"):
             block(node, "enum types as expressions", "elaboration")
@@ -1389,8 +1417,22 @@ def special_forms(reached: dict[int, dict[str, Any]],
             for argument in arguments:
                 if not abi_argument(argument, member == "encodePacked"):
                     block(argument, "abi.* functions", "elaboration")
+        elif (kind == "FunctionCall" and node["kind"] == "functionCall"
+              and node["expression"]["nodeType"] == "MemberAccess"
+              and (node["expression"]["typeDescriptions"].get("typeIdentifier") or "")
+              .startswith(("t_function_bytesconcat_", "t_function_stringconcat_"))):
+            # bytes.concat and string.concat: the importer reads them as
+            # abi.encodePacked, whose arguments the compiler has restricted
+            # to byte sequences and fixed-size bytes, and does not read the
+            # type name, parenthesized or not.
+            unread.update(n["id"] for n in nodes(node["expression"]))
         elif kind == "MemberAccess" and node.get("referencedDeclaration") is None:
             base = node["expression"]
+            if (node["memberName"] == "length" and base["nodeType"] == "MemberAccess"
+                    and base.get("referencedDeclaration") is None and base["memberName"] == "code"
+                    and base["expression"]["typeDescriptions"].get("typeIdentifier")
+                    in {"t_address", "t_address_payable"}):
+                unread.add(base["id"])
             if base["nodeType"] == "Identifier" and base.get("referencedDeclaration", 0) < 0:
                 unread.add(base["id"])
             elif is_type_call(base):
@@ -1546,6 +1588,8 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                     and n["expression"].get("referencedDeclaration") in {KECCAK256, ECRECOVER}}
     plain_callees = builtin_callees | super_bases | hash_callees
     unread, found = special_forms(reached, by_id)
+    try_callees = {n["externalCall"]["id"] for n in reached.values()
+                   if n["nodeType"] == "TryStatement" and n["id"] in unread}
     file_level = {m["id"] for ast in asts.values() for m in ast["nodes"]}
     storage_bases = {n["baseExpression"]["id"] for n in reached.values()
                      if n["nodeType"] == "IndexAccess"}
@@ -1554,7 +1598,8 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     for node in reached.values():
         if node["id"] in unread:
             continue
-        blockers = (node_blockers(node, builtin_callee=node["id"] in plain_callees)
+        blockers = (node_blockers(node, builtin_callee=node["id"] in plain_callees,
+                                  try_callee=node["id"] in try_callees)
                     + callee_blockers(node, callees, conversions)
                     + elaboration_blockers(node, storage_field=node["id"] in fields,
                                            error_parameter=node["id"] in error_parameters)
