@@ -832,9 +832,10 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
         type_identifier = node["typeDescriptions"]["typeIdentifier"]
         found.append("tuples of literals" if "t_rational" in type_identifier
                      else type_feature(type_identifier))
-    elif (kind == "Assignment" and unwrap(node["leftHandSide"])["nodeType"] == "TupleExpression"
-          and any(c is not None and unwrap(c)["nodeType"] != "Identifier"
-                  for c in unwrap(node["leftHandSide"])["components"])):
+    elif (kind == "Assignment" and node["leftHandSide"]["nodeType"] == "TupleExpression"
+          and any(c is not None and c["nodeType"] != "Identifier"
+                  for c in node["leftHandSide"]["components"])):
+        # tuple_writes takes holes and bare names, parenthesized ones not.
         found.append("tuple assignments to element or member targets")
     elif (kind == "VariableDeclarationStatement" and node.get("initialValue") is None
           and any(d is not None and d["storageLocation"] == "calldata"
@@ -1215,7 +1216,8 @@ def copies_receiver(member: dict[str, Any], function: dict[str, Any]) -> bool:
 def several_values(reached: dict[int, dict[str, Any]]) -> set[int]:
     """The tuples elab_values takes as several values: what a function
     returns, a declaration's initial value, and both sides of an assignment to
-    a tuple. elab_expr admits a tuple of several components nowhere else."""
+    a tuple, the left one without parentheses around it. elab_expr admits a
+    tuple of several components nowhere else."""
     found: set[int] = set()
     for node in reached.values():
         kind = node["nodeType"]
@@ -1223,8 +1225,9 @@ def several_values(reached: dict[int, dict[str, Any]]) -> set[int]:
             values = [node.get("expression")]
         elif kind == "VariableDeclarationStatement":
             values = [node.get("initialValue")]
-        elif kind == "Assignment" and unwrap(node["leftHandSide"])["nodeType"] == "TupleExpression":
-            values = [node["leftHandSide"], node["rightHandSide"]]
+        elif kind == "Assignment" and node["leftHandSide"]["nodeType"] == "TupleExpression":
+            found.add(node["leftHandSide"]["id"])
+            values = [node["rightHandSide"]]
         else:
             continue
         for value in values:

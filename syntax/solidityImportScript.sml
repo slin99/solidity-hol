@@ -678,7 +678,8 @@ QED
 Theorem tuple_component_valid[local]:
   tuple_component p = SOME ty ⇒ valid_type_shape ty
 Proof
-  rw[tuple_component_def, AllCaseEqs()] >> gvs[valid_type_shape_def] >>
+  rw[tuple_component_def, AllCaseEqs()] >>
+  gvs[valid_type_shape_def, solidityASTTheory.valid_int_width_def] >>
   metis_tac[decode_elementary_identifier_valid]
 QED
 

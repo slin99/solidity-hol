@@ -1034,6 +1034,10 @@ class ClassifyTests(unittest.TestCase):
 
         returned = {"nodeType": "Return", "id": 9, "expression": pair(10)}
         self.assertEqual(coverage.scan({"t.sol": unit([function(4, [returned])])}), {})
+        returned["expression"] = {"nodeType": "TupleExpression", "id": 20, "isInlineArray": False,
+                                  "components": [pair(10)],
+                                  "typeDescriptions": pair(10)["typeDescriptions"]}
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [returned])])}), {})
         discarded = {"nodeType": "ExpressionStatement", "id": 9, "expression": pair(10)}
         self.assertEqual(
             [b.feature for bs in coverage.scan({"t.sol": unit([function(4, [discarded])])}).values()
@@ -1047,6 +1051,10 @@ class ClassifyTests(unittest.TestCase):
                                    "components": [ident, None]}}
         self.assertEqual(coverage.elaboration_blockers(assign), [])
         assign["leftHandSide"]["components"] = [ident, element]
+        self.assertEqual({b.feature for b in coverage.elaboration_blockers(assign)},
+                         {"tuple assignments to element or member targets"})
+        parenthesized = {"nodeType": "TupleExpression", "isInlineArray": False, "components": [ident]}
+        assign["leftHandSide"]["components"] = [ident, parenthesized]
         self.assertEqual({b.feature for b in coverage.elaboration_blockers(assign)},
                          {"tuple assignments to element or member targets"})
 
