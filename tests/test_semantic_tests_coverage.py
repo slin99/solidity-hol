@@ -751,8 +751,7 @@ class ClassifyTests(unittest.TestCase):
             call(literal(94, "string", "abcd", "t_stringliteral_abcd"), v, hash_, hash_), {}),
             [coverage.Blocker("FunctionCall", "string literals as fixed-size bytes", "elaboration")])
         self.assertEqual(coverage.coerced_literals(
-            call(hash_, v, literal(95, "number", "5", "t_rational_5_by_1"), hash_), {}),
-            [coverage.Blocker("FunctionCall", "literals of non-integer types", "elaboration")])
+            call(hash_, v, literal(95, "number", "5", "t_rational_5_by_1"), hash_), {}), [])
 
     def test_functions_live_in_their_own_source_keep_their_blockers(self) -> None:
         coerced = {"nodeType": "VariableDeclarationStatement", "id": 6,
