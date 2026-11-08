@@ -262,6 +262,13 @@ Proof
   gen_tac >> EVAL_TAC
 QED
 
+Theorem no_exponent_assignment:
+  compound_operator (SOME SrcExp) = NONE ∧
+  compound_operator (SOME SrcAdd) = SOME AddOp
+Proof
+  EVAL_TAC
+QED
+
 (* Statements the compiler does not produce: a declaration as the body of an
  * if or a loop (it must be a statement of a block), and a fractional literal
  * in a tuple, even at a hole. *)

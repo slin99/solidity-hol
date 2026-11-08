@@ -305,9 +305,12 @@ Definition right_operand_type_def:
 End
 
 (* The operator of a compound assignment such as "+=". *)
+(* Solidity has no **=. *)
 Definition compound_operator_def:
   compound_operator op =
-    case op of SOME bop => arithmetic_operator bop | NONE => NONE
+    case op of
+      SOME bop => if bop = SrcExp then NONE else arithmetic_operator bop
+    | NONE => NONE
 End
 
 Definition compare_value_def:
