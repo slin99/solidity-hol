@@ -204,6 +204,7 @@ Datatype:
   | SrcNew node_info src_type_name src_expr string
   | SrcEnumValue node_info src_type_name num string
   | SrcKeccak256 node_info node_info src_expr string
+  | SrcModular node_info node_info core_operator (src_expr list) string
   | SrcAddressCodeLength node_info node_info src_expr string
   | SrcSelector node_info (byte list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
@@ -915,6 +916,8 @@ Definition expr_ids_def:
   (expr_ids (SrcEnumValue info tn _ _) = info.node_id :: type_name_ids tn) ∧
   (expr_ids (SrcKeccak256 info callee e _) =
     info.node_id :: callee.node_id :: expr_ids e) ∧
+  (expr_ids (SrcModular info callee _ args _) =
+    info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcAddressCodeLength info member e _) =
     info.node_id :: member.node_id :: expr_ids e) ∧
   (expr_ids (SrcSelector info _ _) = [info.node_id]) ∧
@@ -1305,6 +1308,12 @@ Definition check_expr_def:
         | SOME (SrcType (LocatedT _ BytesT)) => T
         | _ => F)
     then SOME (SrcType (FixedBytesT 32)) else NONE) ∧
+  (* addmod/mulmod: three operands, each converting to uint256 as an
+     argument would. *)
+  (check_expr env (SrcModular _ _ _ args tid) =
+    if source_type_matches (UintT 256) tid ∧ LENGTH args = 3 ∧
+       check_exprs env args
+    then SOME (SrcType (UintT 256)) else NONE) ∧
   (* f.selector, E.selector: the selector the compiler records on the
      declaration, bytes4 or (for an event) bytes32. *)
   (check_expr env (SrcSelector _ bs tid) =
