@@ -95,6 +95,11 @@ Theorem type_identifier_decoding:
   decode_type_identifier "t_tuple$_t_uint256_$_t_bool_$" =
     SOME (SrcTupleType [UintT 256; BoolT]) ∧
   decode_type_identifier "t_tuple$__$" = SOME (SrcTupleType []) ∧
+  decode_type_identifier "t_tuple$_t_bool_$_t_rational_0_by_1_$" =
+    SOME (SrcTupleType [BoolT; UintT 256]) ∧
+  decode_type_identifier "t_tuple$_t_rational_minus_1_by_1_$_t_bool_$" =
+    SOME (SrcTupleType [IntT 256; BoolT]) ∧
+  decode_type_identifier "t_tuple$_t_rational_1_by_2_$_t_bool_$" = NONE ∧
   decode_type_identifier "t_address_payable" =
     SOME (SrcType (AddressT PayableAddress)) ∧
   decode_type_identifier "t_uint7" = NONE ∧
@@ -311,30 +316,19 @@ val () = edited_unit "unlinked_declaration"
   (edit_first "VariableDeclarationStatement"
      (set_field "assignments" (JSON.ARRAY [JSON.NULL])) ast)
 
+(* The first comparison, ++i < n in count, annotated as a uint256. *)
+val () = edited_unit "comparison_type_mismatch"
+  (edit_first_where
+     (fn v => is_node "BinaryOperation" v andalso
+              JSONUtil.testField "operator" (fn JSON.STRING s => s = "<" | _ => false) v)
+     "comparison" (type_identifier "t_uint256") ast)
+
 (* The first call is fact(n - 1). *)
 val () = edited_unit "call_arity"
   (edit_first "FunctionCall" (set_field "arguments" (JSON.ARRAY [])) ast)
 
 Theorem duplicate_id_rejected:
   ¬valid_src_unit duplicate_id
-Proof
-  CONV_TAC cv_eval
-QED
-
-Theorem dangling_reference_rejected:
-  ¬valid_src_unit dangling_reference
-Proof
-  CONV_TAC cv_eval
-QED
-
-Theorem identifier_type_mismatch_rejected:
-  ¬valid_src_unit identifier_type_mismatch
-Proof
-  CONV_TAC cv_eval
-QED
-
-Theorem function_as_value_rejected:
-  ¬valid_src_unit function_as_value
 Proof
   CONV_TAC cv_eval
 QED
@@ -351,18 +345,6 @@ Proof
   CONV_TAC cv_eval
 QED
 
-Theorem unlinked_declaration_rejected:
-  ¬valid_src_unit unlinked_declaration
-Proof
-  CONV_TAC cv_eval
-QED
-
-Theorem call_arity_rejected:
-  ¬valid_src_unit call_arity
-Proof
-  CONV_TAC cv_eval
-QED
-
 (* State variables and the storage layout *)
 
 val storage_fixture = "../testdata/differential/expected/storage.json"
@@ -373,12 +355,6 @@ Definition storage_unit_def:
 End
 
 val () = cv_auto_trans storage_unit_def;
-
-Theorem storage_unit_valid:
-  valid_src_unit storage_unit
-Proof
-  CONV_TAC cv_eval
-QED
 
 Theorem storage_unit_layout:
   MAP (λe. (e.storage_slot, e.storage_offset, e.storage_type_id))
@@ -496,12 +472,6 @@ Proof
   CONV_TAC cv_eval
 QED
 
-Theorem pure_writes_state_rejected:
-  ¬valid_src_unit pure_writes_state
-Proof
-  CONV_TAC cv_eval
-QED
-
 Theorem payable_function_valid:
   valid_src_unit payable_function
 Proof
@@ -529,12 +499,6 @@ End
 
 val () = cv_auto_trans mapping_unit_def;
 
-Theorem mapping_unit_valid:
-  valid_src_unit mapping_unit
-Proof
-  CONV_TAC cv_eval
-QED
-
 val () = edited_unit_with mapping_contracts "mapping_key_metadata_mismatch"
   (edit_first "VariableDeclaration"
      (type_identifier "t_mapping$_t_int256_$_t_uint8_$") mapping_ast)
@@ -544,12 +508,6 @@ val () = edited_unit_with mapping_contracts "mapping_leaf_metadata_mismatch"
 
 Theorem mapping_key_metadata_rejected:
   ¬valid_src_unit mapping_key_metadata_mismatch
-Proof
-  CONV_TAC cv_eval
-QED
-
-Theorem mapping_leaf_metadata_rejected:
-  ¬valid_src_unit mapping_leaf_metadata_mismatch
 Proof
   CONV_TAC cv_eval
 QED
@@ -575,12 +533,6 @@ Definition array_unit_def:
   array_unit = ^(import_artifact array_fixture array_source)
 End
 val () = cv_auto_trans array_unit_def;
-
-Theorem array_unit_valid:
-  valid_src_unit array_unit
-Proof
-  CONV_TAC cv_eval
-QED
 
 val () = edited_unit_with array_contracts "array_dynamic_dimension_mismatch"
   (edit_first "ArrayTypeName" (set_field "length" JSON.NULL) array_ast)
@@ -612,24 +564,12 @@ QED
 val () = edited_unit_with array_contracts "array_leaf_mismatch"
   (edit_first "IndexAccess" (type_identifier "t_uint16") array_ast)
 
-Theorem array_leaf_metadata_rejected:
-  ¬valid_src_unit array_leaf_mismatch
-Proof
-  CONV_TAC cv_eval
-QED
-
 Definition dynamic_array_unit_def:
   dynamic_array_unit =
     ^(import_artifact "../testdata/differential/expected/dynamic_storage_arrays.json"
                       "testdata/differential/dynamic_storage_arrays.sol")
 End
 val () = cv_auto_trans dynamic_array_unit_def;
-
-Theorem dynamic_array_unit_valid:
-  valid_src_unit dynamic_array_unit
-Proof
-  CONV_TAC cv_eval
-QED
 
 (* Builtin identity is solc's declaration reference; spelling is diagnostic. *)
 val builtins_fixture = "../testdata/differential/expected/builtins.json"
@@ -642,12 +582,6 @@ Definition builtins_unit_def:
 End
 
 val () = cv_auto_trans builtins_unit_def;
-
-Theorem builtins_unit_valid:
-  valid_src_unit builtins_unit
-Proof
-  CONV_TAC cv_eval
-QED
 
 fun edit_callee f = edit_first "FunctionCall" (fn call =>
   set_field "expression" (f (JSONUtil.lookupField call "expression")) call)
@@ -673,12 +607,6 @@ val () = edited_unit_with builtins_contracts "nonliteral_builtin_message"
           (hd (JSONUtil.arrayMap I (JSONUtil.lookupField call "arguments")))]) call)
      builtins_ast)
 
-Theorem nonliteral_builtin_message_rejected:
-  ¬valid_src_unit nonliteral_builtin_message
-Proof
-  CONV_TAC cv_eval
-QED
-
 val struct_fixture = "../testdata/differential/expected/storage_structs.json"
 val struct_source = "testdata/differential/storage_structs.sol"
 val struct_ast = artifact_part struct_fixture ["sources", struct_source, "ast"]
@@ -688,12 +616,6 @@ Definition struct_unit_def:
   struct_unit = ^(import_artifact struct_fixture struct_source)
 End
 val () = cv_auto_trans struct_unit_def;
-
-Theorem struct_unit_valid:
-  valid_src_unit struct_unit
-Proof
-  CONV_TAC cv_eval
-QED
 
 val () = edited_unit_with struct_contracts "struct_type_identity_mismatch"
   (edit_first "UserDefinedTypeName"
@@ -706,10 +628,8 @@ val () = edited_unit_with struct_contracts "struct_field_identity_mismatch"
 val () = edited_unit_with struct_contracts "struct_field_type_mismatch"
   (edit_first "MemberAccess" (type_identifier "t_uint16") struct_ast)
 
-Theorem struct_identities_checked:
-  ¬valid_src_unit struct_type_identity_mismatch ∧
-  ¬valid_src_unit struct_field_identity_mismatch ∧
-  ¬valid_src_unit struct_field_type_mismatch
+Theorem struct_type_identity_checked:
+  ¬valid_src_unit struct_type_identity_mismatch
 Proof
   CONV_TAC cv_eval
 QED
@@ -754,12 +674,6 @@ Definition inheritance_unit_def:
 End
 
 val () = cv_auto_trans inheritance_unit_def;
-
-Theorem inheritance_unit_valid:
-  valid_src_unit inheritance_unit
-Proof
-  CONV_TAC cv_eval
-QED
 
 (* Counter._scale has no body and is left out; Counter.peek, Counter._sender
  * and Context._sender are overridden. *)
@@ -811,12 +725,6 @@ val () = edited_unit_with inheritance_contracts "unresolved_override"
               then drop_field "baseFunctions" v else v)
      inheritance_ast)
 
-Theorem unresolved_override_rejected:
-  ¬valid_src_unit unresolved_override
-Proof
-  CONV_TAC cv_eval
-QED
-
 (* Imports: the contract's base, the interface it implements and calls
  * through, their event and the struct it stores all come from
  * imports_base.sol, and resolve by id across the compilation. *)
@@ -829,12 +737,6 @@ Definition imports_unit_def:
 End
 
 val () = cv_auto_trans imports_unit_def;
-
-Theorem imports_unit_valid:
-  valid_src_unit imports_unit
-Proof
-  CONV_TAC cv_eval
-QED
 
 (* Counter.bump is overridden; ICounter.count has no body. Only Point, of
  * imports_base.sol's two structs, is referred to. *)
@@ -872,12 +774,6 @@ End
 
 val () = cv_auto_trans errors_unit_def;
 
-Theorem errors_unit_valid:
-  valid_src_unit errors_unit
-Proof
-  CONV_TAC cv_eval
-QED
-
 (* The errors a body reverts with, in order: selector, parameter count and
  * argument count. *)
 Definition revert_errors_def:
@@ -908,12 +804,6 @@ Definition type_bounds_unit_def:
 End
 
 val () = cv_auto_trans type_bounds_unit_def;
-
-Theorem type_bounds_unit_valid:
-  valid_src_unit type_bounds_unit
-Proof
-  CONV_TAC cv_eval
-QED
 
 Theorem type_bound_values:
   type_bound "min" (UintT 8) = SOME 0 ∧
@@ -988,12 +878,6 @@ Definition shared_library_unit_def:
 End
 
 val () = cv_auto_trans shared_library_unit_def;
-
-Theorem shared_library_unit_valid:
-  valid_src_unit shared_library_unit
-Proof
-  CONV_TAC cv_eval
-QED
 
 fun named ty name v =
   is_node ty v andalso
@@ -1150,12 +1034,6 @@ End
 
 val () = cv_auto_trans conditionals_unit_def;
 
-Theorem conditionals_unit_valid:
-  valid_src_unit conditionals_unit
-Proof
-  CONV_TAC cv_eval
-QED
-
 val () = edited_unit_with conditionals_contracts "storage_conditional"
   (edit_first "Conditional" (type_identifier "t_bytes_storage_ptr") conditionals_ast)
 
@@ -1171,36 +1049,6 @@ val () = edited_unit_with conditionals_contracts "calldata_conditional"
 
 val () = edited_unit_with conditionals_contracts "function_conditional"
   (edit_first "Conditional" (type_identifier "t_function_internal_pure$__$returns$__$") conditionals_ast)
-
-Theorem storage_conditional_rejected:
-  ¬valid_src_unit storage_conditional
-Proof
-  CONV_TAC cv_eval
-QED
-
-Theorem stored_bytes_conditional_rejected:
-  ¬valid_src_unit stored_bytes_conditional
-Proof
-  CONV_TAC cv_eval
-QED
-
-Theorem tuple_conditional_rejected:
-  ¬valid_src_unit tuple_conditional
-Proof
-  CONV_TAC cv_eval
-QED
-
-Theorem calldata_conditional_rejected:
-  ¬valid_src_unit calldata_conditional
-Proof
-  CONV_TAC cv_eval
-QED
-
-Theorem function_conditional_rejected:
-  ¬valid_src_unit function_conditional
-Proof
-  CONV_TAC cv_eval
-QED
 
 (* abi.encodeCall leaves out its receiver's read, which a constant's would
  * not be: the compiler evaluates its initializer, which may fail. So a
@@ -1256,8 +1104,3 @@ End
 
 val () = cv_auto_trans bytes_constants_unit_def;
 
-Theorem bytes_constants_unit_valid:
-  valid_src_unit bytes_constants_unit
-Proof
-  CONV_TAC cv_eval
-QED

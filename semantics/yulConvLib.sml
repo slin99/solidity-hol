@@ -367,7 +367,7 @@ val guarded_helper_defs = [
   yul_update_def,
   yul_memory_byte_def, yul_memory_read_def, yul_memory_write_def,
   yul_memory_touch_def, yul_memory_region_def, yul_mload_def, yul_mstore_def,
-  yul_sload_def, yul_sstore_def, yul_call_def,
+  yul_sload_def, yul_sstore_def, yul_tload_def, yul_tstore_def, yul_call_def,
   yul_return_data_copy_def, yul_name_of_bytes_def,
   eval_yul_builtin_call_def
 ]

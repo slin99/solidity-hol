@@ -29,9 +29,11 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
+import tomllib
 from typing import Any, Callable, Iterator
 
 import export_solc_artifacts as exporter
@@ -679,7 +681,8 @@ def decodes_component(type_identifier: str) -> bool:
             or ENUM.fullmatch(type_identifier) is not None
             or BYTE_SEQUENCE.fullmatch(type_identifier) is not None
             or located_array(type_identifier) or storage_array_value(type_identifier)
-            or type_identifier.startswith("t_stringliteral_"))
+            or type_identifier.startswith("t_stringliteral_")
+            or INTEGER_RATIONAL.fullmatch(type_identifier) is not None)
 
 
 def decodes(type_identifier: str) -> bool:
@@ -843,9 +846,10 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
         type_identifier = node["typeDescriptions"]["typeIdentifier"]
         found.append("tuples of literals" if "t_rational" in type_identifier
                      else type_feature(type_identifier))
-    elif (kind == "Assignment" and unwrap(node["leftHandSide"])["nodeType"] == "TupleExpression"
-          and any(c is not None and unwrap(c)["nodeType"] != "Identifier"
-                  for c in unwrap(node["leftHandSide"])["components"])):
+    elif (kind == "Assignment" and node["leftHandSide"]["nodeType"] == "TupleExpression"
+          and any(c is not None and c["nodeType"] != "Identifier"
+                  for c in node["leftHandSide"]["components"])):
+        # tuple_writes takes holes and bare names, parenthesized ones not.
         found.append("tuple assignments to element or member targets")
     elif (kind == "VariableDeclarationStatement" and node.get("initialValue") is None
           and any(d is not None and d["storageLocation"] == "calldata"
@@ -1228,6 +1232,30 @@ def copies_receiver(member: dict[str, Any], function: dict[str, Any]) -> bool:
     return (receiver.endswith(("_storage", "_storage_ptr", "_calldata", "_calldata_ptr"))
             and bool(parameters)
             and (parameters[0]["typeDescriptions"].get("typeIdentifier") or "").endswith("_memory_ptr"))
+
+
+def several_values(reached: dict[int, dict[str, Any]]) -> set[int]:
+    """The tuples elab_values takes as several values: what a function
+    returns, a declaration's initial value, and both sides of an assignment to
+    a tuple, the left one without parentheses around it. elab_expr admits a
+    tuple of several components nowhere else."""
+    found: set[int] = set()
+    for node in reached.values():
+        kind = node["nodeType"]
+        if kind == "Return":
+            values = [node.get("expression")]
+        elif kind == "VariableDeclarationStatement":
+            values = [node.get("initialValue")]
+        elif kind == "Assignment" and node["leftHandSide"]["nodeType"] == "TupleExpression":
+            found.add(node["leftHandSide"]["id"])
+            values = [node["rightHandSide"]]
+        else:
+            continue
+        for value in values:
+            value = unwrap(value)
+            if value is not None and value["nodeType"] == "TupleExpression":
+                found.add(value["id"])
+    return found
 
 
 def unwrap(value: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -1655,6 +1683,9 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                      if n["nodeType"] == "IndexAccess"}
     storage_bases.update(n["expression"]["id"] for n in reached.values()
                          if n["nodeType"] == "MemberAccess")
+    value_tuples = several_values(reached)
+    statements = {unwrap(n["expression"])["id"] for n in reached.values()
+                  if n["nodeType"] == "ExpressionStatement"}
     for node in reached.values():
         if node["id"] in unread:
             continue
@@ -1679,6 +1710,15 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                for declaration, signature in signatures(node, by_id)):
             # The checker admits no enum in what an external call returns.
             blockers.append(Blocker("FunctionCall", "enums returned by external calls", "elaboration"))
+        if (node["nodeType"] == "Assignment" and node["leftHandSide"]["nodeType"] == "TupleExpression"
+                and len(node["leftHandSide"]["components"]) == 1
+                and (node["operator"] != "=" or node["id"] not in statements)):
+            # elab_expr takes (a) as a tuple target: plain assignment only,
+            # with no value.
+            blockers.append(Blocker("Assignment", "parenthesized assignment targets", "elaboration"))
+        if (node["nodeType"] == "TupleExpression" and not node["isInlineArray"]
+                and len(node["components"]) != 1 and node["id"] not in value_tuples):
+            blockers.append(Blocker("TupleExpression", "tuples as values", "elaboration"))
         if node["id"] in builtin_callees:
             call = next(c for c in calls if c["expression"]["id"] == node["id"])
             if len(call["arguments"]) not in ({1, 2} if node["referencedDeclaration"] == REQUIRE else
@@ -1725,27 +1765,24 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
 # The HOL run
 
 
-def run_hol(holbuild: str, work: Path, units: list[tuple[str, Path]]) -> dict[str, dict[str, Any]]:
-    """Import and elaborate every unit, in one HOL session; the result of each
-    test by name."""
-    manifest = work / "manifest.txt"
-    manifest.write_text("".join(f"{name}\t{path}\n" for name, path in units), encoding="utf-8")
-    log = work / "hol.log"
-    # `holbuild run` loads built theories but does not build them.
-    build = [holbuild, "-j8", "build", "--skip-checkpoints", "--skip-proof-steps", "solidityPrepareLib",
-             "solidityElaborateTheory"]
-    print("+", " ".join(build), file=sys.stderr, flush=True)
-    subprocess.run(build, cwd=ROOT, check=True)
-    command = [holbuild, "-j1", "run", str(HOL_SCRIPT)]
-    print("+", " ".join(command), file=sys.stderr, flush=True)
-    with log.open("w", encoding="utf-8") as stream:
-        status = subprocess.run(
-            command, cwd=ROOT, stdin=subprocess.DEVNULL, stdout=stream,
-            stderr=subprocess.STDOUT,
-            env={**os.environ, "SEMANTIC_TESTS_MANIFEST": str(manifest)},
-        ).returncode
+def remote_configured() -> bool:
+    """Keep configured remote setups from silently running coverage locally."""
+    if any(os.environ.get(name) for name in (
+            "HOLBUILD_REMOTE_CACHE_URL", "HOLBUILD_REMOTE_CACHE_CURL_CONFIG",
+            "HOLBUILD_REMOTE_EXEC_CURL_CONFIG")):
+        return True
+    config = ROOT / ".holconfig.toml"
+    if not config.is_file():
+        return False
+    with config.open("rb") as stream:
+        remote = tomllib.load(stream).get("remote_cache", {})
+    return bool(remote.get("url") or remote.get("curl_config"))
+
+
+def read_hol_results(result_file: Path, log: Path, status: int,
+                     units: list[tuple[str, Path]]) -> dict[str, dict[str, Any]]:
     results = {}
-    for line in log.read_text(encoding="utf-8", errors="replace").splitlines():
+    for line in result_file.read_text(encoding="utf-8", errors="replace").splitlines():
         if line.startswith(RESULT_PREFIX):
             try:
                 result = json.loads(line[len(RESULT_PREFIX):])
@@ -1758,6 +1795,102 @@ def run_hol(holbuild: str, work: Path, units: list[tuple[str, Path]]) -> dict[st
         raise SystemExit(f"the HOL run failed (status {status}, {len(missing)} tests "
                          f"without a result):\n{tail}")
     return results
+
+
+def run_fleet_shard(holbuild: str, work: Path,
+                    units: list[tuple[str, Path]]) -> dict[str, dict[str, Any]] | None:
+    """Run one cached action; None means no coordinator was configured."""
+    work.mkdir(parents=True, exist_ok=True)
+    manifest = work / "manifest.txt"
+    staged_units = []
+    for index, (name, source) in enumerate(units):
+        target = work / f"{index}.json"
+        shutil.copyfile(source, target)
+        staged_units.append((name, target))
+    manifest.write_text("".join(f"{name}\t{path.name}\n" for name, path in staged_units),
+                        encoding="utf-8")
+    script = work / HOL_SCRIPT.name
+    shutil.copyfile(HOL_SCRIPT, script)
+    supports = [manifest]
+    for source in (exporter.PIN_FILE, exporter.DEFAULT_PROFILE):
+        target = work / source.relative_to(ROOT)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
+        supports.append(target)
+    supports.extend(path for _, path in staged_units)
+    command = [holbuild, "-j1", "run-action", "--remote-only", "--skip-checkpoints",
+               "--skip-proof-steps", "--script", str(script),
+               "--load", "solidityPrepareLib", "--output", "results.jsonl",
+               "--outputs-dir", str(work / "outputs")]
+    for support in supports:
+        command.extend(["--support", str(support)])
+    command.append("solidityElaborateTheory")
+    print(f"+ {holbuild} run-action solidityElaborateTheory ({len(units)} tests)",
+          file=sys.stderr, flush=True)
+    log = work / "hol.log"
+    with log.open("w", encoding="utf-8") as stream:
+        status = subprocess.run(command, cwd=ROOT, stdin=subprocess.DEVNULL,
+                                stdout=stream, stderr=subprocess.STDOUT).returncode
+    action_log = log.read_text(encoding="utf-8", errors="replace")
+    print(action_log, file=sys.stderr, end="", flush=True)
+    if (status == 75 and "run-action --remote-only: no coordinator to run on; "
+            "pass --remote-exec URL" in action_log):
+        return None
+    result_file = work / "outputs/solidity-hol/solidityElaborateTheory/results.jsonl"
+    completed = re.search(r"^solidity-hol:solidityElaborateTheory [0-9a-f]{64} "
+                          r"(?:done|cached)\b", action_log, re.M)
+    if status != 0 or completed is None or not result_file.is_file():
+        raise SystemExit(f"the HOL fleet action failed (status {status}):\n{action_log}")
+    return read_hol_results(result_file, log, status, units)
+
+
+def run_hol(holbuild: str, work: Path, units: list[tuple[str, Path]]) -> dict[str, dict[str, Any]]:
+    """Prepare bounded batches on the fleet, or locally without remote configuration."""
+    work = work.resolve()
+    # `holbuild run` loads built theories but does not build them.
+    build = [holbuild, "-j8", "build", "--skip-checkpoints", "--skip-proof-steps", "solidityPrepareLib",
+             "solidityElaborateTheory"]
+    print("+", " ".join(build), file=sys.stderr, flush=True)
+    subprocess.run(build, cwd=ROOT, check=True)
+    help_text = subprocess.run([holbuild, "--help"], cwd=ROOT, check=True,
+                               capture_output=True, text=True).stdout
+    configured = remote_configured()
+    if "run-action" in help_text:
+        shards = [units[i:i + 128] for i in range(0, len(units), 128)] or [[]]
+
+        def run_shard(index: int) -> dict[str, dict[str, Any]] | None:
+            return run_fleet_shard(holbuild, work / "shards" / f"{index:04}", shards[index])
+
+        results = run_shard(0)
+        if results is not None:
+            # Each startup/export mutates the same holbuild project.
+            for index in range(1, len(shards)):
+                shard = run_shard(index)
+                if shard is None:
+                    raise SystemExit("the HOL fleet action failed: coordinator disappeared "
+                                     "after the first shard")
+                results.update(shard)
+            return results
+        if configured:
+            raise SystemExit("the HOL fleet action failed: remote configuration exists but "
+                             "no coordinator was selected")
+    elif configured:
+        raise SystemExit("holbuild has no run-action support; upgrade holbuild to use the "
+                         "configured remote execution/cache instead of running coverage locally")
+
+    local_manifest = work / "local-manifest.txt"
+    local_manifest.write_text("".join(f"{name}\t{path.resolve()}\n" for name, path in units),
+                              encoding="utf-8")
+    command = [holbuild, "-j1", "run", str(HOL_SCRIPT)]
+    print("+", " ".join(command), file=sys.stderr, flush=True)
+    log = work / "hol.log"
+    with log.open("w", encoding="utf-8") as stream:
+        status = subprocess.run(
+            command, cwd=ROOT, stdin=subprocess.DEVNULL, stdout=stream,
+            stderr=subprocess.STDOUT,
+            env={**os.environ, "SEMANTIC_TESTS_MANIFEST": str(local_manifest)},
+        ).returncode
+    return read_hol_results(log, log, status, units)
 
 
 # Classification
