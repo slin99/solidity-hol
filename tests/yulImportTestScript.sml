@@ -204,3 +204,28 @@ val () =
             String.isSubstring "second_unknown" c then ()
          else raise ERR "yulImportTest" ("three unknown calls: " ^ msg)
      | _ => raise ERR "yulImportTest" ("three unknown calls: " ^ msg))
+
+(* A function defined inside a nested block is refused, and the blockers in
+ * its body are lines of the refusal too; its call to itself is not one. *)
+val () =
+  (ignore (import
+     (output_with
+        [runtime_object
+           [obj [("nodeType", str "YulBlock"),
+                 ("statements", arr
+                    [obj [("nodeType", str "YulFunctionDefinition"),
+                          ("name", str "inner"),
+                          ("body", obj [("nodeType", str "YulBlock"),
+                                        ("statements", arr
+                                           [expression_statement (call "inner_unknown" []),
+                                            expression_statement (call "inner" [])])])]])]]]
+        creation_code));
+   raise ERR "yulImportTest" "nested function definition: admitted")
+  handle yulImportLib.ImportError msg =>
+    (case String.fields (fn c => c = #"\n") msg of
+       [a, b] =>
+         if String.isSubstring "call to inner_unknown" a andalso
+            String.isSubstring "unsupported statement YulFunctionDefinition" b
+         then ()
+         else raise ERR "yulImportTest" ("nested function definition: " ^ msg)
+     | _ => raise ERR "yulImportTest" ("nested function definition: " ^ msg))
