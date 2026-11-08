@@ -1536,7 +1536,9 @@ Definition elab_expr_def:
                    | INR why => INR [(expr_id index, why)])
               | INR bs => INR bs)
          | INL _ => INR [(info.node_id, "index access on this type")]
-         | INR _ => reject (info.node_id, "index access on this type") r)
+         | INR _ =>
+             INR (blockers (reject (info.node_id, "index access on this type") r) ++
+                  blockers (elab_expr ctx n index)))
     | SrcFunctionCall info (SrcArrayMember _ member root_expr _) [] [] tid =>
         (case elab_location ctx n root_expr of
            INL ((ss, ref, ArrayT element NONE), n1) =>
@@ -1995,7 +1997,7 @@ Definition elab_stmts_def:
        INL ((ss, vs), n1) =>
          (case coerce_values n1 (MAP SND ctx.returns) vs of
             INL (cs, as, n2) => INL ((ss ++ cs ++ [ReturnStmt as], ctx), n2)
-          | INR why => INR [(expr_id e, why)])
+          | INR why => unknown_reference ctx (expr_id e) why ctx.returns_id)
      | INR bs => INR bs)) ∧
   (elab_stmt ctx n (SrcEmit info ev args order) =
     case elab_arg_values ctx n args of
@@ -2195,6 +2197,26 @@ Definition elab_levels_def:
                  blockers (elab_levels ctx modifiers ps rs n n ms ss)))
 End
 
+(* A function's context, with the parameters and return variables vs. *)
+Definition function_ctx_def:
+  function_ctx ctx library (f : src_function) supers vs rs scope =
+    ctx with <| supers := supers; variables := vs;
+                state := if library ∨ f.fn_mutability = PureMut then []
+                         else ctx.state;
+                locations := if library then [] else ctx.locations;
+                immutables := if library then [] else ctx.immutables;
+                returns := rs; creation := (f.fn_kind = ConstructorKind);
+                scope := scope; returns_id := f.fn_returns_id |>
+End
+
+Definition bound_variables_def:
+  (bound_variables [] = []) ∧
+  (bound_variables (v :: vs) =
+    case variable_binding v of
+      SOME b => b :: bound_variables vs
+    | NONE => bound_variables vs)
+End
+
 (* The context of a contract's code: the callable functions calls, its
  * structs, enums and events, and its state variables, immutables and
  * constants. Inline assembly may name any state variable's slot. *)
@@ -2212,31 +2234,39 @@ End
 (* A function's procedures, checked arithmetic by default; parameters and
  * returns keep their declaration ids. A pure function reads no state
  * variable, and a library function has no state variables or immutables.
- * When strict, every super call must reach a supported function.
+ * When strict, every super call must reach a supported function. A function
+ * whose variables fail is elaborated with those that bind, for the blockers
+ * of its modifiers and body; a failed return variable marks the return list
+ * failed, so that its return statements add no blocker.
  *)
 Definition elab_function_def:
   elab_function ctx (c : src_contract) strict library n (f : src_function) =
     let (fs, bases) = if library then (c.contract_library_functions, c.contract_libraries)
                       else (c.contract_functions, c.contract_bases) in
+    let modifiers = MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers in
     case (all_some (MAP variable_binding f.fn_parameters),
           all_some (MAP variable_binding f.fn_returns), f.fn_body,
           super_table fs bases f) of
       (SOME ps, SOME rs, SrcBlock info ss, SOME supers) =>
         ensure (¬strict ∨ EVERY (λ(_, g). g.fn_unsupported = NONE) supers)
           (f.fn_info.node_id, "super call of an unsupported function")
-        (elab_levels
-          (ctx with <| supers := supers; variables := ps ++ rs;
-                       state := if library ∨ f.fn_mutability = PureMut then []
-                                else ctx.state;
-                       locations := if library then [] else ctx.locations;
-                       immutables := if library then [] else ctx.immutables;
-                       returns := rs; creation := (f.fn_kind = ConstructorKind);
-                       scope := info.node_id; returns_id := f.fn_returns_id |>)
-          (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
-          ps rs f.fn_info.node_id n f.fn_modifiers ss)
+        (elab_levels (function_ctx ctx library f supers (ps ++ rs) rs info.node_id)
+          modifiers ps rs f.fn_info.node_id n f.fn_modifiers ss)
     | (SOME _, SOME _, SrcBlock _ _, NONE) =>
         INR [(f.fn_info.node_id, "unresolved super call")]
     | (SOME _, SOME _, _, _) => INR [(f.fn_info.node_id, "function body not a block")]
+    | (_, _, SrcBlock info ss, SOME supers) =>
+        let vs = MAP SOME (f.fn_parameters ++ f.fn_returns) in
+        let ps = bound_variables f.fn_parameters in
+        let rs = bound_variables f.fn_returns in
+        let fctx = function_ctx ctx library f supers [] rs info.node_id in
+        let fctx = if LENGTH rs = LENGTH f.fn_returns then fctx
+                   else fctx with bad_ids := f.fn_returns_id :: fctx.bad_ids in
+        INR (variables_blockers vs ++
+             blockers (ensure (¬strict ∨ EVERY (λ(_, g). g.fn_unsupported = NONE) supers)
+               (f.fn_info.node_id, "super call of an unsupported function")
+               (elab_levels (bind_failed fctx vs)
+                  modifiers ps rs f.fn_info.node_id n f.fn_modifiers ss)))
     | _ => INR (variables_blockers (MAP SOME (f.fn_parameters ++ f.fn_returns)))
 End
 
@@ -3129,6 +3159,8 @@ Proof
   simp[Once elab_levels_pre_def, elab_stmts_pre, elab_modifier_args_pre]
 QED
 
+val () = cv_auto_trans function_ctx_def;
+val () = cv_auto_trans bound_variables_def;
 val () = cv_auto_trans elab_function_def;
 val () = cv_auto_trans contract_ctx_def;
 val () = cv_auto_trans elab_functions_def;

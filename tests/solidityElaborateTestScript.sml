@@ -339,6 +339,42 @@ Proof
   EVAL_TAC
 QED
 
+(* A function whose parameter or return variable fails still reports its
+ * body's blockers; a reference to the failed parameter, or a return of a
+ * value for the failed return variable, adds none. *)
+val empty_contract =
+  “<| contract_info := ^info0; contract_name := "C"; contract_scope := 0;
+      contract_bases := []; contract_state_variables := [];
+      contract_immutables := []; contract_initializers := [];
+      contract_libraries := []; contract_constants := [];
+      contract_base_arguments := []; contract_storage := [];
+      contract_structs := []; contract_enums := []; contract_events := [];
+      contract_modifiers := []; contract_functions := [];
+      contract_library_functions := []; contract_getters := [] |>”;
+fun function_of ps rs ss =
+  “<| fn_info := ^(at 1); fn_name := "f"; fn_scope := 0;
+      fn_kind := FunctionKind; fn_visibility := InternalVisibility;
+      fn_mutability := NonpayableMut; fn_selector := NONE;
+      fn_base_functions := []; fn_parameters_id := 2; fn_parameters := ^ps;
+      fn_returns_id := 3; fn_returns := ^rs; fn_modifiers := [];
+      fn_super_calls := []; fn_body := SrcBlock ^(at 9) ^ss;
+      fn_unsupported := NONE |>”;
+val break_11 = “SrcBreak ^(at 11)”;
+val return_1 = “SrcReturn ^(at 12) 3
+                  (SOME (SrcLiteral ^(at 13) NumberLiteral "1" "t_rational_1_by_1"))”;
+
+val failed_parameter = function_of “[^unsupported_y]” “[]” “[^read_y; ^break_11]”;
+val failed_return = function_of “[]” “[^unsupported_y]” “[^return_1; ^break_11]”;
+
+Theorem failed_variables_keep_body_blockers:
+  elab_function ^ctx0 ^empty_contract T F 10 ^failed_parameter =
+  INR [(7, "function type"); (11, "break outside a loop")] ∧
+  elab_function ^ctx0 ^empty_contract T F 10 ^failed_return =
+  INR [(7, "function type"); (11, "break outside a loop")]
+Proof
+  EVAL_TAC
+QED
+
 (* The unit elaborates, so nothing in it fails. *)
 Theorem pure_core_has_no_failures:
   unit_elaboration_failures T pure_core = []
