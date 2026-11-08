@@ -483,13 +483,15 @@ annotations, at the node whose type it computes:
   callee's return types; conversions are annotated with their target type,
   environment reads with their member's type; emits and reverts with an
   error carry as many arguments as the event or error has parameters;
-- declaration statements list exactly their declarations' ids, scoped by the
-  enclosing block or `for`; returns name the enclosing function's return
+- declaration statements are statements of a block or a `for` initializer,
+  list exactly their declarations' ids, and are scoped by that block or
+  `for`; returns name the enclosing function's return
   list; `break` and `continue` occur in loop bodies; conditions are boolean;
   modifier bodies make no super call, and modifier arguments see the
   function's parameters but not its return variables;
-- operators belong to the admitted set and every other annotation decodes to
-  an elementary, rational literal or tuple type.
+- operators belong to the admitted set; every scalar result is annotated with
+  its own type, and every other annotation decodes to an elementary, rational
+  literal or tuple type.
 
 Left to the compiler: storage layout calculation, that view functions write
 no state variable, and the override metadata (which declarations each

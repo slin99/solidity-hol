@@ -311,6 +311,13 @@ val () = edited_unit "unlinked_declaration"
   (edit_first "VariableDeclarationStatement"
      (set_field "assignments" (JSON.ARRAY [JSON.NULL])) ast)
 
+(* The first comparison, ++i < n in count, annotated as a uint256. *)
+val () = edited_unit "comparison_type_mismatch"
+  (edit_first_where
+     (fn v => is_node "BinaryOperation" v andalso
+              JSONUtil.testField "operator" (fn JSON.STRING s => s = "<" | _ => false) v)
+     "comparison" (type_identifier "t_uint256") ast)
+
 (* The first call is fact(n - 1). *)
 val () = edited_unit "call_arity"
   (edit_first "FunctionCall" (set_field "arguments" (JSON.ARRAY [])) ast)

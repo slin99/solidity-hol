@@ -619,6 +619,25 @@ Definition arrange_def:
     OPTION_MAP (λws. TAKE k vs ++ ws) (all_some (MAP (λi. oEL (k + i) vs) order))
 End
 
+(* An expression the compiler annotated with tid may elaborate to a value of
+ * type vt: a scalar of the annotated type, or anything else whose annotation
+ * decodes. *)
+Definition annotation_matches_def:
+  annotation_matches tid vt ⇔
+    case vt of
+      ElabType ty =>
+        if is_stored_scalar_type ty then source_type_matches ty tid
+        else IS_SOME (decode_type_identifier tid)
+    | _ => IS_SOME (decode_type_identifier tid)
+End
+
+(* A declaration is a statement of a block, never the body of an if, a loop
+ * or a try clause. *)
+Definition is_declaration_def:
+  (is_declaration (SrcVariableDeclarationStatement _ _ _ _) ⇔ T) ∧
+  (is_declaration _ ⇔ F)
+End
+
 Definition elab_expr_def:
   (elab_expr ctx n expression =
     case expression of
@@ -736,10 +755,10 @@ Definition elab_expr_def:
               | _ => NONE)
          | NONE =>
          if op = "++" ∨ op = "--" then
-           if IS_NONE (identifier_type tid) then NONE else
            case elab_destination ctx n e of
              SOME ((ls, target), n1) =>
                let ty = destination_type target in
+               if ¬annotation_matches tid (ElabType ty) then NONE else
                let (read, n2) = read_destination n1 target in
                let (rs, cur) = read in
                let (old, n3) = if prefix then (([], cur), n2)
@@ -777,6 +796,7 @@ Definition elab_expr_def:
          case (identifier_type common, identifier_type tid, elab_expr ctx n l) of
            (SOME ty, SOME _, SOME ((sl, al, vl), n1)) =>
              if op = "&&" ∨ op = "||" then
+               if ¬annotation_matches tid (ElabType BoolT) then NONE else
                (case coerce n1 BoolT al vl of
                   SOME ((cl, al'), n2) =>
                     (case elab_expr ctx (n2 + 2) r of
@@ -803,6 +823,7 @@ Definition elab_expr_def:
                   SOME ((sr, ar, vr), n3) =>
                     (case arithmetic_operator op of
                        SOME aop =>
+                         if ¬annotation_matches tid (ElabType ty) then NONE else
                          (case coerce n3 ty al' vl of
                             SOME ((cl, al''), n4) =>
                               (case coerce n4 (right_operand_type aop ty) ar vr of
@@ -815,6 +836,7 @@ Definition elab_expr_def:
                                | NONE => NONE)
                           | NONE => NONE)
                      | NONE =>
+                         if ¬annotation_matches tid (ElabType BoolT) then NONE else
                          (case coerce n3 ty al' vl of
                             SOME ((cl, al''), n4) =>
                               (case coerce n4 ty ar vr of
@@ -857,11 +879,14 @@ Definition elab_expr_def:
                        if op = "=" then
                          (case plain_assignment n3 target ar' vr of
                             SOME ((cr, a, value_ty), n4) =>
-                              SOME ((sr ++ sc ++ ls ++ cr, a, ElabType value_ty), n4)
+                              if annotation_matches tid (ElabType value_ty) then
+                                SOME ((sr ++ sc ++ ls ++ cr, a, ElabType value_ty), n4)
+                              else NONE
                           | NONE => NONE)
                        else
                          (case compound_operator op of
                             SOME aop =>
+                              if ¬annotation_matches tid (ElabType ty) then NONE else
                               (case coerce n3 (right_operand_type aop ty) ar' vr of
                                  SOME ((cr, a), n4) =>
                                    let (read, n5) = read_destination n4 target in
@@ -876,7 +901,10 @@ Definition elab_expr_def:
                    | NONE => NONE)
               | NONE => NONE))
     | SrcTupleExpression _ [SOME e] tid =>
-        (if IS_NONE (decode_type_identifier tid) then NONE else elab_expr ctx n e)
+        (case elab_expr ctx n e of
+           SOME ((ss, a, vt), n1) =>
+             if annotation_matches tid vt then SOME ((ss, a, vt), n1) else NONE
+         | NONE => NONE)
     | SrcTupleExpression _ _ _ =>
         (NONE)
     | SrcArrayMember _ _ _ _ => NONE
@@ -1182,12 +1210,14 @@ Definition elab_expr_def:
         SOME ((ss, a, ElabTuple tys), n1) =>
           let (cs, vs, n2) = tuple_components n1 a 0 tys in
           SOME ((ss ++ cs, vs), n2)
-      | SOME ((ss, a, vt), n1) => SOME ((ss, [(a, vt)]), n1)
+      | SOME ((ss, a, vt), n1) =>
+          if vt = ElabRational then NONE else SOME ((ss, [(a, vt)]), n1)
       | NONE => NONE) ∧
   (elab_components ctx n [] = SOME (([], []), n)) ∧
   (elab_components ctx n (SOME e :: cs) =
     case elab_expr ctx n e of
       SOME ((ss, a, vt), n1) =>
+        if vt = ElabRational then NONE else
         let (copied, n2) =
           if components_assign cs then snapshot n1 a vt else (([], a), n1) in
         let (ss1, a1) = copied in
@@ -1534,11 +1564,13 @@ Definition elab_stmts_def:
                        (case declare_values ctx n2 (MAP SOME ps)
                           (TAKE (LENGTH ps) rest) of
                      SOME (ds, ctx1, n3) =>
-                       (case elab_stmt ctx1 n3 body of
+                       (case if is_declaration body then NONE
+                             else elab_stmt ctx1 n3 body of
                           SOME ((bs, _), n4) =>
                             (case declare_values ctx n4 [SOME reason] [failure] of
                                SOME (es, ctx2, n5) =>
-                                 (case elab_stmt ctx2 n5 handler of
+                                 (case if is_declaration handler then NONE
+                                       else elab_stmt ctx2 n5 handler of
                                     SOME ((hs, _), n6) =>
                                       SOME ((cs ++ xs ++
                                         [IfStmt condition (ds ++ bs) (es ++ hs)], ctx), n6)
@@ -1570,6 +1602,8 @@ Definition elab_stmts_def:
     | NONE => NONE) ∧
   (elab_stmt ctx n (SrcVariableDeclarationStatement _ _ _ _) = NONE) ∧
   (elab_stmt ctx n (SrcIfStatement _ c t e) =
+    if is_declaration t ∨ (case e of SOME e => is_declaration e | NONE => F)
+    then NONE else
     case elab_condition ctx n c of
       SOME ((cs, a), n1) =>
         (case elab_stmt ctx n1 t of
@@ -1584,6 +1618,7 @@ Definition elab_stmts_def:
          | NONE => NONE)
     | NONE => NONE) ∧
   (elab_stmt ctx n (SrcWhileStatement _ c bd) =
+    if is_declaration bd then NONE else
     case elab_condition ctx n c of
       SOME ((cs, a), n1) =>
         (case elab_stmt (ctx with in_loop := T) n1 bd of
@@ -1592,6 +1627,7 @@ Definition elab_stmts_def:
     | NONE => NONE) ∧
   (elab_stmt ctx n (SrcDoWhileStatement _ bd c) =
     (* n: first-iteration flag; n + 1: condition result; n + 2, n + 3: targets *)
+    if is_declaration bd then NONE else
     case elab_condition ctx (n + 4) c of
       SOME ((cs, a), n1) =>
         (case elab_stmt (ctx with in_loop := T) n1 bd of
@@ -1612,7 +1648,8 @@ Definition elab_stmts_def:
           | SOME (SrcVariableDeclarationStatement _ _ _ _) => T
           | SOME (SrcExpressionStatement _ _) => T
           | _ => F) ∧
-         (case nx of NONE => T | SOME (SrcExpressionStatement _ _) => T | _ => F))
+         (case nx of NONE => T | SOME (SrcExpressionStatement _ _) => T | _ => F) ∧
+         ¬is_declaration bd)
     then NONE else
     case elab_for_init (ctx with scope := info.node_id) n ini of
       SOME ((is, ctx1), n1) =>
@@ -2342,6 +2379,8 @@ End
 val () = cv_auto_trans bind_value_def;
 val () = cv_auto_trans default_operation_def;
 val () = cv_auto_trans coerce_def;
+val () = cv_auto_trans annotation_matches_def;
+val () = cv_auto_trans is_declaration_def;
 val () = cv_auto_trans snapshot_def;
 val () = cv_auto_trans store_target_def;
 val () = cv_auto_trans assign_local_def;
