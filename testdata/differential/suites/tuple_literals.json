@@ -77,6 +77,27 @@
       }
     },
     {
+      "name": "store_both",
+      "function": "storeBoth",
+      "args": [],
+      "expect": {
+        "return": [
+          300,
+          -5
+        ]
+      }
+    },
+    {
+      "name": "skipped",
+      "function": "skipped",
+      "args": [],
+      "expect": {
+        "return": [
+          7
+        ]
+      }
+    },
+    {
       "name": "swap_in",
       "function": "swapIn",
       "args": [

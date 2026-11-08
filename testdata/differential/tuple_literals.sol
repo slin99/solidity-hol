@@ -4,6 +4,9 @@ pragma solidity ^0.8.0;
 // Tuples whose components are integer literals, each converted to the type of
 // its destination: a return parameter, a declared local, or an assigned one.
 contract TupleLiterals {
+    uint16 private stored;
+    int8 private storedSigned;
+
     function flagged(bool ok) external pure returns (bool, uint8) {
         if (ok) return (true, 6);
         return (false, 0);
@@ -27,6 +30,16 @@ contract TupleLiterals {
         int16 y;
         (x, y) = (1, -300);
         return (x, y);
+    }
+
+    function storeBoth() external returns (uint16, int8) {
+        (stored, storedSigned) = (300, -5);
+        return (stored, storedSigned);
+    }
+
+    function skipped() external pure returns (uint8) {
+        (uint8 a, ) = (7, 300);
+        return a;
     }
 
     function swapIn(uint256 a) external pure returns (uint256, uint256) {
