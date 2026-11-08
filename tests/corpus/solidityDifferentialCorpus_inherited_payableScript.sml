@@ -11,6 +11,9 @@ val () = holbuild_extra_deps [
   "../../testdata/differential/inherited_payable.sol",
   "../../testdata/differential/suites/inherited_payable.json"
 ]
-val () = solidityDifferentialLib.run_suite_file
+fun holbuild_extra_outputs (_ : string list) = ()
+val () = holbuild_extra_outputs ["solidityDifferentialCorpus_inherited_payable.results.jsonl"]
+val () = solidityDifferentialLib.with_results "solidityDifferentialCorpus_inherited_payable.results.jsonl" (fn () =>
+  solidityDifferentialLib.run_suite_file
   {root = "../..", suite_file = "testdata/differential/suites/inherited_payable.json",
-   fuel = 1000, bytecode_theory = "solidityBytecodeCorpus_inherited_payable"}
+   fuel = 1000, bytecode_theory = "solidityBytecodeCorpus_inherited_payable"})

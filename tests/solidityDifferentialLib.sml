@@ -6,6 +6,29 @@ open HolKernel boolLib bossLib solidityDifferentialTheory solidityBytecodeTheory
 
 val ERR = mk_HOL_ERR "solidityDifferentialLib"
 
+val result_output = ref (NONE : TextIO.outstream option)
+
+fun with_results path run =
+  let
+    val stream = TextIO.openOut path
+    val previous = !result_output
+    fun close () = (result_output := previous; TextIO.closeOut stream)
+  in
+    result_output := SOME stream;
+    (run () handle e => (close (); raise e));
+    close ()
+  end
+
+fun emit_result prefix fields =
+  let val line = prefix ^ json_object fields ^ "\n" in
+    print line;
+    case !result_output of
+      NONE => ()
+    | SOME stream => (TextIO.output (stream, line); TextIO.flushOut stream)
+  end
+
+fun emit fields = emit_result "differential-result: " fields
+
 fun prepared_constants prefix (prepared : solidityPrepareLib.prepared) =
   let
     val unit_def = define (prefix ^ "_unit") (#unit prepared)
@@ -312,7 +335,7 @@ fun run_corpus {root, corpus} =
  *)
 
 fun emit_yul fields =
-  print ("yul-differential-result: " ^ json_object fields ^ "\n")
+  emit_result "yul-differential-result: " fields
 
 (* A stage as the name its theorem carries, the name the report uses, the
  * artifact it is imported from, and which of the two ASTs in that artifact to

@@ -78,8 +78,8 @@ class FakeRoot:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
 
-    def holbuild(self, results: list[dict], status: int) -> Path:
-        """A holbuild that writes the given result lines to its child log."""
+    def holbuild(self, results: list[dict], status: int, *, cached: bool = False) -> Path:
+        """Write declared verdict outputs on success and diagnostic logs on failure."""
         path = self.root / "holbuild"
         path.write_text(textwrap.dedent(f"""\
             #!{sys.executable}
@@ -95,7 +95,14 @@ class FakeRoot:
                 log.parent.mkdir(parents=True, exist_ok=True)
                 log.write_text(''.join({driver.RESULT_PREFIX!r} + json.dumps(r) + '\\n'
                                       for r in results if r.get('suite') == suite))
-                print('child log: ' + str(log.resolve()))
+                if {status} == 0:
+                    output = Path('tests/corpus') / (target.removesuffix('Theory') + '.results.jsonl')
+                    output.write_text(log.read_text())
+                if {cached!r}:
+                    log.unlink()
+                    print(target + ' restored from cache')
+                else:
+                    print('child log: ' + str(log.resolve()))
             sys.exit({status})
             """), encoding="utf-8")
         path.chmod(0o755)
@@ -334,6 +341,11 @@ class CorpusTests(unittest.TestCase):
 
 
 class DriverTests(unittest.TestCase):
+    def test_cache_is_default_and_force_is_explicit(self) -> None:
+        self.assertFalse(driver.parse_args([]).force)
+        self.assertFalse(driver.parse_args(["--allow-cached"]).force)
+        self.assertTrue(driver.parse_args(["--force"]).force)
+
     def test_agreement_passes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fake = FakeRoot(Path(temporary))
@@ -343,6 +355,7 @@ class DriverTests(unittest.TestCase):
                  "theorem": "a_f_returns", "outcome": RETURNED},
             ], 0))
             self.assertEqual(status, 0)
+            self.assertNotIn("--force=theory", report["hol"]["command"])
             self.assertEqual(report["failures"], [])
             self.assertIn({"theorem": "a_f_returns", "suite": "a", "case": "f_returns",
                            "status": "proved", "outcome": RETURNED}, report["kernel_checked"])
@@ -422,15 +435,47 @@ class DriverTests(unittest.TestCase):
     def test_cached_build_keeps_witnesses_without_result_log(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fake = FakeRoot(Path(temporary))
-            fake.write("holbuild", f"#!{sys.executable}\n"
-                       f"print('{driver.CORPUS_THEORY} restored from cache')\n")
-            holbuild = fake.root / "holbuild"
-            holbuild.chmod(0o755)
-            status, report = fake.run(holbuild)
+            status, report = fake.run(fake.holbuild([
+                SUITE_OK,
+                {"kind": "case", "suite": "a", "case": "f_returns", "status": "agree",
+                 "outcome": RETURNED},
+            ], 0, cached=True))
             self.assertEqual(status, 0)
             self.assertEqual(len(report["kernel_checked"]), 3)
             self.assertTrue(all(w["status"] == "proved (cached)"
                                 for w in report["kernel_checked"]))
+            self.assertEqual(report["kernel_checked"][-1]["outcome"], RETURNED)
+
+    def test_cached_build_without_verdict_file_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            fake.write("holbuild", f"#!{sys.executable}\nprint('restored from cache')\n")
+            command = fake.root / "holbuild"
+            command.chmod(0o755)
+            status, report = fake.run(command)
+        self.assertEqual(status, 1)
+        self.assertEqual(report["kernel_checked"], [])
+        self.assertEqual([f["status"] for f in report["failures"]], ["missing"])
+
+    def test_failed_build_ignores_stale_success_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            fake.write(driver.theories.results_path("solidityDifferentialCorpus_aTheory").as_posix(),
+                       driver.RESULT_PREFIX + json.dumps(SUITE_OK) + "\n" +
+                       driver.RESULT_PREFIX + json.dumps({"kind": "case", "suite": "a",
+                           "case": "f_returns", "status": "agree", "outcome": RETURNED}))
+            status, report = fake.run(fake.holbuild([], 1))
+        self.assertEqual(status, 1)
+        self.assertEqual(report["kernel_checked"], [])
+        self.assertEqual([f["kind"] for f in report["failures"]], ["hol-build"])
+
+    def test_cached_partial_verdict_file_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            status, report = fake.run(fake.holbuild([SUITE_OK], 0, cached=True))
+        self.assertEqual(status, 1)
+        self.assertFalse(any("case" in w for w in report["kernel_checked"]))
+        self.assertEqual([f["status"] for f in report["failures"]], ["missing"])
 
     def test_bytecode_failure_never_claims_source_witnesses(self) -> None:
         rows = [
@@ -457,6 +502,13 @@ class DriverTests(unittest.TestCase):
             for target in targets:
                 fake.write(f".holbuild/logs/current/solidity-hol/{target}/build.log",
                            driver.RESULT_PREFIX + json.dumps(SUITE_OK) + "\n")
+            for target, suite in targets.items():
+                rows = [{**SUITE_OK, "suite": suite}]
+                if suite == "b":
+                    rows.append({"kind": "case", "suite": suite, "case": "f_returns",
+                                 "status": "agree", "outcome": RETURNED})
+                fake.write(driver.theories.results_path(target).as_posix(),
+                           "".join(driver.RESULT_PREFIX + json.dumps(row) + "\n" for row in rows))
             fake.write("holbuild", f"#!{sys.executable}\n" +
                        f"print('{next(iter(targets))} built')\n")
             command = fake.root / "holbuild"
