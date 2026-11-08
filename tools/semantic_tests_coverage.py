@@ -833,11 +833,6 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
         found.append("tuples of literals" if "t_rational" in type_identifier
                      else type_feature(type_identifier))
     elif (kind == "Assignment" and node["leftHandSide"]["nodeType"] == "TupleExpression"
-          and len(node["leftHandSide"]["components"]) == 1):
-        # elab_expr takes (a) as a tuple target: plain assignment only, with
-        # no value.
-        found.append("parenthesized assignment targets")
-    elif (kind == "Assignment" and node["leftHandSide"]["nodeType"] == "TupleExpression"
           and any(c is not None and c["nodeType"] != "Identifier"
                   for c in node["leftHandSide"]["components"])):
         # tuple_writes takes holes and bare names, parenthesized ones not.
@@ -1644,6 +1639,8 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
     storage_bases.update(n["expression"]["id"] for n in reached.values()
                          if n["nodeType"] == "MemberAccess")
     value_tuples = several_values(reached)
+    statements = {unwrap(n["expression"])["id"] for n in reached.values()
+                  if n["nodeType"] == "ExpressionStatement"}
     for node in reached.values():
         if node["id"] in unread:
             continue
@@ -1668,6 +1665,12 @@ def scan(asts: dict[str, Any]) -> dict[int, list[Blocker]]:
                for declaration, signature in signatures(node, by_id)):
             # The checker admits no enum in what an external call returns.
             blockers.append(Blocker("FunctionCall", "enums returned by external calls", "elaboration"))
+        if (node["nodeType"] == "Assignment" and node["leftHandSide"]["nodeType"] == "TupleExpression"
+                and len(node["leftHandSide"]["components"]) == 1
+                and (node["operator"] != "=" or node["id"] not in statements)):
+            # elab_expr takes (a) as a tuple target: plain assignment only,
+            # with no value.
+            blockers.append(Blocker("Assignment", "parenthesized assignment targets", "elaboration"))
         if (node["nodeType"] == "TupleExpression" and not node["isInlineArray"]
                 and len(node["components"]) != 1 and node["id"] not in value_tuples):
             blockers.append(Blocker("TupleExpression", "tuples as values", "elaboration"))

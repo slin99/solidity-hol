@@ -1043,6 +1043,30 @@ class ClassifyTests(unittest.TestCase):
             [b.feature for bs in coverage.scan({"t.sol": unit([function(4, [discarded])])}).values()
              for b in bs], ["tuples as values"])
 
+    def test_parenthesized_targets_only_in_plain_assignment_statements(self) -> None:
+        def assignment(operator: str) -> dict:
+            target = {"nodeType": "Identifier", "id": 11, "name": "a", "referencedDeclaration": 3,
+                      "typeDescriptions": {"typeIdentifier": "t_uint256"}}
+            one = {"nodeType": "Literal", "id": 12, "kind": "number", "value": "1",
+                   "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}}
+            return {"nodeType": "Assignment", "id": 10, "operator": operator,
+                    "leftHandSide": {"nodeType": "TupleExpression", "id": 13, "isInlineArray": False,
+                                     "components": [target],
+                                     "typeDescriptions": {"typeIdentifier": "t_uint256"}},
+                    "rightHandSide": one, "typeDescriptions": {"typeIdentifier": "t_uint256"}}
+
+        def features(statement: dict) -> list:
+            body = [variable(3), statement]
+            return [b.feature for bs in coverage.scan({"t.sol": unit([function(4, body)])}).values()
+                    for b in bs]
+
+        statement = {"nodeType": "ExpressionStatement", "id": 9, "expression": assignment("=")}
+        self.assertNotIn("parenthesized assignment targets", features(statement))
+        statement["expression"] = assignment("+=")
+        self.assertIn("parenthesized assignment targets", features(statement))
+        returned = {"nodeType": "Return", "id": 9, "expression": assignment("=")}
+        self.assertIn("parenthesized assignment targets", features(returned))
+
     def test_tuple_assignments_to_elements_are_blocked(self) -> None:
         ident = {"nodeType": "Identifier", "id": 5, "name": "x"}
         element = {"nodeType": "IndexAccess", "id": 6}
@@ -1057,9 +1081,6 @@ class ClassifyTests(unittest.TestCase):
         assign["leftHandSide"]["components"] = [ident, parenthesized]
         self.assertEqual({b.feature for b in coverage.elaboration_blockers(assign)},
                          {"tuple assignments to element or member targets"})
-        assign["leftHandSide"] = parenthesized
-        self.assertEqual({b.feature for b in coverage.elaboration_blockers(assign)},
-                         {"parenthesized assignment targets"})
 
     def test_storage_and_every_mutability_are_admitted(self) -> None:
         f = function(4, [])
