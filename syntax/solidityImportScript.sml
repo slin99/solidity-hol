@@ -17,8 +17,9 @@
  * The internal functions, modifiers and constants of libraries it uses come
  * with it.
  *
- * A function whose body or modifiers fall outside the subset is kept with
- * its header and the reason (fn_unsupported), and an empty body: dropping it
+ * A function whose body, modifiers or header fall outside the subset is kept
+ * with the reasons (fn_unsupported, one line per unsupported node), and with
+ * placeholders for the nodes the importer could not represent: dropping it
  * would let a lookup or a super call fall through to a function it overrides,
  * and its selector to the fallback. Calls of unsupported functions resolve
  * to nothing (function_table), and elaboration skips them.
@@ -28,6 +29,7 @@
  * variables, constants, getters and bases. Function bodies, and the
  * expressions of initializers, base-constructor arguments and constant
  * values, are checked where solidityElaborate elaborates them.
+ * unit_rejections lists the checks a unit fails, with the node each is about.
  *)
 Theory solidityImport
 Ancestors
@@ -250,8 +252,9 @@ End
  * declarations the body's super calls name. An unsupported function is one
  * the frontend could not model, with the reason: it keeps its place, so that
  * overrides and super calls resolve as the compiler resolves them, but it is
- * neither checked nor elaborated, and nothing may call it; one whose body
- * failed to import has an empty body and no modifiers.
+ * neither checked nor elaborated, and nothing may call it; the reason has a
+ * line for each node the importer could not represent, which may be left in
+ * the body, modifiers and header as placeholders.
  *)
 Datatype:
   src_function = <|
@@ -1408,13 +1411,158 @@ Definition check_contract_def:
     | _ => F
 End
 
+(* Why a unit fails the source check: each failing conjunct of
+ * check_contract and of the checks it is made of, with the id of the node it
+ * is about (a contract, struct, enum, event, function, modifier, state
+ * variable or base) and a tag naming the check. *)
+Definition rejected_unless_def:
+  rejected_unless b (id : num) (tag : string) = if b then [] else [(id, tag)]
+End
+
+Definition function_header_rejections_def:
+  function_header_rejections bases (f : src_function) =
+    rejected_unless (MEM f.fn_scope bases) f.fn_info.node_id "function scope" ++
+    rejected_unless
+      (IS_SOME (all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_parameters)))
+      f.fn_info.node_id "parameter type" ++
+    rejected_unless
+      (IS_SOME (all_some (MAP (scoped_variable f.fn_info.node_id) f.fn_returns)))
+      f.fn_info.node_id "return type"
+End
+
+Definition struct_rejections_def:
+  struct_rejections sources bases (s : src_struct) =
+    rejected_unless (MEM s.struct_scope bases ∨ MEM s.struct_scope sources)
+      s.struct_info.node_id "struct scope" ++
+    rejected_unless (s.struct_members ≠ []) s.struct_info.node_id "empty struct" ++
+    rejected_unless
+      (EVERY (λv. v.var_scope = s.struct_info.node_id ∧ IS_SOME (field_variable_type v))
+         s.struct_members) s.struct_info.node_id "struct member" ++
+    case s.struct_layout of
+      NONE => []
+    | SOME (bytes, fields) =>
+        rejected_unless (0 < bytes ∧ bytes MOD 32 = 0 ∧ bytes DIV 32 < 2 ** 256)
+          s.struct_info.node_id "struct layout size" ++
+        rejected_unless (storage_layout_ok T s.struct_members fields)
+          s.struct_info.node_id "struct layout"
+End
+
+Definition contract_rejections_def:
+  contract_rejections unit_id sources (c : src_contract) =
+    rejected_unless (c.contract_scope = unit_id) c.contract_info.node_id
+      "contract scope" ++
+    rejected_unless
+      (case c.contract_bases of x :: _ => x = c.contract_info.node_id | [] => F)
+      c.contract_info.node_id "linearization" ++
+    rejected_unless (ALL_DISTINCT (c.contract_bases ++ c.contract_libraries))
+      c.contract_info.node_id "duplicate bases" ++
+    FLAT (MAP (struct_rejections sources c.contract_bases) c.contract_structs) ++
+    FLAT (MAP (λ(x, members). rejected_unless (0 < members ∧ members ≤ 256) x "enum size")
+            c.contract_enums) ++
+    FLAT (MAP (λe. rejected_unless (check_event e) e.event_info.node_id
+                     "event parameter") c.contract_events) ++
+    rejected_unless
+      (storage_layout_ok F c.contract_state_variables c.contract_storage)
+      c.contract_info.node_id "storage layout" ++
+    FLAT (MAP (function_header_rejections c.contract_bases)
+            (checked_functions c.contract_functions c.contract_bases)) ++
+    FLAT (MAP (λf. rejected_unless (f.fn_kind = FunctionKind) f.fn_info.node_id
+                     "library function kind" ++
+                   rejected_unless (f.fn_visibility = InternalVisibility ∨
+                                    f.fn_visibility = PrivateVisibility)
+                     f.fn_info.node_id "library function visibility" ++
+                   function_header_rejections c.contract_libraries f)
+            c.contract_library_functions) ++
+    FLAT (MAP (λm. rejected_unless (modifier_header_ok m) m.modifier_info.node_id
+                     "modifier parameter type") c.contract_modifiers) ++
+    rejected_unless
+      (IS_SOME (all_some (MAP (state_variable c.contract_bases)
+                            c.contract_state_variables)))
+      c.contract_info.node_id "state variable type" ++
+    rejected_unless (IS_SOME (constant_table c)) c.contract_info.node_id "constant" ++
+    rejected_unless (IS_SOME (immutable_table c)) c.contract_info.node_id "immutable" ++
+    case (all_some (MAP (state_variable c.contract_bases)
+                      c.contract_state_variables), constant_table c,
+          immutable_table c) of
+      (SOME state, SOME constants, SOME immutables) =>
+        FLAT (MAP (λ(x, _). rejected_unless (IS_SOME (ALOOKUP (state ++ immutables) x))
+                              x "initializer") c.contract_initializers) ++
+        rejected_unless (ALL_DISTINCT (MAP FST c.contract_getters))
+          c.contract_info.node_id "duplicate getters" ++
+        FLAT (MAP (λ(x, selector).
+                     rejected_unless (LENGTH selector = 4) x "getter selector" ++
+                     rejected_unless
+                       (case ALOOKUP (state ++ immutables) x of
+                          SOME ty => IS_SOME (getter_shape c.contract_structs ty)
+                        | NONE => IS_SOME (ALOOKUP constants x)) x "getter type")
+                c.contract_getters) ++
+        FLAT (MAP (λ(x, _, _).
+                     rejected_unless (IS_SOME (constructor_parameters x c.contract_functions))
+                       x "base constructor parameters") c.contract_base_arguments)
+    | _ => []
+End
+
+Definition unit_rejections_def:
+  unit_rejections (u : src_unit) =
+    FLAT (MAP (λc. rejected_unless (ALL_DISTINCT (u.unit_info.node_id :: contract_ids c))
+                     c.contract_info.node_id "duplicate node ids") u.unit_contracts) ++
+    rejected_unless (MEM u.unit_info.node_id u.unit_sources) u.unit_info.node_id
+      "unit not among its sources" ++
+    FLAT (MAP (contract_rejections u.unit_info.node_id u.unit_sources) u.unit_contracts)
+End
+
 Definition valid_src_unit_def:
-  valid_src_unit (u : src_unit) ⇔
+  valid_src_unit (u : src_unit) ⇔ NULL (unit_rejections u)
+End
+
+Theorem rejected_unless_nil[local,simp]:
+  rejected_unless b x t = [] ⇔ b
+Proof
+  rw[rejected_unless_def]
+QED
+
+Theorem FLAT_MAP_nil[local]:
+  FLAT (MAP f l) = [] ⇔ EVERY (λx. f x = []) l
+Proof
+  Induct_on ‘l’ >> simp[]
+QED
+
+Theorem function_header_rejections_nil[local]:
+  function_header_rejections bases f = [] ⇔ function_header_ok bases f
+Proof
+  simp[function_header_rejections_def, function_header_ok_def, CONJ_ASSOC]
+QED
+
+Theorem struct_rejections_nil[local]:
+  struct_rejections sources bases s = [] ⇔ check_struct sources bases s
+Proof
+  simp[struct_rejections_def, check_struct_def] >>
+  Cases_on ‘s.struct_layout’ >> simp[CONJ_ASSOC] >>
+  rename1 ‘SOME p’ >> Cases_on ‘p’ >> simp[CONJ_ASSOC]
+QED
+
+Theorem contract_rejections_nil[local]:
+  contract_rejections unit_id sources c = [] ⇔ check_contract unit_id sources c
+Proof
+  simp[contract_rejections_def, check_contract_def, FLAT_MAP_nil,
+       struct_rejections_nil, function_header_rejections_nil] >>
+  Cases_on ‘all_some (MAP (state_variable c.contract_bases)
+                        c.contract_state_variables)’ >>
+  Cases_on ‘constant_table c’ >> Cases_on ‘immutable_table c’ >>
+  simp[FLAT_MAP_nil, listTheory.EVERY_MEM, pairTheory.FORALL_PROD, CONJ_ASSOC]
+QED
+
+(* The conjuncts unit_rejections lists. *)
+Theorem valid_src_unit_checks:
+  valid_src_unit u ⇔
     EVERY (λc. ALL_DISTINCT (u.unit_info.node_id :: contract_ids c))
       u.unit_contracts ∧
     MEM u.unit_info.node_id u.unit_sources ∧
     EVERY (check_contract u.unit_info.node_id u.unit_sources) u.unit_contracts
-End
+Proof
+  simp[valid_src_unit_def, unit_rejections_def, listTheory.NULL_EQ, FLAT_MAP_nil,
+       contract_rejections_nil, CONJ_ASSOC, listTheory.EVERY_MEM]
+QED
 
 (* The functions of a unit's contracts that calls reach, then their library
  * functions: each one's id, name, and reason if unsupported. *)
@@ -1518,5 +1666,10 @@ val () = cv_auto_trans check_struct_def;
 val () = cv_auto_trans check_event_def;
 val () = cv_auto_trans supported_supers_def;
 val () = cv_auto_trans check_contract_def;
+val () = cv_auto_trans rejected_unless_def;
+val () = cv_auto_trans function_header_rejections_def;
+val () = cv_auto_trans struct_rejections_def;
+val () = cv_auto_trans contract_rejections_def;
+val () = cv_auto_trans unit_rejections_def;
 val () = cv_auto_trans valid_src_unit_def;
 val () = cv_auto_trans unit_functions_def;

@@ -17,6 +17,8 @@
  * (the evaluator collects the object's top level only), an object with more
  * than one subobject or a nested one, and a literal that is neither a number
  * nor a string. Missing or ill-typed fields raise MalformedInput.
+ * import_code goes on past an unknown node, so that its ImportError names
+ * every one, a line each.
  *)
 structure yulImportLib :> yulImportLib =
 struct
@@ -51,6 +53,14 @@ fun within v f =
 fun require v cond msg = if cond then () else fail (describe v ^ ": " ^ msg)
 
 fun expect v ty = require v (node_type v = ty) ("expected " ^ ty)
+
+(* The reasons of the unknown nodes met so far by import_code. *)
+val blockers : string list ref = ref []
+
+(* An unknown node is recorded and stands as dummy, which import_code never
+ * returns. *)
+fun recorded dummy import v =
+  import v handle ImportError msg => (blockers := !blockers @ [msg]; dummy)
 
 fun optional_field v k =
   case JSONUtil.findField v k of
@@ -185,6 +195,9 @@ fun optional_names v key =
     NONE => []
   | SOME vs => import_names vs
 
+val dummy_expr = yul "YulLit" [yul "LitNumber" [wordsSyntax.mk_wordii (0, 256)]]
+val dummy_stmt = yul "YulBlock" [listSyntax.mk_nil stmt_ty]
+
 fun import_call defined v =
   let
     val name = import_name (field v "functionName")
@@ -202,12 +215,12 @@ fun import_call defined v =
                    \builtin nor a function the object defines")
   end
 
-and import_expr defined v = within v (fn v =>
+and import_expr defined v = recorded dummy_expr (fn v => within v (fn v =>
   case node_type v of
     "YulFunctionCall" => import_call defined v
   | "YulIdentifier" => yul "YulName" [mk_str (import_name v)]
   | "YulLiteral" => yul "YulLit" [import_literal v]
-  | other => fail (describe v ^ ": unsupported expression " ^ other))
+  | other => fail (describe v ^ ": unsupported expression " ^ other))) v
 
 (* Statements of a body. A function definition is not one of them: the
  * evaluator collects the object's own top-level definitions, so a nested one
@@ -217,23 +230,25 @@ fun import_statements defined v = within v (fn v =>
   (expect v "YulBlock";
    map (import_statement defined) (array_field v "statements")))
 
-and import_statement defined v = within v (fn v =>
+and import_statement defined v = recorded dummy_stmt (fn v => within v (fn v =>
   case node_type v of
     "YulBlock" => yul "YulBlock" [stmt_list (import_statements defined v)]
   | "YulExpressionStatement" =>
       yul "YulExprStmt" [import_expr defined (field v "expression")]
   | "YulVariableDeclaration" =>
       let
-        val names = import_names (field v "variables")
         val value = case optional_field v "value" of
                       NONE => optionSyntax.mk_none expr_ty
                     | SOME e => optionSyntax.mk_some (import_expr defined e)
+        val names = import_names (field v "variables")
       in
         yul "YulLet" [name_list names, value]
       end
   | "YulAssignment" =>
-      yul "YulAssign" [name_list (map import_name (array_field v "variableNames")),
-                       import_expr defined (field v "value")]
+      let val value = import_expr defined (field v "value") in
+        yul "YulAssign" [name_list (map import_name (array_field v "variableNames")),
+                         value]
+      end
   | "YulIf" =>
       yul "YulIf" [import_expr defined (field v "condition"),
                    stmt_list (import_statements defined (field v "body"))]
@@ -246,7 +261,7 @@ and import_statement defined v = within v (fn v =>
   | "YulBreak" => yul "YulBreak" []
   | "YulContinue" => yul "YulContinue" []
   | "YulLeave" => yul "YulLeave" []
-  | other => fail (describe v ^ ": unsupported statement " ^ other))
+  | other => fail (describe v ^ ": unsupported statement " ^ other))) v
 
 and import_switch defined v =
   let
@@ -259,33 +274,37 @@ and import_switch defined v =
        | _ => false)
     fun import_case c = within c (fn c =>
       (expect c "YulCase";
-       pairSyntax.mk_pair
-         (import_literal (field c "value"),
-          stmt_list (import_statements defined (field c "body")))))
+       let val body = stmt_list (import_statements defined (field c "body")) in
+         pairSyntax.mk_pair (import_literal (field c "value"), body)
+       end))
     val defaults = List.filter is_default cases
-    val () = require v (length defaults <= 1) "more than one default case"
     val cases_ty =
       pairSyntax.mk_prod (literal_ty, listSyntax.mk_list_type stmt_ty)
+    val expression = import_expr defined (field v "expression")
+    val imported =
+      map import_case (List.filter (fn c => not (is_default c)) cases)
+    val default_bodies =
+      map (fn d => stmt_list (import_statements defined (field d "body"))) defaults
   in
     yul "YulSwitch"
-      [import_expr defined (field v "expression"),
-       listSyntax.mk_list
-         (map import_case (List.filter (fn c => not (is_default c)) cases), cases_ty),
-       case defaults of
+      [expression, listSyntax.mk_list (imported, cases_ty),
+       case default_bodies of
          [] => stmt_list []
-       | [d] => stmt_list (import_statements defined (field d "body"))
+       | [d] => d
        | _ => fail (describe v ^ ": more than one default case")]
   end
 
 (* A function definition: only the object's own, and its body resolves names
  * the same way the object's does.
  *)
-and import_function defined v = within v (fn v =>
-  yul "YulFunction"
-    [mk_str (string_field v "name"),
-     name_list (optional_names v "parameters"),
-     name_list (optional_names v "returnVariables"),
-     stmt_list (import_statements defined (field v "body"))])
+and import_function defined v = recorded dummy_stmt (fn v => within v (fn v =>
+  let val body = stmt_list (import_statements defined (field v "body")) in
+    yul "YulFunction"
+      [mk_str (string_field v "name"),
+       name_list (optional_names v "parameters"),
+       name_list (optional_names v "returnVariables"),
+       body]
+  end)) v
 
 (* The object *)
 
@@ -305,17 +324,26 @@ fun is_function v =
    | _ => false)
 
 (* A code block: its top-level function definitions, which the evaluator
- * collects, and its statements. *)
-fun import_code block = within block (fn block =>
-  (expect block "YulBlock";
-   let
-     val statements = array_field block "statements"
-     val defined = map (fn v => string_field v "name")
-                     (List.filter is_function statements)
-   in
-     stmt_list (map (fn v => if is_function v then import_function defined v
-                             else import_statement defined v) statements)
-   end))
+ * collects, and its statements. Every unknown node is a line of the
+ * ImportError. *)
+fun import_code block =
+  let
+    val () = blockers := []
+    val code = within block (fn block =>
+      (expect block "YulBlock";
+       let
+         val statements = array_field block "statements"
+         val defined = map (fn v => string_field v "name")
+                         (List.filter is_function statements)
+       in
+         stmt_list (map (fn v => if is_function v then import_function defined v
+                                 else import_statement defined v) statements)
+       end))
+  in
+    case !blockers of
+      [] => code
+    | lines => fail (String.concatWith "\n" lines)
+  end
 
 fun import_runtime output source contract stage =
   within (runtime_ast output source contract stage) (fn ast =>
