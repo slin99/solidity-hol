@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 from typing import Any
 import unittest
 from unittest.mock import patch
@@ -112,7 +113,7 @@ class FleetCoverageTests(unittest.TestCase):
                 batches = []
                 lock = threading.Lock()
 
-                def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+                def run_unlocked(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
                     if "--help" in command:
                         return subprocess.CompletedProcess(command, 0, stdout="run-action")
                     if "build" in command:
@@ -120,8 +121,7 @@ class FleetCoverageTests(unittest.TestCase):
                     self.assertIn("run-action", command)
                     script = Path(command[command.index("--script") + 1])
                     rows = (script.parent / "manifest.txt").read_text().splitlines()
-                    with lock:
-                        batches.append(rows)
+                    batches.append(rows)
                     if disappear and script.parent.name == "0001":
                         kwargs["stdout"].write("run-action --remote-only: no coordinator to run on; "
                                                "pass --remote-exec URL\n")
@@ -134,6 +134,17 @@ class FleetCoverageTests(unittest.TestCase):
                     kwargs["stdout"].write("solidity-hol:solidityElaborateTheory " + "a" * 64
                                            + " done\n")
                     return subprocess.CompletedProcess(command, 0)
+
+                def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+                    if "run-action" not in command:
+                        return run_unlocked(command, **kwargs)
+                    # holbuild refuses concurrent startup/export in one project.
+                    self.assertTrue(lock.acquire(blocking=False), "project lock contention")
+                    try:
+                        time.sleep(0.01)
+                        return run_unlocked(command, **kwargs)
+                    finally:
+                        lock.release()
 
                 with patch.dict(coverage.os.environ, {}, clear=True), \
                         patch.object(coverage.subprocess, "run", side_effect=run):

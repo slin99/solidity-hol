@@ -1825,12 +1825,13 @@ def run_hol(holbuild: str, work: Path, units: list[tuple[str, Path]]) -> dict[st
 
         results = run_shard(0)
         if results is not None:
-            with ThreadPoolExecutor(max_workers=4) as pool:
-                for shard in pool.map(run_shard, range(1, len(shards))):
-                    if shard is None:
-                        raise SystemExit("the HOL fleet action failed: coordinator disappeared "
-                                         "after the first shard")
-                    results.update(shard)
+            # Each startup/export mutates the same holbuild project.
+            for index in range(1, len(shards)):
+                shard = run_shard(index)
+                if shard is None:
+                    raise SystemExit("the HOL fleet action failed: coordinator disappeared "
+                                     "after the first shard")
+                results.update(shard)
             return results
         if configured:
             raise SystemExit("the HOL fleet action failed: remote configuration exists but "
