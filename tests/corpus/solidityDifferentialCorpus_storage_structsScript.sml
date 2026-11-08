@@ -11,6 +11,9 @@ val () = holbuild_extra_deps [
   "../../testdata/differential/storage_structs.sol",
   "../../testdata/differential/suites/storage_structs.json"
 ]
-val () = solidityDifferentialLib.run_suite_file
+fun holbuild_extra_outputs (_ : string list) = ()
+val () = holbuild_extra_outputs ["solidityDifferentialCorpus_storage_structs.results.jsonl"]
+val () = solidityDifferentialLib.with_results "solidityDifferentialCorpus_storage_structs.results.jsonl" (fn () =>
+  solidityDifferentialLib.run_suite_file
   {root = "../..", suite_file = "testdata/differential/suites/storage_structs.json",
-   fuel = 1000, bytecode_theory = "solidityBytecodeCorpus_storage_structs"}
+   fuel = 1000, bytecode_theory = "solidityBytecodeCorpus_storage_structs"})
