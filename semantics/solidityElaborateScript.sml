@@ -1906,6 +1906,8 @@ End
 (* A function's procedures, checked arithmetic by default; parameters and
  * returns keep their declaration ids. A pure function reads no state
  * variable, and a library function has no state variables or immutables.
+ * A fallback takes no parameters and returns nothing, as the core's does
+ * (plain_procedure); the importer marks one that does unsupported.
  * When strict, every super call must reach a supported function.
  *)
 Definition elab_function_def:
@@ -1917,6 +1919,8 @@ Definition elab_function_def:
           super_table fs bases f) of
       (SOME ps, SOME rs, SrcBlock info ss, SOME supers) =>
         if strict ∧ ¬EVERY (λ(_, g). g.fn_unsupported = NONE) supers then NONE
+        else if f.fn_kind = "fallback" ∧ (f.fn_parameters ≠ [] ∨ f.fn_returns ≠ [])
+        then NONE
         else
         elab_levels
           (ctx with <| supers := supers; variables := ps ++ rs;
