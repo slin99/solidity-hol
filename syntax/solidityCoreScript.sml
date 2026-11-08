@@ -72,6 +72,7 @@ End
 Datatype:
   core_operator
   = AddOp | SubtractOp | MultiplyOp | DivideOp | RemainderOp | ExponentOp
+  | AddModOp | MulModOp
   | ShiftLeftOp | ShiftRightOp
   | EqualOp | LessThanOp | BitAndOp | BitOrOp | BitXorOp
   | NegateOp | BitNotOp | BoolNotOp
@@ -257,10 +258,13 @@ End
  * payable. Creation runs the creation procedure on the constructor's
  * arguments, given with whether it accepts value. The immutables are all the
  * contract's immutables, unread ones included, with their types: creation
- * reserves a memory word for each. *)
+ * reserves a memory word for each. The unsupported procedures are those of
+ * functions the frontend could not model: they have no procedure, so the
+ * dispatch entries naming them refuse, and no procedure can call them. *)
 Datatype:
   core_program = <|
     procedures : core_procedure list;
+    unsupported_procedures : ast_id list;
     state_variables : core_state_variable list;
     immutables : (ast_id # sol_type) list;
     struct_layouts : core_struct_layout list;

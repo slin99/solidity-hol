@@ -354,6 +354,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcExternalCall _ _ _ operands _ _) ⇔ exprs_assign operands) ∧
   (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcKeccak256 _ _ e _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcModular _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcAddressCodeLength _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcEcrecover _ _ args _) ⇔ exprs_assign args) ∧
@@ -521,7 +522,7 @@ Definition abi_arguments_def:
 End
 
 (* The operation of abi.encode* on the values of its arguments, after any
- * statements converting the selector. *)
+ * statements converting the selector or the arguments. *)
 Definition abi_encoding_def:
   abi_encoding n form vs =
     case (form, vs) of
@@ -531,6 +532,18 @@ Definition abi_encoding_def:
              SOME ((cs, AbiEncodeOperation (SOME s') tys args), n1)
          | _ => NONE)
     | (AbiWithSelector, []) => NONE
+    | (AbiCall tids, (s, svt) :: rest) =>
+        (case coerce n (FixedBytesT 4) s svt of
+           SOME ((cs, s'), n1) =>
+             (case all_some (MAP abi_call_parameter tids) of
+                SOME tys =>
+                  (case coerce_abi_values n1 tys rest of
+                     SOME (css, args, n2) =>
+                       SOME ((cs ++ css, AbiEncodeOperation (SOME s') tys args), n2)
+                   | NONE => NONE)
+              | NONE => NONE)
+         | NONE => NONE)
+    | (AbiCall _, []) => NONE
     | (AbiPacked, _) =>
         (case abi_arguments T vs of
            SOME (tys, args) => SOME (([], AbiEncodePackedOperation tys args), n)
@@ -955,6 +968,17 @@ Definition elab_expr_def:
                 SOME ((cs, b), n2) =>
                   let (hs, h) = bind_value n2 (FixedBytesT 32) (Keccak256Operation b) in
                   SOME ((ss ++ cs ++ hs, h, ElabType (FixedBytesT 32)), n2 + 1)
+              | NONE => NONE)
+         | NONE => NONE)
+    | SrcModular _ _ op args _ =>
+        (* the operands in order, then the modulus check and the operation *)
+        (case elab_arg_values ctx n args of
+           SOME ((ss, vs), n1) =>
+             (case coerce_values n1 [UintT 256; UintT 256; UintT 256] vs of
+                SOME (cs, as, n2) =>
+                  let (rs, r) = bind_value n2 (UintT 256)
+                                  (ScalarOperation (UintT 256) CheckedArithmetic op as) in
+                  SOME ((ss ++ cs ++ rs, r, ElabType (UintT 256)), n2 + 1)
               | NONE => NONE)
          | NONE => NONE)
     | SrcAbiEncode _ _ form args _ =>
@@ -1995,11 +2019,38 @@ Definition creation_payable_def:
     | NONE => F
 End
 
+(* The functions elaborated: the supported functions calls reach, then the
+ * supported library functions. The unsupported ones get no procedure. *)
+Definition elaborated_functions_def:
+  elaborated_functions (c : src_contract) =
+    FILTER (λf. f.fn_unsupported = NONE)
+      (checked_functions c.contract_functions c.contract_bases ++
+       c.contract_library_functions)
+End
+
+Definition unsupported_functions_def:
+  unsupported_functions (c : src_contract) =
+    MAP (λf. AstId f.fn_info.node_id)
+      (FILTER (λf. f.fn_unsupported ≠ NONE)
+         (checked_functions c.contract_functions c.contract_bases ++
+          c.contract_library_functions))
+End
+
+(* Creation runs every constructor of the bases, so it is unsupported when
+ * one of them is. *)
+Definition unsupported_creation_def:
+  unsupported_creation (c : src_contract) ⇔
+    EXISTS (λf. f.fn_kind = "constructor" ∧ f.fn_unsupported ≠ NONE)
+      c.contract_functions
+End
+
 (* Raw lowering of a valid unit of one contract, with fresh ids above its
- * node ids; the first live function or getter is the entry procedure, or the creation
- * procedure when there is none. A SOME result is
- * not yet a checked program: consumers must establish wf_core_program
- * through solidityPrepareLib before execution.
+ * node ids; the first live function or getter is the entry procedure, or the
+ * creation procedure when there is none, and a unit with neither has no
+ * lowering. The procedures of unsupported functions, and an unsupported
+ * creation's, are left out and listed as unsupported, with their dispatch
+ * entries kept. A SOME result is not yet a checked program: consumers must
+ * establish wf_core_program through solidityPrepareLib before execution.
  *)
 Definition elaborate_unit_def:
   elaborate_unit (u : src_unit) =
@@ -2007,6 +2058,8 @@ Definition elaborate_unit_def:
     case u.unit_contracts of
       [c] =>
         let fs = live_functions c.contract_functions in
+        let calls = function_table (c.contract_functions ++
+                                    c.contract_library_functions) in
         (case (all_some (MAP (state_variable c.contract_bases) c.contract_state_variables),
                constant_table c, immutable_table c) of
            (SOME state, SOME table, SOME immutables) =>
@@ -2016,14 +2069,11 @@ Definition elaborate_unit_def:
                    core_state_variables state c.contract_storage,
                    elab_functions c.contract_structs
                      (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
-                     (call_table (c.contract_functions ++
-                                  c.contract_library_functions))
-                     c.contract_functions c.contract_bases
+                     calls c.contract_functions c.contract_bases
                      (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
                      state immutables constants
                      (MAX_LIST (unit_ids u) + 1 + LENGTH table)
-                     (checked_functions c.contract_functions c.contract_bases ++
-                      c.contract_library_functions)) of
+                     (elaborated_functions c)) of
                (SOME decls, SOME layouts, SOME cvs, SOME (fps, n0)) =>
                  (case elab_getters c.contract_structs state immutables n0
                          (FILTER (λx. IS_SOME (ALOOKUP (state ++ immutables) x))
@@ -2041,9 +2091,9 @@ Definition elaborate_unit_def:
                    NONE => NONE
                  | SOME (cps, n) =>
                  let ps = fps ++ gps ++ cps in
-                 (case elab_creation
-                         <| functions := call_table (c.contract_functions ++
-                                                     c.contract_library_functions);
+                 (case (if unsupported_creation c then SOME (INR (AstId n))
+                        else OPTION_MAP (λ(p, _). INL p) (elab_creation
+                         <| functions := calls;
                             supers := [];
                             structs := c.contract_structs;
                             events := MAP (λe. (e.event_info.node_id, e))
@@ -2052,16 +2102,27 @@ Definition elaborate_unit_def:
                             immutables := immutables;
                             constants := constants; returns := [];
                             placeholder := NONE; mode := CheckedArithmetic;
-                            creation := T |> c n of
+                            creation := T |> c n)) of
                     NONE => NONE
-                  | SOME (creation, _) =>
-                 SOME <| procedures := ps ++ [creation]; state_variables := cvs;
+                  | SOME creation =>
+                 let creation_id = (case creation of
+                                      INL p => p.procedure_id
+                                    | INR x => x) in
+                 case (ps, creation) of
+                   ([], INR _) => NONE
+                 | _ =>
+                 SOME <| procedures :=
+                           ps ++ (case creation of INL p => [p] | INR _ => []);
+                         unsupported_procedures :=
+                           unsupported_functions c ++
+                           (case creation of INL _ => [] | INR x => [x]);
+                         state_variables := cvs;
                          immutables := MAP (λ(x, ty). (AstId x, ty)) immutables;
                          struct_layouts := layouts; type_declarations := decls;
                          entry_procedure :=
                            (case ps of
                               p :: _ => p.procedure_id
-                            | [] => creation.procedure_id);
+                            | [] => creation_id);
                          external_functions :=
                            external_functions fs ++
                            MAP (λ(x, selector).
@@ -2073,10 +2134,36 @@ Definition elaborate_unit_def:
                          fallback_procedure :=
                            special_function "fallback" fs;
                          creation_procedure :=
-                           SOME (creation.procedure_id, creation_payable c) |>))
+                           SOME (creation_id, creation_payable c) |>))
               | _ => NONE)
          | _ => NONE)
     | _ => NONE
+End
+
+(* Each supported function of a unit's contract whose elaboration fails, by
+ * id, elaborated as elaborate_unit elaborates it, for preparation to find
+ * those to mark unsupported. *)
+Definition unit_elaboration_failures_def:
+  unit_elaboration_failures (u : src_unit) =
+    case u.unit_contracts of
+      [c] =>
+        (case (all_some (MAP (state_variable c.contract_bases) c.contract_state_variables),
+               constant_table c, immutable_table c) of
+           (SOME state, SOME constants, SOME immutables) =>
+             MAP (λf. f.fn_info.node_id)
+               (FILTER (λf.
+                  IS_NONE (elab_function c.contract_structs
+                    (MAP (λe. (e.event_info.node_id, e)) c.contract_events)
+                    (function_table (c.contract_functions ++
+                                     c.contract_library_functions))
+                    c.contract_functions c.contract_bases
+                    (MAP (λm. (m.modifier_info.node_id, m)) c.contract_modifiers)
+                    state immutables
+                    (number_constants (MAX_LIST (unit_ids u) + 1) constants)
+                    (MAX_LIST (unit_ids u) + 1 + LENGTH constants) f))
+                  (elaborated_functions c))
+         | _ => [])
+    | _ => []
 End
 
 (* cv translation, so that units are elaborated by cv_eval. The mutually
@@ -2355,4 +2442,8 @@ QED
 val () = cv_auto_trans elab_constructors_def;
 val () = cv_auto_trans elab_creation_def;
 val () = cv_auto_trans creation_payable_def;
+val () = cv_auto_trans elaborated_functions_def;
+val () = cv_auto_trans unsupported_functions_def;
+val () = cv_auto_trans unsupported_creation_def;
 val () = cv_auto_trans elaborate_unit_def;
+val () = cv_auto_trans unit_elaboration_failures_def;

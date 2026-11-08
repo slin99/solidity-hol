@@ -185,7 +185,7 @@ End
 
 Definition test_program_def:
   test_program = <|
-    procedures := [add_proc; sum_proc; fact_proc; pair_proc; first_proc;
+    unsupported_procedures := []; procedures := [add_proc; sum_proc; fact_proc; pair_proc; first_proc;
                    spin_proc; fail_proc; call_fail_proc; callee_proc;
                    caller_proc];
     struct_layouts := []; type_declarations := [];
@@ -301,7 +301,7 @@ End
 
 Definition storage_program_def:
   storage_program vs = <|
-    procedures := [store_proc];
+    unsupported_procedures := []; procedures := [store_proc];
     struct_layouts := []; type_declarations := [];
     state_variables := vs; immutables := [];
     entry_procedure := AstId 20;
@@ -470,7 +470,7 @@ End
 
 Definition asm_env_def:
   asm_env code = core_program_environment <|
-    procedures := [asm_proc code; asm_caller; halt_proc];
+    unsupported_procedures := []; procedures := [asm_proc code; asm_caller; halt_proc];
     struct_layouts := []; type_declarations := [];
     state_variables := []; immutables := [];
     entry_procedure := AstId 110;
