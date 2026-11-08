@@ -2,6 +2,9 @@ signature solidityDifferentialLib =
 sig
   include Abbrev
 
+  (* Also write result lines to this file, closing it even if the run fails. *)
+  val with_results : string -> (unit -> unit) -> unit
+
   (* Runs the corpus file at the given path, a
    * solidity-hol-differential-corpus-v1 file whose paths are relative to the
    * repository root; root is the path of that root from the current
