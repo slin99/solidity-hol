@@ -720,7 +720,12 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                  (string_field (field (field v "expression") "typeDescriptions") "typeIdentifier")
             then raise MalformedInput (describe v ^ ": missing struct field declaration")
             else if string_field v "memberName" = "selector" then
-              con "SrcSelector" [info v, selector_bytes v base, type_id v]
+              con "SrcSelector"
+                [info v,
+                 (* a base that is not admitted is imported for its blockers *)
+                 (selector_bytes v base
+                  handle ImportError msg => (ignore (expr base); raise ImportError msg)),
+                 type_id v]
             else case string_field v "memberName" of
               "length" =>
                 if is_address_code base then
@@ -987,15 +992,17 @@ and abi_decode_call v callee args =
           else [types]
       | _ => fail (describe v ^ ": abi.decode takes data and a list of types")
     fun decoded_type c =
-      (require v (case c of
-                    JSON.NULL => false
-                  | _ => node_type c = "ElementaryTypeNameExpression")
-         "abi.decode of a non-elementary type is not supported";
-       type_name (field c "typeName"))
+      case c of
+        JSON.NULL => NONE
+      | _ => if node_type c = "ElementaryTypeNameExpression"
+             then SOME (type_name (field c "typeName")) else NONE
+    val types = map decoded_type components
   in
+    require v (List.all isSome types)
+      "abi.decode of a non-elementary type is not supported";
     con "SrcAbiDecode"
       [info v, info callee, hd args,
-       listSyntax.mk_list (map decoded_type components, type_name_ty), type_id v]
+       listSyntax.mk_list (map valOf types, type_name_ty), type_id v]
   end
 
 (* abi.encodeCall(f, (a, b)): f's selector, then the arguments, which the
@@ -1018,10 +1025,11 @@ and abi_encode_call v callee =
     val () = require v (node_type f = "MemberAccess") "abi.encodeCall of an unnamed function"
     val receiver = field f "expression"
     val () =
-      require v (unevaluated_receiver receiver orelse
-                 (node_type receiver = "Identifier" andalso
-                  int_field receiver "referencedDeclaration" > 0))
-        "abi.encodeCall through a computed receiver is not supported"
+      if unevaluated_receiver receiver orelse
+         (node_type receiver = "Identifier" andalso
+          int_field receiver "referencedDeclaration" > 0) then ()
+      else (ignore (expr receiver);
+            fail (describe v ^ ": abi.encodeCall through a computed receiver is not supported"))
     val () =
       require v (unevaluated_receiver receiver orelse
                  (case List.find (fn (i, _) => i = int_field receiver "referencedDeclaration")
@@ -1151,10 +1159,15 @@ fun inline_assembly v =
       | SOME (_, r') =>
           if aconv r r' then refs
           else fail (describe v ^ ": " ^ name ^ " names two declarations")
-    val (refs, failures) =
-      (foldl (fn (r, refs) => add (reference r) refs) []
-         (JSONUtil.arrayMap I (field v "externalReferences")), yul_failures)
-      handle ImportError msg => ([], yul_failures @ [msg])
+    (* each reference is read whatever the others' blockers, a reason once
+     * however often the code repeats it *)
+    val (refs, reference_failures) =
+      foldl (fn (r, (refs, fs)) =>
+               (add (reference r) refs, fs)
+               handle ImportError msg =>
+                 (refs, if List.exists (fn f => f = msg) fs then fs else fs @ [msg]))
+        ([], []) (JSONUtil.arrayMap I (field v "externalReferences"))
+    val failures = yul_failures @ reference_failures
   in
     case (code, failures) of
       (SOME code, []) =>
@@ -1212,40 +1225,43 @@ fun stmt v = guarded (fn st => [StmtChild st]) unsupported_stmt (fn v => within 
         val args = case optional_field call "arguments" of
                      SOME args => JSONUtil.arrayMap expr args
                    | NONE => []
-        fun header () =
-          let
-            val () = require call
-              (node_type call = "FunctionCall" andalso
-               string_field call "kind" = "functionCall" andalso bool_field call "tryCall")
-              "try supports only external function calls"
-            val (ok, err) = case clauses of
-              [ok, err] => (ok, err)
-            | _ => fail (describe v ^ ": try requires one catch(bytes memory) clause")
-            val () = require v
-              (string_field ok "errorName" = "" andalso string_field err "errorName" = "")
-              "typed catch clauses are not supported"
-            val reason = case optional_field err "parameters" of
-              SOME ps => (case JSONUtil.arrayMap variable (field ps "parameters") of
-                            [p] => p
-                          | _ => fail (describe err ^ ": catch requires one bytes parameter"))
-            | NONE => fail (describe err ^ ": catch requires one bytes parameter")
-            val imported = external_call call (field call "expression") args
-            val parameters = case optional_field ok "parameters" of
-              SOME ps => #2 (parameter_list ps)
-            | NONE => listSyntax.mk_list ([], variable_ty)
-          in
-            (ok, err, reason, imported, parameters)
-          end
-        (* an unsupported try still imports its clauses' blocks *)
-        val (ok, err, reason, imported, parameters) =
-          header ()
-          handle ImportError msg =>
-            (List.app (fn c => ignore (stmt (field c "block"))) clauses;
-             raise ImportError msg)
+        (* each part is imported whatever the others' blockers, and the
+         * checks on the clauses come after *)
+        fun attempt f = (SOME (f ()), []) handle ImportError msg => (NONE, [msg])
+        val (try_call, kind_failure) = attempt (fn () =>
+          require call
+            (node_type call = "FunctionCall" andalso
+             string_field call "kind" = "functionCall" andalso bool_field call "tryCall")
+            "try supports only external function calls")
+        val (imported, call_failure) =
+          if isSome try_call
+          then attempt (fn () => external_call call (field call "expression") args)
+          else (NONE, [])
+        fun clause_parameters c =
+          case optional_field c "parameters" of
+            SOME ps => JSONUtil.arrayMap variable (field ps "parameters")
+          | NONE => []
+        val parameters = map (fn c => attempt (fn () => clause_parameters c)) clauses
+        val blocks = map (fn c => stmt (field c "block")) clauses
+        val (_, clause_failure) = attempt (fn () =>
+          (require v (length clauses = 2) "try requires one catch(bytes memory) clause";
+           require v (List.all (fn c => string_field c "errorName" = "") clauses)
+             "typed catch clauses are not supported";
+           case parameters of
+             [_, (SOME [_], _)] => ()
+           | [_, (NONE, _)] => ()
+           | _ => fail (describe (List.nth (clauses, 1)) ^
+                        ": catch requires one bytes parameter")))
+        val failures =
+          kind_failure @ call_failure @ List.concat (map #2 parameters) @ clause_failure
       in
-        con "SrcTryStatement"
-          [info v, imported, info ok, parameters,
-           stmt (field ok "block"), info err, reason, stmt (field err "block")]
+        case (failures, imported, parameters, blocks, clauses) of
+          ([], SOME imported, [(SOME returns, _), (SOME [reason], _)],
+           [ok_block, err_block], [ok, err]) =>
+            con "SrcTryStatement"
+              [info v, imported, info ok, listSyntax.mk_list (returns, variable_ty),
+               ok_block, info err, reason, err_block]
+        | _ => fail (String.concatWith "\n" failures)
       end
   | "Break" => con "SrcBreak" [info v]
   | "Continue" => con "SrcContinue" [info v]

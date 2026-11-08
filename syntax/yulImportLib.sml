@@ -195,7 +195,8 @@ fun optional_names v key =
     NONE => []
   | SOME vs => import_names vs
 
-val dummy_expr = yul "YulLit" [yul "LitNumber" [wordsSyntax.mk_wordii (0, 256)]]
+val dummy_literal = yul "LitNumber" [wordsSyntax.mk_wordii (0, 256)]
+val dummy_expr = yul "YulLit" [dummy_literal]
 val dummy_stmt = yul "YulBlock" [listSyntax.mk_nil stmt_ty]
 
 fun import_call defined v =
@@ -291,7 +292,7 @@ and import_switch defined v =
     fun import_case c = within c (fn c =>
       (expect c "YulCase";
        let val body = stmt_list (import_statements defined (field c "body")) in
-         pairSyntax.mk_pair (import_literal (field c "value"), body)
+         pairSyntax.mk_pair (recorded dummy_literal import_literal (field c "value"), body)
        end))
     val defaults = List.filter is_default cases
     val cases_ty =
@@ -372,8 +373,6 @@ fun import_runtime output source contract stage =
         * nested in the runtime object is an object form this importer does
         * not read.
         *)
-       val () = List.app (fn d => within d (fn d => expect d "YulData"))
-                  (array_field runtime "subObjects")
        val code = field runtime "code"
        val () = within code (fn code => expect code "YulCode")
        val block = field code "block"
@@ -381,8 +380,19 @@ fun import_runtime output source contract stage =
          (expect block "YulBlock";
           require block (not (null (array_field block "statements")))
             "the runtime object's code block is empty"))
+       (* the code's blockers are lines of the refusal, whatever its
+        * subobjects *)
+       val (imported, code_failures) =
+         (SOME (import_code block), []) handle ImportError msg => (NONE, [msg])
+       val data_failures =
+         List.mapPartial
+           (fn d => (within d (fn d => expect d "YulData"); NONE)
+                    handle ImportError msg => SOME msg)
+           (array_field runtime "subObjects")
      in
-       import_code block
+       case (imported, code_failures @ data_failures) of
+         (SOME code, []) => code
+       | (_, failures) => fail (String.concatWith "\n" failures)
      end))
 
 fun import_runtime_artifact path source contract stage =

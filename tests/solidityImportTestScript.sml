@@ -27,7 +27,9 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/hashes.json",
   "../testdata/differential/expected/conditionals.json",
   "../testdata/differential/expected/encode_calls.json",
-  "../testdata/differential/expected/bytes_constants.json"
+  "../testdata/differential/expected/bytes_constants.json",
+  "../testdata/differential/expected/try_calls.json",
+  "../testdata/differential/expected/inline_assembly.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -352,6 +354,69 @@ val () =
   handle ImportError msg =>
     if msg = unknown_member_line then ()
     else raise Fail ("unit and function blockers: " ^ msg)
+
+(* The reason of the function name of the unit at fixture, edited by f, has
+ * a line for each of expected, in order, containing it. *)
+fun expect_function_lines what fixture source name f expected =
+  let
+    val unit = artifact_part fixture ["sources", source, "ast"]
+    val units_contracts = artifact_part fixture ["contracts", source]
+  in
+    case import_rejection [] (in_function name f unit) units_contracts of
+      SOME (UnsupportedFunction, msg) =>
+        let val lines = String.fields (fn c => c = #"\n") msg in
+          if length lines = length expected andalso
+             ListPair.all (fn (l, e) => String.isSubstring e l) (lines, expected)
+          then ()
+          else raise Fail (what ^ ": " ^ msg)
+        end
+    | _ => raise Fail (what ^ ": no unsupported function")
+  end
+
+(* A typed catch does not hide the blockers of the call it tries. *)
+val () =
+  let
+    fun typed_catch (JSON.OBJECT kvs) =
+          JSON.OBJECT
+            (map (fn ("clauses", JSON.ARRAY [ok, err]) =>
+                       ("clauses",
+                        JSON.ARRAY [ok, set_field "errorName" (JSON.STRING "Error") err])
+                   | kv => kv) kvs)
+      | typed_catch v = v
+    fun in_call f (JSON.OBJECT kvs) =
+          JSON.OBJECT
+            (map (fn ("externalCall", c) => ("externalCall", f c) | kv => kv) kvs)
+      | in_call _ v = v
+    val unknown_target =
+      edit_first_where
+        (fn v => is_node "Identifier" v andalso
+                 JSONUtil.testField "name" (fn JSON.STRING s => s = "target" | _ => false) v)
+        "target" (set_field "nodeType" (JSON.STRING "UnknownTarget"))
+  in
+    expect_function_lines "typed catch of an unsupported call"
+      "../testdata/differential/expected/try_calls.json" "testdata/differential/try_calls.sol"
+      "attempt" (edit_first "TryStatement" (typed_catch o in_call unknown_target))
+      [": unsupported expression UnknownTarget", "typed catch clauses are not supported"]
+  end
+
+(* Every unsupported reference of an inline assembly block is a line. *)
+val () =
+  let
+    fun length_suffix (JSON.OBJECT kvs) =
+          JSON.OBJECT
+            (map (fn ("externalReferences", JSON.ARRAY rs) =>
+                       ("externalReferences",
+                        JSON.ARRAY (map (set_field "suffix" (JSON.STRING "length")) rs))
+                   | kv => kv) kvs)
+      | length_suffix v = v
+  in
+    expect_function_lines "unsupported assembly references"
+      "../testdata/differential/expected/inline_assembly.json"
+      "testdata/differential/inline_assembly.sol"
+      "locations" (edit_first "InlineAssembly" length_suffix)
+      ["unsupported reference packedHigh.offset", "unsupported reference packedHigh.slot",
+       "unsupported reference total.offset", "unsupported reference total.slot"]
+  end
 
 (* Duplicate and dangling ids and inconsistent types import but are invalid. *)
 

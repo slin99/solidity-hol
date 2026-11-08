@@ -229,3 +229,41 @@ val () =
          then ()
          else raise ERR "yulImportTest" ("nested function definition: " ^ msg)
      | _ => raise ERR "yulImportTest" ("nested function definition: " ^ msg))
+
+(* The refusal of v, line by line, each with the text expected in it. *)
+fun expect_lines what v expected =
+  (ignore (import v); raise ERR "yulImportTest" (what ^ ": admitted"))
+  handle yulImportLib.ImportError msg =>
+    let val lines = String.fields (fn c => c = #"\n") msg in
+      if length lines = length expected andalso
+         ListPair.all (fn (l, e) => String.isSubstring e l) (lines, expected)
+      then ()
+      else raise ERR "yulImportTest" (what ^ ": " ^ msg)
+    end
+
+fun block statements = obj [("nodeType", str "YulBlock"), ("statements", arr statements)]
+
+(* A case literal the importer refuses does not hide the blockers of the
+ * cases after it. *)
+val () = expect_lines "refused case literal"
+  (output_with
+     [runtime_object
+        [obj [("nodeType", str "YulSwitch"), ("expression", number "0"),
+              ("cases", arr
+                 [obj [("nodeType", str "YulCase"),
+                       ("value", obj [("nodeType", str "YulLiteral"), ("kind", str "bool"),
+                                      ("value", str "true"), ("type", str "")]),
+                       ("body", block [])],
+                  obj [("nodeType", str "YulCase"), ("value", str "default"),
+                       ("body", block [expression_statement (call "case_unknown" [])])]])]]]
+     creation_code)
+  ["unsupported literal kind bool", "call to case_unknown"]
+
+(* An object nested in the runtime object does not hide the blockers of
+ * its code. *)
+val () = expect_lines "nested object and unknown call"
+  (output_with
+     [object_node [expression_statement (call "code_unknown" [])]
+        [data_section, object_node creation_code []]]
+     creation_code)
+  ["call to code_unknown", "expected YulData"]
