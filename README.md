@@ -101,7 +101,9 @@ bytecode in Verifereum, including complete committed contract storage. Slot
 lists select diagnostics; they do not limit comparison. The upstream `semanticTests` coverage tool checks
 preparation acceptance; it does not execute the tests' call expectations.
 The coverage tool stages its compiler artifacts and pin/profile files for a
-cached `holbuild run-action` on the configured remote-execution fleet. Without
+cached `holbuild run-action` batches of up to 128 tests on the configured
+remote-execution fleet, with at most four batches in flight. Completed batches
+can be reused after an interrupted run. Python 3.11 or later is required. Without
 a configured fleet, it runs the preparation check locally. An older holbuild
 without `run-action` needs an upgrade when remote execution/cache is configured;
 otherwise it can use the local check. A configured fleet's execution failures stop
