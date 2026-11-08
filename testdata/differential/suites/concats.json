@@ -1,0 +1,125 @@
+{
+  "name": "concats",
+  "source": "testdata/differential/concats.sol",
+  "contract": "Concats",
+  "artifact": "testdata/differential/expected/concats.json",
+  "cases": [
+    {
+      "name": "two_strings",
+      "function": "two",
+      "args": [
+        "0x6162",
+        "0x6364"
+      ],
+      "expect": {
+        "return": [
+          "0x61626364"
+        ]
+      }
+    },
+    {
+      "name": "two_empty",
+      "function": "two",
+      "args": [
+        "0x",
+        "0x"
+      ],
+      "expect": {
+        "return": [
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "storage_calldata_literal_memory",
+      "function": "mixed",
+      "args": [
+        "0x3432",
+        "0x6a736f6e"
+      ],
+      "storage": {
+        "0": "0x697066733a2f2f0000000000000000000000000000000000000000000000000e"
+      },
+      "expect": {
+        "return": [
+          "0x697066733a2f2f34322f6a736f6e"
+        ]
+      }
+    },
+    {
+      "name": "empty_storage_base",
+      "function": "mixed",
+      "args": [
+        "0x3432",
+        "0x"
+      ],
+      "expect": {
+        "return": [
+          "0x34322f"
+        ]
+      }
+    },
+    {
+      "name": "no_arguments",
+      "function": "none",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x",
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "one_argument",
+      "function": "one",
+      "args": [
+        "0x616263"
+      ],
+      "expect": {
+        "return": [
+          "0x616263"
+        ]
+      }
+    },
+    {
+      "name": "nested",
+      "function": "nested",
+      "args": [
+        "0x78"
+      ],
+      "expect": {
+        "return": [
+          "0x782d5b785d"
+        ]
+      }
+    },
+    {
+      "name": "bytes_and_fixed_bytes",
+      "function": "joinBytes",
+      "args": [
+        "0x0102",
+        "0x0304",
+        "0x05"
+      ],
+      "expect": {
+        "return": [
+          "0x01020304ff7a05"
+        ]
+      }
+    },
+    {
+      "name": "argument_order",
+      "function": "order",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x6162"
+        ]
+      },
+      "final_storage": {
+        "1": 2
+      }
+    }
+  ]
+}

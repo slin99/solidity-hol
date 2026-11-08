@@ -76,6 +76,11 @@ ASSEMBLY = assembly([{"nodeType": "YulExpressionStatement",
 
 
 class BuiltinCoverageTests(unittest.TestCase):
+    def test_try_external_call_fixture_is_admitted(self) -> None:
+        artifact = json.loads((ROOT / "testdata/differential/expected/try_calls.json").read_text())
+        sources = {name: data["ast"] for name, data in artifact["output"]["sources"].items()}
+        self.assertEqual(coverage.scan(sources), {})
+
     def test_address_code_length_fixture_is_admitted(self) -> None:
         artifact = json.loads((ROOT / "testdata/differential/expected/code_lengths.json").read_text())
         sources = {name: data["ast"] for name, data in artifact["output"]["sources"].items()}
@@ -99,6 +104,32 @@ class BuiltinCoverageTests(unittest.TestCase):
         statement["expression"] = call(variable_message)
         self.assertEqual(coverage.scan({"t.sol": unit([function(4, [statement])])})[5], [
             coverage.Blocker("FunctionCall", "messages that are not literals", "elaboration")])
+
+    def test_only_a_named_concat_is_admitted(self) -> None:
+        concat_type = {"typeIdentifier": "t_function_bytesconcat_pure$__$returns$_t_bytes_memory_ptr_$"}
+        member = {"nodeType": "MemberAccess", "id": 6, "memberName": "concat",
+                  "typeDescriptions": concat_type,
+                  "expression": {"nodeType": "ElementaryTypeNameExpression", "id": 7,
+                                 "typeName": {"nodeType": "ElementaryTypeName", "id": 8, "name": "bytes"},
+                                 "typeDescriptions": {"typeIdentifier": "t_type$_t_bytes_storage_ptr_$"}}}
+
+        def statement(callee):
+            return {"nodeType": "ExpressionStatement", "id": 9, "expression": {
+                "nodeType": "FunctionCall", "id": 5, "kind": "functionCall", "names": [],
+                "tryCall": False, "arguments": [],
+                "typeDescriptions": {"typeIdentifier": "t_bytes_memory_ptr"}, "expression": callee}}
+
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [statement(member)])])}), {})
+        # (bytes).concat(): the type name is not read.
+        base = member["expression"]
+        member["expression"] = {"nodeType": "TupleExpression", "id": 11, "isInlineArray": False,
+                                "components": [base], "typeDescriptions": base["typeDescriptions"]}
+        self.assertEqual(coverage.scan({"t.sol": unit([function(4, [statement(member)])])}), {})
+        # (bytes.concat)(): the compiler gives the parenthesized callee the same type.
+        parenthesized = {"nodeType": "TupleExpression", "id": 10, "isInlineArray": False,
+                         "components": [member], "typeDescriptions": concat_type}
+        self.assertNotEqual(
+            coverage.scan({"t.sol": unit([function(4, [statement(parenthesized)])])}), {})
 
     def test_shadowed_names_are_ordinary_calls(self) -> None:
         artifact = json.loads((ROOT / "testdata/differential/expected/shadowed_builtins.json").read_text())
@@ -395,18 +426,35 @@ class ClassifyTests(unittest.TestCase):
         address = literal(5, "t_address")
         declaration = {
             "nodeType": "VariableDeclarationStatement", "id": 6,
-            "declarations": [variable(7, type_identifier="t_bytes4")],
-            "initialValue": literal(8, "t_rational_305419896_by_1"),
+            "declarations": [variable(7, type_identifier="t_bool")],
+            "initialValue": literal(8, "t_rational_1_by_1"),
         }
         boolean = {"nodeType": "Literal", "id": 9, "kind": "bool", "value": "false",
                    "typeDescriptions": {"typeIdentifier": "t_bool"}}
-        found = coverage.scan({"t.sol": unit([function(4, [address, declaration, boolean])])})
+        # 0x12345678 as a bytes4: the literal's bytes
+        fixed_bytes = {
+            "nodeType": "VariableDeclarationStatement", "id": 10,
+            "declarations": [variable(11, type_identifier="t_bytes4")],
+            "initialValue": literal(12, "t_rational_305419896_by_1"),
+        }
+        # -0 as a bytes2: a folded zero
+        negated_zero = {
+            "nodeType": "VariableDeclarationStatement", "id": 13,
+            "declarations": [variable(14, type_identifier="t_bytes2")],
+            "initialValue": {"nodeType": "UnaryOperation", "id": 15, "operator": "-",
+                             "prefix": True, "subExpression": literal(16, "t_rational_0_by_1"),
+                             "typeDescriptions": {"typeIdentifier": "t_rational_0_by_1"}},
+        }
+        found = coverage.scan({"t.sol": unit([function(4, [address, declaration, boolean,
+                                                           fixed_bytes, negated_zero])])})
         self.assertEqual(found[5], [coverage.Blocker(
             "Literal", "literals of non-integer types", "elaboration")])
         self.assertEqual(found[6], [coverage.Blocker(
             "VariableDeclarationStatement", "literals of non-integer types", "elaboration")])
         self.assertNotIn(8, found)
         self.assertNotIn(9, found)
+        self.assertNotIn(10, found)
+        self.assertNotIn(13, found)
 
     def test_abi_encodings_take_scalars_byte_sequences_and_literals(self) -> None:
         def name(node_id, type_identifier):

@@ -26,7 +26,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/contract_types.json",
   "../testdata/differential/expected/hashes.json",
   "../testdata/differential/expected/conditionals.json",
-  "../testdata/differential/expected/encode_calls.json"
+  "../testdata/differential/expected/encode_calls.json",
+  "../testdata/differential/expected/bytes_constants.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -177,7 +178,7 @@ val edited_unit = edited_unit_with contracts
 (* Unknown forms, missing annotations and unsupported features fail import. *)
 
 val () = import_error "unknown statement"
-  (edit_first "Break" (set_field "nodeType" (JSON.STRING "TryStatement")) ast)
+  (edit_first "Break" (set_field "nodeType" (JSON.STRING "UnknownStatement")) ast)
 val () = import_error "unknown expression"
   (edit_first "Literal" (set_field "nodeType" (JSON.STRING "IndexRangeAccess")) ast)
 val () = malformed_input "missing type annotation"
@@ -1173,3 +1174,24 @@ val () =
   handle ImportError msg =>
     if String.isSubstring "constant receiver" msg then ()
     else raise Fail ("encodeCall through a constant: " ^ msg)
+
+(* Constants: a number literal initializes a bytes32 constant. *)
+
+val bytes_constants_fixture = "../testdata/differential/expected/bytes_constants.json"
+val bytes_constants_source = "testdata/differential/bytes_constants.sol"
+val bytes_constants_ast =
+  artifact_part bytes_constants_fixture ["sources", bytes_constants_source, "ast"]
+val bytes_constants_contracts =
+  artifact_part bytes_constants_fixture ["contracts", bytes_constants_source]
+
+Definition bytes_constants_unit_def:
+  bytes_constants_unit = ^(import_artifact bytes_constants_fixture bytes_constants_source)
+End
+
+val () = cv_auto_trans bytes_constants_unit_def;
+
+Theorem bytes_constants_unit_valid:
+  valid_src_unit bytes_constants_unit
+Proof
+  CONV_TAC cv_eval
+QED
