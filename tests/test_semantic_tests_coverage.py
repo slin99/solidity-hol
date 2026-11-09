@@ -925,41 +925,41 @@ class ClassifyTests(unittest.TestCase):
                       coverage.scan({"t.sol": ast})[102])
 
     def test_base_arguments_tuple_returns_and_calls_with_options_are_coerced(self) -> None:
-        def string(node_id):
-            return {"nodeType": "Literal", "id": node_id, "kind": "string", "value": "abcd",
-                    "typeDescriptions": {"typeIdentifier": "t_stringliteral_abcd"}}
+        def literal(node_id):
+            return {"nodeType": "Literal", "id": node_id, "kind": "number", "value": "1",
+                    "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}}
 
         def parameters(node_id, *types):
             return {"nodeType": "ParameterList", "id": node_id,
                     "parameters": [variable(node_id + 1 + i, type_identifier=t) for i, t in enumerate(types)]}
 
-        constructor = dict(function(51, []), kind="constructor", parameters=parameters(52, "t_bytes4"))
+        constructor = dict(function(51, []), kind="constructor", parameters=parameters(52, "t_bool"))
         base = {"nodeType": "ContractDefinition", "id": 50, "nodes": [constructor]}
-        specifier = {"nodeType": "InheritanceSpecifier", "id": 55, "arguments": [string(57)],
+        specifier = {"nodeType": "InheritanceSpecifier", "id": 55, "arguments": [literal(57)],
                      "baseName": {"nodeType": "IdentifierPath", "id": 56, "referencedDeclaration": 50}}
         self.assertEqual(coverage.coerced_literals(specifier, {50: base}),
-                         [])
+                         [coverage.Blocker("InheritanceSpecifier", "literals of non-integer types", "elaboration")])
         invocation = {"nodeType": "ModifierInvocation", "id": 58, "kind": "baseConstructorSpecifier",
-                      "arguments": [string(59)], "modifierName": specifier["baseName"]}
+                      "arguments": [literal(59)], "modifierName": specifier["baseName"]}
         self.assertEqual(coverage.coerced_literals(invocation, {50: base}),
-                         [])
+                         [coverage.Blocker("ModifierInvocation", "literals of non-integer types", "elaboration")])
 
-        returns = parameters(300, "t_bool", "t_bytes4")
+        returns = parameters(300, "t_bool", "t_bool")
         flag = {"nodeType": "Literal", "id": 312, "kind": "bool", "value": "true",
                 "typeDescriptions": {"typeIdentifier": "t_bool"}}
         statement = {"nodeType": "Return", "id": 310, "functionReturnParameters": 300,
                      "expression": {"nodeType": "TupleExpression", "id": 311,
-                                    "components": [flag, string(313)]}}
+                                    "components": [flag, literal(313)]}}
         self.assertEqual(coverage.coerced_literals(statement, {300: returns}),
-                         [])
+                         [coverage.Blocker("Return", "literals of non-integer types", "elaboration")])
 
-        callee = dict(function(400, []), parameters=parameters(401, "t_bytes4"))
-        call = {"nodeType": "FunctionCall", "id": 320, "kind": "functionCall", "arguments": [string(323)],
+        callee = dict(function(400, []), parameters=parameters(401, "t_bool"))
+        call = {"nodeType": "FunctionCall", "id": 320, "kind": "functionCall", "arguments": [literal(323)],
                 "expression": {"nodeType": "FunctionCallOptions", "id": 321, "names": ["value"],
                                "expression": {"nodeType": "MemberAccess", "id": 322, "memberName": "f",
                                               "referencedDeclaration": 400}}}
         self.assertEqual(coverage.coerced_literals(call, {400: callee}),
-                         [])
+                         [coverage.Blocker("FunctionCall", "literals of non-integer types", "elaboration")])
 
     def test_ecrecover_arguments_are_coerced_to_its_parameters(self) -> None:
         def literal(node_id, kind, value, tid):
@@ -1054,27 +1054,30 @@ class ClassifyTests(unittest.TestCase):
             "RevertStatement", "literals of non-integer types", "elaboration")])
 
     def test_modifiers_are_checked_where_live_functions_invoke_them(self) -> None:
-        def string(node_id):
-            return {"nodeType": "Literal", "id": node_id, "kind": "string", "value": "abcd",
-                    "typeDescriptions": {"typeIdentifier": "t_stringliteral_abcd"}}
+        def literal(node_id):
+            return {"nodeType": "Literal", "id": node_id, "kind": "number", "value": "1",
+                    "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}}
 
         coerced = {"nodeType": "VariableDeclarationStatement", "id": 66,
-                   "declarations": [variable(67, type_identifier="t_bytes4")],
-                   "initialValue": string(68)}
+                   "declarations": [variable(67, type_identifier="t_bool")],
+                   "initialValue": literal(68)}
         modifier = {"nodeType": "ModifierDefinition", "id": 60, "name": "m", "virtual": False,
                     "parameters": {"nodeType": "ParameterList", "id": 61,
-                                   "parameters": [variable(62, type_identifier="t_bytes4")]},
+                                   "parameters": [variable(62, type_identifier="t_bool")]},
                     "body": {"nodeType": "Block", "id": 63, "statements": [
                         coerced, {"nodeType": "PlaceholderStatement", "id": 64}]}}
         invocation = {"nodeType": "ModifierInvocation", "id": 70, "kind": "modifierInvocation",
-                      "arguments": [string(71)],
+                      "arguments": [literal(71)],
                       "modifierName": {"nodeType": "IdentifierPath", "id": 72, "name": "m",
                                        "referencedDeclaration": 60}}
         self.assertEqual(coverage.coerced_literals(invocation, {60: modifier}),
-                         [])
+                         [coverage.Blocker("ModifierInvocation", "literals of non-integer types", "elaboration")])
         self.assertEqual(coverage.scan({"t.sol": unit([modifier, function(4, [])])}), {})
         found = coverage.scan({"t.sol": unit([modifier, dict(function(4, []), modifiers=[invocation])])})
-        self.assertEqual(found, {})
+        self.assertEqual(found[66], [coverage.Blocker(
+            "VariableDeclarationStatement", "literals of non-integer types", "elaboration")])
+        self.assertEqual(found[70], [coverage.Blocker(
+            "ModifierInvocation", "literals of non-integer types", "elaboration")])
         found = coverage.scan({"t.sol": unit([dict(modifier, virtual=True), function(4, [])])})
         self.assertEqual(found[60], [coverage.Blocker("ModifierDefinition", "virtual modifiers", "import")])
         returns = {"nodeType": "ParameterList", "id": 80, "parameters": [variable(81)]}
@@ -1110,42 +1113,44 @@ class ClassifyTests(unittest.TestCase):
                       {b.feature for b in coverage.elaboration_blockers(parameter)})
 
     def test_mapping_keys_parentheses_and_tuples_are_coerced(self) -> None:
-        def string(node_id):
-            return {"nodeType": "Literal", "id": node_id, "kind": "string", "value": "abcd",
-                    "typeDescriptions": {"typeIdentifier": "t_stringliteral_abcd"}}
+        def literal(node_id):
+            return {"nodeType": "Literal", "id": node_id, "kind": "number", "value": "1",
+                    "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}}
 
         def tuple_of(node_id, *components):
             return {"nodeType": "TupleExpression", "id": node_id, "isInlineArray": False,
                     "components": list(components)}
 
-        index = {"nodeType": "IndexAccess", "id": 10, "indexExpression": string(11),
+        index = {"nodeType": "IndexAccess", "id": 10, "indexExpression": literal(11),
                  "baseExpression": {"nodeType": "Identifier", "id": 12, "typeDescriptions": {
-                     "typeIdentifier": "t_mapping$_t_bytes4_$_t_uint256_$"}}}
-        self.assertEqual(coverage.coerced_literals(index, {}), [])
+                     "typeIdentifier": "t_mapping$_t_bool_$_t_uint256_$"}}}
+        self.assertEqual(coverage.coerced_literals(index, {}), [coverage.Blocker(
+            "IndexAccess", "literals of non-integer types", "elaboration")])
 
         returns = {"nodeType": "ParameterList", "id": 20,
-                   "parameters": [variable(21, type_identifier="t_bytes4")]}
+                   "parameters": [variable(21, type_identifier="t_bool")]}
         statement = {"nodeType": "Return", "id": 22, "functionReturnParameters": 20,
-                     "expression": tuple_of(23, string(24))}
+                     "expression": tuple_of(23, literal(24))}
         self.assertEqual(coverage.coerced_literals(statement, {20: returns}),
-                         [])
+                         [coverage.Blocker("Return", "literals of non-integer types", "elaboration")])
 
         flag = {"nodeType": "Literal", "id": 34, "kind": "number", "value": "1",
                 "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}}
         declaration = {"nodeType": "VariableDeclarationStatement", "id": 30,
-                       "declarations": [variable(31, type_identifier="t_bytes4"),
+                       "declarations": [variable(31, type_identifier="t_bool"),
                                         variable(32, type_identifier="t_bool")],
-                       "initialValue": tuple_of(33, string(35), flag)}
+                       "initialValue": tuple_of(33, literal(35), flag)}
         self.assertEqual(coverage.coerced_literals(declaration, {}), [
             coverage.Blocker("VariableDeclarationStatement", "literals of non-integer types",
                              "elaboration")])
 
         assignment = {"nodeType": "Assignment", "id": 40, "operator": "=",
                       "typeDescriptions": {"typeIdentifier": "t_tuple$__$"},
-                      "leftHandSide": tuple_of(41, variable(42, type_identifier="t_bytes4"),
+                      "leftHandSide": tuple_of(41, variable(42, type_identifier="t_bool"),
                                                variable(45, type_identifier="t_uint256")),
-                      "rightHandSide": tuple_of(43, string(44), dict(flag, id=46))}
-        self.assertEqual(coverage.coerced_literals(assignment, {}), [])
+                      "rightHandSide": tuple_of(43, literal(44), dict(flag, id=46))}
+        self.assertEqual(coverage.coerced_literals(assignment, {}), [coverage.Blocker(
+            "Assignment", "literals of non-integer types", "elaboration")])
 
     def test_structs_only_unused_errors_refer_to_are_imported(self) -> None:
         struct = {"nodeType": "StructDefinition", "id": 10, "scope": 1, "members": []}
@@ -1461,17 +1466,17 @@ class ClassifyTests(unittest.TestCase):
         artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
         asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
         by_id = {n["id"]: n for ast in asts.values() for n in coverage.nodes(ast)}
-        # uint256(3).addBonus(4), made ("abc").addBonus(4) with addBonus taking bytes32 first
+        # uint256(3).addBonus(4), made (3).addBonus(4) with addBonus taking bool first
         member, call = next((n["expression"], n) for n in by_id.values()
                             if n.get("nodeType") == "FunctionCall"
                             and n["expression"].get("memberName") == "addBonus"
                             and n["expression"]["expression"].get("nodeType") == "FunctionCall")
-        member["expression"] = {"nodeType": "Literal", "id": 999997, "kind": "string",
-                                "value": "abc", "subdenomination": None,
-                                "typeDescriptions": {"typeIdentifier": "t_stringliteral_abc"}}
+        member["expression"] = {"nodeType": "Literal", "id": 999997, "kind": "number",
+                                "value": "3", "subdenomination": None,
+                                "typeDescriptions": {"typeIdentifier": "t_rational_3_by_1"}}
         target = by_id[member["referencedDeclaration"]]
-        target["parameters"]["parameters"][0]["typeDescriptions"]["typeIdentifier"] = "t_bytes32"
-        self.assertNotIn(coverage.Blocker("FunctionCall", "string literals as fixed-size bytes",
+        target["parameters"]["parameters"][0]["typeDescriptions"]["typeIdentifier"] = "t_bool"
+        self.assertIn(coverage.Blocker("FunctionCall", "literals of non-integer types",
                                        "elaboration"), coverage.scan(asts).get(call["id"], []))
 
     def test_enums_are_admitted(self) -> None:
