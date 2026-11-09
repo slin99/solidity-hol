@@ -103,7 +103,15 @@ fun read_artifact {root, path} = json_input (fn () =>
     val settings = object (field profile "settings")
     val input = field artifact "input"
     val () = require (string_field input "language" = "Solidity") "input language must be Solidity"
-    val () = require (json_equal (field input "settings",
+    val (remappings, input_settings) = List.partition
+      (fn (key, _) => key = "remappings") (object (field input "settings"))
+    val () = require (case remappings of
+        [] => true
+      | [(_, JSON.ARRAY entries)] => List.all
+          (fn JSON.STRING entry => String.isSubstring "=" entry | _ => false) entries
+      | _ => false)
+      "input remappings must be a single array of strings containing '='"
+    val () = require (json_equal (JSON.OBJECT input_settings,
       JSON.OBJECT (settings @ [("outputSelection", output_selection)])))
       "input settings differ from pinned profile/output selection"
     val _ = object (field input "sources")

@@ -9,6 +9,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -325,6 +326,52 @@ class CorpusTests(unittest.TestCase):
                     self.assertEqual([c["check"] for c in checks if c["status"] != "pass"],
                                      ["artifact-compiler-version"])
 
+    def test_reproduces_artifacts_with_recorded_remappings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            artifact = json.loads((fake.root / ARTIFACT).read_text(encoding="utf-8"))
+            artifact["input"]["language"] = "Solidity"
+            artifact["input"]["settings"]["remappings"] = ["a/=b/"]
+            fake.write(ARTIFACT, driver.exporter.json_text(artifact))
+            with patch.object(driver.exporter, "ROOT", fake.root), \
+                 patch.object(driver.exporter, "compiler_identity",
+                              return_value=artifact["compiler"]["reportedVersion"]), \
+                 patch.object(driver.exporter, "compile_standard_json",
+                              return_value=artifact["output"]) as compile_json:
+                checks = driver.reproduce_artifacts(fake.root, corpus(), Path("solc"), False)
+            self.assertEqual([c for c in checks if c["status"] != "pass"], [])
+            self.assertEqual(compile_json.call_args.args[1], artifact["input"])
+
+    def test_reproduction_rejects_malformed_remappings_before_compiling(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            artifact = json.loads((fake.root / ARTIFACT).read_text(encoding="utf-8"))
+            for settings in (None, [], {"remappings": "a/=b/"},
+                             {"remappings": [1]}, {"remappings": ["a/b/"]}):
+                with self.subTest(settings=settings):
+                    artifact["input"]["settings"] = settings
+                    fake.write(ARTIFACT, driver.exporter.json_text(artifact))
+                    with patch.object(driver.exporter, "build_artifact_from_sources") as build:
+                        checks = driver.reproduce_artifacts(
+                            fake.root, corpus(), Path("solc"), False)
+                    build.assert_not_called()
+                    self.assertEqual([c["status"] for c in checks], ["fail"])
+                    self.assertIn("input", checks[0]["detail"])
+
+    def test_checks_optional_remappings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            artifact = json.loads((fake.root / ARTIFACT).read_text(encoding="utf-8"))
+            for remappings, accepted in (([], True), (["a/=b/"], True),
+                                          ("a/=b/", False), ([1], False),
+                                          (["a/b/"], False), (None, False)):
+                with self.subTest(remappings=remappings):
+                    artifact["input"]["settings"]["remappings"] = remappings
+                    fake.write(ARTIFACT, json.dumps(artifact))
+                    checks = driver.check_artifacts(fake.root, corpus())
+                    self.assertEqual([c["check"] for c in checks if c["status"] != "pass"],
+                                     [] if accepted else ["artifact-settings"])
+
     def test_detects_input_settings_inconsistent_with_profile(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fake = FakeRoot(Path(temporary))
@@ -333,6 +380,7 @@ class CorpusTests(unittest.TestCase):
                                ("outputSelection", {})):
                 with self.subTest(setting=key):
                     artifact = json.loads(json.dumps(original))
+                    artifact["input"]["settings"]["remappings"] = ["a/=b/"]
                     artifact["input"]["settings"][key] = value
                     fake.write(ARTIFACT, json.dumps(artifact))
                     checks = driver.check_artifacts(fake.root, corpus())
