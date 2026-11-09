@@ -110,26 +110,25 @@ End
  * is about and a short fixed phrase saying what is unsupported there (or,
  * for a placeholder of the import, the importer's line). A node elaborates
  * all of its independent children and reports the blockers of every one
- * that fails; it reports a blocker of its own only when its children
- * elaborate.
+ * that fails, together with a blocker of its own if it has one.
  *)
 Definition blockers_def:
   (blockers (INL _) = ([] : (num # string) list)) ∧
   (blockers (INR bs) = bs)
 End
 
-(* The result r of a node's children, unless they elaborate and the node's
- * own check ok fails. *)
+(* The result r of a node's children, with the node's blocker b added when
+ * its own check ok fails. *)
 Definition ensure_def:
   ensure ok (b : num # string) r =
     case r of
       INL x => if ok then INL x else INR [b]
-    | INR bs => INR bs
+    | INR bs => INR (if ok then bs else b :: bs)
 End
 
-(* A node that fails after elaborating its children r. *)
+(* A node that fails with blocker b, after elaborating its children r. *)
 Definition reject_def:
-  reject (b : num # string) r = INR (case r of INL _ => [b] | INR bs => bs)
+  reject (b : num # string) r = INR (b :: blockers r)
 End
 
 (* A reference to x that names nothing in scope: no blocker if x's
@@ -591,40 +590,28 @@ End
  * decoded type. Multiple values (tuples and calls with several returns) are
  * elaborated by elab_values.
  *)
-(* Values converted to a list of types, for returns and declarations. *)
-Definition coerce_values_def:
-  (coerce_values n [] [] = INL ([], [], n)) ∧
-  (coerce_values n (ty :: tys) ((a, vt) :: vs) =
-    case coerce n ty a vt of
-      INL ((ss, a'), n1) =>
-        (case coerce_values n1 tys vs of
-           INL (ss', as, n2) => INL (ss ++ ss', a' :: as, n2)
-         | INR why => INR why)
-    | INR why => INR why) ∧
-  (coerce_values n _ _ = INR "value count mismatch")
+(* How an operand is converted: to a type (ValueOf); for ABI encoding as a
+ * type (EncodedAs), keeping byte-sequence and array references live until
+ * serialization, since an encoded argument needs no location copy and the
+ * encoder reads it where it is, in memory, calldata or storage; or for ABI
+ * encoding as its own type (Encoded, packed or not). *)
+Datatype:
+  operand_target = ValueOf sol_type | EncodedAs sol_type | Encoded bool
 End
 
-(* Keep byte-sequence and array references live until ABI serialization:
- * unlike an internal memory parameter, an encoded argument needs no location
- * copy, and the encoder reads it where it is, in memory, calldata or storage. *)
-Definition coerce_abi_values_def:
-  (coerce_abi_values n [] [] = INL ([], [], n)) ∧
-  (coerce_abi_values n (ty :: tys) ((a, vt) :: vs) =
-    let converted = case (ty, vt) of
-      (LocatedT _ element, ElabType (LocatedT _ actual)) =>
-        if element = actual then INL (([], a), n)
-        else INR "type conversion between these types"
-    | (LocatedT _ element, ElabBytesLiteral) =>
-        if byte_sequence_type element then INL (([], a), n)
-        else INR "string literal conversion"
-    | _ => coerce n ty a vt in
-    case converted of
-      INL ((ss, a'), n1) =>
-        (case coerce_abi_values n1 tys vs of
-           INL (ss', as, n2) => INL (ss ++ ss', a' :: as, n2)
-         | INR why => INR why)
-    | INR why => INR why) ∧
-  (coerce_abi_values n _ _ = INR "value count mismatch")
+Definition values_of_def:
+  (values_of [] = []) ∧
+  (values_of (ty :: tys) = ValueOf ty :: values_of tys)
+End
+
+Definition encoded_as_def:
+  (encoded_as [] = []) ∧
+  (encoded_as (ty :: tys) = EncodedAs ty :: encoded_as tys)
+End
+
+Definition expr_ids_def:
+  (expr_ids [] = []) ∧
+  (expr_ids (e :: es) = expr_id e :: expr_ids es)
 End
 
 (* An argument of abi.encode*, with the ABI type it is encoded as: a scalar
@@ -652,59 +639,97 @@ Definition abi_argument_def:
     | _ => INR "abi encoding of this type"
 End
 
-Definition abi_arguments_def:
-  (abi_arguments packed [] = INL ([], [])) ∧
-  (abi_arguments packed ((a, vt) :: vs) =
-    case (abi_argument packed a vt, abi_arguments packed vs) of
-      (INL (ty, a'), INL (tys, args)) => INL (ty :: tys, a' :: args)
-    | (INR why, _) => INR why
-    | (_, INR why) => INR why)
+(* An operand converted to its target: the statements, the type it has and
+ * its atom. *)
+Definition convert_operand_def:
+  convert_operand n target a vt =
+    case target of
+      ValueOf ty =>
+        (case coerce n ty a vt of
+           INL ((ss, a'), n1) => INL ((ss, ty, a'), n1)
+         | INR why => INR why)
+    | EncodedAs ty =>
+        (case (ty, vt) of
+           (LocatedT _ element, ElabType (LocatedT _ actual)) =>
+             if element = actual then INL (([], ty, a), n)
+             else INR "type conversion between these types"
+         | (LocatedT _ element, ElabBytesLiteral) =>
+             if byte_sequence_type element then INL (([], ty, a), n)
+             else INR "string literal conversion"
+         | _ =>
+             (case coerce n ty a vt of
+                INL ((ss, a'), n1) => INL ((ss, ty, a'), n1)
+              | INR why => INR why))
+    | Encoded packed =>
+        (case abi_argument packed a vt of
+           INL (ty, a') => INL (([], ty, a'), n)
+         | INR why => INR why)
+End
+
+(* Every operand list goes through here: the operands' values converted to
+ * their targets in order, ids being the operands' node ids and id the
+ * node's, for a count mismatch. Every operand that fails is reported, under
+ * its own id. *)
+Definition convert_operands_def:
+  (convert_operands n (id : num) [] [] [] = INL ([], [], [], n)) ∧
+  (convert_operands n id (i :: ids) (t :: ts) ((a, vt) :: vs) =
+    case convert_operand n t a vt of
+      INL ((ss, ty, a'), n1) =>
+        (case convert_operands n1 id ids ts vs of
+           INL (ss', tys, as, n2) => INL (ss ++ ss', ty :: tys, a' :: as, n2)
+         | INR bs => INR bs)
+    | INR why => INR ((i, why) :: blockers (convert_operands n id ids ts vs))) ∧
+  (convert_operands n id _ _ _ = INR [(id, "value count mismatch")])
 End
 
 (* The operation of abi.encode* on the values of its arguments, after any
  * statements converting the arguments: a selector given as an argument is
  * a bytes4, and the other arguments are scalars or byte sequences (integer
  * literals only unpacked, as the compiler requires). *)
+Definition selector_encoding_def:
+  selector_encoding (i : num) s svt r =
+    let selector = (if svt = ElabType (FixedBytesT 4) then []
+                    else [(i, "selector not a bytes4")]) in
+    case r of
+      INL (css, tys, args, n1) =>
+        if selector = [] then INL ((css, AbiEncodeOperation (SOME s) tys args), n1)
+        else INR selector
+    | INR bs => INR (selector ++ bs)
+End
+
 Definition abi_encoding_def:
-  abi_encoding n form vs =
-    case (form, vs) of
-      (AbiWithSelector, (s, svt) :: rest) =>
-        (case abi_arguments F rest of
-           INL (tys, args) =>
-             if svt = ElabType (FixedBytesT 4)
-             then INL (([], AbiEncodeOperation (SOME s) tys args), n)
-             else INR "selector not a bytes4"
-         | INR why => INR why)
-    | (AbiWithSelector, []) => INR "missing selector"
-    | (AbiCall tids, (s, svt) :: rest) =>
-        (if svt ≠ ElabType (FixedBytesT 4) then INR "selector not a bytes4" else
-         case all_some (MAP abi_call_parameter tids) of
+  abi_encoding n (id : num) ids form vs =
+    case (form, ids, vs) of
+      (AbiWithSelector, i :: rest_ids, (s, svt) :: rest) =>
+        selector_encoding i s svt
+          (convert_operands n id rest_ids (REPLICATE (LENGTH rest) (Encoded F)) rest)
+    | (AbiCall tids, i :: rest_ids, (s, svt) :: rest) =>
+        (case all_some (MAP abi_call_parameter tids) of
            SOME tys =>
-             (case coerce_abi_values n tys rest of
-                INL (css, args, n1) =>
-                  INL ((css, AbiEncodeOperation (SOME s) tys args), n1)
-              | INR why => INR why)
-         | NONE => INR "abi encoding of this type")
-    | (AbiCall _, []) => INR "missing selector"
-    | (AbiPacked, _) =>
-        (case abi_arguments T vs of
-           INL (tys, args) => INL (([], AbiEncodePackedOperation tys args), n)
-         | INR why => INR why)
-    | (AbiStringConcat, _) =>
-        (case abi_arguments T vs of
-           INL (tys, args) => INL (([], AbiEncodePackedOperation tys args), n)
-         | INR why => INR why)
-    | (AbiPlain, _) =>
-        (case abi_arguments F vs of
-           INL (tys, args) => INL (([], AbiEncodeOperation NONE tys args), n)
-         | INR why => INR why)
-    | (AbiWithSignature signature, _) =>
-        (case abi_arguments F vs of
-           INL (tys, args) =>
+             selector_encoding i s svt (convert_operands n id rest_ids (encoded_as tys) rest)
+         | NONE =>
+             selector_encoding i s svt (INR [(id, "abi encoding of this type")]))
+    | (AbiWithSelector, _, _) => INR [(id, "missing selector")]
+    | (AbiCall _, _, _) => INR [(id, "missing selector")]
+    | (AbiPacked, _, _) =>
+        (case convert_operands n id ids (REPLICATE (LENGTH vs) (Encoded T)) vs of
+           INL (_, tys, args, _) => INL (([], AbiEncodePackedOperation tys args), n)
+         | INR bs => INR bs)
+    | (AbiStringConcat, _, _) =>
+        (case convert_operands n id ids (REPLICATE (LENGTH vs) (Encoded T)) vs of
+           INL (_, tys, args, _) => INL (([], AbiEncodePackedOperation tys args), n)
+         | INR bs => INR bs)
+    | (AbiPlain, _, _) =>
+        (case convert_operands n id ids (REPLICATE (LENGTH vs) (Encoded F)) vs of
+           INL (_, tys, args, _) => INL (([], AbiEncodeOperation NONE tys args), n)
+         | INR bs => INR bs)
+    | (AbiWithSignature signature, _, _) =>
+        (case convert_operands n id ids (REPLICATE (LENGTH vs) (Encoded F)) vs of
+           INL (_, tys, args, _) =>
              INL (([], AbiEncodeOperation
                          (SOME (ConstantAtom (BytesValue (TAKE 4 (Keccak_256_w64 signature)))))
                          tys args), n)
-         | INR why => INR why)
+         | INR bs => INR bs)
 End
 
 (* An array or byte index, or an allocation length: an unsigned integer or a
@@ -952,7 +977,14 @@ Definition elab_expr_def:
                                     res, ElabType BoolT), n4)
                           | INR why => INR [(expr_id r, why)])
                      | INR bs => INR bs)
-                | INR why => reject (expr_id l, why) (elab_expr ctx n r))
+                | INR why =>
+                    reject (expr_id l, why)
+                      (case elab_expr ctx n r of
+                         INL ((_, ar, vr), n2) =>
+                           (case coerce n2 BoolT ar vr of
+                              INL x => INL x
+                            | INR why' => INR [(expr_id r, why')])
+                       | INR bs => INR bs))
              else
                (* flat let patterns: nested ones do not cv-translate here *)
                let (copied, n2) =
@@ -964,31 +996,27 @@ Definition elab_expr_def:
                        SOME aop =>
                          ensure (annotation_matches tid (ElabType ty))
                            (info.node_id, "type annotation mismatch")
-                         (case coerce n3 ty al' vl of
-                            INL ((cl, al''), n4) =>
-                              (case coerce n4 (right_operand_type aop ty) ar vr of
-                                 INL ((cr, ar'), n5) =>
-                                   let (ss, v) = bind_value n5 ty
-                                                   (ScalarOperation ty ctx.mode aop
-                                                      [al''; ar']) in
-                                   INL ((sl ++ sl' ++ sr ++ cl ++ cr ++ ss, v,
-                                         ElabType ty), n5 + 1)
-                               | INR why => INR [(expr_id r, why)])
-                          | INR why => INR [(expr_id l, why)])
+                         (case convert_operands n3 info.node_id [expr_id l; expr_id r]
+                                 [ValueOf ty; ValueOf (right_operand_type aop ty)]
+                                 [(al', vl); (ar, vr)] of
+                            INL (cs, _, [al''; ar'], n5) =>
+                              let (ss, v) = bind_value n5 ty
+                                              (ScalarOperation ty ctx.mode aop [al''; ar']) in
+                              INL ((sl ++ sl' ++ sr ++ cs ++ ss, v, ElabType ty), n5 + 1)
+                          | INL _ => INR [(info.node_id, "value count mismatch")]
+                          | INR bs => INR bs)
                      | NONE =>
                          ensure (annotation_matches tid (ElabType BoolT))
                            (info.node_id, "type annotation mismatch")
-                         (case coerce n3 ty al' vl of
-                            INL ((cl, al''), n4) =>
-                              (case coerce n4 ty ar vr of
-                                 INL ((cr, ar'), n5) =>
-                                   (case comparison n5 ty op al'' ar' of
-                                      SOME ((ss, v), n6) =>
-                                        INL ((sl ++ sl' ++ sr ++ cl ++ cr ++ ss, v,
-                                              ElabType BoolT), n6)
-                                    | NONE => INR [(info.node_id, "unsupported binary operator")])
-                               | INR why => INR [(expr_id r, why)])
-                          | INR why => INR [(expr_id l, why)]))
+                         (case convert_operands n3 info.node_id [expr_id l; expr_id r]
+                                 [ValueOf ty; ValueOf ty] [(al', vl); (ar, vr)] of
+                            INL (cs, _, [al''; ar'], n5) =>
+                              (case comparison n5 ty op al'' ar' of
+                                 SOME ((ss, v), n6) =>
+                                   INL ((sl ++ sl' ++ sr ++ cs ++ ss, v, ElabType BoolT), n6)
+                               | NONE => INR [(info.node_id, "unsupported binary operator")])
+                          | INL _ => INR [(info.node_id, "value count mismatch")]
+                          | INR bs => INR bs))
                 | INR bs => INR bs)
          | _ => reject (info.node_id, "unsupported operator type") (elab_expr ctx n1 r))
     | SrcAssignment info op lhs rhs tid =>
@@ -1136,8 +1164,11 @@ Definition elab_expr_def:
              INR ((info.node_id, "unresolved super call") ::
                   blockers (elab_arg_values ctx n args)))
     | SrcBuiltinCall info _ builtin condition message tid =>
-        ensure (builtin_shape builtin condition message ∧ tid = "t_tuple$__$")
-          (info.node_id, "unsupported builtin call")
+        if ¬(builtin_shape builtin condition message ∧ tid = "t_tuple$__$") then
+          INR ((info.node_id, "unsupported builtin call") ::
+               (case condition of NONE => [] | SOME c => blockers (elab_expr ctx n c)) ++
+               (case message of NONE => [] | SOME m => blockers (elab_expr ctx n m)))
+        else
         (let failure = builtin_failure builtin message in
          case condition of
            NONE => INL (([failure;
@@ -1154,22 +1185,27 @@ Definition elab_expr_def:
     (* Value only for a payable callee, as the compiler requires; calls
        returning enums are not supported yet. *)
     | SrcExternalCall info callee with_value operands order tid =>
-        (case elab_arg_values ctx n operands of
-           INL ((ss, vs0), next) =>
-             (case (all_some (MAP call_variable_type callee.ext_parameters),
-                    all_some (MAP call_variable_type callee.ext_returns),
-                    arrange order vs0) of
-                (SOME params, SOME rets, SOME vs) =>
-                  if ¬((with_value ⇒ callee.ext_mutability = PayableMut) ∧
-                       LENGTH operands = LENGTH params + (if with_value then 2 else 1) ∧
-                       argument_order_ok order (LENGTH params) ∧
-                       decode_type_identifier tid = SOME (call_value_type rets) ∧
-                       EVERY (λty. case ty of EnumT _ => F | _ => T) rets)
-                  then INR [(info.node_id, "unsupported external call")] else
-                  (case coerce_abi_values next
-                          (AddressT NonpayableAddress ::
-                           (if with_value then [UintT 256] else []) ++ params) vs of
-                     INL (cs, t :: atoms, n1) =>
+        (let shape =
+           (case (all_some (MAP call_variable_type callee.ext_parameters),
+                  all_some (MAP call_variable_type callee.ext_returns)) of
+              (SOME params, SOME rets) =>
+                if (with_value ⇒ callee.ext_mutability = PayableMut) ∧
+                   LENGTH operands = LENGTH params + (if with_value then 2 else 1) ∧
+                   argument_order_ok order (LENGTH params) ∧
+                   decode_type_identifier tid = SOME (call_value_type rets) ∧
+                   EVERY (λty. case ty of EnumT _ => F | _ => T) rets
+                then INL (params, rets) else INR (info.node_id, "unsupported external call")
+            | _ => INR (info.node_id, "unsupported external call")) in
+         case (shape, elab_arg_values ctx n operands) of
+           (INR b, r) => reject b r
+         | (INL _, INR bs) => INR bs
+         | (INL (params, rets), INL ((ss, vs0), next)) =>
+             (case (arrange order vs0, arrange order (expr_ids operands)) of
+                (SOME vs, SOME ids) =>
+                  (case convert_operands next info.node_id ids
+                          (encoded_as (AddressT NonpayableAddress ::
+                             (if with_value then [UintT 256] else []) ++ params)) vs of
+                     INL (cs, _, t :: atoms, n1) =>
                        (case (with_value, atoms) of
                           (T, v :: args) =>
                             INL (external_call_value n1 callee.ext_mutability
@@ -1180,9 +1216,8 @@ Definition elab_expr_def:
                                    (ConstantAtom (IntegerValue 0)) args)
                         | _ => INR [(info.node_id, "unsupported external call")])
                    | INL _ => INR [(info.node_id, "unsupported external call")]
-                   | INR why => INR [(info.node_id, why)])
-              | _ => INR [(info.node_id, "unsupported external call")])
-         | INR bs => INR bs)
+                   | INR bs => INR bs)
+              | _ => INR [(info.node_id, "unsupported external call")]))
     (* new T(n) of a byte sequence or dynamic memory array type *)
     | SrcNew info tn e tid =>
         (case elab_expr ctx n e of
@@ -1251,7 +1286,14 @@ Definition elab_expr_def:
                                                  res, ElabType ty), n6)
                                        | INR why => INR [(expr_id f, why)])
                                   | INR bs => INR bs)
-                             | INR why => reject (expr_id t, why) (elab_expr ctx n f))
+                             | INR why =>
+                                 reject (expr_id t, why)
+                                   (case elab_expr ctx n f of
+                                      INL ((_, af, vf), n4) =>
+                                        (case coerce n4 ty af vf of
+                                           INL x => INL x
+                                         | INR why' => INR [(expr_id f, why')])
+                                    | INR bs => INR bs))
                         | NONE =>
                             reject (info.node_id, "unsupported conditional type")
                               (elab_expr ctx n f))
@@ -1293,12 +1335,13 @@ Definition elab_expr_def:
         ensure (source_type_matches (UintT 256) tid) (info.node_id, "type annotation mismatch")
         (case elab_arg_values ctx n args of
            INL ((ss, vs), n1) =>
-             (case coerce_values n1 [UintT 256; UintT 256; UintT 256] vs of
-                INL (cs, as, n2) =>
+             (case convert_operands n1 info.node_id (expr_ids args)
+                     (values_of [UintT 256; UintT 256; UintT 256]) vs of
+                INL (cs, _, as, n2) =>
                   let (rs, r) = bind_value n2 (UintT 256)
                                   (ScalarOperation (UintT 256) CheckedArithmetic op as) in
                   INL ((ss ++ cs ++ rs, r, ElabType (UintT 256)), n2 + 1)
-              | INR why => INR [(info.node_id, why)])
+              | INR bs => INR bs)
          | INR bs => INR bs)
     | SrcAbiEncode info _ form args tid =>
         (let ty = LocatedT MemoryLoc
@@ -1306,24 +1349,25 @@ Definition elab_expr_def:
          ensure (source_type_matches ty tid) (info.node_id, "type annotation mismatch")
          (case elab_arg_values ctx n args of
             INL ((ss, vs), n1) =>
-              (case abi_encoding n1 form vs of
+              (case abi_encoding n1 info.node_id (expr_ids args) form vs of
                  INL ((cs, op), n2) =>
                    let (es, r) = bind_value n2 ty op in
                    INL ((ss ++ cs ++ es, r, ElabType ty), n2 + 1)
-               | INR why => INR [(info.node_id, why)])
+               | INR bs => INR bs)
           | INR bs => INR bs))
     | SrcEcrecover info _ args tid =>
         let ty = AddressT NonpayableAddress in
         ensure (annotation_matches tid (ElabType ty)) (info.node_id, "type annotation mismatch")
         (case elab_arg_values ctx n args of
            INL ((ss, vs), n1) =>
-             (case coerce_values n1 [FixedBytesT 32; UintT 8; FixedBytesT 32;
-                                     FixedBytesT 32] vs of
-                INL (cs, [h; v; r; s], n2) =>
+             (case convert_operands n1 info.node_id (expr_ids args)
+                     (values_of [FixedBytesT 32; UintT 8; FixedBytesT 32;
+                                 FixedBytesT 32]) vs of
+                INL (cs, _, [h; v; r; s], n2) =>
                   let (es, a) = bind_value n2 ty (EcrecoverOperation h v r s) in
                   INL ((ss ++ cs ++ es, a, ElabType ty), n2 + 1)
               | INL _ => INR [(info.node_id, "value count mismatch")]
-              | INR why => INR [(info.node_id, why)])
+              | INR bs => INR bs)
          | INR bs => INR bs)
     | SrcAbiDecode info _ e tns tid =>
         (* the data is decoded where it is, so it must already be memory bytes *)
@@ -1414,12 +1458,12 @@ Definition elab_expr_def:
   (elab_args ctx n (id : num) order tys es =
     case elab_arg_values ctx n es of
       INL ((ss, vs), n1) =>
-        (case arrange order vs of
-           SOME vs' =>
-             (case coerce_values n1 tys vs' of
-                INL (cs, as, n2) => INL ((ss ++ cs, as), n2)
-              | INR why => INR [(id, why)])
-         | NONE => INR [(id, "argument order")])
+        (case (arrange order vs, arrange order (expr_ids es)) of
+           (SOME vs', SOME ids) =>
+             (case convert_operands n1 id ids (values_of tys) vs' of
+                INL (cs, _, as, n2) => INL ((ss ++ cs, as), n2)
+              | INR bs => INR bs)
+         | _ => INR [(id, "argument order")])
     | INR bs => INR bs) ∧
   (* Multiple values: tuple expressions, and calls with several returns. *)
   (elab_values ctx n e =
@@ -2010,31 +2054,34 @@ Definition elab_stmts_def:
     ensure (returns_id = ctx.returns_id) (info.node_id, "return of another function")
     (case elab_values ctx n e of
        INL ((ss, vs), n1) =>
-         (case coerce_values n1 (MAP SND ctx.returns) vs of
-            INL (cs, as, n2) => INL ((ss ++ cs ++ [ReturnStmt as], ctx), n2)
-          | INR why => unknown_reference ctx (expr_id e) why ctx.returns_id)
+         (case convert_operands n1 (expr_id e) (REPLICATE (LENGTH vs) (expr_id e))
+                 (values_of (MAP SND ctx.returns)) vs of
+            INL (cs, _, as, n2) => INL ((ss ++ cs ++ [ReturnStmt as], ctx), n2)
+          | INR bs => INR (if MEM ctx.returns_id ctx.bad_ids then [] else bs))
      | INR bs => INR bs)) ∧
   (elab_stmt ctx n (SrcEmit info ev args order) =
-    case elab_arg_values ctx n args of
-      INR bs => INR bs
-    | INL ((ss, vs0), next) =>
-    case ALOOKUP ctx.events ev of
-      NONE => INR [(info.node_id, "unknown event")]
-    | SOME e =>
-        if LENGTH args ≠ LENGTH e.event_parameters ∨
-           ¬argument_order_ok order (LENGTH args)
-        then INR [(info.node_id, "emit does not match the event")] else
-        case all_some (MAP event_parameter e.event_parameters) of
-          NONE => INR [(info.node_id, "unsupported event parameter type")]
-        | SOME ps =>
-            case arrange order vs0 of
-              NONE => INR [(info.node_id, "argument order")]
-            | SOME vs =>
-                (case coerce_abi_values next (MAP FST ps) vs of
-                   INL (cs, as, n1) =>
-                     INL ((ss ++ cs ++ [EmitStmt (event_topic e) (emit_arguments ps as)],
-                           ctx), n1)
-                 | INR why => INR [(info.node_id, why)])) ∧
+    let event =
+      (case ALOOKUP ctx.events ev of
+         NONE => INR (info.node_id, "unknown event")
+       | SOME e =>
+           if LENGTH args ≠ LENGTH e.event_parameters ∨
+              ¬argument_order_ok order (LENGTH args)
+           then INR (info.node_id, "emit does not match the event") else
+           (case all_some (MAP event_parameter e.event_parameters) of
+              NONE => INR (info.node_id, "unsupported event parameter type")
+            | SOME ps => INL (e, ps))) in
+    case (event, elab_arg_values ctx n args) of
+      (INR b, r) => reject b r
+    | (INL _, INR bs) => INR bs
+    | (INL (e, ps), INL ((ss, vs0), next)) =>
+        case (arrange order vs0, arrange order (expr_ids args)) of
+          (SOME vs, SOME ids) =>
+            (case convert_operands next info.node_id ids (encoded_as (MAP FST ps)) vs of
+               INL (cs, _, as, n1) =>
+                 INL ((ss ++ cs ++ [EmitStmt (event_topic e) (emit_arguments ps as)],
+                       ctx), n1)
+             | INR bs => INR bs)
+        | _ => INR [(info.node_id, "argument order")]) ∧
   (* Arguments are coerced to the error's parameter types, which must be
      elementary for the revert data's ABI encoding. *)
   (elab_stmt ctx n (SrcRevertError info err args order) =
@@ -2946,28 +2993,23 @@ val () = cv_auto_trans_rec expr_assigns_def (
 val () = cv_auto_trans error_string_data_def;
 val () = cv_auto_trans builtin_failure_def;
 
-val coerce_values_pre_def =
-  cv_auto_trans_pre "coerce_values_pre" coerce_values_def;
-
-Theorem coerce_values_pre[cv_pre,local]:
-  ∀n tys vs. coerce_values_pre n tys vs
-Proof
-  ho_match_mp_tac coerce_values_ind >> rpt strip_tac >>
-  simp[Once coerce_values_pre_def] >> rw[] >> fs[]
-QED
-
-val coerce_abi_values_pre_def =
-  cv_auto_trans_pre "coerce_abi_values_pre" coerce_abi_values_def;
-
-Theorem coerce_abi_values_pre[cv_pre,local]:
-  ∀n tys vs. coerce_abi_values_pre n tys vs
-Proof
-  ho_match_mp_tac coerce_abi_values_ind >> rpt strip_tac >>
-  simp[Once coerce_abi_values_pre_def] >> rw[] >> fs[]
-QED
-
+val () = cv_auto_trans values_of_def;
+val () = cv_auto_trans encoded_as_def;
+val () = cv_auto_trans expr_ids_def;
 val () = cv_auto_trans abi_argument_def;
-val () = cv_auto_trans abi_arguments_def;
+val () = cv_auto_trans convert_operand_def;
+
+val convert_operands_pre_def =
+  cv_auto_trans_pre "convert_operands_pre" convert_operands_def;
+
+Theorem convert_operands_pre[cv_pre,local]:
+  ∀n id ids ts vs. convert_operands_pre n id ids ts vs
+Proof
+  ho_match_mp_tac convert_operands_ind >> rpt strip_tac >>
+  simp[Once convert_operands_pre_def] >> rw[] >> fs[]
+QED
+
+val () = cv_auto_trans selector_encoding_def;
 val () = cv_auto_trans abi_encoding_def;
 val () = cv_auto_trans arrange_def;
 

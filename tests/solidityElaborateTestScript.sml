@@ -387,6 +387,110 @@ Proof
   EVAL_TAC
 QED
 
+(* Two independently bad operands of each operand list are both reported,
+ * each under its own id, beside the node's own blocker if it has one: string
+ * literals that convert to no number, number literals that a packed encoding
+ * rejects, and unsupported expressions. *)
+fun string_at id = “SrcLiteral ^(at id) StringLiteral "a" "t_stringliteral_a"”;
+fun one_at id = “SrcLiteral ^(at id) NumberLiteral "1" "t_rational_1_by_1"”;
+fun bad_at id = “SrcUnsupportedExpr ^(at id) "bad" []”;
+fun reports r bs =
+  list_mk_conj (map (fn b => “MEM ^b (blockers ^r)”) bs);
+val string_32_33 = [“(32, "string literal conversion")”, “(33, "string literal conversion")”];
+val bad_32_33 = [“(32, "bad")”, “(33, "bad")”];
+
+Theorem modular_operands_all_report:
+  ^(reports “elab_expr ^ctx0 10
+               (SrcModular ^(at 30) ^(at 31) AddModOp
+                  [^(string_at 32); ^(string_at 33); ^(one_at 34)] "t_uint256")”
+     string_32_33)
+Proof
+  EVAL_TAC
+QED
+
+Theorem ecrecover_operands_all_report:
+  ^(reports “elab_expr ^ctx0 10
+               (SrcEcrecover ^(at 30) ^(at 31)
+                  [^(string_at 32); ^(one_at 34); ^(string_at 33); ^(one_at 35)]
+                  "t_address")”
+     string_32_33)
+Proof
+  EVAL_TAC
+QED
+
+Theorem abi_encode_operands_all_report:
+  ^(reports “elab_expr ^ctx0 10
+               (SrcAbiEncode ^(at 30) ^(at 31) AbiPacked [^(one_at 32); ^(one_at 33)]
+                  "t_bytes_memory_ptr")”
+     [“(32, "packed encoding of a number literal")”,
+      “(33, "packed encoding of a number literal")”])
+Proof
+  EVAL_TAC
+QED
+
+Theorem binary_operands_all_report:
+  ^(reports “elab_expr ^ctx0 10
+               (SrcBinaryOperation ^(at 30) SrcAdd ^(string_at 32) ^(string_at 33)
+                  "t_uint256" "t_uint256")”
+     string_32_33) ∧
+  ^(reports “elab_expr ^ctx0 10
+               (SrcBinaryOperation ^(at 30) SrcAnd ^(string_at 32) ^(string_at 33)
+                  "t_bool" "t_bool")”
+     string_32_33)
+Proof
+  EVAL_TAC
+QED
+
+Theorem builtin_operands_all_report:
+  ^(reports “elab_expr ^ctx0 10
+               (SrcBuiltinCall ^(at 30) ^(at 31) RequireBuiltin
+                  (SOME ^(bad_at 32)) (SOME ^(bad_at 33)) "t_bool")”
+     (“(30, "unsupported builtin call")” :: bad_32_33))
+Proof
+  EVAL_TAC
+QED
+
+val two_parameters = function_of “[^supported_y; ^supported_y]” “[] : src_variable list” “[] : src_stmt list”;
+
+Theorem internal_call_operands_all_report:
+  ^(reports “elab_expr (^ctx0 with functions := [(1, ^two_parameters)]) 10
+               (SrcFunctionCall ^(at 30) (SrcIdentifier ^(at 31) "f" 1 "t_function")
+                  [^(string_at 32); ^(string_at 33)] [] "t_tuple$__$")”
+     string_32_33)
+Proof
+  EVAL_TAC
+QED
+
+Theorem external_call_operands_all_report:
+  ^(reports “elab_expr ^ctx0 10
+               (SrcExternalCall ^(at 30)
+                  <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut;
+                     ext_parameters := []; ext_returns := [] |>
+                  F [^(bad_at 32); ^(bad_at 33)] [] "t_tuple$__$")”
+     (“(30, "unsupported external call")” :: bad_32_33))
+Proof
+  EVAL_TAC
+QED
+
+Theorem statement_operands_all_report:
+  ^(reports “elab_stmt ^ctx0 10 (SrcEmit ^(at 30) 5 [^(bad_at 32); ^(bad_at 33)] [])”
+     (“(30, "unknown event")” :: bad_32_33)) ∧
+  ^(reports “elab_stmt ^ctx0 10
+               (SrcRevertError ^(at 30)
+                  <| error_selector := [0w; 0w; 0w; 0w]; error_parameters := [] |>
+                  [^(bad_at 32); ^(bad_at 33)] [])”
+     (“(30, "revert does not match the error")” :: bad_32_33)) ∧
+  LENGTH (FILTER ($= (31, "string literal conversion"))
+    (blockers (elab_stmt (^ctx0 with <| returns := [(1, UintT 256); (2, UintT 256)];
+                                        returns_id := 3 |>) 10
+                 (SrcReturn ^(at 30) 3
+                    (SOME (SrcTupleExpression ^(at 31)
+                             [SOME ^(string_at 32); SOME ^(string_at 33)]
+                             "t_tuple$_t_uint256_$_t_uint256_$")))))) = 2
+Proof
+  EVAL_TAC
+QED
+
 (* The unit elaborates, so nothing in it fails. *)
 Theorem pure_core_has_no_failures:
   unit_elaboration_failures T pure_core = []
