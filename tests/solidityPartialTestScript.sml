@@ -210,8 +210,9 @@ Proof
 QED
 
 (* The elaborator refuses such a fallback even when the importer has not
- * marked it: the unit elaborates as imported, and with the mark removed it
- * fails elaboration. *)
+ * marked it: the fallback is the one part of the unit that fails
+ * elaboration, with or without the mark (unit_elaboration_failures
+ * elaborates marked functions too, for their reasons). *)
 Definition fallback_params_unit_def:
   fallback_params_unit = ^(#unit fallback_prepared)
 End
@@ -230,7 +231,7 @@ End
 val () = cv_auto_trans fallback_params_unmarked_def;
 
 Theorem fallback_params_unmarked_fails_elaboration:
-  unit_elaboration_failures T fallback_params_unit = [] ∧
+  LENGTH (unit_elaboration_failures T fallback_params_unit) = 1 ∧
   LENGTH (unit_elaboration_failures T fallback_params_unmarked) = 1
 Proof
   CONV_TAC cv_eval
