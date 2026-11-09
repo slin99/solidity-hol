@@ -20,6 +20,17 @@ contract LiteralBytes {
 
     function argument() public pure returns (bytes4) { return echo("xy"); }
 
+    function assigned() public pure returns (uint32, bytes8) {
+        bytes4 a;
+        bytes4 b;
+        return (uint32(a = "ab"), bytes8(b = "cd"));
+    }
+
+    function assignedNumber() public pure returns (uint32) {
+        bytes4 b;
+        return uint32(b = 0x61626364);
+    }
+
     function wrapping() public pure returns (bytes16) {
         unchecked { return DIGITS; }
     }

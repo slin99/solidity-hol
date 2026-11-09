@@ -108,6 +108,27 @@
           "0x30313233343536373839616263646566"
         ]
       }
+    },
+    {
+      "name": "assignment_result_preserves_width",
+      "function": "assigned",
+      "args": [],
+      "expect": {
+        "return": [
+          1633812480,
+          "0x6364000000000000"
+        ]
+      }
+    },
+    {
+      "name": "numeric_assignment_result_preserves_width",
+      "function": "assignedNumber",
+      "args": [],
+      "expect": {
+        "return": [
+          1633837924
+        ]
+      }
     }
   ]
 }

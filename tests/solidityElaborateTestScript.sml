@@ -321,7 +321,9 @@ Theorem literal_bytes_width_checked:
   coerce 0 (FixedBytesT 2) (ConstantAtom (BytesValue [0x61w; 0x62w; 0x63w]))
     ElabBytesLiteral = NONE ∧
   coerce 0 (FixedBytesT 0) (ConstantAtom (BytesValue [])) ElabBytesLiteral = NONE ∧
-  coerce 0 (FixedBytesT 33) (ConstantAtom (BytesValue [])) ElabBytesLiteral = NONE
+  coerce 0 (FixedBytesT 33) (ConstantAtom (BytesValue [])) ElabBytesLiteral = NONE ∧
+  coerce 0 (FixedBytesT 0) (ConstantAtom (IntegerValue 0)) ElabLiteral = NONE ∧
+  coerce 0 (FixedBytesT 33) (ConstantAtom (IntegerValue 0)) ElabLiteral = NONE
 Proof
   EVAL_TAC
 QED
