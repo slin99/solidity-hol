@@ -1436,7 +1436,11 @@ fun modifier v = within v (fn v =>
                require v (not (bool_field v "virtual") andalso
                           not (isSome (optional_field v "overrides")))
                  "virtual modifiers are not supported")
-    val (body, lines) = with_blockers (fn () => stmt (field v "body"))
+    (* a modifier without a body (a virtual one) is left out *)
+    val body = case optional_field v "body" of
+                 SOME b => b
+               | NONE => fail (describe v ^ ": modifier without a body")
+    val (body, lines) = with_blockers (fn () => stmt body)
     val () =
       if null lines then ()
       else failed_modifiers := !failed_modifiers @ [(int_field v "id", lines)]
@@ -1693,9 +1697,8 @@ fun contract external_structs contracts declared v = within v (fn v =>
       List.foldr (fn (m, ls) =>
                     if List.exists (fn l => l = int_field m "scope") ls then ls
                     else int_field m "scope" :: ls)
-        [] (List.filter (fn m => node_type m <> "ErrorDefinition" andalso
-                                 node_type m <> "ModifierDefinition" andalso
-                                 node_type m <> "EnumDefinition") used_members)
+        [] (List.filter (fn m => node_type m = "FunctionDefinition" orelse
+                                 node_type m = "VariableDeclaration") used_members)
     (* The file-level structs the bases refer to, also through other structs. *)
     fun used picked =
       let
