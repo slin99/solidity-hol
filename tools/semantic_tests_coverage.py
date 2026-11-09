@@ -612,6 +612,8 @@ def node_blockers(node: dict[str, Any], *, builtin_callee: bool = False,
     elif kind == "VariableDeclaration":
         if node.get("overrides"):
             found.append("overriding state variables")
+        if node["storageLocation"] == "transient":
+            found.append("transient storage")
         if node["constant"] and not (
                 node.get("stateVariable") and node.get("value") is not None
                 and CONSTANT_TYPE.fullmatch(node["typeDescriptions"].get("typeIdentifier") or "")):
@@ -841,9 +843,8 @@ def elaboration_blockers(node: dict[str, Any], *, storage_field: bool = False,
             found.append(type_feature(type_identifier))
         if kind == "VariableDeclaration":
             location = node["storageLocation"]
-            if location == "transient":
-                found.append("transient storage")
-            elif (location not in ("default", "memory") and not BYTE_SEQUENCE.fullmatch(type_identifier)
+            # the importer rejects transient storage
+            if (location not in ("default", "memory", "transient") and not BYTE_SEQUENCE.fullmatch(type_identifier)
                   and not (location == "calldata" and located_array(type_identifier))):
                 found.append("local reference bindings")
             elif location == "default" and located_array(type_identifier):

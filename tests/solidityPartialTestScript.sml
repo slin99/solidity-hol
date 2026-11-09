@@ -210,7 +210,7 @@ Definition fallback_params_unmarked_def:
   fallback_params_unmarked =
     fallback_params_unit with unit_contracts :=
       MAP (λc. c with contract_functions :=
-             MAP (λf. if f.fn_kind = "fallback" then f with fn_unsupported := NONE
+             MAP (λf. if f.fn_kind = FallbackKind then f with fn_unsupported := NONE
                       else f) c.contract_functions)
         fallback_params_unit.unit_contracts
 End

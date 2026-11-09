@@ -262,6 +262,13 @@ Proof
   gen_tac >> EVAL_TAC
 QED
 
+Theorem no_exponent_assignment:
+  compound_operator (SOME SrcExp) = NONE ∧
+  compound_operator (SOME SrcAdd) = SOME AddOp
+Proof
+  EVAL_TAC
+QED
+
 (* Statements the compiler does not produce: a declaration as the body of an
  * if or a loop (it must be a statement of a block), and a fractional literal
  * in a tuple, even at a hole. *)
@@ -271,10 +278,10 @@ Theorem declaration_body_and_tuple_fraction_rejected:
                                     loc_source := 0 |> |>;
       x = <| var_info := info with node_id := 1; var_name := "x"; var_scope := 0;
              var_type_name := SrcElementaryTypeName info "uint256" NONE;
-             var_type_id := "t_uint256"; var_location := "default" |>;
+             var_type_id := "t_uint256"; var_location := NONE |>;
       d = SrcVariableDeclarationStatement info [SOME 1] [SOME x] NONE;
-      c = SrcLiteral info "bool" "true" "t_bool";
-      half = SrcLiteral info "number" "" "t_rational_1_by_2";
+      c = SrcLiteral info BoolLiteral "true" "t_bool";
+      half = SrcLiteral info NumberLiteral "" "t_rational_1_by_2";
       ctx = <| functions := []; supers := []; structs := []; enums := [];
                events := []; variables := []; state := []; locations := [];
                immutables := []; constants := []; returns := [];
