@@ -1,11 +1,17 @@
 (* Compatibility roll-up; refreshed with the integration reports. *)
 Theory solidityDifferentialCorpus
 Ancestors
+  solidityDifferentialCorpus_abi_decodes
   solidityDifferentialCorpus_abi_encoding
+  solidityDifferentialCorpus_assembly_constants
+  solidityDifferentialCorpus_assembly_memory
   solidityDifferentialCorpus_builtins
+  solidityDifferentialCorpus_bytes_constants
   solidityDifferentialCorpus_calldata_arrays
   solidityDifferentialCorpus_calldata_bytes
   solidityDifferentialCorpus_calls
+  solidityDifferentialCorpus_code_lengths
+  solidityDifferentialCorpus_concats
   solidityDifferentialCorpus_conditionals
   solidityDifferentialCorpus_constants
   solidityDifferentialCorpus_constructors
@@ -14,6 +20,8 @@ Ancestors
   solidityDifferentialCorpus_control
   solidityDifferentialCorpus_dynamic_bytes
   solidityDifferentialCorpus_dynamic_storage_arrays
+  solidityDifferentialCorpus_ecrecovers
+  solidityDifferentialCorpus_encode_calls
   solidityDifferentialCorpus_enums
   solidityDifferentialCorpus_errors
   solidityDifferentialCorpus_external
@@ -28,10 +36,12 @@ Ancestors
   solidityDifferentialCorpus_initializers_only
   solidityDifferentialCorpus_inline_assembly
   solidityDifferentialCorpus_interface_ids
+  solidityDifferentialCorpus_low_level_calls
   solidityDifferentialCorpus_mappings
   solidityDifferentialCorpus_memory_arrays
   solidityDifferentialCorpus_memory_bytes
   solidityDifferentialCorpus_modifiers
+  solidityDifferentialCorpus_modular
   solidityDifferentialCorpus_named_arguments
   solidityDifferentialCorpus_oz_erc20
   solidityDifferentialCorpus_public_getters
@@ -50,5 +60,7 @@ Ancestors
   solidityDifferentialCorpus_struct_getters
   solidityDifferentialCorpus_super_calls
   solidityDifferentialCorpus_token
+  solidityDifferentialCorpus_try_calls
+  solidityDifferentialCorpus_tuple_literals
   solidityDifferentialCorpus_type_bounds
   solidityDifferentialCorpus_using_for
