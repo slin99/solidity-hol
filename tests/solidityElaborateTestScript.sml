@@ -7,7 +7,12 @@ Theory solidityElaborateTest
 Ancestors
   solidityElaborate solidityImportTest
 Libs
-  cv_transLib intLib wordsLib
+  cv_transLib intLib wordsLib solidityImportLib
+
+fun holbuild_extra_deps (_ : string list) = ()
+val () = holbuild_extra_deps [
+  "../testdata/differential/expected/constant_conversions.json"
+]
 
 val elaborated = cv_eval “elaborate_unit pure_core”;
 
@@ -28,6 +33,48 @@ Theorem pure_core_program_wf:
     pure_core_program
 Proof
   EVAL_TAC
+QED
+
+Definition constant_conversions_def:
+  constant_conversions = ^(import_artifact
+    "../testdata/differential/expected/constant_conversions.json"
+    "testdata/differential/constant_conversions.sol")
+End
+
+val () = cv_auto_trans constant_conversions_def;
+val conversions_elaborated = cv_eval “elaborate_unit constant_conversions”;
+
+Definition constant_conversions_program_def:
+  constant_conversions_program =
+    ^(conversions_elaborated |> concl |> rhs |> optionSyntax.dest_some)
+End
+
+val () = cv_auto_trans constant_conversions_program_def;
+
+Theorem constant_conversions_elaborate:
+  elaborate_unit constant_conversions = SOME constant_conversions_program
+Proof
+  simp[conversions_elaborated, constant_conversions_program_def]
+QED
+
+(* Partial admission must not hide a rejected conversion from the core check. *)
+Theorem constant_conversions_all_admitted:
+  MAP (λf. f.fn_name) (HD constant_conversions.unit_contracts).contract_functions =
+    ["addressToUint"; "addressToBytes"; "assignmentToInt";
+     "assignmentToBytes"; "lengthToBytes"; "lengthToUint8"] ∧
+  EVERY (λf. MEM (AstId f.fn_info.node_id)
+                (MAP (λp. p.procedure_id) constant_conversions_program.procedures))
+    (HD constant_conversions.unit_contracts).contract_functions ∧
+  constant_conversions_program.unsupported_procedures = []
+Proof
+  EVAL_TAC
+QED
+
+Theorem constant_conversions_program_wf:
+  wf_core_program (core_program_environment constant_conversions_program)
+    constant_conversions_program
+Proof
+  CONV_TAC cv_eval
 QED
 
 Overload iv = “λi. ScalarValue (IntegerValue i)”

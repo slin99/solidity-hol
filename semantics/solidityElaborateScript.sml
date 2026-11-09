@@ -1477,6 +1477,16 @@ Definition elab_expr_def:
                                 (ConstantAtom (BytesValue (num_to_bytes k (Num i))))) in
                        INL ((ss ++ cs, v, ElabType ty), n1 + 1)
                      else INR [(info.node_id, "unsupported type conversion")]
+                   | (ElabType src, _, ConstantAtom s) =>
+                     if src = ty then
+                       let (cs, v) = bind_value n1 ty
+                             (ConvertOperation ty (ConstantAtom s)) in
+                       INL ((ss ++ cs, v, ElabType ty), n1 + 1)
+                     else
+                       let (bs, b) = bind_value n1 src
+                             (ConvertOperation src (ConstantAtom s)) in
+                       let (cs, v) = bind_value (n1 + 1) ty (ConvertOperation ty b) in
+                       INL ((ss ++ bs ++ cs, v, ElabType ty), n1 + 2)
                    | _ =>
                      let (cs, v) = bind_value n1 ty (ConvertOperation ty a) in
                      INL ((ss ++ cs, v, ElabType ty), n1 + 1))
