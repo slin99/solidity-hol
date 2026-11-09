@@ -139,7 +139,11 @@ Definition coerce_def:
         | _ => SOME (bind_value n ty (ConvertOperation ty a), n + 1))
     | ElabBytesLiteral =>
         (case (ty, a) of
-           (LocatedT MemoryLoc element, ConstantAtom (BytesValue bs)) =>
+           (FixedBytesT k, ConstantAtom (BytesValue bs)) =>
+             if valid_fixed_bytes_width k ∧ LENGTH bs ≤ k then
+               SOME (([], ConstantAtom (BytesValue (take_pad_0 k bs))), n)
+             else NONE
+         | (LocatedT MemoryLoc element, ConstantAtom (BytesValue bs)) =>
              if byte_sequence_type element then
                SOME (bind_value n ty (BytesLiteralOperation element bs), n + 1)
              else NONE
@@ -1212,7 +1216,11 @@ Definition elab_expr_def:
               | (ElabType (LocatedT _ _), FixedBytesT _, _) => NONE
               | (ElabBytesLiteral, _, _) =>
                   (case coerce n1 ty a vt of
-                     SOME ((cs, v), n2) => SOME ((ss ++ cs, v, ElabType ty), n2)
+                     SOME ((cs, v), n2) =>
+                       if located_value_type ty then
+                         SOME ((ss ++ cs, v, ElabType ty), n2)
+                       else let (bs, b) = bind_value n2 ty (ConvertOperation ty v) in
+                         SOME ((ss ++ cs ++ bs, b, ElabType ty), n2 + 1)
                    | NONE => NONE)
               | (ElabLiteral, AddressT _, ConstantAtom (IntegerValue i)) =>
                 (* address(0): the literal is the address, as in solc *)

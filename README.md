@@ -58,12 +58,9 @@ An inline assembly block (`AssemblyStmt`) runs on the Yul evaluator, over a
 memory holding each memory `bytes` and `string` object where the compiler
 allocates it (its length word at its address, then its bytes): it reads and
 writes back the value-type locals it names, reads state variables' slots and
-offsets, integer and `bool` constants, and the addresses of the memory
+offsets, integer, `bool` and fixed-bytes constants, and the addresses of the memory
 `bytes` and `string` locals it names as literals in its code, as the compiler
-puts them
-(address and fixed-bytes constants initialized by a literal aren't elaborated
-yet, in assembly or elsewhere), so
-its Yul functions see them too (a function's parameters and results may
+puts them, so its Yul functions see them too (a function's parameters and results may
 reuse such a name in its body; a memory reference may not be assigned). At a
 literal address it may write only the scratch space unless it halts and read
 only memory it wrote itself (not the free memory pointer, which the compiler

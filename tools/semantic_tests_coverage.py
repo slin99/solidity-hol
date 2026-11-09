@@ -1247,8 +1247,6 @@ def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> 
         if (RATIONAL.fullmatch(value_type) and not INTEGER_TYPE.fullmatch(target_type)
                 and not fixed_bytes and not conversion):
             found.append("literals of non-integer types")
-        if value_type.startswith("t_stringliteral_"):
-            found.append("string literals as fixed-size bytes")
     return [Blocker(kind, feature, "elaboration") for feature in dict.fromkeys(found)]
 
 

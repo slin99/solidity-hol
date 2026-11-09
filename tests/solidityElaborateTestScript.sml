@@ -316,6 +316,16 @@ Proof
   EVAL_TAC
 QED
 
+(* An overlong literal may not silently truncate to bytesN. *)
+Theorem literal_bytes_width_checked:
+  coerce 0 (FixedBytesT 2) (ConstantAtom (BytesValue [0x61w; 0x62w; 0x63w]))
+    ElabBytesLiteral = NONE ∧
+  coerce 0 (FixedBytesT 0) (ConstantAtom (BytesValue [])) ElabBytesLiteral = NONE ∧
+  coerce 0 (FixedBytesT 33) (ConstantAtom (BytesValue [])) ElabBytesLiteral = NONE
+Proof
+  EVAL_TAC
+QED
+
 (* Edited units of solidityImportTest that pass valid_src_unit but whose
  * edited function fails elaboration, which checks it against the compiler's
  * annotations: preparation marks it unsupported. *)

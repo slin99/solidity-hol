@@ -1,0 +1,113 @@
+{
+  "name": "literal_bytes",
+  "source": "testdata/differential/literal_bytes.sol",
+  "contract": "LiteralBytes",
+  "artifact": "testdata/differential/expected/literal_bytes.json",
+  "cases": [
+    {
+      "name": "exact_width_constant",
+      "function": "DIGITS",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x30313233343536373839616263646566"
+        ]
+      }
+    },
+    {
+      "name": "short_literal_pads_right",
+      "function": "SHORT",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x61620000"
+        ]
+      }
+    },
+    {
+      "name": "empty_literal_pads_right",
+      "function": "EMPTY",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x00000000"
+        ]
+      }
+    },
+    {
+      "name": "hex_literal_pads_right",
+      "function": "RAW",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x80ff0000"
+        ]
+      }
+    },
+    {
+      "name": "utf8_literal_counts_bytes",
+      "function": "UTF8",
+      "args": [],
+      "expect": {
+        "return": [
+          "0xc3a90000"
+        ]
+      }
+    },
+    {
+      "name": "assembly_reads_fixed_bytes_constant",
+      "function": "digit",
+      "args": [
+        15
+      ],
+      "expect": {
+        "return": [
+          102
+        ]
+      }
+    },
+    {
+      "name": "assembly_reads_padding",
+      "function": "digit",
+      "args": [
+        16
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "nested_typed_conversions",
+      "function": "nested",
+      "args": [],
+      "expect": {
+        "return": [
+          1633812480,
+          "0x6162000000000000"
+        ]
+      }
+    },
+    {
+      "name": "argument_literal",
+      "function": "argument",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x78790000"
+        ]
+      }
+    },
+    {
+      "name": "unchecked_constant_reader",
+      "function": "wrapping",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x30313233343536373839616263646566"
+        ]
+      }
+    }
+  ]
+}

@@ -724,9 +724,7 @@ class ClassifyTests(unittest.TestCase):
         state = dict(variable(3, state=True, type_identifier="t_bytes4"), value=string(8))
         error = error_definition(30, "t_bytes4")
         found = coverage.scan({"t.sol": unit([state, error, function(4, [revert(40, 30, [string(9)])])])})
-        feature = "string literals as fixed-size bytes"
-        self.assertEqual(found[3], [coverage.Blocker("VariableDeclaration", feature, "elaboration")])
-        self.assertEqual(found[40], [coverage.Blocker("RevertStatement", feature, "elaboration")])
+        self.assertEqual(found, {})
 
     def test_only_reverted_errors_have_their_parameters_read(self) -> None:
         error = error_definition(30, "t_bytes_memory_ptr")
@@ -862,9 +860,9 @@ class ClassifyTests(unittest.TestCase):
 
     def test_overridden_functions_are_only_imported(self) -> None:
         coerced = {"nodeType": "VariableDeclarationStatement", "id": 6,
-                   "declarations": [variable(7, type_identifier="t_bytes4")],
-                   "initialValue": {"nodeType": "Literal", "id": 8, "kind": "string", "value": "abcd",
-                                    "typeDescriptions": {"typeIdentifier": "t_stringliteral_abcd"}}}
+                   "declarations": [variable(7, type_identifier="t_bool")],
+                   "initialValue": {"nodeType": "Literal", "id": 8, "kind": "number", "value": "1",
+                                    "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}}}
         base = {"nodeType": "ContractDefinition", "id": 50, "contractKind": "contract",
                 "abstract": False, "baseContracts": [], "linearizedBaseContracts": [50],
                 "nodes": [dict(function(60, [coerced, ASSEMBLY]), virtual=True)]}
@@ -891,9 +889,9 @@ class ClassifyTests(unittest.TestCase):
                 "typeDescriptions": {"typeIdentifier": "t_tuple$__$"}}}
 
         coerced = {"nodeType": "VariableDeclarationStatement", "id": 6,
-                   "declarations": [variable(7, type_identifier="t_bytes4")],
-                   "initialValue": {"nodeType": "Literal", "id": 8, "kind": "string", "value": "abcd",
-                                    "typeDescriptions": {"typeIdentifier": "t_stringliteral_abcd"}}}
+                   "declarations": [variable(7, type_identifier="t_bool")],
+                   "initialValue": {"nodeType": "Literal", "id": 8, "kind": "number", "value": "1",
+                                    "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}}}
         base = {"nodeType": "ContractDefinition", "id": 50, "contractKind": "contract",
                 "abstract": False, "baseContracts": [], "linearizedBaseContracts": [50],
                 "nodes": [dict(function(60, [coerced]), virtual=True, name="f", scope=50)]}
@@ -903,8 +901,7 @@ class ClassifyTests(unittest.TestCase):
         ast["nodes"].insert(0, base)
         found = coverage.scan({"t.sol": ast})
         self.assertEqual(found, {6: [coverage.Blocker("VariableDeclarationStatement",
-                                                      "string literals as fixed-size bytes",
-                                                      "elaboration")]})
+                                                      "literals of non-integer types", "elaboration")]})
         derived["body"]["statements"] = []
         self.assertEqual(coverage.scan({"t.sol": ast}), {})
         modifier = {"nodeType": "ModifierDefinition", "id": 80, "name": "m", "virtual": False,
@@ -936,17 +933,16 @@ class ClassifyTests(unittest.TestCase):
             return {"nodeType": "ParameterList", "id": node_id,
                     "parameters": [variable(node_id + 1 + i, type_identifier=t) for i, t in enumerate(types)]}
 
-        feature = "string literals as fixed-size bytes"
         constructor = dict(function(51, []), kind="constructor", parameters=parameters(52, "t_bytes4"))
         base = {"nodeType": "ContractDefinition", "id": 50, "nodes": [constructor]}
         specifier = {"nodeType": "InheritanceSpecifier", "id": 55, "arguments": [string(57)],
                      "baseName": {"nodeType": "IdentifierPath", "id": 56, "referencedDeclaration": 50}}
         self.assertEqual(coverage.coerced_literals(specifier, {50: base}),
-                         [coverage.Blocker("InheritanceSpecifier", feature, "elaboration")])
+                         [])
         invocation = {"nodeType": "ModifierInvocation", "id": 58, "kind": "baseConstructorSpecifier",
                       "arguments": [string(59)], "modifierName": specifier["baseName"]}
         self.assertEqual(coverage.coerced_literals(invocation, {50: base}),
-                         [coverage.Blocker("ModifierInvocation", feature, "elaboration")])
+                         [])
 
         returns = parameters(300, "t_bool", "t_bytes4")
         flag = {"nodeType": "Literal", "id": 312, "kind": "bool", "value": "true",
@@ -955,7 +951,7 @@ class ClassifyTests(unittest.TestCase):
                      "expression": {"nodeType": "TupleExpression", "id": 311,
                                     "components": [flag, string(313)]}}
         self.assertEqual(coverage.coerced_literals(statement, {300: returns}),
-                         [coverage.Blocker("Return", feature, "elaboration")])
+                         [])
 
         callee = dict(function(400, []), parameters=parameters(401, "t_bytes4"))
         call = {"nodeType": "FunctionCall", "id": 320, "kind": "functionCall", "arguments": [string(323)],
@@ -963,7 +959,7 @@ class ClassifyTests(unittest.TestCase):
                                "expression": {"nodeType": "MemberAccess", "id": 322, "memberName": "f",
                                               "referencedDeclaration": 400}}}
         self.assertEqual(coverage.coerced_literals(call, {400: callee}),
-                         [coverage.Blocker("FunctionCall", feature, "elaboration")])
+                         [])
 
     def test_ecrecover_arguments_are_coerced_to_its_parameters(self) -> None:
         def literal(node_id, kind, value, tid):
@@ -982,22 +978,22 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(coverage.coerced_literals(call(hash_, v, hash_, hash_), {}), [])
         self.assertEqual(coverage.coerced_literals(
             call(literal(94, "string", "abcd", "t_stringliteral_abcd"), v, hash_, hash_), {}),
-            [coverage.Blocker("FunctionCall", "string literals as fixed-size bytes", "elaboration")])
+            [])
         self.assertEqual(coverage.coerced_literals(
             call(hash_, v, literal(95, "number", "5", "t_rational_5_by_1"), hash_), {}), [])
 
     def test_functions_live_in_their_own_source_keep_their_blockers(self) -> None:
         coerced = {"nodeType": "VariableDeclarationStatement", "id": 6,
-                   "declarations": [variable(7, type_identifier="t_bytes4")],
-                   "initialValue": {"nodeType": "Literal", "id": 8, "kind": "string", "value": "abcd",
-                                    "typeDescriptions": {"typeIdentifier": "t_stringliteral_abcd"}}}
+                   "declarations": [variable(7, type_identifier="t_bool")],
+                   "initialValue": {"nodeType": "Literal", "id": 8, "kind": "number", "value": "1",
+                                    "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}}}
         b = unit([dict(function(60, [coerced]), virtual=True)])
         d = {"nodeType": "SourceUnit", "id": 80, "nodes": [{
             "nodeType": "ContractDefinition", "id": 81, "contractKind": "contract", "abstract": False,
             "baseContracts": [], "linearizedBaseContracts": [81, 2],
             "nodes": [dict(function(90, []), baseFunctions=[60])]}]}
         self.assertEqual(coverage.scan({"b.sol": b, "d.sol": d})[6], [coverage.Blocker(
-            "VariableDeclarationStatement", "string literals as fixed-size bytes", "elaboration")])
+            "VariableDeclarationStatement", "literals of non-integer types", "elaboration")])
 
     def test_reverts_in_overridden_functions_leave_errors_unchecked(self) -> None:
         for parameter in ("t_bytes_memory_ptr", "t_array$_t_uint256_$dyn_memory_ptr"):
@@ -1056,8 +1052,7 @@ class ClassifyTests(unittest.TestCase):
         statement["errorCall"]["names"] = ["b"]
         self.assertEqual(coverage.coerced_literals(statement, {30: error}), [])
         statement["errorCall"]["names"] = ["a"]
-        self.assertEqual(coverage.coerced_literals(statement, {30: error}), [coverage.Blocker(
-            "RevertStatement", "string literals as fixed-size bytes", "elaboration")])
+        self.assertEqual(coverage.coerced_literals(statement, {30: error}), [])
 
     def test_modifiers_are_checked_where_live_functions_invoke_them(self) -> None:
         def string(node_id):
@@ -1076,13 +1071,11 @@ class ClassifyTests(unittest.TestCase):
                       "arguments": [string(71)],
                       "modifierName": {"nodeType": "IdentifierPath", "id": 72, "name": "m",
                                        "referencedDeclaration": 60}}
-        feature = "string literals as fixed-size bytes"
         self.assertEqual(coverage.coerced_literals(invocation, {60: modifier}),
-                         [coverage.Blocker("ModifierInvocation", feature, "elaboration")])
+                         [])
         self.assertEqual(coverage.scan({"t.sol": unit([modifier, function(4, [])])}), {})
         found = coverage.scan({"t.sol": unit([modifier, dict(function(4, []), modifiers=[invocation])])})
-        self.assertEqual(found[66], [coverage.Blocker("VariableDeclarationStatement", feature, "elaboration")])
-        self.assertEqual(found[70], [coverage.Blocker("ModifierInvocation", feature, "elaboration")])
+        self.assertEqual(found, {})
         found = coverage.scan({"t.sol": unit([dict(modifier, virtual=True), function(4, [])])})
         self.assertEqual(found[60], [coverage.Blocker("ModifierDefinition", "virtual modifiers", "import")])
         returns = {"nodeType": "ParameterList", "id": 80, "parameters": [variable(81)]}
@@ -1126,20 +1119,17 @@ class ClassifyTests(unittest.TestCase):
             return {"nodeType": "TupleExpression", "id": node_id, "isInlineArray": False,
                     "components": list(components)}
 
-        def feature(kind):
-            return coverage.Blocker(kind, "string literals as fixed-size bytes", "elaboration")
-
         index = {"nodeType": "IndexAccess", "id": 10, "indexExpression": string(11),
                  "baseExpression": {"nodeType": "Identifier", "id": 12, "typeDescriptions": {
                      "typeIdentifier": "t_mapping$_t_bytes4_$_t_uint256_$"}}}
-        self.assertEqual(coverage.coerced_literals(index, {}), [feature("IndexAccess")])
+        self.assertEqual(coverage.coerced_literals(index, {}), [])
 
         returns = {"nodeType": "ParameterList", "id": 20,
                    "parameters": [variable(21, type_identifier="t_bytes4")]}
         statement = {"nodeType": "Return", "id": 22, "functionReturnParameters": 20,
                      "expression": tuple_of(23, string(24))}
         self.assertEqual(coverage.coerced_literals(statement, {20: returns}),
-                         [feature("Return")])
+                         [])
 
         flag = {"nodeType": "Literal", "id": 34, "kind": "number", "value": "1",
                 "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}}
@@ -1148,8 +1138,6 @@ class ClassifyTests(unittest.TestCase):
                                         variable(32, type_identifier="t_bool")],
                        "initialValue": tuple_of(33, string(35), flag)}
         self.assertEqual(coverage.coerced_literals(declaration, {}), [
-            coverage.Blocker("VariableDeclarationStatement", "string literals as fixed-size bytes",
-                             "elaboration"),
             coverage.Blocker("VariableDeclarationStatement", "literals of non-integer types",
                              "elaboration")])
 
@@ -1158,7 +1146,7 @@ class ClassifyTests(unittest.TestCase):
                       "leftHandSide": tuple_of(41, variable(42, type_identifier="t_bytes4"),
                                                variable(45, type_identifier="t_uint256")),
                       "rightHandSide": tuple_of(43, string(44), dict(flag, id=46))}
-        self.assertEqual(coverage.coerced_literals(assignment, {}), [feature("Assignment")])
+        self.assertEqual(coverage.coerced_literals(assignment, {}), [])
 
     def test_structs_only_unused_errors_refer_to_are_imported(self) -> None:
         struct = {"nodeType": "StructDefinition", "id": 10, "scope": 1, "members": []}
@@ -1484,7 +1472,7 @@ class ClassifyTests(unittest.TestCase):
                                 "typeDescriptions": {"typeIdentifier": "t_stringliteral_abc"}}
         target = by_id[member["referencedDeclaration"]]
         target["parameters"]["parameters"][0]["typeDescriptions"]["typeIdentifier"] = "t_bytes32"
-        self.assertIn(coverage.Blocker("FunctionCall", "string literals as fixed-size bytes",
+        self.assertNotIn(coverage.Blocker("FunctionCall", "string literals as fixed-size bytes",
                                        "elaboration"), coverage.scan(asts).get(call["id"], []))
 
     def test_enums_are_admitted(self) -> None:
