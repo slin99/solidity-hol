@@ -143,6 +143,21 @@ overridden functions super calls reach are checked and elaborated, but not
 dispatched. `super` in a modifier body, an initializer or a base-constructor
 argument is rejected.
 
+Inline assembly reads a memory `bytes` or `string` local as its address
+(`assembly_memory.sol`). The source heap gives each object the address the
+compiler's allocator would (`object_address`: `0x80` plus the memory
+allocated so far, `0x60` for the shared empty object), and a block runs over
+a memory holding each byte sequence's length word and bytes there. Under
+`memoryguard` the compiler may start its free memory pointer above `0x80`, so
+arithmetic relative to a pointer is modelled but returning, storing or
+comparing a raw pointer value is outside the boundary. Other memory reads 0,
+the free memory pointer included, so a computed read outside the byte
+sequences (another kind of memory object, or past an object's last word) is
+outside the boundary too. Bytes a block writes past an object's length, in its
+last word, aren't kept for the next block. solc lets a block assign a memory
+reference (`b := ...`); the elaborator rejects it, since the block reads the
+name as a literal.
+
 ## Storage layout
 
 `storageLayout` is separate from the AST. It contains state-variable entries
@@ -484,7 +499,8 @@ Admitted: one contract, flattened along its bases, with
   operation over literals that the compiler types as an integer is that
   integer, as the compiler folds it;
 - `if`, `while`, `do`-`while`, `for`, `break`, `continue`, `return`,
-  unchecked blocks, inline assembly over locals and state-variable slots;
+  unchecked blocks, inline assembly over value-type locals, state-variable
+  slots, value-type constants and memory `bytes` and `string` locals;
 - internal calls with single or multiple returns, library calls (`L.f(args)`
   and `x.f(args)` through a using directive) and library constants (`L.c`),
   `super` in calls, external calls of contract types;

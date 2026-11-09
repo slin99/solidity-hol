@@ -969,10 +969,11 @@ def yul_literal(value: dict[str, Any]) -> int | None:
 
 
 def assembly_memory_ok(statements: list[dict[str, Any]]) -> bool:
-    """assembly_memory_ok: memory reads at literal ranges covered by earlier
-    literal mstores on the same path, and, unless the block's
-    last statement halts, memory writes only at literal ranges inside the
-    scratch space [0, 0x40)."""
+    """assembly_memory_ok: memory reads at literal addresses covered by
+    earlier literal mstores on the same path, and, unless the block's last
+    statement halts, memory writes at literal addresses only inside the
+    scratch space [0, 0x40). Computed addresses are checked as the block
+    runs, and reads of length zero touch nothing."""
     last = statements[-1] if statements else {}
     halts = (last.get("nodeType") == "YulExpressionStatement"
              and last["expression"].get("nodeType") == "YulFunctionCall"
@@ -983,11 +984,11 @@ def assembly_memory_ok(statements: list[dict[str, Any]]) -> bool:
 
     def read_ok(ws: list[int], p: dict[str, Any], length: dict[str, Any]) -> bool:
         a, n = yul_literal(p), yul_literal(length)
-        return a is not None and n is not None and covered(ws, a, n)
+        return n == 0 or a is None or (n is not None and covered(ws, a, n))
 
     def write_ok(p: dict[str, Any], n: int | None) -> bool:
         a = yul_literal(p)
-        return halts or (a is not None and n is not None and a + n <= 64)
+        return halts or a is None or (n is not None and a + n <= 64)
 
     def builtin_ok(ws: list[int], name: str, args: list[dict[str, Any]]) -> bool:
         if name == "mload":
@@ -1056,9 +1057,10 @@ def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]],
     own, builtins outside the dialect, boolean literals, references other
     than slot and offset), then builtins the source state cannot run (gas,
     calls, return data, code), `return` and `stop` in a block a constructor
-    runs (creation), memory use outside assembly_memory_ok, and
-    references to anything but value-type locals and state variable
-    locations."""
+    runs (creation), memory use outside assembly_memory_ok,
+    references to anything but value-type locals, memory bytes and string
+    locals and state variable locations, and assignments to a memory bytes
+    or string local (assembly_assigns_ok)."""
     if node["nodeType"] != "InlineAssembly":
         return []
     found: list[Blocker] = []
@@ -1095,22 +1097,48 @@ def assembly_blockers(node: dict[str, Any], by_id: dict[int, dict[str, Any]],
     walk(statements, True)
     if not assembly_memory_ok(statements):
         blocker("inline assembly memory outside the scratch space", "elaboration")
+    memory_names: set[str] = set()
     for reference in node.get("externalReferences", []):
         suffix = reference.get("suffix")
         declaration = by_id.get(reference["declaration"], {})
-        value_type = VALUE_TYPE.fullmatch(
-            declaration.get("typeDescriptions", {}).get("typeIdentifier") or "")
+        type_identifier = declaration.get("typeDescriptions", {}).get("typeIdentifier") or ""
+        value_type = VALUE_TYPE.fullmatch(type_identifier)
+        # a memory bytes or string local is read as its address (AssemblyMemory)
+        memory_bytes = type_identifier in ("t_bytes_memory_ptr", "t_string_memory_ptr")
         if suffix not in (None, "slot", "offset"):
             blocker("inline assembly", "import")
         elif suffix is None and declaration.get("constant", False):
             # a constant of value type is read before the block
             if not value_type:
                 blocker("inline assembly memory references", "elaboration")
+        elif suffix is None and not declaration.get("stateVariable", True) and memory_bytes:
+            memory_names.add(declaration.get("name"))
         elif suffix is None and (declaration.get("stateVariable", True) or not value_type):
             blocker("inline assembly memory references", "elaboration")
         elif suffix is not None and not declaration.get("stateVariable", False):
             blocker("inline assembly memory references", "elaboration")
+    if not assembly_assigns_ok(memory_names, statements):
+        blocker("inline assembly assigns a memory reference", "elaboration")
     return sorted(found, key=lambda b: b.stage != "import")
+
+
+def assembly_assigns_ok(names: set[str], statements: list[dict[str, Any]]) -> bool:
+    """assembly_assigns_ok: no assignment to a name in names, except in a Yul
+    function whose parameters or results reuse it."""
+    def ok(names: set[str], value: Any) -> bool:
+        if isinstance(value, list):
+            return all(ok(names, v) for v in value)
+        if not isinstance(value, dict):
+            return True
+        kind = value.get("nodeType")
+        if kind == "YulFunctionDefinition":
+            bound = {p["name"] for p in value.get("parameters", []) + value.get("returnVariables", [])}
+            return ok(names - bound, value["body"])
+        if kind == "YulAssignment":
+            if any(v["name"] in names for v in value["variableNames"]):
+                return False
+        return all(ok(names, v) for k, v in value.items() if k != "functionName")
+    return not names or ok(names, statements)
 
 
 def coerced_literals(node: dict[str, Any], by_id: dict[int, dict[str, Any]]) -> list[Blocker]:

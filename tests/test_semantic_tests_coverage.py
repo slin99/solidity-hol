@@ -763,6 +763,47 @@ class ClassifyTests(unittest.TestCase):
         found = coverage.assembly_blockers(assembly([call("mstore", lit(0x40), x)]), {})
         self.assertEqual(found, [coverage.Blocker(
             "InlineAssembly", "inline assembly memory outside the scratch space", "elaboration")])
+        # computed addresses are checked as the block runs; zero lengths
+        # touch nothing
+        self.assertTrue(ok([call("mstore8", yul_call("add", x, lit(0x20)), lit(1)),
+                            call("pop", yul_call("mload", x))]))
+        self.assertTrue(ok([call("log0", lit(0x80), lit(0))]))
+        self.assertFalse(ok([call("pop", yul_call("keccak256", lit(0x80), x))]))
+
+    def test_inline_assembly_memory_references(self) -> None:
+        def statement(expression):
+            return {"nodeType": "YulExpressionStatement", "expression": expression}
+
+        def ident(name):
+            return {"nodeType": "YulIdentifier", "name": name}
+
+        def assign(name):
+            return {"nodeType": "YulAssignment", "variableNames": [ident(name)],
+                    "value": {"nodeType": "YulLiteral", "kind": "number", "value": "0"}}
+
+        b = dict(variable(6, type_identifier="t_bytes_memory_ptr"), name="b", storageLocation="memory")
+        s = dict(variable(7, type_identifier="t_string_memory_ptr"), name="s", storageLocation="memory")
+        c = dict(variable(8, type_identifier="t_bytes_calldata_ptr"), name="c", storageLocation="calldata")
+        by_id = {6: b, 7: s, 8: c}
+        reads = assembly([statement(yul_call("pop", yul_call("mload", ident("b")))),
+                          statement(yul_call("pop", yul_call("mload", ident("s"))))],
+                         [{"declaration": 6}, {"declaration": 7}])
+        self.assertEqual(coverage.assembly_blockers(reads, by_id), [])
+        self.assertEqual(coverage.assembly_blockers(assembly([], [{"declaration": 8}]), by_id),
+                         [coverage.Blocker("InlineAssembly", "inline assembly memory references", "elaboration")])
+        assigns = [coverage.Blocker("InlineAssembly", "inline assembly assigns a memory reference", "elaboration")]
+        self.assertEqual(coverage.assembly_blockers(assembly([assign("b")], [{"declaration": 6}]), by_id),
+                         assigns)
+        nested = {"nodeType": "YulIf", "condition": ident("b"),
+                  "body": {"nodeType": "YulBlock", "statements": [assign("b")]}}
+        self.assertEqual(coverage.assembly_blockers(assembly([nested], [{"declaration": 6}]), by_id),
+                         assigns)
+        # a Yul function's parameter or result may reuse the name
+        for key in ("parameters", "returnVariables"):
+            function = {"nodeType": "YulFunctionDefinition", "name": "f", key: [{"name": "b"}],
+                        "body": {"nodeType": "YulBlock", "statements": [assign("b")]}}
+            self.assertEqual(coverage.assembly_blockers(assembly([function], [{"declaration": 6}]), by_id),
+                             [])
 
     def test_inline_assembly_by_slice(self) -> None:
         def statement(expression):
@@ -778,7 +819,7 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(coverage.assembly_blockers(value, by_id), [])
         self.assertEqual(coverage.assembly_blockers(ASSEMBLY, by_id),
                          [coverage.Blocker("InlineAssembly", "inline assembly", "import")])
-        calls = assembly([statement(yul_call("pop", yul_call("gas")))], [{"declaration": 6}])
+        calls = assembly([statement(yul_call("pop", yul_call("gas")))], [{"declaration": 7}])
         self.assertEqual(coverage.assembly_blockers(calls, by_id), [
             coverage.Blocker("InlineAssembly", "inline assembly calls, gas, return data and code", "elaboration"),
             coverage.Blocker("InlineAssembly", "inline assembly memory references", "elaboration")])

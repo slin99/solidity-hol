@@ -1,0 +1,91 @@
+{
+  "name": "assembly_memory",
+  "source": "testdata/differential/assembly_memory.sol",
+  "contract": "AssemblyMemory",
+  "artifact": "testdata/differential/expected/assembly_memory.json",
+  "cases": [
+    {
+      "name": "signature_words",
+      "function": "split",
+      "args": [
+        "0x111111111111111111111111111111111111111111111111111111111111111122222222222222222222222222222222222222222222222222222222222222221b"
+      ],
+      "expect": {
+        "return": [
+          "0x1111111111111111111111111111111111111111111111111111111111111111",
+          "0x2222222222222222222222222222222222222222222222222222222222222222",
+          27
+        ]
+      }
+    },
+    {
+      "name": "digits_through_a_pointer",
+      "function": "toString",
+      "args": [
+        1234509876
+      ],
+      "expect": {
+        "return": [
+          "0x31323334353039383736"
+        ]
+      }
+    },
+    {
+      "name": "zero_digit",
+      "function": "toString",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x30"
+        ]
+      }
+    },
+    {
+      "name": "reason_bubbled",
+      "function": "bubble",
+      "args": [
+        "0x08c379a0deadbeef"
+      ],
+      "expect": {
+        "revert": "0x08c379a0deadbeef"
+      }
+    },
+    {
+      "name": "empty_reason",
+      "function": "bubble",
+      "args": [
+        "0x"
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "word_into_short_bytes",
+      "function": "wordInto",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x0102030405"
+        ]
+      }
+    },
+    {
+      "name": "length_words",
+      "function": "lengths",
+      "args": [
+        "0x010203",
+        "0x41424344"
+      ],
+      "expect": {
+        "return": [
+          3,
+          4,
+          0
+        ]
+      }
+    }
+  ]
+}

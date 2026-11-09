@@ -1515,15 +1515,21 @@ End
  * scopes need not mirror the source blocks.
  *)
 (* A local keeps its declared type, one of the value types the block can read
- * and write as a word. A constant of such a type is read before the block,
- * as an expression reads it.
+ * and write as a word, or a memory byte sequence, which the block reads as
+ * its address. A constant of value type is read before the block, as an
+ * expression reads it.
  *)
 Definition elab_assembly_reference_def:
   (elab_assembly_reference ctx n (SrcAssemblyValue x) =
     case ALOOKUP ctx.variables x of
       SOME ty =>
         if assembly_value_type ty then SOME (([], AssemblyLocal (AstId x) ty), n)
-        else NONE
+        else
+          (case ty of
+             LocatedT MemoryLoc t =>
+               if byte_sequence_type t then SOME (([], AssemblyMemory (AstId x) t), n)
+               else NONE
+           | _ => NONE)
     | NONE =>
       case ALOOKUP ctx.constants x of
         SOME (ty, w) =>
@@ -1782,7 +1788,10 @@ Definition elab_stmts_def:
                            else assembly_unsupported) code ∨
        ¬assembly_memory_ok code ∨ ¬ALL_DISTINCT (MAP FST refs) then NONE else
     case elab_assembly_references ctx n refs of
-      SOME ((ss, rs), n1) => SOME ((ss ++ [AssemblyStmt code rs], ctx), n1)
+      SOME ((ss, rs), n1) =>
+        (* a memory reference is read as a literal, so it can't be assigned *)
+        if ¬assembly_assigns_ok (assembly_memory_names rs) code then NONE else
+        SOME ((ss ++ [AssemblyStmt code rs], ctx), n1)
     | NONE => NONE) ∧
   (* An optional for initialization or loop expression. *)
   (elab_for_init ctx n NONE = SOME (([], ctx), n)) ∧

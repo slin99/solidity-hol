@@ -27,7 +27,7 @@ val prepared = #prepared (solidityPrepareLib.prepare_artifact
  * reach nothing, so neither Mid.twice nor Base.twice is among the
  * functions calls reach. The constant DIGITS does not elaborate, so it has
  * no procedure and digits, which reads it, fails to elaborate; so does
- * pointer, whose assembly names a bytes local. *)
+ * pointer, whose assembly assigns a bytes local. *)
 val outcomes = map (fn {name, reason, ...} => (name, reason)) (#functions prepared);
 fun reasons name =
   map #2 (List.filter (fn (n, _) => n = name) outcomes);

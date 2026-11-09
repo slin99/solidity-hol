@@ -55,19 +55,25 @@ rebinding and content copying are distinct core operations; the latter two
 remain extension points rather than implemented aggregate semantics.
 
 An inline assembly block (`AssemblyStmt`) runs on the Yul evaluator, over a
-memory holding only the free memory pointer: it reads and writes back the
-value-type locals it names, reads state variables' slots and offsets and
-integer and `bool` constants as literals in its code, as the compiler puts them
+memory holding each memory `bytes` and `string` object where the compiler
+allocates it (its length word at its address, then its bytes): it reads and
+writes back the value-type locals it names, reads state variables' slots and
+offsets, integer and `bool` constants, and the addresses of the memory
+`bytes` and `string` locals it names as literals in its code, as the compiler
+puts them
 (address and fixed-bytes constants initialized by a literal aren't elaborated
 yet, in assembly or elsewhere), so
 its Yul functions see them too (a function's parameters and results may
-reuse such a name in its body), may write
-only the scratch space unless it halts, may read only memory it wrote itself
-(not the free memory pointer, which the compiler may raise to keep variables in
-memory), and `return`/`stop` end the frame with a `HaltCompletion`. Memory
+reuse such a name in its body; a memory reference may not be assigned). At a
+literal address it may write only the scratch space unless it halts and read
+only memory it wrote itself (not the free memory pointer, which the compiler
+may raise to keep variables in memory); at a computed address, a block that
+exits normally may write only the scratch space and the byte sequences' data
+words, not their length words, and their bytes are read back. `return`/`stop`
+end the frame with a `HaltCompletion`. Memory
 expansion gas is not modelled, so a halting block's write far past the used
-memory succeeds where the EVM runs out of gas. Memory/calldata execution and a memory model shared with
-inline assembly remain unresolved. High-level external calls run the callee on Verifereum
+memory succeeds where the EVM runs out of gas. Memory/calldata execution and a memory
+model shared with inline assembly beyond byte sequences remain unresolved. High-level external calls run the callee on Verifereum
 through `externalCall`, a provisional adapter with a fixed gas budget and a
 fresh callee frame; creation is not connected yet. Core well-formedness alone does not rule out `InvalidCompletion`:
 for example, a storage write in a static frame is deliberately invalid.

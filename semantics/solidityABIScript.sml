@@ -590,7 +590,8 @@ Definition materialize_value_def:
         let n = LENGTH vs in
         let id = st.next_heap_id + 1 in
         let obj = <| object_type := ty; object_length := n;
-                     object_cells := FEMPTY |> in
+                     object_cells := FEMPTY;
+                     object_address := 128 + st.memory_allocated |> in
         let st1 = st with <| heap := st.heap |+ (id, obj); next_heap_id := id;
                      memory_allocated := st.memory_allocated +
                        (if length = NONE then 32 else 0) + 32 * n |> in

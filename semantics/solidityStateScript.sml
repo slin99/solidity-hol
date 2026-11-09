@@ -25,12 +25,16 @@ End
 
 (* Addressable heap objects: references carry identity and a captured offset.
  * Byte sequences use the length and byte cells; other heap values are deferred.
+ * object_address is the memory address the compiler's allocator gives the
+ * object (the free memory pointer when it is allocated), which inline
+ * assembly sees as the reference's value.
  *)
 Datatype:
   heap_object = <|
     object_type : sol_type;
     object_length : num;
-    object_cells : num |-> runtime_value
+    object_cells : num |-> runtime_value;
+    object_address : num
   |>
 End
 
