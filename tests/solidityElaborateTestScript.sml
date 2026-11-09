@@ -433,7 +433,12 @@ QED
 Theorem ecrecover_operands_all_report:
   ^(reports “elab_expr ^ctx0 10
                (SrcEcrecover ^(at 30) ^(at 31)
-                  [^(string_at 32); ^(one_at 34); ^(string_at 33); ^(one_at 35)]
+                  [SrcLiteral ^(at 32) StringLiteral
+                     "0123456789abcdef0123456789abcdef0" "t_stringliteral_x";
+                   ^(one_at 34);
+                   SrcLiteral ^(at 33) StringLiteral
+                     "0123456789abcdef0123456789abcdef0" "t_stringliteral_x";
+                   ^(one_at 35)]
                   "t_address")”
      string_32_33)
 Proof
