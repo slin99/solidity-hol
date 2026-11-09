@@ -16,10 +16,14 @@
         20480,
         5
       ],
+      "peer_storage": {
+        "0": 7
+      },
       "expect": {
         "return": [
           true,
-          32
+          32,
+          12
         ]
       }
     },
@@ -30,10 +34,14 @@
         20480,
         1
       ],
+      "peer_storage": {
+        "0": 7
+      },
       "expect": {
         "return": [
           false,
-          100
+          100,
+          7
         ]
       }
     },

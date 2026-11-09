@@ -16,12 +16,15 @@ contract AssemblyCalls {
 
     uint256 public seen;
 
-    function rawCall(address target, uint256 amount) external returns (bool ok, uint256 size) {
+    function rawCall(address target, uint256 amount)
+        external returns (bool ok, uint256 size, uint256 peerTotal)
+    {
         bytes memory data = abi.encodeCall(IAsmPeer.transfer, (address(this), amount));
         assembly {
             ok := call(gas(), target, 0, add(data, 0x20), mload(data), 0, 0)
             size := returndatasize()
         }
+        peerTotal = IAsmPeer(target).read();
     }
 
     function bubble(address target, uint256 amount) external {
