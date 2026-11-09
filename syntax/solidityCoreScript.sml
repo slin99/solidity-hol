@@ -127,6 +127,9 @@ End
  * ExternalCallOperation kind selector parameter_types return_types target
  * value arguments: a high-level call I(target).f{value: value}(arguments) of
  * the function with that selector and those ABI types.
+ * StaticCallOperation target data: the low-level target.staticcall(data) of
+ * the memory bytes data, giving whether it succeeded and its return data as a
+ * new memory bytes.
  *)
 Datatype:
   core_operation
@@ -157,6 +160,7 @@ Datatype:
   | InternalCallOperation ast_id (core_atom list)
   | ExternalCallOperation external_kind (byte list) (sol_type list)
       (sol_type list) core_atom core_atom (core_atom list)
+  | StaticCallOperation core_atom core_atom
   (* success flag, scalar returns, raw failure bytes; only a failed EVM call
    * is caught. Operand and return-decoding failures still propagate. *)
   | TryExternalCallOperation external_kind (byte list) (sol_type list)
@@ -166,8 +170,10 @@ End
 
 (* What an inline assembly block's Yul variable stands for: a local of value
  * type (read on entry, written back on exit), the storage slot or byte offset
- * of a state variable (x.slot, x.offset), or the value of a constant of value
- * type, held in an atom. The last three are read-only.
+ * of a state variable (x.slot, x.offset), the value of a constant of value
+ * type, held in an atom, or the memory address of a local holding a memory
+ * byte sequence of the given type (bytes or string). All but the first are
+ * read-only.
  *)
 Datatype:
   assembly_reference
@@ -175,6 +181,7 @@ Datatype:
   | AssemblySlot ast_id
   | AssemblyOffset ast_id
   | AssemblyConstant core_atom sol_type
+  | AssemblyMemory ast_id sol_type
 End
 
 (* Explicitly separate scalar writes, reference binding, and content copying.

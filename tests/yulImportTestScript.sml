@@ -267,3 +267,17 @@ val () = expect_lines "nested object and unknown call"
         [data_section, object_node creation_code []]]
      creation_code)
   ["call to code_unknown", "expected YulData"]
+
+(* The same artifact's creation code must be imported, not its runtime body. *)
+val () =
+  let
+    val artifact = JSONParser.parseFile fixture
+    val (name, deployed, code) = yulImportLib.import_creation
+      (JSONUtil.lookupField artifact "output") source contract yulImportLib.Ir
+    val runtime = yulImportLib.import_runtime_artifact fixture source contract
+                    yulImportLib.Ir
+  in
+    if name <> deployed andalso not (aconv code runtime) andalso
+       not (null (fst (listSyntax.dest_list code))) then ()
+    else raise ERR "yulImportTest" "creation import did not retain distinct code"
+  end

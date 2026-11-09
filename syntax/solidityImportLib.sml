@@ -434,6 +434,15 @@ fun is_external_call callee =
   String.isPrefix "t_function_external_"
     (string_field (field callee "typeDescriptions") "typeIdentifier")
 
+(* a.staticcall, as a callee: the address member, not a function attached to
+ * addresses by using for. *)
+fun is_bare_staticcall callee =
+  node_type callee = "MemberAccess" andalso
+  string_field callee "memberName" = "staticcall" andalso
+  not (isSome (optional_field callee "referencedDeclaration")) andalso
+  List.exists (fn t => t = raw_type_id (field callee "expression"))
+    ["t_address", "t_address_payable"]
+
 (* bytes.concat or string.concat, as a callee: kind is "bytes" or "string". *)
 fun is_concat kind callee =
   node_type callee = "MemberAccess" andalso
@@ -836,6 +845,11 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                require v (length args = 4) "ecrecover takes four arguments";
                con "SrcEcrecover"
                  [info v, info callee, listSyntax.mk_list (args, expr_ty), type_id v])
+            else if is_bare_staticcall callee then
+              (positional ();
+               require v (length args = 1) "staticcall takes one argument";
+               con "SrcStaticCall"
+                 [info v, info callee, expr (field callee "expression"), hd args, type_id v])
             else if abi_decode then
               (positional (); abi_decode_call v callee args)
             else if node_type callee = "Identifier" andalso
@@ -1337,7 +1351,8 @@ val failed_modifiers : (IntInf.int * string list) list ref = ref []
  * invoking a modifier with some, is unsupported, with the blockers as its
  * reason: it keeps its place, so that calls, overrides and super calls
  * resolve to it. Blockers in its header reject the unit too, and so does a
- * header the importer cannot represent at all. *)
+ * header the importer cannot represent at all. A fallback with parameters or
+ * returns is unsupported likewise: the core's fallback takes neither. *)
 fun function v = within v (fn v =>
   let
     val () = super_calls := []
@@ -1373,7 +1388,11 @@ fun function v = within v (fn v =>
        before in_function := false)
       handle e => (in_function := false; raise e))
     val () = blockers := !blockers @ header
-    val reasons = header @ lines
+    val fallback =
+      if string_field v "kind" = "fallback" andalso
+         not (listSyntax.is_nil params andalso listSyntax.is_nil returns)
+      then [describe v ^ ": fallback with parameters or returns"] else []
+    val reasons = header @ lines @ fallback
     val supers = !super_calls
   in
     (expect v "FunctionDefinition";

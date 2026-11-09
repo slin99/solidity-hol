@@ -143,6 +143,21 @@ overridden functions super calls reach are checked and elaborated, but not
 dispatched. `super` in a modifier body, an initializer or a base-constructor
 argument is rejected.
 
+Inline assembly reads a memory `bytes` or `string` local as its address
+(`assembly_memory.sol`). The source heap gives each object the address the
+compiler's allocator would (`object_address`: `0x80` plus the memory
+allocated so far, `0x60` for the shared empty object), and a block runs over
+a memory holding each byte sequence's length word and bytes there. Under
+`memoryguard` the compiler may start its free memory pointer above `0x80`, so
+arithmetic relative to a pointer is modelled but returning, storing or
+comparing a raw pointer value is outside the boundary. Other memory reads 0,
+the free memory pointer included, so a computed read outside the byte
+sequences (another kind of memory object, or past an object's last word) is
+outside the boundary too. Bytes a block writes past an object's length, in its
+last word, aren't kept for the next block. solc lets a block assign a memory
+reference (`b := ...`); the elaborator rejects it, since the block reads the
+name as a literal.
+
 ## Storage layout
 
 `storageLayout` is separate from the AST. It contains state-variable entries
@@ -300,6 +315,18 @@ it), as the compiler's decoder from memory does: data shorter than the
 encoding, or a word that is not a value of its type, reverts with no data, and
 data after the encoding is ignored. It allocates nothing. Data in calldata or
 storage, and types other than elementary ones, are rejected.
+
+`a.staticcall(data)`, with `a` an address and `data` a memory `bytes`,
+evaluates `a`, then `data`, and makes a static call to `a` with the bytes of
+`data` as its input, giving the success flag and the return data. The source
+does not track gas: the callee gets the same fixed budget a high-level call
+gives it (`external_call_gas`), where the compiled code forwards all but a 64th
+of what is left. A failed call, the callee's revert included, gives
+`false` and leaves the caller's state as it was; a call to an address without
+code succeeds with no data. Return data is copied into a new memory `bytes`,
+allocated as the compiler allocates it, and no return data gives the shared
+empty `bytes`, allocating nothing. Data in calldata, storage or a literal, gas
+options, `call` and `delegatecall` are rejected.
 
 `bytes.concat(...)` uses packed encoding of its byte sequences, fixed-size bytes
 and literals. `string.concat(...)` concatenates strings and string literals.
@@ -466,13 +493,15 @@ Admitted: one contract, flattened along its bases, with
   ABI values are rejected;
 - locals, including tuple declarations with holes; simple and compound
   assignment to locals and state variables, tuple assignment, `++` and `--`;
-- literals (no subdenominations), explicit elementary conversions,
+- literals (no subdenominations), explicit elementary conversions (not
+  `bytesN(b)` of a dynamic byte sequence `b`),
   `type(T).max` and `.min` of integer types, unary, binary, comparison and
   short-circuit operators, conditional expressions over value types; an
   operation over literals that the compiler types as an integer is that
   integer, as the compiler folds it;
 - `if`, `while`, `do`-`while`, `for`, `break`, `continue`, `return`,
-  unchecked blocks, inline assembly over locals and state-variable slots;
+  unchecked blocks, inline assembly over value-type locals, state-variable
+  slots, value-type constants and memory `bytes` and `string` locals;
 - internal calls with single or multiple returns, library calls (`L.f(args)`
   and `x.f(args)` through a using directive) and library constants (`L.c`),
   `super` in calls, external calls of contract types;
@@ -506,6 +535,7 @@ annotations, at the node whose type it computes:
   list; `break` and `continue` occur in loop bodies; conditions are boolean;
   modifier bodies make no super call, and modifier arguments see the
   function's parameters but not its return variables;
+- a fallback takes no parameters and returns nothing, as the core's does;
 - `delete` is not admitted; every scalar result is annotated with its own
   type, and every other annotation decodes to an elementary, rational literal
   or tuple type.
@@ -517,10 +547,11 @@ function overrides, and that functions come most derived first).
 ## Partial admission
 
 A contract is admitted per function. When a function's body or the body of
-one of its modifiers falls outside the subset, import keeps the function with
-its header, its body and the reason (`fn_unsupported`) rather than
-rejecting the unit. Import goes on past what it cannot represent, leaving a
-placeholder (`SrcUnsupportedTypeName`, `SrcUnsupportedExpr`,
+one of its modifiers falls outside the subset, or a fallback has parameters or
+returns, import keeps the function with its header and the reason
+(`fn_unsupported`) rather than rejecting the unit (a fallback with parameters
+or returns keeps an empty body). Import goes on past what it cannot represent,
+leaving a placeholder (`SrcUnsupportedTypeName`, `SrcUnsupportedExpr`,
 `SrcUnsupportedStmt`) with the children it could import, so the reason has a
 line for every unsupported node, each naming it. `solidityPrepareLib` then marks, until nothing changes,
 every function that fails to elaborate, also by calling an unsupported one (by

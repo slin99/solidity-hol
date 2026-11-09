@@ -526,7 +526,67 @@ Theorem asm_memory_outside_scratch_invalid:
     ReturnCompletion [ScalarValue (IntegerValue 7)] ∧
   run_asm [YulExprStmt (YulBuiltin YMStore [ylit 0x80w; YulName "x"])]
     initial_state (AstId 110) [ScalarValue (IntegerValue 7)] =
-    InvalidCompletion "assembly wrote memory outside the scratch space"
+    InvalidCompletion "assembly wrote memory outside the scratch space and byte sequence data"
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* Memory byte sequences. asm_bytes(b) runs code with b's address bound to
+ * the block's "b" and returns its "r"; run_asm_bytes gives the completion and
+ * b's bytes afterwards. b is the first allocation, at 0x80. *)
+Definition asm_bytes_proc_def:
+  asm_bytes_proc code = <|
+    procedure_id := AstId 140;
+    parameters := [(AstId 141, LocatedT MemoryLoc BytesT)];
+    return_bindings := [(AstId 142, u256)];
+    body := [AssemblyStmt code [("b", AssemblyMemory (AstId 141) BytesT);
+                                ("r", AssemblyLocal (AstId 142) u256)];
+             ReturnStmt [BoundAtom (AstId 142)]]
+  |>
+End
+
+Definition run_asm_bytes_def:
+  run_asm_bytes code bs =
+    let (b, st) = allocate_bytes BytesT bs initial_state in
+    let env = core_program_environment <|
+      unsupported_procedures := []; procedures := [asm_bytes_proc code];
+      struct_layouts := []; type_declarations := [];
+      state_variables := []; immutables := [];
+      entry_procedure := AstId 140;
+      external_functions := []; receive_procedure := NONE;
+      fallback_procedure := NONE; creation_procedure := NONE |> in
+    let r = invoke_source 20 env (AstId 140) [b] st [] in
+    (r.completion, memory_bytes r.state (HeapId 1) BytesT)
+End
+
+val () = cv_auto_trans run_asm_bytes_def;
+
+Overload yadd = “λe1 e2. YulBuiltin YAdd [e1; e2]”
+
+(* The block sees b's address, length word and bytes; a byte or a whole word
+ * written in b's data is read back (the bytes past the length are dropped);
+ * writes to the length word or past the data's last word fail closed. *)
+Theorem asm_memory_bytes:
+  run_asm_bytes [YulAssign ["r"] (YulName "b")] [1w; 2w; 3w] =
+    (ReturnCompletion [ScalarValue (IntegerValue 0x80)], SOME [1w; 2w; 3w]) ∧
+  run_asm_bytes [YulAssign ["r"] (YulBuiltin YMLoad [YulName "b"])] [1w; 2w; 3w] =
+    (ReturnCompletion [ScalarValue (IntegerValue 3)], SOME [1w; 2w; 3w]) ∧
+  run_asm_bytes [YulAssign ["r"] (YulBuiltin YShr [ylit 232w;
+                   YulBuiltin YMLoad [yadd (YulName "b") (ylit 32w)]])] [1w; 2w; 3w] =
+    (ReturnCompletion [ScalarValue (IntegerValue 0x010203)], SOME [1w; 2w; 3w]) ∧
+  run_asm_bytes [YulExprStmt (YulBuiltin YMStore8 [yadd (YulName "b") (ylit 33w); ylit 0xffw])]
+    [1w; 2w; 3w] =
+    (ReturnCompletion [ScalarValue (IntegerValue 0)], SOME [1w; 0xffw; 3w]) ∧
+  run_asm_bytes [YulExprStmt (YulBuiltin YMStore [yadd (YulName "b") (ylit 32w); ylit 0xaabbw])]
+    [1w; 2w; 3w] =
+    (ReturnCompletion [ScalarValue (IntegerValue 0)], SOME [0w; 0w; 0w]) ∧
+  run_asm_bytes [YulExprStmt (YulBuiltin YMStore [YulName "b"; ylit 1w])] [1w; 2w; 3w] =
+    (InvalidCompletion "assembly wrote memory outside the scratch space and byte sequence data",
+     SOME [1w; 2w; 3w]) ∧
+  run_asm_bytes [YulExprStmt (YulBuiltin YMStore8 [yadd (YulName "b") (ylit 64w); ylit 1w])]
+    [1w; 2w; 3w] =
+    (InvalidCompletion "assembly wrote memory outside the scratch space and byte sequence data",
+     SOME [1w; 2w; 3w])
 Proof
   CONV_TAC cv_eval
 QED
@@ -566,7 +626,27 @@ Theorem asm_memory_rule:
   ¬assembly_memory_ok [YulExprStmt (YulBuiltin YMStore [ylit 64w; YulName "x"])] ∧
   assembly_memory_ok
     [YulExprStmt (YulBuiltin YMStore [ylit 128w; YulName "x"]);
-     YulExprStmt (YulBuiltin YReturn [ylit 128w; ylit 32w])]
+     YulExprStmt (YulBuiltin YReturn [ylit 128w; ylit 32w])] ∧
+  (* computed addresses are checked as the block runs; zero lengths touch
+     nothing *)
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMStore8 [yadd (YulName "b") (ylit 32w); ylit 1w]);
+     YulAssign ["x"] (YulBuiltin YMLoad [YulName "b"])] ∧
+  assembly_memory_ok [YulExprStmt (YulBuiltin YLog0 [ylit 128w; ylit 0w])] ∧
+  ¬assembly_memory_ok [YulExprStmt (YulBuiltin YMStore [ylit 64w; YulName "b"])]
+Proof
+  EVAL_TAC
+QED
+
+(* A memory reference may not be assigned, except where a Yul function's
+ * parameter or result reuses its name. *)
+Theorem asm_memory_assign_rule:
+  ¬assembly_assigns_ok ["b"] [YulAssign ["b"] (ylit 0w)] ∧
+  ¬assembly_assigns_ok ["b"] [YulIf (ylit 1w) [YulAssign ["x"; "b"] (YulApply "f" [])]] ∧
+  assembly_assigns_ok ["b"] [YulFunction "f" ["b"] [] [YulAssign ["b"] (ylit 0w)]] ∧
+  assembly_assigns_ok ["b"] [YulFunction "f" [] ["b"] [YulAssign ["b"] (ylit 0w)]] ∧
+  ¬assembly_assigns_ok ["b"] [YulFunction "f" ["x"] [] [YulAssign ["b"] (ylit 0w)]] ∧
+  assembly_assigns_ok ["b"] [YulAssign ["x"] (YulName "b")]
 Proof
   EVAL_TAC
 QED

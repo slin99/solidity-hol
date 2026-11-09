@@ -6,10 +6,8 @@
  * the tree the compiler's own converter walks, so importing it needs neither
  * a parser for the surface syntax nor a re-derivation of what the text means.
  *
- * What is imported is the runtime object: the creation object's single
- * subobject, whose code is the frame the EVM runs. The creation object is
- * checked only for its shape; its own code (codecopy, dataoffset, subobject
- * references) is a later step, as yulAST's object-level builtins say.
+ * Runtime and creation code are imported separately. Creation import also
+ * retains the root and runtime object names for the caller's object layout.
  *
  * The import fails closed. ImportError names a node kind the AST has no
  * constructor for, a call to a name that is neither a builtin nor a function
@@ -366,12 +364,9 @@ fun import_runtime output source contract stage =
                   "expected exactly one subobject, the runtime object"
        val runtime = hd subs
        val () = within runtime (fn runtime => expect runtime "YulObject")
-       (* A runtime object's own subobjects are its data sections, which the
-        * AST has no node for: the code block the frame runs names them only
-        * through the object-level builtins, which the evaluator rejects, so
-        * dropping them cannot change what a run computes. Anything else
-        * nested in the runtime object is an object form this importer does
-        * not read.
+       (* Runtime data sections have no statement node or named extent in
+        * the execution context, so references to them fail as unknown objects.
+        * Other nested object forms are outside the importer's subset.
         *)
        val code = field runtime "code"
        val () = within code (fn code => expect code "YulCode")
@@ -393,6 +388,27 @@ fun import_runtime output source contract stage =
        case (imported, code_failures @ data_failures) of
          (SOME code, []) => code
        | (_, failures) => fail (String.concatWith "\n" failures)
+     end))
+
+(* Creation code retains the names used by datasize and dataoffset. *)
+fun import_creation output source contract stage =
+  within (runtime_ast output source contract stage) (fn ast =>
+    (expect ast "YulObject";
+     let
+       val subs = array_field ast "subObjects"
+       val () = require ast (length subs = 1)
+                  "expected exactly one subobject, the runtime object"
+       val runtime = hd subs
+       val () = within runtime (fn r => expect r "YulObject")
+       val () = List.app (fn d => within d (fn d => expect d "YulData"))
+                  (array_field runtime "subObjects")
+       val name = string_field ast "name"
+       val deployed = string_field runtime "name"
+       val () = require ast (name <> deployed) "duplicate object name"
+       val code = field ast "code"
+       val () = within code (fn c => expect c "YulCode")
+     in
+       (name, deployed, import_code (field code "block"))
      end))
 
 fun import_runtime_artifact path source contract stage =

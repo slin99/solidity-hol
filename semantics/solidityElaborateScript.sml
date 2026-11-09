@@ -166,6 +166,7 @@ Definition expr_id_def:
   (expr_id (SrcEcrecover info _ _ _) = info.node_id) ∧
   (expr_id (SrcAbiEncode info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcAbiDecode info _ _ _ _) = info.node_id) ∧
+  (expr_id (SrcStaticCall info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcUnsupportedExpr info _ _) = info.node_id)
 End
 
@@ -486,6 +487,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcEcrecover _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcAbiDecode _ _ e _ _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcStaticCall _ _ target data _) ⇔ expr_assigns target ∨ expr_assigns data) ∧
   (expr_assigns (SrcSuperCall _ _ args _ _) ⇔ exprs_assign args) ∧
   (expr_assigns _ ⇔ F) ∧
   (components_assign [] ⇔ F) ∧
@@ -1369,6 +1371,30 @@ Definition elab_expr_def:
               | INL _ => INR [(info.node_id, "value count mismatch")]
               | INR bs => INR bs)
          | INR bs => INR bs)
+    | SrcStaticCall info _ target data tid =>
+        (* the data is passed where it is, so it must already be memory bytes *)
+        (case elab_expr ctx n target of
+           INL ((st, t, tvt), n1) =>
+             if ¬(case tvt of ElabType (AddressT _) => T | _ => F) ∨
+                decode_type_identifier tid ≠
+                  SOME (call_value_type [BoolT; LocatedT MemoryLoc BytesT])
+             then reject (info.node_id, "unsupported static call") (elab_expr ctx n1 data) else
+             let (copied, n2) =
+               if expr_assigns data then snapshot n1 t tvt else (([], t), n1) in
+             let (st', t') = copied in
+             (case elab_expr ctx n2 data of
+                INL ((sd, d, ElabType (LocatedT MemoryLoc BytesT)), n3) =>
+                  (case coerce n3 (AddressT NonpayableAddress) t' tvt of
+                     INL ((cs, t''), n4) =>
+                       let tys = [BoolT; LocatedT MemoryLoc BytesT] in
+                       INL ((st ++ st' ++ sd ++ cs ++
+                             [DefineStmt (AstId n4) (call_result_type tys)
+                                (StaticCallOperation t'' d)],
+                             BoundAtom (AstId n4), call_value tys), n4 + 1)
+                   | INR why => INR [(expr_id target, why)])
+              | INL _ => INR [(expr_id data, "static call data not memory bytes")]
+              | INR bs => INR bs)
+         | INR bs => INR (bs ++ blockers (elab_expr ctx n data)))
     | SrcAbiDecode info _ e tns tid =>
         (* the data is decoded where it is, so it must already be memory bytes *)
         (case elab_expr ctx n e of
@@ -1423,6 +1449,9 @@ Definition elab_expr_def:
                   (case (vt, ty, a) of
                      (ElabTuple _, _, _) => INR [(expr_id e, "tuple used as a value")]
                    | (ElabRational, _, _) => INR [(expr_id e, "rational number value")]
+                   (* bytes to bytesN: the core has no such conversion *)
+                   | (ElabType (LocatedT _ _), FixedBytesT _, _) =>
+                       INR [(info.node_id, "unsupported type conversion")]
                    | (ElabBytesLiteral, _, _) =>
                        (case coerce n1 ty a vt of
                           INL ((cs, v), n2) => INL ((ss ++ cs, v, ElabType ty), n2)
@@ -1769,15 +1798,21 @@ End
  * scopes need not mirror the source blocks.
  *)
 (* A local keeps its declared type, one of the value types the block can read
- * and write as a word. A constant of such a type is read before the block,
- * as an expression reads it.
+ * and write as a word, or a memory byte sequence, which the block reads as
+ * its address. A constant of value type is read before the block, as an
+ * expression reads it.
  *)
 Definition elab_assembly_reference_def:
   (elab_assembly_reference ctx n (id : num) (SrcAssemblyValue x) =
     case ALOOKUP ctx.variables x of
       SOME ty =>
         if assembly_value_type ty then INL (([], AssemblyLocal (AstId x) ty), n)
-        else INR [(id, "assembly reference of this type")]
+        else
+          (case ty of
+             LocatedT MemoryLoc t =>
+               if byte_sequence_type t then INL (([], AssemblyMemory (AstId x) t), n)
+               else INR [(id, "assembly reference of this type")]
+           | _ => INR [(id, "assembly reference of this type")])
     | NONE =>
       case ALOOKUP ctx.constants x of
         SOME (ty, w) =>
@@ -2115,7 +2150,11 @@ Definition elab_stmts_def:
        else [(info.node_id, "repeated assembly reference")]) in
     case elab_assembly_references ctx n info.node_id refs of
       INL ((ss, rs), n1) =>
-        if own = [] then INL ((ss ++ [AssemblyStmt code rs], ctx), n1) else INR own
+        (* a memory reference is read as a literal, so it can't be assigned *)
+        let own' = own ++
+          (if assembly_assigns_ok (assembly_memory_names rs) code then []
+           else [(info.node_id, "assignment to an assembly memory reference")]) in
+        if own' = [] then INL ((ss ++ [AssemblyStmt code rs], ctx), n1) else INR own'
     | INR bs => INR (own ++ bs)) ∧
   (elab_stmt ctx n (SrcUnsupportedStmt info msg es ss) =
     INR ((info.node_id, msg) :: blockers (elab_arg_values ctx n es) ++
@@ -2296,6 +2335,8 @@ End
 (* A function's procedures, checked arithmetic by default; parameters and
  * returns keep their declaration ids. A pure function reads no state
  * variable, and a library function has no state variables or immutables.
+ * A fallback takes no parameters and returns nothing, as the core's does
+ * (plain_procedure); the importer marks one that does unsupported.
  * When strict, every super call must reach a supported function. A function
  * whose variables fail is elaborated with those that bind, for the blockers
  * of its modifiers and body; a failed return variable marks the return list
@@ -2312,8 +2353,10 @@ Definition elab_function_def:
       (SOME ps, SOME rs, SrcBlock info ss, SOME supers) =>
         ensure (¬strict ∨ EVERY (λ(_, g). g.fn_unsupported = NONE) supers)
           (f.fn_info.node_id, "super call of an unsupported function")
+        (ensure (f.fn_kind ≠ FallbackKind ∨ (f.fn_parameters = [] ∧ f.fn_returns = []))
+           (f.fn_info.node_id, "fallback with parameters or returns")
         (elab_levels (function_ctx ctx library f supers (ps ++ rs) rs info.node_id)
-          modifiers ps rs f.fn_info.node_id n f.fn_modifiers ss)
+          modifiers ps rs f.fn_info.node_id n f.fn_modifiers ss))
     | (SOME _, SOME _, SrcBlock _ _, NONE) =>
         INR [(f.fn_info.node_id, "unresolved super call")]
     | (SOME _, SOME _, _, _) => INR [(f.fn_info.node_id, "function body not a block")]

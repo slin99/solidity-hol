@@ -17,5 +17,5 @@ Ancestors
   solidityDifferential
   solidityDifferentialCorpus solidityDifferentialTest
   yulAST yulDialect yulState yulEvaluator yulEvaluatorProps yulEvaluatorTest
-  yulImportTest yulContractTest yulConvTest yulDifferential
+  yulImportTest yulContractTest yulConvTest yulDifferential yulDifferentialTest
   verifereum
