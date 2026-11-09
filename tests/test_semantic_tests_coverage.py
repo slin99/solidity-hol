@@ -1466,7 +1466,7 @@ class ClassifyTests(unittest.TestCase):
         artifact = json.loads((ROOT / "testdata/differential/expected/using_for.json").read_text())
         asts = {s: d["ast"] for s, d in artifact["output"]["sources"].items()}
         by_id = {n["id"]: n for ast in asts.values() for n in coverage.nodes(ast)}
-        # uint256(3).addBonus(4), made (3).addBonus(4) with addBonus taking bool first
+        # uint256(3).addBonus(4), made (3).addBonus(true) with both parameters bool
         member, call = next((n["expression"], n) for n in by_id.values()
                             if n.get("nodeType") == "FunctionCall"
                             and n["expression"].get("memberName") == "addBonus"
@@ -1475,7 +1475,10 @@ class ClassifyTests(unittest.TestCase):
                                 "value": "3", "subdenomination": None,
                                 "typeDescriptions": {"typeIdentifier": "t_rational_3_by_1"}}
         target = by_id[member["referencedDeclaration"]]
-        target["parameters"]["parameters"][0]["typeDescriptions"]["typeIdentifier"] = "t_bool"
+        for parameter in target["parameters"]["parameters"]:
+            parameter["typeDescriptions"]["typeIdentifier"] = "t_bool"
+        call["arguments"] = [{"nodeType": "Literal", "id": 999998, "kind": "bool", "value": "true",
+                              "typeDescriptions": {"typeIdentifier": "t_bool"}}]
         self.assertIn(coverage.Blocker("FunctionCall", "literals of non-integer types",
                                        "elaboration"), coverage.scan(asts).get(call["id"], []))
 
