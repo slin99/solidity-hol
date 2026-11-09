@@ -493,7 +493,8 @@ Admitted: one contract, flattened along its bases, with
   ABI values are rejected;
 - locals, including tuple declarations with holes; simple and compound
   assignment to locals and state variables, tuple assignment, `++` and `--`;
-- literals (no subdenominations), explicit elementary conversions,
+- literals (no subdenominations), explicit elementary conversions (not
+  `bytesN(b)` of a dynamic byte sequence `b`),
   `type(T).max` and `.min` of integer types, unary, binary, comparison and
   short-circuit operators, conditional expressions over value types; an
   operation over literals that the compiler types as an integer is that

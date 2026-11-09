@@ -1208,6 +1208,8 @@ Definition elab_expr_def:
              (case (vt, ty, a) of
                 (ElabTuple _, _, _) => NONE
               | (ElabRational, _, _) => NONE
+              (* bytes to bytesN: the core has no such conversion *)
+              | (ElabType (LocatedT _ _), FixedBytesT _, _) => NONE
               | (ElabBytesLiteral, _, _) =>
                   (case coerce n1 ty a vt of
                      SOME ((cs, v), n2) => SOME ((ss ++ cs, v, ElabType ty), n2)
