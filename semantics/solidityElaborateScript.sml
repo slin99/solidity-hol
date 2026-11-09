@@ -1882,7 +1882,7 @@ Definition elab_stmts_def:
                          (bind_failed ctx [SOME reason]) n handler)))
          | INR bs =>
              INR (bs ++ blockers (elab_stmt (bind_failed ctx (MAP SOME ps)) n body) ++
-                  blockers (elab_stmt (bind_failed ctx [SOME reason]) n handler))) ∧
+                  blockers (elab_stmt (bind_failed ctx [SOME reason]) n handler)))) ∧
   (elab_stmt ctx n (SrcVariableDeclarationStatement info assigned [SOME v] NONE) =
     case variable_type v of
       SOME ty =>
