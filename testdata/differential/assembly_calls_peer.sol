@@ -3,12 +3,13 @@ pragma solidity 0.8.37;
 
 // A token-like peer for the assembly call suite: transfer returns true,
 // false, nothing or reverts by amount, and data returns more than one word.
+// transfer writes before it reverts, so a revert has a write to roll back.
 contract AsmPeer {
     uint256 private total;
 
     function transfer(address, uint256 amount) external returns (bool) {
-        require(amount != 1, "peer refused");
         total += amount;
+        require(amount != 1, "peer refused");
         return amount != 2;
     }
 
