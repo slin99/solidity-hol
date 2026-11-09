@@ -1778,6 +1778,32 @@ Definition try_external_call_def:
     | _ => NONE
 End
 
+(* A try statement's call as a catching external call: its statements, the
+ * success flag, the values of the success clause's variables and the revert
+ * data, when the call is an external call returning scalars, which the
+ * success clause's variables take, and the catch clause takes memory bytes;
+ * ok and err are the clauses' ids. *)
+Definition try_call_def:
+  try_call n call ok err ps reason body handler ss r =
+    case (call, all_some (MAP (scoped_variable ok) ps),
+          scoped_variable err reason, try_external_call ss r) of
+      (SrcExternalCall _ callee _ _ _ _, SOME locals,
+       SOME (_, LocatedT MemoryLoc BytesT), SOME (cs, types)) =>
+        if ¬(EVERY (is_stored_scalar_type o SND) locals ∧
+             all_some (MAP variable_type callee.ext_returns) = SOME (MAP SND locals) ∧
+             ¬is_declaration body ∧ ¬is_declaration handler)
+        then NONE else
+        let (xs, values, n1) = tuple_components n r 0 types in
+        (case values of
+           (condition, _) :: rest =>
+             (case DROP (LENGTH ps) rest of
+                [failure] =>
+                  SOME (cs ++ xs, condition, TAKE (LENGTH ps) rest, failure, n1)
+              | _ => NONE)
+         | [] => NONE)
+    | _ => NONE
+End
+
 (* The context after a declaration statement that failed: its variables of a
  * supported type are bound, and the others are bad, so that the statements
  * after it report only their own blockers. *)
@@ -1830,46 +1856,33 @@ Definition elab_stmts_def:
         INR (bs ++ blockers (elab_stmt (bind_failed ctx (MAP SOME ps)) n body) ++
              blockers (elab_stmt (bind_failed ctx [SOME reason]) n handler))
     | INL ((ss, r, _), n1) =>
-    case (call, all_some (MAP (scoped_variable ok.node_id) ps),
-          scoped_variable err.node_id reason, try_external_call ss r) of
-      (SrcExternalCall _ callee _ _ _ _, SOME locals,
-       SOME (_, LocatedT MemoryLoc BytesT), SOME (cs, types)) =>
-        if ¬(EVERY (is_stored_scalar_type o SND) locals ∧
-             all_some (MAP variable_type callee.ext_returns) = SOME (MAP SND locals) ∧
-             ¬is_declaration body ∧ ¬is_declaration handler)
-        then INR [(info.node_id, "unsupported try statement")] else
-        let (xs, values, n2) = tuple_components n1 r 0 types in
-        (case values of
-           (condition, _) :: rest =>
-             (case DROP (LENGTH ps) rest of
-                [failure] =>
-                  (case declare_values ctx n2 info.node_id (MAP SOME ps)
-                          (TAKE (LENGTH ps) rest) of
-                     INL (ds, ctx1, n3) =>
-                       (case elab_stmt ctx1 n3 body of
-                          INL ((bs, _), n4) =>
-                            (case declare_values ctx n4 info.node_id [SOME reason] [failure] of
-                               INL (es, ctx2, n5) =>
-                                 (case elab_stmt ctx2 n5 handler of
-                                    INL ((hs, _), n6) =>
-                                      INL ((cs ++ xs ++
-                                        [IfStmt condition (ds ++ bs) (es ++ hs)], ctx), n6)
-                                  | INR bs => INR bs)
-                             | INR bs =>
-                                 INR (bs ++ blockers (elab_stmt
-                                        (bind_failed ctx [SOME reason]) n handler)))
-                        | INR bs =>
-                            INR (bs ++ blockers (elab_stmt
-                                   (bind_failed ctx [SOME reason]) n handler)))
+    case try_call n1 call ok.node_id err.node_id ps reason body handler ss r of
+      NONE =>
+        INR ((case variables_blockers (MAP SOME (reason :: ps)) of
+                [] => [(info.node_id, "unsupported try statement")]
+              | bs => bs) ++
+             blockers (elab_stmt (bind_failed ctx (MAP SOME ps)) n body) ++
+             blockers (elab_stmt (bind_failed ctx [SOME reason]) n handler))
+    | SOME (cs, condition, values, failure, n2) =>
+        (case declare_values ctx n2 info.node_id (MAP SOME ps) values of
+           INL (ds, ctx1, n3) =>
+             (case elab_stmt ctx1 n3 body of
+                INL ((bs, _), n4) =>
+                  (case declare_values ctx n4 info.node_id [SOME reason] [failure] of
+                     INL (es, ctx2, n5) =>
+                       (case elab_stmt ctx2 n5 handler of
+                          INL ((hs, _), n6) =>
+                            INL ((cs ++ [IfStmt condition (ds ++ bs) (es ++ hs)], ctx), n6)
+                        | INR bs => INR bs)
                    | INR bs =>
-                       INR (bs ++ blockers (elab_stmt (bind_failed ctx (MAP SOME ps)) n body) ++
-                            blockers (elab_stmt (bind_failed ctx [SOME reason]) n handler)))
-              | _ => INR [(info.node_id, "unsupported try statement")])
-         | [] => INR [(info.node_id, "unsupported try statement")])
-    | _ =>
-      INR (case variables_blockers (MAP SOME (reason :: ps)) of
-             [] => [(info.node_id, "unsupported try statement")]
-           | bs => bs)) ∧
+                       INR (bs ++ blockers (elab_stmt
+                              (bind_failed ctx [SOME reason]) n handler)))
+              | INR bs =>
+                  INR (bs ++ blockers (elab_stmt
+                         (bind_failed ctx [SOME reason]) n handler)))
+         | INR bs =>
+             INR (bs ++ blockers (elab_stmt (bind_failed ctx (MAP SOME ps)) n body) ++
+                  blockers (elab_stmt (bind_failed ctx [SOME reason]) n handler)))) ∧
   (elab_stmt ctx n (SrcVariableDeclarationStatement info assigned [SOME v] NONE) =
     case variable_type v of
       SOME ty =>
@@ -3081,6 +3094,7 @@ val () = cv_auto_trans flag_def;
 val () = cv_auto_trans set_flag_def;
 
 val () = cv_auto_trans try_external_call_def;
+val () = cv_auto_trans try_call_def;
 val bind_failed_pre_def = cv_auto_trans_pre "bind_failed_pre" bind_failed_def;
 
 Theorem bind_failed_pre[cv_pre,local]:
