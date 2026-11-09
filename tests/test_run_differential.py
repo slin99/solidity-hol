@@ -9,6 +9,7 @@ import sys
 import tempfile
 import textwrap
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -324,6 +325,22 @@ class CorpusTests(unittest.TestCase):
                     checks = driver.check_artifacts(fake.root, corpus())
                     self.assertEqual([c["check"] for c in checks if c["status"] != "pass"],
                                      ["artifact-compiler-version"])
+
+    def test_reproduces_artifacts_with_recorded_remappings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            artifact = json.loads((fake.root / ARTIFACT).read_text(encoding="utf-8"))
+            artifact["input"]["language"] = "Solidity"
+            artifact["input"]["settings"]["remappings"] = ["a/=b/"]
+            fake.write(ARTIFACT, driver.exporter.json_text(artifact))
+            with patch.object(driver.exporter, "ROOT", fake.root), \
+                 patch.object(driver.exporter, "compiler_identity",
+                              return_value=artifact["compiler"]["reportedVersion"]), \
+                 patch.object(driver.exporter, "compile_standard_json",
+                              return_value=artifact["output"]) as compile_json:
+                checks = driver.reproduce_artifacts(fake.root, corpus(), Path("solc"), False)
+            self.assertEqual([c for c in checks if c["status"] != "pass"], [])
+            self.assertEqual(compile_json.call_args.args[1], artifact["input"])
 
     def test_checks_optional_remappings(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

@@ -413,8 +413,12 @@ def reproduce_artifacts(root: Path, corpus: dict[str, Any], solc: Path, regenera
     for path in sorted({c["artifact"] for s in corpus["suites"] for c in compiled_contracts(s)}):
         try:
             committed = read_artifact(root, path)
-            sources = [root / name for name in committed["input"]["sources"]]
-            fresh = exporter.build_artifact(solc, sources, exporter.DEFAULT_PROFILE)
+            sources = {name: (root / name).read_text(encoding="utf-8")
+                       for name in committed["input"]["sources"]}
+            fresh = exporter.build_artifact_from_sources(
+                solc, sources, exporter.DEFAULT_PROFILE,
+                remappings=committed["input"]["settings"].get("remappings", []),
+            )
         except (OSError, KeyError, json.JSONDecodeError, CorpusError, SystemExit) as error:
             checks.append(check("artifact-reproducible", path, str(error)))
             continue
