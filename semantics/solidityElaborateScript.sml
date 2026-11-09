@@ -533,6 +533,18 @@ Definition tuple_components_def:
     (ss ++ ss', (a, ElabType ty) :: vs, n'))
 End
 
+(* The blockers of a tuple assignment's targets, for when its values fail:
+ * as tuple_writes reports them, but for the values' conversions. *)
+Definition tuple_targets_blockers_def:
+  (tuple_targets_blockers ctx (id : num) [] = []) ∧
+  (tuple_targets_blockers ctx id (NONE :: cs) = tuple_targets_blockers ctx id cs) ∧
+  (tuple_targets_blockers ctx id (SOME (SrcIdentifier info _ x tid) :: cs) =
+    (if IS_SOME (variable_destination ctx 0 x tid) ∨ MEM x ctx.bad_ids then []
+     else [(info.node_id, "assignment to this target")]) ++
+    tuple_targets_blockers ctx id cs) ∧
+  (tuple_targets_blockers ctx id (SOME _ :: cs) = [(id, "unsupported tuple assignment")])
+End
+
 (* Writes of values to the locals of a tuple, right to left; id is the
  * tuple's. *)
 Definition tuple_write_def:
@@ -998,14 +1010,15 @@ Definition elab_expr_def:
              (case elab_values ctx n rhs of
                 INL ((sr, vs), n1) =>
                   if op ≠ NONE ∨ IS_NONE (decode_type_identifier ltid)
-                  then INR [(info.node_id, "unsupported tuple assignment")] else
+                  then INR ((info.node_id, "unsupported tuple assignment") ::
+                            tuple_targets_blockers ctx linfo.node_id cs) else
                   let (ss, vs', n2) = snapshot_values n1 vs in
                   (case tuple_writes ctx n2 linfo.node_id cs vs' of
                      INL (ws, n3) =>
                        INL ((sr ++ ss ++ ws, ConstantAtom (BoolValue F),
                              ElabTuple []), n3)
                    | INR bs => INR bs)
-              | INR bs => INR bs)
+              | INR bs => INR (bs ++ tuple_targets_blockers ctx linfo.node_id cs))
          | _ =>
              (case elab_expr ctx n rhs of
                 INL ((sr, ar, vr), n1) =>
@@ -1056,7 +1069,8 @@ Definition elab_expr_def:
              (case elab_location ctx n root_expr of
                 INL ((ss, ref, ArrayT element NONE), n1) =>
                   if order ≠ [] ∨ ¬push_element_ok element
-                  then INR [(info.node_id, "unsupported array member call")] else
+                  then reject (info.node_id, "unsupported array member call")
+                         (elab_arg_values ctx n1 args) else
                   if member = "push" then
                     (case args of
                        [] =>
@@ -1080,12 +1094,14 @@ Definition elab_expr_def:
                                          ConstantAtom (BoolValue F), ElabTuple []), n3 + 1)
                                | INR why => INR [(expr_id arg, why)])
                           | INR bs => INR bs)
-                     | _ => INR [(info.node_id, "unsupported array member call")])
+                     | _ => reject (info.node_id, "unsupported array member call")
+                              (elab_arg_values ctx n1 args))
                   else if member = "pop" ∧ args = [] ∧ tid = "t_tuple$__$" then
                     INL ((ss ++ [DefineStmt (AstId n1) (ProductType [])
                                    (ArrayPopOperation ref)],
                           ConstantAtom (BoolValue F), ElabTuple []), n1 + 1)
-                  else INR [(info.node_id, "unsupported array member call")]
+                  else reject (info.node_id, "unsupported array member call")
+                         (elab_arg_values ctx n1 args)
               | INL _ =>
                   reject (info.node_id, "unsupported array member call")
                     (elab_arg_values ctx n args)
@@ -1342,8 +1358,12 @@ Definition elab_expr_def:
               | NONE =>
                   INR (FLAT (MAP (λtn. type_name_blockers
                                          (info.node_id, "unsupported type name") tn) tns)))
-         | INL _ => INR [(expr_id e, "abi decoding of data not in memory bytes")]
-         | INR bs => INR bs)
+         | INL _ =>
+             INR ((expr_id e, "abi decoding of data not in memory bytes") ::
+                  FLAT (MAP (λtn. type_name_blockers (info.node_id, "unsupported type name") tn) tns))
+         | INR bs =>
+             INR (bs ++
+                  FLAT (MAP (λtn. type_name_blockers (info.node_id, "unsupported type name") tn) tns)))
     (* f.selector, E.selector: the selector the compiler records on the
        declaration, bytes4 or (for an event) bytes32; bound, so that a later
        conversion converts a bytesN local *)
@@ -1535,7 +1555,9 @@ Definition elab_expr_def:
                              BoundAtom (AstId n3), element), n3 + 1)
                    | INR why => INR [(expr_id index, why)])
               | INR bs => INR bs)
-         | INL _ => INR [(info.node_id, "index access on this type")]
+         | INL _ =>
+             INR ((info.node_id, "index access on this type") ::
+                  blockers (elab_expr ctx n index))
          | INR _ =>
              INR ((case r of
                      INL _ => [(info.node_id, "index access on this type")]
@@ -1662,7 +1684,8 @@ Definition declare_values_def:
     | NONE =>
         INR (variable_blockers "unsupported variable type" v ++
              blockers (declare_values ctx n id ds vs))) ∧
-  (declare_values ctx n id _ _ = INR [(id, "value count mismatch")])
+  (declare_values ctx n id ds _ =
+    INR ((id, "value count mismatch") :: variables_blockers ds))
 End
 
 Definition return_atoms_def:
@@ -1837,7 +1860,9 @@ Definition elab_stmts_def:
         if ¬(EVERY (is_stored_scalar_type o SND) locals ∧
              all_some (MAP variable_type callee.ext_returns) = SOME (MAP SND locals) ∧
              ¬is_declaration body ∧ ¬is_declaration handler)
-        then INR [(info.node_id, "unsupported try statement")] else
+        then INR ((info.node_id, "unsupported try statement") ::
+                  blockers (elab_stmt (bind_failed ctx (MAP SOME ps)) n body) ++
+                  blockers (elab_stmt (bind_failed ctx [SOME reason]) n handler)) else
         let (xs, values, n2) = tuple_components n1 r 0 types in
         (case values of
            (condition, _) :: rest =>
@@ -1864,12 +1889,18 @@ Definition elab_stmts_def:
                    | INR bs =>
                        INR (bs ++ blockers (elab_stmt (bind_failed ctx (MAP SOME ps)) n body) ++
                             blockers (elab_stmt (bind_failed ctx [SOME reason]) n handler)))
-              | _ => INR [(info.node_id, "unsupported try statement")])
-         | [] => INR [(info.node_id, "unsupported try statement")])
+              | _ => INR ((info.node_id, "unsupported try statement") ::
+                          blockers (elab_stmt (bind_failed ctx (MAP SOME ps)) n body) ++
+                          blockers (elab_stmt (bind_failed ctx [SOME reason]) n handler)))
+         | [] => INR ((info.node_id, "unsupported try statement") ::
+                      blockers (elab_stmt (bind_failed ctx (MAP SOME ps)) n body) ++
+                      blockers (elab_stmt (bind_failed ctx [SOME reason]) n handler)))
     | _ =>
-      INR (case variables_blockers (MAP SOME (reason :: ps)) of
-             [] => [(info.node_id, "unsupported try statement")]
-           | bs => bs)) ∧
+      INR ((case variables_blockers (MAP SOME (reason :: ps)) of
+              [] => [(info.node_id, "unsupported try statement")]
+            | bs => bs) ++
+           blockers (elab_stmt (bind_failed ctx (MAP SOME ps)) n body) ++
+           blockers (elab_stmt (bind_failed ctx [SOME reason]) n handler))) ∧
   (elab_stmt ctx n (SrcVariableDeclarationStatement info assigned [SOME v] NONE) =
     case variable_type v of
       SOME ty =>
@@ -1885,13 +1916,13 @@ Definition elab_stmts_def:
     case elab_values ctx n e of
       INL ((ss, vs), n1) =>
         if ¬declaration_ok ctx assigned decls
-        then INR [(info.node_id, "unsupported declaration")] else
+        then INR ((info.node_id, "unsupported declaration") :: variables_blockers decls) else
         (case declare_values ctx n1 info.node_id decls vs of
            INL (ds, ctx', n2) => INL ((ss ++ ds, ctx'), n2)
          | INR bs => INR bs)
     | INR bs => INR (bs ++ variables_blockers decls)) ∧
-  (elab_stmt ctx n (SrcVariableDeclarationStatement info _ _ _) =
-    INR [(info.node_id, "declaration without a value")]) ∧
+  (elab_stmt ctx n (SrcVariableDeclarationStatement info _ decls _) =
+    INR ((info.node_id, "declaration without a value") :: variables_blockers decls)) ∧
   (elab_stmt ctx n (SrcIfStatement info c t e) =
     ensure (¬(is_declaration t ∨ (case e of SOME e => is_declaration e | NONE => F)))
       (info.node_id, "declaration as a body")
@@ -2109,7 +2140,8 @@ Definition elab_modifier_args_def:
              INL (ss ++ define_parameters [(x, ty)] as ++ ss', n2)
          | INR bs => INR bs)
     | INR bs => INR (bs ++ blockers (elab_modifier_args ctx n id ps es))) ∧
-  (elab_modifier_args ctx n id _ _ = INR [(id, "modifier argument count")])
+  (elab_modifier_args ctx n id _ es =
+    INR ((id, "modifier argument count") :: blockers (elab_arg_values ctx n es)))
 End
 
 (* A static memory array return variable starts as a zeroed array, allocated
@@ -2149,6 +2181,14 @@ End
  * which are not modelled. A modifier body has no super calls and no return
  * values (return list id 0).
  *)
+(* The context of a modifier's body, with its parameters vs, whose
+ * placeholder calls procedure next with the function's parameters ps. *)
+Definition modifier_ctx_def:
+  modifier_ctx ctx next ps scope vs =
+    ctx with <| supers := []; variables := vs; placeholder := SOME (next, ps);
+                scope := scope; returns_id := 0 |>
+End
+
 Definition elab_levels_def:
   (elab_levels ctx modifiers ps rs x n [] ss =
     let (ds, n0) = return_defaults n rs in
@@ -2161,6 +2201,7 @@ Definition elab_levels_def:
     case ALOOKUP modifiers m of
       NONE =>
         INR ((m, "unknown modifier") ::
+             blockers (elab_arg_values (ctx with variables := ps) (n + 1) args) ++
              blockers (elab_levels ctx modifiers ps rs n n ms ss))
     | SOME (md : src_modifier) =>
         case (all_some (MAP variable_binding md.modifier_parameters),
@@ -2169,10 +2210,7 @@ Definition elab_levels_def:
             let own = if static_memory_returns rs
                       then [(m, "modifier of a function returning a static memory array")]
                       else [] in
-            let mctx = ctx with <| supers := []; variables := mps;
-                                   placeholder := SOME (n, ps);
-                                   scope := minfo.node_id;
-                                   returns_id := 0 |> in
+            let mctx = modifier_ctx ctx n ps minfo.node_id mps in
             (case elab_modifier_args (ctx with variables := ps) (n + 1) m mps args of
                INL (sa, n1) =>
                  (case elab_stmts mctx n1 mss of
@@ -2191,11 +2229,22 @@ Definition elab_levels_def:
              | INR bs =>
                  INR (own ++ bs ++ blockers (elab_stmts mctx n mss) ++
                       blockers (elab_levels ctx modifiers ps rs n n ms ss)))
+        | (NONE, SrcBlock minfo mss) =>
+            (* its body with the parameters that bind *)
+            let vs = MAP SOME md.modifier_parameters in
+            INR (variables_blockers vs ++
+                 blockers (elab_arg_values (ctx with variables := ps) (n + 1) args) ++
+                 blockers (elab_stmts (bind_failed (modifier_ctx ctx n ps minfo.node_id []) vs)
+                             n mss) ++
+                 blockers (elab_levels ctx modifiers ps rs n n ms ss))
         | (NONE, _) =>
             INR (variables_blockers (MAP SOME md.modifier_parameters) ++
+                 [(m, "unsupported modifier")] ++
+                 blockers (elab_arg_values (ctx with variables := ps) (n + 1) args) ++
                  blockers (elab_levels ctx modifiers ps rs n n ms ss))
         | _ =>
             INR ((m, "unsupported modifier") ::
+                 blockers (elab_arg_values (ctx with variables := ps) (n + 1) args) ++
                  blockers (elab_levels ctx modifiers ps rs n n ms ss)))
 End
 
@@ -2237,10 +2286,18 @@ End
  * returns keep their declaration ids. A pure function reads no state
  * variable, and a library function has no state variables or immutables.
  * When strict, every super call must reach a supported function. A function
- * whose variables fail is elaborated with those that bind, for the blockers
- * of its modifiers and body; a failed return variable marks the return list
+ * that fails for its variables or super calls is elaborated with the
+ * variables that bind and the super calls that resolve, for the blockers of
+ * its modifiers and body; a failed return variable marks the return list
  * failed, so that its return statements add no blocker.
  *)
+Definition resolved_supers_def:
+  resolved_supers fs bases (f : src_function) =
+    FLAT (MAP (λr. case super_table fs bases (f with fn_super_calls := [r]) of
+                     SOME t => t
+                   | NONE => []) f.fn_super_calls)
+End
+
 Definition elab_function_def:
   elab_function ctx (c : src_contract) strict library n (f : src_function) =
     let (fs, bases) = if library then (c.contract_library_functions, c.contract_libraries)
@@ -2254,10 +2311,8 @@ Definition elab_function_def:
           (f.fn_info.node_id, "super call of an unsupported function")
         (elab_levels (function_ctx ctx library f supers (ps ++ rs) rs info.node_id)
           modifiers ps rs f.fn_info.node_id n f.fn_modifiers ss)
-    | (SOME _, SOME _, SrcBlock _ _, NONE) =>
-        INR [(f.fn_info.node_id, "unresolved super call")]
-    | (SOME _, SOME _, _, _) => INR [(f.fn_info.node_id, "function body not a block")]
-    | (_, _, SrcBlock info ss, SOME supers) =>
+    | (_, _, SrcBlock info ss, table) =>
+        let supers = resolved_supers fs bases f in
         let vs = MAP SOME (f.fn_parameters ++ f.fn_returns) in
         let ps = bound_variables f.fn_parameters in
         let rs = bound_variables f.fn_returns in
@@ -2265,11 +2320,15 @@ Definition elab_function_def:
         let fctx = if LENGTH rs = LENGTH f.fn_returns then fctx
                    else fctx with bad_ids := f.fn_returns_id :: fctx.bad_ids in
         INR (variables_blockers vs ++
+             (if IS_SOME table then []
+              else [(f.fn_info.node_id, "unresolved super call")]) ++
              blockers (ensure (¬strict ∨ EVERY (λ(_, g). g.fn_unsupported = NONE) supers)
                (f.fn_info.node_id, "super call of an unsupported function")
                (elab_levels (bind_failed fctx vs)
                   modifiers ps rs f.fn_info.node_id n f.fn_modifiers ss)))
-    | _ => INR (variables_blockers (MAP SOME (f.fn_parameters ++ f.fn_returns)))
+    | _ =>
+        INR (variables_blockers (MAP SOME (f.fn_parameters ++ f.fn_returns)) ++
+             [(f.fn_info.node_id, "function body not a block")])
 End
 
 Definition elab_functions_def:
@@ -2466,7 +2525,9 @@ Definition elab_constant_def:
                 INL (wrapping, n2) => INL ([checked; wrapping], n2)
               | INR bs => INR bs)
          | INR bs => INR bs)
-    | NONE => INR [(v.var_info.node_id, "unsupported constant")]
+    | NONE =>
+        INR ((v.var_info.node_id, "unsupported constant") ::
+             blockers (elab_expr ctx n e))
 End
 
 Definition elab_constants_def:
@@ -2528,7 +2589,13 @@ Definition elab_base_arguments_def:
               | INR bs => INR bs)
          | INR bs => INR (bs ++ blockers (elab_base_arguments ctx fs n rest)))
     | _ =>
+        (* the arguments with the parameters of x's constructor that bind *)
+        let xctx = bind_failed (ctx with variables := [])
+                     (case contract_constructor x fs of
+                        SOME f => MAP SOME f.fn_parameters
+                      | NONE => []) in
         INR ((b, "unsupported constructor parameters") ::
+             blockers (elab_arg_values xctx n args) ++
              blockers (elab_base_arguments ctx fs n rest)))
 End
 
@@ -2743,10 +2810,10 @@ Definition table_blockers_def:
            c.contract_immutables)
 End
 
-(* The blockers of a contract whose tables elaborate, from the parts that
- * elaborate_contract elaborates, each from fresh id n. *)
-Definition contract_blockers_def:
-  contract_blockers ctx (c : src_contract) state immutables n =
+(* The blockers of a contract's structs, and of the getters of the state
+ * variables and immutables given, from fresh id n. *)
+Definition layout_blockers_def:
+  layout_blockers (c : src_contract) state immutables n =
     let members =
       FLAT (MAP (λs. FLAT (MAP (λv. if IS_SOME (field_variable_type v) then []
                                     else variable_blockers "unsupported member type" v)
@@ -2754,61 +2821,29 @@ Definition contract_blockers_def:
     members ++
     (if members = [] ∧ IS_NONE (elab_struct_layouts c.contract_structs)
      then [(c.contract_info.node_id, "struct layout mismatch")] else []) ++
-    (if IS_SOME (core_state_variables state c.contract_storage) then []
-     else [(c.contract_info.node_id, "storage layout mismatch")]) ++
-    blockers (elab_functions ctx c T F n (elaborated_functions c)) ++
-    blockers (elab_functions ctx c T T n (elaborated_library_functions c)) ++
     MAP (λx. (x, "unsupported getter"))
       (FILTER (λx. IS_SOME (ALOOKUP (state ++ immutables) x) ∧
                    IS_NONE (elab_getter c.contract_structs state immutables n x))
-         (MAP FST c.contract_getters)) ++
+         (MAP FST c.contract_getters))
+End
+
+Definition storage_blockers_def:
+  storage_blockers (c : src_contract) state =
+    if IS_SOME (core_state_variables state c.contract_storage) then []
+    else [(c.contract_info.node_id, "storage layout mismatch")]
+End
+
+(* The blockers of a contract whose tables elaborate, from the parts that
+ * elaborate_contract elaborates, each from fresh id n. *)
+Definition contract_blockers_def:
+  contract_blockers ctx (c : src_contract) state immutables n =
+    layout_blockers c state immutables n ++ storage_blockers c state ++
+    blockers (elab_functions ctx c T F n (elaborated_functions c)) ++
+    blockers (elab_functions ctx c T T n (elaborated_library_functions c)) ++
     blockers (elab_constants (contract_ctx c [] [] [] ctx.constants) n
                 c.contract_constants) ++
     (if unsupported_creation c then []
      else blockers (elab_creation (ctx with creation := T) c n))
-End
-
-(* Raw lowering of a unit of one contract, with fresh ids above its node ids;
- * the first live function or getter is the entry procedure, or the creation
- * procedure when there is none, and a unit with neither has no lowering. The
- * procedures of unsupported functions, of constants that do not elaborate,
- * and of an unsupported creation are left out and listed as unsupported,
- * with their dispatch entries kept. It fails with its blockers.
- *)
-Definition elaborate_unit_reason_def:
-  elaborate_unit_reason (u : src_unit) =
-    case u.unit_contracts of
-      [c0] =>
-        let c = live_constants (LENGTH c0.contract_constants) c0 in
-        let calls = function_table (c.contract_functions ++
-                                    c.contract_library_functions) in
-        (case (all_some (MAP (state_variable c.contract_bases) c.contract_state_variables),
-               constant_table c, immutable_table c) of
-           (SOME state, SOME table, SOME immutables) =>
-             let constants = number_constants (MAX_LIST (unit_ids u) + 1) table in
-             let ctx = contract_ctx c calls state immutables constants in
-             let n = MAX_LIST (unit_ids u) + 1 + LENGTH table in
-             (case elaborate_contract ctx c0 c state immutables n of
-                SOME p => INL p
-              | NONE =>
-                  INR (case contract_blockers ctx c state immutables n of
-                         [] => [(c0.contract_info.node_id,
-                                 "no supported function or creation")]
-                       | bs => bs))
-         | _ => INR (table_blockers c0))
-    | [] => INR [(u.unit_info.node_id, "no contract")]
-    | cs => INR (MAP (λc. (c.contract_info.node_id, "more than one contract")) cs)
-End
-
-(* The lowering of a valid unit. A SOME result is not yet a checked program:
- * consumers must establish wf_core_program through solidityPrepareLib before
- * execution. *)
-Definition elaborate_unit_def:
-  elaborate_unit (u : src_unit) =
-    if ¬valid_src_unit u then NONE else
-    case elaborate_unit_reason u of
-      INL p => SOME p
-    | INR _ => NONE
 End
 
 (* A contract's failures, as unit_elaboration_failures lists them: its own
@@ -2848,6 +2883,9 @@ Definition contract_elaboration_failures_def:
     let own = (if several then [(c0.contract_info.node_id, "more than one contract")]
                else []) ++
               table_blockers c0 ++
+              layout_blockers c state immutables n ++
+              (if LENGTH state = LENGTH c.contract_state_variables
+               then storage_blockers c state else []) ++
               FLAT (MAP (λx. if MEM (FST x).var_info.node_id live then []
                              else blockers (elab_constant typed_ctx 0 x)) typed) ++
               blockers (elab_creation (ctx with creation := T) c n) in
@@ -2872,6 +2910,50 @@ Definition unit_elaboration_failures_def:
   unit_elaboration_failures strict (u : src_unit) =
     FLAT (MAP (λc. contract_elaboration_failures strict (MAX_LIST (unit_ids u) + 1)
                      (LENGTH u.unit_contracts > 1) c) u.unit_contracts)
+End
+
+(* Raw lowering of a unit of one contract, with fresh ids above its node ids;
+ * the first live function or getter is the entry procedure, or the creation
+ * procedure when there is none, and a unit with neither has no lowering. The
+ * procedures of unsupported functions, of constants that do not elaborate,
+ * and of an unsupported creation are left out and listed as unsupported,
+ * with their dispatch entries kept. It fails with its blockers: when its
+ * tables fail or it has several contracts, unit_elaboration_failures's.
+ *)
+Definition elaborate_unit_reason_def:
+  elaborate_unit_reason (u : src_unit) =
+    case u.unit_contracts of
+      [c0] =>
+        let c = live_constants (LENGTH c0.contract_constants) c0 in
+        let calls = function_table (c.contract_functions ++
+                                    c.contract_library_functions) in
+        (case (all_some (MAP (state_variable c.contract_bases) c.contract_state_variables),
+               constant_table c, immutable_table c) of
+           (SOME state, SOME table, SOME immutables) =>
+             let constants = number_constants (MAX_LIST (unit_ids u) + 1) table in
+             let ctx = contract_ctx c calls state immutables constants in
+             let n = MAX_LIST (unit_ids u) + 1 + LENGTH table in
+             (case elaborate_contract ctx c0 c state immutables n of
+                SOME p => INL p
+              | NONE =>
+                  INR (case contract_blockers ctx c state immutables n of
+                         [] => [(c0.contract_info.node_id,
+                                 "no supported function or creation")]
+                       | bs => bs))
+         | _ => INR (FLAT (MAP SND (unit_elaboration_failures T u))))
+    | [] => INR [(u.unit_info.node_id, "no contract")]
+    | _ => INR (FLAT (MAP SND (unit_elaboration_failures T u)))
+End
+
+(* The lowering of a valid unit. A SOME result is not yet a checked program:
+ * consumers must establish wf_core_program through solidityPrepareLib before
+ * execution. *)
+Definition elaborate_unit_def:
+  elaborate_unit (u : src_unit) =
+    if ¬valid_src_unit u then NONE else
+    case elaborate_unit_reason u of
+      INL p => SOME p
+    | INR _ => NONE
 End
 
 (* cv translation, so that units are elaborated by cv_eval. The mutually
@@ -2913,6 +2995,7 @@ val () = cv_auto_trans call_value_def;
 val () = cv_auto_trans tuple_components_def;
 val () = cv_auto_trans tuple_write_def;
 val () = cv_auto_trans tuple_writes_def;
+val () = cv_auto_trans tuple_targets_blockers_def;
 val snapshot_values_pre_def =
   cv_auto_trans_pre "snapshot_values_pre" snapshot_values_def;
 
@@ -3149,8 +3232,9 @@ Theorem elab_modifier_args_pre[cv_pre,local]:
   ∀ctx n id tys es. elab_modifier_args_pre ctx n id tys es
 Proof
   ho_match_mp_tac elab_modifier_args_ind >> rpt strip_tac >>
-  simp[Once elab_modifier_args_pre_def, elab_expr_pre]
+  simp[Once elab_modifier_args_pre_def, elab_expr_pre, elab_arg_values_pre]
 QED
+val () = cv_auto_trans modifier_ctx_def;
 val elab_levels_pre_def = cv_auto_trans_pre "elab_levels_pre" elab_levels_def;
 
 Theorem elab_levels_pre[cv_pre,local]:
@@ -3158,11 +3242,13 @@ Theorem elab_levels_pre[cv_pre,local]:
 Proof
   Induct >- simp[Once elab_levels_pre_def, elab_stmts_pre] >>
   Cases >>
-  simp[Once elab_levels_pre_def, elab_stmts_pre, elab_modifier_args_pre]
+  simp[Once elab_levels_pre_def, elab_stmts_pre, elab_modifier_args_pre,
+       elab_arg_values_pre, bind_failed_pre]
 QED
 
 val () = cv_auto_trans function_ctx_def;
 val () = cv_auto_trans bound_variables_def;
+val () = cv_auto_trans resolved_supers_def;
 val () = cv_auto_trans elab_function_def;
 val () = cv_auto_trans contract_ctx_def;
 val () = cv_auto_trans elab_functions_def;
@@ -3186,11 +3272,12 @@ val elab_base_arguments_pre_def =
   cv_auto_trans_pre "elab_base_arguments_pre" elab_base_arguments_def;
 
 Theorem elab_base_arguments_pre[cv_pre,local]:
-  ∀ctx fs n v. elab_base_arguments_pre ctx fs n v
+  ∀v ctx fs n. elab_base_arguments_pre ctx fs n v
 Proof
-  ho_match_mp_tac elab_base_arguments_ind >> rw[] >>
-  simp[Once elab_base_arguments_pre_def] >> rw[] >>
-  Cases_on ‘ctx’ >> gvs[fetch "-" "elab_ctx_fn_updates"]
+  Induct >- simp[Once elab_base_arguments_pre_def] >>
+  rpt gen_tac >> PairCases_on ‘h’ >>
+  simp[Once elab_base_arguments_pre_def, elab_expr_pre, elab_arg_values_pre,
+       bind_failed_pre]
 QED
 
 val () = cv_auto_trans variable_with_id_def;
@@ -3214,8 +3301,10 @@ val () = cv_auto_trans live_constants_def;
 val () = cv_auto_trans dropped_constants_def;
 val () = cv_auto_trans elaborate_contract_def;
 val () = cv_auto_trans table_blockers_def;
+val () = cv_auto_trans layout_blockers_def;
+val () = cv_auto_trans storage_blockers_def;
 val () = cv_auto_trans contract_blockers_def;
-val () = cv_auto_trans elaborate_unit_reason_def;
-val () = cv_auto_trans elaborate_unit_def;
 val () = cv_auto_trans contract_elaboration_failures_def;
 val () = cv_auto_trans unit_elaboration_failures_def;
+val () = cv_auto_trans elaborate_unit_reason_def;
+val () = cv_auto_trans elaborate_unit_def;
