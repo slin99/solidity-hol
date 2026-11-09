@@ -952,7 +952,9 @@ End
  * values of x.slot, x.offset and constants in the code. A Yul function's
  * parameters and results may reuse a name for its body; a let may not.
  * Nested function definitions aren't imported, so a body's narrowed sub never
- * reaches an inner function, where the compiler would see the block's names. *)
+ * reaches an inner function, where the compiler would see the block's names.
+ * Each builtin call becomes a checked one, whose memory reads the evaluator
+ * holds to the memory the block was given. *)
 Definition yul_substitute_expr_def:
   (yul_substitute_expr sub (YulLit l) = YulLit l) ∧
   (yul_substitute_expr sub (YulName x) =
@@ -960,7 +962,9 @@ Definition yul_substitute_expr_def:
       SOME w => YulLit (LitNumber w)
     | NONE => YulName x) ∧
   (yul_substitute_expr sub (YulBuiltin b es) =
-    YulBuiltin b (yul_substitute_exprs sub es)) ∧
+    YulCheckedBuiltin b (yul_substitute_exprs sub es)) ∧
+  (yul_substitute_expr sub (YulCheckedBuiltin b es) =
+    YulCheckedBuiltin b (yul_substitute_exprs sub es)) ∧
   (yul_substitute_expr sub (YulApply f es) =
     YulApply f (yul_substitute_exprs sub es)) ∧
   (yul_substitute_exprs sub [] = []) ∧
@@ -1006,7 +1010,9 @@ Definition yul_substitute_stmt_def:
     (l, yul_substitute_stmts sub body) :: yul_substitute_cases sub cases)
 End
 
-(* m with the byte sequence objects with ids 1 to i written into memory. *)
+(* m with the byte sequence objects with ids 1 to i written into memory, each
+ * as its length word and its data zero-padded to whole words, the memory solc
+ * allocates for it. *)
 Definition assembly_project_def:
   (assembly_project heap 0 (m : yul_machine) = SOME m) ∧
   (assembly_project heap (SUC i) m =
@@ -1017,7 +1023,9 @@ Definition assembly_project_def:
             SOME bs =>
               assembly_project heap i
                 (yul_memory_write m obj.object_address
-                   (word_to_bytes_be (n2w obj.object_length : bytes32) ++ bs))
+                   (word_to_bytes_be (n2w obj.object_length : bytes32) ++ bs ++
+                    REPLICATE (32 * ((obj.object_length + 31) DIV 32) -
+                               obj.object_length) 0w))
           | NONE => NONE
         else assembly_project heap i m
     | NONE => assembly_project heap i m)

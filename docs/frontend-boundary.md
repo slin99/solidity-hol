@@ -150,11 +150,15 @@ allocated so far, `0x60` for the shared empty object), and a block runs over
 a memory holding each byte sequence's length word and bytes there. Under
 `memoryguard` the compiler may start its free memory pointer above `0x80`, so
 arithmetic relative to a pointer is modelled but returning, storing or
-comparing a raw pointer value is outside the boundary. Other memory reads 0,
-the free memory pointer included, so a computed read outside the byte
-sequences (another kind of memory object, or past an object's last word) is
-outside the boundary too. Bytes a block writes past an object's length, in its
-last word, aren't kept for the next block. solc lets a block assign a memory
+comparing a raw pointer value is outside the boundary. A literal address is
+read only where the block wrote it before, as the elaborator checks. At a
+computed address a block may read only the zero slot `[0x60, 0x80)`, each byte
+sequence's length word and data (zero-padded to whole words), and bytes it has
+written itself; any other read, the free memory pointer, another kind of memory
+object, the scratch space before the block writes it, or past an object's last
+word, ends the block with an `InvalidCompletion`. Bytes a block writes past an
+object's length, in its last word, aren't kept for the next block: a later block
+reads them as the padding's zeros. solc lets a block assign a memory
 reference (`b := ...`); the elaborator rejects it, since the block reads the
 name as a literal.
 

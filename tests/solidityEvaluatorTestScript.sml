@@ -591,6 +591,50 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* A block reads only the zero slot, b's words and what it wrote, however the
+ * address is computed: the free memory pointer, scratch it hasn't written and
+ * memory past b's last word fail closed; a zero-length read touches nothing. *)
+Theorem asm_memory_reads:
+  run_asm_bytes [YulLet ["p"] (SOME (ylit 0x40w));
+                 YulAssign ["r"] (YulBuiltin YMLoad [YulName "p"])] [1w; 2w; 3w] =
+    (InvalidCompletion "assembly read memory it was not given", SOME [1w; 2w; 3w]) ∧
+  run_asm_bytes [YulAssign ["r"] (YulBuiltin YMLoad [yadd (YulName "b") (ylit 0x60w)])]
+    [1w; 2w; 3w] =
+    (InvalidCompletion "assembly read memory it was not given", SOME [1w; 2w; 3w]) ∧
+  run_asm_bytes [YulLet ["p"] (SOME (ylit 0w));
+                 YulAssign ["r"] (YulBuiltin YMLoad [YulName "p"])] [1w; 2w; 3w] =
+    (InvalidCompletion "assembly read memory it was not given", SOME [1w; 2w; 3w]) ∧
+  run_asm_bytes [YulLet ["p"] (SOME (ylit 0w));
+                 YulExprStmt (YulBuiltin YMStore [YulName "p"; ylit 5w]);
+                 YulAssign ["r"] (YulBuiltin YMLoad [YulName "p"])] [1w; 2w; 3w] =
+    (ReturnCompletion [ScalarValue (IntegerValue 5)], SOME [1w; 2w; 3w]) ∧
+  run_asm_bytes [YulLet ["p"] (SOME (ylit 0x60w));
+                 YulAssign ["r"] (YulBuiltin YMLoad [YulName "p"])] [1w; 2w; 3w] =
+    (ReturnCompletion [ScalarValue (IntegerValue 0)], SOME [1w; 2w; 3w]) ∧
+  run_asm_bytes [YulExprStmt (YulBuiltin YPop
+                   [YulBuiltin YKeccak256 [yadd (YulName "b") (ylit 0x1000w); ylit 0w]])]
+    [1w; 2w; 3w] =
+    (ReturnCompletion [ScalarValue (IntegerValue 0)], SOME [1w; 2w; 3w]) ∧
+  (* the first byte past b's word, and a word straddling its end *)
+  run_asm_bytes [YulAssign ["r"] (YulBuiltin YMLoad [yadd (YulName "b") (ylit 0x40w)])]
+    [1w; 2w; 3w] =
+    (InvalidCompletion "assembly read memory it was not given", SOME [1w; 2w; 3w]) ∧
+  run_asm_bytes [YulAssign ["r"] (YulBuiltin YMLoad [yadd (YulName "b") (ylit 0x21w)])]
+    [1w; 2w; 3w] =
+    (InvalidCompletion "assembly read memory it was not given", SOME [1w; 2w; 3w]) ∧
+  (* a reader other than mload, and a builtin inside the block's own function *)
+  run_asm_bytes [YulLet ["p"] (SOME (ylit 0w));
+                 YulAssign ["r"] (YulBuiltin YKeccak256 [YulName "p"; ylit 64w])]
+    [1w; 2w; 3w] =
+    (InvalidCompletion "assembly read memory it was not given", SOME [1w; 2w; 3w]) ∧
+  run_asm_bytes [YulFunction "f" ["q"] ["v"]
+                   [YulAssign ["v"] (YulBuiltin YMLoad [YulName "q"])];
+                 YulAssign ["r"] (YulApply "f" [ylit 0x40w])] [1w; 2w; 3w] =
+    (InvalidCompletion "assembly read memory it was not given", SOME [1w; 2w; 3w])
+Proof
+  CONV_TAC cv_eval
+QED
+
 (* return(...) in a callee ends the whole frame with its bytes. *)
 Theorem asm_halt_passes_through_call:
   run_asm [YulExprStmt (YulBuiltin YMStore [ylit 0w; YulName "x"]);
