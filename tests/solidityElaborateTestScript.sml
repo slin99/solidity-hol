@@ -433,7 +433,12 @@ QED
 Theorem ecrecover_operands_all_report:
   ^(reports “elab_expr ^ctx0 10
                (SrcEcrecover ^(at 30) ^(at 31)
-                  [^(string_at 32); ^(one_at 34); ^(string_at 33); ^(one_at 35)]
+                  [SrcLiteral ^(at 32) StringLiteral
+                     "0123456789abcdef0123456789abcdef0" "t_stringliteral_x";
+                   ^(one_at 34);
+                   SrcLiteral ^(at 33) StringLiteral
+                     "0123456789abcdef0123456789abcdef0" "t_stringliteral_x";
+                   ^(one_at 35)]
                   "t_address")”
      string_32_33)
 Proof
@@ -518,6 +523,17 @@ Theorem pure_core_has_no_failures:
   unit_elaboration_failures T pure_core = []
 Proof
   CONV_TAC cv_eval
+QED
+
+Theorem literal_bytes_width_checked:
+  coerce 0 (FixedBytesT 2) (ConstantAtom (BytesValue [0x61w; 0x62w; 0x63w]))
+    ElabBytesLiteral = INR "string literal conversion" ∧
+  coerce 0 (FixedBytesT 0) (ConstantAtom (BytesValue [])) ElabBytesLiteral = INR "string literal conversion" ∧
+  coerce 0 (FixedBytesT 33) (ConstantAtom (BytesValue [])) ElabBytesLiteral = INR "string literal conversion" ∧
+  coerce 0 (FixedBytesT 0) (ConstantAtom (IntegerValue 0)) ElabLiteral = INR "number literal conversion" ∧
+  coerce 0 (FixedBytesT 33) (ConstantAtom (IntegerValue 0)) ElabLiteral = INR "number literal conversion"
+Proof
+  EVAL_TAC
 QED
 
 (* Edited units of solidityImportTest that pass valid_src_unit but whose

@@ -2,7 +2,7 @@
 pragma solidity >=0.8.0;
 
 // A contract of supported and unsupported functions (sha256 is not
-// modelled, nor are halting assembly in a constructor, a string literal as a
+// modelled, nor are halting assembly in a constructor, dynamic bytes as a
 // bytes16 constant, or assembly assigning a bytes local): the unsupported ones,
 // and those calling them, have no procedure, and calls of them are refused.
 contract Base {
@@ -20,9 +20,9 @@ contract Mid is Base {
 contract Partial is Mid {
     uint256 public total;
 
-    // a string literal does not elaborate as a bytes16, so the constant has no
+    // dynamic bytes does not elaborate as a bytes16, so the constant has no
     // procedure: its getter and the functions reading it are unsupported
-    bytes16 public constant DIGITS = "0123456789abcdef";
+    bytes16 public constant DIGITS = bytes16(bytes("0123456789abcdef"));
 
     // imports and passes the source check, but does not elaborate
     constructor() {
