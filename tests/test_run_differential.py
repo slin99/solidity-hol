@@ -342,6 +342,22 @@ class CorpusTests(unittest.TestCase):
             self.assertEqual([c for c in checks if c["status"] != "pass"], [])
             self.assertEqual(compile_json.call_args.args[1], artifact["input"])
 
+    def test_reproduction_rejects_malformed_remappings_before_compiling(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            artifact = json.loads((fake.root / ARTIFACT).read_text(encoding="utf-8"))
+            for settings in (None, [], {"remappings": "a/=b/"},
+                             {"remappings": [1]}, {"remappings": ["a/b/"]}):
+                with self.subTest(settings=settings):
+                    artifact["input"]["settings"] = settings
+                    fake.write(ARTIFACT, driver.exporter.json_text(artifact))
+                    with patch.object(driver.exporter, "build_artifact_from_sources") as build:
+                        checks = driver.reproduce_artifacts(
+                            fake.root, corpus(), Path("solc"), False)
+                    build.assert_not_called()
+                    self.assertEqual([c["status"] for c in checks], ["fail"])
+                    self.assertIn("input", checks[0]["detail"])
+
     def test_checks_optional_remappings(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fake = FakeRoot(Path(temporary))

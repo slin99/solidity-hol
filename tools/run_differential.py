@@ -413,11 +413,19 @@ def reproduce_artifacts(root: Path, corpus: dict[str, Any], solc: Path, regenera
     for path in sorted({c["artifact"] for s in corpus["suites"] for c in compiled_contracts(s)}):
         try:
             committed = read_artifact(root, path)
+            settings = committed["input"]["settings"]
+            if not isinstance(settings, dict):
+                raise CorpusError("input settings must be an object")
+            remappings = settings.get("remappings", [])
+            if not isinstance(remappings, list) or any(
+                not isinstance(entry, str) or "=" not in entry for entry in remappings
+            ):
+                raise CorpusError("input remappings must be an array of strings containing '='")
             sources = {name: (root / name).read_text(encoding="utf-8")
                        for name in committed["input"]["sources"]}
             fresh = exporter.build_artifact_from_sources(
                 solc, sources, exporter.DEFAULT_PROFILE,
-                remappings=committed["input"]["settings"].get("remappings", []),
+                remappings=remappings,
             )
         except (OSError, KeyError, json.JSONDecodeError, CorpusError, SystemExit) as error:
             checks.append(check("artifact-reproducible", path, str(error)))
