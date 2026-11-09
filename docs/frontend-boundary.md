@@ -150,11 +150,15 @@ allocated so far, `0x60` for the shared empty object), and a block runs over
 a memory holding each byte sequence's length word and bytes there. Under
 `memoryguard` the compiler may start its free memory pointer above `0x80`, so
 arithmetic relative to a pointer is modelled but returning, storing or
-comparing a raw pointer value is outside the boundary. Other memory reads 0,
-the free memory pointer included, so a computed read outside the byte
-sequences (another kind of memory object, or past an object's last word) is
-outside the boundary too. Bytes a block writes past an object's length, in its
-last word, aren't kept for the next block. solc lets a block assign a memory
+comparing a raw pointer value is outside the boundary. A literal address is
+read only where the block wrote it before, as the elaborator checks. At a
+computed address a block may read only the zero slot `[0x60, 0x80)`, each byte
+sequence's length word and data (zero-padded to whole words), and bytes it has
+written itself; any other read, the free memory pointer, another kind of memory
+object, the scratch space before the block writes it, or past an object's last
+word, ends the block with an `InvalidCompletion`. Bytes a block writes past an
+object's length, in its last word, aren't kept for the next block: a later block
+reads them as the padding's zeros. solc lets a block assign a memory
 reference (`b := ...`); the elaborator rejects it, since the block reads the
 name as a literal.
 
@@ -550,9 +554,12 @@ function overrides, and that functions come most derived first).
 
 A contract is admitted per function. When a function's body or the body of
 one of its modifiers falls outside the subset, or a fallback has parameters or
-returns, import keeps the function with
-its header, an empty body and the reason (`fn_unsupported`) rather than
-rejecting the unit. `solidityPrepareLib` then marks, until nothing changes,
+returns, import keeps the function with its header and the reason
+(`fn_unsupported`) rather than rejecting the unit (a fallback with parameters
+or returns keeps an empty body). Import goes on past what it cannot represent,
+leaving a placeholder (`SrcUnsupportedTypeName`, `SrcUnsupportedExpr`,
+`SrcUnsupportedStmt`) with the children it could import, so the reason has a
+line for every unsupported node, each naming it. `solidityPrepareLib` then marks, until nothing changes,
 every function that fails to elaborate, also by calling an unsupported one (by
 a call or a super call). The elaborator builds no
 procedure for them and lists their ids in `core_program.unsupported_procedures`,
@@ -565,10 +572,12 @@ a base function only they reach is neither checked nor elaborated. A constant
 whose value does not elaborate, also by reading such a constant, has no
 procedure either: its getter is listed as unsupported, and a function reading
 it fails to elaborate. A modifier
-whose body fails import keeps its header with an empty body. The prepared unit
+whose body fails import keeps its header and its body with placeholders. The prepared unit
 lists each function calls can reach, with its reason if unsupported.
 
-What storage layout or dispatch depends on still rejects the whole unit:
+What storage layout or dispatch depends on still rejects the whole unit
+(`import_source_unit_blockers` gives the unit's blockers alongside the unit,
+and `unit_rejections` lists the source checks it fails):
 function headers (declaring base, kind, mutability, parameter and result
 types; a library function must be an internal or private `function`),
 modifier parameters and `virtual` modifiers, state variables, constant

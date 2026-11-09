@@ -27,7 +27,10 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/hashes.json",
   "../testdata/differential/expected/conditionals.json",
   "../testdata/differential/expected/encode_calls.json",
-  "../testdata/differential/expected/bytes_constants.json"
+  "../testdata/differential/expected/bytes_constants.json",
+  "../testdata/differential/expected/try_calls.json",
+  "../testdata/differential/expected/inline_assembly.json",
+  "../testdata/differential/expected/external.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -161,25 +164,33 @@ fun type_identifier tid =
  * function only), Malformed when the compiler JSON is malformed. *)
 datatype import_failure = Unsupported | UnsupportedFunction | Malformed
 
+(* The reason of an unsupported function. *)
+fun function_reason t =
+  if type_of t <> ``:src_function`` then NONE else
+  case Lib.total TypeBase.dest_record t of
+    SOME (_, fields) =>
+      (case Lib.assoc1 "fn_unsupported" fields of
+         SOME (_, r) =>
+           if optionSyntax.is_some r
+           then SOME (stringSyntax.fromHOLstring (optionSyntax.dest_some r))
+           else NONE
+       | NONE => NONE)
+  | NONE => NONE
+
+(* The distinct reasons of the unsupported functions of a unit; each layer
+ * of a function's record term gives its reason again. *)
+fun function_reasons tm =
+  foldl (fn (r, rs) => if List.exists (fn x => x = r) rs then rs else rs @ [r]) []
+    (List.mapPartial function_reason (find_terms (isSome o function_reason) tm))
+
 (* How an edited unit fails import, with the reason; NONE when everything
  * imports. *)
 fun import_rejection units v contracts =
   let
-    fun reason t =
-      if type_of t <> ``:src_function`` then NONE else
-      case Lib.total TypeBase.dest_record t of
-        SOME (_, fields) =>
-          (case Lib.assoc1 "fn_unsupported" fields of
-             SOME (_, r) =>
-               if optionSyntax.is_some r
-               then SOME (stringSyntax.fromHOLstring (optionSyntax.dest_some r))
-               else NONE
-           | NONE => NONE)
-      | NONE => NONE
     val tm = import_source_unit units v contracts
   in
-    case find_terms (isSome o reason) tm of
-      t :: _ => SOME (UnsupportedFunction, valOf (reason t))
+    case function_reasons tm of
+      r :: _ => SOME (UnsupportedFunction, r)
     | [] => NONE
   end
   handle ImportError msg => SOME (Unsupported, msg)
@@ -283,6 +294,144 @@ val () =
       then ()
       else raise Fail ("built-in: " ^ msg)
 
+(* The import goes on past an unsupported node: a body with two unsupported
+ * statements gives its function a line of reason for each, in order. *)
+fun in_function name f =
+  edit_first_where
+    (fn v => is_node "FunctionDefinition" v andalso
+             JSONUtil.testField "name" (fn JSON.STRING s => s = name | _ => false) v)
+    name f
+
+val () =
+  case import_rejection []
+         (in_function "count"
+            (edit_first "Break" (set_field "nodeType" (JSON.STRING "UnknownBreak")) o
+             edit_first "Continue" (set_field "nodeType" (JSON.STRING "UnknownContinue")))
+            ast)
+         contracts of
+    SOME (UnsupportedFunction, msg) =>
+      (case String.fields (fn c => c = #"\n") msg of
+         [a, b] =>
+           if String.isSubstring ": unsupported statement UnknownContinue" a andalso
+              String.isSubstring ": unsupported statement UnknownBreak" b then ()
+           else raise Fail ("two unsupported statements: " ^ msg)
+       | _ => raise Fail ("two unsupported statements: " ^ msg))
+  | _ => raise Fail "two unsupported statements: no unsupported function"
+
+(* A blocker of the unit and one of a function: import_source_unit_blockers
+ * gives the unit, with the function unsupported, and the unit's blocker,
+ * which import_source_unit raises. *)
+val unknown_member_line =
+  "UnknownMember 999997: unsupported source unit member UnknownMember"
+val unit_and_function_blockers =
+  case in_function "count"
+         (edit_first "Break" (set_field "nodeType" (JSON.STRING "UnknownBreak"))) ast of
+    JSON.OBJECT kvs =>
+      JSON.OBJECT
+        (map (fn ("nodes", JSON.ARRAY ns) =>
+                   ("nodes",
+                    JSON.ARRAY (ns @ [JSON.OBJECT
+                                        [("nodeType", JSON.STRING "UnknownMember"),
+                                         ("id", JSON.INT 999997),
+                                         ("src", JSON.STRING "0:0:0")]]))
+               | kv => kv) kvs)
+  | _ => raise Fail "ast: not an object"
+val () =
+  let
+    val (tm, lines) =
+      import_source_unit_blockers [] unit_and_function_blockers contracts
+  in
+    if lines = [unknown_member_line] andalso
+       (case function_reasons tm of
+          [r] => String.isSubstring ": unsupported statement UnknownBreak" r andalso
+                 not (String.isSubstring "\n" r)
+        | _ => false)
+    then ()
+    else raise Fail ("unit and function blockers: " ^ String.concatWith "\n" lines)
+  end
+val () =
+  (ignore (import_source_unit [] unit_and_function_blockers contracts);
+   raise Fail "unit and function blockers: imported")
+  handle ImportError msg =>
+    if msg = unknown_member_line then ()
+    else raise Fail ("unit and function blockers: " ^ msg)
+
+(* The reason of the function name of the unit at fixture, edited by f, has
+ * a line for each of expected, in order, containing it. *)
+fun expect_function_lines what fixture source name f expected =
+  let
+    val unit = artifact_part fixture ["sources", source, "ast"]
+    val units_contracts = artifact_part fixture ["contracts", source]
+  in
+    case import_rejection [] (in_function name f unit) units_contracts of
+      SOME (UnsupportedFunction, msg) =>
+        let val lines = String.fields (fn c => c = #"\n") msg in
+          if length lines = length expected andalso
+             ListPair.all (fn (l, e) => String.isSubstring e l) (lines, expected)
+          then ()
+          else raise Fail (what ^ ": " ^ msg)
+        end
+    | _ => raise Fail (what ^ ": no unsupported function")
+  end
+
+(* A typed catch does not hide the blockers of the call it tries. *)
+val () =
+  let
+    fun typed_catch (JSON.OBJECT kvs) =
+          JSON.OBJECT
+            (map (fn ("clauses", JSON.ARRAY [ok, err]) =>
+                       ("clauses",
+                        JSON.ARRAY [ok, set_field "errorName" (JSON.STRING "Error") err])
+                   | kv => kv) kvs)
+      | typed_catch v = v
+    fun in_call f (JSON.OBJECT kvs) =
+          JSON.OBJECT
+            (map (fn ("externalCall", c) => ("externalCall", f c) | kv => kv) kvs)
+      | in_call _ v = v
+    val unknown_target =
+      edit_first_where
+        (fn v => is_node "Identifier" v andalso
+                 JSONUtil.testField "name" (fn JSON.STRING s => s = "target" | _ => false) v)
+        "target" (set_field "nodeType" (JSON.STRING "UnknownTarget"))
+  in
+    expect_function_lines "typed catch of an unsupported call"
+      "../testdata/differential/expected/try_calls.json" "testdata/differential/try_calls.sol"
+      "attempt" (edit_first "TryStatement" (typed_catch o in_call unknown_target))
+      [": unsupported expression UnknownTarget", "typed catch clauses are not supported"]
+  end
+
+(* An unsupported call option does not hide the blockers of the receiver. *)
+val () =
+  expect_function_lines "gas option on an unsupported receiver"
+    "../testdata/differential/expected/external.json" "testdata/differential/external.sol"
+    "forward"
+    (edit_first "FunctionCallOptions"
+       (set_field "names" (JSON.ARRAY [JSON.STRING "gas"]) o
+        edit_first_where
+          (fn v => is_node "Identifier" v andalso
+                   JSONUtil.testField "name" (fn JSON.STRING s => s = "this" | _ => false) v)
+          "this" (set_field "nodeType" (JSON.STRING "UnknownThis"))))
+    [": unsupported expression UnknownThis", "only the value call option is supported"]
+
+(* Every unsupported reference of an inline assembly block is a line. *)
+val () =
+  let
+    fun length_suffix (JSON.OBJECT kvs) =
+          JSON.OBJECT
+            (map (fn ("externalReferences", JSON.ARRAY rs) =>
+                       ("externalReferences",
+                        JSON.ARRAY (map (set_field "suffix" (JSON.STRING "length")) rs))
+                   | kv => kv) kvs)
+      | length_suffix v = v
+  in
+    expect_function_lines "unsupported assembly references"
+      "../testdata/differential/expected/inline_assembly.json"
+      "testdata/differential/inline_assembly.sol"
+      "locations" (edit_first "InlineAssembly" length_suffix)
+      ["unsupported reference packedHigh.offset", "unsupported reference packedHigh.slot",
+       "unsupported reference total.offset", "unsupported reference total.slot"]
+  end
+
 (* Duplicate and dangling ids and inconsistent types import but are invalid. *)
 
 val unit_id = JSONUtil.lookupField ast "id"
@@ -329,6 +478,12 @@ val () = edited_unit "call_arity"
 
 Theorem duplicate_id_rejected:
   ¬valid_src_unit duplicate_id
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem duplicate_id_rejections:
+  MAP SND (unit_rejections duplicate_id) = ["duplicate node ids"]
 Proof
   CONV_TAC cv_eval
 QED
@@ -450,6 +605,12 @@ val () = import_error_with Unsupported storage_contracts "unknown mutability"
 
 Theorem layout_type_mismatch_rejected:
   ¬valid_src_unit layout_type_mismatch
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem layout_type_mismatch_rejections:
+  MAP SND (unit_rejections layout_type_mismatch) = ["storage layout"]
 Proof
   CONV_TAC cv_eval
 QED

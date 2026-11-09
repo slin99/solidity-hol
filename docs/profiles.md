@@ -51,3 +51,9 @@ Every generated fixture must record:
 Changing the compiler revision, pipeline, optimizer configuration, EVM revision,
 or other observation-relevant settings creates a new profile. Unknown settings
 or output forms must fail closed rather than being attributed to this profile.
+
+The compiler input may additionally specify `settings.remappings` to resolve
+import prefixes to source names without editing the source contents. This field
+must occur at most once and contain an array of strings, each containing `=`;
+it is retained in the artifact. All other input settings must still match the
+pinned profile and output selection exactly.

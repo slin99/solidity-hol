@@ -66,7 +66,9 @@ literal address it may write only the scratch space unless it halts and read
 only memory it wrote itself (not the free memory pointer, which the compiler
 may raise to keep variables in memory); at a computed address, a block that
 exits normally may write only the scratch space and the byte sequences' data
-words, not their length words, and their bytes are read back. `return`/`stop`
+words, not their length words, and their bytes are read back. Whatever the
+address, a read outside the zero slot, the byte sequences' words and the bytes
+the block wrote fails with an `InvalidCompletion`. `return`/`stop`
 end the frame with a `HaltCompletion`. Memory
 expansion gas is not modelled, so a halting block's write far past the used
 memory succeeds where the EVM runs out of gas. Memory/calldata execution and a memory
@@ -103,6 +105,8 @@ The differential corpus compares source evaluation with pinned compiler
 bytecode in Verifereum, including complete committed contract storage. Slot
 lists select diagnostics; they do not limit comparison. The upstream `semanticTests` coverage tool checks
 preparation acceptance; it does not execute the tests' call expectations.
+Each rejected test lists every blocker preparation reports, with its node
+id; the tool only groups those lines under feature labels.
 The coverage tool stages its compiler artifacts and pin/profile files for a
 cached `holbuild run-action` batches of up to 128 tests on the configured
 remote-execution fleet. Batches run serially because their startup/export
