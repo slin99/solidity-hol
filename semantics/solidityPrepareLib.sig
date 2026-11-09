@@ -37,6 +37,10 @@ sig
    * Consumers of several sources import them all before semantic preparation.
    *)
   val import_unit : JSON.value -> string -> term
+  (* Import one source and prepare it. A rejection lists every blocker
+   * found, one per line: the importer's, source validation's and what
+   * fails to elaborate, by node id. *)
+  val prepare_source : JSON.value -> string -> prepared
 
   (* The normal consumer entry point; retain the checked artifact for bytecode. *)
   val prepare_artifact : {root : string, path : string, source : string} ->

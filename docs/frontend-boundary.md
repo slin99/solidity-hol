@@ -552,9 +552,12 @@ function overrides, and that functions come most derived first).
 
 A contract is admitted per function. When a function's body or the body of
 one of its modifiers falls outside the subset, or a fallback has parameters or
-returns, import keeps the function with
-its header, an empty body and the reason (`fn_unsupported`) rather than
-rejecting the unit. `solidityPrepareLib` then marks, until nothing changes,
+returns, import keeps the function with its header and the reason
+(`fn_unsupported`) rather than rejecting the unit (a fallback with parameters
+or returns keeps an empty body). Import goes on past what it cannot represent,
+leaving a placeholder (`SrcUnsupportedTypeName`, `SrcUnsupportedExpr`,
+`SrcUnsupportedStmt`) with the children it could import, so the reason has a
+line for every unsupported node, each naming it. `solidityPrepareLib` then marks, until nothing changes,
 every function that fails to elaborate, also by calling an unsupported one (by
 a call or a super call). The elaborator builds no
 procedure for them and lists their ids in `core_program.unsupported_procedures`,
@@ -567,10 +570,12 @@ a base function only they reach is neither checked nor elaborated. A constant
 whose value does not elaborate, also by reading such a constant, has no
 procedure either: its getter is listed as unsupported, and a function reading
 it fails to elaborate. A modifier
-whose body fails import keeps its header with an empty body. The prepared unit
+whose body fails import keeps its header and its body with placeholders. The prepared unit
 lists each function calls can reach, with its reason if unsupported.
 
-What storage layout or dispatch depends on still rejects the whole unit:
+What storage layout or dispatch depends on still rejects the whole unit
+(`import_source_unit_blockers` gives the unit's blockers alongside the unit,
+and `unit_rejections` lists the source checks it fails):
 function headers (declaring base, kind, mutability, parameter and result
 types; a library function must be an internal or private `function`),
 modifier parameters and `virtual` modifiers, state variables, constant

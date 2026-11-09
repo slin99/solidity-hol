@@ -244,20 +244,21 @@ QED
  * runtime code from the returned bytes; elsewhere it may. *)
 Theorem asm_halt_rejected_in_constructor:
   ∀info.
-    IS_SOME (elab_stmt
+    ISL (elab_stmt
       <| functions := []; supers := []; structs := []; enums := []; events := [];
          variables := []; state := []; locations := []; immutables := [];
          constants := []; returns := []; placeholder := NONE;
          mode := CheckedArithmetic; creation := F; scope := 0;
-         returns_id := 0; in_loop := F |> 0
+         returns_id := 0; in_loop := F; bad_ids := [] |> 0
       (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] [])) ∧
     elab_stmt
       <| functions := []; supers := []; structs := []; enums := []; events := [];
          variables := []; state := []; locations := []; immutables := [];
          constants := []; returns := []; placeholder := NONE;
          mode := CheckedArithmetic; creation := T; scope := 0;
-         returns_id := 0; in_loop := F |> 0
-      (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] []) = NONE
+         returns_id := 0; in_loop := F; bad_ids := [] |> 0
+      (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] []) =
+    INR [(info.node_id, "assembly halt in a constructor")]
 Proof
   gen_tac >> EVAL_TAC
 QED
@@ -286,11 +287,12 @@ Theorem declaration_body_and_tuple_fraction_rejected:
                events := []; variables := []; state := []; locations := [];
                immutables := []; constants := []; returns := [];
                placeholder := NONE; mode := CheckedArithmetic; creation := F;
-               scope := 0; returns_id := 0; in_loop := F |> in
-    IS_SOME (elab_stmt ctx 2 d) ∧
-    elab_stmt ctx 2 (SrcIfStatement info c d NONE) = NONE ∧
-    elab_stmt ctx 2 (SrcWhileStatement info c d) = NONE ∧
-    elab_stmt ctx 2 (SrcVariableDeclarationStatement info [NONE] [NONE] (SOME half)) = NONE
+               scope := 0; returns_id := 0; in_loop := F; bad_ids := [] |> in
+    ISL (elab_stmt ctx 2 d) ∧
+    elab_stmt ctx 2 (SrcIfStatement info c d NONE) = INR [(0, "declaration as a body")] ∧
+    elab_stmt ctx 2 (SrcWhileStatement info c d) = INR [(0, "declaration as a body")] ∧
+    elab_stmt ctx 2 (SrcVariableDeclarationStatement info [NONE] [NONE] (SOME half)) =
+    INR [(0, "rational number value")]
 Proof
   EVAL_TAC
 QED
@@ -309,11 +311,213 @@ Theorem bytes_to_fixed_bytes_rejected:
                state := []; locations := [];
                immutables := []; constants := []; returns := [];
                placeholder := NONE; mode := CheckedArithmetic; creation := F;
-               scope := 0; returns_id := 0; in_loop := F |> in
-    elab_expr ctx 3 (to16 (SrcIdentifier info "b" 1 "t_bytes_memory_ptr")) = NONE ∧
-    IS_SOME (elab_expr ctx 3 (to16 (SrcIdentifier info "w" 2 "t_bytes32")))
+               scope := 0; returns_id := 0; in_loop := F; bad_ids := [] |> in
+    elab_expr ctx 3 (to16 (SrcIdentifier info "b" 1 "t_bytes_memory_ptr")) =
+    INR [(0, "unsupported type conversion")] ∧
+    ISL (elab_expr ctx 3 (to16 (SrcIdentifier info "w" 2 "t_bytes32")))
 Proof
   EVAL_TAC
+QED
+
+(* Rejection reasons: a list of statements reports every statement that
+ * fails, and a statement after a failed declaration only its own blockers.
+ * The declared variable is bound if its type is supported, and otherwise
+ * a reference to it adds no blocker, the declaration having reported it. *)
+val info0 = “<| node_id := 0;
+                node_location := <| loc_start := 0; loc_length := 0;
+                                    loc_source := 0 |> |>”;
+fun at id = “^info0 with node_id := ^(numSyntax.term_of_int id)”;
+val ctx0 = “<| functions := []; supers := []; structs := []; enums := [];
+               events := []; variables := []; state := []; locations := [];
+               immutables := []; constants := []; returns := [];
+               placeholder := NONE; mode := CheckedArithmetic; creation := F;
+               scope := 0; returns_id := 0; in_loop := F; bad_ids := [] |>”;
+fun local_y tn = “<| var_info := ^(at 4); var_name := "y"; var_scope := 0;
+                     var_type_name := ^tn; var_type_id := "t_uint256";
+                     var_location := NONE |>”;
+val supported_y = local_y “SrcElementaryTypeName ^(at 7) "uint256" NONE”;
+val unsupported_y = local_y “SrcUnsupportedTypeName ^(at 7) "function type"”;
+val read_y = “SrcExpressionStatement ^(at 5) (SrcIdentifier ^(at 6) "y" 4 "t_uint256")”;
+
+Theorem independent_failures_all_report:
+  elab_stmts ^ctx0 10 [SrcBreak ^(at 1); SrcContinue ^(at 2)] =
+  INR [(1, "break outside a loop"); (2, "continue outside a loop")]
+Proof
+  EVAL_TAC
+QED
+
+Theorem failed_declaration_reference_adds_no_blocker:
+  elab_stmts ^ctx0 10
+    [SrcVariableDeclarationStatement ^(at 3) [SOME 4] [SOME ^unsupported_y]
+       (SOME (SrcLiteral ^(at 8) NumberLiteral "1" "t_rational_1_by_1"));
+     ^read_y] =
+  INR [(7, "function type")] ∧
+  elab_stmts ^ctx0 10
+    [SrcVariableDeclarationStatement ^(at 3) [SOME 4] [SOME ^supported_y]
+       (SOME (SrcLiteral ^(at 8) NumberLiteral "" "t_rational_1_by_2"));
+     ^read_y] =
+  INR [(8, "rational number value")]
+Proof
+  EVAL_TAC
+QED
+
+(* A function whose parameter or return variable fails still reports its
+ * body's blockers; a reference to the failed parameter, or a return of a
+ * value for the failed return variable, adds none. *)
+val empty_contract =
+  “<| contract_info := ^info0; contract_name := "C"; contract_scope := 0;
+      contract_bases := []; contract_state_variables := [];
+      contract_immutables := []; contract_initializers := [];
+      contract_libraries := []; contract_constants := [];
+      contract_base_arguments := []; contract_storage := [];
+      contract_structs := []; contract_enums := []; contract_events := [];
+      contract_modifiers := []; contract_functions := [];
+      contract_library_functions := []; contract_getters := [] |>”;
+fun function_of ps rs ss =
+  “<| fn_info := ^(at 1); fn_name := "f"; fn_scope := 0;
+      fn_kind := FunctionKind; fn_visibility := InternalVisibility;
+      fn_mutability := NonpayableMut; fn_selector := NONE;
+      fn_base_functions := []; fn_parameters_id := 2; fn_parameters := ^ps;
+      fn_returns_id := 3; fn_returns := ^rs; fn_modifiers := [];
+      fn_super_calls := []; fn_body := SrcBlock ^(at 9) ^ss;
+      fn_unsupported := NONE |>”;
+val break_11 = “SrcBreak ^(at 11)”;
+val return_1 = “SrcReturn ^(at 12) 3
+                  (SOME (SrcLiteral ^(at 13) NumberLiteral "1" "t_rational_1_by_1"))”;
+
+val failed_parameter = function_of “[^unsupported_y]” “[] : src_variable list” “[^read_y; ^break_11]”;
+val failed_return = function_of “[] : src_variable list” “[^unsupported_y]” “[^return_1; ^break_11]”;
+
+Theorem failed_variables_keep_body_blockers:
+  elab_function ^ctx0 ^empty_contract T F 10 ^failed_parameter =
+  INR [(7, "function type"); (11, "break outside a loop")] ∧
+  elab_function ^ctx0 ^empty_contract T F 10 ^failed_return =
+  INR [(7, "function type"); (11, "break outside a loop")]
+Proof
+  EVAL_TAC
+QED
+
+(* A try statement of a call that elaborates but is not an external call
+ * still reports both clauses' blockers. *)
+Theorem unsupported_try_keeps_clause_blockers:
+  elab_stmt ^ctx0 10
+    (SrcTryStatement ^(at 19) (SrcLiteral ^(at 20) BoolLiteral "true" "t_bool")
+       ^(at 21) [] (SrcBreak ^(at 11)) ^(at 22) ^supported_y (SrcContinue ^(at 12))) =
+  INR [(19, "unsupported try statement"); (11, "break outside a loop");
+       (12, "continue outside a loop")]
+Proof
+  EVAL_TAC
+QED
+
+(* Two independently bad operands of each operand list are both reported,
+ * each under its own id, beside the node's own blocker if it has one: string
+ * literals that convert to no number, number literals that a packed encoding
+ * rejects, and unsupported expressions. *)
+fun string_at id = “SrcLiteral ^(at id) StringLiteral "a" "t_stringliteral_a"”;
+fun one_at id = “SrcLiteral ^(at id) NumberLiteral "1" "t_rational_1_by_1"”;
+fun bad_at id = “SrcUnsupportedExpr ^(at id) "bad" []”;
+fun reports r bs =
+  list_mk_conj (map (fn b => “MEM ^b (blockers ^r)”) bs);
+val string_32_33 = [“(32, "string literal conversion")”, “(33, "string literal conversion")”];
+val bad_32_33 = [“(32, "bad")”, “(33, "bad")”];
+
+Theorem modular_operands_all_report:
+  ^(reports “elab_expr ^ctx0 10
+               (SrcModular ^(at 30) ^(at 31) AddModOp
+                  [^(string_at 32); ^(string_at 33); ^(one_at 34)] "t_uint256")”
+     string_32_33)
+Proof
+  EVAL_TAC
+QED
+
+Theorem ecrecover_operands_all_report:
+  ^(reports “elab_expr ^ctx0 10
+               (SrcEcrecover ^(at 30) ^(at 31)
+                  [^(string_at 32); ^(one_at 34); ^(string_at 33); ^(one_at 35)]
+                  "t_address")”
+     string_32_33)
+Proof
+  EVAL_TAC
+QED
+
+Theorem abi_encode_operands_all_report:
+  ^(reports “elab_expr ^ctx0 10
+               (SrcAbiEncode ^(at 30) ^(at 31) AbiPacked [^(one_at 32); ^(one_at 33)]
+                  "t_bytes_memory_ptr")”
+     [“(32, "packed encoding of a number literal")”,
+      “(33, "packed encoding of a number literal")”])
+Proof
+  EVAL_TAC
+QED
+
+Theorem binary_operands_all_report:
+  ^(reports “elab_expr ^ctx0 10
+               (SrcBinaryOperation ^(at 30) SrcAdd ^(string_at 32) ^(string_at 33)
+                  "t_uint256" "t_uint256")”
+     string_32_33) ∧
+  ^(reports “elab_expr ^ctx0 10
+               (SrcBinaryOperation ^(at 30) SrcAnd ^(string_at 32) ^(string_at 33)
+                  "t_bool" "t_bool")”
+     string_32_33)
+Proof
+  EVAL_TAC
+QED
+
+Theorem builtin_operands_all_report:
+  ^(reports “elab_expr ^ctx0 10
+               (SrcBuiltinCall ^(at 30) ^(at 31) RequireBuiltin
+                  (SOME ^(bad_at 32)) (SOME ^(bad_at 33)) "t_bool")”
+     (“(30, "unsupported builtin call")” :: bad_32_33))
+Proof
+  EVAL_TAC
+QED
+
+val two_parameters = function_of “[^supported_y; ^supported_y]” “[] : src_variable list” “[] : src_stmt list”;
+
+Theorem internal_call_operands_all_report:
+  ^(reports “elab_expr (^ctx0 with functions := [(1, ^two_parameters)]) 10
+               (SrcFunctionCall ^(at 30) (SrcIdentifier ^(at 31) "f" 1 "t_function")
+                  [^(string_at 32); ^(string_at 33)] [] "t_tuple$__$")”
+     string_32_33)
+Proof
+  EVAL_TAC
+QED
+
+Theorem external_call_operands_all_report:
+  ^(reports “elab_expr ^ctx0 10
+               (SrcExternalCall ^(at 30)
+                  <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut;
+                     ext_parameters := []; ext_returns := [] |>
+                  F [^(bad_at 32); ^(bad_at 33)] [] "t_tuple$__$")”
+     (“(30, "unsupported external call")” :: bad_32_33))
+Proof
+  EVAL_TAC
+QED
+
+Theorem statement_operands_all_report:
+  ^(reports “elab_stmt ^ctx0 10 (SrcEmit ^(at 30) 5 [^(bad_at 32); ^(bad_at 33)] [])”
+     (“(30, "unknown event")” :: bad_32_33)) ∧
+  ^(reports “elab_stmt ^ctx0 10
+               (SrcRevertError ^(at 30)
+                  <| error_selector := [0w; 0w; 0w; 0w]; error_parameters := [] |>
+                  [^(bad_at 32); ^(bad_at 33)] [])”
+     (“(30, "revert does not match the error")” :: bad_32_33)) ∧
+  LENGTH (FILTER ($= (31, "string literal conversion"))
+    (blockers (elab_stmt (^ctx0 with <| returns := [(1, UintT 256); (2, UintT 256)];
+                                        returns_id := 3 |>) 10
+                 (SrcReturn ^(at 30) 3
+                    (SOME (SrcTupleExpression ^(at 31)
+                             [SOME ^(string_at 32); SOME ^(string_at 33)]
+                             "t_tuple$_t_uint256_$_t_uint256_$")))))) = 2
+Proof
+  EVAL_TAC
+QED
+
+(* The unit elaborates, so nothing in it fails. *)
+Theorem pure_core_has_no_failures:
+  unit_elaboration_failures T pure_core = []
+Proof
+  CONV_TAC cv_eval
 QED
 
 (* Edited units of solidityImportTest that pass valid_src_unit but whose

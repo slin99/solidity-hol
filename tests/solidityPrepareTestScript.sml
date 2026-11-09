@@ -59,9 +59,15 @@ QED
 val () = rejects solidityPrepareLib.InvalidCore
   (fn () => ignore (solidityPrepareLib.prepare_unit “invalid_generated_layout”));
 
-val () = rejects solidityPrepareLib.UnsupportedLowering
-  (fn () => ignore (solidityPrepareLib.prepare_unit
-    “pure_core with unit_contracts := []”));
+(* A unit with no contract is refused as a whole, with that reason. *)
+val () =
+  (ignore (solidityPrepareLib.prepare_unit
+     “pure_core with unit_contracts := []”);
+   raise Fail "preparation unexpectedly accepted input")
+  handle solidityPrepareLib.PreparationError
+           (solidityPrepareLib.UnsupportedLowering, msg) =>
+    if String.isSubstring ": no contract" msg then ()
+    else raise Fail ("unit-level reason missing: " ^ msg);
 
 (* A function header the source check rejects (here a parameter's scope or
  * type) rejects the unit: only a body is confined to its function. *)

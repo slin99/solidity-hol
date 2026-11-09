@@ -26,16 +26,25 @@ val prepared = #prepared (solidityPrepareLib.prepare_artifact
  * does not elaborate. Once Partial.twice is unsupported its super calls
  * reach nothing, so neither Mid.twice nor Base.twice is among the
  * functions calls reach. The constant DIGITS does not elaborate, so it has
- * no procedure and digits, which reads it, fails to elaborate; so does
- * pointer, whose assembly assigns a bytes local. *)
+ * no procedure and digits, which reads it, uses an unsupported declaration;
+ * pointer fails to elaborate, since its assembly assigns a bytes local. *)
 val outcomes = map (fn {name, reason, ...} => (name, reason)) (#functions prepared);
 fun reasons name =
   map #2 (List.filter (fn (n, _) => n = name) outcomes);
 val calls_unsupported = SOME "calls an unsupported function";
-val fails_to_elaborate = SOME "fails to elaborate (unsupported lowering)";
+(* HOL's blocker lines are "<id>: <tag>"; the importer's name their node
+ * type first ("<node type> <id>: <reason>"). *)
+fun hol_blocker line =
+  case String.fields (fn c => c = #":") line of
+    id :: _ :: _ => id <> "" andalso CharVector.all Char.isDigit id
+  | _ => false;
+fun elaboration_failure r =
+  case r of
+    SOME m => List.all hol_blocker (String.tokens (fn c => c = #"\n") m)
+  | NONE => false;
 fun imported_failure r =
   case r of
-    SOME m => not (String.isPrefix "calls" m) andalso r <> fails_to_elaborate
+    SOME m => not (String.isPrefix "calls" m) andalso not (elaboration_failure r)
   | NONE => false;
 val () =
   if reasons "add" = [NONE] andalso
@@ -44,12 +53,13 @@ val () =
      length (reasons "digest") = 1 andalso
      length (reasons "") = 2 andalso
      List.exists imported_failure (reasons "") andalso
-     List.exists (fn r => r = fails_to_elaborate) (reasons "") andalso
+     List.exists elaboration_failure (reasons "") andalso
      reasons "digestTwice" = [calls_unsupported] andalso
      reasons "callsTwice" = [calls_unsupported] andalso
      reasons "twice" = [calls_unsupported] andalso
-     reasons "digits" = [fails_to_elaborate] andalso
-     reasons "pointer" = [fails_to_elaborate] andalso
+     reasons "digits" = [SOME "uses an unsupported declaration"] andalso
+     List.all elaboration_failure (reasons "pointer") andalso
+     length (reasons "pointer") = 1 andalso
      length outcomes = 9
   then ()
   else raise Fail ("unexpected function outcomes: " ^
@@ -159,8 +169,10 @@ val fallback_prepared = #prepared (solidityPrepareLib.prepare_artifact
 val fallback_outcomes =
   map (fn {name, reason, ...} => (name, reason)) (#functions fallback_prepared);
 val () =
-  if fallback_outcomes =
-     [("add", NONE), ("", SOME "fallback with parameters or returns")]
+  if (case fallback_outcomes of
+        [("add", NONE), ("", SOME r)] =>
+          String.isSuffix ": fallback with parameters or returns" r
+      | _ => false)
   then ()
   else raise Fail ("unexpected fallback_params outcomes: " ^
     String.concatWith "; " (map (fn (n, r) => n ^ " " ^
@@ -198,8 +210,9 @@ Proof
 QED
 
 (* The elaborator refuses such a fallback even when the importer has not
- * marked it: the unit elaborates as imported, and with the mark removed it
- * fails elaboration. *)
+ * marked it: the fallback is the one part of the unit that fails
+ * elaboration, with or without the mark (unit_elaboration_failures
+ * elaborates marked functions too, for their reasons). *)
 Definition fallback_params_unit_def:
   fallback_params_unit = ^(#unit fallback_prepared)
 End
@@ -218,7 +231,7 @@ End
 val () = cv_auto_trans fallback_params_unmarked_def;
 
 Theorem fallback_params_unmarked_fails_elaboration:
-  unit_elaboration_failures T fallback_params_unit = [] ∧
+  LENGTH (unit_elaboration_failures T fallback_params_unit) = 1 ∧
   LENGTH (unit_elaboration_failures T fallback_params_unmarked) = 1
 Proof
   CONV_TAC cv_eval
