@@ -1038,21 +1038,20 @@ class ClassifyTests(unittest.TestCase):
         self.assertIn(83, coverage.scan({"t.sol": ast}))
 
     def test_named_arguments_are_paired_by_name(self) -> None:
-        def string(node_id):
-            return {"nodeType": "Literal", "id": node_id, "kind": "string", "value": "abcd",
-                    "typeDescriptions": {"typeIdentifier": "t_stringliteral_abcd"}}
-
         def named(node_id, name, type_identifier):
             return dict(variable(node_id, type_identifier=type_identifier), name=name)
 
         error = {"nodeType": "ErrorDefinition", "id": 30, "name": "E",
                  "parameters": {"nodeType": "ParameterList", "id": 31,
-                                "parameters": [named(32, "a", "t_bytes4"), named(33, "b", "t_string_memory_ptr")]}}
-        statement = revert(40, 30, [string(45)])
+                                "parameters": [named(32, "a", "t_bool"), named(33, "b", "t_uint256")]}}
+        literal = {"nodeType": "Literal", "id": 45, "kind": "number", "value": "1",
+                   "typeDescriptions": {"typeIdentifier": "t_rational_1_by_1"}}
+        statement = revert(40, 30, [literal])
         statement["errorCall"]["names"] = ["b"]
         self.assertEqual(coverage.coerced_literals(statement, {30: error}), [])
         statement["errorCall"]["names"] = ["a"]
-        self.assertEqual(coverage.coerced_literals(statement, {30: error}), [])
+        self.assertEqual(coverage.coerced_literals(statement, {30: error}), [coverage.Blocker(
+            "RevertStatement", "literals of non-integer types", "elaboration")])
 
     def test_modifiers_are_checked_where_live_functions_invoke_them(self) -> None:
         def string(node_id):
