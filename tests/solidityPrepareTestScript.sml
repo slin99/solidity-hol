@@ -96,3 +96,42 @@ val () = (rejects solidityPrepareLib.MalformedInput
     {root = "..", path = bad_artifact_path})))
   handle e => (OS.FileSys.remove bad_artifact_path; raise e);
 val () = OS.FileSys.remove bad_artifact_path;
+
+val artifact_stream = TextIO.openIn "../testdata/frontend/expected/pure_core.json";
+val artifact_text = TextIO.inputAll artifact_stream;
+val () = TextIO.closeIn artifact_stream;
+(* The sorted fixture's first settings object is input.settings. *)
+val settings_marker = "\"settings\": {";
+val (settings_prefix, settings_suffix) =
+  Substring.position settings_marker (Substring.full artifact_text);
+val () = if Substring.isEmpty settings_suffix then raise Fail "missing settings" else ();
+
+fun with_extra_settings extra check =
+  let
+    val path = OS.FileSys.tmpName ()
+    val stream = TextIO.openOut path
+    val () = TextIO.output (stream,
+      Substring.string settings_prefix ^ settings_marker ^ extra ^
+      Substring.string (Substring.triml (size settings_marker) settings_suffix))
+    val () = TextIO.closeOut stream
+    val () = check (fn () => solidityPrepareLib.read_artifact {root = "..", path = path})
+      handle e => (OS.FileSys.remove path; raise e)
+  in
+    OS.FileSys.remove path
+  end;
+
+val () = with_extra_settings "\"remappings\": [\"a/=b/\"],"
+  (fn read =>
+    case JSONUtil.get (read (), [JSONUtil.SEL "input", JSONUtil.SEL "settings",
+                                 JSONUtil.SEL "remappings"]) of
+      JSON.ARRAY [JSON.STRING "a/=b/"] => ()
+    | _ => raise Fail "remappings not retained");
+val () = with_extra_settings "\"remappings\": []," (fn read => ignore (read ()));
+val () = List.app (fn extra => with_extra_settings extra
+  (fn read => rejects solidityPrepareLib.MalformedInput (fn () => ignore (read ()))))
+  ["\"remappings\": \"a/=b/\",",
+   "\"remappings\": [1],",
+   "\"remappings\": [\"a/b/\"],",
+   "\"remappings\": [], \"remappings\": [],",
+   "\"remappings\": [\"a/=b/\"], \"unknownSetting\": true,",
+   "\"remappings\": [\"a/=b/\"], \"viaIR\": false,"];
