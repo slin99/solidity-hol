@@ -325,6 +325,20 @@ class CorpusTests(unittest.TestCase):
                     self.assertEqual([c["check"] for c in checks if c["status"] != "pass"],
                                      ["artifact-compiler-version"])
 
+    def test_checks_optional_remappings(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            artifact = json.loads((fake.root / ARTIFACT).read_text(encoding="utf-8"))
+            for remappings, accepted in (([], True), (["a/=b/"], True),
+                                          ("a/=b/", False), ([1], False),
+                                          (["a/b/"], False), (None, False)):
+                with self.subTest(remappings=remappings):
+                    artifact["input"]["settings"]["remappings"] = remappings
+                    fake.write(ARTIFACT, json.dumps(artifact))
+                    checks = driver.check_artifacts(fake.root, corpus())
+                    self.assertEqual([c["check"] for c in checks if c["status"] != "pass"],
+                                     [] if accepted else ["artifact-settings"])
+
     def test_detects_input_settings_inconsistent_with_profile(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fake = FakeRoot(Path(temporary))
@@ -333,6 +347,7 @@ class CorpusTests(unittest.TestCase):
                                ("outputSelection", {})):
                 with self.subTest(setting=key):
                     artifact = json.loads(json.dumps(original))
+                    artifact["input"]["settings"]["remappings"] = ["a/=b/"]
                     artifact["input"]["settings"][key] = value
                     fake.write(ARTIFACT, json.dumps(artifact))
                     checks = driver.check_artifacts(fake.root, corpus())

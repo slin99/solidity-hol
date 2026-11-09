@@ -339,9 +339,18 @@ def check_artifacts(root: Path, corpus: dict[str, Any]) -> list[dict[str, str]]:
                 f"{profile['compilerVersion']} at {pin}",
             ))
             expected_settings = {**profile["settings"], "outputSelection": exporter.OUTPUT_SELECTION}
+            input_settings = artifact.get("input", {}).get("settings")
+            remappings = (input_settings.get("remappings", [])
+                          if isinstance(input_settings, dict) else None)
+            settings_match = (
+                isinstance(remappings, list)
+                and all(isinstance(entry, str) and "=" in entry for entry in remappings)
+                and {key: value for key, value in input_settings.items() if key != "remappings"}
+                == expected_settings
+            )
             checks.append(check(
                 "artifact-settings", path,
-                None if artifact.get("input", {}).get("settings") == expected_settings
+                None if settings_match
                 else "Standard JSON settings differ from the pinned profile and output selection",
             ))
         artifact = artifacts[path]
