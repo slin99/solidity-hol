@@ -150,13 +150,30 @@ allocated so far, `0x60` for the shared empty object), and a block runs over
 a memory holding each byte sequence's length word and bytes there. Under
 `memoryguard` the compiler may start its free memory pointer above `0x80`, so
 arithmetic relative to a pointer is modelled but returning, storing or
-comparing a raw pointer value is outside the boundary. A literal address is
-read only where the block wrote it before, as the elaborator checks. At a
-computed address a block may read only the zero slot `[0x60, 0x80)`, each byte
-sequence's length word and data (zero-padded to whole words), and bytes it has
-written itself; any other read, the free memory pointer, another kind of memory
-object, the scratch space before the block writes it, or past an object's last
-word, ends the block with an `InvalidCompletion`. Bytes a block writes past an
+comparing a raw pointer value is outside the boundary. The block's memory also
+holds the free memory pointer at `0x40`, `0x80` plus the memory allocated so
+far, under the same boundary; a block that exits normally may not change it. A
+literal address is read only at the free memory pointer or where the block
+wrote it before (an `mstore`, or a call's output region), as the elaborator
+checks. At a computed address a block may read only the free memory pointer,
+the zero slot `[0x60, 0x80)`, each byte sequence's length word and data
+(zero-padded to whole words), and bytes it has written itself; any other read,
+another kind of memory object, the scratch space before the block writes it,
+or past an object's last word, ends the block with an `InvalidCompletion`.
+A callee that returns fewer bytes than the block's output region leaves the
+rest unwritten, so reading it fails closed where the EVM reads stale scratch:
+OpenZeppelin's `SafeERC20` against a token whose `transfer` returns nothing
+runs to that.
+
+Inline assembly's `call` and `staticcall` (`assembly_calls.sol`) run the
+callee on Verifereum through `externalCall`, as high-level calls do. The source
+tracks no gas, so `gas()` is admitted only as a call's gas argument, where it
+means the fixed budget every call from the source gets, and a literal gas
+argument is capped at that budget. The source keeps no return data buffer
+either, so `returndatasize` and `returndatacopy` are admitted only after a
+statement of the block that calls, earlier in the same or an enclosing
+statement list (a Yul function's body starts afresh). A block in a static
+frame that names `call` fails closed; `staticcall` runs. Bytes a block writes past an
 object's length, in its last word, aren't kept for the next block: a later block
 reads them as the padding's zeros. solc lets a block assign a memory
 reference (`b := ...`); the elaborator rejects it, since the block reads the
@@ -505,7 +522,8 @@ Admitted: one contract, flattened along its bases, with
   integer, as the compiler folds it;
 - `if`, `while`, `do`-`while`, `for`, `break`, `continue`, `return`,
   unchecked blocks, inline assembly over value-type locals, state-variable
-  slots, value-type constants and memory `bytes` and `string` locals;
+  slots, value-type constants and memory `bytes` and `string` locals, with
+  `call`, `staticcall` and their return data;
 - internal calls with single or multiple returns, library calls (`L.f(args)`
   and `x.f(args)` through a using directive) and library constants (`L.c`),
   `super` in calls, external calls of contract types;

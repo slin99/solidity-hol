@@ -865,16 +865,24 @@ End
 
 (* Inline assembly. A block runs in the Yul evaluator on a machine built from
  * the source state: the world, the frame, a scope binding each referenced
- * declaration's Yul name to its word, and a memory holding each memory byte
- * sequence (bytes, string) where the compiler keeps it: its length word at
- * the object's address, then its bytes. Nothing else of the source heap has a
- * byte image, so other memory reads 0, the free memory pointer included. On
- * normal exit the referenced locals are written back, cleaned per type as the
- * compiler cleans a value on every Solidity read, and each byte sequence's
- * bytes are read back from memory; writes outside the scratch space
- * [0, 0x40) and the byte sequences' data words fail closed, and so do writes
- * to a length word. In a static frame, a block that names a builtin changing
- * the world fails closed, whether or not it would run it.
+ * declaration's Yul name to its word, and a memory holding the free memory
+ * pointer at 0x40 and each memory byte sequence (bytes, string) where the
+ * compiler keeps it: its length word at the object's address, then its bytes.
+ * Nothing else of the source heap has a byte image, and the evaluator fails a
+ * read of memory the block was not given. On normal exit the referenced
+ * locals are written back, cleaned per type as the compiler cleans a value on
+ * every Solidity read, and each byte sequence's bytes are read back from
+ * memory; writes outside the scratch space [0, 0x40) and the byte sequences'
+ * data words fail closed, and so do writes to a length word or the free
+ * memory pointer. In a static frame, a block that names a builtin changing
+ * the world (call included) fails closed, whether or not it would run it.
+ *
+ * A call and staticcall run the callee as the source's own calls do
+ * (run_external_call), with the machine's gas budget the one every call from
+ * the source gets: gas() stands for it, and the static checks admit gas()
+ * only as a call's gas argument, so the budget is never a value the block
+ * sees. The return data buffer starts empty, and the static checks admit
+ * returndatasize and returndatacopy only after a call of the block's own.
  *
  * Known gap: source values carry no dirty bits, so a block reading a local
  * sees its clean word. The compiler's word for a bool local can be dirty: a
@@ -1034,15 +1042,17 @@ End
 Definition assembly_machine_def:
   assembly_machine (st : source_state) scope =
     assembly_project st.heap st.next_heap_id
-      <| accounts := st.world.accounts; transient := st.world.transient;
-         logs := st.world.logs; self_address := st.frame.self_address;
-         caller_address := st.frame.sender_address;
-         call_value := n2w st.frame.call_value;
-         call_data := st.frame.call_data; return_data := [];
-         code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
-         immutables := FEMPTY; memory := FEMPTY; memory_size := 0;
-         gas_limit := 0; scopes := [scope];
-         transaction_parameters := st.frame.tx_params |>
+      (yul_memory_write
+         <| accounts := st.world.accounts; transient := st.world.transient;
+            logs := st.world.logs; self_address := st.frame.self_address;
+            caller_address := st.frame.sender_address;
+            call_value := n2w st.frame.call_value;
+            call_data := st.frame.call_data; return_data := [];
+            code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
+            immutables := FEMPTY; memory := FEMPTY; memory_size := 0;
+            gas_limit := external_call_gas; scopes := [scope];
+            transaction_parameters := st.frame.tx_params |>
+         0x40 (word_to_bytes_be (n2w (memory_free_pointer st) : bytes32)))
 End
 
 (* The memory a block may change and still exit normally, as (start, length)

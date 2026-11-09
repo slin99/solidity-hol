@@ -2146,6 +2146,8 @@ Definition elab_stmts_def:
        else []) ++
       (if assembly_memory_ok code then []
        else [(info.node_id, "unsupported assembly memory use")]) ++
+      (if assembly_calls_ok code then []
+       else [(info.node_id, "unsupported assembly gas or return data use")]) ++
       (if ALL_DISTINCT (MAP FST refs) then []
        else [(info.node_id, "repeated assembly reference")]) in
     case elab_assembly_references ctx n info.node_id refs of
