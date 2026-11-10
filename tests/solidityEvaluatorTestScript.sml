@@ -1007,13 +1007,14 @@ End
 
 Definition short_static_def:
   short_static =
-    StaticCallOperation (ConstantAtom (AddressValue 0x5003w)) (BoundAtom (AstId 151))
+    LowLevelCallOperation ExternalStaticCall (ConstantAtom (AddressValue 0x5003w)) (k 0)
+      NONE (BoundAtom (AstId 151))
 End
 
 Definition short_try_def:
   short_try =
     TryExternalCallOperation ExternalCall [1w; 2w; 3w; 4w] [] []
-      (ConstantAtom (AddressValue 0x5004w)) (k 0) []
+      (ConstantAtom (AddressValue 0x5004w)) (k 0) NONE []
 End
 
 (* Reads b's last data word, padding included; copies its three bytes. *)
