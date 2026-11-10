@@ -81,12 +81,13 @@ the writes from the free memory pointer up, the temporary memory the Solidity
 docs allow a memory-safe block, are dropped. Whatever the address, a read outside the free memory pointer, the
 zero slot, the byte sequences' words and the bytes the block wrote fails with
 an `InvalidCompletion`. `return`/`stop`
-end the frame with a `HaltCompletion`. `call` and `staticcall` run the
-callee through the same `externalCall` adapter as high-level calls, with the
+end the frame with a `HaltCompletion`. `call`, `staticcall` and
+`delegatecall` run the callee through the same `externalCall` adapter as
+high-level calls (`delegatecall` in this contract's account), with the
 same fixed gas budget: `gas()` may only be a call's gas argument, where it
 stands for that budget, and `returndatasize`/`returndatacopy` only follow a
 call the block made itself (the source keeps no return data buffer). In a
-static frame a block naming `call` fails closed. Memory
+static frame a block naming `call` or `delegatecall` fails closed. Memory
 expansion gas is not modelled, so a halting block's write far past the used
 memory succeeds where the EVM runs out of gas. Memory/calldata execution and a memory
 model shared with inline assembly beyond byte sequences remain unresolved. High-level external calls and
