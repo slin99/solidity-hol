@@ -812,6 +812,23 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                     con "SrcSelector"
                       [info v, interface_id v (int_field arg "referencedDeclaration"),
                        type_id v]
+                  else if String.isPrefix "t_type$_t_enum$_" (raw_type_id arg) then
+                    let
+                      val declaration = int_field arg "referencedDeclaration"
+                      val member = string_field v "memberName"
+                      val () = require v (member = "min" orelse member = "max")
+                                 "unsupported enum type member"
+                      val members =
+                        case List.find (fn (id, _) => id = declaration) (!enum_declarations) of
+                          SOME (_, n) => n
+                        | NONE => fail (describe arg ^ ": unknown enum declaration")
+                      val () = require v (0 < members) "empty enum declaration"
+                    in
+                      con "SrcEnumValue"
+                        [info v, con "SrcEnumTypeName" [info arg, mk_num declaration],
+                         mk_num (IntInf.fromInt (if member = "min" then 0 else members - 1)),
+                         type_id v]
+                    end
                   else
                   (within arg (fn a => expect a "ElementaryTypeNameExpression");
                    con "SrcTypeMember"

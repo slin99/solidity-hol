@@ -22,6 +22,7 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/imports.json",
   "../testdata/differential/expected/errors.json",
   "../testdata/differential/expected/type_bounds.json",
+  "../testdata/differential/expected/enum_bounds.json",
   "../testdata/differential/expected/using_for.json",
   "../testdata/differential/expected/hashes.json",
   "../testdata/differential/expected/conditionals.json",
@@ -987,6 +988,32 @@ Theorem type_bound_values:
 Proof
   EVAL_TAC
 QED
+
+Definition enum_bounds_unit_def:
+  enum_bounds_unit = ^(import_artifact
+    "../testdata/differential/expected/enum_bounds.json"
+    "testdata/differential/enum_bounds.sol")
+End
+
+val () = cv_auto_trans enum_bounds_unit_def;
+
+Theorem enum_bounds_valid:
+  valid_src_unit enum_bounds_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+val () = expect_function_lines "unknown enum type member"
+  "../testdata/differential/expected/enum_bounds.json"
+  "testdata/differential/enum_bounds.sol" "fileBounds"
+  (edit_first "MemberAccess" (set_field "memberName" (JSON.STRING "middle")))
+  ["unsupported enum type member"]
+
+val () = expect_function_lines "unknown enum bound declaration"
+  "../testdata/differential/expected/enum_bounds.json"
+  "testdata/differential/enum_bounds.sol" "fileBounds"
+  (edit_first "Identifier" (set_field "referencedDeclaration" (JSON.INT 999999)))
+  ["unknown enum declaration"]
 
 (* Libraries: only internal functions, attached through a library name, with a
  * receiver that is not copied, are imported; library functions are plain
