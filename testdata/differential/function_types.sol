@@ -17,6 +17,13 @@ contract FunctionTypesBase {
     function combine(uint256 a, uint256 b) internal view virtual returns (uint256) {
         return a + b + counter;
     }
+
+    // `combine` here names the base declaration; run on FunctionTypes, the
+    // value is its override
+    function overriddenValue(uint256 a, uint256 b) external view returns (uint256) {
+        function(uint256, uint256) view returns (uint256) f = combine;
+        return f(a, b);
+    }
 }
 
 // Internal function values: references to private, internal, library, free
@@ -68,10 +75,6 @@ contract FunctionTypes is FunctionTypesBase {
 
     function freeValue(uint256 a, uint256 b) external view returns (uint256) {
         return applyView(larger, a, b);
-    }
-
-    function overriddenValue(uint256 a, uint256 b) external view returns (uint256) {
-        return applyView(combine, a, b);
     }
 
     function modifiedValue(uint256 a, uint256 b) external returns (uint256) {
