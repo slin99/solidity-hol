@@ -3134,7 +3134,9 @@ val elab_expr_pre_def = cv_auto_trans_pre_rec
    | INR (INR (INR (INR (INL (ctx, n, e))))) => 3 * cv_size e + 1
    | INR (INR (INR (INR (INR (INL (ctx, n, e)))))) => 3 * cv_size e + 2
    | INR (INR (INR (INR (INR (INR (ctx, n, es)))))) => 3 * cv_size es)’ >>
-  cv_termination_tac
+  cv_termination_tac >>
+  rpt IF_CASES_TAC >> gvs[] >>
+  simp[cvTheory.cv_size_def]
 );
 
 Theorem elab_pre_bounded[local]:
@@ -3156,7 +3158,11 @@ Proof
   >~ [‘elab_expr_pre ctx n e’] >-
     (PURE_ONCE_REWRITE_TAC [elab_expr_pre_def] >>
      rpt conj_tac >> rpt gen_tac >> disch_then SUBST_ALL_TAC >>
-     simp[solidityImportTheory.src_expr_size_def])
+     simp[solidityImportTheory.src_expr_size_def] >>
+     rename1 `src_expr_size (SrcIndexRangeAccess id base_expr lo hi ty)` >>
+     Cases_on `lo` >> Cases_on `hi` >>
+     simp[solidityImportTheory.src_expr_size_def,
+          basicSizeTheory.option_size_def, listTheory.list_size_def])
   >~ [‘elab_location_pre ctx n e’] >-
     (PURE_ONCE_REWRITE_TAC [elab_expr_pre_def] >>
      rpt conj_tac >> rpt gen_tac >> disch_then SUBST_ALL_TAC >>
