@@ -555,13 +555,14 @@ Definition low_level_external_kind_def:
   (low_level_external_kind LowLevelDelegateCall = ExternalDelegateCall)
 End
 
-(* The data of a low-level call is packed where it is: a memory bytes or a
- * bytes literal, never copied. *)
+(* The data of a low-level call is packed where it is: a memory or calldata
+ * bytes or a bytes literal, never copied into allocated memory. *)
 Definition low_level_data_def:
   low_level_data a vt =
     case (a, vt) of
       (ConstantAtom (BytesValue _), ElabBytesLiteral) => SOME a
     | (_, ElabType (LocatedT MemoryLoc BytesT)) => SOME a
+    | (_, ElabType (LocatedT CalldataLoc BytesT)) => SOME a
     | _ => NONE
 End
 
@@ -657,7 +658,7 @@ Definition expr_ids_def:
 End
 
 (* An argument of abi.encode*, with the ABI type it is encoded as: a scalar
- * as its type; a byte sequence, or a string literal, where it is, as the
+ * as its type; an unpacked array, byte sequence, or string literal where it is, as the
  * compiler encodes it in place; an integer literal (unpacked only) as its
  * mobile type, whose encoding is that of int256 or uint256. *)
 Definition abi_argument_def:
@@ -667,7 +668,7 @@ Definition abi_argument_def:
         if is_stored_scalar_type ty then INL (ty, a) else
         (case ty of
            LocatedT _ element =>
-             if byte_sequence_type element
+             if byte_sequence_type element ∨ (¬packed ∧ memory_object_type element)
              then INL (LocatedT MemoryLoc element, a)
              else INR "abi encoding of this type"
          | _ => INR "abi encoding of this type")
@@ -726,8 +727,8 @@ End
 
 (* The operation of abi.encode* on the values of its arguments, after any
  * statements converting the arguments: a selector given as an argument is
- * a bytes4, and the other arguments are scalars or byte sequences (integer
- * literals only unpacked, as the compiler requires). *)
+ * a bytes4, and the other arguments are scalars, arrays or byte sequences
+ * (arrays and integer literals only unpacked, as the compiler requires). *)
 Definition selector_encoding_def:
   selector_encoding (i : num) s svt r =
     let selector = (if svt = ElabType (FixedBytesT 4) then []
@@ -772,6 +773,15 @@ Definition abi_encoding_def:
                          (SOME (ConstantAtom (BytesValue (TAKE 4 (Keccak_256_w64 signature)))))
                          tys args), n)
          | INR bs => INR bs)
+End
+
+(* A decoded address keeps the compiler's annotation: plain address type
+ * names yield payable addresses, but erased UDVTs can stay nonpayable. *)
+Definition decoded_types_match_def:
+  (decoded_types_match [] [] ⇔ T) ∧
+  (decoded_types_match (ty :: tys) (out :: outs) ⇔
+     (out = ty ∨ out = decoded_type ty) ∧ decoded_types_match tys outs) ∧
+  (decoded_types_match _ _ ⇔ F)
 End
 
 (* An array or byte index, or an allocation length: an unsigned integer or a
@@ -884,6 +894,14 @@ Definition elab_expr_def:
            INL (([], ConstantAtom (BytesValue (MAP (n2w o ORD) value)),
                  ElabBytesLiteral), n)
          else if kind ≠ NumberLiteral then INR [(info.node_id, "unsupported literal")]
+         else if tid = "t_address" then
+           (case fromDecString value of
+              SOME i =>
+                if i < 2 ** 160 then
+                  INL (([], ConstantAtom (AddressValue (n2w i)),
+                        ElabType (AddressT NonpayableAddress)), n)
+                else INR [(info.node_id, "unsupported literal")]
+            | NONE => INR [(info.node_id, "unsupported literal")])
          else
            case decode_type_identifier tid of
              SOME (SrcRational i d) =>
@@ -1433,7 +1451,7 @@ Definition elab_expr_def:
                                    (option_atom GasOption opts atoms) d')],
                              BoundAtom (AstId n2), call_value tys), n2 + 1)
                    | (INR bs, _) => INR bs
-                   | (_, NONE) => INR [(did, "low-level call data not memory bytes")]
+                   | (_, NONE) => INR [(did, "low-level call data not memory or calldata bytes")]
                    | _ => INR [(info.node_id, "unsupported low-level call")])
               | _ => INR [(info.node_id, "unsupported low-level call")])
          | INR bs => INR bs)
@@ -1441,16 +1459,21 @@ Definition elab_expr_def:
         (* the data is decoded where it is, so it must already be memory bytes *)
         (case elab_expr ctx n e of
            INL ((ss, a, ElabType (LocatedT MemoryLoc BytesT)), n1) =>
-             (case OPTION_MAP (MAP decoded_type) (all_some (MAP normalize_type_name tns)) of
-                SOME (ty :: tys) =>
+             (case all_some (MAP normalize_type_name tns) of
+                SOME tys =>
+                  let out_tys =
+                    (case decode_type_identifier tid of
+                       SOME (SrcType ty) => [ty]
+                     | SOME (SrcTupleType ts) => ts
+                     | _ => []) in
                   (* only elementary types decode: bytes and string are type names too *)
-                  if ¬EVERY is_elementary_type (ty :: tys) ∨
-                     decode_type_identifier tid ≠ SOME (call_value_type (ty :: tys))
+                  if NULL out_tys ∨ ¬EVERY is_elementary_type out_tys ∨
+                     ¬decoded_types_match tys out_tys ∨
+                     decode_type_identifier tid ≠ SOME (call_value_type out_tys)
                   then INR [(info.node_id, "abi decoding of these types")] else
-                  INL ((ss ++ [DefineStmt (AstId n1) (call_result_type (ty :: tys))
-                                 (AbiDecodeOperation (ty :: tys) a)],
-                        BoundAtom (AstId n1), call_value (ty :: tys)), n1 + 1)
-              | SOME [] => INR [(info.node_id, "abi decoding of these types")]
+                  INL ((ss ++ [DefineStmt (AstId n1) (call_result_type out_tys)
+                                 (AbiDecodeOperation out_tys a)],
+                        BoundAtom (AstId n1), call_value out_tys), n1 + 1)
               | NONE =>
                   INR (FLAT (MAP (λtn. type_name_blockers
                                          (info.node_id, "unsupported type name") tn) tns)))
@@ -3144,6 +3167,7 @@ QED
 
 val () = cv_auto_trans selector_encoding_def;
 val () = cv_auto_trans abi_encoding_def;
+val () = cv_auto_trans decoded_types_match_def;
 val () = cv_auto_trans arrange_def;
 
 val elab_expr_pre_def = cv_auto_trans_pre_rec

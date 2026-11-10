@@ -341,6 +341,23 @@ Proof
   EVAL_TAC
 QED
 
+(* Calldata bytes are call data too, read where they are; a calldata string
+   is not. *)
+Definition calldata_data_call_def:
+  calldata_data_call kind element =
+    with_body (low_level_call_body kind (ConstantAtom (IntegerValue 0)) NONE
+                 (BoundAtom (AstId 83))) with
+      parameters := [(AstId 80, u256); (AstId 83, LocatedT CalldataLoc element)]
+End
+
+Theorem low_level_calldata_data_accepted:
+  EVERY (λkind. wf_core_procedure test_env (calldata_data_call kind BytesT))
+    [ExternalCall; ExternalStaticCall; ExternalDelegateCall] ∧
+  ¬wf_core_procedure test_env (calldata_data_call ExternalCall StringT)
+Proof
+  EVAL_TAC
+QED
+
 Theorem external_call_gas_option_accepted:
   wf_core_procedure test_env (with_body [
     DefineStmt (AstId 82) (SingleType u256)

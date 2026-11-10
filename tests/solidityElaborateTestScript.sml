@@ -714,3 +714,15 @@ Theorem function_conditional_fails_elaboration:
 Proof
   CONV_TAC cv_eval
 QED
+
+Theorem address_literal_bounds_checked:
+  elab_expr ^ctx0 10
+    (SrcLiteral ^(at 30) NumberLiteral
+       "1461501637330902918203684832716283019655932542976" "t_address") =
+    INR [(30, "unsupported literal")] ∧
+  elab_expr ^ctx0 10
+    (SrcLiteral ^(at 30) NumberLiteral "-1" "t_address") =
+    INR [(30, "unsupported literal")]
+Proof
+  EVAL_TAC
+QED

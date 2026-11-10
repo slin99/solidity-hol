@@ -1,0 +1,135 @@
+{
+  "name": "abi_decode_udvt",
+  "source": "testdata/differential/abi_decode_udvt.sol",
+  "contract": "AbiDecodeUDVT",
+  "artifact": "testdata/differential/expected/abi_decode_udvt.json",
+  "cases": [
+    {
+      "name": "single_zero",
+      "function": "single",
+      "args": [
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "single_ordinary",
+      "function": "single",
+      "args": [
+        "0x0000000000000000000000000000000000000000000000000000000000001234"
+      ],
+      "expect": {
+        "return": [
+          4660
+        ]
+      }
+    },
+    {
+      "name": "single_max",
+      "function": "single",
+      "args": [
+        "0x000000000000000000000000ffffffffffffffffffffffffffffffffffffffff"
+      ],
+      "expect": {
+        "return": [
+          1461501637330902918203684832716283019655932542975
+        ]
+      }
+    },
+    {
+      "name": "mixed_addresses",
+      "function": "mixed",
+      "args": [
+        "0x0000000000000000000000000000000000000000000000000000000000001234000000000000000000000000ffffffffffffffffffffffffffffffffffffffff"
+      ],
+      "expect": {
+        "return": [
+          4660,
+          1461501637330902918203684832716283019655932542975
+        ]
+      }
+    },
+    {
+      "name": "conditional_true",
+      "function": "conditional",
+      "args": [
+        true,
+        "0x0000000000000000000000000000000000000000000000000000000000000007",
+        "0x0000000000000000000000010000000000000000000000000000000000000000"
+      ],
+      "expect": {
+        "return": [
+          7
+        ]
+      }
+    },
+    {
+      "name": "conditional_false",
+      "function": "conditional",
+      "args": [
+        false,
+        "0x0000000000000000000000010000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000013"
+      ],
+      "expect": {
+        "return": [
+          19
+        ]
+      }
+    },
+    {
+      "name": "single_rejects_dirty",
+      "function": "single",
+      "args": [
+        "0x0000000000000000000000010000000000000000000000000000000000000000"
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "single_rejects_short",
+      "function": "single",
+      "args": [
+        "0x00000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "mixed_rejects_dirty_udvt",
+      "function": "mixed",
+      "args": [
+        "0x00000000000000000000000100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001"
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "mixed_rejects_dirty_plain",
+      "function": "mixed",
+      "args": [
+        "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000010000000000000000000000000000000000000000"
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "mixed_rejects_short_tuple",
+      "function": "mixed",
+      "args": [
+        "0x0000000000000000000000000000000000000000000000000000000000000001"
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    }
+  ]
+}
