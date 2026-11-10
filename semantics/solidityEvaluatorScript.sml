@@ -554,6 +554,16 @@ Definition external_call_gas_def:
   external_call_gas = 10000000n
 End
 
+(* The gas a call gives its callee with its gas option: the option, capped at
+ * external_call_gas as the CALL opcode caps it at the gas left. *)
+Definition callee_gas_def:
+  (callee_gas scopes NONE = SOME external_call_gas) ∧
+  (callee_gas scopes (SOME g) =
+    case eval_atom scopes g of
+      SOME (ScalarValue (IntegerValue n)) => SOME (MIN (Num n) external_call_gas)
+    | _ => NONE)
+End
+
 (* A high-level call, as the compiler's code makes it: arguments ABI-encoded
  * after the selector; a call that expects no return data reverts on a target
  * without code; a failed call reverts with the callee's revert data; return
@@ -571,12 +581,12 @@ Definition default_call_results_def:
 End
 
 Definition call_external_mode_def:
-  call_external_mode catching env x ty kind selector params rets target value args
-                (st : source_state) gas =
+  call_external_mode catching env x ty kind selector params rets target value
+                g args (st : source_state) gas =
     case (eval_atom st.scopes target, eval_atom st.scopes value,
-          eval_atoms st.scopes args) of
+          callee_gas st.scopes g, eval_atoms st.scopes args) of
       (SOME (ScalarValue (AddressValue callee)),
-       SOME (ScalarValue (IntegerValue v)), SOME vs) =>
+       SOME (ScalarValue (IntegerValue v)), SOME limit, SOME vs) =>
         if rets = [] ∧ (lookup_account callee st.world.accounts).code = []
         then abrupt_result (RevertCompletion []) st gas
         else (case encoded_runtime_values env st params vs of
@@ -587,7 +597,7 @@ Definition call_external_mode_def:
              abrupt_result (InvalidCompletion "value in static frame") st gas
            else
              case run_external_call st.frame.self_address callee
-                    (selector ++ data) (Num v) static external_call_gas
+                    (selector ++ data) (Num v) static limit
                     st.world.accounts st.world.transient st.frame.tx_params of
                NONE =>
                  abrupt_result (InvalidCompletion "call outside the model") st gas
@@ -636,25 +646,42 @@ Definition call_external_mode_def:
 End
 
 Definition call_external_def:
-  call_external env x ty kind selector params rets target value args st gas =
-    call_external_mode F env x ty kind selector params rets target value args st gas
+  call_external env x ty kind selector params rets target value g args st gas =
+    call_external_mode F env x ty kind selector params rets target value g args
+      st gas
 End
 
-(* A low-level target.staticcall(data), as the compiler makes it: the data
- * passed where it is, no check that the target has code, and a failure
- * returned rather than reverted. No return data is the empty array at 0x60;
- * other return data is copied to a new memory bytes.
+(* A low-level target.call(data), target.staticcall(data) or
+ * target.delegatecall(data), as the compiler makes it: the data passed where
+ * it is, no check that the target has code, and a failure returned rather
+ * than reverted. A delegate call runs the target's code in this contract's
+ * account, with this frame's sender and value. No return data is the empty
+ * array at 0x60; other return data is copied to a new memory bytes.
  *)
-Definition call_static_def:
-  call_static x ty target data (st : source_state) gas =
-    case (eval_atom st.scopes target, eval_atom st.scopes data) of
-      (SOME (ScalarValue (AddressValue callee)), SOME (ReferenceValue d)) =>
-        (case byte_contents st d of
+Definition call_low_level_def:
+  call_low_level x ty kind target value g data (st : source_state) gas =
+    case (eval_atom st.scopes target, eval_atom st.scopes value,
+          callee_gas st.scopes g, eval_atom st.scopes data) of
+      (SOME (ScalarValue (AddressValue callee)),
+       SOME (ScalarValue (IntegerValue v)), SOME limit, SOME d) =>
+        (case (case d of
+                 ScalarValue (BytesValue bs) => INL bs
+               | ReferenceValue r => byte_contents st r
+               | _ => INR (InvalidCompletion "bad call data")) of
            INR c => abrupt_result c st gas
          | INL bs =>
-           case run_external_call st.frame.self_address callee bs 0 T
-                  external_call_gas st.world.accounts st.world.transient
-                  st.frame.tx_params of
+           let static = (kind = ExternalStaticCall ∨ st.frame.static_context) in
+           if static ∧ v ≠ 0 then
+             abrupt_result (InvalidCompletion "value in static frame") st gas
+           else
+           case (if kind = ExternalDelegateCall then
+                   run_delegate_call st.frame.self_address st.frame.sender_address
+                     st.frame.call_value callee bs static limit
+                     st.world.accounts st.world.transient st.frame.tx_params
+                 else
+                   run_external_call st.frame.self_address callee bs (Num v)
+                     static limit st.world.accounts st.world.transient
+                     st.frame.tx_params) of
              NONE => abrupt_result (InvalidCompletion "call outside the model") st gas
            | SOME res =>
              let st' = if res.call_success then
@@ -674,7 +701,7 @@ Definition call_static_def:
              else
                let (v, st1) = allocate_bytes BytesT res.call_return st' in
                normal_result (define_binding x ty (TupleValue [success; v]) st1) gas)
-    | _ => abrupt_result (InvalidCompletion "bad staticcall operands") st gas
+    | _ => abrupt_result (InvalidCompletion "bad low-level call operands") st gas
 End
 
 (* The selector an ABI encoding starts with: none, or four bytes. *)
@@ -777,13 +804,14 @@ Definition simple_stmt_def:
     | DefineStmt x ty (ArrayPopOperation a) =>
         pop_storage_array env x ty a st gas
     | DefineStmt x ty (ExternalCallOperation kind selector params rets target
-                         value args) =>
-        call_external env x ty kind selector params rets target value args st gas
-    | DefineStmt x ty (StaticCallOperation target data) =>
-        call_static x ty target data st gas
+                         value g args) =>
+        call_external env x ty kind selector params rets target value g args st gas
+    | DefineStmt x ty (LowLevelCallOperation kind target value g data) =>
+        call_low_level x ty kind target value g data st gas
     | DefineStmt x ty (TryExternalCallOperation kind selector params rets target
-                         value args) =>
-        call_external_mode T env x ty kind selector params rets target value args st gas
+                         value g args) =>
+        call_external_mode T env x ty kind selector params rets target value g
+          args st gas
     | DefineStmt x ty op =>
         (case eval_operation env st op of
            ValueOk v => normal_result (define_binding x ty v st) gas
