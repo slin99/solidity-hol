@@ -970,6 +970,22 @@ Definition assembly_reference_word_def:
         OPTION_MAP (λv. w2n v.state_slot) (lookup_state_variable env x)
     | AssemblyOffset x =>
         OPTION_MAP (λv. v.state_offset) (lookup_state_variable env x)
+    | AssemblyPointerSlot x =>
+        (case lookup_binding x st.scopes of
+           SOME b =>
+             (case b.binding_value of
+                ReferenceValue (StorageReference PersistentStorage _ slot _ _ _) =>
+                  SOME (w2n slot)
+              | _ => NONE)
+         | NONE => NONE)
+    | AssemblyPointerOffset x =>
+        (case lookup_binding x st.scopes of
+           SOME b =>
+             (case b.binding_value of
+                ReferenceValue (StorageReference PersistentStorage _ _ offset _ _) =>
+                  SOME offset
+              | _ => NONE)
+         | NONE => NONE)
     | AssemblyConstant a ty =>
         (case eval_atom st.scopes a of
            SOME (ScalarValue s) => assembly_word ty s
@@ -986,8 +1002,9 @@ Definition assembly_reference_word_def:
          | NONE => NONE)
 End
 
-(* The words of a block's references: the locals' as the block's initial
- * scope, and the read-only ones' by name, for the code to hold as literals. *)
+(* The words of a block's references: the assignable ones' (locals and
+ * storage pointer slots) as the block's initial scope, and the read-only
+ * ones' by name, for the code to hold as literals. *)
 Definition assembly_inputs_def:
   (assembly_inputs env st [] =
     SOME (FEMPTY : string |-> bytes32, [] : (string # bytes32) list)) ∧
@@ -996,6 +1013,7 @@ Definition assembly_inputs_def:
       (SOME w, SOME (scope, literals)) =>
         (case r of
            AssemblyLocal _ _ => SOME (scope |+ (name, n2w w), literals)
+         | AssemblyPointerSlot _ => SOME (scope |+ (name, n2w w), literals)
          | _ => SOME (scope, (name, n2w w) :: literals))
     | _ => NONE)
 End
@@ -1164,9 +1182,12 @@ Definition assembly_world_def:
 End
 
 (* Writes a referenced local back from the block's final scopes; a location
- * or constant reference has nothing to write. *)
+ * or constant reference has nothing to write. A storage pointer whose slot
+ * the block may have assigned is rebound to that slot of the executing
+ * account, at offset 0, keeping its type, as the compiler keeps the pointer
+ * as the slot alone. *)
 Definition assembly_write_one_def:
-  assembly_write_one (name, r) scopes (yscopes : (string |-> bytes32) list) =
+  assembly_write_one self (name, r) scopes (yscopes : (string |-> bytes32) list) =
     case r of
       AssemblyLocal x ty =>
         (case yul_lookup name yscopes of
@@ -1178,15 +1199,26 @@ Definition assembly_write_one_def:
                  if assembly_word ty s = SOME (w2n w) then
                    update_binding x (ScalarValue s) scopes
                  else NONE)
+    | AssemblyPointerSlot x =>
+        (case (yul_lookup name yscopes, lookup_binding x scopes) of
+           (SOME w, SOME b) =>
+             (case b.binding_value of
+                ReferenceValue (StorageReference PersistentStorage _ _ _ ty layout) =>
+                  update_binding x
+                    (ReferenceValue
+                       (StorageReference PersistentStorage self w 0 ty layout))
+                    scopes
+              | _ => NONE)
+         | _ => NONE)
     | _ => SOME scopes
 End
 
 Definition assembly_write_back_def:
-  (assembly_write_back [] scopes yscopes = SOME scopes) ∧
-  (assembly_write_back (r :: refs) scopes yscopes =
-    case assembly_write_one r scopes yscopes of
+  (assembly_write_back self [] scopes yscopes = SOME scopes) ∧
+  (assembly_write_back self (r :: refs) scopes yscopes =
+    case assembly_write_one self r scopes yscopes of
       NONE => NONE
-    | SOME scopes' => assembly_write_back refs scopes' yscopes)
+    | SOME scopes' => assembly_write_back self refs scopes' yscopes)
 End
 
 (* The return data after a block that exits normally. A non-empty buffer
@@ -1213,7 +1245,8 @@ Definition assembly_result_def:
             (InvalidCompletion "assembly wrote memory outside the scratch space and byte sequence data")
             st gas
         else
-          (case assembly_write_back refs st.scopes r.machine.scopes of
+          (case assembly_write_back st.frame.self_address refs st.scopes
+                  r.machine.scopes of
              SOME scopes =>
                normal_result (st with <| world := world; scopes := scopes;
                    heap := assembly_read_back st.heap st.next_heap_id r.machine;

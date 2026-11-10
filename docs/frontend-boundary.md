@@ -163,6 +163,12 @@ encoding the resulting value reproduces that exact word. Non-canonical
 `InvalidCompletion`; they are not silently cleaned. Canonical negative signed
 words are sign-extended and fixed-byte words are left-aligned.
 
+Inline assembly reads a storage pointer local's `x.slot` and `x.offset` as
+its reference's slot and offset (`assembly_pointers.sol`). Assigning `x.slot`,
+as OpenZeppelin's `StorageSlot` and ERC-7201 namespaced storage getters do,
+points the local at that slot of the executing account, at offset 0, with its
+declared type; the compiler rejects assigning `x.offset`.
+
 Inline assembly reads a memory `bytes` or `string` local as its address
 (`assembly_memory.sol`). The source heap gives each object the address the
 compiler's allocator would (`object_address`: `0x80` plus the memory
@@ -589,7 +595,7 @@ Admitted: one contract, flattened along its bases, with
   integer, as the compiler folds it;
 - `if`, `while`, `do`-`while`, `for`, `break`, `continue`, `return`,
   unchecked blocks, inline assembly over value-type locals, state-variable
-  slots, value-type constants and memory `bytes` and `string` locals, with
+  slots, storage pointer slots and offsets, value-type constants and memory `bytes` and `string` locals, with
   `call`, `staticcall` and their return data;
 - internal calls with single or multiple returns, library calls (`L.f(args)`
   and `x.f(args)` through a using directive) and library constants (`L.c`),

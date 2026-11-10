@@ -1296,6 +1296,13 @@ Definition assembly_gas_ok_def:
   assembly_gas_ok code ⇔ call_stmts_ok T code
 End
 
+Definition storage_pointer_binding_def:
+  storage_pointer_binding ctx x ⇔
+    case ALOOKUP ctx.bindings x of
+      SOME (SingleType (LocatedT StorageLoc _)) => T
+    | _ => F
+End
+
 Definition assembly_reference_ok_def:
   assembly_reference_ok env ctx r ⇔
     case r of
@@ -1303,6 +1310,8 @@ Definition assembly_reference_ok_def:
         ALOOKUP ctx.bindings x = SOME (SingleType ty) ∧ assembly_value_type ty
     | AssemblySlot x => IS_SOME (lookup_state_variable env x)
     | AssemblyOffset x => IS_SOME (lookup_state_variable env x)
+    | AssemblyPointerSlot x => storage_pointer_binding ctx x
+    | AssemblyPointerOffset x => storage_pointer_binding ctx x
     | AssemblyConstant a ty =>
         wf_core_atom env ctx (SingleType ty) a ∧ assembly_value_type ty
     | AssemblyMemory x ty =>
