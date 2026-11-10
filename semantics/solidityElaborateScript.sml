@@ -166,7 +166,7 @@ Definition expr_id_def:
   (expr_id (SrcEcrecover info _ _ _) = info.node_id) ∧
   (expr_id (SrcAbiEncode info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcAbiDecode info _ _ _ _) = info.node_id) ∧
-  (expr_id (SrcStaticCall info _ _ _ _) = info.node_id) ∧
+  (expr_id (SrcLowLevelCall info _ _ _ _ _) = info.node_id) ∧
   (expr_id (SrcUnsupportedExpr info _ _) = info.node_id)
 End
 
@@ -493,7 +493,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcEcrecover _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcAbiDecode _ _ e _ _) ⇔ expr_assigns e) ∧
-  (expr_assigns (SrcStaticCall _ _ target data _) ⇔ expr_assigns target ∨ expr_assigns data) ∧
+  (expr_assigns (SrcLowLevelCall _ _ _ _ operands _) ⇔ exprs_assign operands) ∧
   (expr_assigns (SrcSuperCall _ _ args _ _) ⇔ exprs_assign args) ∧
   (expr_assigns _ ⇔ F) ∧
   (components_assign [] ⇔ F) ∧
@@ -520,15 +520,49 @@ Definition call_value_def:
   (call_value tys = ElabTuple tys)
 End
 
+(* The atom a call gives its option k, from the call's options in source
+ * order and their atoms. *)
+Definition option_atom_def:
+  (option_atom k (k' :: ks) (a :: as) =
+    if k = k' then SOME a else option_atom k ks as) ∧
+  (option_atom k _ _ = NONE)
+End
+
+(* The value a call sends: its value option, or none. *)
+Definition option_value_def:
+  option_value opts atoms =
+    case option_atom ValueOption opts atoms of
+      SOME a => a
+    | NONE => ConstantAtom (IntegerValue 0)
+End
+
 (* A high-level call of a view or pure function is a static call. *)
 Definition external_call_value_def:
-  external_call_value n mutability selector params rets ss target value args =
+  external_call_value n mutability selector params rets ss target opts atoms
+                      args =
     let kind = if mutability = ViewMut ∨ mutability = PureMut
                then ExternalStaticCall else ExternalCall in
     ((ss ++ [DefineStmt (AstId n) (call_result_type rets)
-               (ExternalCallOperation kind selector params rets target value
+               (ExternalCallOperation kind selector params rets target
+                  (option_value opts atoms) (option_atom GasOption opts atoms)
                   args)],
       BoundAtom (AstId n), call_value rets), n + 1)
+End
+
+Definition low_level_external_kind_def:
+  (low_level_external_kind LowLevelCall = ExternalCall) ∧
+  (low_level_external_kind LowLevelStaticCall = ExternalStaticCall) ∧
+  (low_level_external_kind LowLevelDelegateCall = ExternalDelegateCall)
+End
+
+(* The data of a low-level call is packed where it is: a memory bytes or a
+ * bytes literal, never copied. *)
+Definition low_level_data_def:
+  low_level_data a vt =
+    case (a, vt) of
+      (ConstantAtom (BytesValue _), ElabBytesLiteral) => SOME a
+    | (_, ElabType (LocatedT MemoryLoc BytesT)) => SOME a
+    | _ => NONE
 End
 
 (* The components of a multiple-value binding, as fresh bindings. *)
@@ -1190,15 +1224,16 @@ Definition elab_expr_def:
                     BoundAtom (AstId n1), ElabTuple []), n1 + 1)
               | INL _ => INR [(expr_id c, "condition not a bool")]
               | INR bs => INR bs))
-    (* Value only for a payable callee, as the compiler requires; calls
-       returning enums are not supported yet. *)
-    | SrcExternalCall info callee with_value operands order tid =>
+    (* The operands are the target, the call options in source order and
+       the arguments. Value only for a payable callee, as the compiler
+       requires; calls returning enums are not supported yet. *)
+    | SrcExternalCall info callee opts operands order tid =>
         (let shape =
            (case (all_some (MAP call_variable_type callee.ext_parameters),
                   all_some (MAP call_variable_type callee.ext_returns)) of
               (SOME params, SOME rets) =>
-                if (with_value ⇒ callee.ext_mutability = PayableMut) ∧
-                   LENGTH operands = LENGTH params + (if with_value then 2 else 1) ∧
+                if (MEM ValueOption opts ⇒ callee.ext_mutability = PayableMut) ∧
+                   LENGTH operands = LENGTH params + 1 + LENGTH opts ∧
                    argument_order_ok order (LENGTH params) ∧
                    decode_type_identifier tid = SOME (call_value_type rets) ∧
                    EVERY (λty. case ty of EnumT _ => F | _ => T) rets
@@ -1212,17 +1247,11 @@ Definition elab_expr_def:
                 (SOME vs, SOME ids) =>
                   (case convert_operands next info.node_id ids
                           (encoded_as (AddressT NonpayableAddress ::
-                             (if with_value then [UintT 256] else []) ++ params)) vs of
+                             REPLICATE (LENGTH opts) (UintT 256) ++ params)) vs of
                      INL (cs, _, t :: atoms, n1) =>
-                       (case (with_value, atoms) of
-                          (T, v :: args) =>
-                            INL (external_call_value n1 callee.ext_mutability
-                                   callee.ext_selector params rets (ss ++ cs) t v args)
-                        | (F, args) =>
-                            INL (external_call_value n1 callee.ext_mutability
-                                   callee.ext_selector params rets (ss ++ cs) t
-                                   (ConstantAtom (IntegerValue 0)) args)
-                        | _ => INR [(info.node_id, "unsupported external call")])
+                       INL (external_call_value n1 callee.ext_mutability
+                              callee.ext_selector params rets (ss ++ cs) t opts
+                              (TAKE (LENGTH opts) atoms) (DROP (LENGTH opts) atoms))
                    | INL _ => INR [(info.node_id, "unsupported external call")]
                    | INR bs => INR bs)
               | _ => INR [(info.node_id, "unsupported external call")]))
@@ -1377,30 +1406,37 @@ Definition elab_expr_def:
               | INL _ => INR [(info.node_id, "value count mismatch")]
               | INR bs => INR bs)
          | INR bs => INR bs)
-    | SrcStaticCall info _ target data tid =>
-        (* the data is passed where it is, so it must already be memory bytes *)
-        (case elab_expr ctx n target of
-           INL ((st, t, tvt), n1) =>
-             if ¬(case tvt of ElabType (AddressT _) => T | _ => F) ∨
-                decode_type_identifier tid ≠
-                  SOME (call_value_type [BoolT; LocatedT MemoryLoc BytesT])
-             then reject (info.node_id, "unsupported static call") (elab_expr ctx n1 data) else
-             let (copied, n2) =
-               if expr_assigns data then snapshot n1 t tvt else (([], t), n1) in
-             let (st', t') = copied in
-             (case elab_expr ctx n2 data of
-                INL ((sd, d, ElabType (LocatedT MemoryLoc BytesT)), n3) =>
-                  (case coerce n3 (AddressT NonpayableAddress) t' tvt of
-                     INL ((cs, t''), n4) =>
+    (* The operands are the target, the call options in source order and
+       the data, evaluated in that order. Only call sends value. *)
+    | SrcLowLevelCall info _ kind opts operands tid =>
+        if ¬(decode_type_identifier tid =
+               SOME (call_value_type [BoolT; LocatedT MemoryLoc BytesT]) ∧
+             LENGTH operands = LENGTH opts + 2 ∧
+             (kind ≠ LowLevelCall ⇒ ¬MEM ValueOption opts))
+        then reject (info.node_id, "unsupported low-level call")
+               (elab_arg_values ctx n operands) else
+        (case elab_arg_values ctx n operands of
+           INL ((ss, vs), n1) =>
+             (case (REVERSE vs, REVERSE (expr_ids operands)) of
+                ((d, dvt) :: rvs, did :: rids) =>
+                  (case (convert_operands n1 info.node_id (REVERSE rids)
+                           (ValueOf (AddressT NonpayableAddress) ::
+                            REPLICATE (LENGTH opts) (ValueOf (UintT 256)))
+                           (REVERSE rvs),
+                         low_level_data d dvt) of
+                     (INL (cs, _, t :: atoms, n2), SOME d') =>
                        let tys = [BoolT; LocatedT MemoryLoc BytesT] in
-                       INL ((st ++ st' ++ sd ++ cs ++
-                             [DefineStmt (AstId n4) (call_result_type tys)
-                                (StaticCallOperation t'' d)],
-                             BoundAtom (AstId n4), call_value tys), n4 + 1)
-                   | INR why => INR [(expr_id target, why)])
-              | INL _ => INR [(expr_id data, "static call data not memory bytes")]
-              | INR bs => INR bs)
-         | INR bs => INR (bs ++ blockers (elab_expr ctx n data)))
+                       INL ((ss ++ cs ++
+                             [DefineStmt (AstId n2) (call_result_type tys)
+                                (LowLevelCallOperation (low_level_external_kind kind)
+                                   t (option_value opts atoms)
+                                   (option_atom GasOption opts atoms) d')],
+                             BoundAtom (AstId n2), call_value tys), n2 + 1)
+                   | (INR bs, _) => INR bs
+                   | (_, NONE) => INR [(did, "low-level call data not memory bytes")]
+                   | _ => INR [(info.node_id, "unsupported low-level call")])
+              | _ => INR [(info.node_id, "unsupported low-level call")])
+         | INR bs => INR bs)
     | SrcAbiDecode info _ e tns tid =>
         (* the data is decoded where it is, so it must already be memory bytes *)
         (case elab_expr ctx n e of
@@ -1862,12 +1898,14 @@ End
 Definition try_external_call_def:
   try_external_call ss result =
     case REVERSE ss of
-      DefineStmt x _ (ExternalCallOperation kind selector params rets target value args) :: pre =>
+      DefineStmt x _ (ExternalCallOperation kind selector params rets target value g
+                        args) :: pre =>
         if result = BoundAtom x ∧ EVERY is_stored_scalar_type rets then
           let types = BoolT :: rets in
           SOME (REVERSE pre ++
             [DefineStmt x (ProductType (MAP SingleType types ++ [RevertDataType]))
-              (TryExternalCallOperation kind selector params rets target value args)],
+              (TryExternalCallOperation kind selector params rets target value g
+                 args)],
             types)
         else NONE
     | _ => NONE
