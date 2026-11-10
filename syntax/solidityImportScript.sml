@@ -1044,8 +1044,7 @@ Definition source_struct_field_def:
     | NONE => NONE
 End
 
-(* Literal bytes are imported from solc's hexValue, including UTF-8 and NULs.
- * Dynamic strings are a later runtime increment. *)
+(* Literal bytes are imported from solc's hexValue, including UTF-8 and NULs. *)
 Definition literal_message_def:
   (literal_message (SrcLiteral _ kind value tid) =
     if kind ≠ NumberLiteral ∧ kind ≠ BoolLiteral ∧
@@ -1055,7 +1054,7 @@ Definition literal_message_def:
 End
 
 Definition builtin_shape_def:
-  (builtin_shape AssertBuiltin condition message ⇔
+  (builtin_shape AssertBuiltin (condition : src_expr option) (message : src_expr option) ⇔
     IS_SOME condition ∧ message = NONE) ∧
   (builtin_shape RequireBuiltin condition message ⇔
     IS_SOME condition) ∧
