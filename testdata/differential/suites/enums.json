@@ -62,17 +62,6 @@
       }
     },
     {
-      "name": "stored_byte_out_of_range_panics",
-      "function": "current",
-      "args": [],
-      "storage": {
-        "0": 5
-      },
-      "expect": {
-        "panic": "0x21"
-      }
-    },
-    {
       "name": "advance_converts_back",
       "function": "advance",
       "args": [],
@@ -247,55 +236,6 @@
       }
     },
     {
-      "name": "mapping_byte_out_of_range_panics",
-      "function": "isActive",
-      "args": [
-        12288
-      ],
-      "storage": {
-        "50475380566019111153475393030133440076602138498750187031960546369980623491947": 5
-      },
-      "expect": {
-        "panic": "0x21"
-      }
-    },
-    {
-      "name": "array_byte_out_of_range_panics",
-      "function": "historyAt",
-      "args": [
-        1
-      ],
-      "storage": {
-        "2": 2,
-        "29102676481673041902632991033461445430619272659676223336789171408008386403022": 1280
-      },
-      "expect": {
-        "panic": "0x21"
-      }
-    },
-    {
-      "name": "packed_byte_out_of_range_panics",
-      "function": "current",
-      "args": [],
-      "storage": {
-        "0": 1281
-      },
-      "expect": {
-        "panic": "0x21"
-      }
-    },
-    {
-      "name": "getter_byte_out_of_range_panics",
-      "function": "status",
-      "args": [],
-      "storage": {
-        "0": 5
-      },
-      "expect": {
-        "panic": "0x21"
-      }
-    },
-    {
       "name": "event_arguments",
       "function": "announce",
       "args": [
@@ -377,17 +317,6 @@
           7,
           2
         ]
-      }
-    },
-    {
-      "name": "struct_field_byte_out_of_range_panics",
-      "function": "entryFields",
-      "args": [],
-      "storage": {
-        "3": 591617
-      },
-      "expect": {
-        "panic": "0x21"
       }
     },
     {

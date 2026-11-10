@@ -473,14 +473,27 @@ fun is_external_call callee =
   String.isPrefix "t_function_external_"
     (string_field (field callee "typeDescriptions") "typeIdentifier")
 
-(* a.staticcall, as a callee: the address member, not a function attached to
- * addresses by using for. *)
-fun is_bare_staticcall callee =
-  node_type callee = "MemberAccess" andalso
-  string_field callee "memberName" = "staticcall" andalso
-  not (isSome (optional_field callee "referencedDeclaration")) andalso
-  List.exists (fn t => t = raw_type_id (field callee "expression"))
-    ["t_address", "t_address_payable"]
+(* a.call, a.staticcall or a.delegatecall, as a callee: the address member,
+ * not a function attached to addresses by using for. Its low_level_kind. *)
+fun low_level_kind callee =
+  if node_type callee = "MemberAccess" andalso
+     not (isSome (optional_field callee "referencedDeclaration")) andalso
+     List.exists (fn t => t = raw_type_id (field callee "expression"))
+       ["t_address", "t_address_payable"]
+  then
+    case string_field callee "memberName" of
+      "call" => SOME "LowLevelCall"
+    | "staticcall" => SOME "LowLevelStaticCall"
+    | "delegatecall" => SOME "LowLevelDelegateCall"
+    | _ => NONE
+  else NONE
+
+(* The function a callee with call options {...} applies them to. *)
+fun options_target callee =
+  if node_type callee = "FunctionCallOptions" then field callee "expression"
+  else callee
+
+val call_option_ty = import_type "call_option"
 
 (* bytes.concat or string.concat, as a callee: kind is "bytes" or "string". *)
 fun is_concat kind callee =
@@ -798,6 +811,23 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                     con "SrcSelector"
                       [info v, interface_id v (int_field arg "referencedDeclaration"),
                        type_id v]
+                  else if String.isPrefix "t_type$_t_enum$_" (raw_type_id arg) then
+                    let
+                      val declaration = int_field arg "referencedDeclaration"
+                      val member = string_field v "memberName"
+                      val () = require v (member = "min" orelse member = "max")
+                                 "unsupported enum type member"
+                      val members =
+                        case List.find (fn (id, _) => id = declaration) (!enum_declarations) of
+                          SOME (_, n) => n
+                        | NONE => fail (describe arg ^ ": unknown enum declaration")
+                      val () = require v (0 < members) "empty enum declaration"
+                    in
+                      con "SrcEnumValue"
+                        [info v, con "SrcEnumTypeName" [info arg, mk_num declaration],
+                         mk_num (IntInf.fromInt (if member = "min" then 0 else members - 1)),
+                         type_id v]
+                    end
                   else
                   (within arg (fn a => expect a "ElementaryTypeNameExpression");
                    con "SrcTypeMember"
@@ -828,15 +858,35 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                 end
            end)
   | "Literal" =>
-      (require v (not (isSome (optional_field v "subdenomination")))
-         "literal subdenominations are not supported";
-       con "SrcLiteral"
-         [info v, decode v "literal kind" literal_kinds (string_field v "kind"),
-          mk_str (if List.exists (fn k => k = string_field v "kind")
+      let
+        val kind = string_field v "kind"
+        val tid = raw_type_id v
+        val () = case optional_field v "subdenomination" of
+          NONE => ()
+        | SOME unit =>
+            require v (kind = "number" andalso String.isPrefix "t_rational_" tid andalso
+                       List.exists (fn u => u = JSONUtil.asString unit)
+                         ["wei", "gwei", "ether", "seconds", "minutes", "hours", "days", "weeks"])
+              "unsupported literal subdenomination"
+        val value =
+          if kind = "number" andalso tid = "t_address" then
+            let
+              val s = string_field v "value"
+              val () = require v (size s = 42 andalso String.isPrefix "0x" s)
+                         "invalid address literal"
+            in
+              IntInf.toString
+                (foldl (fn (b, n) => 256 * n + IntInf.fromInt b) 0
+                  (hex_bytes v (String.extract (s, 2, NONE))))
+            end
+          else if List.exists (fn k => k = kind)
                        ["string", "unicodeString", "hexString"] then
-                    String.implode
-                      (map Char.chr (hex_bytes v (string_field v "hexValue")))
-                  else string_field v "value"), type_id v])
+            String.implode (map Char.chr (hex_bytes v (string_field v "hexValue")))
+          else string_field v "value"
+      in
+        con "SrcLiteral"
+          [info v, decode v "literal kind" literal_kinds kind, mk_str value, type_id v]
+      end
   | "UnaryOperation" =>
       let val operand = expr (field v "subExpression") in
         if isSome (optional_field v "function") then operator_call v [operand]
@@ -912,7 +962,9 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
         require v (not (bool_field v "tryCall")) "try calls are not supported";
         case string_field v "kind" of
           "functionCall" =>
-            if node_type callee = "MemberAccess" andalso
+            if isSome (low_level_kind (options_target callee)) then
+              (positional (); low_level_call v callee args)
+            else if node_type callee = "MemberAccess" andalso
                (String.isPrefix "t_function_wrap_" (raw_type_id callee) orelse
                 String.isPrefix "t_function_unwrap_" (raw_type_id callee)) then
               (positional (); wrap_call v callee args)
@@ -930,11 +982,6 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                require v (length args = 4) "ecrecover takes four arguments";
                con "SrcEcrecover"
                  [info v, info callee, listSyntax.mk_list (args, expr_ty), type_id v])
-            else if is_bare_staticcall callee then
-              (positional ();
-               require v (length args = 1) "staticcall takes one argument";
-               con "SrcStaticCall"
-                 [info v, info callee, expr (field callee "expression"), hd args, type_id v])
             else if abi_decode then
               (positional (); abi_decode_call v callee args)
             else if node_type callee = "Identifier" andalso
@@ -1180,38 +1227,64 @@ and abi_encode_call v callee =
        listSyntax.mk_list (selector :: imported, expr_ty), type_id v]
   end
 
-(* c.f{value: v}(args), with c of a contract type. *)
+(* A callee's call options {value: v, gas: g}, in source order. Their
+ * expressions are imported before their names are checked, so an unsupported
+ * option does not hide the blockers of its value. *)
+and call_options callee =
+  if node_type callee = "FunctionCallOptions" then
+    within callee (fn opts =>
+      let
+        val values = JSONUtil.arrayMap expr (field opts "options")
+        val names = JSONUtil.arrayMap JSONUtil.asString (field opts "names")
+        fun distinct [] = true
+          | distinct (n :: ns) = not (List.exists (fn m => m = n) ns) andalso distinct ns
+        val () = require opts (distinct names) "duplicate call options"
+      in
+        ListPair.zipEq
+          (map (fn "value" => con "ValueOption" []
+                 | "gas" => con "GasOption" []
+                 | _ => fail (describe opts ^ ": unsupported call options"))
+             names,
+           values)
+      end)
+  else []
+
+(* a.call{value: v, gas: g}(data), a.staticcall{gas: g}(data) or
+ * a.delegatecall{gas: g}(data), with a of an address type. *)
+and low_level_call v callee args =
+  let
+    val member = options_target callee
+    val target = expr (field member "expression")
+    val options = call_options callee
+    val () = require v (length args = 1)
+               (string_field member "memberName" ^ " takes one argument")
+  in
+    con "SrcLowLevelCall"
+      [info v, info member, con (valOf (low_level_kind member)) [],
+       listSyntax.mk_list (map #1 options, call_option_ty),
+       listSyntax.mk_list (target :: map #2 options @ args, expr_ty),
+       type_id v]
+  end
+
+(* c.f{value: v, gas: g}(args), with c of a contract type. *)
 and external_call v callee args =
   let
-    val (member, options) =
-      if node_type callee = "FunctionCallOptions" then
-        within callee (fn opts =>
-          (field opts "expression",
-           SOME (opts, JSONUtil.arrayMap expr (field opts "options"))))
-      else (callee, NONE)
+    val member = options_target callee
     val target = Option.map expr (optional_field member "expression")
-    val value =
-      Option.map (fn (opts, options) => within opts (fn opts =>
-        (require opts
-           (JSONUtil.arrayMap JSONUtil.asString (field opts "names") = ["value"])
-           "only the value call option is supported";
-         hd options)))
-        options
+    val options = call_options callee
     val () = require member (is_external_call member)
                "unsupported call options"
     val () =
       within (field member "expression") (fn b =>
         require b (String.isPrefix "t_contract$_" (raw_type_id b))
           "external calls only on contract-typed values")
-    val target = valOf target
   in
     con "SrcExternalCall"
       [info v,
        external_function
          (function_declaration member (int_field member "referencedDeclaration")),
-       mk_bool (isSome value),
-       listSyntax.mk_list (target :: (case value of SOME x => [x] | NONE => []) @ args,
-                           expr_ty),
+       listSyntax.mk_list (map #1 options, call_option_ty),
+       listSyntax.mk_list (valOf target :: map #2 options @ args, expr_ty),
        argument_order v (int_field member "referencedDeclaration") 0,
        type_id v]
   end
