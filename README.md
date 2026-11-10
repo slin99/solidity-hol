@@ -16,7 +16,9 @@ iterations independently of EVM gas.
 `solidityPrepareLib.prepare_artifact` is the checked entry point for artifact
 consumers. It checks the artifact format, compiler version/commit, profile and
 Standard JSON settings against `SOLIDITY_PIN` and
-`profiles/solc-0.8.37-via-ir-osaka.json`. It then imports and validates the source,
+`profiles/solc-0.8.37-via-ir-osaka.json`, accepting the optimized variant only
+with recorded unoptimized stack-depth failures (see [profiles.md](docs/profiles.md)).
+It then imports and validates the source,
 elaborates it, and checks the complete `wf_core_program` with `cv_eval`.
 Success retains the checked artifact alongside the source/core terms and HOL theorems for source validation,
 elaboration and core well-formedness. Artifact metadata checks run in SML;
@@ -65,13 +67,18 @@ writes back the value-type locals it names, reads state variables' slots and
 offsets, integer, `bool` and fixed-bytes constants, and the addresses of the memory
 `bytes` and `string` locals it names as literals in its code, as the compiler
 puts them, so its Yul functions see them too (a function's parameters and results may
-reuse such a name in its body; a memory reference may not be assigned). At a
-literal address it may write only the scratch space unless it halts and read
-only the free memory pointer and memory it wrote itself (an `mstore`, or a
-call's output region); at a computed address, a block that
-exits normally may write only the scratch space and the byte sequences' data
-words, not their length words or the free memory pointer, and their bytes are
-read back. Whatever the address, a read outside the free memory pointer, the
+reuse such a name in its body; a memory reference may not be assigned). Code
+that can reach the block's normal exit may write at a literal address only in
+the scratch space (an `if` or `switch` body or a Yul function's body that ends
+in `return`, `revert` or `stop` may write anywhere), and a literal address and
+length are read only at the free memory pointer and memory the block wrote
+itself (an `mstore`, a call's output region or a `returndatacopy`, also in an
+argument to the right, since arguments run right to left); at a computed
+address, a block that exits normally may write only the scratch space, the byte
+sequences' data words and the memory from the free memory pointer up, not their
+length words or the free memory pointer itself; their bytes are read back, and
+the writes from the free memory pointer up, the temporary memory the Solidity
+docs allow a memory-safe block, are dropped. Whatever the address, a read outside the free memory pointer, the
 zero slot, the byte sequences' words and the bytes the block wrote fails with
 an `InvalidCompletion`. `return`/`stop`
 end the frame with a `HaltCompletion`. `call` and `staticcall` run the

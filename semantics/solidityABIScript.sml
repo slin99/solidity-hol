@@ -591,7 +591,8 @@ Definition materialize_value_def:
         let id = st.next_heap_id + 1 in
         let obj = <| object_type := ty; object_length := n;
                      object_cells := FEMPTY;
-                     object_address := 128 + st.memory_allocated |> in
+                     object_address := 128 + st.memory_allocated;
+                     object_padded := T |> in
         let st1 = st with <| heap := st.heap |+ (id, obj); next_heap_id := id;
                      memory_allocated := st.memory_allocated +
                        (if length = NONE then 32 else 0) + 32 * n |> in
@@ -601,7 +602,7 @@ Definition materialize_value_def:
                    st2 with heap := st2.heap |+ (id, obj with object_cells := cells))
          | NONE => NONE)
     | (_, ScalarValue (BytesValue bs)) =>
-        if byte_sequence_type ty then SOME (allocate_bytes ty bs st)
+        if byte_sequence_type ty then SOME (allocate_bytes T ty bs st)
         else SOME (v, st)
     | (_, ScalarValue _) => SOME (v, st)
     | _ => NONE) ∧
@@ -639,9 +640,38 @@ Definition panic_data_def:
   panic_data n = [0x4Ew; 0x48w; 0x7Bw; 0x71w] ++ enc (Uint 256) (NumV n)
 End
 
-(* Event arguments split into the topics of the indexed ones, each the
- * value's ABI word, and the types and values of the rest, which form the
- * log's data.
+(* Indexed arrays concatenate their elements without lengths or offsets.
+ * Byte/string elements retain whole padded words from the existing ABI body:
+ * the storage encoder may have copied dirty padding into those words.
+ *)
+Definition indexed_array_data_def:
+  (indexed_array_data ty a (encoded : byte list) =
+    case (ty, a) of
+      (ArrayT element length, ListV vs) =>
+        indexed_array_elements element vs
+          (if length = NONE then DROP 32 encoded else encoded) 0
+    | (ArrayT _ _, _) => NONE
+    | (_, BytesV bs) =>
+        if byte_sequence_type ty then
+          SOME (TAKE (32 * ((LENGTH bs + 31) DIV 32)) (DROP 32 encoded))
+        else SOME (TAKE 32 encoded)
+    | _ => SOME (TAKE 32 encoded)) ∧
+  (indexed_array_elements element [] encoded pos = SOME []) ∧
+  (indexed_array_elements element (v :: vs) encoded pos =
+    let offset = if is_dynamic (abi_type element) then abi_word encoded pos else pos in
+    case (indexed_array_data element v (DROP offset encoded),
+          indexed_array_elements element vs encoded (pos + abi_stride element)) of
+      (SOME bs, SOME rest) => SOME (bs ++ rest)
+    | _ => NONE)
+Termination
+  WF_REL_TAC ‘measure (λx. case x of
+    INL (ty, a, encoded) => abi_value_size a
+  | INR (element, vs, encoded, pos) => list_size abi_value_size vs)’ >>
+  rw[contractABITheory.abi_value_size_def, listTheory.list_size_def]
+End
+
+(* Event arguments split into indexed topics and data. Arrays and byte
+ * sequences hash their in-place encoding; scalar topics are ABI words.
  *)
 Definition event_parts_def:
   (event_parts env st [] = INL ([], [])) ∧
@@ -653,11 +683,18 @@ Definition event_parts_def:
          INR c => INR c
        | INL (topics, parts) =>
         if indexed then
-          INL ((case a of
+          let topic = case ty of
+            LocatedT _ (ArrayT element length) =>
+              OPTION_MAP (λbs. word_of_bytes_be (Keccak_256_w64 bs))
+                (indexed_array_data (ArrayT element length) a encoded_body)
+          | _ => SOME (case a of
                    BytesV bs => if byte_sequence_value_type ty then
                      word_of_bytes_be (Keccak_256_w64 bs)
                      else word_of_bytes T (0w : bytes32) encoded_body
-                 | _ => word_of_bytes T (0w : bytes32) encoded_body) :: topics, parts)
+                 | _ => word_of_bytes T (0w : bytes32) encoded_body) in
+          (case topic of
+             SOME t => INL (t :: topics, parts)
+           | NONE => INR (InvalidCompletion "bad indexed event argument"))
         else INL (topics, (abi_type ty, encoded_body) :: parts)))
 End
 
@@ -828,6 +865,22 @@ Proof
   simp[Once materialize_arguments_pre_def] >> rw[] >> fs[]
 QED
 val () = cv_auto_trans panic_data_def;
+val indexed_array_data_pre_def = cv_auto_trans_pre_rec
+  "indexed_array_data_pre indexed_array_elements_pre" indexed_array_data_def (
+  WF_REL_TAC ‘measure (λx. case x of
+    INL (ty, a, encoded) => cv_size a
+  | INR (element, vs, encoded, pos) => cv_size vs)’ >>
+  cv_termination_tac
+);
+
+Theorem indexed_array_data_pre[cv_pre]:
+  (∀ty a encoded. indexed_array_data_pre ty a encoded) ∧
+  (∀element vs encoded pos. indexed_array_elements_pre element vs encoded pos)
+Proof
+  ho_match_mp_tac indexed_array_data_ind >> rpt strip_tac >>
+  simp[Once indexed_array_data_pre_def] >> rw[] >> gvs[]
+QED
+
 val event_parts_pre_def = cv_auto_trans_pre "event_parts_pre"
   (REWRITE_RULE [GSYM byteTheory.word_of_bytes_be_def] event_parts_def);
 

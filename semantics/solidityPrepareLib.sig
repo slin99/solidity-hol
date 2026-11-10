@@ -19,7 +19,8 @@ sig
 
   (* Check artifact format, compiler identity, pinned profile and exact settings.
    * input.settings may also contain remappings: an array of strings with '='.
-   * root contains SOLIDITY_PIN and profiles/solc-0.8.37-via-ir-osaka.json.
+   * Optimized source artifacts require recorded unoptimized stack-depth errors.
+   * root contains SOLIDITY_PIN and the two pinned profiles in profiles/.
    *)
   val read_artifact : {root : string, path : string} -> JSON.value
 
