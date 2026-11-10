@@ -859,15 +859,35 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                 end
            end)
   | "Literal" =>
-      (require v (not (isSome (optional_field v "subdenomination")))
-         "literal subdenominations are not supported";
-       con "SrcLiteral"
-         [info v, decode v "literal kind" literal_kinds (string_field v "kind"),
-          mk_str (if List.exists (fn k => k = string_field v "kind")
+      let
+        val kind = string_field v "kind"
+        val tid = raw_type_id v
+        val () = case optional_field v "subdenomination" of
+          NONE => ()
+        | SOME unit =>
+            require v (kind = "number" andalso String.isPrefix "t_rational_" tid andalso
+                       List.exists (fn u => u = JSONUtil.asString unit)
+                         ["wei", "gwei", "ether", "seconds", "minutes", "hours", "days", "weeks"])
+              "unsupported literal subdenomination"
+        val value =
+          if kind = "number" andalso tid = "t_address" then
+            let
+              val s = string_field v "value"
+              val () = require v (size s = 42 andalso String.isPrefix "0x" s)
+                         "invalid address literal"
+            in
+              IntInf.toString
+                (foldl (fn (b, n) => 256 * n + IntInf.fromInt b) 0
+                  (hex_bytes v (String.extract (s, 2, NONE))))
+            end
+          else if List.exists (fn k => k = kind)
                        ["string", "unicodeString", "hexString"] then
-                    String.implode
-                      (map Char.chr (hex_bytes v (string_field v "hexValue")))
-                  else string_field v "value"), type_id v])
+            String.implode (map Char.chr (hex_bytes v (string_field v "hexValue")))
+          else string_field v "value"
+      in
+        con "SrcLiteral"
+          [info v, decode v "literal kind" literal_kinds kind, mk_str value, type_id v]
+      end
   | "UnaryOperation" =>
       let val operand = expr (field v "subExpression") in
         if isSome (optional_field v "function") then operator_call v [operand]
