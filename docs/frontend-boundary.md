@@ -136,7 +136,7 @@ invocations resolve through the transitive `baseModifiers` relation in the
 contract's linearization; explicitly qualified `Base.modifier` invocations
 keep their declared target (`virtual_modifiers.sol`). Only invoked modifier
 implementations are imported, so overridden bodyless declarations do not
-reject a concrete contract. A bodyless declaration still reached by a call
+reject a concrete contract. A bodyless modifier still reached by an invocation
 makes that function unsupported. A `super.f(...)` call
 (`super_calls.sol`) runs what the compiler's lookup finds in the deployed
 contract's linearization: the first function after the caller's contract with
@@ -146,6 +146,24 @@ own contract, so in a diamond it can differ from the function that runs. The
 overridden functions super calls reach are checked and elaborated, but not
 dispatched. `super` in a modifier body, an initializer or a base-constructor
 argument is rejected.
+
+An explicit `Base.f(...)` call (`qualified_base_calls.sol`) runs the named
+declaration's implementation, including its modifiers, even when a derived
+function overrides it. Its arguments keep their written evaluation order and
+are reordered to the declaration's parameters only afterward. Ordinary calls
+inside that implementation still resolve virtually. Static calls in modifier
+bodies and initialization expressions also retain the base procedures they
+reach. Calls through bodyless declarations use the same transitive
+`baseFunctions` table as other virtual calls; an unsupported most-derived
+override remains unsupported rather than falling back to a base body.
+
+Event emission resolves a declaration ID for unqualified names, library and
+interface names, and names qualified through an imported module
+(`qualified_events.sol`). Referenced events from outside the contract's bases,
+including file-level declarations, accompany the imported contract. Qualifiers
+are declaration names with no runtime evaluation; event arguments retain their
+written order, including named arguments. Log encoding and transaction rollback
+use the ordinary event semantics.
 
 Inline assembly reads a memory `bytes` or `string` local as its address
 (`assembly_memory.sol`). The source heap gives each object the address the
@@ -376,7 +394,7 @@ catch clauses without a bytes parameter remain unsupported.
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
 from the functions calls can reach (an overridden function counts only when
-a super call may run it): `L.f(args)` is an internal call of `f`,
+a `super` or explicit base call may run it): `L.f(args)` is an internal call of `f`,
 `x.f(args)`, with `f` attached to the type of `x` by `using L for T`, is one
 with `x` as the first argument, evaluated before the others, and `L.c` names
 the constant `c`. Library functions see no state variables. `using`
@@ -386,7 +404,8 @@ receiver is in storage or calldata and whose first parameter is in memory is
 rejected: the compiler copies the receiver before evaluating the other
 arguments, while elaboration converts arguments after evaluating them all.
 Public and external library functions, which a contract calls with
-`DELEGATECALL`, and library structs and events are rejected. Function-list
+`DELEGATECALL`, and library structs are rejected. Referenced library events
+are imported with the contracts that emit them. Function-list
 `using` directives are accepted: attached free and library functions use the
 same internal-call path. In the Yul the compiler emits, `linkersymbol`, a linked
 library's address, is not admitted.
@@ -504,7 +523,7 @@ fixtures derived from them.
   with it; the storage layout lists the state variables in linearization
   order, bases first, each with its own type identifier;
 - constants are of elementary value types or byte sequences, declared by a
-  base or a library; event parameters are elementary, scoped by their event;
+  base or a library; event parameters are scoped by their event;
 - initializers name state variables or immutables, base-constructor
   arguments name a constructor, and getters name a state variable, an
   immutable or a constant.
@@ -543,11 +562,12 @@ Admitted: one contract, flattened along its bases, with
   `call`, `staticcall` and their return data;
 - internal calls with single or multiple returns, library calls (`L.f(args)`
   and `x.f(args)` through a using directive) and library constants (`L.c`),
-  `super` in calls, external calls of contract types;
+  `super` and explicit base calls, external calls of contract types;
 - `require`, `assert` and `revert` with boolean conditions and literal string
   messages; reads of `msg`, `tx` and `block` members and `address(this)`;
   emits of events and reverts with custom errors, both with elementary
-  parameters; `keccak256`, `abi.encode*`, selectors;
+  parameters; unsupported event parameter types reject the emitting function,
+  leaving unrelated functions available; `keccak256`, `abi.encode*`, selectors;
 - constants, state-variable initializers, constructors and base-constructor
   arguments (inheritance specifiers or constructor modifiers), which form one
   creation procedure.
@@ -594,13 +614,13 @@ leaving a placeholder (`SrcUnsupportedTypeName`, `SrcUnsupportedExpr`,
 `SrcUnsupportedStmt`) with the children it could import, so the reason has a
 line for every unsupported node, each naming it. `solidityPrepareLib` then marks, until nothing changes,
 every function that fails to elaborate, also by calling an unsupported one (by
-a call or a super call). The elaborator builds no
+an ordinary, `super` or explicit base call). The elaborator builds no
 procedure for them and lists their ids in `core_program.unsupported_procedures`,
 so their selectors, and receive, fallback or the constructor when unsupported,
 still dispatch to them and an external call of one is invalid
 (`call_contract_unsupported`), never a return or the fallback; it still
 reverts first, as a supported one would, when it is sent value it does not
-accept. An unsupported function never runs, so its super calls reach nothing:
+accept. An unsupported function never runs, so its `super` and base calls reach nothing:
 a base function only they reach is neither checked nor elaborated. A constant
 whose value does not elaborate, also by reading such a constant, has no
 procedure either: its getter is listed as unsupported, and a function reading
