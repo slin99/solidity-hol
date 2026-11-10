@@ -236,6 +236,316 @@
           "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000001"
         ]
       }
+    },
+    {
+      "name": "call_moves_value",
+      "function": "rawCall",
+      "args": [
+        20480,
+        3,
+        "0xd0496d6a"
+      ],
+      "value": 5,
+      "expect": {
+        "return": [
+          true,
+          "0x0000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000000003"
+        ]
+      }
+    },
+    {
+      "name": "call_value_above_balance_fails",
+      "function": "rawCall",
+      "args": [
+        20480,
+        6,
+        "0xd0496d6a"
+      ],
+      "value": 5,
+      "expect": {
+        "return": [
+          false,
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "call_revert_is_returned",
+      "function": "rawCall",
+      "args": [
+        20480,
+        0,
+        "0x132e4f3c0000000000000000000000000000000000000000000000000000000000000001"
+      ],
+      "expect": {
+        "return": [
+          false,
+          "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b70656572206661696c6564000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "call_writes_callee",
+      "function": "rawCall",
+      "args": [
+        20480,
+        0,
+        "0x68110b2f"
+      ],
+      "peer_storage": {
+        "0": 7
+      },
+      "expect": {
+        "return": [
+          true,
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "call_precompile",
+      "function": "rawCall",
+      "args": [
+        2,
+        0,
+        "0x"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      }
+    },
+    {
+      "name": "literal_data_transfer",
+      "function": "plainTransfer",
+      "args": [
+        20480,
+        4
+      ],
+      "value": 4,
+      "expect": {
+        "return": [
+          true,
+          "0x",
+          "0x00"
+        ]
+      }
+    },
+    {
+      "name": "literal_data_transfer_fails",
+      "function": "plainTransfer",
+      "args": [
+        20480,
+        4
+      ],
+      "expect": {
+        "return": [
+          false,
+          "0x",
+          "0x00"
+        ]
+      }
+    },
+    {
+      "name": "gas_option_starves_callee",
+      "function": "rawCallGas",
+      "args": [
+        20480,
+        100,
+        "0x68110b2f"
+      ],
+      "expect": {
+        "return": [
+          false,
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "gas_option_enough",
+      "function": "rawCallGas",
+      "args": [
+        20480,
+        100000,
+        "0x68110b2f"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "delegate_writes_own_storage",
+      "function": "rawDelegate",
+      "args": [
+        20480,
+        "0x68110b2f"
+      ],
+      "storage": {
+        "0": 7
+      },
+      "expect": {
+        "return": [
+          true,
+          "0x",
+          8
+        ]
+      },
+      "final_storage": {
+        "0": 8
+      }
+    },
+    {
+      "name": "delegate_sees_caller_context",
+      "function": "rawDelegate",
+      "args": [
+        20480,
+        "0xd0496d6a"
+      ],
+      "value": 9,
+      "expect": {
+        "return": [
+          true,
+          "0x0000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000000900000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000000009",
+          0
+        ]
+      }
+    },
+    {
+      "name": "delegate_revert_rolls_back",
+      "function": "rawDelegate",
+      "args": [
+        20480,
+        "0xc032fc7c"
+      ],
+      "storage": {
+        "0": 7
+      },
+      "expect": {
+        "return": [
+          false,
+          "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b70656572206661696c6564000000000000000000000000000000000000000000",
+          7
+        ]
+      },
+      "final_storage": {
+        "0": 7
+      }
+    },
+    {
+      "name": "delegate_precompile",
+      "function": "rawDelegate",
+      "args": [
+        2,
+        "0x"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          0
+        ]
+      }
+    },
+    {
+      "name": "delegate_gas_option_starves",
+      "function": "rawDelegateGas",
+      "args": [
+        20480,
+        100,
+        "0x68110b2f"
+      ],
+      "storage": {
+        "0": 7
+      },
+      "expect": {
+        "return": [
+          false,
+          7
+        ]
+      },
+      "final_storage": {
+        "0": 7
+      }
+    },
+    {
+      "name": "reentrant_callee_writes_caller",
+      "function": "reentered",
+      "args": [
+        20480
+      ],
+      "expect": {
+        "return": [
+          true,
+          11
+        ]
+      },
+      "final_storage": {
+        "0": 11
+      }
+    },
+    {
+      "name": "high_level_gas_starves",
+      "function": "highGas",
+      "args": [
+        20480,
+        100
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "high_level_gas_enough",
+      "function": "highGas",
+      "args": [
+        20480,
+        100000
+      ],
+      "expect": {
+        "return": [
+          42
+        ]
+      }
+    },
+    {
+      "name": "high_level_value_and_gas",
+      "function": "highValueGas",
+      "args": [
+        20480,
+        2,
+        100000
+      ],
+      "value": 2,
+      "expect": {
+        "return": [
+          4096,
+          2,
+          20480,
+          2
+        ]
+      }
+    },
+    {
+      "name": "options_in_source_order",
+      "function": "order",
+      "args": [
+        20480
+      ],
+      "value": 2,
+      "expect": {
+        "return": [
+          123,
+          123
+        ]
+      },
+      "final_storage": {
+        "1": 123
+      }
     }
   ]
 }

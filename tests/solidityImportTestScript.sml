@@ -402,16 +402,16 @@ val () =
 
 (* An unsupported call option does not hide the blockers of the receiver. *)
 val () =
-  expect_function_lines "gas option on an unsupported receiver"
+  expect_function_lines "salt option on an unsupported receiver"
     "../testdata/differential/expected/external.json" "testdata/differential/external.sol"
     "forward"
     (edit_first "FunctionCallOptions"
-       (set_field "names" (JSON.ARRAY [JSON.STRING "gas"]) o
+       (set_field "names" (JSON.ARRAY [JSON.STRING "salt"]) o
         edit_first_where
           (fn v => is_node "Identifier" v andalso
                    JSONUtil.testField "name" (fn JSON.STRING s => s = "this" | _ => false) v)
           "this" (set_field "nodeType" (JSON.STRING "UnknownThis"))))
-    [": unsupported expression UnknownThis", "only the value call option is supported"]
+    [": unsupported expression UnknownThis", ": unsupported call options"]
 
 (* Every unsupported reference of an inline assembly block is a line. *)
 val () =
