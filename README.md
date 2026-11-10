@@ -79,9 +79,12 @@ call the block made itself (the source keeps no return data buffer). In a
 static frame a block naming `call` fails closed. Memory
 expansion gas is not modelled, so a halting block's write far past the used
 memory succeeds where the EVM runs out of gas. Memory/calldata execution and a memory
-model shared with inline assembly beyond byte sequences remain unresolved. High-level external calls run the callee on Verifereum
-through `externalCall`, a provisional adapter with a fixed gas budget and a
-fresh callee frame; creation is not connected yet. Core well-formedness alone does not rule out `InvalidCompletion`:
+model shared with inline assembly beyond byte sequences remain unresolved. High-level external calls and
+the low-level `call`, `staticcall` and `delegatecall` run the callee on
+Verifereum through `externalCall`, a provisional adapter with a fixed gas
+budget (a `gas` option caps it) and a fresh callee frame; a delegate call's
+frame runs the callee's code in the caller's account. Creation is not
+connected yet. Core well-formedness alone does not rule out `InvalidCompletion`:
 for example, a storage write in a static frame is deliberately invalid.
 
 ## Yul

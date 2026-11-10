@@ -22,6 +22,7 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/imports.json",
   "../testdata/differential/expected/errors.json",
   "../testdata/differential/expected/type_bounds.json",
+  "../testdata/differential/expected/enum_bounds.json",
   "../testdata/differential/expected/using_for.json",
   "../testdata/differential/expected/hashes.json",
   "../testdata/differential/expected/conditionals.json",
@@ -30,6 +31,7 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/try_calls.json",
   "../testdata/differential/expected/inline_assembly.json",
   "../testdata/differential/expected/external.json",
+  "../testdata/differential/expected/low_level_calls.json",
   "../testdata/differential/expected/udvt.json",
   "../testdata/differential/expected/virtual_modifiers.json"
 ]
@@ -403,16 +405,29 @@ val () =
 
 (* An unsupported call option does not hide the blockers of the receiver. *)
 val () =
-  expect_function_lines "gas option on an unsupported receiver"
+  expect_function_lines "salt option on an unsupported receiver"
     "../testdata/differential/expected/external.json" "testdata/differential/external.sol"
     "forward"
     (edit_first "FunctionCallOptions"
-       (set_field "names" (JSON.ARRAY [JSON.STRING "gas"]) o
+       (set_field "names" (JSON.ARRAY [JSON.STRING "salt"]) o
         edit_first_where
           (fn v => is_node "Identifier" v andalso
                    JSONUtil.testField "name" (fn JSON.STRING s => s = "this" | _ => false) v)
           "this" (set_field "nodeType" (JSON.STRING "UnknownThis"))))
-    [": unsupported expression UnknownThis", "only the value call option is supported"]
+    [": unsupported expression UnknownThis", ": unsupported call options"]
+
+(* A call option given twice is rejected, not reduced to one of its values. *)
+val () =
+  expect_function_lines "duplicate call options"
+    "../testdata/differential/expected/low_level_calls.json"
+    "testdata/differential/low_level_calls.sol" "rawCallGas"
+    (edit_first "FunctionCallOptions" (fn v =>
+       case (JSONUtil.findField v "options") of
+         SOME (JSON.ARRAY [g]) =>
+           set_field "options" (JSON.ARRAY [g, g])
+             (set_field "names" (JSON.ARRAY [JSON.STRING "gas", JSON.STRING "gas"]) v)
+       | _ => raise Fail "duplicate call options: no single option"))
+    [": duplicate call options"]
 
 (* Every unsupported reference of an inline assembly block is a line. *)
 val () =
@@ -973,6 +988,32 @@ Theorem type_bound_values:
 Proof
   EVAL_TAC
 QED
+
+Definition enum_bounds_unit_def:
+  enum_bounds_unit = ^(import_artifact
+    "../testdata/differential/expected/enum_bounds.json"
+    "testdata/differential/enum_bounds.sol")
+End
+
+val () = cv_auto_trans enum_bounds_unit_def;
+
+Theorem enum_bounds_valid:
+  valid_src_unit enum_bounds_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+val () = expect_function_lines "unknown enum type member"
+  "../testdata/differential/expected/enum_bounds.json"
+  "testdata/differential/enum_bounds.sol" "fileBounds"
+  (edit_first "MemberAccess" (set_field "memberName" (JSON.STRING "middle")))
+  ["unsupported enum type member"]
+
+val () = expect_function_lines "unknown enum bound declaration"
+  "../testdata/differential/expected/enum_bounds.json"
+  "testdata/differential/enum_bounds.sol" "fileBounds"
+  (edit_first "Identifier" (set_field "referencedDeclaration" (JSON.INT 999999)))
+  ["unknown enum declaration"]
 
 (* Libraries: only internal functions, attached through a library name, with a
  * receiver that is not copied, are imported; library functions are plain
