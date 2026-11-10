@@ -731,6 +731,12 @@ Definition storage_type_identifier_def:
       (if ty = BytesT then "t_bytes" else "t_string") ++
       (case loc of MemoryLoc => "_memory_ptr" | CalldataLoc => "_calldata_ptr"
                  | StorageLoc => "_storage_ptr")
+    else if loc = StorageLoc then
+      (* A storage pointer: the storage type's identifier with "_ptr", except
+       * that a mapping's identifier names no location. *)
+      (case ty of
+         MappingT _ _ => storage_type_identifier ty
+       | _ => storage_type_identifier ty ++ "_ptr")
     else "") ∧
   (storage_type_identifier BytesT = "t_bytes_storage") ∧
   (storage_type_identifier StringT = "t_string_storage") ∧
@@ -810,19 +816,21 @@ Definition source_type_matches_def:
 End
 
 (* A parameter, return or local variable: an elementary value type in the
- * default location, a byte sequence in any location or a memory array,
- * agreeing with its typeIdentifier.
+ * default location, a byte sequence in any location, a memory or calldata
+ * array, or a storage pointer to an array, mapping or struct, agreeing with
+ * its typeIdentifier.
  *)
 Definition variable_type_def:
   variable_type (v : src_variable) =
     case normalize_type_name v.var_type_name of
       SOME ty =>
         if byte_sequence_type ty ∨
-           (IS_SOME v.var_location ∧ case ty of ArrayT _ _ => T | _ => F) then
+           (IS_SOME v.var_location ∧ case ty of ArrayT _ _ => T | _ => F) ∨
+           (v.var_location = SOME StorageLoc ∧
+            case ty of MappingT _ _ => T | StructT _ => T | _ => F) then
           case v.var_location of
             SOME loc =>
               if located_value_type (LocatedT loc ty) ∧
-                 (loc = StorageLoc ⇒ byte_sequence_type ty) ∧
                  source_type_matches (LocatedT loc ty) v.var_type_id then
                 SOME (LocatedT loc ty) else NONE
           | NONE => NONE

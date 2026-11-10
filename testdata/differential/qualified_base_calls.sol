@@ -22,6 +22,14 @@ abstract contract RedeclaredHook is AbstractHook {
 abstract contract NamedBase is RedeclaredHook {
     uint256 internal marker;
 
+    struct Cell { uint256 value; }
+    Cell internal firstCell;
+    Cell internal secondCell;
+
+    function cellRef() internal view virtual returns (Cell storage) {
+        return firstCell;
+    }
+
     modifier markBase() {
         marker = NamedBase.modifierValue();
         _;
@@ -114,6 +122,18 @@ contract QualifiedBaseCalls is NamedMiddle, NamedSide {
 
     function arguments(uint256, uint256) internal pure override returns (uint256) {
         return 999;
+    }
+
+    function cellRef() internal view override returns (Cell storage) {
+        return secondCell;
+    }
+
+    function storagePointer() public returns (uint256, uint256) {
+        Cell storage saved = NamedBase.cellRef();
+        saved.value = 7;
+        NamedBase.cellRef().value += 5;
+        cellRef().value = 19;
+        return (firstCell.value, secondCell.value);
     }
 
     function fromBase() public pure returns (uint256) {

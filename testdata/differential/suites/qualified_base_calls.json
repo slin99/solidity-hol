@@ -76,7 +76,7 @@
         ]
       },
       "final_storage": {
-        "2": 2
+        "4": 2
       }
     },
     {
@@ -111,7 +111,22 @@
       },
       "final_storage": {
         "0": 107,
-        "1": 308
+        "3": 308
+      }
+    },
+    {
+      "name": "static_storage_pointer_is_a_value_and_writable_location",
+      "function": "storagePointer",
+      "args": [],
+      "expect": {
+        "return": [
+          12,
+          19
+        ]
+      },
+      "final_storage": {
+        "1": 12,
+        "2": 19
       }
     }
   ]
