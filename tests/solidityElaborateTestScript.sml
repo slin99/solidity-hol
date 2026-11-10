@@ -344,9 +344,8 @@ Proof
   EVAL_TAC
 QED
 
-(* bytesN(b) of a dynamic byte sequence fails elaboration, since the core
- * has no such conversion; bytesN of a shorter or longer bytesM elaborates. *)
-Theorem bytes_to_fixed_bytes_rejected:
+(* Dynamic bytes and fixed bytes both convert to a fixed-size prefix. *)
+Theorem bytes_to_fixed_bytes_admitted:
   let info = <| node_id := 0;
                 node_location := <| loc_start := 0; loc_length := 0;
                                     loc_source := 0 |> |>;
@@ -359,8 +358,7 @@ Theorem bytes_to_fixed_bytes_rejected:
                immutables := []; constants := []; returns := [];
                placeholder := NONE; mode := CheckedArithmetic; creation := F;
                scope := 0; returns_id := 0; in_loop := F; bad_ids := [] |> in
-    elab_expr ctx 3 (to16 (SrcIdentifier info "b" 1 "t_bytes_memory_ptr")) =
-    INR [(0, "unsupported type conversion")] ∧
+    ISL (elab_expr ctx 3 (to16 (SrcIdentifier info "b" 1 "t_bytes_memory_ptr"))) ∧
     ISL (elab_expr ctx 3 (to16 (SrcIdentifier info "w" 2 "t_bytes32")))
 Proof
   EVAL_TAC

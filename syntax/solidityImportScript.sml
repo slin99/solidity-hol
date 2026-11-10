@@ -172,6 +172,7 @@ Datatype:
   | SrcConditional node_info src_expr src_expr src_expr string
   | SrcAssignment node_info (src_binary_operator option) src_expr src_expr string
   | SrcIndexAccess node_info src_expr src_expr string
+  | SrcIndexRangeAccess node_info src_expr (src_expr option) (src_expr option) string
   | SrcTupleExpression node_info (src_expr option list) string
   | SrcFunctionCall node_info src_expr (src_expr list) (num list) string
   | SrcSuperCall node_info num (src_expr list) (num list) string
@@ -902,6 +903,10 @@ Definition expr_ids_def:
     info.node_id :: expr_ids c ++ expr_ids t ++ expr_ids f) ∧
   (expr_ids (SrcIndexAccess info b i _) =
     info.node_id :: expr_ids b ++ expr_ids i) ∧
+  (expr_ids (SrcIndexRangeAccess info base start end_bound _) =
+    info.node_id :: expr_ids base ++
+    (case start of NONE => [] | SOME e => expr_ids e) ++
+    (case end_bound of NONE => [] | SOME e => expr_ids e)) ∧
   (expr_ids (SrcAssignment info _ l r _) =
     info.node_id :: expr_ids l ++ expr_ids r) ∧
   (expr_ids (SrcTupleExpression info cs _) =

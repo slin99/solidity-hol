@@ -149,6 +149,7 @@ Definition expr_id_def:
   (expr_id (SrcConditional info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcAssignment info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcIndexAccess info _ _ _) = info.node_id) ∧
+  (expr_id (SrcIndexRangeAccess info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcTupleExpression info _ _) = info.node_id) ∧
   (expr_id (SrcFunctionCall info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcSuperCall info _ _ _ _) = info.node_id) ∧
@@ -482,6 +483,10 @@ Definition expr_assigns_def:
   (expr_assigns (SrcConditional _ c t f _) ⇔
     expr_assigns c ∨ expr_assigns t ∨ expr_assigns f) ∧
   (expr_assigns (SrcIndexAccess _ b i _) ⇔ expr_assigns b ∨ expr_assigns i) ∧
+  (expr_assigns (SrcIndexRangeAccess _ b start end_bound _) ⇔
+    expr_assigns b ∨
+    (case start of NONE => F | SOME e => expr_assigns e) ∨
+    (case end_bound of NONE => F | SOME e => expr_assigns e)) ∧
   (expr_assigns (SrcMemberAccess _ root_expr _ _) ⇔ expr_assigns root_expr) ∧
   (expr_assigns (SrcArrayLength _ root_expr _) ⇔ expr_assigns root_expr) ∧
   (expr_assigns (SrcTypeConversion _ _ e _) ⇔ expr_assigns e) ∧
@@ -907,6 +912,35 @@ Definition elab_expr_def:
                  INL ((ss ++ rs, a, ElabType (read_value_type ty)), n1 + 1)
                else INR [(info.node_id, "read of a value of this type")]
            | INR bs => INR bs)
+    | SrcIndexRangeAccess info base start end_bound tid =>
+        (case elab_expr ctx n base of
+           INL ((ss, ref, ElabType (LocatedT CalldataLoc ty)), n1) =>
+             if ¬(source_type_matches (LocatedT CalldataLoc ty) tid ∧
+                  (ty = BytesT ∨ case ty of
+                     ArrayT element NONE => static_object_type element | _ => F))
+             then INR [(info.node_id, "unsupported calldata slice type")] else
+             let (saved, n2) = snapshot n1 ref (ElabType (LocatedT CalldataLoc ty)) in
+             let (sc, ref') = saved in
+             let es = (case start of NONE => [] | SOME e => [e]) ++
+                      (case end_bound of NONE => [] | SOME e => [e]) in
+             (case elab_arg_values ctx n2 es of
+                INL ((bs, vs), n3) =>
+                  if ¬EVERY (λ(a, vt). index_value_ok a vt) vs
+                  then INR [(info.node_id, "slice bound of this type")] else
+                  (case convert_operands n3 info.node_id (MAP expr_id es)
+                          (REPLICATE (LENGTH es) (ValueOf (UintT 256))) vs of
+                     INL (cs, _, atoms, n4) =>
+                       let first = case start of NONE => ConstantAtom (IntegerValue 0)
+                                                | SOME _ => HD atoms in
+                       let last = case end_bound of NONE => NONE | SOME _ => SOME (LAST atoms) in
+                       let result_ty = LocatedT CalldataLoc ty in
+                       let (rs, value) = bind_value n4 result_ty
+                                          (CalldataSliceOperation ref' first last) in
+                       INL ((ss ++ sc ++ bs ++ cs ++ rs, value, ElabType result_ty), n4 + 1)
+                   | INR bs => INR bs)
+              | INR bs => INR bs)
+         | INL _ => INR [(info.node_id, "slice of a non-calldata array")]
+         | INR bs => INR bs)
     | SrcUnaryOperation info op prefix e tid =>
         (case identifier_integer tid of
            SOME i =>
@@ -1402,9 +1436,10 @@ Definition elab_expr_def:
               | INR bs => INR bs)
          | INR bs => INR (bs ++ blockers (elab_expr ctx n data)))
     | SrcAbiDecode info _ e tns tid =>
-        (* the data is decoded where it is, so it must already be memory bytes *)
         (case elab_expr ctx n e of
-           INL ((ss, a, ElabType (LocatedT MemoryLoc BytesT)), n1) =>
+           INL ((ss, a, ElabType (LocatedT loc BytesT)), n1) =>
+             if loc ≠ MemoryLoc ∧ loc ≠ CalldataLoc then
+               INR [(expr_id e, "abi decoding of data not in memory or calldata bytes")] else
              (case OPTION_MAP (MAP decoded_type) (all_some (MAP normalize_type_name tns)) of
                 SOME (ty :: tys) =>
                   (* only elementary types decode: bytes and string are type names too *)
@@ -1418,7 +1453,7 @@ Definition elab_expr_def:
               | NONE =>
                   INR (FLAT (MAP (λtn. type_name_blockers
                                          (info.node_id, "unsupported type name") tn) tns)))
-         | INL _ => INR [(expr_id e, "abi decoding of data not in memory bytes")]
+         | INL _ => INR [(expr_id e, "abi decoding of data not in memory or calldata bytes")]
          | INR bs => INR bs)
     (* f.selector, E.selector: the selector the compiler records on the
        declaration, bytes4 or (for an event) bytes32; bound, so that a later
@@ -1455,7 +1490,9 @@ Definition elab_expr_def:
                   (case (vt, ty, a) of
                      (ElabTuple _, _, _) => INR [(expr_id e, "tuple used as a value")]
                    | (ElabRational, _, _) => INR [(expr_id e, "rational number value")]
-                   (* bytes to bytesN: the core has no such conversion *)
+                   | (ElabType (LocatedT _ BytesT), FixedBytesT k, _) =>
+                       let (cs, v) = bind_value n1 ty (BytesToFixedOperation k a) in
+                       INL ((ss ++ cs, v, ElabType ty), n1 + 1)
                    | (ElabType (LocatedT _ _), FixedBytesT _, _) =>
                        INR [(info.node_id, "unsupported type conversion")]
                    | (ElabBytesLiteral, _, _) =>

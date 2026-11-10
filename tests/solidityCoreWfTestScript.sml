@@ -1075,3 +1075,47 @@ Theorem calldata_byte_is_not_a_writable_reference:
 Proof
   EVAL_TAC
 QED
+
+Theorem calldata_slice_locations:
+  MAP (λloc. wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT loc BytesT))];
+       targets := []; returns := []; in_loop := F |>
+    (SingleType (LocatedT loc BytesT))
+    (CalldataSliceOperation (BoundAtom (AstId 1)) (ConstantAtom (IntegerValue 0)) NONE))
+    [StorageLoc; MemoryLoc; CalldataLoc] = [F; F; T]
+Proof
+  simp_tac std_ss [listTheory.MAP] >> CONV_TAC cv_eval
+QED
+
+Theorem calldata_slice_rejects_dynamic_elements:
+  ¬wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT CalldataLoc (ArrayT BytesT NONE)))];
+       targets := []; returns := []; in_loop := F |>
+    (SingleType (LocatedT CalldataLoc (ArrayT BytesT NONE)))
+    (CalldataSliceOperation (BoundAtom (AstId 1)) (ConstantAtom (IntegerValue 0)) NONE)
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem calldata_slice_rejects_bool_bound:
+  ¬wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT CalldataLoc BytesT))];
+       targets := []; returns := []; in_loop := F |>
+    (SingleType (LocatedT CalldataLoc BytesT))
+    (CalldataSliceOperation (BoundAtom (AstId 1)) (ConstantAtom (BoolValue T)) NONE)
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem byte_prefix_rejects_bad_width_and_type:
+  ¬wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT MemoryLoc BytesT))];
+       targets := []; returns := []; in_loop := F |>
+    (SingleType (FixedBytesT 33)) (BytesToFixedOperation 33 (BoundAtom (AstId 1))) ∧
+  ¬wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT MemoryLoc StringT))];
+       targets := []; returns := []; in_loop := F |>
+    (SingleType (FixedBytesT 4)) (BytesToFixedOperation 4 (BoundAtom (AstId 1)))
+Proof
+  CONV_TAC cv_eval
+QED
