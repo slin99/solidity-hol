@@ -153,6 +153,7 @@ Definition expr_id_def:
   (expr_id (SrcFunctionCall info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcSuperCall info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcBuiltinCall info _ _ _ _ _) = info.node_id) ∧
+  (expr_id (SrcRequireError info _ _ _ _ _ _) = info.node_id) ∧
   (expr_id (SrcTypeConversion info _ _ _) = info.node_id) ∧
   (expr_id (SrcEnvironment info _ _) = info.node_id) ∧
   (expr_id (SrcExternalCall info _ _ _ _ _) = info.node_id) ∧
@@ -479,6 +480,8 @@ Definition expr_assigns_def:
   (expr_assigns (SrcBuiltinCall _ _ _ condition message _) ⇔
     (case condition of NONE => F | SOME c => expr_assigns c) ∨
     (case message of NONE => F | SOME m => expr_assigns m)) ∧
+  (expr_assigns (SrcRequireError _ _ condition _ args _ _) ⇔
+    expr_assigns condition ∨ exprs_assign args) ∧
   (expr_assigns (SrcConditional _ c t f _) ⇔
     expr_assigns c ∨ expr_assigns t ∨ expr_assigns f) ∧
   (expr_assigns (SrcIndexAccess _ b i _) ⇔ expr_assigns b ∨ expr_assigns i) ∧
@@ -575,23 +578,20 @@ Definition snapshot_values_def:
           (ss', vs', n'') => (ss ++ ss', (a', vt) :: vs', n''))
 End
 
-(* Error(string): one dynamic ABI argument, encoded from literal bytes only. *)
-Definition error_string_data_def:
-  error_string_data value =
-    let bytes = MAP (λc. n2w (ORD c) : byte) value in
-    [0x08w; 0xc3w; 0x79w; 0xa0w] ++ num_to_bytes 32 32 ++
-    num_to_bytes 32 (LENGTH bytes) ++ bytes ++
-    REPLICATE ((32 - LENGTH bytes MOD 32) MOD 32) 0w
+(* A failure without a message has no argument evaluation or encoding. *)
+Definition builtin_failure_def:
+  builtin_failure builtin =
+    if builtin = AssertBuiltin then PanicStmt 1 else
+    RevertStmt (ConstantAtom (BytesValue []))
 End
 
-Definition builtin_failure_def:
-  builtin_failure builtin message =
-    if builtin = AssertBuiltin then PanicStmt 1 else
-    RevertStmt (ConstantAtom (BytesValue
-      (case message of NONE => []
-       | SOME m => case literal_message m of
-           SOME value => error_string_data value
-         | NONE => [])))
+(* A built-in call returns the empty tuple after its conditional failure. *)
+Definition builtin_result_def:
+  builtin_result n ss condition failure =
+    ((ss ++ (case condition of NONE => [failure]
+                  | SOME c => [IfStmt c [] [failure]]) ++
+            [DefineStmt (AstId n) (ProductType []) (TupleOperation [])],
+          BoundAtom (AstId n), ElabTuple []), n + 1)
 End
 
 (* Expressions: statements computing a value, the value as an atom, and its
@@ -664,6 +664,7 @@ Definition convert_operand_def:
          | (LocatedT _ element, ElabBytesLiteral) =>
              if byte_sequence_type element then INL (([], ty, a), n)
              else INR "string literal conversion"
+         | (LocatedT _ _, _) => INR "type conversion between these types"
          | _ =>
              (case coerce n ty a vt of
                 INL ((ss, a'), n1) => INL ((ss, ty, a'), n1)
@@ -776,6 +777,29 @@ Definition arrange_def:
     if order = [] then SOME vs else
     let k = LENGTH vs - LENGTH order in
     OPTION_MAP (λws. TAKE k vs ++ ws) (all_some (MAP (λi. oEL (k + i) vs) order))
+End
+
+(* A custom error's resolved signature and argument permutation. *)
+Definition revert_shape_def:
+  revert_shape selector params order count ⇔
+    LENGTH selector = 4 ∧ count = LENGTH params ∧
+    argument_order_ok order count ∧ EVERY abi_value_type params
+End
+
+(* Revert payloads keep byte references live until the failure branch
+ * serializes them; evaluating the arguments does not copy their contents. *)
+Definition revert_arguments_def:
+  revert_arguments n (id : num) selector params order ids vs =
+    if ¬revert_shape selector params order (LENGTH vs) then
+      INR [(id, "revert does not match the error")]
+    else
+      case (arrange order vs, arrange order ids) of
+        (SOME values, SOME nodes) =>
+          (case convert_operands n id nodes (encoded_as params) values of
+             INL (ss, _, atoms, n1) =>
+               INL (ss, RevertErrorStmt selector params atoms, n1)
+           | INR bs => INR bs)
+      | _ => INR [(id, "argument order")]
 End
 
 (* An expression the compiler annotated with tid may elaborate to a value of
@@ -1177,19 +1201,53 @@ Definition elab_expr_def:
                (case condition of NONE => [] | SOME c => blockers (elab_expr ctx n c)) ++
                (case message of NONE => [] | SOME m => blockers (elab_expr ctx n m)))
         else
-        (let failure = builtin_failure builtin message in
-         case condition of
-           NONE => INL (([failure;
-             DefineStmt (AstId n) (ProductType []) (TupleOperation [])],
-             BoundAtom (AstId n), ElabTuple []), n + 1)
-         | SOME c =>
-             (case elab_expr ctx n c of
-                INL ((ss, v, ElabType BoolT), n1) =>
-                  INL ((ss ++ [IfStmt v [] [failure];
-                    DefineStmt (AstId n1) (ProductType []) (TupleOperation [])],
-                    BoundAtom (AstId n1), ElabTuple []), n1 + 1)
-              | INL _ => INR [(expr_id c, "condition not a bool")]
-              | INR bs => INR bs))
+          (case condition of
+             NONE =>
+               (case message of
+                  NONE => INL (builtin_result n [] NONE (builtin_failure builtin))
+                | SOME m =>
+                    (case elab_arg_values ctx n [m] of
+                       INL ((ss, vs), n1) =>
+                         (case revert_arguments n1 info.node_id [0x08w; 0xc3w; 0x79w; 0xa0w]
+                                 [LocatedT MemoryLoc StringT] [] [expr_id m] vs of
+                            INL (cs, failure, n2) => INL (builtin_result n2 (ss ++ cs) NONE failure)
+                          | INR bs => INR bs)
+                     | INR bs => INR bs))
+           | SOME c =>
+               (case message of
+                  NONE =>
+                    (case elab_expr ctx n c of
+                       INL ((ss, v, ElabType BoolT), n1) =>
+                         INL (builtin_result n1 ss (SOME v) (builtin_failure builtin))
+                     | INL _ => INR [(expr_id c, "condition not a bool")]
+                     | INR bs => INR bs)
+                | SOME m =>
+                    (case elab_arg_values ctx n [c; m] of
+                       INL ((ss, (v, ElabType BoolT) :: vs), n1) =>
+                         (case revert_arguments n1 info.node_id [0x08w; 0xc3w; 0x79w; 0xa0w]
+                                 [LocatedT MemoryLoc StringT] [] [expr_id m] vs of
+                            INL (cs, failure, n2) => INL (builtin_result n2 (ss ++ cs) (SOME v) failure)
+                          | INR bs => INR bs)
+                     | INL _ => INR [(expr_id c, "condition not a bool")]
+                     | INR bs => INR bs)))
+    | SrcRequireError info _ condition err args order tid =>
+        (case all_some (MAP event_variable_type err.error_parameters) of
+           NONE => INR (variables_blockers (MAP SOME err.error_parameters) ++
+                        blockers (elab_arg_values ctx n (condition :: args)))
+         | SOME params =>
+             if tid ≠ "t_tuple$__$" ∨
+                ¬revert_shape err.error_selector params order (LENGTH args) then
+               reject (info.node_id, "require does not match the error")
+                 (elab_arg_values ctx n (condition :: args))
+             else
+               (case elab_arg_values ctx n (condition :: args) of
+                  INL ((ss, (v, ElabType BoolT) :: vs), n1) =>
+                    (case revert_arguments n1 info.node_id err.error_selector params order
+                            (expr_ids args) vs of
+                       INL (cs, failure, n2) => INL (builtin_result n2 (ss ++ cs) (SOME v) failure)
+                     | INR bs => INR bs)
+                | INL _ => INR [(expr_id condition, "condition not a bool")]
+                | INR bs => INR bs))
     (* Value only for a payable callee, as the compiler requires; calls
        returning enums are not supported yet. *)
     | SrcExternalCall info callee with_value operands order tid =>
@@ -2133,22 +2191,22 @@ Definition elab_stmts_def:
                        ctx), n1)
              | INR bs => INR bs)
         | _ => INR [(info.node_id, "argument order")]) ∧
-  (* Arguments are coerced to the error's parameter types, which must be
-     elementary for the revert data's ABI encoding. *)
   (elab_stmt ctx n (SrcRevertError info err args order) =
-    case all_some (MAP variable_type err.error_parameters) of
-      NONE =>
-        INR (variables_blockers (MAP SOME err.error_parameters) ++
-             blockers (elab_arg_values ctx n args))
+    case all_some (MAP event_variable_type err.error_parameters) of
+      NONE => INR (variables_blockers (MAP SOME err.error_parameters) ++
+                   blockers (elab_arg_values ctx n args))
     | SOME params =>
-        if ¬EVERY is_elementary_type params ∨ LENGTH err.error_selector ≠ 4 ∨
-           LENGTH args ≠ LENGTH params ∨ ¬argument_order_ok order (LENGTH args)
+        if ¬revert_shape err.error_selector params order (LENGTH args)
         then reject (info.node_id, "revert does not match the error")
-               (elab_arg_values ctx n args) else
-        case elab_args ctx n info.node_id order params args of
-          INL ((ss, as), n1) =>
-            INL ((ss ++ [RevertErrorStmt err.error_selector params as], ctx), n1)
-        | INR bs => INR bs) ∧
+               (elab_arg_values ctx n args)
+        else
+          (case elab_arg_values ctx n args of
+             INR bs => INR bs
+           | INL ((ss, vs), n1) =>
+               (case revert_arguments n1 info.node_id err.error_selector params order
+                       (expr_ids args) vs of
+                  INL (cs, failure, n2) => INL ((ss ++ cs ++ [failure], ctx), n2)
+                | INR bs => INR bs))) ∧
   (* A constructor, and the modifiers it runs, may not halt from assembly:
    * the source installs no runtime code from the returned bytes. The
    * instruction checks are separate: the constructor's forbids more. *)
@@ -3051,8 +3109,8 @@ val () = cv_auto_trans_rec expr_assigns_def (
   cv_termination_tac
 );
 
-val () = cv_auto_trans error_string_data_def;
 val () = cv_auto_trans builtin_failure_def;
+val () = cv_auto_trans builtin_result_def;
 
 val () = cv_auto_trans values_of_def;
 val () = cv_auto_trans encoded_as_def;
@@ -3073,6 +3131,8 @@ QED
 val () = cv_auto_trans selector_encoding_def;
 val () = cv_auto_trans abi_encoding_def;
 val () = cv_auto_trans arrange_def;
+val () = cv_auto_trans revert_shape_def;
+val () = cv_auto_trans revert_arguments_def;
 
 val elab_expr_pre_def = cv_auto_trans_pre_rec
   "elab_expr_pre elab_args_pre elab_values_pre elab_components_pre elab_location_pre elab_destination_pre elab_arg_values_pre"
@@ -3085,7 +3145,14 @@ val elab_expr_pre_def = cv_auto_trans_pre_rec
    | INR (INR (INR (INR (INL (ctx, n, e))))) => 3 * cv_size e + 1
    | INR (INR (INR (INR (INR (INL (ctx, n, e)))))) => 3 * cv_size e + 2
    | INR (INR (INR (INR (INR (INR (ctx, n, es)))))) => 3 * cv_size es)’ >>
-  cv_termination_tac
+  cv_termination_tac >>
+  (* The condition and error arguments occupy disjoint fields of one
+   * encoded expression. Expose their common tuple spine to bound the sum. *)
+  Cases_on ‘z’ >> gvs[] >>
+  rename1 ‘cv_size (cv_fst (cv_snd rest)) + _’ >>
+  Cases_on ‘rest’ >> gvs[] >>
+  rename1 ‘cv_size (cv_fst rest) + _’ >>
+  Cases_on ‘rest’ >> cv_termination_tac
 );
 
 Theorem elab_pre_bounded[local]:

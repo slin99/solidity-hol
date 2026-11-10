@@ -898,13 +898,29 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
           node_type (field callee "expression") = "Identifier" andalso
           int_field (field callee "expression") "referencedDeclaration" = abi_id
         val abi_decode = abi_member andalso string_field callee "memberName" = "decode"
+        val require_error =
+          if node_type callee = "Identifier" andalso
+             int_field callee "referencedDeclaration" = require_id then
+            (case JSONUtil.arrayMap I (field v "arguments") of
+               [condition, call] =>
+                 if node_type call = "FunctionCall" andalso
+                    (node_type (field call "expression") = "Identifier" orelse
+                     node_type (field call "expression") = "MemberAccess") andalso
+                    (case optional_field (field call "expression") "referencedDeclaration" of
+                       SOME ref_id => List.exists (fn (id, _) =>
+                         id = JSONUtil.asIntInf ref_id) (!error_declarations)
+                     | NONE => false)
+                 then SOME (condition, call) else NONE
+             | _ => NONE)
+          else NONE
         (* abi.decode's second argument names types, which abi_decode reads;
          * abi.encodeCall reads its arguments itself *)
         val args =
           case (abi_decode, JSONUtil.arrayMap I (field v "arguments")) of
             (true, data :: _) => [expr data]
           | (_, raw) =>
-              if abi_member andalso string_field callee "memberName" = "encodeCall" then []
+              if isSome require_error orelse
+                 (abi_member andalso string_field callee "memberName" = "encodeCall") then []
               else map expr raw
         val no_names = null (JSONUtil.arrayMap I (field v "names"))
         fun positional () = require v no_names "named arguments are not supported here"
@@ -912,7 +928,18 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
         require v (not (bool_field v "tryCall")) "try calls are not supported";
         case string_field v "kind" of
           "functionCall" =>
-            if node_type callee = "MemberAccess" andalso
+            if isSome require_error then
+              let
+                val () = positional ()
+                val (condition, call) = valOf require_error
+                val err = int_field (field call "expression") "referencedDeclaration"
+              in
+                con "SrcRequireError"
+                  [info v, info callee, expr condition, error_declaration call err,
+                   listSyntax.mk_list (JSONUtil.arrayMap expr (field call "arguments"), expr_ty),
+                   argument_order call err 0, type_id v]
+              end
+            else if node_type callee = "MemberAccess" andalso
                (String.isPrefix "t_function_wrap_" (raw_type_id callee) orelse
                 String.isPrefix "t_function_unwrap_" (raw_type_id callee)) then
               (positional (); wrap_call v callee args)
