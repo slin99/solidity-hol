@@ -16,7 +16,6 @@ Ancestors
   solidityElaborate solidityElaborateTest solidityPrepareTest solidityPartialTest
   solidityDifferential
   solidityDifferentialCorpus solidityDifferentialTest solidityDirtyBitsTest
-  solidityStorageEnumArraysTest
   yulAST yulDialect yulState yulEvaluator yulEvaluatorProps yulEvaluatorTest
   yulImportTest yulContractTest yulConvTest yulDifferential yulDifferentialTest
   verifereum
