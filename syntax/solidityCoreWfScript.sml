@@ -426,6 +426,12 @@ Definition wf_core_atom_def:
   (wf_core_atom env ctx _ (ConstantAtom _) ⇔ F)
 End
 
+(* A call's gas option, if it has one, is a uint256. *)
+Definition wf_gas_atom_def:
+  (wf_gas_atom env ctx NONE ⇔ T) ∧
+  (wf_gas_atom env ctx (SOME g) ⇔ wf_core_atom env ctx (SingleType (UintT 256)) g)
+End
+
 (* ABI serialization consumes bytes from their original location. Literal
  * bytes are already available and need no heap object for encoding. A memory
  * array is encoded from its heap object. *)
@@ -771,10 +777,18 @@ Definition wf_core_operation_def:
                   LocatedT MemoryLoc element => byte_sequence_type element
                 | _ => F) tys ∧
     LIST_REL (wf_abi_atom env ctx) tys args) ∧
-  (wf_core_operation env ctx annotation (StaticCallOperation target data) ⇔
+  (* Only call moves value. The data is packed where it is, so a bytes
+     literal needs no memory copy. *)
+  (wf_core_operation env ctx annotation
+     (LowLevelCallOperation kind target value gas data) ⇔
     annotation = call_result_type [BoolT; LocatedT MemoryLoc BytesT] ∧
     wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
-    wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) data) ∧
+    wf_core_atom env ctx (SingleType (UintT 256)) value ∧
+    (kind ≠ ExternalCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
+    wf_gas_atom env ctx gas ∧
+    (case data of
+       ConstantAtom (BytesValue _) => T
+     | _ => wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) data)) ∧
   (wf_core_operation env ctx annotation (AbiDecodeOperation tys a) ⇔
     tys ≠ [] ∧ EVERY (λty. is_elementary_type ty ∧ valid_type_shape ty) tys ∧
     annotation = call_result_type tys ∧
@@ -821,7 +835,7 @@ Definition wf_core_operation_def:
   (* High-level calls pass elementary values; a view or pure callee is
      called statically, with no value. *)
   (wf_core_operation env ctx annotation
-     (ExternalCallOperation kind selector params rets target value args) ⇔
+     (ExternalCallOperation kind selector params rets target value gas args) ⇔
     kind ≠ ExternalDelegateCall ∧ LENGTH selector = 4 ∧
     EVERY (λty. abi_value_type ty ∧ valid_type_shape ty) (params ++ rets) ∧
     (* Returndata belongs to the caller's memory, never its calldata. *)
@@ -830,16 +844,18 @@ Definition wf_core_operation_def:
     wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
     wf_core_atom env ctx (SingleType (UintT 256)) value ∧
     (kind = ExternalStaticCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
+    wf_gas_atom env ctx gas ∧
     LIST_REL (wf_abi_atom env ctx) params args ∧
     annotation = call_result_type rets) ∧
   (wf_core_operation env ctx annotation
-     (TryExternalCallOperation kind selector params rets target value args) ⇔
+     (TryExternalCallOperation kind selector params rets target value gas args) ⇔
     kind ≠ ExternalDelegateCall ∧ LENGTH selector = 4 ∧
     EVERY (λty. abi_value_type ty ∧ valid_type_shape ty) params ∧
     EVERY (λty. is_stored_scalar_type ty ∧ valid_type_shape ty) rets ∧
     wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
     wf_core_atom env ctx (SingleType (UintT 256)) value ∧
     (kind = ExternalStaticCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
+    wf_gas_atom env ctx gas ∧
     LIST_REL (wf_abi_atom env ctx) params args ∧
     annotation = ProductType
       (MAP SingleType (BoolT :: rets ++ [LocatedT MemoryLoc BytesT]))) ∧
@@ -1582,6 +1598,7 @@ val () = cv_auto_trans_rec inline_storage_shape_def (
 );
 val () = cv_auto_trans environment_type_def;
 val () = cv_auto_trans wf_abi_atom_def;
+val () = cv_auto_trans wf_gas_atom_def;
 val () = cv_auto_trans (SPEC_ALL wf_core_operation_def);
 val () = cv_auto_trans emit_indexed_count_def;
 val () = cv_auto_trans assembly_unsupported_def;
