@@ -1828,7 +1828,12 @@ Termination
      the children's results are large, so they are dropped, not simplified *)
   rpt strip_tac >> rpt BasicProvers.VAR_EQ_TAC >> rpt (pop_assum kall_tac) >>
   simp[prim_recTheory.measure_thm, solidityImportTheory.src_expr_size_def,
-       listTheory.list_size_def, basicSizeTheory.option_size_def]
+       listTheory.list_size_def, basicSizeTheory.option_size_def] >>
+  (* Transfer's two operands include two list cells in elab_arg_values. *)
+  qmatch_goalsub_abbrev_tac ‘node_info_size transfer_info’ >>
+  ‘0 < node_info_size transfer_info’ by
+    (Cases_on ‘transfer_info’ >> simp[node_info_size_def]) >>
+  decide_tac
 End
 
 (* A boolean condition. *)
