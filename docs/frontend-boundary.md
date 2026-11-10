@@ -141,9 +141,13 @@ metadata. Inheritance needs two of these annotations (the differential fixture
 `inheritance.sol`): the importer flattens a contract along its
 `linearizedBaseContracts`, and `call_table` resolves overrides through each
 function's `baseFunctions`. Base-constructor specifiers on constructors
-(`constructors.sol`) and invocations of non-virtual modifiers
-(`modifiers.sol`) are resolved through their `referencedDeclaration`; virtual
-and overriding modifiers are rejected. A `super.f(...)` call
+(`constructors.sol`) use their `referencedDeclaration`. Unqualified modifier
+invocations resolve through the transitive `baseModifiers` relation in the
+contract's linearization; explicitly qualified `Base.modifier` invocations
+keep their declared target (`virtual_modifiers.sol`). Only invoked modifier
+implementations are imported, so overridden bodyless declarations do not
+reject a concrete contract. A bodyless declaration still reached by a call
+makes that function unsupported. A `super.f(...)` call
 (`super_calls.sol`) runs what the compiler's lookup finds in the deployed
 contract's linearization: the first function after the caller's contract with
 the name and parameter types of the declaration the call's
@@ -191,15 +195,21 @@ as high-level and low-level calls do; `delegatecall` runs the callee's code
 in this contract's account, with its caller and value. The source
 tracks no gas, so `gas()` is admitted only as a call's gas argument, where it
 means the fixed budget every call from the source gets, and a literal gas
-argument is capped at that budget. The source keeps no return data buffer
-either, so `returndatasize` and `returndatacopy` are admitted only after a
+argument is capped at that budget. The source state keeps the frame's return
+data buffer: every high-level, try and low-level call sets it to the callee's
+return or revert bytes, and a block starts with it and leaves its own final
+buffer behind. `ecrecover` calls a precompile whose return data the source
+doesn't compute, so after one the buffer is unknown: a block that could read
+it before a call of its own (`returndatasize` or `returndatacopy` not after a
 statement of the block that calls, earlier in the same or an enclosing
 statement list, or in an argument left of a call, since arguments run right
-to left (a Yul function's body starts afresh). A block in a static
-frame that names `call` or `delegatecall` fails closed; `staticcall` runs. A block that leaves
-an object's padding (the bytes past its length, in its last word) unwritten
-or not zero leaves it out of later blocks' memory, where reading it fails
-closed. solc lets a block assign a memory
+to left) then fails with an `InvalidCompletion`, and a block that leaves an
+empty buffer keeps it unknown. A Yul function's body may read return data only
+after a call of its own. A block in a static frame that names `call` or
+`delegatecall` fails closed; `staticcall` runs. A block that leaves an
+object's padding (the bytes past its length, in its last word) unwritten or
+not zero leaves it out of later blocks' memory, where reading it fails closed.
+solc lets a block assign a memory
 reference (`b := ...`); the elaborator rejects it, since the block reads the
 name as a literal.
 
@@ -313,8 +323,9 @@ arrays, as constants, immutables or error parameters, returned by an
 external call and `delete` are rejected.
 
 `keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
-a `bytes32`. A literal argument is first made a memory `bytes`, and one in
-storage or calldata is copied to memory, as for an internal call's argument.
+a `bytes32`. A string or hex literal is hashed directly without allocating
+memory. A `bytes` value in storage or calldata is copied to memory, as for
+an internal call's argument.
 `ecrecover(h, v, r, s)` is the address that the signature `(v, r, s)` of the
 hash `h` recovers, or `address(0)` for an invalid signature, as the compiler's
 call to the precompile at address 1 gives. Its arguments are converted to
@@ -333,9 +344,10 @@ an abstract contract's `interfaceId` is rejected. A selector of any other
 function-typed value is rejected, and so are `sha256` and `ripemd160`.
 
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
-type the compiler gives the whole expression, which must be a value type or
-a memory reference (a memory operand is the same reference, not a copy).
-Conditionals of tuple, storage, calldata or function type are rejected.
+type the compiler gives the whole expression, which must be a value type,
+a memory reference or a tuple of supported component types (a memory operand
+is the same reference, not a copy). Conditionals of storage, calldata or
+function type are rejected.
 
 `abi.encode`, `abi.encodePacked`, `abi.encodeWithSelector` and
 `abi.encodeWithSignature` give a new memory `bytes`, allocated as the
@@ -723,3 +735,21 @@ try/catch, errors, fallback/receive, dynamic and memory/calldata arrays, bytes/s
 pointers, transient storage, and custom storage layout bases. The first HOL type
 theory can begin from the normalized types already observed, provided unsupported
 forms continue to fail closed.
+
+## Tuple expressions and assignments
+
+Tuple literals and conditional tuple results use the existing product values.
+Conditional components convert to the conditional expression's annotated types;
+only the selected branch runs. Destructuring supports the same destinations as
+ordinary assignment, including storage members, indexed storage locations and
+memory elements. It first evaluates and snapshots the right-hand values, then
+evaluates left-hand operands from left to right, then writes from right to left.
+Storage navigation checks bounds during operand evaluation; memory indices are
+saved and bounds-checked at each write. Holes consume a value without
+capturing a location. Repeated destinations therefore retain the leftmost
+assigned component.
+
+Scalar and tuple conditional joins bind the selected memory reference without
+allocating a default object. Their temporary references cannot be read as fixed
+arrays before assignment; declarations of fixed memory arrays still allocate
+their normal zero-filled objects.
