@@ -1,0 +1,113 @@
+{
+  "name": "virtual_modifiers",
+  "source": "testdata/differential/virtual_modifiers.sol",
+  "contract": "VirtualModifiers",
+  "artifact": "testdata/differential/expected/virtual_modifiers.json",
+  "cases": [
+    {
+      "name": "inherited_call_uses_diamond_override",
+      "function": "inherited",
+      "args": [
+        2
+      ],
+      "expect": {
+        "return": [
+          39
+        ]
+      },
+      "final_storage": {
+        "0": 397
+      }
+    },
+    {
+      "name": "direct_call_uses_only_override_body",
+      "function": "direct",
+      "args": [
+        1
+      ],
+      "expect": {
+        "return": [
+          29
+        ]
+      },
+      "final_storage": {
+        "0": 297
+      }
+    },
+    {
+      "name": "qualified_call_keeps_middle_body",
+      "function": "qualifiedMiddle",
+      "args": [],
+      "expect": {
+        "return": [
+          29
+        ]
+      },
+      "final_storage": {
+        "0": 292
+      }
+    },
+    {
+      "name": "inherited_qualified_call_keeps_base_body",
+      "function": "inheritedStatic",
+      "args": [],
+      "expect": {
+        "return": [
+          19
+        ]
+      },
+      "final_storage": {
+        "0": 191
+      }
+    },
+    {
+      "name": "nested_override_invocations_keep_order",
+      "function": "nested",
+      "args": [],
+      "expect": {
+        "return": [
+          349
+        ]
+      },
+      "final_storage": {
+        "0": 34977
+      }
+    },
+    {
+      "name": "bodyless_redeclaration_reaches_implementation",
+      "function": "bodyless",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          47
+        ]
+      },
+      "final_storage": {
+        "0": 42
+      }
+    },
+    {
+      "name": "bodyless_override_can_revert",
+      "function": "bodyless",
+      "args": [
+        4
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "constructor_runs_selected_override",
+      "deploy": true,
+      "args": [],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 597
+      }
+    }
+  ]
+}

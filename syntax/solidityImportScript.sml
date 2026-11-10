@@ -162,6 +162,16 @@ Datatype:
            | AbiStringConcat
 End
 
+(* A call option, {value: v} or {gas: g}, in a call's source order. *)
+Datatype:
+  call_option = ValueOption | GasOption
+End
+
+(* a.call, a.staticcall and a.delegatecall of an address. *)
+Datatype:
+  low_level_kind = LowLevelCall | LowLevelStaticCall | LowLevelDelegateCall
+End
+
 Datatype:
   src_expr
   = SrcIdentifier node_info string num string
@@ -181,7 +191,8 @@ Datatype:
       (src_expr option) string
   | SrcTypeConversion node_info src_type_name src_expr string
   | SrcEnvironment node_info environment_field string
-  | SrcExternalCall node_info src_external bool (src_expr list) (num list) string
+  | SrcExternalCall node_info src_external (call_option list) (src_expr list)
+      (num list) string
   | SrcTypeMember node_info string src_type_name string
   | SrcNew node_info src_type_name src_expr string
   | SrcEnumValue node_info src_type_name num string
@@ -192,7 +203,8 @@ Datatype:
   | SrcEcrecover node_info node_info (src_expr list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
   | SrcAbiDecode node_info node_info src_expr (src_type_name list) string
-  | SrcStaticCall node_info node_info src_expr src_expr string
+  | SrcLowLevelCall node_info node_info low_level_kind (call_option list)
+      (src_expr list) string
   | SrcUnsupportedExpr node_info string (src_expr list)
 End
 
@@ -930,13 +942,13 @@ Definition call_variable_type_def:
     | _ => ty) (variable_type v)
 End
 
-(* Event declarations omit an explicit location; analyzed byte parameters
+(* Event declarations omit an explicit location; analyzed reference parameters
  * carry memory identifiers. *)
 Definition event_variable_type_def:
   event_variable_type (v : src_variable) =
     case normalize_type_name v.var_type_name of
       SOME ty =>
-        if byte_sequence_type ty then
+        if memory_object_type ty then
           if v.var_location = NONE ∧
              source_type_matches (LocatedT MemoryLoc ty) v.var_type_id then
             SOME (LocatedT MemoryLoc ty) else NONE
@@ -1036,8 +1048,8 @@ Definition expr_ids_def:
     info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcAbiEncode info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
-  (expr_ids (SrcStaticCall info callee target data _) =
-    info.node_id :: callee.node_id :: expr_ids target ++ expr_ids data) ∧
+  (expr_ids (SrcLowLevelCall info callee _ _ operands _) =
+    info.node_id :: callee.node_id :: exprs_ids operands) ∧
   (expr_ids (SrcAbiDecode info callee e tns _) =
     info.node_id :: callee.node_id :: expr_ids e ++ FLAT (MAP type_name_ids tns)) ∧
   (expr_ids (SrcExternalCall info _ _ operands _ _) =
@@ -1473,7 +1485,7 @@ Definition check_struct_def:
         storage_layout_ok T s.struct_members fields
 End
 
-(* Event parameters are elementary value types declared by the event. *)
+(* Event parameters are scalar or memory ABI types declared by the event. *)
 Definition check_event_def:
   check_event (e : src_event) ⇔
     EVERY (λp. (FST p).var_scope = e.event_info.node_id ∧
