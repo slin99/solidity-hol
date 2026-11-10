@@ -599,17 +599,9 @@ Definition call_external_mode_def:
                       NONE => abrupt_result (InvalidCompletion "bad try return types") st gas
                     | SOME defaults =>
                         let values = ScalarValue (BoolValue F) :: MAP ScalarValue defaults in
-                        if r.call_return = [] then
-                          normal_result (define_binding x ty
-                            (TupleValue (values ++ [ReferenceValue
-                              (MemoryReference (HeapId 0) 0 BytesT)])) st) gas
-                        else if 2 ** 64 ≤ 128 + st.memory_allocated +
-                                32 + 32 * ((LENGTH r.call_return + 31) DIV 32) then
-                          abrupt_result (PanicCompletion 65) st gas
-                        else
-                          let (data, st1) = allocate_bytes BytesT r.call_return st in
-                          normal_result (define_binding x ty
-                            (TupleValue (values ++ [data])) st1) gas)
+                        normal_result (define_binding x ty
+                          (TupleValue (values ++
+                            [ScalarValue (BytesValue r.call_return)])) st) gas)
                else
                  let st' = st with world :=
                        <| accounts := r.call_accounts;
@@ -627,7 +619,7 @@ Definition call_external_mode_def:
                         SOME (values, st2) =>
                           let result = if catching then
                                 TupleValue (ScalarValue (BoolValue T) :: values ++
-                                  [ReferenceValue (MemoryReference (HeapId 0) 0 BytesT)])
+                                  [ScalarValue (BytesValue [])])
                               else pack_results values in
                           normal_result (define_binding x ty result st2) gas
                       | NONE => abrupt_result (InvalidCompletion "bad call results") st' gas)
@@ -638,6 +630,53 @@ End
 Definition call_external_def:
   call_external env x ty kind selector params rets target value args st gas =
     call_external_mode F env x ty kind selector params rets target value args st gas
+End
+
+(* Copy raw returndata only when a source bytes value is required. *)
+Definition materialize_revert_data_def:
+  materialize_revert_data data st =
+    if data = [] then
+      INL (ReferenceValue (MemoryReference (HeapId 0) 0 BytesT), st)
+    else if 2 ** 64 ≤ memory_free_pointer st + 32 +
+                      32 * ((LENGTH data + 31) DIV 32)
+    then INR (PanicCompletion 65)
+    else INL (allocate_bytes BytesT data st)
+End
+
+(* The pinned catch decoder does not require canonical offsets or padding.
+ * Error's copied string starts at free + offset, and only a successful
+ * decode advances the free pointer. *)
+Definition try_decode_error_def:
+  try_decode_error kind data st =
+    case kind of
+      PanicCatch =>
+        if 36 ≤ LENGTH data ∧ TAKE 4 data = [0x4ew; 0x48w; 0x7bw; 0x71w] then
+          INL (TupleValue [ScalarValue (BoolValue T);
+                            ScalarValue (IntegerValue (&(abi_word data 4)))], st)
+        else INL (TupleValue [ScalarValue (BoolValue F);
+                            ScalarValue (IntegerValue 0)], st)
+    | ErrorCatch =>
+        let missing = TupleValue [ScalarValue (BoolValue F);
+              ReferenceValue (MemoryReference (HeapId 0) 0 StringT)] in
+        if LENGTH data < 68 ∨ TAKE 4 data ≠ [0x08w; 0xc3w; 0x79w; 0xa0w] then
+          INL (missing, st) else
+        let offset = abi_word data 4 in
+        if 2 ** 64 ≤ offset ∨ offset + 36 > LENGTH data then INL (missing, st) else
+        let length = abi_word data (offset + 4) in
+        if 2 ** 64 ≤ length ∨ offset + 36 + length > LENGTH data then
+          INL (missing, st) else
+        let size = 32 * ((offset + 32 + length + 31) DIV 32) in
+        if 2 ** 64 ≤ memory_free_pointer st + size then INR (PanicCompletion 65) else
+        let bs = TAKE length (DROP (offset + 36) data) in
+        let (value, st1) = allocate_bytes StringT bs st in
+        let id = st1.next_heap_id in
+        let obj = <| object_type := StringT; object_length := length;
+                     object_cells := byte_cells bs;
+                     object_address := memory_free_pointer st + offset |> in
+        INL (TupleValue [ScalarValue (BoolValue T); value],
+             st1 with <| heap := st1.heap |+ (id, obj);
+                         memory_allocated := st.memory_allocated + size |>)
+    | GenericCatch => INR (InvalidCompletion "generic catch decoder")
 End
 
 (* A low-level target.staticcall(data), as the compiler makes it: the data
@@ -664,16 +703,10 @@ Definition call_static_def:
                         logs := st.world.logs ++ res.call_logs |>
                  else st in
              let success = ScalarValue (BoolValue res.call_success) in
-             if res.call_return = [] then
-               normal_result (define_binding x ty
-                 (TupleValue [success; ReferenceValue (MemoryReference (HeapId 0) 0 BytesT)])
-                 st') gas
-             else if 2 ** 64 ≤ 128 + st'.memory_allocated + 32 +
-                               32 * ((LENGTH res.call_return + 31) DIV 32)
-             then abrupt_result (PanicCompletion 65) st' gas
-             else
-               let (v, st1) = allocate_bytes BytesT res.call_return st' in
-               normal_result (define_binding x ty (TupleValue [success; v]) st1) gas)
+             case materialize_revert_data res.call_return st' of
+               INL (v, st1) =>
+                 normal_result (define_binding x ty (TupleValue [success; v]) st1) gas
+             | INR c => abrupt_result c st' gas)
     | _ => abrupt_result (InvalidCompletion "bad staticcall operands") st gas
 End
 
@@ -781,6 +814,20 @@ Definition simple_stmt_def:
         call_external env x ty kind selector params rets target value args st gas
     | DefineStmt x ty (StaticCallOperation target data) =>
         call_static x ty target data st gas
+    | DefineStmt x ty (TryDecodeErrorOperation kind a) =>
+        (case eval_atom st.scopes a of
+           SOME (ScalarValue (BytesValue data)) =>
+             (case try_decode_error kind data st of
+                INL (v, st1) => normal_result (define_binding x ty v st1) gas
+              | INR c => abrupt_result c st gas)
+         | _ => abrupt_result (InvalidCompletion "bad catch data") st gas)
+    | DefineStmt x ty (MaterializeRevertDataOperation a) =>
+        (case eval_atom st.scopes a of
+           SOME (ScalarValue (BytesValue data)) =>
+             (case materialize_revert_data data st of
+                INL (v, st1) => normal_result (define_binding x ty v st1) gas
+              | INR c => abrupt_result c st gas)
+         | _ => abrupt_result (InvalidCompletion "bad catch data") st gas)
     | DefineStmt x ty (TryExternalCallOperation kind selector params rets target
                          value args) =>
         call_external_mode T env x ty kind selector params rets target value args st gas
@@ -1020,23 +1067,25 @@ End
 
 (* m with the byte sequence objects with ids 1 to i written into memory, each
  * as its length word and its data zero-padded to whole words, the memory solc
- * allocates for it. *)
+ * allocates for it. Newer objects take precedence over earlier padding. *)
 Definition assembly_project_def:
   (assembly_project heap 0 (m : yul_machine) = SOME m) ∧
   (assembly_project heap (SUC i) m =
-    case FLOOKUP heap (SUC i) of
-      SOME obj =>
-        if byte_sequence_type obj.object_type then
-          case heap_bytes obj 0 obj.object_length of
-            SOME bs =>
-              assembly_project heap i
-                (yul_memory_write m obj.object_address
-                   (word_to_bytes_be (n2w obj.object_length : bytes32) ++ bs ++
-                    REPLICATE (32 * ((obj.object_length + 31) DIV 32) -
-                               obj.object_length) 0w))
-          | NONE => NONE
-        else assembly_project heap i m
-    | NONE => assembly_project heap i m)
+    case assembly_project heap i m of
+      NONE => NONE
+    | SOME m1 =>
+      case FLOOKUP heap (SUC i) of
+        SOME obj =>
+          if byte_sequence_type obj.object_type then
+            case heap_bytes obj 0 obj.object_length of
+              SOME bs =>
+                SOME (yul_memory_write m1 obj.object_address
+                  (word_to_bytes_be (n2w obj.object_length : bytes32) ++ bs ++
+                   REPLICATE (32 * ((obj.object_length + 31) DIV 32) -
+                              obj.object_length) 0w))
+            | NONE => NONE
+          else SOME m1
+      | NONE => SOME m1)
 End
 
 Definition assembly_machine_def:
