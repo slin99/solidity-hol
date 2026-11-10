@@ -204,12 +204,23 @@ Termination
   WF_REL_TAC ‘measure (sol_type_size o SND)’
 End
 
+Definition byte_sequence_type_def:
+  byte_sequence_type ty ⇔ ty = BytesT ∨ ty = StringT
+End
+
+(* Byte-sequence mapping keys are passed as memory references. Their contents
+ * are hashed without the ABI's length or padding. *)
+Definition mapping_key_type_def:
+  mapping_key_type key =
+    if byte_sequence_type key then LocatedT MemoryLoc key else key
+End
+
 Definition storage_type_ok_def:
   (storage_type_ok env (ArrayT element (SOME n)) ⇔
     0 < n ∧ n < 2 ** 256 ∧ storage_type_ok env element ∧
     IS_SOME (fixed_storage_slots env (ArrayT element (SOME n)))) ∧
   (storage_type_ok env (MappingT key value) ⇔
-    elementary_storage_type_ok key ∧ storage_type_ok env value) ∧
+    (elementary_storage_type_ok key ∨ byte_sequence_type key) ∧ storage_type_ok env value) ∧
   (storage_type_ok env (ArrayT element NONE) ⇔ storage_type_ok env element) ∧
   (storage_type_ok env (StructT id) ⇔ IS_SOME (lookup_struct_layout env id)) ∧
   (storage_type_ok env (EnumT id) ⇔ IS_SOME (lookup_enum env id)) ∧
@@ -219,9 +230,7 @@ Definition storage_type_ok_def:
 End
 
 (* Located byte sequences are values; captured lvalues use ReferenceType. *)
-Definition byte_sequence_type_def:
-  byte_sequence_type ty ⇔ ty = BytesT ∨ ty = StringT
-End
+
 
 Definition byte_sequence_value_type_def:
   byte_sequence_value_type ty ⇔
@@ -363,8 +372,9 @@ Definition value_has_type_def:
   (value_has_type env (SingleType ty) (ScalarValue s) ⇔
     scalar_has_type env ty s) ∧
   (value_has_type env (ReferenceType ty)
-     (ReferenceValue (StorageReference PersistentStorage _ _ offset rty _)) ⇔
+     (ReferenceValue (StorageReference backend _ _ offset rty _)) ⇔
     ty = rty ∧ storage_type_ok env ty ∧
+    (backend = TransientStorage ⇒ IS_SOME (storage_bytes ty)) ∧
     (case storage_bytes ty of SOME b => offset + b ≤ 32 | NONE => offset = 0)) ∧
   (value_has_type env (SingleType (LocatedT CalldataLoc ty))
      (ReferenceValue (CalldataReference _ _ rty)) ⇔
@@ -693,7 +703,7 @@ Definition wf_core_operation_def:
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
            SOME (ReferenceType (MappingT key value)) =>
-             value = ty ∧ wf_core_atom env ctx (SingleType key) index
+             value = ty ∧ wf_core_atom env ctx (SingleType (mapping_key_type key)) index
          | SOME (SingleType (LocatedT loc BytesT)) =>
              loc ≠ CalldataLoc ∧ ty = FixedBytesT 1 ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
          | SOME (ReferenceType (ArrayT element _)) =>
@@ -1383,6 +1393,7 @@ End
 Definition wf_core_state_variable_def:
   wf_core_state_variable env (v : core_state_variable) ⇔
     storage_type_ok env v.state_type ∧
+    (v.state_backend = TransientStorage ⇒ IS_SOME (storage_bytes v.state_type)) ∧
     case storage_bytes v.state_type of
       SOME b => v.state_offset + b ≤ 32
     | NONE => v.state_offset = 0
@@ -1416,7 +1427,7 @@ Definition wf_core_struct_layout_def:
     lookup_struct env s.struct_id =
       SOME (MAP (λv. (v.state_id, v.state_type)) s.struct_fields) ∧
     inline_storage_shape env (LENGTH env.struct_layouts) (StructT s.struct_id) ∧
-    EVERY (λv. wf_core_state_variable env v ∧
+    EVERY (λv. v.state_backend = PersistentStorage ∧ wf_core_state_variable env v ∧
       case fixed_storage_slots env v.state_type of
         SOME slots => w2n v.state_slot + slots ≤ s.struct_slots
       | NONE => F) s.struct_fields

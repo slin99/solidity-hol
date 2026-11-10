@@ -45,7 +45,11 @@ read/capture operation. `WriteScalarStmt`, `BindReferenceStmt` and
 The latter operations are extension points, not aggregate execution coverage.
 
 `solidityStorage` owns concrete storage encoding, packed scalar access, mapping
-hashing, array navigation, state references and struct-field navigation. These
+hashing, array navigation, state references and struct-field navigation. Scalar
+word extraction and replacement are shared by persistent and transient state;
+state descriptors select the backend. Byte-sequence mapping keys use their
+unpadded contents, read through the existing memory/calldata/storage byte path.
+These
 helpers take evaluated values/references and accounts; they do not evaluate core
 atoms or change scopes. `solidityEvaluator` owns atom evaluation, bindings,
 captured targets, frame checks and control flow. Its static-frame write rejection

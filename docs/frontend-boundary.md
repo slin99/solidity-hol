@@ -181,7 +181,7 @@ name as a literal.
 
 ## Storage layout
 
-`storageLayout` is separate from the AST. It contains state-variable entries
+`storageLayout` and `transientStorageLayout` are separate from the AST. They contain state-variable entries
 with declaration IDs, slots, byte offsets, contract names, and references into a
 layout type table. Type-table entries describe encodings such as `inplace`,
 `mapping`, and `dynamic_array`, byte widths, member offsets, keys, values, and
@@ -190,9 +190,25 @@ base element types.
 Source types and layout descriptors must remain separate formal structures. The
 compiler initially supplies layout calculation; Solidity-HOL interprets the
 layout when reading, writing, and capturing references. The declaration IDs in
-layout entries must resolve to compatible state-variable declarations.
+layout entries must resolve to compatible state-variable declarations. The importer
+interleaves the two tables in declaration order and checks each entry's backend
+against its declaration. Transient variables support value types, as solc 0.8.37
+does; transient mappings and other reference types are rejected.
 
-Storage declarations now include elementary scalars, structs, scalar-key
+Persistent and transient slots have independent numbering. `layout at <expr>`
+needs no source expression evaluator here: the compiler resolves the expression
+and records absolute persistent slots, including inherited variables and mapping
+roots. It leaves transient slots unchanged. These layout calculations are part
+of the existing compiler metadata boundary.
+
+Transient scalar reads and writes use `source_world.transient`, retaining the
+same packing and cleanup as persistent scalars. A static frame cannot write
+either backend. `call_contract` executes a frame, so it retains transient state
+across calls and restores it on revert. The transaction driver starts each
+transaction with empty transient storage and discards it afterward; it must not
+clear it between calls in the same transaction.
+
+Storage declarations now include elementary scalars, structs, scalar-key and byte-sequence-key
 mappings, and fixed/dynamic arrays, including their storage combinations.
 Scalar leaves can be read and updated through member/index paths.
 The importer takes each
@@ -204,7 +220,11 @@ compiler. Elaboration copies slot and offset into the core program's
 `state_variables`. Initialisers are imported and run by the creation
 procedure, and so are immutables' (below). Mapping key/value types come from recursive type-name
 normalization. AST and layout type identifiers use different encodings; both
-are checked against the normalized type. The scalar leaf width determines
+are checked against the normalized type. Bytes/string mapping keys are passed
+as memory byte references: calldata and storage keys are copied through the
+existing byte-access path. Their unpadded contents followed by the root slot's
+32-byte big-endian encoding determine the Keccak-256 slot; no length word or
+ABI padding is included. Public getters accept the same keys. The scalar leaf width determines
 its storage read/write, and aggregate root slots come from the layout. Fixed
 array dimensions come from the compiler's resolved integer type of the length
 expression. Scalar elements pack without straddling slots; each nested row
@@ -225,7 +245,7 @@ It returns the value it reaches, a byte sequence copied to memory; for a
 struct, its members in declaration order, skipping mappings and arrays other
 than `bytes` and `string`, as the compiler's getter does. A struct with a
 struct-typed member, or with no member to return, has no getter here, and
-neither has a mapping whose key is not an elementary value type.
+neither has a mapping whose key is neither an elementary value type nor bytes/string.
 
 Constants of elementary value types, `string` and `bytes`, declared in the
 contract, a base, a reached library or at file level are imported with their
@@ -465,8 +485,8 @@ array strides use each struct's whole-slot size. Raw elaboration preserves
 these declarations; the complete core checker rejects missing or inconsistent
 runtime layouts as invalid generated core at the checked preparation boundary.
 
-The selected compiler also emits `transientStorageLayout`. It is empty for the
-initial corpus, so transient layout remains unvalidated.
+The importer validates `transientStorageLayout` alongside `storageLayout`,
+preserving each table's order while interleaving their entries by declaration.
 
 ## Normalized AST
 
@@ -478,10 +498,12 @@ function is kept unsupported; see Partial admission). The importer decodes
 the compiler's string-valued kinds once, into datatypes: function kinds
 (`function` and reachable `freeFunction` both become `FunctionKind`, plus
 `receive`, `fallback` and `constructor`), visibilities, state mutabilities, address payability,
-data locations (`transient` is an import error), literal kinds and the
+data locations, literal kinds and the
 unary, binary and assignment operators. It also holds the one table of the
 compiler's built-in declaration ids (`abi`, `msg`, `block`, `tx`, `this`,
 `keccak256`, `ecrecover`, `addmod`, `mulmod`, `require`, `assert`, `revert`).
+Transient state declarations carry a separate flag; `transient` on a local,
+parameter or return declaration is rejected.
 `tests/solidityImportTestScript.sml` holds the positive fixtures and negative
 fixtures derived from them.
 
@@ -518,8 +540,8 @@ in Verifereum and requires equal ABI-encoded outcomes; see
 
 Admitted: one contract, flattened along its bases, with
 
-- functions over elementary value types, value-type state variables and
-  immutables, storage structs, scalar-key mappings and fixed or dynamic
+- functions over elementary value types, persistent/transient value-type state
+  variables and immutables, storage structs, value-type or bytes/string-key mappings and fixed or dynamic
   storage arrays; member and indexed scalar reads and updates, array lengths,
   scalar push and pop; bytes and string literals and memory or calldata
   values, which keep their locations (memory assignments alias,
@@ -666,7 +688,8 @@ partial semantic result.
 
 Before fixing a complete core AST, extend the corpus to cover control flow,
 tuple holes, modifiers, external calls, creation,
-try/catch, errors, fallback/receive, dynamic and memory/calldata arrays, bytes/string, function
-pointers, transient storage, and custom storage layout bases. The first HOL type
+try/catch, errors, fallback/receive, dynamic and memory/calldata arrays, bytes/string, and function
+pointers. Transient value types and custom storage bases have differential fixtures.
+The first HOL type
 theory can begin from the normalized types already observed, provided unsupported
 forms continue to fail closed.

@@ -230,7 +230,7 @@ Definition eval_operation_def:
                   case default_elementary ty of
                     SOME s => ValueOk (ScalarValue s)
                   | NONE => ValueAbrupt (InvalidCompletion "bad immutable type"))
-         | SOME (ReferenceValue r) => read_storage_reference env st.world.accounts ty r
+         | SOME (ReferenceValue r) => read_storage_reference env st.world ty r
          | _ => ValueAbrupt (InvalidCompletion "bad storage reference"))
     | ByteIndexOperation a index =>
         (case (eval_atom st.scopes a, eval_atom st.scopes index) of
@@ -239,7 +239,7 @@ Definition eval_operation_def:
                 StorageReference _ _ _ _ _ _ =>
                   (case navigate_storage env st.world.accounts r (IntegerValue i) of
                      ValueOk (ReferenceValue element) =>
-                       read_storage_reference env st.world.accounts (FixedBytesT 1) element
+                       read_storage_reference env st.world (FixedBytesT 1) element
                    | ValueAbrupt c => ValueAbrupt c
                    | _ => ValueAbrupt (InvalidCompletion "bad storage byte reference"))
               | _ => case byte_contents st r of
@@ -263,7 +263,7 @@ Definition eval_operation_def:
                 StorageReference _ _ _ _ (ArrayT element _) _ =>
                   (case navigate_storage env st.world.accounts r (IntegerValue i) of
                      ValueOk (ReferenceValue r') =>
-                       read_storage_reference env st.world.accounts element r'
+                       read_storage_reference env st.world element r'
                    | ValueOk _ => ValueAbrupt (InvalidCompletion "bad storage array element")
                    | ValueAbrupt c => ValueAbrupt c)
               | _ =>
@@ -335,6 +335,15 @@ Definition eval_operation_def:
              navigate_memory_byte st (MemoryReference h offset rty) i
          | (SOME (ReferenceValue r), SOME (ScalarValue s)) =>
              navigate_storage env st.world.accounts r s
+         | (SOME (ReferenceValue (StorageReference PersistentStorage addr slot 0
+                   (MappingT key value) layout)), SOME (ReferenceValue key_ref)) =>
+             if ¬byte_sequence_type key then
+               ValueAbrupt (InvalidCompletion "bad mapping key")
+             else (case byte_contents st key_ref of
+                INL bs => navigate_storage env st.world.accounts
+                  (StorageReference PersistentStorage addr slot 0 (MappingT key value) layout)
+                  (BytesValue bs)
+              | INR c => ValueAbrupt c)
          | _ => ValueAbrupt (InvalidCompletion "bad index operands"))
     | EnvironmentOperation f =>
         ValueOk (environment_value st.frame f)
@@ -447,6 +456,14 @@ Definition write_target_def:
         (case write_storage st.world.accounts addr slot offset ty s of
            SOME accounts =>
              SOME (st with world := st.world with accounts := accounts)
+         | NONE => NONE)
+    | (SOME (ValueTarget (StorageReference TransientStorage addr slot offset
+                            ty _)), SOME (ScalarValue s)) =>
+        if st.frame.static_context then NONE else
+        let storage = lookup_transient_storage addr st.world.transient in
+        (case write_storage_word (lookup_storage slot storage) offset ty s of
+           SOME word => SOME (st with world := st.world with transient :=
+             update_transient_storage addr (update_storage slot word storage) st.world.transient)
          | NONE => NONE)
     | _ => NONE
 End

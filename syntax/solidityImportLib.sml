@@ -408,9 +408,11 @@ fun variable_record v =
      ("var_scope", mk_num (int_field v "scope")),
      ("var_type_name", type_name (field v "typeName")),
      ("var_type_id", type_id v),
+     ("var_transient", mk_bool (string_field v "storageLocation" = "transient")),
      ("var_location",
       case string_field v "storageLocation" of
         "default" => mk_opt (mk_thy_type {Thy = "solidityAST", Tyop = "data_location", Args = []}) NONE
+      | "transient" => mk_opt (mk_thy_type {Thy = "solidityAST", Tyop = "data_location", Args = []}) NONE
       | l => optionSyntax.mk_some (decode v "storage location" locations l))]
 
 (* A local, parameter or return variable, or, given state, a state variable
@@ -425,6 +427,8 @@ fun declaration state v = within v (fn v =>
        require v (bool_field v "stateVariable" = state)
          (if state then "expected a state variable"
           else "expected a local variable");
+       require v (state orelse string_field v "storageLocation" <> "transient")
+         "transient location on a non-state variable";
        require v (string_field v "mutability" = "mutable" orelse
                   state andalso string_field v "mutability" = "immutable")
          "immutable variables are not supported";
@@ -1577,9 +1581,10 @@ fun event v = within v (fn v =>
           pairSyntax.mk_prod (variable_ty, bool)))]))
 
 (* An entry of a contract's storageLayout. *)
-fun storage_entry v = within v (fn v =>
+fun storage_entry backend v = within v (fn v =>
   record "src_storage_entry"
     [("storage_id", mk_num (int_field v "astId")),
+     ("storage_backend", prim_mk_const {Thy = "solidityCore", Name = backend}),
      ("storage_slot",
       case IntInf.fromString (string_field v "slot") of
         SOME i => mk_num i
@@ -1604,7 +1609,7 @@ fun struct_declaration types v = within v (fn v =>
                 SOME bytes => mk_num bytes
               | NONE => fail "malformed struct layout size",
               listSyntax.mk_list
-                (JSONUtil.arrayMap storage_entry (field desc "members"),
+                (JSONUtil.arrayMap (storage_entry "PersistentStorage") (field desc "members"),
                  storage_entry_ty))))
   in
     record "src_struct"
@@ -1843,6 +1848,21 @@ fun contract external_structs contracts declared v = within v (fn v =>
       List.filter (fn d => not (bool_field d "constant")) variables
     fun immutable d = string_field d "mutability" = "immutable"
     val state_variables = List.filter (not o immutable) assigned
+    val transient_layout = JSONUtil.get (contracts,
+      [JSONUtil.SEL name, JSONUtil.SEL "transientStorageLayout"])
+    (* Interleave the two layouts without repairing reordered or extra entries:
+     * the formal layout check must still reject malformed metadata. *)
+    fun merge_layout [] persistent transient =
+          map (fn e => ("PersistentStorage", e)) persistent @
+          map (fn e => ("TransientStorage", e)) transient
+      | merge_layout (d :: ds) persistent transient =
+          case (string_field d "storageLocation" = "transient", persistent, transient) of
+            (true, _, e :: es) => ("TransientStorage", e) :: merge_layout ds persistent es
+          | (false, e :: es, _) => ("PersistentStorage", e) :: merge_layout ds es transient
+          | _ => merge_layout ds persistent transient
+    val ordered_entries = merge_layout state_variables
+      (JSONUtil.arrayMap I (field layout "storage"))
+      (JSONUtil.arrayMap I (field transient_layout "storage"))
     (* The base constructor arguments base x gives: those of its inheritance
      * specifiers and its constructor's base constructor specifiers, in the
      * order of x's own linearization. *)
@@ -1914,7 +1934,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
              [numSyntax.num, numSyntax.num, listSyntax.mk_list_type expr_ty])),
        ("contract_storage",
         listSyntax.mk_list
-          (keep_all storage_entry (JSONUtil.arrayMap I (field layout "storage")),
+          (List.mapPartial (fn (backend, e) => keep (storage_entry backend) e) ordered_entries,
            storage_entry_ty)),
        ("contract_structs", listSyntax.mk_list
           (keep_all (struct_declaration (field layout "types"))

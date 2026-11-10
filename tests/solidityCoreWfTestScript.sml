@@ -951,9 +951,9 @@ Definition packed_struct_layout_def:
     struct_slots := 1;
     struct_fields :=
       [<| state_id := AstId 951; state_type := UintT 8;
-          state_slot := 0w; state_offset := 0 |>;
+          state_backend := PersistentStorage; state_slot := 0w; state_offset := 0 |>;
        <| state_id := AstId 952; state_type := IntT 16;
-          state_slot := 0w; state_offset := 1 |>]
+          state_backend := PersistentStorage; state_slot := 0w; state_offset := 1 |>]
   |>
 End
 
@@ -987,15 +987,15 @@ Theorem malformed_struct_fields_rejected:
   ¬wf_core_environment
     (struct_layout_environment [packed_struct_layout with struct_fields :=
       [<| state_id := AstId 951; state_type := UintT 16;
-          state_slot := 0w; state_offset := 31 |>]]) ∧
+          state_backend := PersistentStorage; state_slot := 0w; state_offset := 31 |>]]) ∧
   ¬wf_core_environment
     (struct_layout_environment [packed_struct_layout with struct_fields :=
       [<| state_id := AstId 951; state_type := UintT 8;
-          state_slot := 1w; state_offset := 0 |>]]) ∧
+          state_backend := PersistentStorage; state_slot := 1w; state_offset := 0 |>]]) ∧
   ¬wf_core_environment
     (struct_layout_environment [packed_struct_layout with struct_fields :=
       [<| state_id := AstId 951; state_type := StructT (AstId 950);
-          state_slot := 0w; state_offset := 0 |>]])
+          state_backend := PersistentStorage; state_slot := 0w; state_offset := 0 |>]])
 Proof
   EVAL_TAC
 QED
@@ -1026,10 +1026,10 @@ Theorem recursive_struct_behind_mapping_checked:
       struct_slots := 2;
       struct_fields :=
         [<| state_id := AstId 951; state_type := UintT 8;
-            state_slot := 0w; state_offset := 0 |>;
+            state_backend := PersistentStorage; state_slot := 0w; state_offset := 0 |>;
          <| state_id := AstId 952;
             state_type := MappingT (UintT 256) (StructT (AstId 950));
-            state_slot := 1w; state_offset := 0 |>] |>])
+            state_backend := PersistentStorage; state_slot := 1w; state_offset := 0 |>] |>])
 Proof
   EVAL_TAC
 QED

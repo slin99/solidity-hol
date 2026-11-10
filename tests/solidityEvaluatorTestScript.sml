@@ -281,7 +281,7 @@ QED
  * 0, and returns it read back. *)
 
 Definition counter_def:
-  counter = <| state_id := AstId 200; state_type := u8; state_slot := 0w;
+  counter = <| state_id := AstId 200; state_type := u8; state_backend := PersistentStorage; state_slot := 0w;
                state_offset := 1 |>
 End
 
@@ -825,6 +825,50 @@ Theorem asm_memory_assign_rule:
   assembly_assigns_ok ["b"] [YulFunction "f" [] ["b"] [YulAssign ["b"] (ylit 0w)]] ∧
   ¬assembly_assigns_ok ["b"] [YulFunction "f" ["x"] [] [YulAssign ["b"] (ylit 0w)]] ∧
   assembly_assigns_ok ["b"] [YulAssign ["x"] (YulName "b")]
+Proof
+  EVAL_TAC
+QED
+
+Definition transient_counter_run_def:
+  transient_counter_run st x =
+    invoke_source 10
+      (core_program_environment (storage_program [counter with state_backend := TransientStorage]))
+      (AstId 20) [ScalarValue (IntegerValue x)] st []
+End
+
+Definition transient_counter_state_def:
+  transient_counter_state = initial_state with world := initial_state.world with
+    transient := update_transient_storage 0w (update_storage 0w 0xaabbccw empty_storage)
+      (update_transient_storage 7w (update_storage 0w 123w empty_storage)
+        empty_transient_storage)
+End
+
+val () = cv_auto_trans transient_counter_run_def;
+val () = cv_auto_trans transient_counter_state_def;
+
+Theorem transient_scalar_writes_preserve_other_bytes_and_accounts:
+  (transient_counter_run transient_counter_state 5).completion =
+    ReturnCompletion [ScalarValue (IntegerValue 5)] ∧
+  lookup_storage 0w (lookup_transient_storage 0w
+    (transient_counter_run transient_counter_state 5).state.world.transient) = 0xaa05ccw ∧
+  lookup_storage 0w (lookup_transient_storage 7w
+    (transient_counter_run transient_counter_state 5).state.world.transient) = 123w ∧
+  lookup_storage 0w (lookup_account 0w
+    (transient_counter_run transient_counter_state 5).state.world.accounts).storage = 0w
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem transient_static_write_rejected:
+  (transient_counter_run static_state 5).completion = InvalidCompletion "bad scalar write"
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem transient_aggregate_state_rejected:
+  storage_wf [counter with state_backend := TransientStorage] ∧
+  ¬storage_wf [counter with <| state_backend := TransientStorage;
+    state_type := MappingT (UintT 256) (UintT 8); state_offset := 0 |>]
 Proof
   EVAL_TAC
 QED

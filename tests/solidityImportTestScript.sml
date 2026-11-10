@@ -30,7 +30,9 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/try_calls.json",
   "../testdata/differential/expected/inline_assembly.json",
   "../testdata/differential/expected/external.json",
-  "../testdata/differential/expected/udvt.json"
+  "../testdata/differential/expected/udvt.json",
+  "../testdata/differential/expected/transient_values.json",
+  "../testdata/differential/expected/byte_mapping_keys.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -1292,3 +1294,57 @@ val () = import_units_error_with UnsupportedFunction [udvt_types] udvt_contracts
      (fn v => is_node "BinaryOperation" v andalso
               isSome (JSONUtil.findField v "function")) "overloaded operator"
      (set_field "function" (declaration_id "FunctionDefinition" "bump" udvt_ast)) udvt_ast)
+
+Definition transient_unit_def:
+  transient_unit = ^(import_artifact
+    "../testdata/differential/expected/transient_values.json"
+    "testdata/differential/transient_values.sol")
+End
+
+Definition byte_mapping_unit_def:
+  byte_mapping_unit = ^(import_artifact
+    "../testdata/differential/expected/byte_mapping_keys.json"
+    "testdata/differential/byte_mapping_keys.sol")
+End
+
+val () = cv_auto_trans transient_unit_def;
+val () = cv_auto_trans byte_mapping_unit_def;
+
+Theorem transient_and_byte_key_units_valid:
+  valid_src_unit transient_unit ∧ valid_src_unit byte_mapping_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem transient_and_persistent_layouts_keep_declaration_order:
+  MAP (λe. (e.storage_backend, e.storage_slot, e.storage_offset))
+    (HD transient_unit.unit_contracts).contract_storage =
+  [(PersistentStorage, 42, 0); (TransientStorage, 0, 0);
+   (PersistentStorage, 42, 1); (TransientStorage, 0, 1);
+   (TransientStorage, 0, 2); (TransientStorage, 0, 4);
+   (TransientStorage, 0, 24); (TransientStorage, 0, 28);
+   (TransientStorage, 1, 0); (PersistentStorage, 43, 0)]
+Proof
+  EVAL_TAC
+QED
+
+Theorem wrong_storage_backend_rejected:
+  ¬storage_layout_ok F (HD transient_unit.unit_contracts).contract_state_variables
+    ((HD (HD transient_unit.unit_contracts).contract_storage with
+       storage_backend := TransientStorage) ::
+     TL (HD transient_unit.unit_contracts).contract_storage) ∧
+  ¬storage_layout_ok F (HD transient_unit.unit_contracts).contract_state_variables
+    (MAP (λe. e with storage_backend := PersistentStorage)
+      (HD transient_unit.unit_contracts).contract_storage)
+Proof
+  EVAL_TAC
+QED
+
+Theorem transient_mapping_and_local_rejected:
+  state_variable (HD byte_mapping_unit.unit_contracts).contract_bases
+    (HD (HD byte_mapping_unit.unit_contracts).contract_state_variables with
+      var_transient := T) = NONE ∧
+  variable_type (EL 3 (HD transient_unit.unit_contracts).contract_state_variables) = NONE
+Proof
+  EVAL_TAC
+QED

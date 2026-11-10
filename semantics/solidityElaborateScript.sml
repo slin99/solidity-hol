@@ -1603,7 +1603,7 @@ Definition elab_expr_def:
              ensure (source_type_matches value tid) (info.node_id, "type annotation mismatch")
              (case elab_expr ctx n1 index of
                 INL ((si, a, vt), n2) =>
-                  (case coerce n2 key a vt of
+                  (case coerce n2 (mapping_key_type key) a vt of
                      INL ((cs, a'), n3) =>
                        INL ((ss ++ si ++ cs ++
                              [DefineStmt (AstId n3) (ReferenceType value)
@@ -2413,6 +2413,7 @@ Definition core_state_variables_def:
     case core_state_variables vs es of
       SOME cvs =>
         SOME (<| state_id := AstId x; state_type := ty;
+                 state_backend := e.storage_backend;
                  state_slot := n2w e.storage_slot;
                  state_offset := e.storage_offset |> :: cvs)
     | NONE => NONE) ∧

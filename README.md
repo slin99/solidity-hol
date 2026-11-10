@@ -47,7 +47,10 @@ operators to internal calls.
 
 The evaluator executes elementary scalar operations and conversions, locals,
 tuples, structured control flow, internal calls, built-in failures, packed
-state values, scalar-key mappings, storage arrays and storage struct members.
+state values, scalar and bytes/string mapping keys, storage arrays and storage
+struct members. Transient value-type state variables use a separate backend
+with transaction lifetime; custom storage bases use the compiler's absolute
+layout slots. See [frontend-boundary.md](docs/frontend-boundary.md#storage-layout).
 Assignment, compound assignment, increment and tuple writes share local or
 captured-reference destinations. `solidityStorage` owns packed access and
 navigation; the evaluator owns bindings, frame checks and control flow.
