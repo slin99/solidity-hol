@@ -591,7 +591,8 @@ Definition materialize_value_def:
         let id = st.next_heap_id + 1 in
         let obj = <| object_type := ty; object_length := n;
                      object_cells := FEMPTY;
-                     object_address := 128 + st.memory_allocated |> in
+                     object_address := 128 + st.memory_allocated;
+                     object_padded := T |> in
         let st1 = st with <| heap := st.heap |+ (id, obj); next_heap_id := id;
                      memory_allocated := st.memory_allocated +
                        (if length = NONE then 32 else 0) + 32 * n |> in
@@ -601,7 +602,7 @@ Definition materialize_value_def:
                    st2 with heap := st2.heap |+ (id, obj with object_cells := cells))
          | NONE => NONE)
     | (_, ScalarValue (BytesValue bs)) =>
-        if byte_sequence_type ty then SOME (allocate_bytes ty bs st)
+        if byte_sequence_type ty then SOME (allocate_bytes T ty bs st)
         else SOME (v, st)
     | (_, ScalarValue _) => SOME (v, st)
     | _ => NONE) ∧
