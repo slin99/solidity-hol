@@ -525,7 +525,8 @@ fixtures derived from them.
   with it; the storage layout lists the state variables in linearization
   order, bases first, each with its own type identifier;
 - constants are of elementary value types or byte sequences, declared by a
-  base or a library; event parameters are elementary, scoped by their event;
+  base or a library; event parameters are scalar, byte-sequence or supported
+  array types, scoped by their event;
 - initializers name state variables or immutables, base-constructor
   arguments name a constructor, and getters name a state variable, an
   immutable or a constant.
@@ -568,11 +569,18 @@ Admitted: one contract, flattened along its bases, with
   options; low-level `call`, `staticcall` and `delegatecall` of addresses;
 - `require`, `assert` and `revert` with boolean conditions and literal string
   messages; reads of `msg`, `tx` and `block` members and `address(this)`;
-  emits of events and reverts with custom errors, both with elementary
-  parameters; `keccak256`, `abi.encode*`, selectors;
+  emits of events with scalar, byte-sequence and array parameters (including
+  indexed arrays), and reverts with custom errors with elementary parameters;
+  `keccak256`, `abi.encode*`, selectors;
 - constants, state-variable initializers, constructors and base-constructor
   arguments (inheritance specifiers or constructor modifiers), which form one
   creation procedure.
+
+Event arrays use their existing memory, calldata or storage references until
+serialization, so later argument side effects are visible in the log. Data
+uses standard ABI encoding. Indexed arrays hash concatenated element encodings
+without array lengths or offsets; byte and string elements occupy padded words.
+Storage byte/string padding is preserved as the pinned compiler copies it.
 
 A contract or interface type is read as address, its value at run time,
 stored and ABI encoded as one: in type names, type identifiers and storage
