@@ -30,6 +30,16 @@ library Hooks {
     }
 }
 
+// A mapping key type the core cannot hold: the struct is left out too.
+library Roles {
+    enum Role { A, B }
+
+    struct Grant {
+        mapping(Role => bool) granted;
+        uint8 n;
+    }
+}
+
 contract Partial is Mid {
     uint256 public total;
 
@@ -76,6 +86,12 @@ contract Partial is Mid {
     function hookCount() public pure returns (uint8) {
         Hooks.Box memory b;
         return b.hook.n;
+    }
+
+    function grantCount() internal view returns (uint8) {
+        Roles.Grant storage g;
+        assembly { g.slot := 0 }
+        return g.n;
     }
 
     fallback() external {

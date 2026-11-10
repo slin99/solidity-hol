@@ -1669,16 +1669,29 @@ fun constant_declaration v = within v (fn v =>
  * constants it refers to, also through each other, come with it, the
  * constants after its own.
  *)
-(* The structs ss, imported, except one whose import records a blocker (a
- * member type the importer cannot represent) and those that refer to such a
- * one: they are left out, so a function using one is rejected, not the
- * unit. *)
+(* A mapping with an enum key, in the type name v: it imports, but the core
+ * has no such mapping type. *)
+fun enum_keyed v =
+  case node_type v of
+    "Mapping" =>
+      String.isPrefix "t_enum$_" (raw_type_id (field v "keyType")) orelse
+      enum_keyed (field v "valueType")
+  | "ArrayTypeName" => enum_keyed (field v "baseType")
+  | _ => false
+
+(* The structs ss, imported, except one with a member type the core cannot
+ * hold (its import records a blocker, or it has an enum-keyed mapping) and
+ * those that refer to such a one: they are left out, so a function using
+ * one is rejected, not the unit. *)
 fun importable_structs types ss =
   let
+    fun representable s =
+      not (List.exists (fn m => enum_keyed (field m "typeName"))
+             (JSONUtil.arrayMap I (field s "members")))
     val imported =
       List.mapPartial
         (fn s => case keep (fn s => with_blockers (fn () => struct_declaration types s)) s of
-                   SOME (tm, []) => SOME (s, tm)
+                   SOME (tm, []) => if representable s then SOME (s, tm) else NONE
                  | _ => NONE) ss
     fun close kept =
       let
