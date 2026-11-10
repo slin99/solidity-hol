@@ -894,6 +894,14 @@ Definition elab_expr_def:
            INL (([], ConstantAtom (BytesValue (MAP (n2w o ORD) value)),
                  ElabBytesLiteral), n)
          else if kind ≠ NumberLiteral then INR [(info.node_id, "unsupported literal")]
+         else if tid = "t_address" then
+           (case fromDecString value of
+              SOME i =>
+                if i < 2 ** 160 then
+                  INL (([], ConstantAtom (AddressValue (n2w i)),
+                        ElabType (AddressT NonpayableAddress)), n)
+                else INR [(info.node_id, "unsupported literal")]
+            | NONE => INR [(info.node_id, "unsupported literal")])
          else
            case decode_type_identifier tid of
              SOME (SrcRational i d) =>
