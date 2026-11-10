@@ -27,7 +27,7 @@ Definition initial_state_def:
     heap := FEMPTY;
     next_heap_id := 0; immutables := FEMPTY;
     memory_allocated := 0;
-    targets := FEMPTY
+    targets := FEMPTY; return_data := SOME []
   |>
 End
 
@@ -1212,6 +1212,142 @@ Theorem asm_memory_assign_rule:
   assembly_assigns_ok ["b"] [YulFunction "f" [] ["b"] [YulAssign ["b"] (ylit 0w)]] ∧
   ¬assembly_assigns_ok ["b"] [YulFunction "f" ["x"] [] [YulAssign ["b"] (ylit 0w)]] ∧
   assembly_assigns_ok ["b"] [YulAssign ["x"] (YulName "b")]
+Proof
+  EVAL_TAC
+QED
+
+(* Return data across the source and its blocks: a procedure running the
+ * statements pre and then one block per code, each with x bound to its
+ * parameter, against call_state's callees. *)
+Definition rd_proc_def:
+  rd_proc pre codes = <|
+    procedure_id := AstId 130;
+    parameters := [(AstId 131, u256)];
+    return_bindings := [(AstId 132, u256)];
+    body := pre ++
+      MAP (λc. AssemblyStmt c [("x", AssemblyLocal (AstId 131) u256)]) codes ++
+      [ReturnStmt [BoundAtom (AstId 131)]]
+  |>
+End
+
+Definition run_rd_def:
+  run_rd pre codes =
+    (invoke_source 20 (core_program_environment <|
+        unsupported_procedures := []; procedures := [rd_proc pre codes];
+        struct_layouts := []; type_declarations := [];
+        state_variables := []; immutables := [];
+        entry_procedure := AstId 130;
+        external_functions := []; receive_procedure := NONE;
+        fallback_procedure := NONE; creation_procedure := NONE |>)
+      (AstId 130) [ScalarValue (IntegerValue 7)] call_state []).completion
+End
+
+(* A high-level call to 0x5000 (returns a word), a try call to 0x5001
+ * (reverts with a word, caught), a low-level call to 0x5000, and an
+ * ecrecover of an invalid signature. *)
+Definition rd_high_def:
+  rd_high =
+    DefineStmt (AstId 133) (SingleType u256)
+      (ExternalCallOperation ExternalCall [1w; 2w; 3w; 4w] [] [u256]
+         (ConstantAtom (AddressValue 0x5000w)) (k 0) NONE [])
+End
+
+Definition rd_try_def:
+  rd_try =
+    DefineStmt (AstId 134)
+      (ProductType [SingleType BoolT; SingleType u256;
+                    SingleType (LocatedT MemoryLoc BytesT)])
+      (TryExternalCallOperation ExternalCall [1w; 2w; 3w; 4w] [] [u256]
+         (ConstantAtom (AddressValue 0x5001w)) (k 0) NONE [])
+End
+
+Definition rd_low_def:
+  rd_low =
+    DefineStmt (AstId 135)
+      (ProductType [SingleType BoolT; SingleType (LocatedT MemoryLoc BytesT)])
+      (LowLevelCallOperation ExternalCall (ConstantAtom (AddressValue 0x5000w))
+         (k 0) NONE (ConstantAtom (BytesValue [])))
+End
+
+Definition rd_ecrecover_def:
+  rd_ecrecover =
+    DefineStmt (AstId 136) (SingleType (AddressT NonpayableAddress))
+      (EcrecoverOperation (ConstantAtom (BytesValue (REPLICATE 32 0w))) (k 27)
+         (ConstantAtom (BytesValue (REPLICATE 32 0w)))
+         (ConstantAtom (BytesValue (REPLICATE 32 0w))))
+End
+
+Definition rd_size_def:
+  rd_size = [YulAssign ["x"] (YulBuiltin YReturnDataSize [])]
+End
+
+Definition rd_bubble_def:
+  rd_bubble =
+    [YulLet ["p"] (SOME (YulBuiltin YMLoad [ylit 0x40w]));
+     YulExprStmt (YulBuiltin YReturnDataCopy
+       [YulName "p"; ylit 0w; YulBuiltin YReturnDataSize []]);
+     YulExprStmt (YulBuiltin YRevert [YulName "p"; YulBuiltin YReturnDataSize []])]
+End
+
+Definition rd_no_call_def:
+  rd_no_call = [YulAssign ["x"] (YulBuiltin YAdd [YulName "x"; ylit 1w])]
+End
+
+Definition rd_call_def:
+  rd_call a = [YulExprStmt (YulBuiltin YPop [ycall (ylit a) 0w 0w 0w 0w])]
+End
+
+val () = cv_auto_trans run_rd_def;
+val () = List.app cv_auto_trans
+  [rd_high_def, rd_try_def, rd_low_def, rd_ecrecover_def, rd_size_def,
+   rd_bubble_def, rd_no_call_def, rd_call_def];
+
+(* A frame starts with no return data; each call of the source leaves its
+ * callee's return or revert bytes, the caught revert of a try included, and
+ * a block keeps them for the next. *)
+Theorem asm_return_data_known:
+  run_rd [] [rd_size] = ReturnCompletion [ScalarValue (IntegerValue 0)] ∧
+  run_rd [rd_high] [rd_size] = ReturnCompletion [ScalarValue (IntegerValue 32)] ∧
+  run_rd [rd_low] [rd_size] = ReturnCompletion [ScalarValue (IntegerValue 32)] ∧
+  run_rd [rd_try] [rd_size] = ReturnCompletion [ScalarValue (IntegerValue 32)] ∧
+  run_rd [rd_try] [rd_bubble] = RevertCompletion (REPLICATE 31 0w ++ [0xaaw]) ∧
+  run_rd [rd_high] [rd_no_call; rd_size] =
+    ReturnCompletion [ScalarValue (IntegerValue 32)] ∧
+  run_rd [] [rd_call 0x5000w; rd_size] =
+    ReturnCompletion [ScalarValue (IntegerValue 32)]
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* After an ecrecover the source does not know the return data: a block that
+ * could read it before a call of its own fails closed, also after a block
+ * that made no call or a call that returned nothing; a call that returned
+ * bytes makes it known again. *)
+Theorem asm_return_data_unknown:
+  run_rd [rd_ecrecover] [rd_size] =
+    InvalidCompletion "assembly reads return data the source does not know" ∧
+  run_rd [rd_high; rd_ecrecover] [rd_size] =
+    InvalidCompletion "assembly reads return data the source does not know" ∧
+  run_rd [rd_ecrecover] [rd_no_call; rd_size] =
+    InvalidCompletion "assembly reads return data the source does not know" ∧
+  run_rd [rd_ecrecover] [rd_call 0x5002w; rd_size] =
+    InvalidCompletion "assembly reads return data the source does not know" ∧
+  run_rd [rd_ecrecover] [rd_call 0x5000w ++ rd_size] =
+    ReturnCompletion [ScalarValue (IntegerValue 32)] ∧
+  run_rd [rd_ecrecover] [rd_call 0x5000w; rd_size] =
+    ReturnCompletion [ScalarValue (IntegerValue 32)]
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* The static rule admits return data reads before a call of the block's own,
+ * but not in a Yul function's body, and gas() only as a call's gas argument. *)
+Theorem asm_gas_rule:
+  assembly_gas_ok rd_size ∧
+  assembly_gas_ok rd_bubble ∧
+  ¬assembly_gas_ok [YulFunction "f" [] ["r"]
+                      [YulAssign ["r"] (YulBuiltin YReturnDataSize [])]] ∧
+  ¬assembly_gas_ok [YulAssign ["x"] (YulBuiltin YGas [])]
 Proof
   EVAL_TAC
 QED
