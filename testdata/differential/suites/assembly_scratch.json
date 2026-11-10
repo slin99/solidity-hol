@@ -1,0 +1,212 @@
+{
+ "name": "assembly_scratch",
+ "source": "testdata/differential/assembly_scratch.sol",
+ "contract": "AssemblyScratch",
+ "artifact": "testdata/differential/expected/assembly_scratch.json",
+ "peer": {
+  "source": "testdata/differential/assembly_calls_peer.sol",
+  "contract": "AsmPeer",
+  "artifact": "testdata/differential/expected/assembly_calls_peer.json"
+ },
+ "cases": [
+  {
+   "name": "packed_true",
+   "function": "packedResult",
+   "args": [
+    20480,
+    5
+   ],
+   "expect": {
+    "return": [
+     true
+    ]
+   },
+   "final_storage": {
+    "0": 1
+   }
+  },
+  {
+   "name": "packed_false",
+   "function": "packedResult",
+   "args": [
+    20480,
+    2
+   ],
+   "expect": {
+    "return": [
+     false
+    ]
+   },
+   "final_storage": {
+    "0": 1
+   }
+  },
+  {
+   "name": "packed_revert",
+   "function": "packedResult",
+   "args": [
+    20480,
+    1
+   ],
+   "expect": {
+    "return": [
+     false
+    ]
+   },
+   "final_storage": {
+    "0": 1
+   }
+  },
+  {
+   "name": "last_true",
+   "function": "lastResult",
+   "args": [
+    20480,
+    5
+   ],
+   "expect": {
+    "return": [
+     true
+    ]
+   }
+  },
+  {
+   "name": "last_false",
+   "function": "lastResult",
+   "args": [
+    20480,
+    2
+   ],
+   "expect": {
+    "return": [
+     false
+    ]
+   }
+  },
+  {
+   "name": "last_revert",
+   "function": "lastResult",
+   "args": [
+    20480,
+    1
+   ],
+   "expect": {
+    "revert": "0x"
+   }
+  },
+  {
+   "name": "last_no_code",
+   "function": "lastResult",
+   "args": [
+    4660,
+    5
+   ],
+   "expect": {
+    "return": [
+     true
+    ]
+   }
+  },
+  {
+   "name": "bubble_success",
+   "function": "bubbleScratch",
+   "args": [
+    20480,
+    5
+   ],
+   "expect": {
+    "return": []
+   },
+   "final_storage": {
+    "0": 5
+   }
+  },
+  {
+   "name": "bubble_revert",
+   "function": "bubbleScratch",
+   "args": [
+    20480,
+    1
+   ],
+   "expect": {
+    "revert": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c7065657220726566757365640000000000000000000000000000000000000000"
+   }
+  },
+  {
+   "name": "custom_error_success",
+   "function": "customError",
+   "args": [
+    20480,
+    5
+   ],
+   "expect": {
+    "return": []
+   },
+   "final_storage": {
+    "0": 5
+   }
+  },
+  {
+   "name": "custom_error_revert",
+   "function": "customError",
+   "args": [
+    20480,
+    1
+   ],
+   "expect": {
+    "revert": "0x39f1c8d90000000000000000000000000000000000000000000000000000000000005000"
+   }
+  },
+  {
+   "name": "forward_true",
+   "function": "forward",
+   "args": [
+    20480,
+    5
+   ],
+   "expect": {
+    "return": [
+     true
+    ]
+   }
+  },
+  {
+   "name": "forward_false",
+   "function": "forward",
+   "args": [
+    20480,
+    2
+   ],
+   "expect": {
+    "return": [
+     false
+    ]
+   }
+  },
+  {
+   "name": "forward_revert",
+   "function": "forward",
+   "args": [
+    20480,
+    1
+   ],
+   "expect": {
+    "revert": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c7065657220726566757365640000000000000000000000000000000000000000"
+   }
+  },
+  {
+   "name": "allocations_padded",
+   "function": "dirtyThenAllocate",
+   "args": [
+    7
+   ],
+   "expect": {
+    "return": [
+     0,
+     44048180597813453602326562734351324025098966208897425494240603688123167145984,
+     3166189940082864718613269121331309980362851143201109172953918312716374638592
+    ]
+   }
+  }
+ ]
+}

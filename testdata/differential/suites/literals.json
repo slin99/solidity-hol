@@ -1,0 +1,158 @@
+{
+  "name": "literals",
+  "source": "testdata/differential/literals.sol",
+  "contract": "Literals",
+  "artifact": "testdata/differential/expected/literals.json",
+  "cases": [
+    {
+      "name": "all_units",
+      "function": "units",
+      "args": [],
+      "expect": {
+        "return": [
+          7,
+          2000000000,
+          3000000000000000000,
+          4,
+          300,
+          21600,
+          604800,
+          4838400
+        ]
+      }
+    },
+    {
+      "name": "fractional_units",
+      "function": "fractions",
+      "args": [],
+      "expect": {
+        "return": [
+          900000000000000000,
+          40000000000000000,
+          1,
+          1
+        ]
+      }
+    },
+    {
+      "name": "exact_decimal_precision",
+      "function": "precision",
+      "args": [],
+      "expect": {
+        "return": [
+          693147180559945309,
+          57716089161558943949701069502944508345128422502756744429568
+        ]
+      }
+    },
+    {
+      "name": "scientific_and_separators",
+      "function": "scientific",
+      "args": [],
+      "expect": {
+        "return": [
+          1500000000000000,
+          2000000000000,
+          10,
+          305441741
+        ]
+      }
+    },
+    {
+      "name": "runtime_unit_arithmetic",
+      "function": "arithmetic",
+      "args": [
+        1
+      ],
+      "expect": {
+        "return": [
+          3601,
+          -500000000000000000,
+          true
+        ]
+      }
+    },
+    {
+      "name": "checksummed_and_small_addresses",
+      "function": "addressValue",
+      "args": [],
+      "expect": {
+        "return": [
+          "611382286831621467233887798921843936019654057231",
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "name": "address_comparison_equal",
+      "function": "addressEqual",
+      "args": [
+        "611382286831621467233887798921843936019654057231"
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "address_comparison_different",
+      "function": "addressEqual",
+      "args": [
+        1
+      ],
+      "expect": {
+        "return": [
+          false
+        ]
+      }
+    },
+    {
+      "name": "address_storage_and_conversion",
+      "function": "saveAddress",
+      "args": [],
+      "expect": {
+        "return": [
+          "1364068194842176056990105843868530818345537040110",
+          "1364068194842176056990105843868530818345537040110"
+        ]
+      },
+      "final_storage": {
+        "0": "1364068194842176056990105843868530818345537040110"
+      }
+    },
+    {
+      "name": "byte_literal_forms",
+      "function": "strings",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x0001ff",
+          "0xcf80",
+          "0x610062"
+        ]
+      }
+    },
+    {
+      "name": "constant_address_getter",
+      "function": "DAI",
+      "args": [],
+      "expect": {
+        "return": [
+          "611382286831621467233887798921843936019654057231"
+        ]
+      }
+    },
+    {
+      "name": "constant_time_getter",
+      "function": "YEAR",
+      "args": [],
+      "expect": {
+        "return": [
+          31536000
+        ]
+      }
+    }
+  ]
+}

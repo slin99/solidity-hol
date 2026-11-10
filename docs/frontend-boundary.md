@@ -93,6 +93,16 @@ types, or every literal category.
 
 ## Expressions and calls
 
+Numeric literals retain solc's exact rational type annotation, including the
+scale of `wei`, `gwei`, `ether`, `seconds`, `minutes`, `hours`, `days` and
+`weeks`. Elaboration uses that annotation for decimal, hexadecimal and
+scientific notation and folded integer expressions; it does not round through
+floating point or multiply a unit literal a second time. Fractional literals
+are admitted as operands of supported expressions folded to integers.
+Address literals have the distinct `t_address` annotation. The importer
+validates their 40 hexadecimal digits and normalizes their value to decimal;
+elaboration checks the 160-bit bound and produces an address value.
+
 Observed expression nodes include identifiers, literals, member and index
 access, tuple expressions, assignments, binary operations, and function calls.
 The AST already supplies useful analyzed annotations:
@@ -165,6 +175,12 @@ are declaration names with no runtime evaluation; event arguments retain their
 written order, including named arguments. Log encoding and transaction rollback
 use the ordinary event semantics.
 
+Inline assembly writes a scalar local back only if decoding its word and
+encoding the resulting value reproduces that exact word. Non-canonical
+`uintN`, `intN`, `bool`, address and `bytesN` words fail closed with
+`InvalidCompletion`; they are not silently cleaned. Canonical negative signed
+words are sign-extended and fixed-byte words are left-aligned.
+
 Inline assembly reads a memory `bytes` or `string` local as its address
 (`assembly_memory.sol`). The source heap gives each object the address the
 compiler's allocator would (`object_address`: `0x80` plus the memory
@@ -174,12 +190,16 @@ a memory holding each byte sequence's length word and bytes there. Under
 arithmetic relative to a pointer is modelled but returning, storing or
 comparing a raw pointer value is outside the boundary. The block's memory also
 holds the free memory pointer at `0x40`, `0x80` plus the memory allocated so
-far, under the same boundary; a block that exits normally may not change it. A
-literal address is read only at the free memory pointer or where the block
-wrote it before (an `mstore`, or a call's output region), as the elaborator
-checks. At a computed address a block may read only the free memory pointer,
+far, under the same boundary; a block that exits normally may not change it,
+and what it wrote from it up is dropped (the temporary memory the Solidity
+docs allow a memory-safe block). A literal address with a literal length is
+read only at the free memory pointer or where the block wrote it before (an
+`mstore`, a call's output region or a `returndatacopy`, also in an argument to
+the right, since arguments run right to left), as the elaborator checks. At a computed address a block may read only the free memory pointer,
 the zero slot `[0x60, 0x80)`, each byte sequence's length word and data
-(zero-padded to whole words), and bytes it has written itself; any other read,
+(zero-padded to whole words where solc's memory holds the zeros: not for
+bytes copied from return data, a low-level call's or a `catch`'s, whose
+padding solc leaves as it was), and bytes it has written itself; any other read,
 another kind of memory object, the scratch space before the block writes it,
 or past an object's last word, ends the block with an `InvalidCompletion`.
 A callee that returns fewer bytes than the block's output region leaves the
@@ -194,10 +214,12 @@ means the fixed budget every call from the source gets, and a literal gas
 argument is capped at that budget. The source keeps no return data buffer
 either, so `returndatasize` and `returndatacopy` are admitted only after a
 statement of the block that calls, earlier in the same or an enclosing
-statement list (a Yul function's body starts afresh). A block in a static
-frame that names `call` fails closed; `staticcall` runs. Bytes a block writes past an
-object's length, in its last word, aren't kept for the next block: a later block
-reads them as the padding's zeros. solc lets a block assign a memory
+statement list, or in an argument left of a call, since arguments run right
+to left (a Yul function's body starts afresh). A block in a static
+frame that names `call` fails closed; `staticcall` runs. A block that leaves
+an object's padding (the bytes past its length, in its last word) unwritten
+or not zero leaves it out of later blocks' memory, where reading it fails
+closed. solc lets a block assign a memory
 reference (`b := ...`); the elaborator rejects it, since the block reads the
 name as a literal.
 
@@ -298,8 +320,10 @@ their declaration id: type identifiers `t_enum$_E_$n` and storage-layout
 types `t_enum(E)n` become `t_enum_n`. `E.A` is the constant of `A`'s index,
 and `E(x)` and `uint8(e)` are conversions; converting an out-of-range value
 panics with 0x21. An enum occupies one byte of storage; reading a stored
-byte that is out of range panics with 0x21 when it is read, where the
-compiler checks it only where the value is used. It is
+byte outside its member range fails closed with `InvalidCompletion`, even if
+the value is never used. A `bool` storage byte other than 0 or 1 also fails
+closed. The compiler can retain these non-canonical bytes on its stack, which
+the core's source values cannot represent. An enum is
 ABI encoded as `uint8`, as a parameter, a return, an event argument or an
 external call's argument. A call or creation whose enum argument is out of
 range reverts when the decoder reaches it, before later arguments are read.
@@ -309,8 +333,9 @@ arrays, as constants, immutables or error parameters, returned by an
 external call and `delete` are rejected.
 
 `keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
-a `bytes32`. A literal argument is first made a memory `bytes`, and one in
-storage or calldata is copied to memory, as for an internal call's argument.
+a `bytes32`. A string or hex literal is hashed directly without allocating
+memory. A `bytes` value in storage or calldata is copied to memory, as for
+an internal call's argument.
 `ecrecover(h, v, r, s)` is the address that the signature `(v, r, s)` of the
 hash `h` recovers, or `address(0)` for an invalid signature, as the compiler's
 call to the precompile at address 1 gives. Its arguments are converted to
@@ -329,9 +354,10 @@ an abstract contract's `interfaceId` is rejected. A selector of any other
 function-typed value is rejected, and so are `sha256` and `ripemd160`.
 
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
-type the compiler gives the whole expression, which must be a value type or
-a memory reference (a memory operand is the same reference, not a copy).
-Conditionals of tuple, storage, calldata or function type are rejected.
+type the compiler gives the whole expression, which must be a value type,
+a memory reference or a tuple of supported component types (a memory operand
+is the same reference, not a copy). Conditionals of storage, calldata or
+function type are rejected.
 
 `abi.encode`, `abi.encodePacked`, `abi.encodeWithSelector` and
 `abi.encodeWithSignature` give a new memory `bytes`, allocated as the
@@ -343,7 +369,10 @@ their smallest type, which has the encoding of `int256` or `uint256`.
 bytes of a `bytes4` selector for `encodeWithSelector`, or of the Keccak-256
 hash of a literal signature for `encodeWithSignature`; `abi.encodePacked`
 gives each scalar in its own width, a `bytesN` as its N bytes, and a byte
-sequence as its contents. Arrays and structs as arguments, a selector that
+sequence as its contents. Unpacked encoding also accepts fixed and dynamic
+arrays of scalars, byte sequences and nested arrays in memory, calldata or
+storage, retaining the reference until all arguments have been evaluated.
+Packed arrays, structs as arguments, a selector that
 is not a `bytes4` value (a literal selector included), and a signature that is
 not a plain string literal are rejected.
 
@@ -370,13 +399,14 @@ data after the encoding is ignored. It allocates nothing. Data in calldata or
 storage, and types other than elementary ones, are rejected.
 
 `a.call(data)`, `a.staticcall(data)` and `a.delegatecall(data)`, with `a`
-an address and `data` a memory `bytes` or a bytes literal, evaluate `a`, then
-their call options `{value: v, gas: g}` in the order written, then `data`, and
-call `a` with the bytes of `data` as its input, giving the success flag and
-the return data. The data is passed where it is: a literal is not copied into
-memory. `call` sends `v` (0 without the option): a caller that cannot pay it
-fails the call without running it, and sending value from a static frame is an
-`InvalidCompletion`. `staticcall` makes a static call. `delegatecall` runs
+an address and `data` a memory or calldata `bytes` or a bytes literal,
+evaluate `a`, then their call options `{value: v, gas: g}` in the order
+written, then `data`, and call `a` with the bytes of `data` as its input,
+giving the success flag and the return data. The data is passed where it is: a
+literal or calldata is not copied into allocated memory. `call` sends `v` (0
+without the option): a caller that cannot pay it fails the call without
+running it, and sending value from a static frame is an `InvalidCompletion`.
+`staticcall` makes a static call. `delegatecall` runs
 `a`'s code as this contract, on its own storage and balance, with this call's
 `msg.sender` and `msg.value`, and moves no value. The source does not track
 gas: without a gas option the callee gets the same fixed budget a high-level
@@ -386,7 +416,7 @@ call, the callee's revert included, gives `false` and leaves the caller's
 state as it was; a call to an address without code succeeds with no data.
 Return data is copied into a new memory `bytes`, allocated as the compiler
 allocates it, and no return data gives the shared empty `bytes`, allocating
-nothing. Data in calldata or storage is rejected.
+nothing. Data in storage is rejected.
 
 `bytes.concat(...)` uses packed encoding of its byte sequences, fixed-size bytes
 and literals. `string.concat(...)` concatenates strings and string literals.
@@ -581,12 +611,19 @@ Admitted: one contract, flattened along its bases, with
   of addresses;
 - `require`, `assert` and `revert` with boolean conditions and literal string
   messages; reads of `msg`, `tx` and `block` members and `address(this)`;
-  emits of events and reverts with custom errors, both with elementary
-  parameters; unsupported event parameter types reject the emitting function,
-  leaving unrelated functions available; `keccak256`, `abi.encode*`, selectors;
+  emits of events with scalar, byte-sequence and array parameters (including
+  indexed arrays), and reverts with custom errors with elementary parameters;
+  unsupported event parameter types reject the emitting function, leaving
+  unrelated functions available; `keccak256`, `abi.encode*`, selectors;
 - constants, state-variable initializers, constructors and base-constructor
   arguments (inheritance specifiers or constructor modifiers), which form one
   creation procedure.
+
+Event arrays use their existing memory, calldata or storage references until
+serialization, so later argument side effects are visible in the log. Data
+uses standard ABI encoding. Indexed arrays hash concatenated element encodings
+without array lengths or offsets; byte and string elements occupy padded words.
+Storage byte/string padding is preserved as the pinned compiler copies it.
 
 A contract or interface type is read as address, its value at run time,
 stored and ABI encoded as one: in type names, type identifiers and storage
@@ -710,3 +747,21 @@ try/catch, errors, fallback/receive, dynamic and memory/calldata arrays, bytes/s
 pointers, transient storage, and custom storage layout bases. The first HOL type
 theory can begin from the normalized types already observed, provided unsupported
 forms continue to fail closed.
+
+## Tuple expressions and assignments
+
+Tuple literals and conditional tuple results use the existing product values.
+Conditional components convert to the conditional expression's annotated types;
+only the selected branch runs. Destructuring supports the same destinations as
+ordinary assignment, including storage members, indexed storage locations and
+memory elements. It first evaluates and snapshots the right-hand values, then
+evaluates left-hand operands from left to right, then writes from right to left.
+Storage navigation checks bounds during operand evaluation; memory indices are
+saved and bounds-checked at each write. Holes consume a value without
+capturing a location. Repeated destinations therefore retain the leftmost
+assigned component.
+
+Scalar and tuple conditional joins bind the selected memory reference without
+allocating a default object. Their temporary references cannot be read as fixed
+arrays before assignment; declarations of fixed memory arrays still allocate
+their normal zero-filled objects.

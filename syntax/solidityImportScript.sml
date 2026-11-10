@@ -840,13 +840,13 @@ Definition call_variable_type_def:
     | _ => ty) (variable_type v)
 End
 
-(* Event declarations omit an explicit location; analyzed byte parameters
+(* Event declarations omit an explicit location; analyzed reference parameters
  * carry memory identifiers. *)
 Definition event_variable_type_def:
   event_variable_type (v : src_variable) =
     case normalize_type_name v.var_type_name of
       SOME ty =>
-        if byte_sequence_type ty then
+        if memory_object_type ty then
           if v.var_location = NONE ∧
              source_type_matches (LocatedT MemoryLoc ty) v.var_type_id then
             SOME (LocatedT MemoryLoc ty) else NONE

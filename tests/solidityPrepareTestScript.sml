@@ -11,7 +11,9 @@ fun holbuild_extra_deps (_ : string list) = ()
 val () = holbuild_extra_deps [
   "../SOLIDITY_PIN", "../profiles/solc-0.8.37-via-ir-osaka.json",
   "../testdata/frontend/expected/pure_core.json",
-  "../testdata/frontend/expected/qualified_unsupported_event.json"
+  "../testdata/frontend/expected/qualified_unsupported_event.json",
+  "../profiles/solc-0.8.37-via-ir-osaka-optimized.json",
+  "../testdata/frontend/expected/stack_depth.json"
 ]
 
 val checked_artifact = solidityPrepareLib.prepare_artifact
@@ -156,3 +158,53 @@ val () = List.app (fn extra => with_extra_settings extra
    "\"remappings\": [], \"remappings\": [],",
    "\"remappings\": [\"a/=b/\"], \"unknownSetting\": true,",
    "\"remappings\": [\"a/=b/\"], \"viaIR\": false,"];
+
+(* The source exporter reached this profile only after solc's unoptimized
+ * 17-argument ABI/code generator failed with a stack-depth diagnostic. *)
+val fallback_path = "../testdata/frontend/expected/stack_depth.json";
+val fallback = solidityPrepareLib.prepare_artifact
+  {root = "..", path = fallback_path, source = "testdata/frontend/stack_depth.sol"};
+val () = case #functions (#prepared fallback) of
+    [{name = "sum", reason = NONE, ...}] => ()
+  | _ => raise Fail "stack-depth fallback did not admit sum";
+val () = case JSONUtil.get (#artifact fallback,
+    map JSONUtil.SEL ["profile", "settings", "optimizer", "enabled"]) of
+    JSON.BOOL true => ()
+  | _ => raise Fail "fallback did not retain its optimized profile";
+
+fun with_artifact_text text check =
+  let
+    val path = OS.FileSys.tmpName ()
+    val stream = TextIO.openOut path
+    val () = TextIO.output (stream, text)
+    val () = TextIO.closeOut stream
+    val () = check (fn () => solidityPrepareLib.read_artifact {root = "..", path = path})
+      handle e => (OS.FileSys.remove path; raise e)
+  in
+    OS.FileSys.remove path
+  end;
+
+fun replace_text old replacement text =
+  let val (prefix, suffix) = Substring.position old (Substring.full text) in
+    if Substring.isEmpty suffix then text
+    else Substring.string prefix ^ replacement ^
+         replace_text old replacement
+           (Substring.string (Substring.triml (size old) suffix))
+  end;
+
+(* A normally compilable source cannot opt into optimization without a
+ * recorded stack-depth failure. *)
+val () = with_artifact_text
+  (replace_text "\"enabled\": false" "\"enabled\": true" artifact_text)
+  (fn read => rejects solidityPrepareLib.MalformedInput (fn () => ignore (read ())));
+
+val fallback_stream = TextIO.openIn fallback_path;
+val fallback_text = TextIO.inputAll fallback_stream;
+val () = TextIO.closeIn fallback_stream;
+val (without_failure, _) = Substring.position ",\n  \"unoptimizedFailure\""
+  (Substring.full fallback_text);
+val () = List.app (fn text => with_artifact_text text
+    (fn read => rejects solidityPrepareLib.MalformedInput (fn () => ignore (read ()))))
+  [Substring.string without_failure ^ "\n}\n",
+   replace_text "\"type\": \"YulException\"" "\"type\": \"ParserError\"" fallback_text,
+   replace_text "too deep in the stack" "unrelated compilation error" fallback_text];
