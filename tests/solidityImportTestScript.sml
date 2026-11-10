@@ -1354,7 +1354,7 @@ val () = import_error_with Unsupported override_getters_contracts "getter overri
      (fn v => is_node "VariableDeclaration" v andalso
               JSONUtil.testField "name" (fn JSON.STRING s => s = "value" | _ => false) v)
      "overriding variable"
-     (set_field "baseFunctions" (JSON.ARRAY [JSON.INT 999999])) override_getters_ast),
+     (set_field "baseFunctions" (JSON.ARRAY [JSON.INT 999999])) override_getters_ast)
 
 val literals_fixture = "../testdata/differential/expected/literals.json"
 val literals_source = "testdata/differential/literals.sol"
