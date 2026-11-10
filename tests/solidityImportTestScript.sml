@@ -230,7 +230,7 @@ val edited_unit = edited_unit_with contracts
 val () = function_error "unknown statement"
   (edit_first "Break" (set_field "nodeType" (JSON.STRING "UnknownStatement")) ast)
 val () = function_error "unknown expression"
-  (edit_first "Literal" (set_field "nodeType" (JSON.STRING "IndexRangeAccess")) ast)
+  (edit_first "Literal" (set_field "nodeType" (JSON.STRING "FutureUnsupportedExpression")) ast)
 val () = malformed_input "missing type annotation"
   (edit_first "Identifier" (drop_field "typeDescriptions") ast)
 val () = malformed_input "missing declaration reference"

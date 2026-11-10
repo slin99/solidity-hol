@@ -912,8 +912,8 @@ Definition elab_expr_def:
                  INL ((ss ++ rs, a, ElabType (read_value_type ty)), n1 + 1)
                else INR [(info.node_id, "read of a value of this type")]
            | INR bs => INR bs)
-    | SrcIndexRangeAccess info base start end_bound tid =>
-        (case elab_expr ctx n base of
+    | SrcIndexRangeAccess info base_expr start end_bound tid =>
+        (case elab_expr ctx n base_expr of
            INL ((ss, ref, ElabType (LocatedT CalldataLoc ty)), n1) =>
              if ¬(source_type_matches (LocatedT CalldataLoc ty) tid ∧
                   (ty = BytesT ∨ case ty of
@@ -1741,7 +1741,9 @@ Termination
      the children's results are large, so they are dropped, not simplified *)
   rpt strip_tac >> rpt BasicProvers.VAR_EQ_TAC >> rpt (pop_assum kall_tac) >>
   simp[prim_recTheory.measure_thm, solidityImportTheory.src_expr_size_def,
-       listTheory.list_size_def, basicSizeTheory.option_size_def]
+       listTheory.list_size_def, basicSizeTheory.option_size_def] >>
+  Cases_on ‘start’ >> Cases_on ‘end_bound’ >>
+  simp[listTheory.list_size_def, basicSizeTheory.option_size_def]
 End
 
 (* A boolean condition. *)
