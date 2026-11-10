@@ -1,7 +1,7 @@
 (* Noncanonical enum bytes remain outside source values even when the
  * compiler copies them without validating their membership. *)
 Theory solidityStorageEnumArraysTest
-Ancestors solidityDifferentialCorpus_storage_enum_arrays
+Ancestors solidityCoreWf solidityDifferentialCorpus_storage_enum_arrays
 Libs solidityBytecodeLib cv_transLib wordsLib
 
 fun holbuild_extra_deps (_ : string list) = ()
