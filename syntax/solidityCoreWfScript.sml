@@ -1261,7 +1261,12 @@ Definition check_core_stmts_def:
     case a of
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
-           SOME (SingleType (LocatedT MemoryLoc (ArrayT element length))) =>
+           SOME (SingleType (LocatedT MemoryLoc BytesT)) =>
+             if fresh_core_id ctx t ∧
+                wf_core_atom env ctx (SingleType (UintT 256)) i
+             then check_core_stmts env (capture_core_target t (FixedBytesT 1) ctx) ss
+             else NONE
+         | SOME (SingleType (LocatedT MemoryLoc (ArrayT element length))) =>
              if fresh_core_id ctx t ∧
                 memory_object_type (ArrayT element length) ∧
                 wf_core_atom env ctx (SingleType (UintT 256)) i

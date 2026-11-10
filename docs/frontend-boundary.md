@@ -304,9 +304,10 @@ an abstract contract's `interfaceId` is rejected. A selector of any other
 function-typed value is rejected, and so are `sha256` and `ripemd160`.
 
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
-type the compiler gives the whole expression, which must be a value type or
-a memory reference (a memory operand is the same reference, not a copy).
-Conditionals of tuple, storage, calldata or function type are rejected.
+type the compiler gives the whole expression, which must be a value type,
+a memory reference or a tuple of supported component types (a memory operand
+is the same reference, not a copy). Conditionals of storage, calldata or
+function type are rejected.
 
 `abi.encode`, `abi.encodePacked`, `abi.encodeWithSelector` and
 `abi.encodeWithSignature` give a new memory `bytes`, allocated as the
@@ -670,3 +671,16 @@ try/catch, errors, fallback/receive, dynamic and memory/calldata arrays, bytes/s
 pointers, transient storage, and custom storage layout bases. The first HOL type
 theory can begin from the normalized types already observed, provided unsupported
 forms continue to fail closed.
+
+## Tuple expressions and assignments
+
+Tuple literals and conditional tuple results use the existing product values.
+Conditional components convert to the conditional expression's annotated types;
+only the selected branch runs. Destructuring supports the same destinations as
+ordinary assignment, including storage members, indexed storage locations and
+memory elements. It first evaluates and snapshots the right-hand values, then
+evaluates left-hand operands from left to right, then writes from right to left.
+Storage navigation checks bounds during operand evaluation; memory indices are
+saved and bounds-checked at each write. Holes consume a value without
+capturing a location. Repeated destinations therefore retain the leftmost
+assigned component.

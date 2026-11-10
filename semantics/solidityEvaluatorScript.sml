@@ -800,7 +800,15 @@ Definition simple_stmt_def:
     | CaptureReferenceFieldStmt t a (IndexNavigation index) =>
         (case (eval_atom st.scopes a, eval_atom st.scopes index) of
            (SOME (ReferenceValue r), SOME (ScalarValue (IntegerValue i))) =>
-             (case memory_array_element st r i of
+             (case r of
+                MemoryReference _ _ BytesT =>
+                  (case navigate_memory_byte st r i of
+                     ValueOk (ReferenceValue ref) =>
+                       normal_result (st with targets := set_target t
+                         (ValueTarget ref) st.targets) gas
+                   | ValueOk _ => abrupt_result (InvalidCompletion "bad byte capture") st gas
+                   | ValueAbrupt c => abrupt_result c st gas)
+              | _ => case memory_array_element st r i of
                 INL (id, k, element, _) =>
                   normal_result (st with targets := set_target t
                     (ReferenceFieldTarget (HeapId id) k element) st.targets) gas

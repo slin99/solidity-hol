@@ -32,8 +32,8 @@
  *  - x op= e evaluates e, then reads x, then writes x;
  *  - ++ and -- read, step (checked unless unchecked) and write back, yielding
  *    the new (prefix) or old (postfix) value;
- *  - a tuple assignment evaluates its right-hand side into fresh values, then
- *    writes the targets from right to left;
+ *  - a tuple assignment evaluates its right-hand side into fresh values,
+ *    captures its targets left to right, then writes them right to left;
  *  - return values and declared variables are converted as the source types
  *    require;
  *  - creation evaluates the base-constructor arguments of each contract, most
@@ -298,8 +298,8 @@ Definition assign_local_def:
 End
 
 (* A destination is a local binding, an already evaluated concrete reference,
- * or an element of a memory array (the array, its index and the element's
- * type), captured when written. Its prelude evaluates the location; reads and
+ * or a memory element (the container, its index and its container type),
+ * captured when written. Its prelude evaluates the location; reads and
  * writes share this representation.
  *)
 Datatype:
@@ -310,7 +310,9 @@ End
 Definition destination_type_def:
   (destination_type (LocalDestination _ ty) = ty) ∧
   (destination_type (ReferenceDestination _ ty) = ty) ∧
-  (destination_type (ElementDestination _ _ ty) = ty)
+  (destination_type (ElementDestination _ _ ty) =
+    if ty = BytesT then FixedBytesT 1 else
+    case ty of ArrayT element _ => element_type MemoryLoc element | _ => ty)
 End
 
 (* The variable an identifier annotated with tid names, of that type. *)
@@ -347,16 +349,21 @@ Definition read_destination_def:
   (read_destination n (ReferenceDestination ref ty) =
     (bind_value n (read_value_type ty) (ReadOperation ty ref), n + 1)) ∧
   (read_destination n (ElementDestination array index ty) =
-    (bind_value n ty (ArrayIndexOperation array index), n + 1))
+    (bind_value n (destination_type (ElementDestination array index ty))
+       (if ty = BytesT then ByteIndexOperation array index
+        else ArrayIndexOperation array index), n + 1))
+End
+
+Definition capture_destination_def:
+  (capture_destination t (LocalDestination x _) = [CaptureBindingStmt (AstId t) (AstId x)]) ∧
+  (capture_destination t (ElementDestination array index _) =
+    [CaptureReferenceFieldStmt (AstId t) array (IndexNavigation index)]) ∧
+  (capture_destination t (ReferenceDestination ref _) = [CaptureValueStmt (AstId t) ref])
 End
 
 Definition write_destination_def:
-  (write_destination t (LocalDestination x ty) a = assign_local t x ty a) ∧
-  (write_destination t (ElementDestination array index ty) a =
-    [CaptureReferenceFieldStmt (AstId t) array (IndexNavigation index);
-     store_target t ty a]) ∧
-  (write_destination (t : num) (ReferenceDestination ref ty) a =
-    [CaptureValueStmt (AstId t) ref; WriteScalarStmt (AstId t) ty a])
+  write_destination t target a =
+    capture_destination t target ++ [store_target t (destination_type target) a]
 End
 
 (* Assigning a storage byte sequence or array copies contents, converting an
@@ -540,29 +547,56 @@ Definition tuple_components_def:
     (ss ++ ss', (a, ElabType ty) :: vs, n'))
 End
 
-(* Writes of values to the locals of a tuple, right to left; id is the
- * tuple's. *)
+(* Memory bounds checks happen at the reverse write, after all target
+ * operands have run. Other scalar targets were captured left to right. *)
 Definition tuple_write_def:
-  tuple_write ctx n (id : num) x tid a vt =
-    case variable_destination ctx n x tid of
-      SOME ((ls, target), n1) =>
-        (case plain_assignment n1 target a vt of
-           INL ((ss, _, _), n2) => INL (ls ++ ss, n2)
+  tuple_write n (id : num) t target a vt =
+    case target of
+      ReferenceDestination _ ty =>
+        if memory_object_type ty then
+          (case plain_assignment n target a vt of
+             INL ((ss, _, _), n1) => INL (ss, n1)
+           | INR why => INR [(id, why)])
+        else
+          (case coerce n ty a vt of
+             INL ((ss, value), n1) => INL (ss ++ [store_target t ty value], n1)
+           | INR why => INR [(id, why)])
+    | ElementDestination _ _ _ =>
+        (case plain_assignment n target a vt of
+           INL ((ss, _, _), n1) => INL (ss, n1)
          | INR why => INR [(id, why)])
-    | NONE => unknown_reference ctx id "assignment to this target" x
+    | _ =>
+        let ty = destination_type target in
+        (case coerce n ty a vt of
+           INL ((ss, value), n1) => INL (ss ++ [store_target t ty value], n1)
+         | INR why => INR [(id, why)])
 End
 
 Definition tuple_writes_def:
-  (tuple_writes ctx n (id : num) [] [] = INL ([], n)) ∧
-  (tuple_writes ctx n id (NONE :: cs) (_ :: vs) = tuple_writes ctx n id cs vs) ∧
-  (tuple_writes ctx n id (SOME (SrcIdentifier info _ x tid) :: cs) ((a, vt) :: vs) =
-    case tuple_writes ctx n id cs vs of
+  (tuple_writes n (id : num) [] [] = INL ([], n)) ∧
+  (tuple_writes n id (NONE :: cs) (_ :: vs) = tuple_writes n id cs vs) ∧
+  (tuple_writes n id (SOME (t, target) :: cs) ((a, vt) :: vs) =
+    case tuple_writes n id cs vs of
       INL (ws, n1) =>
-        (case tuple_write ctx n1 info.node_id x tid a vt of
+        (case tuple_write n1 id t target a vt of
            INL (ss, n2) => INL (ws ++ ss, n2)
          | INR bs => INR bs)
-    | INR bs => INR (blockers (tuple_write ctx n info.node_id x tid a vt) ++ bs)) ∧
-  (tuple_writes ctx n id _ _ = INR [(id, "unsupported tuple assignment")])
+    | INR bs => INR (blockers (tuple_write n id t target a vt) ++ bs)) ∧
+  (tuple_writes n id _ _ = INR [(id, "unsupported tuple assignment")])
+End
+
+(* A conditional's components are joined through separate locals. Branch
+ * preludes and conversions run only in the selected arm. *)
+Definition conditional_targets_def:
+  (conditional_targets n [] [] [] = SOME ([], [], [], [], n)) ∧
+  (conditional_targets n (ty :: tys) (a :: as) (b :: bs) =
+    case (default_operation ty, conditional_targets (n + 3) tys as bs) of
+      (SOME op, SOME (ds, ts, fs, vs, n1)) =>
+        let (ss, v) = bind_value n ty op in
+        SOME (ss ++ ds, assign_local (n + 1) n ty a ++ ts,
+              assign_local (n + 2) n ty b ++ fs, v :: vs, n1)
+    | _ => NONE) ∧
+  (conditional_targets n _ _ _ = NONE)
 End
 
 (* Snapshots of the bound values of a tuple right-hand side. *)
@@ -1033,13 +1067,17 @@ Definition elab_expr_def:
            SrcTupleExpression linfo cs ltid =>
              (case elab_values ctx n rhs of
                 INL ((sr, vs), n1) =>
-                  if op ≠ NONE ∨ IS_NONE (decode_type_identifier ltid)
-                  then INR [(info.node_id, "unsupported tuple assignment")] else
+                  (* Each destination checks its own annotation; holes have
+                   * no type in the enclosing tuple identifier. *)
+                  if op ≠ NONE then INR [(info.node_id, "unsupported tuple assignment")] else
                   let (ss, vs', n2) = snapshot_values n1 vs in
-                  (case tuple_writes ctx n2 linfo.node_id cs vs' of
-                     INL (ws, n3) =>
-                       INL ((sr ++ ss ++ ws, ConstantAtom (BoolValue F),
-                             ElabTuple []), n3)
+                  (case elab_destinations ctx n2 cs of
+                     INL ((ls, targets), n3) =>
+                       (case tuple_writes n3 linfo.node_id targets vs' of
+                          INL (ws, n4) =>
+                            INL ((sr ++ ss ++ ls ++ ws, ConstantAtom (BoolValue F),
+                                  ElabTuple []), n4)
+                        | INR bs => INR bs)
                    | INR bs => INR bs)
               | INR bs => INR bs)
          | _ =>
@@ -1083,8 +1121,19 @@ Definition elab_expr_def:
              if annotation_matches tid vt then INL ((ss, a, vt), n1)
              else INR [(info.node_id, "type annotation mismatch")]
          | INR bs => INR bs)
-    | SrcTupleExpression info cs _ =>
-        reject (info.node_id, "tuple used as a value") (elab_components ctx n cs)
+    | SrcTupleExpression info cs tid =>
+        (case (decode_type_identifier tid, elab_components ctx n cs) of
+           (SOME (SrcTupleType tys), INL ((ss, vs), n1)) =>
+             if MEM NONE cs then INR [(info.node_id, "tuple with an empty component")] else
+             (case convert_operands n1 info.node_id
+                     (MAP (λc. case c of NONE => info.node_id | SOME e => expr_id e) cs)
+                     (values_of tys) vs of
+                INL (cs', _, atoms, n2) =>
+                  INL ((ss ++ cs' ++ [DefineStmt (AstId n2) (ProductType (MAP SingleType tys))
+                           (TupleOperation atoms)], BoundAtom (AstId n2), ElabTuple tys), n2 + 1)
+              | INR bs => INR bs)
+         | (_, INR bs) => INR bs
+         | _ => INR [(info.node_id, "type annotation mismatch")])
     | SrcArrayMember info _ _ _ => INR [(info.node_id, "array member as a value")]
     | SrcFunctionCall info callee args order tid =>
         (case callee of
@@ -1266,6 +1315,35 @@ Definition elab_expr_def:
          | SOME _ => INR [(info.node_id, "unsupported enum value")]
          | NONE => INR (type_name_blockers (info.node_id, "unsupported enum value") tn))
     | SrcConditional info c t f tid =>
+        (case decode_type_identifier tid of
+           SOME (SrcTupleType tys) =>
+             (case elab_expr ctx n c of
+                INL ((sc, cond, ElabType BoolT), n1) =>
+                  (case elab_values ctx n1 t of
+                     INL ((st, vt), n2) =>
+                       (case elab_values ctx n2 f of
+                          INL ((sf, vf), n3) =>
+                            (case convert_operands n3 info.node_id
+                                    (REPLICATE (LENGTH vt) (expr_id t)) (values_of tys) vt of
+                               INL (ct, _, at, n4) =>
+                                 (case convert_operands n4 info.node_id
+                                         (REPLICATE (LENGTH vf) (expr_id f)) (values_of tys) vf of
+                                    INL (cf, _, af, n5) =>
+                                      (case conditional_targets n5 tys at af of
+                                         SOME (ds, ts, fs, atoms, n6) =>
+                                           INL ((sc ++ ds ++
+                                             [IfStmt cond (st ++ ct ++ ts) (sf ++ cf ++ fs);
+                                              DefineStmt (AstId n6) (ProductType (MAP SingleType tys))
+                                                (TupleOperation atoms)],
+                                             BoundAtom (AstId n6), ElabTuple tys), n6 + 1)
+                                       | NONE => INR [(info.node_id, "unsupported conditional type")])
+                                  | INR bs => INR bs)
+                             | INR bs => INR bs)
+                        | INR bs => INR bs)
+                   | INR bs => INR (bs ++ blockers (elab_values ctx n f)))
+              | INL _ => INR [(expr_id c, "condition not a bool")]
+              | INR bs => INR bs)
+         | _ =>
         (* the result is declared first, and each branch writes it: a value
            or a memory reference, which the result local can hold *)
         (case elab_expr ctx n c of
@@ -1313,7 +1391,7 @@ Definition elab_expr_def:
              INR ((expr_id c, "condition not a bool") ::
                   blockers (elab_expr ctx n t) ++ blockers (elab_expr ctx n f))
          | INR bs =>
-             INR (bs ++ blockers (elab_expr ctx n t) ++ blockers (elab_expr ctx n f)))
+             INR (bs ++ blockers (elab_expr ctx n t) ++ blockers (elab_expr ctx n f))))
     | SrcAddressCodeLength info _ e tid =>
         (case elab_expr ctx n e of
            INL ((ss, a, ElabType (AddressT _)), n1) =>
@@ -1651,11 +1729,14 @@ Definition elab_expr_def:
          | NONE => unknown_reference ctx info.node_id "assignment to this target" x)
     | SrcIndexAccess info root_expr index tid =>
           (case elab_expr ctx n root_expr of
-             INL ((ss, ref, ElabType (LocatedT MemoryLoc (ArrayT element length))), n1) =>
+             INL ((ss, ref, ElabType (LocatedT MemoryLoc ty)), n1) =>
+               if ¬(ty = BytesT ∨ case ty of ArrayT _ _ => T | _ => F)
+               then INR [(info.node_id, "index access on this type")] else
                let (captured, next) =
-                 snapshot n1 ref (ElabType (LocatedT MemoryLoc (ArrayT element length))) in
+                 snapshot n1 ref (ElabType (LocatedT MemoryLoc ty)) in
                let (saved, ref') = captured in
-               ensure (source_type_matches (element_type MemoryLoc element) tid)
+               ensure (source_type_matches
+                         (destination_type (ElementDestination ref' ref' ty)) tid)
                  (info.node_id, "type annotation mismatch")
                (case elab_expr ctx next index of
                   INL ((si, i, vt), n2) =>
@@ -1663,7 +1744,7 @@ Definition elab_expr_def:
                     (case coerce n2 (UintT 256) i vt of
                        INL ((cs, i'), n3) =>
                          INL ((ss ++ saved ++ si ++ cs,
-                               ElementDestination ref' i' (element_type MemoryLoc element)), n3)
+                               ElementDestination ref' i' ty), n3)
                      | INR why => INR [(expr_id index, why)])
                 | INR bs => INR bs)
            | _ =>
@@ -1688,17 +1769,41 @@ Definition elab_expr_def:
         (case elab_arg_values ctx n2 es of
            INL ((ss', vs), n3) => INL ((ss ++ saved ++ ss', (a', vt) :: vs), n3)
          | INR bs => INR bs)
-    | INR bs => INR (bs ++ blockers (elab_arg_values ctx n es)))
+    | INR bs => INR (bs ++ blockers (elab_arg_values ctx n es))) ∧
+  (elab_destinations ctx n [] = INL (([], []), n)) ∧
+  (elab_destinations ctx n (NONE :: cs) =
+    case elab_destinations ctx n cs of
+      INL ((ss, targets), n1) => INL ((ss, NONE :: targets), n1)
+    | INR bs => INR bs) ∧
+  (elab_destinations ctx n (SOME e :: cs) =
+    case elab_destination ctx n e of
+      INL ((ss, target), n1) =>
+        let (saved, target', next) = case target of
+          ElementDestination ref index ty =>
+            let (captured, n2) = snapshot n1 index (ElabType (UintT 256)) in
+            let (is, i) = captured in
+            (is, ElementDestination ref i ty, n2)
+        | ReferenceDestination _ ty =>
+            (if memory_object_type ty then [] else capture_destination n1 target,
+             target, n1 + 1)
+        | _ => (capture_destination n1 target, target, n1 + 1) in
+        (case elab_destinations ctx next cs of
+           INL ((ss', targets), n2) =>
+             INL ((ss ++ saved ++ ss', SOME (n1, target') :: targets), n2)
+         | INR bs => INR bs)
+    | INR bs => INR (bs ++ blockers (elab_destinations ctx n cs)))
 Termination
   qexists_tac ‘measure (λx. case x of
-     INL (ctx, n, e) => 3 * src_expr_size e + 2
-   | INR (INL (ctx, n, id, order, tys, es)) => 3 * list_size src_expr_size es + 1
-   | INR (INR (INL (ctx, n, e))) => 3 * src_expr_size e + 3
+     INL (ctx, n, e) => 4 * src_expr_size e + 2
+   | INR (INL (ctx, n, id, order, tys, es)) => 4 * list_size src_expr_size es + 1
+   | INR (INR (INL (ctx, n, e))) => 4 * src_expr_size e + 3
    | INR (INR (INR (INL (ctx, n, cs)))) =>
-       3 * list_size (option_size src_expr_size) cs
-   | INR (INR (INR (INR (INL (ctx, n, e))))) => 3 * src_expr_size e + 1
-   | INR (INR (INR (INR (INR (INL (ctx, n, e)))))) => 3 * src_expr_size e + 2
-   | INR (INR (INR (INR (INR (INR (ctx, n, es)))))) => 3 * list_size src_expr_size es)’ >>
+       4 * list_size (option_size src_expr_size) cs
+   | INR (INR (INR (INR (INL (ctx, n, e))))) => 4 * src_expr_size e + 1
+   | INR (INR (INR (INR (INR (INL (ctx, n, e)))))) => 4 * src_expr_size e + 2
+   | INR (INR (INR (INR (INR (INR (INL (ctx, n, es))))))) => 4 * list_size src_expr_size es
+   | INR (INR (INR (INR (INR (INR (INR (ctx, n, cs))))))) =>
+       4 * list_size (option_size src_expr_size) cs + 3)’ >>
   conj_tac >- simp[prim_recTheory.WF_measure] >>
   (* only the equations naming the node matter: the case hypotheses about
      the children's results are large, so they are dropped, not simplified *)
@@ -3020,6 +3125,7 @@ val () = cv_auto_trans variable_destination_def;
 val () = cv_auto_trans destination_type_def;
 val () = cv_auto_trans read_value_type_def;
 val () = cv_auto_trans read_destination_def;
+val () = cv_auto_trans capture_destination_def;
 val () = cv_auto_trans write_destination_def;
 val () = cv_auto_trans plain_assignment_def;
 val () = cv_auto_trans arithmetic_operator_def;
@@ -3034,6 +3140,7 @@ val () = cv_auto_trans call_value_def;
 val () = cv_auto_trans tuple_components_def;
 val () = cv_auto_trans tuple_write_def;
 val () = cv_auto_trans tuple_writes_def;
+val () = cv_auto_trans conditional_targets_def;
 val snapshot_values_pre_def =
   cv_auto_trans_pre "snapshot_values_pre" snapshot_values_def;
 
@@ -3075,30 +3182,33 @@ val () = cv_auto_trans abi_encoding_def;
 val () = cv_auto_trans arrange_def;
 
 val elab_expr_pre_def = cv_auto_trans_pre_rec
-  "elab_expr_pre elab_args_pre elab_values_pre elab_components_pre elab_location_pre elab_destination_pre elab_arg_values_pre"
+  "elab_expr_pre elab_args_pre elab_values_pre elab_components_pre elab_location_pre elab_destination_pre elab_arg_values_pre elab_destinations_pre"
   elab_expr_def (
   WF_REL_TAC ‘measure (λx. case x of
-     INL (ctx, n, e) => 3 * cv_size e + 2
-   | INR (INL (ctx, n, id, order, tys, es)) => 3 * cv_size es + 1
-   | INR (INR (INL (ctx, n, e))) => 3 * cv_size e + 3
-   | INR (INR (INR (INL (ctx, n, cs)))) => 3 * cv_size cs
-   | INR (INR (INR (INR (INL (ctx, n, e))))) => 3 * cv_size e + 1
-   | INR (INR (INR (INR (INR (INL (ctx, n, e)))))) => 3 * cv_size e + 2
-   | INR (INR (INR (INR (INR (INR (ctx, n, es)))))) => 3 * cv_size es)’ >>
+     INL (ctx, n, e) => 4 * cv_size e + 2
+   | INR (INL (ctx, n, id, order, tys, es)) => 4 * cv_size es + 1
+   | INR (INR (INL (ctx, n, e))) => 4 * cv_size e + 3
+   | INR (INR (INR (INL (ctx, n, cs)))) => 4 * cv_size cs
+   | INR (INR (INR (INR (INL (ctx, n, e))))) => 4 * cv_size e + 1
+   | INR (INR (INR (INR (INR (INL (ctx, n, e)))))) => 4 * cv_size e + 2
+   | INR (INR (INR (INR (INR (INR (INL (ctx, n, es))))))) => 4 * cv_size es
+   | INR (INR (INR (INR (INR (INR (INR (ctx, n, cs))))))) => 4 * cv_size cs + 3)’ >>
   cv_termination_tac
 );
 
 Theorem elab_pre_bounded[local]:
   !b.
-  (!ctx n e. 3 * src_expr_size e + 2 < b ==> elab_expr_pre ctx n e) /\
-  (!ctx n id order tys es. 3 * list_size src_expr_size es + 1 < b ==>
+  (!ctx n e. 4 * src_expr_size e + 2 < b ==> elab_expr_pre ctx n e) /\
+  (!ctx n id order tys es. 4 * list_size src_expr_size es + 1 < b ==>
      elab_args_pre ctx n id order tys es) /\
-  (!ctx n e. 3 * src_expr_size e + 3 < b ==> elab_values_pre ctx n e) /\
-  (!ctx n cs. 3 * list_size (option_size src_expr_size) cs < b ==>
+  (!ctx n e. 4 * src_expr_size e + 3 < b ==> elab_values_pre ctx n e) /\
+  (!ctx n cs. 4 * list_size (option_size src_expr_size) cs < b ==>
      elab_components_pre ctx n cs) /\
-  (!ctx n e. 3 * src_expr_size e + 1 < b ==> elab_location_pre ctx n e) /\
-  (!ctx n e. 3 * src_expr_size e + 2 < b ==> elab_destination_pre ctx n e) /\
-  (!ctx n es. 3 * list_size src_expr_size es < b ==> elab_arg_values_pre ctx n es)
+  (!ctx n e. 4 * src_expr_size e + 1 < b ==> elab_location_pre ctx n e) /\
+  (!ctx n e. 4 * src_expr_size e + 2 < b ==> elab_destination_pre ctx n e) /\
+  (!ctx n es. 4 * list_size src_expr_size es < b ==> elab_arg_values_pre ctx n es) /\
+  (!ctx n cs. 4 * list_size (option_size src_expr_size) cs + 3 < b ==>
+     elab_destinations_pre ctx n cs)
 Proof
   completeInduct_on ‘b’ >> rpt conj_tac >> rpt gen_tac >> disch_tac >>
   qpat_x_assum ‘!m. m < b ==> _’ (drule_then strip_assume_tac)
@@ -3118,6 +3228,9 @@ Proof
   >~ [‘elab_arg_values_pre ctx n es’] >-
     (Cases_on ‘es’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
      simp[listTheory.list_size_def])
+  >~ [‘elab_destinations_pre ctx n cs’] >-
+    (Cases_on ‘cs’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
+     simp[listTheory.list_size_def, basicSizeTheory.option_size_def])
   >~ [‘elab_components_pre ctx n cs’] >-
     (Cases_on ‘cs’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
      simp[listTheory.list_size_def, basicSizeTheory.option_size_def]) >>
@@ -3135,28 +3248,35 @@ Theorem elab_expr_pre[cv_pre,local]:
 Proof
   conj_tac >-
     (rpt gen_tac >> irule (cj 1 elab_pre_bounded) >>
-     qexists_tac ‘3 * src_expr_size v + 3’ >> simp[]) >>
+     qexists_tac ‘4 * src_expr_size v + 3’ >> simp[]) >>
   conj_tac >-
     (rpt gen_tac >> irule (cj 2 elab_pre_bounded) >>
-     qexists_tac ‘3 * list_size src_expr_size es + 2’ >> simp[]) >>
+     qexists_tac ‘4 * list_size src_expr_size es + 2’ >> simp[]) >>
   conj_tac >-
     (rpt gen_tac >> irule (cj 3 elab_pre_bounded) >>
-     qexists_tac ‘3 * src_expr_size e + 4’ >> simp[]) >>
+     qexists_tac ‘4 * src_expr_size e + 4’ >> simp[]) >>
   conj_tac >-
     (rpt gen_tac >> irule (cj 4 elab_pre_bounded) >>
-     qexists_tac ‘3 * list_size (option_size src_expr_size) cs + 1’ >> simp[]) >>
+     qexists_tac ‘4 * list_size (option_size src_expr_size) cs + 1’ >> simp[]) >>
   conj_tac >-
     (rpt gen_tac >> irule (cj 5 elab_pre_bounded) >>
-     qexists_tac ‘3 * src_expr_size e + 2’ >> simp[]) >>
+     qexists_tac ‘4 * src_expr_size e + 2’ >> simp[]) >>
   rpt gen_tac >> irule (cj 6 elab_pre_bounded) >>
-  qexists_tac ‘3 * src_expr_size e + 3’ >> simp[]
+  qexists_tac ‘4 * src_expr_size e + 3’ >> simp[]
 QED
 
 Theorem elab_arg_values_pre[cv_pre,local]:
   ∀ctx n es. elab_arg_values_pre ctx n es
 Proof
   rpt gen_tac >> irule (cj 7 elab_pre_bounded) >>
-  qexists_tac ‘3 * list_size src_expr_size es + 1’ >> simp[]
+  qexists_tac ‘4 * list_size src_expr_size es + 1’ >> simp[]
+QED
+
+Theorem elab_destinations_pre[cv_pre,local]:
+  ∀ctx n cs. elab_destinations_pre ctx n cs
+Proof
+  rpt gen_tac >> irule (cj 8 elab_pre_bounded) >>
+  qexists_tac ‘4 * list_size (option_size src_expr_size) cs + 4’ >> simp[]
 QED
 
 val () = cv_auto_trans elab_condition_def;

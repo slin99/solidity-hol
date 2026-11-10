@@ -1,0 +1,331 @@
+{
+  "name": "tuple_values",
+  "source": "testdata/differential/tuple_values.sol",
+  "contract": "TupleValues",
+  "artifact": "testdata/differential/expected/tuple_values.json",
+  "cases": [
+    {
+      "name": "conditional_true",
+      "function": "conditional",
+      "args": [
+        true,
+        23
+      ],
+      "expect": {
+        "return": [
+          true,
+          23
+        ]
+      }
+    },
+    {
+      "name": "conditional_false",
+      "function": "conditional",
+      "args": [
+        false,
+        23
+      ],
+      "expect": {
+        "return": [
+          false,
+          0
+        ]
+      }
+    },
+    {
+      "name": "nested_negative",
+      "function": "nested",
+      "args": [
+        true,
+        true
+      ],
+      "expect": {
+        "return": [
+          -300,
+          true
+        ]
+      }
+    },
+    {
+      "name": "nested_inner_false",
+      "function": "nested",
+      "args": [
+        true,
+        false
+      ],
+      "expect": {
+        "return": [
+          7,
+          false
+        ]
+      }
+    },
+    {
+      "name": "nested_outer_false",
+      "function": "nested",
+      "args": [
+        false,
+        true
+      ],
+      "expect": {
+        "return": [
+          0,
+          false
+        ]
+      }
+    },
+    {
+      "name": "lazy_true",
+      "function": "lazy",
+      "args": [
+        true
+      ],
+      "expect": {
+        "return": [
+          7,
+          8
+        ]
+      },
+      "final_storage": {
+        "1": 7
+      }
+    },
+    {
+      "name": "lazy_false",
+      "function": "lazy",
+      "args": [
+        false
+      ],
+      "expect": {
+        "return": [
+          9,
+          10
+        ]
+      },
+      "final_storage": {
+        "1": 9
+      }
+    },
+    {
+      "name": "unselected_panic",
+      "function": "lazyPanic",
+      "args": [
+        true,
+        0
+      ],
+      "expect": {
+        "return": [
+          5,
+          true
+        ]
+      }
+    },
+    {
+      "name": "selected_panic",
+      "function": "lazyPanic",
+      "args": [
+        false,
+        0
+      ],
+      "expect": {
+        "panic": 18
+      }
+    },
+    {
+      "name": "selected_division",
+      "function": "lazyPanic",
+      "args": [
+        false,
+        4
+      ],
+      "expect": {
+        "return": [
+          25,
+          false
+        ]
+      }
+    },
+    {
+      "name": "storage_members_true",
+      "function": "members",
+      "args": [
+        true
+      ],
+      "expect": {
+        "return": [
+          300,
+          400
+        ]
+      },
+      "final_storage": {
+        "0": 26214700
+      }
+    },
+    {
+      "name": "storage_members_false",
+      "function": "members",
+      "args": [
+        false
+      ],
+      "expect": {
+        "return": [
+          8,
+          9
+        ]
+      },
+      "final_storage": {
+        "0": 589832
+      }
+    },
+    {
+      "name": "duplicate_target_reverse_writes",
+      "function": "duplicate",
+      "args": [],
+      "expect": {
+        "return": [
+          3
+        ]
+      },
+      "final_storage": {
+        "0": 3
+      }
+    },
+    {
+      "name": "rhs_then_left_targets_then_reverse_writes",
+      "function": "schedule",
+      "args": [],
+      "expect": {
+        "return": [
+          3412,
+          3
+        ]
+      },
+      "final_storage": {
+        "1": 3412,
+        "2": 3
+      }
+    },
+    {
+      "name": "capture_locations_before_writes",
+      "function": "captureBeforeWrite",
+      "args": [],
+      "expect": {
+        "return": [
+          1,
+          0
+        ]
+      },
+      "final_storage": {
+        "2": 1
+      }
+    },
+    {
+      "name": "capture_memory_index",
+      "function": "memoryTargets",
+      "args": [],
+      "expect": {
+        "return": [
+          7,
+          8
+        ]
+      }
+    },
+    {
+      "name": "byte_targets",
+      "function": "memoryBytes",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x12",
+          "0x34"
+        ]
+      }
+    },
+    {
+      "name": "memory_indices_before_bounds",
+      "function": "memoryIndicesBeforeBounds",
+      "args": [
+        0
+      ],
+      "expect": {
+        "panic": 18
+      }
+    },
+    {
+      "name": "tuple_hole",
+      "function": "hole",
+      "args": [],
+      "expect": {
+        "return": [
+          4
+        ]
+      },
+      "final_storage": {
+        "0": 262144
+      }
+    },
+    {
+      "name": "rhs_snapshots",
+      "function": "snapshots",
+      "args": [
+        19
+      ],
+      "expect": {
+        "return": [
+          2,
+          19
+        ]
+      }
+    },
+    {
+      "name": "memory_bounds_at_write",
+      "function": "memoryIndicesBeforeBounds",
+      "args": [
+        1
+      ],
+      "expect": {
+        "panic": 50
+      }
+    },
+    {
+      "name": "byte_indices_before_bounds",
+      "function": "byteIndicesBeforeBounds",
+      "args": [
+        0
+      ],
+      "expect": {
+        "panic": 18
+      }
+    },
+    {
+      "name": "storage_bounds_before_next_index",
+      "function": "storageBoundsBeforeNextIndex",
+      "args": [
+        0
+      ],
+      "expect": {
+        "panic": 50
+      }
+    },
+    {
+      "name": "byte_compound",
+      "function": "byteCompound",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x13"
+        ]
+      }
+    },
+    {
+      "name": "byte_array_compound",
+      "function": "byteArrayCompound",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x13"
+        ]
+      }
+    }
+  ]
+}
