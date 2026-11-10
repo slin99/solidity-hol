@@ -147,7 +147,9 @@ Inline assembly reads a memory `bytes` or `string` local as its address
 (`assembly_memory.sol`). The source heap gives each object the address the
 compiler's allocator would (`object_address`: `0x80` plus the memory
 allocated so far, `0x60` for the shared empty object), and a block runs over
-a memory holding each byte sequence's length word and bytes there. Under
+a memory holding each byte sequence's length word and bytes there. Objects are
+projected in allocation order so that an older object's word padding cannot
+overwrite a later allocation. Under
 `memoryguard` the compiler may start its free memory pointer above `0x80`, so
 arithmetic relative to a pointer is modelled but returning, storing or
 comparing a raw pointer value is outside the boundary. The block's memory also
@@ -160,6 +162,11 @@ the zero slot `[0x60, 0x80)`, each byte sequence's length word and data
 (zero-padded to whole words), and bytes it has written itself; any other read,
 another kind of memory object, the scratch space before the block writes it,
 or past an object's last word, ends the block with an `InvalidCompletion`.
+This projection describes logical bytes, rather than physical ABI tail padding.
+In particular, `try_decode_error_message` can leave copied dirty padding or,
+for an unpadded string, bytes from the outbound call's temporary ABI buffer
+past the logical string end. Assembly that observes those physical tail bytes
+is outside this source-heap boundary; the projection zero-pads them.
 A callee that returns fewer bytes than the block's output region leaves the
 rest unwritten, so reading it fails closed where the EVM reads stale scratch:
 OpenZeppelin's `SafeERC20` against a token whose `transfer` returns nothing
@@ -361,13 +368,23 @@ type, including the zero-argument and single-argument forms.
 an account without code. The receiver is evaluated once and no memory bytes
 object is allocated. Standalone `address.code` remains unsupported.
 
-External calls returning scalar values admit `try ... returns (...) { ... }
-catch (bytes memory reason) { ... }`. Only failure of the external call selects
-the catch body; argument evaluation, missing-code checks, return decoding and
-the success/catch bodies keep their ordinary failure behavior. Nonempty revert
-data is copied into a fresh memory bytes object; empty data uses the default
-empty bytes reference. Contract creation, typed `Error`/`Panic` handlers and
-catch clauses without a bytes parameter remain unsupported.
+External calls returning scalar values admit `try ... returns (...) { ... }`
+with `catch Error(string memory reason)`, `catch Panic(uint256 code)`, and a
+generic `catch (bytes memory data)` or parameterless `catch`. Typed handlers run
+before the generic handler regardless of their source order. A matching selector
+with short or malformed data falls through to the generic handler, or bubbles
+the original revert data when there is none. The pinned decoder accepts
+noncanonical offsets, missing string padding and trailing data. Panic decoding
+allocates no memory; Error decoding materializes its string at the encoded
+offset, and generic bytes are copied only when that handler is selected. Empty
+generic bytes use the default empty reference, and a parameterless catch does
+not allocate. Raw failure data has the internal core type `RevertDataType` and
+cannot be used as a source value without materialization.
+
+Only failure of the external call selects a catch body; argument evaluation,
+missing-code checks, return decoding and the success/catch bodies keep their
+ordinary failure behavior. Contract creation and dynamic success returns in a
+try statement remain unsupported.
 
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
