@@ -725,7 +725,22 @@ Definition run_asm_array_def:
     | _ => (InvalidCompletion "not an array", [])
 End
 
+(* The same block run on the shared empty object, HeapId 0. *)
+Definition run_asm_null_def:
+  run_asm_null ty code =
+    let env = core_program_environment <|
+      unsupported_procedures := []; procedures := [asm_array_proc ty code];
+      struct_layouts := []; type_declarations := [];
+      state_variables := []; immutables := [];
+      entry_procedure := AstId 140;
+      external_functions := []; receive_procedure := NONE;
+      fallback_procedure := NONE; creation_procedure := NONE |> in
+    (invoke_source 20 env (AstId 140)
+       [ReferenceValue (MemoryReference (HeapId 0) 0 ty)] initial_state []).completion
+End
+
 val () = cv_auto_trans run_asm_array_def;
+val () = cv_auto_trans run_asm_null_def;
 
 Definition uints_def:
   uints ns = MAP (λn. IntegerValue (&n)) ns
@@ -742,7 +757,8 @@ val () = cv_auto_trans scalars_def;
  * after it; a static one has no length word. A word written in an element is
  * read back; one that isn't the word its element type keeps (a uint8 of 256,
  * a bool of 2, an address with high bits) fails closed, and so does a write
- * to the length word. A negative element is sign-extended. *)
+ * to the length word. A negative element is sign-extended. The shared empty
+ * object stands for an empty dynamic array at 0x60, never a static one. *)
 Theorem asm_memory_arrays:
   run_asm_array (ArrayT (UintT 8) NONE) (uints [1; 2; 3])
     [YulAssign ["r"] (YulBuiltin YMLoad [YulName "a"])] =
@@ -783,7 +799,11 @@ Theorem asm_memory_arrays:
   run_asm_array (ArrayT (UintT 256) (SOME 2)) (uints [5; 6])
     [YulAssign ["r"] (YulBuiltin YMLoad [yadd (YulName "a") (ylit 0x40w)])] =
     (InvalidCompletion "assembly read memory it was not given",
-     scalars (uints [5; 6]))
+     scalars (uints [5; 6])) ∧
+  run_asm_null (ArrayT (UintT 256) NONE) [YulAssign ["r"] (YulName "a")] =
+    ReturnCompletion [ScalarValue (IntegerValue 0x60)] ∧
+  run_asm_null (ArrayT (UintT 256) (SOME 2)) [YulAssign ["r"] (YulName "a")] =
+    InvalidCompletion "bad assembly reference"
 Proof
   CONV_TAC cv_eval
 QED

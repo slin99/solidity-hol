@@ -968,13 +968,15 @@ Definition assembly_reference_word_def:
         (case eval_atom st.scopes a of
            SOME (ScalarValue s) => assembly_word ty s
          | _ => NONE)
-    (* the shared empty byte sequence is the compiler's zero slot, 0x60 *)
+    (* the shared empty byte sequence or dynamic array is the compiler's
+     * zero slot, 0x60; a static array is never it *)
     | AssemblyMemory x ty =>
         (case lookup_binding x st.scopes of
            SOME b =>
              (case b.binding_value of
                 ReferenceValue (MemoryReference (HeapId id) 0 _) =>
-                  if id = 0 then SOME 0x60
+                  if id = 0 then
+                    (case ty of ArrayT _ (SOME _) => NONE | _ => SOME 0x60)
                   else OPTION_MAP (λobj. obj.object_address) (FLOOKUP st.heap id)
               | _ => NONE)
          | NONE => NONE)
