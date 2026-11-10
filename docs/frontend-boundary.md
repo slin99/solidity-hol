@@ -274,7 +274,8 @@ A contract or interface type is read as `address`, which is its value at
 run time, stored and ABI encoded as one: in type names, in the type
 identifiers of expressions and in storage layouts. `I(a)` is a conversion to
 `address`, `this` is the contract's own address, and an external call
-`c.f{value: v}(args)` may name any contract-typed `c`. `new C`, `type(C)`
+`c.f{value: v, gas: g}(args)` may name any contract-typed `c`; a gas option
+caps the callee's gas as it does for `a.call`, below. `new C`, `type(C)`
 other than `type(I).interfaceId` (below), external calls to getters and the
 members of external functions other than `selector` (below) are rejected.
 Nominal parameter type identifiers keep overloads distinct for `super`
@@ -344,23 +345,34 @@ parameters, are rejected.
 
 `abi.decode(data, (T1, ..., Tk))` decodes a memory `bytes` into values of
 elementary types (booleans, integers, addresses and fixed-size byte
-sequences; an `address` decodes as `address payable`, as the compiler types
-it), as the compiler's decoder from memory does: data shorter than the
+sequences, including erased user-defined value types), as the compiler's
+decoder from memory does. The result keeps the compiler's annotated types:
+a plain `address` target decodes as `address payable`, while a user-defined
+value type backed by nonpayable `address` keeps that underlying type.
+Each result must match its requested elementary type or its payable-address
+decoding variant. Data shorter than the
 encoding, or a word that is not a value of its type, reverts with no data, and
 data after the encoding is ignored. It allocates nothing. Data in calldata or
 storage, and types other than elementary ones, are rejected.
 
-`a.staticcall(data)`, with `a` an address and `data` a memory `bytes`,
-evaluates `a`, then `data`, and makes a static call to `a` with the bytes of
-`data` as its input, giving the success flag and the return data. The source
-does not track gas: the callee gets the same fixed budget a high-level call
-gives it (`external_call_gas`), where the compiled code forwards all but a 64th
-of what is left. A failed call, the callee's revert included, gives
-`false` and leaves the caller's state as it was; a call to an address without
-code succeeds with no data. Return data is copied into a new memory `bytes`,
-allocated as the compiler allocates it, and no return data gives the shared
-empty `bytes`, allocating nothing. Data in calldata, storage or a literal, gas
-options, `call` and `delegatecall` are rejected.
+`a.call(data)`, `a.staticcall(data)` and `a.delegatecall(data)`, with `a`
+an address and `data` a memory `bytes` or a bytes literal, evaluate `a`, then
+their call options `{value: v, gas: g}` in the order written, then `data`, and
+call `a` with the bytes of `data` as its input, giving the success flag and
+the return data. The data is passed where it is: a literal is not copied into
+memory. `call` sends `v` (0 without the option): a caller that cannot pay it
+fails the call without running it, and sending value from a static frame is an
+`InvalidCompletion`. `staticcall` makes a static call. `delegatecall` runs
+`a`'s code as this contract, on its own storage and balance, with this call's
+`msg.sender` and `msg.value`, and moves no value. The source does not track
+gas: without a gas option the callee gets the same fixed budget a high-level
+call gives it (`external_call_gas`), where the compiled code forwards all but
+a 64th of what is left; with one, it gets `g` capped at that budget. A failed
+call, the callee's revert included, gives `false` and leaves the caller's
+state as it was; a call to an address without code succeeds with no data.
+Return data is copied into a new memory `bytes`, allocated as the compiler
+allocates it, and no return data gives the shared empty `bytes`, allocating
+nothing. Data in calldata or storage is rejected.
 
 `bytes.concat(...)` uses packed encoding of its byte sequences, fixed-size bytes
 and literals. `string.concat(...)` concatenates strings and string literals.
@@ -549,7 +561,8 @@ Admitted: one contract, flattened along its bases, with
   `call`, `staticcall` and their return data;
 - internal calls with single or multiple returns, library calls (`L.f(args)`
   and `x.f(args)` through a using directive) and library constants (`L.c`),
-  `super` in calls, external calls of contract types;
+  `super` in calls, external calls of contract types, with `value` and `gas`
+  options; low-level `call`, `staticcall` and `delegatecall` of addresses;
 - `require`, `assert` and `revert` with boolean conditions and literal string
   messages; reads of `msg`, `tx` and `block` members and `address(this)`;
   emits of events and reverts with custom errors, both with elementary
