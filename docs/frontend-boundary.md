@@ -280,9 +280,11 @@ byte that is out of range panics with 0x21 when it is read, where the
 compiler checks it only where the value is used. It is
 ABI encoded as `uint8`, as a parameter, a return, an event argument or an
 external call's argument. A call or creation whose enum argument is out of
-range reverts when the decoder reaches it, before later arguments are read. Enums as mapping keys, as elements of memory or calldata
+range reverts when the decoder reaches it, before later arguments are read.
+`type(E).min` and `type(E).max` are the first and last enum values.
+Enums as mapping keys, as elements of memory or calldata
 arrays, as constants, immutables or error parameters, returned by an
-external call, `type(E).min/max` and `delete` are rejected.
+external call and `delete` are rejected.
 
 `keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
 a `bytes32`. A literal argument is first made a memory `bytes`, and one in
@@ -541,7 +543,7 @@ Admitted: one contract, flattened along its bases, with
   assignment to locals and state variables, tuple assignment, `++` and `--`;
 - literals (no subdenominations), explicit elementary conversions (not
   `bytesN(b)` of a dynamic byte sequence `b`),
-  `type(T).max` and `.min` of integer types, unary, binary, comparison and
+  `type(T).max` and `.min` of integer and enum types, unary, binary, comparison and
   short-circuit operators, conditional expressions over value types; an
   operation over literals that the compiler types as an integer is that
   integer, as the compiler folds it;
