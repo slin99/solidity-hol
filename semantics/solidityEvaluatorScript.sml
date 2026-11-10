@@ -386,7 +386,7 @@ Definition default_runtime_value_def:
             (case element of ArrayT _ (SOME n) => n | _ => 0) element))
         else NONE
     | LocatedT StorageLoc element =>
-        if byte_sequence_type element then
+        if storage_object_type element then
           SOME (ReferenceValue
             (StorageReference PersistentStorage 0w 0w 0 element (LayoutId 0)))
         else NONE
