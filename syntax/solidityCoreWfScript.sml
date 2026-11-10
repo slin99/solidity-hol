@@ -286,7 +286,7 @@ End
  * reference in the array's location. *)
 Definition element_type_def:
   element_type loc element =
-    if is_elementary_type element then element else LocatedT loc element
+    if is_stored_scalar_type element then element else LocatedT loc element
 End
 
 (* ABI values contain scalars (an enum as a uint8), byte sequences in
@@ -810,11 +810,13 @@ Definition wf_core_operation_def:
       BoundAtom x =>
         (case storage_base (ALOOKUP ctx.bindings x) of
            SOME (ArrayT element NONE) =>
-             storage_type_ok env element ∧ IS_SOME (storage_bytes element) ∧
+             storage_type_ok env element ∧
              annotation = ReferenceType element ∧
              (case value of
                 NONE => T
-              | SOME v => wf_core_atom env ctx (SingleType element) v)
+              | SOME v =>
+                  IS_SOME (storage_bytes element) ∧
+                  wf_core_atom env ctx (SingleType element) v)
          | _ => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (ArrayPopOperation a) ⇔
