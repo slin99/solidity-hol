@@ -3313,11 +3313,11 @@ Proof
     (Cases_on ‘ss’ >> simp_tac std_ss [Once elab_stmts_pre_def] >>
      simp[listTheory.list_size_def, bind_failed_pre])
   >~ [‘elab_catches_pre ctx n failure cs’] >-
-    (Cases_on ‘cs’ >> simp_tac std_ss [Once elab_stmts_pre_def] >>
-     rename1 ‘c :: rest’ >> Cases_on ‘c’ >>
-     simp_tac std_ss [Once elab_stmts_pre_def] >>
-     rw[] >> gvs[solidityImportTheory.src_stmt_size_def, listTheory.list_size_def,
-                 declare_values_pre, bind_failed_pre]) >>
+    (PURE_ONCE_REWRITE_TAC [elab_stmts_pre_def] >>
+     rpt conj_tac >> rpt gen_tac >> disch_then strip_assume_tac >>
+     rpt BasicProvers.VAR_EQ_TAC >>
+     simp[solidityImportTheory.src_stmt_size_def, listTheory.list_size_def,
+          declare_values_pre, bind_failed_pre]) >>
   Cases_on ‘st’ >> simp_tac std_ss [Once elab_stmts_pre_def] >>
   simp[basicSizeTheory.option_size_def]
 QED
