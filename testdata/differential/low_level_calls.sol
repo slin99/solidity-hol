@@ -84,6 +84,39 @@ contract LowLevelCalls {
         return (ok, counter);
     }
 
+    // Calldata bytes are passed where they are: only the result moves the
+    // free memory pointer.
+    function staticCalldata(address target, bytes calldata data)
+        public view returns (bool, bytes memory, uint256)
+    {
+        (bool ok, bytes memory r) = target.staticcall(data);
+        uint256 free;
+        assembly { free := mload(0x40) }
+        return (ok, r, free);
+    }
+
+    function callCalldata(address target, uint256 amount, bytes calldata data)
+        public payable returns (bool, bytes memory)
+    {
+        return target.call{value: amount}(data);
+    }
+
+    function delegateCalldata(address target, bytes calldata data)
+        public returns (bool, bytes memory, uint256)
+    {
+        (bool ok, bytes memory r) = target.delegatecall(data);
+        return (ok, r, counter);
+    }
+
+    // Each element of a calldata array is delegate-called in turn.
+    function multicall(address target, bytes[] calldata calls) public returns (uint256) {
+        for (uint256 i = 0; i < calls.length; i++) {
+            (bool ok, ) = target.delegatecall(calls[i]);
+            require(ok);
+        }
+        return counter;
+    }
+
     // The callee calls bump back before the call returns.
     function reentered(address target) public returns (bool, uint256) {
         counter = 10;

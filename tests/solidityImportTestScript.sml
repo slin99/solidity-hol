@@ -22,6 +22,7 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/imports.json",
   "../testdata/differential/expected/errors.json",
   "../testdata/differential/expected/type_bounds.json",
+  "../testdata/differential/expected/enum_bounds.json",
   "../testdata/differential/expected/using_for.json",
   "../testdata/differential/expected/hashes.json",
   "../testdata/differential/expected/conditionals.json",
@@ -33,7 +34,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/low_level_calls.json",
   "../testdata/differential/expected/udvt.json",
   "../testdata/differential/expected/transient_values.json",
-  "../testdata/differential/expected/byte_mapping_keys.json"
+  "../testdata/differential/expected/byte_mapping_keys.json",
+  "../testdata/differential/expected/literals.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -989,6 +991,32 @@ Proof
   EVAL_TAC
 QED
 
+Definition enum_bounds_unit_def:
+  enum_bounds_unit = ^(import_artifact
+    "../testdata/differential/expected/enum_bounds.json"
+    "testdata/differential/enum_bounds.sol")
+End
+
+val () = cv_auto_trans enum_bounds_unit_def;
+
+Theorem enum_bounds_valid:
+  valid_src_unit enum_bounds_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+val () = expect_function_lines "unknown enum type member"
+  "../testdata/differential/expected/enum_bounds.json"
+  "testdata/differential/enum_bounds.sol" "fileBounds"
+  (edit_first "MemberAccess" (set_field "memberName" (JSON.STRING "middle")))
+  ["unsupported enum type member"]
+
+val () = expect_function_lines "unknown enum bound declaration"
+  "../testdata/differential/expected/enum_bounds.json"
+  "testdata/differential/enum_bounds.sol" "fileBounds"
+  (edit_first "Identifier" (set_field "referencedDeclaration" (JSON.INT 999999)))
+  ["unknown enum declaration"]
+
 (* Libraries: only internal functions, attached through a library name, with a
  * receiver that is not copied, are imported; library functions are plain
  * functions.
@@ -1362,3 +1390,27 @@ Theorem transient_mapping_and_local_rejected:
 Proof
   EVAL_TAC
 QED
+val literals_fixture = "../testdata/differential/expected/literals.json"
+val literals_source = "testdata/differential/literals.sol"
+val literals_ast = artifact_part literals_fixture ["sources", literals_source, "ast"]
+val literals_contracts = artifact_part literals_fixture ["contracts", literals_source]
+
+fun literal_error name fn_name edit =
+  import_error_with UnsupportedFunction literals_contracts name
+    (edit_first_where (named "FunctionDefinition" fn_name) fn_name
+       (edit_first "Literal" edit) literals_ast)
+
+val () = literal_error "unknown subdenomination" "units"
+  (set_field "subdenomination" (JSON.STRING "years"))
+
+val () = literal_error "subdenomination on a boolean" "units"
+  (set_field "kind" (JSON.STRING "bool"))
+
+val () = literal_error "subdenomination on an address" "units"
+  (type_identifier "t_address")
+
+val () = literal_error "short address literal" "addressValue"
+  (set_field "value" (JSON.STRING "0x1234"))
+
+val () = literal_error "nonhex address literal" "addressValue"
+  (set_field "value" (JSON.STRING "0xgg175474E89094C44Da98b954EedeAC495271d0F"))

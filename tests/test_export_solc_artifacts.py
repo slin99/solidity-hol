@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import copy
 import json
 from pathlib import Path
 import subprocess
@@ -123,6 +124,61 @@ class ExporterTests(unittest.TestCase):
             self.assertEqual(self.run_exporter(solc, first).returncode, 0)
             self.assertEqual(self.run_exporter(solc, second).returncode, 0)
             self.assertEqual(first.read_bytes(), second.read_bytes())
+
+    def test_stack_depth_fallback_retains_profile_errors_sources_and_remappings(self) -> None:
+        fixture = exporter.read_json(ROOT / "testdata/frontend/expected/stack_depth.json")
+        failures = fixture["unoptimizedFailure"]["errors"]
+        inputs = []
+
+        def compile_input(solc: Path, compiler_input: dict) -> dict:
+            inputs.append(copy.deepcopy(compiler_input))
+            if not compiler_input["settings"]["optimizer"]["enabled"]:
+                raise exporter.CompilationError(failures)
+            return fixture["output"]
+
+        sources = {"alias/stack.sol": "contract StackDepth {}"}
+        with patch.object(exporter, "compiler_identity", return_value="pinned"), \
+             patch.object(exporter, "compile_standard_json", side_effect=compile_input):
+            artifact = exporter.build_artifact_from_sources(
+                Path("solc"), sources, exporter.DEFAULT_PROFILE, remappings=["alias/=src/"])
+        self.assertEqual(len(inputs), 2)
+        self.assertFalse(inputs[0]["settings"]["optimizer"]["enabled"])
+        self.assertTrue(inputs[1]["settings"]["optimizer"]["enabled"])
+        self.assertEqual(inputs[0]["sources"], inputs[1]["sources"])
+        self.assertEqual(inputs[1]["settings"]["remappings"], ["alias/=src/"])
+        self.assertEqual(artifact["profile"], exporter.read_json(exporter.OPTIMIZED_PROFILE))
+        self.assertEqual(artifact["input"], inputs[1])
+        self.assertEqual(artifact["unoptimizedFailure"], fixture["unoptimizedFailure"])
+
+    def test_unrelated_or_mixed_errors_do_not_retry(self) -> None:
+        stack = {"severity": "error", "type": "YulException",
+                 "message": "variable is too deep in the stack"}
+        parser = {"severity": "error", "type": "ParserError",
+                  "message": "Stack too deep"}
+        for failures in ([parser], [stack, parser],
+                         [{**stack, "message": "unrelated compiler failure"}]):
+            with self.subTest(errors=failures), \
+                 patch.object(exporter, "compiler_identity", return_value="pinned"), \
+                 patch.object(exporter, "compile_standard_json",
+                              side_effect=exporter.CompilationError(failures)) as compile_json:
+                with self.assertRaises(exporter.CompilationError):
+                    exporter.build_artifact_from_sources(
+                        Path("solc"), {"a.sol": "contract A {}"}, exporter.DEFAULT_PROFILE)
+                self.assertEqual(compile_json.call_count, 1)
+
+    def test_direct_optimized_profile_is_rejected(self) -> None:
+        with self.assertRaisesRegex(SystemExit, "must start with.*unoptimized"):
+            exporter.build_artifact_from_sources(
+                Path("solc"), {"a.sol": "contract A {}"}, exporter.OPTIMIZED_PROFILE)
+
+    def test_normally_compiled_artifact_has_no_fallback(self) -> None:
+        with patch.object(exporter, "compiler_identity", return_value="pinned"), \
+             patch.object(exporter, "compile_standard_json", return_value={}) as compile_json:
+            artifact = exporter.build_artifact_from_sources(
+                Path("solc"), {"a.sol": "contract A {}"}, exporter.DEFAULT_PROFILE)
+        self.assertEqual(compile_json.call_count, 1)
+        self.assertEqual(artifact["profile"], exporter.read_json(exporter.DEFAULT_PROFILE))
+        self.assertNotIn("unoptimizedFailure", artifact)
 
 
 if __name__ == "__main__":

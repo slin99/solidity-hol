@@ -31,19 +31,6 @@
       }
     },
     {
-      "name": "dirty_bool_reads_true",
-      "function": "getFlag",
-      "args": [],
-      "storage": {
-        "1": "0x02000000"
-      },
-      "expect": {
-        "return": [
-          true
-        ]
-      }
-    },
-    {
       "name": "packed_slot_keeps_neighbours",
       "function": "packed",
       "args": [

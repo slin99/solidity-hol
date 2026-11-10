@@ -8,7 +8,8 @@ validation and execution rules as existing consumers.
 ## Preparation and declarations
 
 `solidityPrepareLib.prepare_artifact` checks the pinned compiler, artifact format,
-profile and Standard JSON settings, imports and validates the normalized source,
+profile and Standard JSON settings (including the restricted
+[stack-depth fallback](profiles.md#stack-depth-fallback)), imports and validates the normalized source,
 elaborates it, and cv-evaluates the full `wf_core_program`. Differential tests
 and the semanticTests acceptance scanner share this API. Metadata validation is
 an SML check; source validation, elaboration and core checking return HOL

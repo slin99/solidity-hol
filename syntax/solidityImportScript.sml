@@ -846,13 +846,13 @@ Definition call_variable_type_def:
     | _ => ty) (variable_type v)
 End
 
-(* Event declarations omit an explicit location; analyzed byte parameters
+(* Event declarations omit an explicit location; analyzed reference parameters
  * carry memory identifiers. *)
 Definition event_variable_type_def:
   event_variable_type (v : src_variable) =
     case normalize_type_name v.var_type_name of
       SOME ty =>
-        if byte_sequence_type ty then
+        if memory_object_type ty then
           if v.var_location = NONE ∧
              source_type_matches (LocatedT MemoryLoc ty) v.var_type_id then
             SOME (LocatedT MemoryLoc ty) else NONE
@@ -1395,7 +1395,7 @@ Definition check_struct_def:
         storage_layout_ok T s.struct_members fields
 End
 
-(* Event parameters are elementary value types declared by the event. *)
+(* Event parameters are scalar or memory ABI types declared by the event. *)
 Definition check_event_def:
   check_event (e : src_event) ⇔
     EVERY (λp. (FST p).var_scope = e.event_info.node_id ∧
