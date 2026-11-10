@@ -555,13 +555,14 @@ Definition low_level_external_kind_def:
   (low_level_external_kind LowLevelDelegateCall = ExternalDelegateCall)
 End
 
-(* The data of a low-level call is packed where it is: a memory bytes or a
- * bytes literal, never copied. *)
+(* The data of a low-level call is packed where it is: a memory or calldata
+ * bytes or a bytes literal, never copied into allocated memory. *)
 Definition low_level_data_def:
   low_level_data a vt =
     case (a, vt) of
       (ConstantAtom (BytesValue _), ElabBytesLiteral) => SOME a
     | (_, ElabType (LocatedT MemoryLoc BytesT)) => SOME a
+    | (_, ElabType (LocatedT CalldataLoc BytesT)) => SOME a
     | _ => NONE
 End
 
@@ -1442,7 +1443,7 @@ Definition elab_expr_def:
                                    (option_atom GasOption opts atoms) d')],
                              BoundAtom (AstId n2), call_value tys), n2 + 1)
                    | (INR bs, _) => INR bs
-                   | (_, NONE) => INR [(did, "low-level call data not memory bytes")]
+                   | (_, NONE) => INR [(did, "low-level call data not memory or calldata bytes")]
                    | _ => INR [(info.node_id, "unsupported low-level call")])
               | _ => INR [(info.node_id, "unsupported low-level call")])
          | INR bs => INR bs)

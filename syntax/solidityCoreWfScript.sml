@@ -768,7 +768,7 @@ Definition wf_core_operation_def:
                 | _ => F) tys ∧
     LIST_REL (wf_abi_atom env ctx) tys args) ∧
   (* Only call moves value. The data is packed where it is, so a bytes
-     literal needs no memory copy. *)
+     literal or calldata bytes needs no memory copy. *)
   (wf_core_operation env ctx annotation
      (LowLevelCallOperation kind target value gas data) ⇔
     annotation = call_result_type [BoolT; LocatedT MemoryLoc BytesT] ∧
@@ -778,7 +778,8 @@ Definition wf_core_operation_def:
     wf_gas_atom env ctx gas ∧
     (case data of
        ConstantAtom (BytesValue _) => T
-     | _ => wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) data)) ∧
+     | _ => wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) data ∨
+            wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) data)) ∧
   (wf_core_operation env ctx annotation (AbiDecodeOperation tys a) ⇔
     tys ≠ [] ∧ EVERY (λty. is_elementary_type ty ∧ valid_type_shape ty) tys ∧
     annotation = call_result_type tys ∧
