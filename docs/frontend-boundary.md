@@ -165,7 +165,9 @@ compiler's allocator would (`object_address`: `0x80` plus the memory
 allocated so far, `0x60` for the shared empty object), and a block runs over
 a memory holding each byte sequence's length word and bytes there. Objects are
 projected in allocation order so that an older object's word padding cannot
-overwrite a later allocation. Under
+overwrite a later allocation. Padding ends at the aligned end of the
+allocation, including for an unaligned caught Error string; it cannot make the
+next object's length word writable. Under
 `memoryguard` the compiler may start its free memory pointer above `0x80`, so
 arithmetic relative to a pointer is modelled but returning, storing or
 comparing a raw pointer value is outside the boundary. The block's memory also

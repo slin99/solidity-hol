@@ -134,4 +134,16 @@ contract TypedCatches {
             return (ptr - beforePtr, afterPtr - beforePtr);
         }
     }
+
+    function writeOverlap(address target, bytes memory data, uint256 offset)
+        public returns (uint256)
+    {
+        try ICatchPeer(target).run(data, 1) returns (uint256 value) {
+            return value;
+        } catch Error(string memory reason) {
+            bytes memory later = new bytes(256);
+            assembly { mstore8(add(reason, offset), 1) }
+            return later.length;
+        }
+    }
 }

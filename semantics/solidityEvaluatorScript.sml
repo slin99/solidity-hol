@@ -1094,6 +1094,13 @@ Definition yul_substitute_stmt_def:
     (l, yul_substitute_stmts sub body) :: yul_substitute_cases sub cases)
 End
 
+(* Round the data end, since a caught Error string can start unaligned. *)
+Definition object_padding_def:
+  object_padding (obj : heap_object) =
+    32 * ((obj.object_address + 32 + obj.object_length + 31) DIV 32) -
+    (obj.object_address + 32 + obj.object_length)
+End
+
 (* Project objects chronologically so newer allocations replace older data.
  * Returndata padding stays unwritten where the compiler does not zero it;
  * assembly reads there fail closed. *)
@@ -1111,8 +1118,7 @@ Definition assembly_project_def:
                 SOME (yul_memory_write m1 obj.object_address
                   (word_to_bytes_be (n2w obj.object_length : bytes32) ++ bs ++
                    (if obj.object_padded then
-                      REPLICATE (32 * ((obj.object_length + 31) DIV 32) -
-                                 obj.object_length) 0w
+                      REPLICATE (object_padding obj) 0w
                     else [])))
             | NONE => NONE
           else SOME m1
@@ -1137,15 +1143,14 @@ End
 
 (* The memory a block may change and still exit normally, as (start, length)
  * ranges: the scratch space, and the data of each byte sequence object with
- * id 1 to i in whole words (a 32-byte mstore at its last byte is in bounds),
- * not its length word. *)
+ * id 1 to i through their aligned allocation ends, excluding length words. *)
 Definition assembly_writable_def:
   (assembly_writable heap 0 = [(0, 64)]) ∧
   (assembly_writable heap (SUC i) =
     case FLOOKUP heap (SUC i) of
       SOME obj =>
         if byte_sequence_type obj.object_type then
-          (obj.object_address + 32, 32 * ((obj.object_length + 31) DIV 32)) ::
+          (obj.object_address + 32, obj.object_length + object_padding obj) ::
           assembly_writable heap i
         else assembly_writable heap i
     | NONE => assembly_writable heap i)
@@ -1183,7 +1188,7 @@ Definition assembly_read_back_def:
                  (yul_memory_read m (obj.object_address + 32) obj.object_length);
                object_padded := memory_zeros m.memory
                  (obj.object_address + 32 + obj.object_length)
-                 (32 * ((obj.object_length + 31) DIV 32) - obj.object_length) |>)
+                 (object_padding obj) |>)
            else heap
        | NONE => heap) i m)
 End
@@ -1416,6 +1421,7 @@ val () = cv_auto_trans assembly_inputs_def;
 val () = cv_auto_trans yul_substitute_expr_def;
 val () = cv_auto_trans yul_unbind_def;
 val () = cv_auto_trans yul_substitute_stmt_def;
+val () = cv_auto_trans object_padding_def;
 val () = cv_auto_trans assembly_project_def;
 val () = cv_auto_trans assembly_machine_def;
 val () = cv_auto_trans assembly_writable_def;

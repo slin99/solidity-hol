@@ -1,0 +1,27 @@
+{
+  "name": "rejected_typed_catches",
+  "source": "testdata/differential/typed_catches.sol",
+  "contract": "TypedCatches",
+  "artifact": "testdata/differential/expected/typed_catches.json",
+  "peer": {
+    "source": "testdata/differential/typed_catches_peer.sol",
+    "contract": "TypedCatchPeer",
+    "artifact": "testdata/differential/expected/typed_catches_peer.json"
+  },
+  "cases": [
+    {
+      "name": "unaligned_error_write_next_header",
+      "function": "writeOverlap",
+      "args": [
+        20480,
+        "0x08c379a0000000000000000000000000000000000000000000000000000000000000003f00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000178",
+        33
+      ],
+      "expect": {
+        "return": [
+          452312848583266388373324160190187140051835877600158453279131187530910662912
+        ]
+      }
+    }
+  ]
+}
