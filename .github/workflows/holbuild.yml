@@ -126,7 +126,7 @@ jobs:
         run: holbuild --verbose -j"$(nproc)" build --skip-checkpoints --skip-proof-steps solidityHolBaseTheory
 
       - name: Save project snapshot
-        if: always()
+        if: always() && (github.event_name == 'push' || matrix.shard == 0)
         uses: actions/cache/save@v6
         continue-on-error: true
         with:
