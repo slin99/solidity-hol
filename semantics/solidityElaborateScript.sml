@@ -1537,10 +1537,19 @@ Definition elab_expr_def:
          | INR bs => INR bs)
     | SrcTransfer info _ target value tid =>
         ensure (tid = "t_tuple$__$") (info.node_id, "type annotation mismatch")
-        (case elab_arg_values ctx n [target; value] of
-           INL ((ss, vs), n1) =>
-             finish_transfer info.node_id (expr_id value) ss vs n1
-         | INR bs => INR bs)
+        (case elab_expr ctx n target of
+           INL ((ss, target_atom, target_type), n1) =>
+             let (captured, n2) =
+               if expr_assigns value then snapshot n1 target_atom target_type
+               else (([], target_atom), n1) in
+             let (saved, target') = captured in
+             (case elab_expr ctx n2 value of
+                INL ((vs, value_atom, value_type), n3) =>
+                  finish_transfer info.node_id (expr_id value)
+                    (ss ++ saved ++ vs)
+                    [(target', target_type); (value_atom, value_type)] n3
+              | INR bs => INR bs)
+         | INR bs => INR (bs ++ blockers (elab_expr ctx n value)))
     (* The declaration's selector, after any receiver effects; bound so a
        later conversion retains its fixed-byte width. *)
     | SrcSelector info bs receiver tid =>
@@ -1828,12 +1837,7 @@ Termination
      the children's results are large, so they are dropped, not simplified *)
   rpt strip_tac >> rpt BasicProvers.VAR_EQ_TAC >> rpt (pop_assum kall_tac) >>
   simp[prim_recTheory.measure_thm, solidityImportTheory.src_expr_size_def,
-       listTheory.list_size_def, basicSizeTheory.option_size_def] >>
-  (* Transfer's two operands include two list cells in elab_arg_values. *)
-  qmatch_goalsub_abbrev_tac ‘node_info_size transfer_info’ >>
-  ‘0 < node_info_size transfer_info’ by
-    (Cases_on ‘transfer_info’ >> simp[node_info_size_def]) >>
-  decide_tac
+       listTheory.list_size_def, basicSizeTheory.option_size_def]
 End
 
 (* A boolean condition. *)
