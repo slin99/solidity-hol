@@ -144,9 +144,13 @@ function's `baseFunctions`. A public state variable, constant or immutable may
 override an external function. The importer removes the transitively replaced
 functions using the variable's `baseFunctions`, leaving its getter as the sole
 dispatch entry for that selector. Base-constructor specifiers on constructors
-(`constructors.sol`) and invocations of non-virtual modifiers
-(`modifiers.sol`) are resolved through their `referencedDeclaration`; virtual
-and overriding modifiers are rejected. A `super.f(...)` call
+(`constructors.sol`) use their `referencedDeclaration`. Unqualified modifier
+invocations resolve through the transitive `baseModifiers` relation in the
+contract's linearization; explicitly qualified `Base.modifier` invocations
+keep their declared target (`virtual_modifiers.sol`). Only invoked modifier
+implementations are imported, so overridden bodyless declarations do not
+reject a concrete contract. A bodyless declaration still reached by a call
+makes that function unsupported. A `super.f(...)` call
 (`super_calls.sol`) runs what the compiler's lookup finds in the deployed
 contract's linearization: the first function after the caller's contract with
 the name and parameter types of the declaration the call's
@@ -314,8 +318,9 @@ arrays, as constants or immutables, returned by an
 external call and `delete` are rejected.
 
 `keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
-a `bytes32`. A literal argument is first made a memory `bytes`, and one in
-storage or calldata is copied to memory, as for an internal call's argument.
+a `bytes32`. A string or hex literal is hashed directly without allocating
+memory. A `bytes` value in storage or calldata is copied to memory, as for
+an internal call's argument.
 `ecrecover(h, v, r, s)` is the address that the signature `(v, r, s)` of the
 hash `h` recovers, or `address(0)` for an invalid signature, as the compiler's
 call to the precompile at address 1 gives. Its arguments are converted to
@@ -334,9 +339,10 @@ an abstract contract's `interfaceId` is rejected. A selector of any other
 function-typed value is rejected, and so are `sha256` and `ripemd160`.
 
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
-type the compiler gives the whole expression, which must be a value type or
-a memory reference (a memory operand is the same reference, not a copy).
-Conditionals of tuple, storage, calldata or function type are rejected.
+type the compiler gives the whole expression, which must be a value type,
+a memory reference or a tuple of supported component types (a memory operand
+is the same reference, not a copy). Conditionals of storage, calldata or
+function type are rejected.
 
 `abi.encode`, `abi.encodePacked`, `abi.encodeWithSelector` and
 `abi.encodeWithSignature` give a new memory `bytes`, allocated as the
@@ -725,3 +731,21 @@ try/catch, errors, fallback/receive, dynamic and memory/calldata arrays, bytes/s
 pointers, transient storage, and custom storage layout bases. The first HOL type
 theory can begin from the normalized types already observed, provided unsupported
 forms continue to fail closed.
+
+## Tuple expressions and assignments
+
+Tuple literals and conditional tuple results use the existing product values.
+Conditional components convert to the conditional expression's annotated types;
+only the selected branch runs. Destructuring supports the same destinations as
+ordinary assignment, including storage members, indexed storage locations and
+memory elements. It first evaluates and snapshots the right-hand values, then
+evaluates left-hand operands from left to right, then writes from right to left.
+Storage navigation checks bounds during operand evaluation; memory indices are
+saved and bounds-checked at each write. Holes consume a value without
+capturing a location. Repeated destinations therefore retain the leftmost
+assigned component.
+
+Scalar and tuple conditional joins bind the selected memory reference without
+allocating a default object. Their temporary references cannot be read as fixed
+arrays before assignment; declarations of fixed memory arrays still allocate
+their normal zero-filled objects.
