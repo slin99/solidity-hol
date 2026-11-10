@@ -745,6 +745,10 @@ Definition wf_core_operation_def:
     annotation = SingleType (UintT 256) ∧
     (wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) a ∨
      wf_core_atom env ctx (SingleType (AddressT PayableAddress)) a)) ∧
+  (wf_core_operation env ctx annotation (BalanceOperation a) ⇔
+    annotation = SingleType (UintT 256) ∧
+    (wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) a ∨
+     wf_core_atom env ctx (SingleType (AddressT PayableAddress)) a)) ∧
   (wf_core_operation env ctx annotation (AbiEncodeOperation selector tys args) ⇔
     annotation = SingleType (LocatedT MemoryLoc BytesT) ∧
     (case selector of
@@ -833,6 +837,10 @@ Definition wf_core_operation_def:
     LIST_REL (wf_abi_atom env ctx) params args ∧
     annotation = ProductType
       (MAP SingleType (BoolT :: rets ++ [LocatedT MemoryLoc BytesT]))) ∧
+  (wf_core_operation env ctx annotation (TransferOperation target value) ⇔
+    annotation = ProductType [] ∧
+    wf_core_atom env ctx (SingleType (AddressT PayableAddress)) target ∧
+    wf_core_atom env ctx (SingleType (UintT 256)) value) ∧
   (wf_core_operation env ctx annotation _ ⇔ F)
 End
 

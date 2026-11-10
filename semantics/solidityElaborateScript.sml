@@ -161,12 +161,13 @@ Definition expr_id_def:
   (expr_id (SrcEnumValue info _ _ _) = info.node_id) ∧
   (expr_id (SrcKeccak256 info _ _ _) = info.node_id) ∧
   (expr_id (SrcModular info _ _ _ _) = info.node_id) ∧
-  (expr_id (SrcAddressCodeLength info _ _ _) = info.node_id) ∧
-  (expr_id (SrcSelector info _ _) = info.node_id) ∧
+  (expr_id (SrcAddressMember info _ _ _ _) = info.node_id) ∧
+  (expr_id (SrcSelector info _ _ _) = info.node_id) ∧
   (expr_id (SrcEcrecover info _ _ _) = info.node_id) ∧
   (expr_id (SrcAbiEncode info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcAbiDecode info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcStaticCall info _ _ _ _) = info.node_id) ∧
+  (expr_id (SrcTransfer info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcUnsupportedExpr info _ _) = info.node_id)
 End
 
@@ -469,7 +470,7 @@ End
 Definition expr_assigns_def:
   (expr_assigns (SrcAssignment _ _ _ _ _) ⇔ T) ∧
   (expr_assigns (SrcUnaryOperation _ op _ e _) ⇔
-    op = SrcIncrement ∨ op = SrcDecrement ∨ expr_assigns e) ∧
+    op = SrcIncrement ∨ op = SrcDecrement ∨ op = SrcDelete ∨ expr_assigns e) ∧
   (expr_assigns (SrcBinaryOperation _ _ l r _ _) ⇔
     expr_assigns l ∨ expr_assigns r) ∧
   (expr_assigns (SrcTupleExpression _ cs _) ⇔ components_assign cs) ∧
@@ -489,11 +490,14 @@ Definition expr_assigns_def:
   (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcKeccak256 _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcModular _ _ _ args _) ⇔ exprs_assign args) ∧
-  (expr_assigns (SrcAddressCodeLength _ _ e _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcAddressMember _ _ _ e _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcSelector _ _ receiver _) ⇔
+    case receiver of NONE => F | SOME e => expr_assigns e) ∧
   (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcEcrecover _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcAbiDecode _ _ e _ _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcStaticCall _ _ target data _) ⇔ expr_assigns target ∨ expr_assigns data) ∧
+  (expr_assigns (SrcTransfer _ _ target value _) ⇔ expr_assigns target ∨ expr_assigns value) ∧
   (expr_assigns (SrcSuperCall _ _ args _ _) ⇔ exprs_assign args) ∧
   (expr_assigns _ ⇔ F) ∧
   (components_assign [] ⇔ F) ∧
@@ -819,8 +823,15 @@ Definition elab_expr_def:
                  INL ((ss, a, ElabType ty), n + 1)
              | NONE => unknown_reference ctx info.node_id "unsupported identifier" x)
     | SrcArrayLength info root_expr tid =>
-        ensure (tid = "t_uint256") (info.node_id, "type annotation mismatch")
         (case elab_expr ctx n root_expr of
+           INL ((ss, _, ElabType (FixedBytesT k)), n1) =>
+             if tid ≠ "t_uint8" then INR [(info.node_id, "type annotation mismatch")] else
+             let (rs, a) = bind_value n1 (UintT 8)
+               (ConvertOperation (UintT 8) (ConstantAtom (IntegerValue (&k)))) in
+             INL ((ss ++ rs, a, ElabType (UintT 8)), n1 + 1)
+         | r =>
+        ensure (tid = "t_uint256") (info.node_id, "type annotation mismatch")
+        (case r of
            INL ((ss, ref, ElabType (LocatedT loc BytesT)), n1) =>
              let (rs, a) = bind_value n1 (UintT 256) (ArrayLengthOperation ref) in
              INL ((ss ++ rs, a, ElabType (UintT 256)), n1 + 1)
@@ -840,7 +851,7 @@ Definition elab_expr_def:
                let (rs, a) = bind_value n1 (UintT 256) (ArrayLengthOperation ref) in
                INL ((ss ++ rs, a, ElabType (UintT 256)), n1 + 1)
            | INL _ => INR [(info.node_id, "length of a non-array")]
-           | INR _ => reject (info.node_id, "length of a non-array") r)
+           | INR _ => reject (info.node_id, "length of a non-array") r))
     | SrcLiteral info kind value tid =>
         (if kind = BoolLiteral then
            if (value = "true" ∨ value = "false") ∧ tid = "t_bool" then
@@ -908,13 +919,26 @@ Definition elab_expr_def:
                else INR [(info.node_id, "read of a value of this type")]
            | INR bs => INR bs)
     | SrcUnaryOperation info op prefix e tid =>
-        (case identifier_integer tid of
+        (if op = SrcDelete then
+           ensure (tid = "t_tuple$__$") (info.node_id, "type annotation mismatch")
+           (case elab_destination ctx n e of
+              INL ((ss, target), n1) =>
+                let ty = destination_type target in
+                if ¬is_stored_scalar_type ty then
+                  INR [(info.node_id, "delete of a non-scalar")] else
+                (case default_operation ty of
+                   SOME operation =>
+                     let (ds, zero) = bind_value n1 ty operation in
+                     INL ((ss ++ ds ++ write_destination (n1 + 1) target zero,
+                           ConstantAtom (BoolValue F), ElabTuple []), n1 + 2)
+                 | NONE => INR [(info.node_id, "delete of a non-scalar")])
+            | INR bs => INR bs)
+         else case identifier_integer tid of
            SOME i =>
              (* folded by the compiler: the operand is a literal operation *)
              (case elab_expr ctx n e of
                 INL (([], _, _), _) =>
-                  if op = SrcDelete then INR [(info.node_id, "unsupported unary operator")]
-                  else INL (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
+                  INL (([], ConstantAtom (IntegerValue i), ElabLiteral), n)
               | INL _ => INR [(info.node_id, "folded operand not a literal")]
               | INR bs => INR bs)
          | NONE =>
@@ -1314,13 +1338,16 @@ Definition elab_expr_def:
                   blockers (elab_expr ctx n t) ++ blockers (elab_expr ctx n f))
          | INR bs =>
              INR (bs ++ blockers (elab_expr ctx n t) ++ blockers (elab_expr ctx n f)))
-    | SrcAddressCodeLength info _ e tid =>
+    | SrcAddressMember info _ member e tid =>
         (case elab_expr ctx n e of
            INL ((ss, a, ElabType (AddressT _)), n1) =>
              if tid ≠ "t_uint256" then INR [(info.node_id, "type annotation mismatch")] else
-             let (rs, r) = bind_value n1 (UintT 256) (CodeLengthOperation a) in
+             let operation = case member of
+               AddressCodeLength => CodeLengthOperation a
+             | AddressBalance => BalanceOperation a in
+             let (rs, r) = bind_value n1 (UintT 256) operation in
              INL ((ss ++ rs, r, ElabType (UintT 256)), n1 + 1)
-         | INL _ => INR [(info.node_id, "code length of a non-address")]
+         | INL _ => INR [(info.node_id, "member of a non-address")]
          | INR bs => INR bs)
     (* keccak256 takes bytes memory; a literal, or bytes in another location,
        converts to it as an argument would *)
@@ -1420,15 +1447,31 @@ Definition elab_expr_def:
                                          (info.node_id, "unsupported type name") tn) tns)))
          | INL _ => INR [(expr_id e, "abi decoding of data not in memory bytes")]
          | INR bs => INR bs)
-    (* f.selector, E.selector: the selector the compiler records on the
-       declaration, bytes4 or (for an event) bytes32; bound, so that a later
-       conversion converts a bytesN local *)
-    | SrcSelector info bs tid =>
+    | SrcTransfer info _ target value tid =>
+        ensure (tid = "t_tuple$__$") (info.node_id, "type annotation mismatch")
+        (case elab_arg_values ctx n [target; value] of
+           INL ((ss, [(t, ElabType (AddressT PayableAddress)); (v, vt)]), n1) =>
+             (case coerce n1 (UintT 256) v vt of
+                INL ((cs, v'), n2) =>
+                  INL ((ss ++ cs ++ [DefineStmt (AstId n2) (ProductType [])
+                                    (TransferOperation t v')],
+                        BoundAtom (AstId n2), ElabTuple []), n2 + 1)
+              | INR why => INR [(expr_id value, why)])
+         | INL _ => INR [(info.node_id, "transfer operands")]
+         | INR bs => INR bs)
+    (* The declaration's selector, after any receiver effects; bound so a
+       later conversion retains its fixed-byte width. *)
+    | SrcSelector info bs receiver tid =>
         let ty = FixedBytesT (LENGTH bs) in
         if ¬((LENGTH bs = 4 ∨ LENGTH bs = 32) ∧ source_type_matches ty tid)
         then INR [(info.node_id, "unsupported selector")] else
-        let (ss, a) = bind_value n ty (ConvertOperation ty (ConstantAtom (BytesValue bs))) in
-        INL ((ss, a, ElabType ty), n + 1)
+        (case (case receiver of
+                 NONE => INL (([], ConstantAtom (BoolValue F), ElabTuple []), n)
+               | SOME e => elab_expr ctx n e) of
+           INL ((ss, _, _), n1) =>
+             let (rs, a) = bind_value n1 ty (ConvertOperation ty (ConstantAtom (BytesValue bs))) in
+             INL ((ss ++ rs, a, ElabType ty), n1 + 1)
+         | INR bs => INR bs)
     | SrcTypeMember info member tn tid =>
         (case normalize_type_name tn of
            SOME ty =>

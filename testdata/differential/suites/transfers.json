@@ -1,0 +1,207 @@
+{
+  "name": "transfers",
+  "source": "testdata/differential/transfers.sol",
+  "contract": "Transfers",
+  "artifact": "testdata/differential/expected/transfers.json",
+  "peer": {
+    "source": "testdata/differential/transfers.sol",
+    "contract": "TransferPeer",
+    "artifact": "testdata/differential/expected/transfers.json"
+  },
+  "cases": [
+    {
+      "name": "transfer_value_to_eoa",
+      "function": "sendValue",
+      "args": [
+        12288,
+        40
+      ],
+      "expect": {
+        "return": [
+          60,
+          40
+        ]
+      },
+      "value": 100,
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "transfer_zero_to_eoa",
+      "function": "sendValue",
+      "args": [
+        12288,
+        0
+      ],
+      "expect": {
+        "return": [
+          0,
+          0
+        ]
+      },
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "transfer_to_self",
+      "function": "sendValue",
+      "args": [
+        4096,
+        40
+      ],
+      "expect": {
+        "return": [
+          100,
+          100
+        ]
+      },
+      "value": 100,
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "transfer_insufficient_balance_rolls_back_caller",
+      "function": "sendValue",
+      "args": [
+        12288,
+        1
+      ],
+      "expect": {
+        "revert": "0x"
+      },
+      "storage": {
+        "0": 9
+      }
+    },
+    {
+      "name": "transfer_peer_returned_bytes_ignored",
+      "function": "sendValue",
+      "args": [
+        20480,
+        40
+      ],
+      "expect": {
+        "return": [
+          60,
+          40
+        ]
+      },
+      "value": 100,
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "transfer_zero_still_gets_2300",
+      "function": "sendValue",
+      "args": [
+        20480,
+        0
+      ],
+      "expect": {
+        "return": [
+          0,
+          0
+        ]
+      },
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "transfer_failure_forwards_bytes",
+      "function": "sendValue",
+      "args": [
+        20480,
+        40
+      ],
+      "expect": {
+        "revert": "0x0000000000000000000000000000000000000000000000000000000000005678"
+      },
+      "value": 100,
+      "peer_storage": {
+        "0": 1
+      },
+      "storage": {
+        "0": 9
+      }
+    },
+    {
+      "name": "transfer_stipend_exhausted_rolls_back",
+      "function": "sendValue",
+      "args": [
+        20480,
+        40
+      ],
+      "expect": {
+        "revert": "0x"
+      },
+      "value": 100,
+      "peer_storage": {
+        "0": 2
+      },
+      "storage": {
+        "0": 9
+      }
+    },
+    {
+      "name": "transfer_receiver_before_amount_once",
+      "function": "ordered",
+      "args": [
+        12288,
+        7
+      ],
+      "expect": {
+        "return": [
+          12
+        ]
+      },
+      "value": 7,
+      "final_storage": {
+        "0": 12
+      }
+    },
+    {
+      "name": "transfer_captures_receiver_before_assignment",
+      "function": "snapshot",
+      "args": [
+        12288,
+        32
+      ],
+      "expect": {
+        "return": [
+          0,
+          0
+        ]
+      },
+      "value": 32
+    },
+    {
+      "name": "transfer_success_does_not_allocate_returndata",
+      "function": "allocationGap",
+      "args": [
+        20480
+      ],
+      "expect": {
+        "return": [
+          64
+        ]
+      },
+      "value": 1
+    },
+    {
+      "name": "enclosing_revert_after_successful_transfer",
+      "function": "laterFailure",
+      "args": [
+        20480
+      ],
+      "expect": {
+        "revert": "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000056c61746572000000000000000000000000000000000000000000000000000000"
+      },
+      "value": 1
+    }
+  ]
+}

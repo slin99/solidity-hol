@@ -277,6 +277,12 @@ Definition eval_operation_def:
              ValueOk (ScalarValue (IntegerValue
                (&(LENGTH (lookup_account address st.world.accounts).code))))
          | _ => ValueAbrupt (InvalidCompletion "bad code length operand"))
+    | BalanceOperation a =>
+        (case eval_atom st.scopes a of
+           SOME (ScalarValue (AddressValue address)) =>
+             ValueOk (ScalarValue (IntegerValue
+               (&(lookup_account address st.world.accounts).balance)))
+         | _ => ValueAbrupt (InvalidCompletion "bad balance operand"))
     | Keccak256Operation a =>
         (case eval_atom st.scopes a of
            SOME (ReferenceValue r) =>
@@ -640,6 +646,31 @@ Definition call_external_def:
     call_external_mode F env x ty kind selector params rets target value args st gas
 End
 
+(* transfer requests gas only when value is zero: the EVM adds the stipend
+ * for nonzero value. Returndata is forwarded on failure and never allocated. *)
+Definition call_transfer_def:
+  call_transfer x ty target value (st : source_state) gas =
+    case (eval_atom st.scopes target, eval_atom st.scopes value) of
+      (SOME (ScalarValue (AddressValue callee)),
+       SOME (ScalarValue (IntegerValue v))) =>
+        if st.frame.static_context ∧ v ≠ 0 then
+          abrupt_result (InvalidCompletion "value in static frame") st gas
+        else
+          (case run_external_call st.frame.self_address callee [] (Num v)
+                 st.frame.static_context (if v = 0 then call_stipend else 0)
+                 st.world.accounts st.world.transient st.frame.tx_params of
+            NONE => abrupt_result (InvalidCompletion "call outside the model") st gas
+          | SOME res =>
+              if ¬res.call_success then abrupt_result (RevertCompletion res.call_return) st gas
+              else
+                let st' = st with world :=
+                  <| accounts := res.call_accounts;
+                     transient := res.call_transient;
+                     logs := st.world.logs ++ res.call_logs |> in
+                normal_result (define_binding x ty (TupleValue []) st') gas)
+    | _ => abrupt_result (InvalidCompletion "bad transfer operands") st gas
+End
+
 (* A low-level target.staticcall(data), as the compiler makes it: the data
  * passed where it is, no check that the target has code, and a failure
  * returned rather than reverted. No return data is the empty array at 0x60;
@@ -781,6 +812,8 @@ Definition simple_stmt_def:
         call_external env x ty kind selector params rets target value args st gas
     | DefineStmt x ty (StaticCallOperation target data) =>
         call_static x ty target data st gas
+    | DefineStmt x ty (TransferOperation target value) =>
+        call_transfer x ty target value st gas
     | DefineStmt x ty (TryExternalCallOperation kind selector params rets target
                          value args) =>
         call_external_mode T env x ty kind selector params rets target value args st gas

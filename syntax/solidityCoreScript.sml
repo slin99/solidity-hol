@@ -152,6 +152,8 @@ Datatype:
   | EcrecoverOperation core_atom core_atom core_atom core_atom
   (* The addressed account's code size, without a memory bytes allocation. *)
   | CodeLengthOperation core_atom
+  (* The addressed account's current balance. *)
+  | BalanceOperation core_atom
   | AbiEncodeOperation (core_atom option) (sol_type list) (core_atom list)
   | AbiEncodePackedOperation (sol_type list) (core_atom list)
   | AbiDecodeOperation (sol_type list) core_atom
@@ -161,6 +163,9 @@ Datatype:
   | ExternalCallOperation external_kind (byte list) (sol_type list)
       (sol_type list) core_atom core_atom (core_atom list)
   | StaticCallOperation core_atom core_atom
+  (* target.transfer(value): exact stipend, failure bytes forwarded, no
+   * return-data allocation. *)
+  | TransferOperation core_atom core_atom
   (* success flag, scalar returns, raw failure bytes; only a failed EVM call
    * is caught. Operand and return-decoding failures still propagate. *)
   | TryExternalCallOperation external_kind (byte list) (sol_type list)

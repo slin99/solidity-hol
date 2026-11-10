@@ -31,7 +31,9 @@ erased to their underlying elementary types by the importer; `wrap` and
 
 Elaboration represents an assignment destination as a local binding or an
 already evaluated reference. `elab_destination`, `read_destination` and
-`write_destination` are shared by assignment, compound assignment and increment.
+`write_destination` are shared by assignment, compound assignment, increment
+and scalar `delete`. Deletion writes the type's default without reading its
+old value, so it preserves neighboring packed storage.
 Tuple writes use the same helpers, retaining identifier-only target coverage and
 right-to-left writes. The pinned profile evaluates the assignment RHS before
 capturing a computed LHS. Snapshots keep earlier values stable while later
