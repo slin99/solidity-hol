@@ -1788,6 +1788,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
         | "ModifierDefinition" => ()
         | "ErrorDefinition" => ()
         | "EnumDefinition" => ()
+        | "StructDefinition" => ()
         | "UserDefinedValueTypeDefinition" => ()
         | other => fail (describe m ^ ": unsupported library member " ^ other))))
         used_members
@@ -1797,22 +1798,29 @@ fun contract external_structs contracts declared v = within v (fn v =>
                   then recover d (fn () => check_using d)
                   else ())
         (!library_directives)
-    val libraries =
-      List.foldr (fn (m, ls) =>
-                    if List.exists (fn l => l = int_field m "scope") ls then ls
-                    else int_field m "scope" :: ls)
-        [] (List.filter (fn m => node_type m = "FunctionDefinition" orelse
-                                 node_type m = "VariableDeclaration") used_members)
-    (* The file-level structs the bases refer to, also through other structs. *)
+    (* The file-level and library structs the bases and library members refer
+     * to, also through other structs. *)
+    val library_structs =
+      List.filter (fn m => node_type m = "StructDefinition")
+        (map #2 (!library_members))
     fun used picked =
       let
         val ids = List.concat (map references (bases @ used_members @ picked))
         val picked' =
           List.filter (fn s => List.exists (fn i => i = int_field s "id") ids)
-            external_structs
+            (external_structs @ library_structs)
       in
         if length picked' = length picked then picked else used picked'
       end
+    val used_structs = used []
+    val libraries =
+      List.foldr (fn (m, ls) =>
+                    if List.exists (fn l => l = int_field m "scope") ls then ls
+                    else int_field m "scope" :: ls)
+        [] (List.filter (fn m => node_type m = "FunctionDefinition" orelse
+                                 node_type m = "VariableDeclaration") used_members @
+            List.filter (fn s => List.exists (fn l => int_field l "id" = int_field s "id")
+                                   library_structs) used_structs)
     val () =
       List.app (fn c => within c (fn c =>
         (recover c (fn () =>
@@ -1918,7 +1926,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
            storage_entry_ty)),
        ("contract_structs", listSyntax.mk_list
           (keep_all (struct_declaration (field layout "types"))
-             (used [] @ members_of "StructDefinition" (rev bases)),
+             (used_structs @ members_of "StructDefinition" (rev bases)),
            struct_ty)),
        ("contract_enums", listSyntax.mk_list
           (map (fn (i, k) => pairSyntax.mk_pair (mk_num i, mk_num (IntInf.fromInt k)))
