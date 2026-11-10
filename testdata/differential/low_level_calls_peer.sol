@@ -11,6 +11,7 @@ contract StaticPeer {
     function fail(uint256 code) external pure { require(code == 0, "peer failed"); }
     function bump() external { counter += 1; }
     function read() external view returns (uint256) { return counter; }
+    function balanceOf(address a) external view returns (uint256) { return a.balance; }
     function bumpThenFail() external { counter += 1; revert("peer failed"); }
 
     // What the frame it runs in sees.

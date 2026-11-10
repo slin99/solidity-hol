@@ -1087,14 +1087,18 @@ and abi_encode_call v callee =
 and call_options callee =
   if node_type callee = "FunctionCallOptions" then
     within callee (fn opts =>
-      let val values = JSONUtil.arrayMap expr (field opts "options") in
+      let
+        val values = JSONUtil.arrayMap expr (field opts "options")
+        val names = JSONUtil.arrayMap JSONUtil.asString (field opts "names")
+        fun distinct [] = true
+          | distinct (n :: ns) = not (List.exists (fn m => m = n) ns) andalso distinct ns
+        val () = require opts (distinct names) "duplicate call options"
+      in
         ListPair.zipEq
-          (JSONUtil.arrayMap
-             (fn n => case JSONUtil.asString n of
-                         "value" => con "ValueOption" []
-                       | "gas" => con "GasOption" []
-                       | _ => fail (describe opts ^ ": unsupported call options"))
-             (field opts "names"),
+          (map (fn "value" => con "ValueOption" []
+                 | "gas" => con "GasOption" []
+                 | _ => fail (describe opts ^ ": unsupported call options"))
+             names,
            values)
       end)
   else []

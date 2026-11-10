@@ -4,6 +4,8 @@ pragma solidity 0.8.37;
 interface Peer {
     function value(uint256 x) external pure returns (uint256);
     function context() external payable returns (address, uint256, address, uint256);
+    function balanceOf(address a) external view returns (uint256);
+    function read() external view returns (uint256);
 }
 
 contract LowLevelCalls {
@@ -37,6 +39,21 @@ contract LowLevelCalls {
         public payable returns (bool, bytes memory)
     {
         return target.call{value: amount}(data);
+    }
+
+    // Whether the call succeeded, then this contract's and the target's
+    // balances after it.
+    function callBalances(address payable target, uint256 amount, bytes memory data)
+        public payable returns (bool, uint256, uint256)
+    {
+        (bool ok, ) = target.call{value: amount}(data);
+        return (ok, Peer(target).balanceOf(address(this)), Peer(target).balanceOf(target));
+    }
+
+    // Whether the call succeeded, then the target's counter after it.
+    function callAndRead(address target, bytes memory data) public returns (bool, uint256) {
+        (bool ok, ) = target.call(data);
+        return (ok, Peer(target).read());
     }
 
     function rawCallGas(address target, uint256 limit, bytes memory data)

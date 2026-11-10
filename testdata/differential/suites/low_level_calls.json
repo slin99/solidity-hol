@@ -270,6 +270,57 @@
       }
     },
     {
+      "name": "call_debits_caller",
+      "function": "callBalances",
+      "args": [
+        20480,
+        3,
+        "0x"
+      ],
+      "value": 5,
+      "expect": {
+        "return": [
+          true,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "name": "call_above_balance_moves_nothing",
+      "function": "callBalances",
+      "args": [
+        20480,
+        6,
+        "0x"
+      ],
+      "value": 5,
+      "expect": {
+        "return": [
+          false,
+          5,
+          0
+        ]
+      }
+    },
+    {
+      "name": "reverted_call_moves_nothing",
+      "function": "callBalances",
+      "args": [
+        20480,
+        3,
+        "0x132e4f3c0000000000000000000000000000000000000000000000000000000000000001"
+      ],
+      "value": 5,
+      "expect": {
+        "return": [
+          false,
+          5,
+          0
+        ]
+      }
+    },
+    {
       "name": "call_revert_is_returned",
       "function": "rawCall",
       "args": [
@@ -299,6 +350,40 @@
         "return": [
           true,
           "0x"
+        ]
+      }
+    },
+    {
+      "name": "call_write_is_committed",
+      "function": "callAndRead",
+      "args": [
+        20480,
+        "0x68110b2f"
+      ],
+      "peer_storage": {
+        "0": 7
+      },
+      "expect": {
+        "return": [
+          true,
+          8
+        ]
+      }
+    },
+    {
+      "name": "reverted_call_write_is_undone",
+      "function": "callAndRead",
+      "args": [
+        20480,
+        "0xc032fc7c"
+      ],
+      "peer_storage": {
+        "0": 7
+      },
+      "expect": {
+        "return": [
+          false,
+          7
         ]
       }
     },
