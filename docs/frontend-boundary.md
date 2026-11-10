@@ -93,6 +93,16 @@ types, or every literal category.
 
 ## Expressions and calls
 
+Numeric literals retain solc's exact rational type annotation, including the
+scale of `wei`, `gwei`, `ether`, `seconds`, `minutes`, `hours`, `days` and
+`weeks`. Elaboration uses that annotation for decimal, hexadecimal and
+scientific notation and folded integer expressions; it does not round through
+floating point or multiply a unit literal a second time. Fractional literals
+are admitted as operands of supported expressions folded to integers.
+Address literals have the distinct `t_address` annotation. The importer
+validates their 40 hexadecimal digits and normalizes their value to decimal;
+elaboration checks the 160-bit bound and produces an address value.
+
 Observed expression nodes include identifiers, literals, member and index
 access, tuple expressions, assignments, binary operations, and function calls.
 The AST already supplies useful analyzed annotations:
