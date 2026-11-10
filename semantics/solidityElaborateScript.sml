@@ -844,6 +844,77 @@ Definition is_declaration_def:
   (is_declaration _ ⇔ F)
 End
 
+(* Keep value checks outside the mutually recursive elaborator so pattern
+ * completion does not duplicate the recursive definition across type cases. *)
+Definition finish_delete_def:
+  finish_delete (id : num) ss target n =
+    let ty = destination_type target in
+    if ¬is_stored_scalar_type ty then INR [(id, "delete of a non-scalar")] else
+    case default_operation ty of
+      SOME operation =>
+        let (ds, zero) = bind_value n ty operation in
+        INL ((ss ++ ds ++ write_destination (n + 1) target zero,
+              ConstantAtom (BoolValue F), ElabTuple []), n + 2)
+    | NONE => INR [(id, "delete of a non-scalar")]
+End
+
+Definition finish_transfer_def:
+  finish_transfer (id : num) (value_id : num) ss vs n =
+    case vs of
+      [(target, target_type); (value, value_type)] =>
+        if target_type ≠ ElabType (AddressT PayableAddress)
+        then INR [(id, "transfer operands")] else
+        (case coerce n (UintT 256) value value_type of
+           INL ((cs, value'), n1) =>
+             INL ((ss ++ cs ++ [DefineStmt (AstId n1) (ProductType [])
+                               (TransferOperation target value')],
+                   BoundAtom (AstId n1), ElabTuple []), n1 + 1)
+         | INR why => INR [(value_id, why)])
+    | _ => INR [(id, "transfer operands")]
+End
+
+(* NONE requests the storage-location fallback. *)
+Definition finish_array_length_def:
+  finish_array_length (id : num) tid r =
+    case r of
+      INL ((ss, _, ElabType (FixedBytesT k)), n) =>
+        SOME (if tid ≠ "t_uint8" then INR [(id, "type annotation mismatch")] else
+          let (rs, a) = bind_value n (UintT 8)
+            (ConvertOperation (UintT 8) (ConstantAtom (IntegerValue (&k)))) in
+          INL ((ss ++ rs, a, ElabType (UintT 8)), n + 1))
+    | _ =>
+      if tid ≠ "t_uint256" then SOME (INR [(id, "type annotation mismatch")]) else
+      case r of
+        INL ((ss, ref, ElabType (LocatedT _ BytesT)), n) =>
+          let (rs, a) = bind_value n (UintT 256) (ArrayLengthOperation ref) in
+          SOME (INL ((ss ++ rs, a, ElabType (UintT 256)), n + 1))
+      | INL ((ss, _, ElabType (LocatedT _ (ArrayT _ (SOME length)))), n) =>
+          SOME (INL ((ss, ConstantAtom (IntegerValue (&length)),
+                      ElabType (UintT 256)), n))
+      | INL ((ss, ref, ElabType (LocatedT _ (ArrayT _ NONE))), n) =>
+          let (rs, a) = bind_value n (UintT 256) (ArrayLengthOperation ref) in
+          SOME (INL ((ss ++ rs, a, ElabType (UintT 256)), n + 1))
+      | _ => NONE
+End
+
+Definition finish_array_location_length_def:
+  finish_array_location_length (id : num) value_result location_result =
+    case location_result of
+      INL ((ss, _, ArrayT _ (SOME length)), n) =>
+        INL ((ss, ConstantAtom (IntegerValue (&length)), ElabType (UintT 256)), n)
+    | INL ((ss, ref, ArrayT _ NONE), n) =>
+        let (rs, a) = bind_value n (UintT 256) (ArrayLengthOperation ref) in
+        INL ((ss ++ rs, a, ElabType (UintT 256)), n + 1)
+    | INL _ => INR [(id, "length of a non-array")]
+    | INR _ => reject (id, "length of a non-array") value_result
+End
+
+Definition finish_selector_def:
+  finish_selector n ty ss bs =
+    let (rs, a) = bind_value n ty (ConvertOperation ty (ConstantAtom (BytesValue bs))) in
+    INL ((ss ++ rs, a, ElabType ty), n + 1)
+End
+
 Definition elab_expr_def:
   (elab_expr ctx n expression =
     case expression of
@@ -866,35 +937,11 @@ Definition elab_expr_def:
                  INL ((ss, a, ElabType ty), n + 1)
              | NONE => unknown_reference ctx info.node_id "unsupported identifier" x)
     | SrcArrayLength info root_expr tid =>
-        (case elab_expr ctx n root_expr of
-           INL ((ss, _, ElabType (FixedBytesT k)), n1) =>
-             if tid ≠ "t_uint8" then INR [(info.node_id, "type annotation mismatch")] else
-             let (rs, a) = bind_value n1 (UintT 8)
-               (ConvertOperation (UintT 8) (ConstantAtom (IntegerValue (&k)))) in
-             INL ((ss ++ rs, a, ElabType (UintT 8)), n1 + 1)
-         | r =>
-        ensure (tid = "t_uint256") (info.node_id, "type annotation mismatch")
-        (case r of
-           INL ((ss, ref, ElabType (LocatedT loc BytesT)), n1) =>
-             let (rs, a) = bind_value n1 (UintT 256) (ArrayLengthOperation ref) in
-             INL ((ss ++ rs, a, ElabType (UintT 256)), n1 + 1)
-         | INL ((ss, ref, ElabType (LocatedT _ (ArrayT _ (SOME length)))), n1) =>
-             INL ((ss, ConstantAtom (IntegerValue (&length)), ElabType (UintT 256)), n1)
-         | INL ((ss, ref, ElabType (LocatedT _ (ArrayT _ NONE))), n1) =>
-             let (rs, a) = bind_value n1 (UintT 256) (ArrayLengthOperation ref) in
-             INL ((ss ++ rs, a, ElabType (UintT 256)), n1 + 1)
-         | r =>
-           (* a storage array is a location: when that fails too, the reason
-              is the value's, unless the value was elaborated *)
-           case elab_location ctx n root_expr of
-             INL ((ss, _, ArrayT _ (SOME length)), n1) =>
-               INL ((ss, ConstantAtom (IntegerValue (&length)),
-                     ElabType (UintT 256)), n1)
-           | INL ((ss, ref, ArrayT _ NONE), n1) =>
-               let (rs, a) = bind_value n1 (UintT 256) (ArrayLengthOperation ref) in
-               INL ((ss ++ rs, a, ElabType (UintT 256)), n1 + 1)
-           | INL _ => INR [(info.node_id, "length of a non-array")]
-           | INR _ => reject (info.node_id, "length of a non-array") r))
+        let r = elab_expr ctx n root_expr in
+        (case finish_array_length info.node_id tid r of
+           SOME result => result
+         | NONE => finish_array_location_length info.node_id r
+                     (elab_location ctx n root_expr))
     | SrcLiteral info kind value tid =>
         (if kind = BoolLiteral then
            if (value = "true" ∨ value = "false") ∧ tid = "t_bool" then
@@ -965,16 +1012,7 @@ Definition elab_expr_def:
         (if op = SrcDelete then
            ensure (tid = "t_tuple$__$") (info.node_id, "type annotation mismatch")
            (case elab_destination ctx n e of
-              INL ((ss, target), n1) =>
-                let ty = destination_type target in
-                if ¬is_stored_scalar_type ty then
-                  INR [(info.node_id, "delete of a non-scalar")] else
-                (case default_operation ty of
-                   SOME operation =>
-                     let (ds, zero) = bind_value n1 ty operation in
-                     INL ((ss ++ ds ++ write_destination (n1 + 1) target zero,
-                           ConstantAtom (BoolValue F), ElabTuple []), n1 + 2)
-                 | NONE => INR [(info.node_id, "delete of a non-scalar")])
+              INL ((ss, target), n1) => finish_delete info.node_id ss target n1
             | INR bs => INR bs)
          else case identifier_integer tid of
            SOME i =>
@@ -1500,14 +1538,8 @@ Definition elab_expr_def:
     | SrcTransfer info _ target value tid =>
         ensure (tid = "t_tuple$__$") (info.node_id, "type annotation mismatch")
         (case elab_arg_values ctx n [target; value] of
-           INL ((ss, [(t, ElabType (AddressT PayableAddress)); (v, vt)]), n1) =>
-             (case coerce n1 (UintT 256) v vt of
-                INL ((cs, v'), n2) =>
-                  INL ((ss ++ cs ++ [DefineStmt (AstId n2) (ProductType [])
-                                    (TransferOperation t v')],
-                        BoundAtom (AstId n2), ElabTuple []), n2 + 1)
-              | INR why => INR [(expr_id value, why)])
-         | INL _ => INR [(info.node_id, "transfer operands")]
+           INL ((ss, vs), n1) =>
+             finish_transfer info.node_id (expr_id value) ss vs n1
          | INR bs => INR bs)
     (* The declaration's selector, after any receiver effects; bound so a
        later conversion retains its fixed-byte width. *)
@@ -1515,13 +1547,12 @@ Definition elab_expr_def:
         let ty = FixedBytesT (LENGTH bs) in
         if ¬((LENGTH bs = 4 ∨ LENGTH bs = 32) ∧ source_type_matches ty tid)
         then INR [(info.node_id, "unsupported selector")] else
-        (case (case receiver of
-                 NONE => INL (([], ConstantAtom (BoolValue F), ElabTuple []), n)
-               | SOME e => elab_expr ctx n e) of
-           INL ((ss, _, _), n1) =>
-             let (rs, a) = bind_value n1 ty (ConvertOperation ty (ConstantAtom (BytesValue bs))) in
-             INL ((ss ++ rs, a, ElabType ty), n1 + 1)
-         | INR bs => INR bs)
+        (case receiver of
+           NONE => finish_selector n ty [] bs
+         | SOME e =>
+             case elab_expr ctx n e of
+               INL ((ss, _, _), n1) => finish_selector n1 ty ss bs
+             | INR bs => INR bs)
     | SrcTypeMember info member tn tid =>
         (case normalize_type_name tn of
            SOME ty =>
@@ -3169,6 +3200,12 @@ val () = cv_auto_trans selector_encoding_def;
 val () = cv_auto_trans abi_encoding_def;
 val () = cv_auto_trans decoded_types_match_def;
 val () = cv_auto_trans arrange_def;
+
+val () = cv_auto_trans finish_delete_def;
+val () = cv_auto_trans finish_transfer_def;
+val () = cv_auto_trans finish_array_length_def;
+val () = cv_auto_trans finish_array_location_length_def;
+val () = cv_auto_trans finish_selector_def;
 
 val elab_expr_pre_def = cv_auto_trans_pre_rec
   "elab_expr_pre elab_args_pre elab_values_pre elab_components_pre elab_location_pre elab_destination_pre elab_arg_values_pre"
