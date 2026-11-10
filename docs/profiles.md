@@ -2,9 +2,9 @@
 
 Solidity-HOL separates its canonical source semantics from concrete compiler
 compatibility profiles. A compatibility profile fixes all compiler and EVM
-choices needed to reproduce compiled executions. The initial implementation
-supports one profile only; additional profiles must not silently change the
-meaning of existing fixtures.
+choices needed to reproduce compiled executions. The source artifact exporter uses an unoptimized default profile and a
+restricted optimized fallback. Each artifact records the profile that produced
+its output, so optimization never silently changes existing fixtures.
 
 ## Initial profile
 
@@ -29,6 +29,33 @@ transformations.
 Via IR is the forward-looking primary pipeline. The legacy code generator is
 outside the initial supported profile and may be added later as a separate
 compatibility profile. It does not define the canonical Solidity-HOL semantics.
+
+## Stack-depth fallback
+
+Some contracts cannot generate bytecode with the unoptimized via-IR pipeline:
+solc reports `YulException` or `CompilerError` with `stack too deep` or
+`too deep in the stack`. The source artifact exporter retries those inputs with
+[`profiles/solc-0.8.37-via-ir-osaka-optimized.json`](../profiles/solc-0.8.37-via-ir-osaka-optimized.json).
+This profile differs only in `optimizer.enabled = true`; it keeps `runs = 200`.
+The retry uses the same source names, contents, output selection and import
+remappings. Every error must be a stack-depth error; other failures are returned
+without retrying. A failed optimized retry is also a compilation failure.
+
+A fallback artifact records the successful optimized settings in `profile` and
+`input`, the optimized compiler output in `output`, and an `unoptimizedFailure`
+object with the original unoptimized `profile` and its error diagnostics.
+`solidityPrepareLib.read_artifact` and the differential runner require this
+record before accepting an optimized source artifact. Unoptimized artifacts
+must not carry it. The source exporter rejects explicit optimized-profile
+requests: it always tries the unoptimized profile first. Metadata checks do not
+prove that solc produced the recorded output; reproduction with the pinned
+compiler checks that provenance.
+
+The source importer uses the analyzed AST and storage layouts, which the
+optimizer setting does not change. The optimized bytecode remains the concrete
+execution oracle. This fallback does not broaden the supported source language
+or admit AST-only artifacts. The separate Yul exporter continues to accept
+explicit profiles for comparisons of optimizer stages.
 
 ## Evaluation order
 
