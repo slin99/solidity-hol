@@ -503,7 +503,7 @@ Definition read_storage_reference_def:
     case r of
       StorageReference backend addr slot offset rty _ =>
         if rty ≠ ty then ValueAbrupt (InvalidCompletion "bad read type")
-        else if backend = PersistentStorage ∧ offset = 0 ∧ memory_object_type ty
+        else if backend = PersistentStorage ∧ offset = 0 ∧ storage_object_type ty
         then ValueOk (ReferenceValue r)
         else (case read_storage_word env
                 (lookup_storage slot (case backend of

@@ -994,6 +994,31 @@ Proof
   CONV_TAC cv_eval
 QED
 
+Theorem byte_mapping_storage_bases_checked:
+  EVERY (λbinding.
+    wf_core_operation test_env
+      <| bindings := [(AstId 1, binding);
+                      (AstId 2, SingleType (LocatedT CalldataLoc BytesT))];
+         targets := []; returns := []; in_loop := F |>
+      (ReferenceType (UintT 8))
+      (NavigateOperation (UintT 8) (BoundAtom (AstId 1))
+        (IndexNavigation (BoundAtom (AstId 2)))))
+    [ReferenceType (MappingT BytesT (UintT 8));
+     SingleType (LocatedT StorageLoc (MappingT BytesT (UintT 8)))] ∧
+  EVERY (λbinding.
+    ¬wf_core_operation test_env
+      <| bindings := [(AstId 1, binding);
+                      (AstId 2, SingleType (UintT 256))];
+         targets := []; returns := []; in_loop := F |>
+      (ReferenceType (UintT 8))
+      (NavigateOperation (UintT 8) (BoundAtom (AstId 1))
+        (IndexNavigation (BoundAtom (AstId 2)))))
+    [ReferenceType (MappingT BytesT (UintT 8));
+     SingleType (LocatedT StorageLoc (MappingT BytesT (UintT 8)))]
+Proof
+  EVAL_TAC
+QED
+
 Theorem mapping_key_signedness_checked:
   ¬wf_core_operation test_env
     <| bindings := [(AstId 1, ReferenceType (MappingT (IntT 8) (UintT 8)));
