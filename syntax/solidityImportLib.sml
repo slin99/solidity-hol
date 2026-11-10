@@ -127,7 +127,8 @@ val locations = constants "solidityAST"
   [("storage", "StorageLoc"), ("memory", "MemoryLoc"), ("calldata", "CalldataLoc")]
 
 val function_kinds = constants "solidityImport"
-  [("function", "FunctionKind"), ("constructor", "ConstructorKind"),
+  [("function", "FunctionKind"), ("freeFunction", "FunctionKind"),
+   ("constructor", "ConstructorKind"),
    ("receive", "ReceiveKind"), ("fallback", "FallbackKind")]
 
 val visibilities = constants "solidityImport"
@@ -228,6 +229,15 @@ fun info v =
   record "node_info"
     [("node_id", mk_num (int_field v "id")), ("node_location", location v)]
 
+val compilation_max_id : IntInf.int ref = ref 0
+
+fun greatest_node_id (JSON.OBJECT fields) =
+      List.foldl (fn (("id", JSON.INT i), n) => IntInf.max (i, n)
+                   | ((_, v), n) => IntInf.max (greatest_node_id v, n)) 0 fields
+  | greatest_node_id (JSON.ARRAY vs) =
+      List.foldl (fn (v, n) => IntInf.max (greatest_node_id v, n)) 0 vs
+  | greatest_node_id _ = 0
+
 (* Placeholders. The expressions and statements imported directly under the
  * node being imported, kept by its placeholder if it turns out unsupported:
  * a node imports its children before its own checks, so that their blockers
@@ -265,11 +275,27 @@ fun unsupported_expr v reason cs =
 fun unsupported_stmt v reason cs =
   con "SrcUnsupportedStmt" [info v, mk_str reason, child_exprs cs, child_stmts cs]
 
+val value_type_declarations : (IntInf.int * JSON.value) list ref = ref []
+
+fun value_type_underlying id =
+  case List.find (fn (i, _) => i = id) (!value_type_declarations) of
+    SOME (_, d) => field d "underlyingType"
+  | NONE => fail ("unknown user-defined value type " ^ IntInf.toString id)
+
+fun raw_type_id v = string_field (field v "typeDescriptions") "typeIdentifier"
+
+(* Use a declaration's elementary type at the use's own source node. *)
+fun type_at v ty =
+  JSON.OBJECT (map (fn ("id", _) => ("id", field v "id")
+                    | ("src", _) => ("src", field v "src")
+                    | kv => kv) (object ty))
+
 (* A contract or interface type is an address at run time, stored and ABI
  * encoded as one: its type identifier, t_contract$_C_$n in the AST and
  * t_contract(C)n in a storage layout, is read as t_address. An enum's,
  * t_enum$_E_$n or t_enum(E)n, is read as t_enum_n, which names the enum by
- * its id alone. *)
+ * its id alone. UDVTs are their elementary underlying types, including
+ * inside array, mapping and tuple identifiers. *)
 fun normalize_type_id s =
   let
     val n = size s
@@ -287,6 +313,10 @@ fun normalize_type_id s =
       else if String.sub (s, i) = #")" then (i + 1, digits (i + 1))
       else paren_id (i + 1)
     fun id (start, stop) = String.substring (s, start, stop - start)
+    fun underlying r =
+      case IntInf.fromString (id r) of
+        SOME i => raw_type_id (value_type_underlying i)
+      | NONE => fail ("malformed type identifier " ^ s)
     fun go i acc =
       if i >= n then String.concat (rev acc)
       else if at i "t_contract$_" then go (#2 (name_id (i + 12))) ("t_address" :: acc)
@@ -295,12 +325,15 @@ fun normalize_type_id s =
         let val r = name_id (i + 8) in go (#2 r) (("t_enum_" ^ id r) :: acc) end
       else if at i "t_enum(" then
         let val r = paren_id (i + 7) in go (#2 r) (("t_enum_" ^ id r) :: acc) end
+      else if at i "t_userDefinedValueType$_" then
+        let val r = name_id (i + 24) in go (#2 r) (underlying r :: acc) end
+      else if at i "t_userDefinedValueType(" then
+        let val r = paren_id (i + 23) in go (#2 r) (underlying r :: acc) end
       else go (i + 1) (String.str (String.sub (s, i)) :: acc)
   in
     go 0 []
   end
 
-fun raw_type_id v = string_field (field v "typeDescriptions") "typeIdentifier"
 fun type_id v = mk_str (normalize_type_id (raw_type_id v))
 
 fun address_type_name v =
@@ -320,6 +353,12 @@ fun type_name v = guarded (fn _ => []) unsupported_type_name (fn v => within v (
         if String.isPrefix "t_contract$_" tid then address_type_name v
         else if String.isPrefix "t_enum$_" tid then
           con "SrcEnumTypeName" [info v, mk_num declaration]
+        else if String.isPrefix "t_userDefinedValueType$_" tid then
+          let val ty = value_type_underlying declaration in
+            require v (String.isSuffix ("_$" ^ IntInf.toString declaration) tid)
+              "user-defined value type annotation mismatch";
+            type_name (type_at v ty)
+          end
         else
           (require v (declaration >= 0 andalso String.isPrefix "t_struct$_" tid)
              "only struct user-defined types are supported";
@@ -617,17 +656,57 @@ fun selector_bytes v base =
  * functions and constants are imported with the contracts that use them. *)
 val library_members : (IntInf.int * JSON.value) list ref = ref []
 
-(* The using directives of the libraries of the compilation, by library id:
- * those of a library whose functions a contract reaches must name a library,
- * as the contract's own must. *)
+(* The using directives of the libraries of the compilation, by library id. *)
 val library_directives : (IntInf.int * JSON.value) list ref = ref []
 
-(* A using directive is admitted only when it names a library: one with a
- * function list (`using {f, ...} for T`) attaches free functions or defines
- * operators. *)
 fun check_using d = within d (fn d =>
-  require d (isSome (optional_field d "libraryName"))
-    "using directives attaching functions are not supported")
+  require d (isSome (optional_field d "libraryName") orelse
+             (case optional_field d "functionList" of
+                SOME fs => not (null (JSONUtil.arrayMap I fs))
+              | NONE => false))
+    "using directive has no library or nonempty function list")
+
+(* A named UDVT used as a type-valued expression. *)
+fun value_type_expression v =
+  let val tid = raw_type_id v in
+    if not (String.isPrefix "t_type$_t_userDefinedValueType$_" tid) then NONE
+    else
+      let
+        val () = require v (node_type v = "Identifier" orelse
+                    (node_type v = "MemberAccess" andalso
+                     unevaluated_receiver (field v "expression")))
+                   "unsupported user-defined value type name"
+        val id = int_field v "referencedDeclaration"
+        val () = require v (String.isSuffix ("_$" ^ IntInf.toString id ^ "_$") tid)
+                   "user-defined value type annotation mismatch"
+      in
+        SOME (String.substring (tid, 8, size tid - 10), value_type_underlying id)
+      end
+  end
+
+(* The compiler resolves an overloaded operator to a pure free function.
+ * Its synthetic callee has a fresh id, above every compiler node id. *)
+fun operator_call v args =
+  let
+    val id = int_field v "function"
+    val f = function_declaration v id
+    val () = require v (string_field f "kind" = "freeFunction" andalso
+                        string_field f "stateMutability" = "pure")
+               "an overloaded operator must name a pure free function"
+    fun types key = JSONUtil.arrayMap raw_type_id
+      (field (field f key) "parameters")
+    val tid = "t_function_internal_pure$_" ^ String.concatWith "_$_" (types "parameters") ^
+              "_$returns$_" ^ String.concatWith "_$_" (types "returnParameters") ^ "_$"
+    val callee_info = record "node_info"
+      [("node_id", mk_num (!compilation_max_id + int_field v "id" + 1)),
+       ("node_location", location v)]
+  in
+    con "SrcFunctionCall"
+      [info v, con "SrcIdentifier"
+         [callee_info, mk_str (string_field f "name"), mk_num id,
+          mk_str (normalize_type_id tid)],
+       listSyntax.mk_list (args, expr_ty), listSyntax.mk_nil numSyntax.num, type_id v]
+  end
 
 (* L.f or L.c, or x.f with f attached to the type of x by a using directive,
  * naming a member of library L. *)
@@ -773,7 +852,8 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                   else string_field v "value"), type_id v])
   | "UnaryOperation" =>
       let val operand = expr (field v "subExpression") in
-        con "SrcUnaryOperation"
+        if isSome (optional_field v "function") then operator_call v [operand]
+        else con "SrcUnaryOperation"
           [info v, decode v "unary operator" unary_operators (string_field v "operator"),
            (if bool_field v "prefix" then T else F), operand, type_id v]
       end
@@ -782,7 +862,8 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
         val left = expr (field v "leftExpression")
         val right = expr (field v "rightExpression")
       in
-        con "SrcBinaryOperation"
+        if isSome (optional_field v "function") then operator_call v [left, right]
+        else con "SrcBinaryOperation"
           [info v, decode v "binary operator" binary_operators (string_field v "operator"),
            left, right,
            mk_str (normalize_type_id (string_field (field v "commonType") "typeIdentifier")),
@@ -846,6 +927,10 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
           "functionCall" =>
             if isSome (low_level_kind (options_target callee)) then
               (positional (); low_level_call v callee args)
+            else if node_type callee = "MemberAccess" andalso
+               (String.isPrefix "t_function_wrap_" (raw_type_id callee) orelse
+                String.isPrefix "t_function_unwrap_" (raw_type_id callee)) then
+              (positional (); wrap_call v callee args)
             else if is_external_call callee orelse
                node_type callee = "FunctionCallOptions" then
               external_call v callee args
@@ -974,6 +1059,28 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
          (object v);
        fail (describe v ^ ": unsupported expression " ^ other)))) v
 
+and wrap_call v callee args =
+  let
+    val (nominal, ty) =
+      case value_type_expression (field callee "expression") of
+        SOME pair => pair
+      | NONE => fail (describe v ^ ": wrap/unwrap requires a user-defined value type")
+    val member = string_field callee "memberName"
+    val () = require v (member = "wrap" orelse member = "unwrap")
+               "unsupported user-defined value type member"
+    val underlying = raw_type_id ty
+    val (input, output) = if member = "wrap" then (underlying, nominal)
+                          else (nominal, underlying)
+    val expected = "t_function_" ^ member ^ "_pure$_" ^ input ^
+                   "_$returns$_" ^ output ^ "_$"
+  in
+    require v (length args = 1) "wrap/unwrap takes one argument";
+    require v (raw_type_id callee = expected andalso raw_type_id v = output)
+      "wrap/unwrap type annotation mismatch";
+    con "SrcTypeConversion"
+      [info v, type_name (type_at callee ty), hd args, type_id v]
+  end
+
 (* abi.encode, abi.encodePacked, abi.encodeWithSelector and
  * abi.encodeWithSignature of a literal signature; the signature's bytes are
  * taken from the literal, which is not kept as an argument. *)
@@ -1019,7 +1126,9 @@ and abi_decode_call v callee args =
       case c of
         JSON.NULL => NONE
       | _ => if node_type c = "ElementaryTypeNameExpression"
-             then SOME (type_name (field c "typeName")) else NONE
+             then SOME (type_name (field c "typeName"))
+             else Option.map (fn (_, ty) => type_name (type_at c ty))
+                    (value_type_expression c)
     val types = map decoded_type components
   in
     require v (List.all isSome types)
@@ -1445,6 +1554,9 @@ fun function v = within v (fn v =>
        ("fn_base_functions",
         listSyntax.mk_list (map mk_num (overridden v), numSyntax.num)),
        ("fn_parameters_id", params_id), ("fn_parameters", params),
+       ("fn_nominal_parameters", listSyntax.mk_list
+          (JSONUtil.arrayMap (mk_str o raw_type_id)
+             (field (field v "parameters") "parameters"), stringSyntax.string_ty)),
        ("fn_returns_id", returns_id), ("fn_returns", returns),
        ("fn_modifiers", listSyntax.mk_list
           (modifiers, pairSyntax.mk_prod
@@ -1550,12 +1662,16 @@ fun super_members (v as JSON.OBJECT fields) =
 
 (* The declarations the nodes of v refer to. *)
 fun references (v as JSON.OBJECT fields) =
-      (* a selector's base is not imported *)
-      if is_selector v then [] else
+      (* Selectors and using declarations do not execute their references. *)
+      if is_selector v orelse
+         JSONUtil.testField "nodeType"
+           (fn JSON.STRING s => s = "UsingForDirective" | _ => false) v
+      then [] else
       List.concat
         (map (fn ("referencedDeclaration", JSON.INT i) => [i]
                (* an inline assembly block's reference *)
                | ("declaration", JSON.INT i) => [i]
+               | ("function", JSON.INT i) => [i]
                | (_, w) => references w) fields)
   | references (JSON.ARRAY vs) = List.concat (map references vs)
   | references _ = []
@@ -1564,8 +1680,8 @@ fun references (v as JSON.OBJECT fields) =
 fun constant_declaration v = within v (fn v =>
   let
     val () = expect v "VariableDeclaration"
-    val () = require v (bool_field v "constant" andalso bool_field v "stateVariable")
-               "expected a contract constant"
+    val () = require v (bool_field v "constant")
+               "expected a constant"
     val imported = variable_record v
     val value = expr (field v "value")
   in
@@ -1626,19 +1742,6 @@ fun contract external_structs contracts declared v = within v (fn v =>
       JSONUtil.arrayMap
         (fn p => string_field (field p "typeDescriptions") "typeIdentifier")
         (field (field f "parameters") "parameters")
-    (* Contract types are read as address, so implemented functions that
-     * differ only in contract-typed parameters could not be told apart where
-     * they are matched by parameter types, as super targets are. *)
-    val overloadable =
-      List.filter (fn f => string_field f "kind" = "function" andalso bool_field f "implemented")
-        functions
-    val () =
-      List.app (fn f => List.app (fn g =>
-        if string_field f "name" = string_field g "name" andalso
-           parameter_types f <> parameter_types g andalso
-           map normalize_type_id (parameter_types f) = map normalize_type_id (parameter_types g)
-        then ignore (note g "overloads differing only in contract types are not supported")
-        else ()) overloadable) overloadable
     fun after f =
       let
         fun go [] = []
@@ -1721,6 +1824,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
         | "ModifierDefinition" => ()
         | "ErrorDefinition" => ()
         | "EnumDefinition" => ()
+        | "UserDefinedValueTypeDefinition" => ()
         | other => fail (describe m ^ ": unsupported library member " ^ other))))
         used_members
     val () =
@@ -1755,6 +1859,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
                     (require m (node_type m = "FunctionDefinition" orelse
                                 node_type m = "VariableDeclaration" orelse
                                 node_type m = "StructDefinition" orelse
+                                node_type m = "UserDefinedValueTypeDefinition" orelse
                                 node_type m = "EnumDefinition" orelse
                                 node_type m = "EventDefinition" orelse
                                 node_type m = "ErrorDefinition" orelse
@@ -1894,9 +1999,16 @@ fun import_unit units v contracts = within v (fn v =>
       List.concat
         (map (fn u => List.filter (fn m => node_type m = ty)
                         (JSONUtil.arrayMap I (field u "nodes"))) units)
+    val () = compilation_max_id := greatest_node_id (JSON.ARRAY units)
     val structs = all_members "StructDefinition"
     val declared =
       map (fn c => (int_field c "id", c)) (all_members "ContractDefinition")
+    val () = value_type_declarations :=
+      map (fn d => (int_field d "id", d))
+        (all_members "UserDefinedValueTypeDefinition" @
+         List.concat (map (fn (_, c) =>
+           List.filter (fn m => node_type m = "UserDefinedValueTypeDefinition")
+             (JSONUtil.arrayMap I (field c "nodes"))) declared))
     val enums =
       all_members "EnumDefinition" @
       List.concat
@@ -1929,6 +2041,7 @@ fun import_unit units v contracts = within v (fn v =>
            List.concat (map (fn (_, c) => JSONUtil.arrayMap I (field c "nodes")) declared))
     val () =
       function_declarations :=
+        map (fn f => (int_field f "id", f)) (all_members "FunctionDefinition") @
         List.concat
           (map (fn (_, c) =>
                   List.mapPartial
@@ -1938,6 +2051,8 @@ fun import_unit units v contracts = within v (fn v =>
              declared)
     val () =
       library_members :=
+        map (fn f => (int_field f "id", f))
+          (all_members "FunctionDefinition" @ all_members "VariableDeclaration") @
         List.concat
           (map (fn (_, c) =>
                   if string_field c "contractKind" = "library" then
@@ -1982,6 +2097,9 @@ fun import_unit units v contracts = within v (fn v =>
         "PragmaDirective" => NONE
       | "ImportDirective" => NONE
       | "StructDefinition" => NONE
+      | "UserDefinedValueTypeDefinition" => NONE
+      | "FunctionDefinition" => NONE
+      | "VariableDeclaration" => NONE
       | "EnumDefinition" => NONE
       | "ErrorDefinition" => NONE
       | "UsingForDirective" => NONE

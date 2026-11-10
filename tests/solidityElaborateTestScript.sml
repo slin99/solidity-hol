@@ -7,7 +7,12 @@ Theory solidityElaborateTest
 Ancestors
   solidityElaborate solidityImportTest
 Libs
-  cv_transLib intLib wordsLib
+  cv_transLib intLib wordsLib solidityImportLib
+
+fun holbuild_extra_deps (_ : string list) = ()
+val () = holbuild_extra_deps [
+  "../testdata/differential/expected/constant_conversions.json"
+]
 
 val elaborated = cv_eval “elaborate_unit pure_core”;
 
@@ -28,6 +33,48 @@ Theorem pure_core_program_wf:
     pure_core_program
 Proof
   EVAL_TAC
+QED
+
+Definition constant_conversions_def:
+  constant_conversions = ^(import_artifact
+    "../testdata/differential/expected/constant_conversions.json"
+    "testdata/differential/constant_conversions.sol")
+End
+
+val () = cv_auto_trans constant_conversions_def;
+val conversions_elaborated = cv_eval “elaborate_unit constant_conversions”;
+
+Definition constant_conversions_program_def:
+  constant_conversions_program =
+    ^(conversions_elaborated |> concl |> rhs |> optionSyntax.dest_some)
+End
+
+val () = cv_auto_trans constant_conversions_program_def;
+
+Theorem constant_conversions_elaborate:
+  elaborate_unit constant_conversions = SOME constant_conversions_program
+Proof
+  simp[conversions_elaborated, constant_conversions_program_def]
+QED
+
+(* Partial admission must not hide a rejected conversion from the core check. *)
+Theorem constant_conversions_all_admitted:
+  MAP (λf. f.fn_name) (HD constant_conversions.unit_contracts).contract_functions =
+    ["addressToUint"; "addressToBytes"; "assignmentToInt";
+     "assignmentToBytes"; "lengthToBytes"; "lengthToUint8"] ∧
+  EVERY (λf. MEM (AstId f.fn_info.node_id)
+                (MAP (λp. p.procedure_id) constant_conversions_program.procedures))
+    (HD constant_conversions.unit_contracts).contract_functions ∧
+  constant_conversions_program.unsupported_procedures = []
+Proof
+  EVAL_TAC
+QED
+
+Theorem constant_conversions_program_wf:
+  wf_core_program (core_program_environment constant_conversions_program)
+    constant_conversions_program
+Proof
+  CONV_TAC cv_eval
 QED
 
 Overload iv = “λi. ScalarValue (IntegerValue i)”
@@ -378,6 +425,7 @@ fun function_of ps rs ss =
       fn_kind := FunctionKind; fn_visibility := InternalVisibility;
       fn_mutability := NonpayableMut; fn_selector := NONE;
       fn_base_functions := []; fn_parameters_id := 2; fn_parameters := ^ps;
+      fn_nominal_parameters := [];
       fn_returns_id := 3; fn_returns := ^rs; fn_modifiers := [];
       fn_super_calls := []; fn_body := SrcBlock ^(at 9) ^ss;
       fn_unsupported := NONE |>”;
@@ -433,7 +481,12 @@ QED
 Theorem ecrecover_operands_all_report:
   ^(reports “elab_expr ^ctx0 10
                (SrcEcrecover ^(at 30) ^(at 31)
-                  [^(string_at 32); ^(one_at 34); ^(string_at 33); ^(one_at 35)]
+                  [SrcLiteral ^(at 32) StringLiteral
+                     "0123456789abcdef0123456789abcdef0" "t_stringliteral_x";
+                   ^(one_at 34);
+                   SrcLiteral ^(at 33) StringLiteral
+                     "0123456789abcdef0123456789abcdef0" "t_stringliteral_x";
+                   ^(one_at 35)]
                   "t_address")”
      string_32_33)
 Proof
@@ -518,6 +571,17 @@ Theorem pure_core_has_no_failures:
   unit_elaboration_failures T pure_core = []
 Proof
   CONV_TAC cv_eval
+QED
+
+Theorem literal_bytes_width_checked:
+  coerce 0 (FixedBytesT 2) (ConstantAtom (BytesValue [0x61w; 0x62w; 0x63w]))
+    ElabBytesLiteral = INR "string literal conversion" ∧
+  coerce 0 (FixedBytesT 0) (ConstantAtom (BytesValue [])) ElabBytesLiteral = INR "string literal conversion" ∧
+  coerce 0 (FixedBytesT 33) (ConstantAtom (BytesValue [])) ElabBytesLiteral = INR "string literal conversion" ∧
+  coerce 0 (FixedBytesT 0) (ConstantAtom (IntegerValue 0)) ElabLiteral = INR "number literal conversion" ∧
+  coerce 0 (FixedBytesT 33) (ConstantAtom (IntegerValue 0)) ElabLiteral = INR "number literal conversion"
+Proof
+  EVAL_TAC
 QED
 
 (* Edited units of solidityImportTest that pass valid_src_unit but whose

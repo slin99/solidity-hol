@@ -249,7 +249,12 @@ Definition coerce_def:
         | _ => INL (bind_value n ty (ConvertOperation ty a), n + 1))
     | ElabBytesLiteral =>
         (case (ty, a) of
-           (LocatedT MemoryLoc element, ConstantAtom (BytesValue bs)) =>
+           (FixedBytesT k, ConstantAtom (BytesValue bs)) =>
+             if valid_fixed_bytes_width k ∧ LENGTH bs ≤ k then
+               INL (bind_value n ty
+                       (ConvertOperation ty (ConstantAtom (BytesValue (take_pad_0 k bs)))), n + 1)
+             else INR "string literal conversion"
+         | (LocatedT MemoryLoc element, ConstantAtom (BytesValue bs)) =>
              if byte_sequence_type element then
                INL (bind_value n ty (BytesLiteralOperation element bs), n + 1)
              else INR "string literal conversion"
@@ -260,8 +265,9 @@ Definition coerce_def:
            digits that fill it *)
         (case (ty, a) of
            (FixedBytesT k, ConstantAtom (IntegerValue i)) =>
-             if 0 ≤ i ∧ Num i < 256 ** k then
-               INL (([], ConstantAtom (BytesValue (num_to_bytes k (Num i)))), n)
+             if valid_fixed_bytes_width k ∧ 0 ≤ i ∧ Num i < 256 ** k then
+               INL (bind_value n ty
+                       (ConvertOperation ty (ConstantAtom (BytesValue (num_to_bytes k (Num i))))), n + 1)
              else INR "number literal conversion"
          | _ => INR "number literal conversion")
     | ElabRational => INR "rational number value"
@@ -1507,6 +1513,16 @@ Definition elab_expr_def:
                                 (ConstantAtom (BytesValue (num_to_bytes k (Num i))))) in
                        INL ((ss ++ cs, v, ElabType ty), n1 + 1)
                      else INR [(info.node_id, "unsupported type conversion")]
+                   | (ElabType src, _, ConstantAtom s) =>
+                     if src = ty then
+                       let (cs, v) = bind_value n1 ty
+                             (ConvertOperation ty (ConstantAtom s)) in
+                       INL ((ss ++ cs, v, ElabType ty), n1 + 1)
+                     else
+                       let (bs, b) = bind_value n1 src
+                             (ConvertOperation src (ConstantAtom s)) in
+                       let (cs, v) = bind_value (n1 + 1) ty (ConvertOperation ty b) in
+                       INL ((ss ++ bs ++ cs, v, ElabType ty), n1 + 2)
                    | _ =>
                      let (cs, v) = bind_value n1 ty (ConvertOperation ty a) in
                      INL ((ss ++ cs, v, ElabType ty), n1 + 1))

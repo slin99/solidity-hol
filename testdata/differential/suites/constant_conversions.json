@@ -1,0 +1,44 @@
+{
+  "name": "constant_conversions",
+  "source": "testdata/differential/constant_conversions.sol",
+  "contract": "ConstantConversions",
+  "artifact": "testdata/differential/expected/constant_conversions.json",
+  "cases": [
+    {
+      "name": "address_to_uint",
+      "function": "addressToUint",
+      "args": [],
+      "expect": {"return": [0]}
+    },
+    {
+      "name": "address_to_bytes",
+      "function": "addressToBytes",
+      "args": [],
+      "expect": {"return": ["0x0000000000000000000000000000000000000000"]}
+    },
+    {
+      "name": "assignment_to_int_preserves_write",
+      "function": "assignmentToInt",
+      "args": [],
+      "expect": {"return": [-56, 200]}
+    },
+    {
+      "name": "assignment_to_bytes_preserves_write",
+      "function": "assignmentToBytes",
+      "args": [],
+      "expect": {"return": ["0x01", 1]}
+    },
+    {
+      "name": "length_to_bytes",
+      "function": "lengthToBytes",
+      "args": [],
+      "expect": {"return": ["0x000000000000000000000000000000000000000000000000000000000000012c"]}
+    },
+    {
+      "name": "length_to_uint8_truncates",
+      "function": "lengthToUint8",
+      "args": [],
+      "expect": {"return": [44]}
+    }
+  ]
+}
