@@ -27,14 +27,18 @@ End
  * Byte sequences use the length and byte cells; other heap values are deferred.
  * object_address is the memory address the compiler's allocator gives the
  * object (the free memory pointer when it is allocated), which inline
- * assembly sees as the reference's value.
+ * assembly sees as the reference's value. object_padded says the compiler's
+ * memory holds zeros from a byte sequence's last byte to its word boundary,
+ * as the compiler's allocations write it; a copy of return data leaves what
+ * was there before.
  *)
 Datatype:
   heap_object = <|
     object_type : sol_type;
     object_length : num;
     object_cells : num |-> runtime_value;
-    object_address : num
+    object_address : num;
+    object_padded : bool
   |>
 End
 
