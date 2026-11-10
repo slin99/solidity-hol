@@ -38,8 +38,8 @@ contract DirtyBits {
         assembly { word := sload(fixedTarget.slot) }
     }
 
-    function encodeBools() public view returns (bytes memory) {
-        return abi.encode(fixedSource);
+    function returnsBools() public view returns (bool[2] memory) {
+        return fixedSource;
     }
 
     function canonicalSigned(int8 x) public pure returns (int8 back) {
