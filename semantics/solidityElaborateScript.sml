@@ -740,6 +740,15 @@ Definition abi_encoding_def:
          | INR bs => INR bs)
 End
 
+(* A decoded address keeps the compiler's annotation: plain address type
+ * names yield payable addresses, but erased UDVTs can stay nonpayable. *)
+Definition decoded_types_match_def:
+  (decoded_types_match [] [] ⇔ T) ∧
+  (decoded_types_match (ty :: tys) (out :: outs) ⇔
+     (out = ty ∨ out = decoded_type ty) ∧ decoded_types_match tys outs) ∧
+  (decoded_types_match _ _ ⇔ F)
+End
+
 (* An array or byte index, or an allocation length: an unsigned integer or a
  * non-negative integer literal. *)
 Definition index_value_ok_def:
@@ -1405,16 +1414,21 @@ Definition elab_expr_def:
         (* the data is decoded where it is, so it must already be memory bytes *)
         (case elab_expr ctx n e of
            INL ((ss, a, ElabType (LocatedT MemoryLoc BytesT)), n1) =>
-             (case OPTION_MAP (MAP decoded_type) (all_some (MAP normalize_type_name tns)) of
-                SOME (ty :: tys) =>
+             (case all_some (MAP normalize_type_name tns) of
+                SOME tys =>
+                  let out_tys =
+                    (case decode_type_identifier tid of
+                       SOME (SrcType ty) => [ty]
+                     | SOME (SrcTupleType ts) => ts
+                     | _ => []) in
                   (* only elementary types decode: bytes and string are type names too *)
-                  if ¬EVERY is_elementary_type (ty :: tys) ∨
-                     decode_type_identifier tid ≠ SOME (call_value_type (ty :: tys))
+                  if NULL out_tys ∨ ¬EVERY is_elementary_type out_tys ∨
+                     ¬decoded_types_match tys out_tys ∨
+                     decode_type_identifier tid ≠ SOME (call_value_type out_tys)
                   then INR [(info.node_id, "abi decoding of these types")] else
-                  INL ((ss ++ [DefineStmt (AstId n1) (call_result_type (ty :: tys))
-                                 (AbiDecodeOperation (ty :: tys) a)],
-                        BoundAtom (AstId n1), call_value (ty :: tys)), n1 + 1)
-              | SOME [] => INR [(info.node_id, "abi decoding of these types")]
+                  INL ((ss ++ [DefineStmt (AstId n1) (call_result_type out_tys)
+                                 (AbiDecodeOperation out_tys a)],
+                        BoundAtom (AstId n1), call_value out_tys), n1 + 1)
               | NONE =>
                   INR (FLAT (MAP (λtn. type_name_blockers
                                          (info.node_id, "unsupported type name") tn) tns)))
@@ -3072,6 +3086,7 @@ QED
 
 val () = cv_auto_trans selector_encoding_def;
 val () = cv_auto_trans abi_encoding_def;
+val () = cv_auto_trans decoded_types_match_def;
 val () = cv_auto_trans arrange_def;
 
 val elab_expr_pre_def = cv_auto_trans_pre_rec
