@@ -142,6 +142,7 @@ Datatype:
   | ImmutableReferenceOperation ast_id
   | NavigateOperation sol_type core_atom navigation
   | DefaultMemoryOperation sol_type
+  | NullMemoryOperation sol_type
   | BytesLiteralOperation sol_type (byte list)
   | AllocateMemoryOperation sol_type core_atom
   | ByteIndexOperation core_atom core_atom

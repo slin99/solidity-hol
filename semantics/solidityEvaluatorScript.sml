@@ -211,7 +211,9 @@ End
 Definition eval_operation_def:
   eval_operation env (st : source_state) op =
     case op of
-      StateReferenceOperation x =>
+      NullMemoryOperation ty =>
+        ValueOk (ReferenceValue (MemoryReference (HeapId 0) 0 ty))
+    | StateReferenceOperation x =>
         (case state_reference env st.frame.self_address x of
            SOME r => ValueOk (ReferenceValue r)
          | _ => ValueAbrupt (InvalidCompletion "bad state reference"))

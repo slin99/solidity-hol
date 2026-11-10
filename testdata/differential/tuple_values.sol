@@ -11,6 +11,32 @@ contract TupleValues {
         return choose ? (true, value) : (false, 0);
     }
 
+    function scalarMemoryJoin(bool choose) external pure returns (uint256, uint256) {
+        uint256[1] memory a;
+        uint256[1] memory b;
+        a[0] = 10;
+        b[0] = 20;
+        uint256 beforePointer;
+        assembly { beforePointer := mload(0x40) }
+        uint256[1] memory result = choose ? a : b;
+        uint256 afterPointer;
+        assembly { afterPointer := mload(0x40) }
+        return (afterPointer - beforePointer, result[0]);
+    }
+
+    function tupleMemoryJoin(bool choose) external pure returns (uint256, uint256) {
+        uint256[1] memory a;
+        uint256[1] memory b;
+        a[0] = 10;
+        b[0] = 20;
+        uint256 beforePointer;
+        assembly { beforePointer := mload(0x40) }
+        (uint256[1] memory result, uint256 tag) = choose ? (a, uint256(1)) : (b, uint256(2));
+        uint256 afterPointer;
+        assembly { afterPointer := mload(0x40) }
+        return (afterPointer - beforePointer, result[0] + tag);
+    }
+
     function nested(bool a, bool b) external pure returns (int16, bool) {
         return a ? (b ? (int16(-300), true) : (int16(7), false)) : (int16(0), false);
     }

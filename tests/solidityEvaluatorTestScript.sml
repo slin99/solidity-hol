@@ -376,6 +376,32 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* Fixed-array join placeholders must be overwritten before any read. Dynamic
+ * null references retain the ordinary empty-array behavior. *)
+Theorem unassigned_fixed_memory_rejected:
+  eval_operation test_env initial_state
+    (NullMemoryOperation (ArrayT u256 (SOME 1))) =
+    ValueOk (ReferenceValue
+      (MemoryReference (HeapId 0) 0 (ArrayT u256 (SOME 1)))) ∧
+  memory_array_length initial_state
+    (MemoryReference (HeapId 0) 0 (ArrayT u256 (SOME 1))) = NONE ∧
+  memory_array_element initial_state
+    (MemoryReference (HeapId 0) 0 (ArrayT u256 (SOME 1))) 0 =
+    INR (InvalidCompletion "bad memory array reference") ∧
+  memory_array_value initial_state (ArrayT u256 (SOME 1))
+    (ReferenceValue (MemoryReference (HeapId 0) 0 (ArrayT u256 (SOME 1)))) =
+    INR (InvalidCompletion "bad memory array reference") ∧
+  memory_abi_value initial_state (ArrayT u256 (SOME 1))
+    (ReferenceValue (MemoryReference (HeapId 0) 0 (ArrayT u256 (SOME 1)))) = NONE ∧
+  memory_array_length initial_state
+    (MemoryReference (HeapId 0) 0 (ArrayT u256 NONE)) = SOME 0 ∧
+  memory_array_element initial_state
+    (MemoryReference (HeapId 0) 0 (ArrayT u256 NONE)) 0 =
+    INR (PanicCompletion 50)
+Proof
+  CONV_TAC cv_eval
+QED
+
 (* The compiler inspects both length tags before its first storage write. *)
 Definition static_byte_copy_def:
   static_byte_copy bad_src bad_dst =

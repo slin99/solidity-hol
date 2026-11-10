@@ -226,6 +226,14 @@ Definition default_operation_def:
                 | NONE => NONE
 End
 
+(* Compiler join temporaries are assigned on each arm before being read. *)
+Definition join_operation_def:
+  join_operation ty =
+    case ty of
+      LocatedT MemoryLoc element => SOME (NullMemoryOperation element)
+    | _ => default_operation ty
+End
+
 (* A value of type ty: integer literals stand for themselves, or for their
  * bytes as a fixed-size bytes; other types are converted. Fails with what
  * cannot be converted, for the caller to tag with the operand.
@@ -590,7 +598,7 @@ End
 Definition conditional_targets_def:
   (conditional_targets n [] [] [] = SOME ([], [], [], [], n)) ∧
   (conditional_targets n (ty :: tys) (a :: as) (b :: bs) =
-    case (default_operation ty, conditional_targets (n + 3) tys as bs) of
+    case (join_operation ty, conditional_targets (n + 3) tys as bs) of
       (SOME op, SOME (ds, ts, fs, vs, n1)) =>
         let (ss, v) = bind_value n ty op in
         SOME (ss ++ ds, assign_local (n + 1) n ty a ++ ts,
@@ -1356,7 +1364,7 @@ Definition elab_expr_def:
                                      | _ => is_stored_scalar_type ty)
                        then reject (info.node_id, "unsupported conditional type")
                               (elab_expr ctx n f) else
-                       (case default_operation ty of
+                       (case join_operation ty of
                           SOME op =>
                             (case coerce n3 ty at vt of
                                INL ((ct, at'), n4) =>
@@ -3115,6 +3123,7 @@ val () = cv_auto_trans variable_blockers_def;
 val () = cv_auto_trans variables_blockers_def;
 val () = cv_auto_trans bind_value_def;
 val () = cv_auto_trans default_operation_def;
+val () = cv_auto_trans join_operation_def;
 val () = cv_auto_trans coerce_def;
 val () = cv_auto_trans annotation_matches_def;
 val () = cv_auto_trans is_declaration_def;

@@ -326,6 +326,58 @@
           "0x13"
         ]
       }
+    },
+    {
+      "name": "scalarMemoryJoin_true",
+      "function": "scalarMemoryJoin",
+      "args": [
+        true
+      ],
+      "expect": {
+        "return": [
+          0,
+          10
+        ]
+      }
+    },
+    {
+      "name": "scalarMemoryJoin_false",
+      "function": "scalarMemoryJoin",
+      "args": [
+        false
+      ],
+      "expect": {
+        "return": [
+          0,
+          20
+        ]
+      }
+    },
+    {
+      "name": "tupleMemoryJoin_true",
+      "function": "tupleMemoryJoin",
+      "args": [
+        true
+      ],
+      "expect": {
+        "return": [
+          0,
+          11
+        ]
+      }
+    },
+    {
+      "name": "tupleMemoryJoin_false",
+      "function": "tupleMemoryJoin",
+      "args": [
+        false
+      ],
+      "expect": {
+        "return": [
+          0,
+          22
+        ]
+      }
     }
   ]
 }

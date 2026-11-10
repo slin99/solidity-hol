@@ -684,3 +684,8 @@ Storage navigation checks bounds during operand evaluation; memory indices are
 saved and bounds-checked at each write. Holes consume a value without
 capturing a location. Repeated destinations therefore retain the leftmost
 assigned component.
+
+Scalar and tuple conditional joins bind the selected memory reference without
+allocating a default object. Their temporary references cannot be read as fixed
+arrays before assignment; declarations of fixed memory arrays still allocate
+their normal zero-filled objects.
