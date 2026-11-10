@@ -86,6 +86,18 @@ lists let holbuild schedule them independently and reuse unchanged bytecode
 results after a frontend change. Both runners reuse cached suite verdicts by
 default; `--force` explicitly rebuilds suites. The source runner still accepts
 `--allow-cached` for compatibility.
+`--shard-count N --shard-index I` selects suite names at positions
+`I, I + N, ...` after sorting them. The shards are stable, disjoint and cover
+the complete corpus. CI runs eight shards on separate runners, with `-j2`
+inside each runner to stay within its memory limit. For example, the third
+of eight shards can be reproduced locally with:
+
+```sh
+python3 tools/run_differential.py -j2 --shard-count 8 --shard-index 2
+```
+
+Each CI shard has its own holbuild snapshot lineage, so a later run restores
+the corresponding shard rather than whichever matrix job saved most recently.
 Push builds on `main` and `bot/opus/solidity-e2e` save snapshots that their
 feature PRs can restore; PR-only snapshots are scoped to that PR and cannot
 warm sibling PRs. Branch runs have separate concurrency groups so a later

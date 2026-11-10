@@ -435,6 +435,25 @@ class DriverTests(unittest.TestCase):
         self.assertFalse(driver.parse_args(["--allow-cached"]).force)
         self.assertTrue(driver.parse_args(["--force"]).force)
 
+    def test_shards_are_stable_disjoint_and_complete(self) -> None:
+        suites = [{**corpus()["suites"][0], "name": name}
+                  for name in ("echo", "alpha", "delta", "bravo", "charlie")]
+        data = {**corpus(), "suites": suites}
+        shards = [driver.select_shard(data, 3, index)["suites"] for index in range(3)]
+        names = [[suite["name"] for suite in shard] for shard in shards]
+        self.assertEqual(names, [["alpha", "delta"], ["bravo", "echo"], ["charlie"]])
+        self.assertEqual(sorted(name for shard in names for name in shard),
+                         sorted(suite["name"] for suite in suites))
+
+    def test_rejects_invalid_or_empty_shards(self) -> None:
+        for argv in (["--shard-count", "0"],
+                     ["--shard-count", "2", "--shard-index", "2"],
+                     ["--shard-index", "-1"]):
+            with self.subTest(argv=argv), self.assertRaises(SystemExit):
+                driver.parse_args(argv)
+        with self.assertRaisesRegex(driver.CorpusError, "contains no suites"):
+            driver.select_shard(corpus(), 2, 1)
+
     def test_agreement_passes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fake = FakeRoot(Path(temporary))

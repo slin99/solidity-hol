@@ -6,16 +6,4 @@
  *)
 Theory solidityHol
 Ancestors
-  solidityAST solidityCore solidityCoreWf solidityScalar solidityState
-  solidityEVMCall solidityScalarTest
-  solidityEVMBoundaryProps solidityCoreWfTest
-  solidityEVMCallTest solidityEVMCreateTest solidityEVMFrameTest
-  solidityEVMReentryTest solidityEVMBookkeepingTest
-  externalCall solidityMemory solidityEvaluator solidityABI solidityEntry solidityEvaluatorProps solidityEvaluatorTest
-  solidityCoreProgramsTest solidityImport solidityImportTest
-  solidityElaborate solidityElaborateTest solidityPrepareTest solidityPartialTest
-  solidityDifferential
-  solidityDifferentialCorpus solidityDifferentialTest solidityDirtyBitsTest
-  yulAST yulDialect yulState yulEvaluator yulEvaluatorProps yulEvaluatorTest
-  yulImportTest yulContractTest yulConvTest yulDifferential yulDifferentialTest
-  verifereum
+  solidityHolBase solidityDifferentialCorpus

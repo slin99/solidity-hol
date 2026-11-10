@@ -18,6 +18,11 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    name: build (corpus shard ${{ matrix.shard }})
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -35,6 +40,7 @@ jobs:
         run: holbuild --version
 
       - name: Test compiler artifact exporter
+        if: matrix.shard == 0
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
 
       - name: Configure holbuild cache
@@ -46,9 +52,11 @@ jobs:
         id: cache-key
         run: |
           toolchain_key="holbuild-v1-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ steps.polyml.outputs.polyml-rev }}-${{ steps.holbuild.outputs.holbuild-rev }}"
-          build_prefix="holbuild-v1-project-${{ runner.os }}-${{ runner.arch }}-${{ steps.polyml.outputs.polyml-rev }}-${{ steps.holbuild.outputs.holbuild-rev }}-${{ hashFiles('holproject.toml') }}"
+          project_prefix="holbuild-v2-project-${{ runner.os }}-${{ runner.arch }}-${{ steps.polyml.outputs.polyml-rev }}-${{ steps.holbuild.outputs.holbuild-rev }}-${{ hashFiles('holproject.toml') }}"
+          build_prefix="${project_prefix}-shard-${{ matrix.shard }}"
           snapshot_key="${build_prefix}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
           echo "toolchain-key=$toolchain_key" >> "$GITHUB_OUTPUT"
+          echo "project-prefix=$project_prefix" >> "$GITHUB_OUTPUT"
           echo "build-prefix=$build_prefix" >> "$GITHUB_OUTPUT"
           echo "snapshot-key=$snapshot_key" >> "$GITHUB_OUTPUT"
 
@@ -60,6 +68,7 @@ jobs:
           key: ${{ steps.cache-key.outputs.snapshot-key }}
           restore-keys: |
             ${{ steps.cache-key.outputs.build-prefix }}-
+            ${{ steps.cache-key.outputs.project-prefix }}-
 
       - name: Restore toolchain cache
         id: cache-toolchain
@@ -98,6 +107,7 @@ jobs:
           TMPDIR: ${{ runner.temp }}
         run: >-
           /usr/bin/time -v python3 tools/run_differential.py -j2 --allow-cached
+          --shard-count 8 --shard-index ${{ matrix.shard }}
           --report-dir "$RUNNER_TEMP/differential-report"
           -- --max-heap 6000 --skip-checkpoints --skip-proof-steps
 
@@ -105,14 +115,15 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: differential-report
+          name: differential-report-shard-${{ matrix.shard }}
           path: ${{ runner.temp }}/differential-report
           if-no-files-found: ignore
 
-      - name: Build project roll-up
+      - name: Build project roll-up excluding sharded corpus
+        if: matrix.shard == 0
         env:
           TMPDIR: ${{ runner.temp }}
-        run: holbuild --verbose -j"$(nproc)" build --skip-checkpoints --skip-proof-steps solidityHolTheory
+        run: holbuild --verbose -j"$(nproc)" build --skip-checkpoints --skip-proof-steps solidityHolBaseTheory
 
       - name: Save project snapshot
         if: always()
