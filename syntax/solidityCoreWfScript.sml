@@ -844,14 +844,13 @@ Definition provisional_revert_payload_def:
   (provisional_revert_payload _ ⇔ F)
 End
 
-(* Event arguments are ABI values, and an indexed one is no array; the count
- * of indexed ones, which with topic0 must fit the four topics of a log.
+(* Event arguments are ABI values; the count of indexed ones, which with
+ * topic0 must fit the four topics of a log.
  *)
 Definition emit_indexed_count_def:
   (emit_indexed_count env ctx [] = SOME (0 : num)) ∧
   (emit_indexed_count env ctx ((ty, indexed, a) :: args) =
     if abi_value_type ty ∧ valid_type_shape ty ∧
-       (indexed ⇒ ¬located_value_type ty ∨ byte_sequence_value_type ty) ∧
        wf_abi_atom env ctx ty a then
       case emit_indexed_count env ctx args of
         SOME n => SOME (if indexed then n + 1 else n)
