@@ -195,10 +195,10 @@ End
 
 Definition test_program_def:
   test_program = <|
-    procedures := [add_proc; count_proc; pair_proc; first_proc; fact_proc;
+    unsupported_procedures := []; procedures := [add_proc; count_proc; pair_proc; first_proc; fact_proc;
                    wrapper_proc; void_proc; convert_proc; scope_proc];
     struct_layouts := []; type_declarations := test_decls;
-    state_variables := [];
+    state_variables := []; immutables := [];
     entry_procedure := AstId 6;
     external_functions := []; receive_procedure := NONE;
     fallback_procedure := NONE; creation_procedure := NONE
@@ -959,7 +959,7 @@ End
 
 Definition struct_layout_environment_def:
   struct_layout_environment layouts = core_program_environment
-    <| procedures := []; state_variables := []; struct_layouts := layouts;
+    <| unsupported_procedures := []; procedures := []; state_variables := []; immutables := []; struct_layouts := layouts;
        type_declarations := MAP (λs. (s.struct_id, StructDeclaration
          (MAP (λv. (v.state_id, v.state_type)) s.struct_fields))) layouts;
        entry_procedure := AstId 0;

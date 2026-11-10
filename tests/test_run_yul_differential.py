@@ -42,9 +42,13 @@ class FakeRoot:
     """A repository root with one suite, its artifacts, and a fake compiler."""
 
     def __init__(self, directory: Path, deployed: str = DEPLOYED,
-                 unstaged: str | None = None) -> None:
+                 ) -> None:
         self.root = directory
-        self.write(core.CORPUS.as_posix(), json.dumps(corpus()))
+        data = corpus()
+        suite = data.pop("suites")[0]
+        data["suite_directory"] = "suites"
+        self.write(core.CORPUS.as_posix(), json.dumps(data))
+        self.write("testdata/differential/suites/a.json", json.dumps(suite))
         self.write(SOURCE, "contract A {}\n")
         pin = (ROOT / "SOLIDITY_PIN").read_text(encoding="ascii").strip()
         self.write(CORPUS_ARTIFACT, json.dumps({
@@ -55,17 +59,6 @@ class FakeRoot:
                 "evm": {"deployedBytecode": {"object": DEPLOYED}}}}}},
         }))
         self.deployed = deployed
-        artifacts = [f"../{driver.YUL_ROOT.as_posix()}/{name}.{tag}.json"
-                     for name in ("a",) for tag, _ in driver.ARTIFACT_STAGES]
-        artifacts.append(f"../{core.CORPUS.as_posix()}")
-        if unstaged is not None:
-            artifacts.remove(unstaged)
-        self.write(driver.CORPUS_SCRIPT.as_posix(), "\n".join(
-            ["fun holbuild_extra_deps (_ : string list) = ()",
-             "val () = holbuild_extra_deps ["] +
-            [f'  "{path}"' + ("," if i < len(artifacts) - 1 else "")
-             for i, path in enumerate(artifacts)] + ["]"]))
-
     def write(self, name: str, text: str) -> None:
         path = self.root / name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -91,26 +84,42 @@ class FakeRoot:
         path.chmod(0o755)
         return path
 
-    def holbuild(self, results: list[dict], status: int) -> Path:
-        """A holbuild that writes the given result lines to its child log."""
-        log = self.root / "build.log"
-        lines = "".join(driver.RESULT_PREFIX + json.dumps(r) + "\n" for r in results)
+    def holbuild(self, results: list[dict], status: int, *, cached: bool = False) -> Path:
+        """Write declared verdict outputs on success and diagnostic logs on failure."""
         path = self.root / "holbuild"
         path.write_text(textwrap.dedent(f"""\
             #!{sys.executable}
+            import json
+            from pathlib import Path
             import sys
-            open({str(log)!r}, "w").write({lines!r})
-            print("child log: {log}")
+            results = {results!r}
+            for target in sys.argv[1:]:
+                if not target.startswith('yulDifferentialCorpus_'):
+                    continue
+                suite = target.removeprefix('yulDifferentialCorpus_').removesuffix('Theory')
+                log = Path('.holbuild/logs/current/solidity-hol') / target / 'build.log'
+                log.parent.mkdir(parents=True, exist_ok=True)
+                log.write_text(''.join({driver.RESULT_PREFIX!r} + json.dumps(r) + '\\n'
+                                      for r in results if r.get('suite') == suite))
+                if {status} == 0:
+                    output = Path('tests/yul-generated') / (target.removesuffix('Theory') + '.results.jsonl')
+                    output.write_text(log.read_text())
+                if {cached!r}:
+                    log.unlink()
+                    print(target + ' restored from cache')
+                else:
+                    print('child log: ' + str(log.resolve()))
             sys.exit({status})
             """), encoding="utf-8")
         path.chmod(0o755)
         return path
 
-    def run(self, results: list[dict], status: int = 0) -> tuple[int, dict]:
+    def run(self, results: list[dict], status: int = 0, *, cached: bool = False) -> tuple[int, dict]:
         report_dir = self.root / "report"
         with contextlib.redirect_stdout(io.StringIO()):
             exit_status = driver.main(
-                ["--solc", str(self.fake_solc()), "--holbuild", str(self.holbuild(results, status)),
+                ["--solc", str(self.fake_solc()), "--holbuild",
+                 str(self.holbuild(results, status, cached=cached)),
                  "--report-dir", str(report_dir)],
                 root=self.root)
         report = json.loads((report_dir / "yul-differential.json").read_text(encoding="utf-8"))
@@ -144,10 +153,15 @@ def all_agree() -> list[dict]:
 
 
 class DriverTests(unittest.TestCase):
+    def test_cache_is_default_and_force_is_explicit(self) -> None:
+        self.assertFalse(driver.parse_args(["--solc", "solc"]).force)
+        self.assertTrue(driver.parse_args(["--solc", "solc", "--force"]).force)
+
     def test_agreement_passes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             status, report = FakeRoot(Path(temporary)).run(all_agree())
         self.assertEqual(status, 0)
+        self.assertNotIn("--force=theory", report["hol"]["command"])
         self.assertEqual(report["failures"], [])
         self.assertEqual(report["totals"], {"stages_admitted": 3, "stages_expected": 3,
                                             "cases_run": 3, "cases_expected": 3,
@@ -155,6 +169,24 @@ class DriverTests(unittest.TestCase):
         self.assertEqual([w["theorem"] for w in report["kernel_checked"]],
                          ["yul_a_f_returns_ir", "yul_a_f_returns_ir_optimized",
                           "yul_a_f_returns_optimized"])
+
+    def test_cached_verdicts_keep_outcomes_and_stage_admissions_without_logs(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            status, report = FakeRoot(Path(temporary)).run(all_agree(), cached=True)
+        self.assertEqual(status, 0)
+        self.assertEqual(report["failures"], [])
+        self.assertEqual(report["totals"]["agreements"], 3)
+        self.assertTrue(all(a["admitted"] for a in report["admissions"]))
+        self.assertTrue(all(w["outcome"] == RETURNED and w["status"] == "proved (cached)"
+                            for w in report["kernel_checked"]))
+
+    def test_cached_partial_verdict_file_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            status, report = FakeRoot(Path(temporary)).run(
+                [suite_result("a", list(driver.STAGES))], cached=True)
+        self.assertEqual(status, 1)
+        self.assertEqual(report["totals"]["agreements"], 0)
+        self.assertEqual([f["status"] for f in report["failures"]], ["missing"] * 3)
 
     def test_a_stage_that_is_not_admitted_is_counted_separately(self) -> None:
         """Its cases are not run there, so they are an admission, not a
@@ -238,13 +270,18 @@ class DriverTests(unittest.TestCase):
         self.assertEqual([f["check"] for f in failed], ["yul-artifact-is-the-same-program"])
 
     def test_a_generated_artifact_that_is_not_staged_fails(self) -> None:
-        missing = f"../{driver.YUL_ROOT.as_posix()}/a.optimized.json"
         with tempfile.TemporaryDirectory() as temporary:
-            status, report = FakeRoot(Path(temporary), unstaged=missing).run(all_agree())
-        self.assertEqual(status, 1)
-        failed = [f for f in report["failures"] if f["kind"] == "external-check"]
-        self.assertEqual([f["check"] for f in failed], ["yul-artifacts-staged"])
-        self.assertIn("a.optimized.json", failed[0]["detail"])
+            fake = FakeRoot(Path(temporary))
+            loaded = core.load_corpus(fake.root / core.CORPUS)
+            expected = core.theories.wrappers(fake.root, core.CORPUS, loaded, yul=True)
+            core.theories.write_wrappers(fake.root, expected)
+            path = next(iter(expected))
+            fake.write(path.as_posix(), expected[path].replace(
+                '../../testdata/yul/generated/a.optimized.json', 'missing.json'))
+            check = driver.check_staging(fake.root, [
+                "testdata/yul/generated/a.optimized.json"])
+            self.assertEqual(check["status"], "fail")
+            self.assertIn(path.name, check["detail"])
 
 
 class CommittedTests(unittest.TestCase):
@@ -266,11 +303,15 @@ class CommittedTests(unittest.TestCase):
         self.assertEqual(sorted(report["per_stage"]), sorted(driver.STAGES))
         self.assertIn("The HOL corpus was not run", summary)
 
-    def test_the_committed_corpus_theory_stages_every_artifact(self) -> None:
+    def test_generated_suite_theories_stage_every_artifact(self) -> None:
         loaded = core.load_corpus(ROOT / core.CORPUS)
         written = [f"{driver.YUL_ROOT.as_posix()}/{suite['name']}.{tag}.json"
                    for suite in loaded["suites"] for tag, _ in driver.ARTIFACT_STAGES]
-        self.assertEqual(driver.check_staging(ROOT, written)["status"], "pass")
+        expected = core.theories.wrappers(ROOT, core.CORPUS, loaded, yul=True)
+        missing = [path for path in written
+                   if all(core.unstaged_files(text, {"../../" + path})
+                          for text in expected.values())]
+        self.assertEqual(missing, [])
 
 
 if __name__ == "__main__":

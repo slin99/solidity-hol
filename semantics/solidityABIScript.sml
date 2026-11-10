@@ -18,6 +18,7 @@ Definition abi_type_def:
   (abi_type BoolT = Bool) ∧
   (abi_type (AddressT _) = Address) ∧
   (abi_type (FixedBytesT n) = Bytes (SOME n)) ∧
+  (abi_type (EnumT _) = Uint 8) ∧
   (abi_type BytesT = Bytes NONE) ∧
   (abi_type StringT = String) ∧
   (abi_type (ArrayT ty length) = Array length (abi_type ty)) ∧
@@ -33,6 +34,7 @@ Definition abi_value_def:
   (abi_value (AddressT _) (ScalarValue (AddressValue a)) =
     SOME (NumV (w2n a))) ∧
   (abi_value (FixedBytesT _) (ScalarValue (BytesValue bs)) = SOME (BytesV bs)) ∧
+  (abi_value (EnumT _) (ScalarValue (IntegerValue i)) = SOME (NumV (Num i))) ∧
   (abi_value BytesT (ScalarValue (BytesValue bs)) = SOME (BytesV bs)) ∧
   (abi_value StringT (ScalarValue (BytesValue bs)) = SOME (BytesV bs)) ∧
   (abi_value (LocatedT _ ty) v = abi_value ty v) ∧
@@ -124,6 +126,8 @@ Definition abi_runtime_value_def:
     SOME (ScalarValue (AddressValue (n2w n)))) ∧
   (abi_runtime_value (FixedBytesT _) (BytesV bs) =
     SOME (ScalarValue (BytesValue bs))) ∧
+  (* a uint8, which dispatch checks against the enum's members *)
+  (abi_runtime_value (EnumT _) (NumV n) = SOME (ScalarValue (IntegerValue (&n)))) ∧
   (abi_runtime_value _ _ = NONE)
 End
 
@@ -363,6 +367,39 @@ Definition encoded_runtime_values_def:
     | INR c => INR c
 End
 
+(* abi.encodePacked: a value in its own width, a bytesN left-aligned and the
+ * others right-aligned in their word; a byte sequence as its contents,
+ * wherever it is. *)
+Definition packed_value_def:
+  packed_value st ty v =
+    case ty of
+      LocatedT _ _ =>
+        (case v of
+           ReferenceValue r => byte_contents st r
+         | ScalarValue (BytesValue bs) => INL bs
+         | _ => INR (InvalidCompletion "bad packed value"))
+    | _ =>
+      case (abi_value ty v, storage_bytes ty) of
+        (SOME a, SOME width) =>
+          let word = enc (abi_type ty) a in
+          INL (case ty of
+                 FixedBytesT _ => TAKE width word
+               | _ => DROP (32 - width) word)
+      | _ => INR (InvalidCompletion "bad packed value")
+End
+
+Definition packed_values_def:
+  (packed_values st [] [] = (INL [] : byte list + source_completion)) ∧
+  (packed_values st (ty :: tys) (v :: vs) =
+    case packed_value st ty v of
+      INR c => INR c
+    | INL bs =>
+      case packed_values st tys vs of
+        INL rest => INL (bs ++ rest)
+      | INR c => INR c) ∧
+  (packed_values _ _ _ = INR (InvalidCompletion "bad packed values"))
+End
+
 Definition abi_runtime_values_def:
   (abi_runtime_values [] [] = SOME []) ∧
   (abi_runtime_values (ty :: tys) (a :: as) =
@@ -493,9 +530,11 @@ Definition array_copy_value_def:
 End
 
 (* An argument at head: a scalar or static array in place, any other value at
- * the offset the head holds. A calldata byte sequence stays in the calldata. *)
+ * the offset the head holds. A calldata byte sequence stays in the calldata.
+ * An enum outside its members reverts, as the pinned decoder's validator
+ * does before it reads the next argument. *)
 Definition decode_abi_argument_def:
-  decode_abi_argument ty bs head base free =
+  decode_abi_argument env ty bs head base free =
     if head + 32 > LENGTH bs then INR (RevertCompletion []) else
     case ty of
       LocatedT CalldataLoc (ArrayT element (SOME n)) =>
@@ -515,24 +554,31 @@ Definition decode_abi_argument_def:
           if 2 ** 64 ≤ offset then INR (RevertCompletion [])
           else decode_memory_value element bs offset free
         else decode_memory_value element bs head free
+    | EnumT _ =>
+        (case decode_memory_value ty bs head free of
+           INL (ScalarValue s, next) =>
+             if scalar_has_type env ty s then INL (ScalarValue s, next)
+             else INR (RevertCompletion [])
+         | INL _ => INR (InvalidCompletion "bad ABI enum")
+         | INR c => INR c)
     | _ => decode_memory_value ty bs head free
 End
 
 Definition decode_abi_arguments_def:
-  (decode_abi_arguments [] bs head base free = INL []) ∧
-  (decode_abi_arguments (ty :: tys) bs head base free =
-    case decode_abi_argument ty bs head base free of
+  (decode_abi_arguments env [] bs head base free = INL []) ∧
+  (decode_abi_arguments env (ty :: tys) bs head base free =
+    case decode_abi_argument env ty bs head base free of
       INR c => INR c
     | INL (v, next) =>
-        case decode_abi_arguments tys bs (head + abi_stride ty) base next of
+        case decode_abi_arguments env tys bs (head + abi_stride ty) base next of
           INL vs => INL (v :: vs)
         | INR c => INR c)
 End
 
 Definition decode_arguments_def:
-  decode_arguments tys bs base free =
+  decode_arguments env tys bs base free =
     if head_lengths (MAP abi_type tys) 0 > LENGTH bs then INR (RevertCompletion [])
-    else decode_abi_arguments tys bs 0 base free
+    else decode_abi_arguments env tys bs 0 base free
 End
 
 (* A decoded memory value as heap objects, allocated in decoding order: an
@@ -544,7 +590,8 @@ Definition materialize_value_def:
         let n = LENGTH vs in
         let id = st.next_heap_id + 1 in
         let obj = <| object_type := ty; object_length := n;
-                     object_cells := FEMPTY |> in
+                     object_cells := FEMPTY;
+                     object_address := 128 + st.memory_allocated |> in
         let st1 = st with <| heap := st.heap |+ (id, obj); next_heap_id := id;
                      memory_allocated := st.memory_allocated +
                        (if length = NONE then 32 else 0) + 32 * n |> in
@@ -708,6 +755,16 @@ Proof
 QED
 
 val () = cv_auto_trans encoded_runtime_values_def;
+val () = cv_auto_trans packed_value_def;
+val packed_values_pre_def =
+  cv_auto_trans_pre "packed_values_pre" packed_values_def;
+
+Theorem packed_values_pre[cv_pre]:
+  ∀st tys vs. packed_values_pre st tys vs
+Proof
+  ho_match_mp_tac packed_values_ind >> rpt strip_tac >>
+  simp[Once packed_values_pre_def] >> rw[] >> gvs[]
+QED
 val () = cv_auto_trans memory_free_pointer_def;
 val decode_memory_value_pre_def = cv_auto_trans_pre_rec "decode_memory_value_pre decode_memory_elements_pre" decode_memory_value_def (
   WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of

@@ -25,12 +25,16 @@ End
 
 (* Addressable heap objects: references carry identity and a captured offset.
  * Byte sequences use the length and byte cells; other heap values are deferred.
+ * object_address is the memory address the compiler's allocator gives the
+ * object (the free memory pointer when it is allocated), which inline
+ * assembly sees as the reference's value.
  *)
 Datatype:
   heap_object = <|
     object_type : sol_type;
     object_length : num;
-    object_cells : num |-> runtime_value
+    object_cells : num |-> runtime_value;
+    object_address : num
   |>
 End
 
@@ -48,12 +52,15 @@ End
 
 (* Scopes, heap and targets are num-keyed finite maps (scopes and targets keyed
  * by the ast_id's number), which cv encodes as sptrees. Scopes are innermost
- * first.
+ * first. The immutables are the values of the contract's immutables, keyed by
+ * their declarations: those the deployed code holds, or, during creation, those
+ * the constructor has assigned so far; one not there is zero.
  *)
 Datatype:
   source_state = <|
     world : source_world;
     frame : source_frame;
+    immutables : num |-> scalar;
     scopes : (num |-> source_binding) list;
     heap : num |-> heap_object;
     next_heap_id : num;

@@ -27,6 +27,7 @@ Definition yul_test_machine_def:
     <| accounts := empty_accounts; transient := empty_transient_storage;
        logs := []; self_address := 0w;
        caller_address := 0w; call_value := 0w; call_data := []; return_data := [];
+       code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
        memory_size := 0; gas_limit := 0; scopes := [];
        transaction_parameters := yul_test_tx_params |>
@@ -47,6 +48,7 @@ Definition yul_frame_machine_def:
     <| accounts := empty_accounts; transient := empty_transient_storage;
        logs := []; self_address := 0x1234w;
        caller_address := 0x5678w; call_value := 0w; call_data := []; return_data := [];
+       code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32) |+ ("3", 42w);
        memory := FEMPTY; memory_size := 0; gas_limit := 0; scopes := [];
        transaction_parameters := yul_test_tx_params |>
@@ -881,6 +883,7 @@ Definition yul_call_machine_def:
        transient := empty_transient_storage;
        logs := []; self_address := 0x1234w; caller_address := 0x5678w;
        call_value := 0w; call_data := []; return_data := [0xaaw; 0xbbw; 0xccw];
+       code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
        memory_size := 0; gas_limit := 100000; scopes := [];
        transaction_parameters := yul_test_tx_params |>
@@ -1175,6 +1178,19 @@ Proof
   CONV_TAC cv_eval
 QED
 
+Theorem left_shift_discards_bits_beyond_word_width:
+  eval_yul_builtin YShl [0w; 2w] yul_test_machine =
+    EvalValues [2w] yul_test_machine ∧
+  eval_yul_builtin YShl [255w; 1w] yul_test_machine =
+    EvalValues [n2w (2 ** 255)] yul_test_machine ∧
+  eval_yul_builtin YShl [256w; 2w] yul_test_machine =
+    EvalValues [0w] yul_test_machine ∧
+  eval_yul_builtin YShl [-1w; 2w] yul_test_machine =
+    EvalValues [0w] yul_test_machine
+Proof
+  CONV_TAC cv_eval
+QED
+
 (* Dynamic byte copying emits BYTE and MSTORE8. *)
 Theorem byte_extraction:
   eval_yul_builtin YByte [30w; 0x1234w] yul_test_machine =
@@ -1243,6 +1259,64 @@ Theorem calldatacopy_overwrites_padding:
         call_data := [0x11w; 0x22w; 0x33w];
         memory := FEMPTY |+ (33, 0xffw) |+ (34, 0xffw);
         memory_size := 64 |>)).machine 31 4 = [0x22w; 0x33w; 0w; 0w]
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* Creation object names can be longer than a value literal. *)
+Theorem creation_long_object_name:
+  eval_yul_expr 20 FEMPTY
+    (YulBuiltin YDataSize
+      [YulLit (LitBytes (MAP (n2w o ORD) "DynamicStorageArrays_739_deployed"))])
+    (yul_test_machine with objects :=
+       FEMPTY |+ ("DynamicStorageArrays_739_deployed", (11, 37))) =
+    EvalValues [37w] (yul_test_machine with objects :=
+       FEMPTY |+ ("DynamicStorageArrays_739_deployed", (11, 37)))
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem creation_code_is_separate_from_calldata:
+  eval_yul_builtin YCodeSize []
+    (yul_test_machine with code := [0x11w; 0x22w]) =
+      EvalValues [2w] (yul_test_machine with code := [0x11w; 0x22w]) ∧
+  eval_yul_builtin YCallDataSize []
+    (yul_test_machine with code := [0x11w; 0x22w]) =
+      EvalValues [0w] (yul_test_machine with code := [0x11w; 0x22w])
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem creation_codecopy_pads:
+  (run_yul 20
+    [YulExprStmt (YulBuiltin YCodeCopy
+       [YulLit (LitNumber 31w); YulLit (LitNumber 1w); YulLit (LitNumber 4w)]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 31w); YulLit (LitNumber 4w)])]
+    (yul_test_machine with code := [0x11w; 0x22w; 0x33w])).completion =
+      YulReturn [0x22w; 0x33w; 0w; 0w]
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem creation_setimmutable_uses_base_and_every_offset:
+  (run_yul 20
+    [YulExprStmt (YulBuiltin YSetImmutable
+       [YulLit (LitNumber 10w); YulLit (LitBytes [0x33w]);
+        YulLit (LitNumber 42w)])]
+    (yul_test_machine with immutable_offsets := FEMPTY |+ ("3", [5; 40]))).machine =
+    (yul_mstore (yul_mstore
+       (yul_test_machine with immutable_offsets := FEMPTY |+ ("3", [5; 40]))
+       15 (42w : bytes32)) 50 (42w : bytes32)) with
+      <| immutables := FEMPTY |+ ("3", 42w); scopes := [FEMPTY] |>
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem creation_unknown_object_fails:
+  eval_yul_expr 20 FEMPTY
+    (YulBuiltin YDataOffset [YulLit (LitBytes [0x78w])]) yul_test_machine =
+    EvalAbrupt (YulInvalid "unknown object") yul_test_machine
 Proof
   CONV_TAC cv_eval
 QED

@@ -1,0 +1,369 @@
+{
+  "name": "pure_core",
+  "source": "testdata/frontend/pure_core.sol",
+  "contract": "PureCore",
+  "artifact": "testdata/frontend/expected/pure_core.json",
+  "cases": [
+    {
+      "name": "checked_branch_overwrite_returns",
+      "function": "checkedBranchOverwrite",
+      "args": [
+        7,
+        true
+      ],
+      "expect": {
+        "return": [
+          8
+        ]
+      }
+    },
+    {
+      "name": "checked_branch_overwrite_panics",
+      "function": "checkedBranchOverwrite",
+      "args": [
+        254,
+        false
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "add_returns",
+      "function": "add",
+      "args": [
+        2,
+        3
+      ],
+      "expect": {
+        "return": [
+          5
+        ]
+      }
+    },
+    {
+      "name": "add_boundary",
+      "function": "add",
+      "args": [
+        255,
+        0
+      ],
+      "expect": {
+        "return": [
+          255
+        ]
+      }
+    },
+    {
+      "name": "add_overflow_panics",
+      "function": "add",
+      "args": [
+        200,
+        100
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "unchecked_add_wraps",
+      "function": "wrappingAdd",
+      "args": [
+        200,
+        100
+      ],
+      "expect": {
+        "return": [
+          44
+        ]
+      }
+    },
+    {
+      "name": "while_prelude_continue_exit",
+      "function": "count",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          2,
+          5
+        ]
+      }
+    },
+    {
+      "name": "while_break",
+      "function": "count",
+      "args": [
+        100
+      ],
+      "expect": {
+        "return": [
+          3,
+          6
+        ]
+      }
+    },
+    {
+      "name": "for_continue_increments",
+      "function": "sum",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          8
+        ]
+      }
+    },
+    {
+      "name": "do_while_runs_once",
+      "function": "doubleUntil",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          2
+        ]
+      }
+    },
+    {
+      "name": "do_while_loops",
+      "function": "doubleUntil",
+      "args": [
+        7
+      ],
+      "expect": {
+        "return": [
+          8
+        ]
+      }
+    },
+    {
+      "name": "recursion",
+      "function": "fact",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          120
+        ]
+      }
+    },
+    {
+      "name": "recursion_overflow_panics",
+      "function": "fact",
+      "args": [
+        100
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "multiple_returns",
+      "function": "divmod",
+      "args": [
+        17,
+        5
+      ],
+      "expect": {
+        "return": [
+          3,
+          2
+        ]
+      }
+    },
+    {
+      "name": "division_by_zero_panics",
+      "function": "divmod",
+      "args": [
+        1,
+        0
+      ],
+      "expect": {
+        "panic": "0x12"
+      }
+    },
+    {
+      "name": "tuple_assignment",
+      "function": "swap",
+      "args": [],
+      "expect": {
+        "return": [
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "name": "locals_and_tuple_declarations",
+      "function": "locals",
+      "args": [
+        10
+      ],
+      "expect": {
+        "return": [
+          10
+        ]
+      }
+    },
+    {
+      "name": "narrowing_conversion",
+      "function": "narrow",
+      "args": [
+        300
+      ],
+      "expect": {
+        "return": [
+          44,
+          false
+        ]
+      }
+    },
+    {
+      "name": "negate_overflow_panics",
+      "function": "negate",
+      "args": [
+        -128
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "negate_returns",
+      "function": "negate",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          -5
+        ]
+      }
+    },
+    {
+      "name": "address_and_bytes",
+      "function": "identity",
+      "args": [
+        4660,
+        "0x0f0f0f0f"
+      ],
+      "expect": {
+        "return": [
+          4660,
+          "0xf0f0f0f0"
+        ]
+      }
+    },
+    {
+      "name": "address_as_bytes",
+      "function": "identity",
+      "args": [
+        "0x000000000000000000000000000000000000beef",
+        "0x00000000"
+      ],
+      "expect": {
+        "return": [
+          48879,
+          "0xffffffff"
+        ]
+      }
+    },
+    {
+      "name": "and_skips_division",
+      "function": "guardedDivide",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          false
+        ]
+      }
+    },
+    {
+      "name": "and_evaluates_division",
+      "function": "guardedDivide",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "and_division_panics",
+      "function": "badDivide",
+      "args": [
+        0
+      ],
+      "expect": {
+        "panic": "0x12"
+      }
+    },
+    {
+      "name": "or_skips_increment",
+      "function": "shortCircuit",
+      "args": [
+        10
+      ],
+      "expect": {
+        "return": [
+          true,
+          0
+        ]
+      }
+    },
+    {
+      "name": "or_runs_increment",
+      "function": "shortCircuit",
+      "args": [
+        1
+      ],
+      "expect": {
+        "return": [
+          true,
+          1
+        ]
+      }
+    },
+    {
+      "name": "left_operand_panics_first",
+      "function": "panicOrder",
+      "args": [
+        0
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "left_argument_panics_first",
+      "function": "argumentOrder",
+      "args": [
+        0
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "compound_assignment_reads_after_rhs",
+      "function": "compoundOrder",
+      "args": [
+        1
+      ],
+      "expect": {
+        "return": [
+          10
+        ]
+      }
+    }
+  ]
+}

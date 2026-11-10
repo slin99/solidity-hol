@@ -23,6 +23,8 @@ Definition builtin_name_def:
   builtin_name YSDiv = "sdiv" ∧
   builtin_name YMod = "mod" ∧
   builtin_name YSMod = "smod" ∧
+  builtin_name YAddMod = "addmod" ∧
+  builtin_name YMulMod = "mulmod" ∧
   builtin_name YExp = "exp" ∧
   builtin_name YSignExtend = "signextend" ∧
   builtin_name YLt = "lt" ∧
@@ -82,7 +84,9 @@ Definition builtin_name_def:
   builtin_name YCodeSize = "codesize" ∧
   builtin_name YCodeCopy = "codecopy" ∧
   builtin_name YDataSize = "datasize" ∧
-  builtin_name YDataOffset = "dataoffset"
+  builtin_name YDataOffset = "dataoffset" ∧
+  builtin_name YSetImmutable = "setimmutable" ∧
+  builtin_name YLinkerSymbol = "linkersymbol"
 End
 
 Definition builtin_of_name_def:
@@ -94,6 +98,8 @@ Definition builtin_of_name_def:
     else if name = "sdiv" then SOME YSDiv
     else if name = "mod" then SOME YMod
     else if name = "smod" then SOME YSMod
+    else if name = "addmod" then SOME YAddMod
+    else if name = "mulmod" then SOME YMulMod
     else if name = "exp" then SOME YExp
     else if name = "signextend" then SOME YSignExtend
     else if name = "lt" then SOME YLt
@@ -154,6 +160,8 @@ Definition builtin_of_name_def:
     else if name = "codecopy" then SOME YCodeCopy
     else if name = "datasize" then SOME YDataSize
     else if name = "dataoffset" then SOME YDataOffset
+    else if name = "setimmutable" then SOME YSetImmutable
+    else if name = "linkersymbol" then SOME YLinkerSymbol
     else NONE
 End
 
@@ -191,6 +199,8 @@ Definition builtin_effect_def:
   builtin_effect YSDiv = EffectPure ∧
   builtin_effect YMod = EffectPure ∧
   builtin_effect YSMod = EffectPure ∧
+  builtin_effect YAddMod = EffectPure ∧
+  builtin_effect YMulMod = EffectPure ∧
   builtin_effect YExp = EffectPure ∧
   builtin_effect YSignExtend = EffectPure ∧
   builtin_effect YLt = EffectPure ∧
@@ -250,7 +260,9 @@ Definition builtin_effect_def:
   builtin_effect YCodeSize = EffectObject ∧
   builtin_effect YCodeCopy = EffectObject ∧
   builtin_effect YDataSize = EffectObject ∧
-  builtin_effect YDataOffset = EffectObject
+  builtin_effect YDataOffset = EffectObject ∧
+  builtin_effect YSetImmutable = EffectObject ∧
+  builtin_effect YLinkerSymbol = EffectObject
 End
 
 Theorem builtin_of_name_name:
@@ -259,12 +271,15 @@ Proof
   Cases_on ‘b’ >> EVAL_TAC
 QED
 
-(* The four object-level builtins read the running code or the object's
- * layout, which the evaluator does not model, and it rejects them.
+(* The object-level builtins read the running code or the object's layout,
+ * or, setimmutable, write the deployed code's immutables into its copy in
+ * memory, or, linkersymbol, read a linked library's address. Creation frames
+ * supply the code and layout; linkersymbol remains unsupported.
  *)
 Theorem builtin_effect_object:
   ∀b. builtin_effect b = EffectObject ⇔
-      b = YCodeSize ∨ b = YCodeCopy ∨ b = YDataSize ∨ b = YDataOffset
+      b = YCodeSize ∨ b = YCodeCopy ∨ b = YDataSize ∨ b = YDataOffset ∨
+      b = YSetImmutable ∨ b = YLinkerSymbol
 Proof
   Cases_on ‘b’ >> EVAL_TAC
 QED

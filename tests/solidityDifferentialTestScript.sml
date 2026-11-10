@@ -1,16 +1,23 @@
 (* The comparison itself: deliberately altered expectations and a mismatching
  * fixture are detected, and diagnostics are never agreement. The corpus
- * witnesses are in solidityDifferentialCorpus.
+ * witnesses are in the per-suite solidityDifferentialCorpus theories.
  *)
 Theory solidityDifferentialTest
 Ancestors
-  solidityDifferential solidityDifferentialCorpus
+  solidityDifferential solidityBytecode
+  solidityDifferentialCorpus_pure_core solidityDifferentialCorpus_storage
+  solidityDifferentialCorpus_mappings solidityDifferentialCorpus_token
 Libs
-  solidityImportLib cv_transLib wordsLib intLib
+  solidityImportLib solidityDifferentialLib cv_transLib wordsLib intLib
 
 (* Read by holbuild's dependency scanner, which stages the fixture. *)
 fun holbuild_extra_deps (_ : string list) = ()
-val () = holbuild_extra_deps ["../testdata/differential/expected/mutant.json"]
+val () = holbuild_extra_deps [
+  "../testdata/differential/expected/mutant.json",
+  "../testdata/differential/negative/bridge.json",
+  "../testdata/differential/expected/storage.json",
+  "../testdata/differential/storage.sol", "../SOLIDITY_PIN",
+  "../profiles/solc-0.8.37-via-ir-osaka.json"]
 
 (* testdata/differential/mutant.sol: PureCore.add, but wrapping. *)
 Definition mutant_code_def:
@@ -40,7 +47,8 @@ Definition named_call_def:
   named_call name args storage expect final =
     <| case_sender := 0x2000w; case_value := 0; case_input := NamedCall name args;
        case_storage := storage; case_peer_code := []; case_peer_storage := [];
-       case_expect := expect; case_final := final; case_logs := [] |>
+       case_expect := expect; case_final := final; case_logs := [];
+       case_immutables := []; case_immutable_refs := [] |>
 End
 
 val () = cv_auto_trans named_call_def;
@@ -231,7 +239,7 @@ Definition mint_call_def:
          [(2, 5);
           (68113724183316182233052564790125915752421945217496801851705428207216635038832,
            5)];
-       case_logs := logs |>
+       case_logs := logs; case_immutables := []; case_immutable_refs := [] |>
 End
 
 val () = cv_auto_trans mint_call_def;
@@ -264,3 +272,39 @@ Proof
   CONV_TAC (cv_eval_call "observed_slots") >>
   CONV_TAC cv_eval
 QED
+
+(* Exercise the runner, including its reported diagnostics, rather than only
+ * differential_verdict: these paths previously hid an input mismatch or
+ * replaced UnknownFunction with a generic bridge error. *)
+local
+  val path = OS.FileSys.tmpName ()
+  val output = TextIO.openOut path
+  val saved = TextIO.getOutstream TextIO.stdOut
+  val () = TextIO.flushOut TextIO.stdOut
+  val () = TextIO.setOutstream (TextIO.stdOut, TextIO.getOutstream output)
+  val rejected =
+    ((solidityDifferentialLib.run_suite_file
+        {root = "..", suite_file = "testdata/differential/negative/bridge.json",
+         fuel = 1000, bytecode_theory = "solidityBytecodeCorpus_storage"}; false)
+     handle HOL_ERR _ => true)
+    handle e => (TextIO.setOutstream (TextIO.stdOut, saved);
+                 TextIO.closeOut output; OS.FileSys.remove path; raise e)
+  val () = TextIO.flushOut TextIO.stdOut
+  val () = TextIO.setOutstream (TextIO.stdOut, saved)
+  val () = TextIO.closeOut output
+  val input = TextIO.openIn path
+  val report = TextIO.inputAll input
+  val () = TextIO.closeIn input
+  val () = OS.FileSys.remove path
+  val cases = List.filter (String.isPrefix "differential-result: " )
+                (String.tokens (fn c => c = #"\n") report)
+  fun reported fields = List.exists
+    (fn line => List.all (fn field => String.isSubstring field line) fields) cases
+in
+  val () = if rejected andalso
+      reported ["\"case\":\"set_total\"", "\"status\":\"error\"",
+                "prepared EVM input differs", "transaction"] andalso
+      reported ["\"case\":\"get_total_reads_storage\"",
+                "\"status\":\"inconclusive\"", "UnknownFunction"]
+    then () else raise Fail ("bridge regression: " ^ report)
+end

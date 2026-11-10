@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Sequence
 import json
 import os
 from pathlib import Path
@@ -27,9 +28,8 @@ OUTPUT_SELECTION: dict[str, dict[str, list[str]]] = {
             "transientStorageLayout",
             "evm.bytecode.object",
             "evm.deployedBytecode.object",
+            "evm.deployedBytecode.immutableReferences",
             "evm.methodIdentifiers",
-            "ir",
-            "irOptimized",
         ],
     }
 }
@@ -144,9 +144,10 @@ def build_artifact(solc: Path, source_paths: list[Path], profile_path: Path) -> 
 
 
 def build_artifact_from_sources(
-    solc: Path, sources: dict[str, str], profile_path: Path
+    solc: Path, sources: dict[str, str], profile_path: Path,
+    remappings: Sequence[str] = (),
 ) -> dict[str, Any]:
-    """The artifact of sources given by Standard JSON name and content."""
+    """Compile named sources with optional solc import remappings."""
     pin = PIN_FILE.read_text(encoding="ascii").strip()
     if re.fullmatch(r"[0-9a-f]{40}", pin) is None:
         raise SystemExit(f"{PIN_FILE} must contain one lowercase 40-character SHA")
@@ -163,6 +164,8 @@ def build_artifact_from_sources(
         "sources": {name: {"content": sources[name]} for name in sorted(sources)},
         "settings": {**settings, "outputSelection": OUTPUT_SELECTION},
     }
+    if remappings:
+        compiler_input["settings"]["remappings"] = list(remappings)
     compiler_output = compile_standard_json(solc, compiler_input)
     return {
         "format": "solidity-hol-solc-artifact-v1",

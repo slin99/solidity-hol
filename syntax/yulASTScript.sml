@@ -21,12 +21,9 @@
  * the unittest tests/test_yul_reconnaissance.py checks the dialect's names
  * against it), plus the ones contracts beyond the corpus need: the executing
  * account, a three-topic log, a memory-to-memory copy and an immutable value
- * the constructor patched in.  The four object-level ones (codesize,
- * codecopy, datasize, dataoffset) read the running code or the object's
- * layout, which the evaluator does not model; the compiler emits them in
- * creation objects, and inline assembly can use codesize and codecopy
- * anywhere. They are here so the set is complete and the evaluator can
- * reject them rather than misread them.
+ * the constructor patched in. Object-level builtins read the running code,
+ * named object layout and immutable patch offsets supplied by the frame.
+ * Unsupported layouts and names fail closed.
  *)
 Theory yulAST
 Ancestors
@@ -37,7 +34,8 @@ Libs
 Datatype:
   yul_builtin
   = (* arithmetic *)
-    YAdd | YSub | YMul | YDiv | YSDiv | YMod | YSMod | YExp | YSignExtend
+    YAdd | YSub | YMul | YDiv | YSDiv | YMod | YSMod | YAddMod | YMulMod | YExp
+  | YSignExtend
     (* comparison and bitwise *)
   | YLt | YGt | YSLt | YSGt | YEq | YIsZero | YAnd | YOr | YXor | YNot
   | YShl | YShr | YSar | YByte
@@ -59,7 +57,9 @@ Datatype:
     (* halting *)
   | YStop | YReturn | YRevert
     (* object level: the creation object only *)
-  | YCodeSize | YCodeCopy | YDataSize | YDataOffset
+  | YCodeSize | YCodeCopy | YDataSize | YDataOffset | YSetImmutable
+    (* linking *)
+  | YLinkerSymbol
 End
 
 Datatype:
@@ -75,6 +75,9 @@ Datatype:
   | YulName string
   | YulBuiltin yul_builtin (yul_expr list)
   | YulApply string (yul_expr list)
+    (* a builtin call in inline assembly, whose memory reads must stay in the
+     * memory the block was given; the parser never produces it *)
+  | YulCheckedBuiltin yul_builtin (yul_expr list)
 End
 
 Datatype:

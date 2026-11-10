@@ -81,6 +81,7 @@ Definition yul_contract_machine_def:
        logs := []; self_address := 0x1000w;
        caller_address := 0x2000w; call_value := 0w; call_data := data;
        return_data := [];
+       code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32) |+ ("11", 1000000w);
        memory := FEMPTY; memory_size := 0; gas_limit := 10000000; scopes := [];
        transaction_parameters := yul_contract_tx_params |>

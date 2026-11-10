@@ -41,8 +41,9 @@ declarations and storage layouts. `core_program_environment` derives the
 checking/runtime environment from that program. Struct declarations describe
 field identities and types even when there is no storage layout. Storage
 layouts separately describe slots and offsets and must agree with the declared
-fields. Enum and user-defined value declarations also live in the program;
-their importer coverage is still deferred.
+fields. Enums retain their declaration identities. The importer erases user-defined
+value types to their elementary underlying types and lowers their resolved
+operators to internal calls.
 
 The evaluator executes elementary scalar operations and conversions, locals,
 tuples, structured control flow, internal calls, built-in failures, packed
@@ -55,14 +56,30 @@ rebinding and content copying are distinct core operations; the latter two
 remain extension points rather than implemented aggregate semantics.
 
 An inline assembly block (`AssemblyStmt`) runs on the Yul evaluator, over a
-memory holding only the free memory pointer: it reads and writes back the
-value-type locals it names, sees state variables' slots and offsets, may write
-only the scratch space unless it halts, may read only memory it wrote itself
-(not the free memory pointer, which the compiler may raise to keep variables in
-memory), and `return`/`stop` end the frame with a `HaltCompletion`. Memory
+memory holding each memory `bytes` and `string` object where the compiler
+allocates it (its length word at its address, then its bytes): it reads and
+writes back the value-type locals it names, reads state variables' slots and
+offsets, integer, `bool` and fixed-bytes constants, and the addresses of the memory
+`bytes` and `string` locals it names as literals in its code, as the compiler
+puts them, so its Yul functions see them too (a function's parameters and results may
+reuse such a name in its body; a memory reference may not be assigned). At a
+literal address it may write only the scratch space unless it halts and read
+only the free memory pointer and memory it wrote itself (an `mstore`, or a
+call's output region); at a computed address, a block that
+exits normally may write only the scratch space and the byte sequences' data
+words, not their length words or the free memory pointer, and their bytes are
+read back. Whatever the address, a read outside the free memory pointer, the
+zero slot, the byte sequences' words and the bytes the block wrote fails with
+an `InvalidCompletion`. `return`/`stop`
+end the frame with a `HaltCompletion`. `call` and `staticcall` run the
+callee through the same `externalCall` adapter as high-level calls, with the
+same fixed gas budget: `gas()` may only be a call's gas argument, where it
+stands for that budget, and `returndatasize`/`returndatacopy` only follow a
+call the block made itself (the source keeps no return data buffer). In a
+static frame a block naming `call` fails closed. Memory
 expansion gas is not modelled, so a halting block's write far past the used
-memory succeeds where the EVM runs out of gas. Memory/calldata execution and a memory model shared with
-inline assembly remain unresolved. High-level external calls run the callee on Verifereum
+memory succeeds where the EVM runs out of gas. Memory/calldata execution and a memory
+model shared with inline assembly beyond byte sequences remain unresolved. High-level external calls run the callee on Verifereum
 through `externalCall`, a provisional adapter with a fixed gas budget and a
 fresh callee frame; creation is not connected yet. Core well-formedness alone does not rule out `InvalidCompletion`:
 for example, a storage write in a static frame is deliberately invalid.
@@ -95,9 +112,28 @@ The differential corpus compares source evaluation with pinned compiler
 bytecode in Verifereum, including complete committed contract storage. Slot
 lists select diagnostics; they do not limit comparison. The upstream `semanticTests` coverage tool checks
 preparation acceptance; it does not execute the tests' call expectations.
+Each rejected test lists every blocker preparation reports, with its node
+id; the tool only groups those lines under feature labels.
+The coverage tool stages its compiler artifacts and pin/profile files for a
+cached `holbuild run-action` batches of up to 128 tests on the configured
+remote-execution fleet. Batches run serially because their startup/export
+phases share holbuild's project mutation lock. Completed batches
+can be reused after an interrupted run. Python 3.11 or later is required. Without
+a configured fleet, it runs the preparation check locally. An older holbuild
+without `run-action` needs an upgrade when remote execution/cache is configured;
+otherwise it can use the local check. A configured fleet's execution failures stop
+the coverage run instead of falling back locally.
 See [differential-testing.md](docs/differential-testing.md),
 [profiles.md](docs/profiles.md) and
 [semantic-tests-coverage.md](docs/semantic-tests-coverage.md).
+Run admitted upstream call expectations separately with
+[`tools/run_semantic_expectations.py`](docs/semantic-expectations-runner.md);
+this on-demand sweep does not run in per-PR CI.
+
+Feature PRs include their own suite, compiler artifact and generated per-suite
+source/bytecode theories; shared report
+snapshots are refreshed after merges. See
+[generated-artifacts.md](docs/generated-artifacts.md) for the commands and ownership.
 
 See [implementation-blueprint.md](docs/implementation-blueprint.md) for module
 ownership, evaluator interfaces and extension points.

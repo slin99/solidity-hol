@@ -1,0 +1,241 @@
+{
+  "name": "low_level_calls",
+  "source": "testdata/differential/low_level_calls.sol",
+  "contract": "LowLevelCalls",
+  "artifact": "testdata/differential/expected/low_level_calls.json",
+  "peer": {
+    "source": "testdata/differential/low_level_calls_peer.sol",
+    "contract": "StaticPeer",
+    "artifact": "testdata/differential/expected/low_level_calls_peer.json"
+  },
+  "cases": [
+    {
+      "name": "value_returns_data",
+      "function": "raw",
+      "args": [
+        20480,
+        "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000015"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0x000000000000000000000000000000000000000000000000000000000000002a"
+        ]
+      }
+    },
+    {
+      "name": "no_return_data_is_empty",
+      "function": "raw",
+      "args": [
+        20480,
+        "0x448f30a3"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "callee_revert_is_returned",
+      "function": "raw",
+      "args": [
+        20480,
+        "0x132e4f3c0000000000000000000000000000000000000000000000000000000000000001"
+      ],
+      "expect": {
+        "return": [
+          false,
+          "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b70656572206661696c6564000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "callee_success_after_check",
+      "function": "raw",
+      "args": [
+        20480,
+        "0x132e4f3c0000000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "state_write_fails_under_static",
+      "function": "raw",
+      "args": [
+        20480,
+        "0x68110b2f"
+      ],
+      "peer_storage": {
+        "0": 7
+      },
+      "expect": {
+        "return": [
+          false,
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "reads_callee_storage",
+      "function": "raw",
+      "args": [
+        20480,
+        "0x57de26a4"
+      ],
+      "peer_storage": {
+        "0": 7
+      },
+      "expect": {
+        "return": [
+          true,
+          "0x0000000000000000000000000000000000000000000000000000000000000007"
+        ]
+      }
+    },
+    {
+      "name": "unknown_selector_fails",
+      "function": "raw",
+      "args": [
+        20480,
+        "0xdeadbeef"
+      ],
+      "expect": {
+        "return": [
+          false,
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "empty_data_without_fallback_fails",
+      "function": "raw",
+      "args": [
+        20480,
+        "0x"
+      ],
+      "expect": {
+        "return": [
+          false,
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "address_without_code_succeeds",
+      "function": "raw",
+      "args": [
+        24576,
+        "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000015"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "payable_target",
+      "function": "rawPayable",
+      "args": [
+        20480,
+        "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000005"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0x000000000000000000000000000000000000000000000000000000000000000a"
+        ]
+      }
+    },
+    {
+      "name": "decodes_result",
+      "function": "doubled",
+      "args": [
+        20480,
+        "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000064"
+      ],
+      "expect": {
+        "return": [
+          true,
+          200
+        ]
+      }
+    },
+    {
+      "name": "failed_call_skips_decode",
+      "function": "doubled",
+      "args": [
+        20480,
+        "0x132e4f3c0000000000000000000000000000000000000000000000000000000000000001"
+      ],
+      "expect": {
+        "return": [
+          false,
+          0
+        ]
+      }
+    },
+    {
+      "name": "short_result_reverts_decode",
+      "function": "doubled",
+      "args": [
+        20480,
+        "0x448f30a3"
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "no_code_result_reverts_decode",
+      "function": "doubled",
+      "args": [
+        24576,
+        "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000001"
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "results_are_allocated_in_order",
+      "function": "twice",
+      "args": [
+        20480,
+        "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000001",
+        "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000002"
+      ],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000002",
+          "0x0000000000000000000000000000000000000000000000000000000000000004",
+          "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000001"
+        ]
+      }
+    },
+    {
+      "name": "empty_result_allocates_nothing",
+      "function": "twice",
+      "args": [
+        20480,
+        "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000001",
+        "0x448f30a3"
+      ],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000002",
+          "0x",
+          "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000001"
+        ]
+      }
+    }
+  ]
+}

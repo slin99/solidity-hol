@@ -59,9 +59,38 @@ QED
 val () = rejects solidityPrepareLib.InvalidCore
   (fn () => ignore (solidityPrepareLib.prepare_unit “invalid_generated_layout”));
 
-val () = rejects solidityPrepareLib.UnsupportedLowering
+(* A unit with no contract is refused as a whole, with that reason. *)
+val () =
+  (ignore (solidityPrepareLib.prepare_unit
+     “pure_core with unit_contracts := []”);
+   raise Fail "preparation unexpectedly accepted input")
+  handle solidityPrepareLib.PreparationError
+           (solidityPrepareLib.UnsupportedLowering, msg) =>
+    if String.isSubstring ": no contract" msg then ()
+    else raise Fail ("unit-level reason missing: " ^ msg);
+
+(* A function header the source check rejects (here a parameter's scope or
+ * type) rejects the unit: only a body is confined to its function. *)
+fun edited_unit name =
+  rhs (concl (DB.fetch "solidityImportTest" (name ^ "_def")));
+val () = rejects solidityPrepareLib.SourceRejected
+  (fn () => ignore (solidityPrepareLib.prepare_unit (edited_unit "wrong_scope")));
+val () = rejects solidityPrepareLib.SourceRejected
   (fn () => ignore (solidityPrepareLib.prepare_unit
-    “pure_core with unit_contracts := []”));
+                      (edited_unit "declaration_type_mismatch")));
+
+(* A modifier whose body fails import makes its invokers unsupported, but its
+ * header is still checked with the unit. *)
+val modifier_failed = solidityPrepareLib.prepare_unit
+  (edited_unit "modifier_failed_body");
+val () =
+  case List.find (fn {name, ...} => name = "inverse")
+         (#functions modifier_failed) of
+    SOME {reason = SOME _, ...} => ()
+  | _ => raise Fail "inverse: not marked unsupported";
+val () = rejects solidityPrepareLib.SourceRejected
+  (fn () => ignore (solidityPrepareLib.prepare_unit
+                      (edited_unit "modifier_failed_body_wrong_scope")));
 
 val bad_artifact_path = OS.FileSys.tmpName ();
 val bad_artifact_stream = TextIO.openOut bad_artifact_path;
@@ -73,3 +102,42 @@ val () = (rejects solidityPrepareLib.MalformedInput
     {root = "..", path = bad_artifact_path})))
   handle e => (OS.FileSys.remove bad_artifact_path; raise e);
 val () = OS.FileSys.remove bad_artifact_path;
+
+val artifact_stream = TextIO.openIn "../testdata/frontend/expected/pure_core.json";
+val artifact_text = TextIO.inputAll artifact_stream;
+val () = TextIO.closeIn artifact_stream;
+(* The sorted fixture's first settings object is input.settings. *)
+val settings_marker = "\"settings\": {";
+val (settings_prefix, settings_suffix) =
+  Substring.position settings_marker (Substring.full artifact_text);
+val () = if Substring.isEmpty settings_suffix then raise Fail "missing settings" else ();
+
+fun with_extra_settings extra check =
+  let
+    val path = OS.FileSys.tmpName ()
+    val stream = TextIO.openOut path
+    val () = TextIO.output (stream,
+      Substring.string settings_prefix ^ settings_marker ^ extra ^
+      Substring.string (Substring.triml (size settings_marker) settings_suffix))
+    val () = TextIO.closeOut stream
+    val () = check (fn () => solidityPrepareLib.read_artifact {root = "..", path = path})
+      handle e => (OS.FileSys.remove path; raise e)
+  in
+    OS.FileSys.remove path
+  end;
+
+val () = with_extra_settings "\"remappings\": [\"a/=b/\"],"
+  (fn read =>
+    case JSONUtil.get (read (), [JSONUtil.SEL "input", JSONUtil.SEL "settings",
+                                 JSONUtil.SEL "remappings"]) of
+      JSON.ARRAY [JSON.STRING "a/=b/"] => ()
+    | _ => raise Fail "remappings not retained");
+val () = with_extra_settings "\"remappings\": []," (fn read => ignore (read ()));
+val () = List.app (fn extra => with_extra_settings extra
+  (fn read => rejects solidityPrepareLib.MalformedInput (fn () => ignore (read ()))))
+  ["\"remappings\": \"a/=b/\",",
+   "\"remappings\": [1],",
+   "\"remappings\": [\"a/b/\"],",
+   "\"remappings\": [], \"remappings\": [],",
+   "\"remappings\": [\"a/=b/\"], \"unknownSetting\": true,",
+   "\"remappings\": [\"a/=b/\"], \"viaIR\": false,"];

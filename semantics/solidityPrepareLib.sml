@@ -3,6 +3,11 @@ struct
 
 open HolKernel boolLib solidityElaborateTheory solidityCoreWfTheory cv_transLib
 
+(* cv_eval sizes word literals (selectors, assembly numbers) with the rules
+ * wordsLib adds to the compset when it loads; without it, it fails with
+ * "non-cv constant: (:256)". *)
+val _ = wordsLib.WORD_CONV
+
 datatype failure = MalformedInput | UnsupportedImport | UnsupportedLowering
                    | SourceRejected | InvalidCore
 exception PreparationError of failure * string
@@ -62,8 +67,8 @@ fun read_pin root =
 val output_selection = JSON.OBJECT [("*", JSON.OBJECT [
   ("", JSON.ARRAY [JSON.STRING "ast"]),
   ("*", JSON.ARRAY (map JSON.STRING ["abi", "storageLayout", "transientStorageLayout",
-    "evm.bytecode.object", "evm.deployedBytecode.object", "evm.methodIdentifiers",
-    "ir", "irOptimized"]))])]
+    "evm.bytecode.object", "evm.deployedBytecode.object",
+    "evm.deployedBytecode.immutableReferences", "evm.methodIdentifiers"]))])]
 
 fun read_artifact {root, path} = json_input (fn () =>
   let
@@ -98,7 +103,15 @@ fun read_artifact {root, path} = json_input (fn () =>
     val settings = object (field profile "settings")
     val input = field artifact "input"
     val () = require (string_field input "language" = "Solidity") "input language must be Solidity"
-    val () = require (json_equal (field input "settings",
+    val (remappings, input_settings) = List.partition
+      (fn (key, _) => key = "remappings") (object (field input "settings"))
+    val () = require (case remappings of
+        [] => true
+      | [(_, JSON.ARRAY entries)] => List.all
+          (fn JSON.STRING entry => String.isSubstring "=" entry | _ => false) entries
+      | _ => false)
+      "input remappings must be a single array of strings containing '='"
+    val () = require (json_equal (JSON.OBJECT input_settings,
       JSON.OBJECT (settings @ [("outputSelection", output_selection)])))
       "input settings differ from pinned profile/output selection"
     val _ = object (field input "sources")
@@ -114,41 +127,224 @@ fun read_artifact {root, path} = json_input (fn () =>
     artifact
   end)
 
+type function_outcome = {id : int, name : string, reason : string option}
 type prepared = {unit : term, program : term, source_valid : thm,
-                 elaborates : thm, core_wf : thm}
+                 elaborates : thm, core_wf : thm,
+                 functions : function_outcome list}
 
-fun checked_predicate kind message tm =
+(* A predicate evaluated to T, or a rejection with the message rejection
+ * computes. *)
+fun checked_predicate kind rejection tm =
   let val evaluated = cv_eval tm in
     if rhs (concl evaluated) ~~ T then EQT_ELIM evaluated
-    else if rhs (concl evaluated) ~~ F then reject kind message
+    else if rhs (concl evaluated) ~~ F then reject kind (rejection ())
     else raise mk_HOL_ERR "solidityPrepareLib" "checked_predicate" "non-boolean cv result"
   end
 
 val elaborate_unit_tm = prim_mk_const {Thy = "solidityElaborate", Name = "elaborate_unit"}
+fun import_const name = prim_mk_const {Thy = "solidityImport", Name = name}
 
-fun prepare_unit unit =
+fun cv_value tm = rhs (concl (cv_eval tm))
+
+fun dedup xs = rev (List.foldl (fn (x, seen) => if mem x seen then seen else x :: seen) [] xs)
+
+(* A blocker (id, reason) as a line: the importer's reasons already name
+ * their node ("<node type> <id>: ..."), HOL's tags don't contain ": ". *)
+fun blocker_line t =
+  case pairSyntax.strip_pair t of
+    [id, reason] =>
+      let val reason = stringSyntax.fromHOLstring reason in
+        if String.isSubstring ": " reason then reason
+        else Arbnum.toString (numSyntax.dest_numeral id) ^ ": " ^ reason
+      end
+  | _ => raise mk_HOL_ERR "solidityPrepareLib" "blocker_line" "bad blocker"
+
+fun record_field r name =
+  snd (valOf (List.find (fn (n, _) => n = name) (#2 (TypeBase.dest_record r))))
+
+fun function_id f =
+  numSyntax.int_of_term (record_field (record_field f "fn_info") "node_id")
+
+fun unit_record unit =
+  if TypeBase.is_record unit then unit else rhs (concl (computeLib.EVAL_CONV unit))
+
+(* The functions and library functions of a unit's contracts. *)
+fun unit_function_terms unit =
+  List.concat (map (fn c =>
+      List.concat (map (fn name => #1 (listSyntax.dest_list (record_field c name)))
+        ["contract_functions", "contract_library_functions"]))
+    (#1 (listSyntax.dest_list (record_field (unit_record unit) "unit_contracts"))))
+
+(* The unit with the functions of the given ids marked unsupported, each
+ * with its reason. *)
+fun mark_unsupported reasons unit0 =
   let
+    val unit = unit_record unit0
+    fun mark_function f =
+      case List.find (fn (x, _) => function_id f = x) reasons of
+        NONE => f
+      | SOME (_, reason) =>
+          TypeBase.mk_record (type_of f,
+            map (fn ("fn_unsupported", _) =>
+                      ("fn_unsupported", optionSyntax.mk_some (stringSyntax.fromMLstring reason))
+                  | field => field) (#2 (TypeBase.dest_record f)))
+    fun mark_list tm =
+      listSyntax.mk_list (map mark_function (listSyntax.dest_list tm |> #1),
+                          listSyntax.dest_list tm |> #2)
+    fun mark_contract c =
+      TypeBase.mk_record (type_of c,
+        map (fn (name, value) =>
+               if name = "contract_functions" orelse name = "contract_library_functions"
+               then (name, mark_list value) else (name, value))
+          (#2 (TypeBase.dest_record c)))
+  in
+    TypeBase.mk_record (type_of unit,
+      map (fn ("unit_contracts", cs) =>
+                ("unit_contracts",
+                 listSyntax.mk_list (map mark_contract (#1 (listSyntax.dest_list cs)),
+                                     #2 (listSyntax.dest_list cs)))
+            | field => field) (#2 (TypeBase.dest_record unit)))
+  end
+
+(* What fails to elaborate, by function id (or the id of the contract for
+ * what isn't in a function), with its blocker lines, elaborated strictly
+ * (as elaborate_unit does) or not (calls may reach unsupported functions). *)
+fun elaboration_failures strict unit =
+  map (fn t =>
+         case pairSyntax.strip_pair t of
+           [x, blockers] =>
+             (numSyntax.int_of_term x,
+              List.concat (map (String.fields (fn c => c = #"\n") o blocker_line)
+                (#1 (listSyntax.dest_list blockers))))
+         | _ => raise mk_HOL_ERR "solidityPrepareLib" "elaboration_failures" "bad entry")
+    (#1 (listSyntax.dest_list
+      (cv_value (list_mk_comb (prim_mk_const
+         {Thy = "solidityElaborate", Name = "unit_elaboration_failures"},
+         [if strict then T else F, unit])))))
+
+(* Mark unsupported the supported functions that fail to elaborate, with
+ * their blockers, also because they call an unsupported function, until
+ * none does. Each round marks at least one function or ends. *)
+fun mark_failures unit =
+  let
+    val supported = List.mapPartial (fn f =>
+        if optionSyntax.is_none (record_field f "fn_unsupported")
+        then SOME (function_id f) else NONE) (unit_function_terms unit)
+  in
+    case List.filter (fn (x, _) => mem x supported) (elaboration_failures true unit) of
+      [] => unit
+    | failing =>
+        let
+          val loose = elaboration_failures false unit
+          fun reason x =
+            case List.find (fn (y, _) => x = y) loose of
+              NONE => "calls an unsupported function"
+            | SOME (_, []) => "uses an unsupported declaration"
+            | SOME (_, blockers) => String.concatWith "\n" blockers
+        in
+          mark_failures
+            (mark_unsupported (map (fn (x, _) => (x, reason x)) failing) unit)
+        end
+  end
+
+(* The functions the importer marked unsupported, with their elaboration
+ * blockers added to their reasons, so a reason lists every blocker of its
+ * function. Only reasons change: the marked functions stay marked. *)
+fun add_elaboration_reasons unit =
+  let
+    val marked = List.mapPartial (fn f =>
+        let val r = record_field f "fn_unsupported" in
+          if optionSyntax.is_none r then NONE
+          else SOME (function_id f,
+                     String.fields (fn c => c = #"\n")
+                       (stringSyntax.fromHOLstring (optionSyntax.dest_some r)))
+        end) (unit_function_terms unit)
+    val loose = if null marked then [] else elaboration_failures false unit
+    val reasons = List.mapPartial (fn (x, lines) =>
+        case List.find (fn (y, _) => x = y) loose of
+          NONE => NONE
+        | SOME (_, bs) =>
+            let val all = dedup (lines @ bs) in
+              if length all = length lines then NONE
+              else SOME (x, String.concatWith "\n" all)
+            end) marked
+  in
+    if null reasons then unit else mark_unsupported reasons unit
+  end
+
+(* What elaborate_unit_reason reports for the unit as a whole when it
+ * rejects it (no contract, say), as lines. *)
+fun unit_reason_lines unit =
+  let
+    val result = cv_value (mk_comb (prim_mk_const
+      {Thy = "solidityElaborate", Name = "elaborate_unit_reason"}, unit))
+  in
+    if sumSyntax.is_inr result then
+      List.concat (map (String.fields (fn c => c = #"\n") o blocker_line)
+        (#1 (listSyntax.dest_list (#1 (sumSyntax.dest_inr result)))))
+    else []
+  end
+
+(* Every blocker of a unit that is rejected: the whole-unit checks', the
+ * importer's in its functions, what fails to elaborate, and the unit's own
+ * elaboration blockers. *)
+fun rejection_lines unit =
+  dedup
+    (map blocker_line (#1 (listSyntax.dest_list
+       (cv_value (mk_comb (import_const "unit_rejections", unit))))) @
+     List.concat (map (fn f =>
+         let val reason = record_field f "fn_unsupported" in
+           if optionSyntax.is_none reason then []
+           else String.fields (fn c => c = #"\n")
+                  (stringSyntax.fromHOLstring (optionSyntax.dest_some reason))
+         end) (unit_function_terms unit)) @
+     List.concat (map #2 (elaboration_failures false unit)) @
+     unit_reason_lines unit)
+
+fun rejection_message fallback unit () =
+  case rejection_lines unit of
+    [] => fallback
+  | lines => String.concatWith "\n" lines
+
+fun function_outcomes unit =
+  map (fn t =>
+         case pairSyntax.strip_pair t of
+           [x, name, reason] =>
+             {id = numSyntax.int_of_term x,
+              name = stringSyntax.fromHOLstring name,
+              reason = if optionSyntax.is_some reason
+                       then SOME (stringSyntax.fromHOLstring (optionSyntax.dest_some reason))
+                       else NONE}
+         | _ => raise mk_HOL_ERR "solidityPrepareLib" "function_outcomes" "bad entry")
+    (#1 (listSyntax.dest_list
+      (cv_value (mk_comb (import_const "unit_functions", unit)))))
+
+fun prepare_unit imported =
+  let
+    val unit = mark_failures (add_elaboration_reasons imported)
     val source_valid = checked_predicate SourceRejected
-      "valid_src_unit failed (source validation/subset restriction)"
-      (mk_comb (prim_mk_const {Thy = "solidityImport", Name = "valid_src_unit"}, unit))
+      (rejection_message "valid_src_unit failed (source validation/subset restriction)" imported)
+      (mk_comb (import_const "valid_src_unit", unit))
     val elaborates = (REWRITE_CONV [elaborate_unit_def, source_valid] THENC cv_eval)
       (mk_comb (elaborate_unit_tm, unit))
     val result = rhs (concl elaborates)
     val program = if optionSyntax.is_none result then
-      reject UnsupportedLowering "elaborate_unit returned NONE (unsupported lowering)"
+      reject UnsupportedLowering
+        (rejection_message "elaborate_unit returned NONE (unsupported lowering)" imported ())
       else optionSyntax.dest_some result
     val core_wf = checked_predicate InvalidCore
-      "generated program fails wf_core_program"
+      (fn () => "generated program fails wf_core_program")
       “wf_core_program (core_program_environment ^program) ^program”
   in
     {unit = unit, program = program, source_valid = source_valid,
-     elaborates = elaborates, core_wf = core_wf}
+     elaborates = elaborates, core_wf = core_wf,
+     functions = function_outcomes unit}
   end
 
-
-(* Import from an artifact already checked by read_artifact. *)
-fun import_unit artifact source =
-  (json_input (fn () =>
+(* A source of an artifact already checked by read_artifact, imported, with
+ * the blockers outside its functions. *)
+fun import_unit_blockers artifact source =
+  json_input (fn () =>
     let
       val output = field artifact "output"
       val contracts = case JSONUtil.findField output "contracts" of
@@ -156,19 +352,29 @@ fun import_unit artifact source =
       | SOME all => (case JSONUtil.findField all source of
                       NONE => JSON.OBJECT [] | SOME contracts => contracts)
     in
-      solidityImportLib.import_source_unit
+      solidityImportLib.import_source_unit_blockers
         (map (fn (_, s) => field s "ast") (object (field output "sources")))
         (JSONUtil.get (output, map JSONUtil.SEL ["sources", source, "ast"])) contracts
     end)
-    handle solidityImportLib.ImportError message => reject UnsupportedImport message
-         | solidityImportLib.MalformedInput message => reject MalformedInput message)
+  handle solidityImportLib.ImportError message => reject UnsupportedImport message
+       | solidityImportLib.MalformedInput message => reject MalformedInput message
+
+fun import_unit artifact source =
+  (case import_unit_blockers artifact source of
+     (unit, []) => unit
+   | (_, blockers) => reject UnsupportedImport (String.concatWith "\n" blockers))
   handle PreparationError (kind, message) => reject kind (source ^ ": " ^ message)
+
+fun prepare_source artifact source =
+  case import_unit_blockers artifact source of
+    (unit, []) => prepare_unit unit
+  | (unit, blockers) =>
+      reject UnsupportedImport (String.concatWith "\n" (dedup (blockers @ rejection_lines unit)))
 
 fun prepare_artifact {root, path, source} =
   let
     val artifact = read_artifact {root = root, path = path}
-    val unit = import_unit artifact source
-    val prepared = prepare_unit unit
+    val prepared = prepare_source artifact source
       handle PreparationError (kind, message) => reject kind (source ^ ": " ^ message)
   in
     {artifact = artifact, prepared = prepared}

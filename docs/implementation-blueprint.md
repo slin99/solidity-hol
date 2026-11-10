@@ -23,8 +23,9 @@ A `core_program` owns procedures, state variables, semantic declarations and key
 storage layouts. `core_program_environment` derives both checker and runtime
 environments from it. `StructDeclaration` records field identities and types even
 without storage metadata. Layouts give relative slots, offsets and extents and
-must agree with those declarations. Enum and user-defined value declarations
-have the same semantic home; their import coverage remains deferred.
+must agree with those declarations. Enums retain their semantic declarations. User-defined value types are
+erased to their underlying elementary types by the importer; `wrap` and
+`unwrap` use scalar conversions, and overloaded operators use internal calls.
 
 ## Destinations and storage
 

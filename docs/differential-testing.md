@@ -1,6 +1,7 @@
 # Differential execution
 
 `tools/run_differential.py` checks the maintained corpus in
+`testdata/differential/suites/*.json`, with shared settings in
 `testdata/differential/corpus.json`. Each suite supplies a compiler artifact,
 source unit and deployed contract; each case is a transaction to the contract
 with initial storage and an expected result, final storage and logs. The
@@ -8,6 +9,13 @@ artifact compiles the source together with the files it imports, so its
 contract's bases, interfaces and structs may be declared in any of them; the
 runner checks that each of those files is the one the artifact was compiled
 from.
+
+Add a feature's suite as a separate file, then generate and commit its two
+wrappers with `python3 tools/run_differential.py --write-theories --no-hol`.
+Both runners discover suites automatically; adding one does not change another
+suite's wrappers or cache keys.
+Shared report snapshots are refreshed after merges, as described in
+[generated-artifacts.md](generated-artifacts.md).
 
 A case calls either a named function with arguments (`function`, `args`),
 encoded after its selector, or raw `calldata`. Optional `sender` (default
@@ -34,10 +42,65 @@ program's creation procedure (`deploy_contract`) on the encoded arguments, at
 the address the transaction creates (`address_for_create` of the sender at
 nonce 0). Both observe that account, which starts with no code or storage,
 so `storage` must be empty and `logger` names that address. A successful
-creation is observed as returning no data, so its `return` expectation is
-`[]`; the deployed code is not compared. The HOL corpus theory proves one
+creation is observed as returning the values of the contract's immutables: on
+the bytecode side, the 32-byte words the created code holds at the first of
+each immutable's `immutableReferences` offsets, in the artifact's order; on
+the evaluator side, the ABI words of the values the creation left in its
+immutables table. A contract without immutables its runtime code reads
+returns no data, so its `return` expectation is `[]`. The rest of the
+deployed code is not compared. The words are compared as the code holds
+them, and the compiler writes an assigned value there without cleaning it,
+so a creation that assigns an immutable a value with dirty high bits (from
+inline assembly) shows as a disagreement even when every read of it agrees.
+
+A call case may give the immutables' values, by name, as an object
+`immutables` (not with `deploy`). They are patched into the runtime bytecode
+at the immutable's `immutableReferences` offsets, given to the evaluator as
+the immutables table `call_contract` takes, and to the Yul run by the names
+its `loadimmutable` reads; an immutable the case leaves out is zero. The HOL corpus theory proves one
 `differential_agrees` theorem per case. Diagnostic failures and exhausted fuel
 are inconclusive, never agreement.
+
+Each suite has two committed theories under `tests/corpus/`:
+
+- `solidityBytecodeCorpus_<suite>` encodes calls from the artifact's ABI and
+  method selectors, runs Verifereum, and proves the expected complete observation
+  for every case. It depends on the suite and compiler artifacts, not the source
+  frontend or evaluator.
+- `solidityDifferentialCorpus_<suite>` prepares the source and proves that its
+  calldata, initial accounts and transaction equal the bytecode theory's inputs.
+  It reuses those bytecode results and evaluates the source against the same
+  expectation, saving the original `differential_agrees` theorem per case.
+
+The input equality is kernel checked, so a difference between the artifact's
+ABI encoding and the elaborated source fails the suite. The shared datatypes,
+transaction setup and EVM observation functions live in `solidityBytecode`;
+`solidityDifferential` retains the source execution and combined verdict.
+
+The runner targets the suite theories directly. Their explicit fixture
+lists let holbuild schedule them independently and reuse unchanged bytecode
+results after a frontend change. Both runners reuse cached suite verdicts by
+default; `--force` explicitly rebuilds suites. The source runner still accepts
+`--allow-cached` for compatibility.
+Push builds on `main` and `bot/opus/solidity-e2e` save snapshots that their
+feature PRs can restore; PR-only snapshots are scoped to that PR and cannot
+warm sibling PRs. Branch runs have separate concurrency groups so a later
+merge cannot cancel a cache-warming run. Remove the integration-branch push
+trigger when that branch is merged into `main`.
+Source and Yul suite theories declare a `.results.jsonl` extra output beside
+their scripts. holbuild caches and restores it with the theory, so reports
+retain outcomes and stage admissions without an old build log. Missing suite
+or case records fail the report, including on cache hits. Failed builds use
+their diagnostic logs and ignore possibly stale result files.
+
+`solidityDifferentialCorpus` remains a compatibility roll-up, refreshed with
+integration reports. It owns no case definitions: ML consumers enumerating
+`DB.definitions` must use the per-suite theory segments. A fresh checkout can
+build any committed suite directly, for example:
+
+```sh
+holbuild -j4 build solidityDifferentialCorpus_storageTheory
+```
 
 The artifact goes through `solidityPrepareLib.prepare_artifact`, which checks
 the pinned compiler/profile/settings contract, validates and elaborates the
@@ -62,14 +125,16 @@ selected-slot lists. The negative mapping regression demonstrates this case.
 Run the same checks as CI with:
 
 ```sh
-python3 tools/run_differential.py -j8 --allow-cached \
-  -- --skip-checkpoints --skip-proof-steps
+python3 tools/run_differential.py -j2 \
+  -- --max-heap 6000 --skip-checkpoints --skip-proof-steps
 holbuild -j8 build --skip-checkpoints --skip-proof-steps solidityHolTheory
 ```
 
 Pass `--solc /path/to/pinned/solc` to reproduce the compiler artifacts as well.
 The upstream `semanticTests` acceptance report is a separate preparation check;
-it does not execute those tests' call expectations.
+it does not execute those tests' call expectations. The separate
+[expectation runner](semantic-expectations-runner.md) executes admitted tests
+in order against their upstream observations, outside per-PR CI.
 
 ## The compiler's own Yul
 
@@ -78,8 +143,8 @@ program the source elaborates to, the other the bytecode solc recorded. The
 third run closes that gap, and it is the hinge the roadmap turns on — a
 disagreement between the compiler's own IR and the bytecode compiled from it
 is invisible to the two-sided comparison. `tools/run_yul_differential.py`
-compiles the same sources with the pinned compiler, imports the runtime Yul it
-emitted, and executes that in the Yul semantics.
+compiles the same sources with the pinned compiler and executes the imported
+runtime or creation object in the Yul semantics.
 
 It runs three stages separately, because they are three different programs:
 `irAst`, the code generator's output; the `irOptimizedAst` of that same
@@ -103,12 +168,23 @@ real transaction would (`Caller.bumpSelf`). A message call a Yul frame makes is
 Verifereum's, through the same `run_external_call` the source evaluator's
 high-level calls use; `docs/yul-call-design.md` says how.
 
+A deployment executes the top-level creation code at the created address, with
+empty calldata and the encoded constructor arguments appended to the stage's
+actual initcode. Named object sizes and offsets come from the initcode and its
+runtime suffix; layouts without that suffix are rejected. `codecopy` reads those
+bytes, and `setimmutable` patches the copied runtime at its emitted offsets.
+The returned bytes must match that runtime with its immutable patches. The
+comparison then observes the immutable words, complete storage and logs, just
+as the source/bytecode deployment comparison does. Unsupported object names and
+layouts remain failures, including when the runtime object itself was admitted.
+
 `delegatecall` is not implemented and the dialect does not name it, so a stage
 that uses one is rejected at import rather than run wrongly.
 
 The ASTs are tens of megabytes across the corpus, so the tool generates them
-with the pinned compiler instead of committing them, and the run is far longer
-than the rest of CI. It writes the report, which is committed:
+with the pinned compiler instead of committing them. It also generates one
+wrapper per suite under ignored `tests/yul-generated/`, with exact artifact
+dependencies. The runtime-only Yul run is separate from PR CI. It writes the report, which is committed:
 
 ```sh
 python3 tools/run_yul_differential.py --solc ~/.local/opt/solc-0.8.37/solc -j8

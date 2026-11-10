@@ -1,7 +1,7 @@
-(* Run by tools/semantic_tests_coverage.py under `holbuild run`. Checks the
- * preparation of every test in SEMANTIC_TESTS_MANIFEST: one "name<TAB>path"
- * line per test, where path holds the complete compiler artifact. Prints one
- * coverage-result line per test.
+(* Run by tools/semantic_tests_coverage.py under `holbuild run-action`, or
+ * `holbuild run` without a fleet. The manifest has one "name<TAB>path" line
+ * per compiler artifact. Results go to the declared output on the fleet,
+ * or stdout locally.
  *)
 load "wordsLib";
 load "solidityPrepareLib";
@@ -11,6 +11,12 @@ val () = Theory.new_theory "semanticTestsCoverage";
 
 local
   open HolKernel boolLib
+
+  val output_dir = OS.Process.getEnv "HOLBUILD_RUN_OUTPUT_DIR"
+  val output =
+    case output_dir of
+      SOME dir => TextIO.openOut (OS.Path.concat (dir, "results.jsonl"))
+    | NONE => TextIO.stdOut
 
   fun json_string s =
     let
@@ -23,13 +29,27 @@ local
       "\"" ^ String.translate escape s ^ "\""
     end
 
-  fun emit test status message =
-    (print ("coverage-result: {\"test\":" ^ json_string test ^
+  fun json_list xs = "[" ^ String.concatWith "," (map json_string xs) ^ "]"
+
+  (* A rejected test reports every blocker line; an admitted one how many
+   * functions calls reach and why the unsupported ones among them are. *)
+  fun emit test status fields =
+    (TextIO.output (output, "coverage-result: {\"test\":" ^ json_string test ^
             ",\"status\":" ^ json_string status ^
-            (case message of
-               NONE => ""
-             | SOME m => ",\"message\":" ^ json_string m) ^ "}\n");
-     TextIO.flushOut TextIO.stdOut)
+            String.concat (map (fn (k, v) => ",\"" ^ k ^ "\":" ^ v) fields) ^ "}\n");
+     TextIO.flushOut output)
+
+  (* Of several rejected sources, the test is reported as its most severe
+   * rejection, with the blockers of all of them. *)
+  val severity = let open solidityPrepareLib in
+    [MalformedInput, InvalidCore, UnsupportedImport, SourceRejected, UnsupportedLowering] end
+
+  fun status_name solidityPrepareLib.UnsupportedImport = "import-rejected"
+    | status_name solidityPrepareLib.UnsupportedLowering = "elaboration-rejected"
+    | status_name kind = solidityPrepareLib.failure_name kind
+
+  datatype outcome = Prepared of solidityPrepareLib.prepared
+                   | Rejected of solidityPrepareLib.failure * string list
 
   fun run_test test path =
     let
@@ -38,26 +58,44 @@ local
         (JSONUtil.lookupField artifact "output") "sources" of
           JSON.OBJECT sources => map fst sources
         | _ => raise Fail (path ^ ": expected output sources object")
-      (* Report import blockers before lowering any source of a multi-source test. *)
-      val units = map (fn source =>
-        (source, solidityPrepareLib.import_unit artifact source)) sources
-      val _ = map (fn (source, unit) => solidityPrepareLib.prepare_unit unit
+      val outcomes = map (fn source =>
+        Prepared (solidityPrepareLib.prepare_source artifact source)
         handle solidityPrepareLib.PreparationError (kind, message) =>
-          raise solidityPrepareLib.PreparationError (kind, source ^ ": " ^ message)) units
+          Rejected (kind, String.fields (fn c => c = #"\n") message)) sources
+      val failures = List.mapPartial (fn Rejected f => SOME f | Prepared _ => NONE) outcomes
     in
-      emit test "admitted" NONE
+      case List.find (fn kind => List.exists (fn (k, _) => k = kind) failures) severity of
+        SOME kind =>
+          let
+            (* The reasons of the unsupported functions of the sources that
+             * did prepare block the test too. *)
+            val reasons = List.concat (map (fn Prepared p =>
+                List.concat (map (String.fields (fn c => c = #"\n"))
+                  (List.mapPartial #reason (#functions p)))
+              | Rejected _ => []) outcomes)
+          in
+            emit test (status_name kind)
+              [("blockers", json_list (List.concat (map #2 failures) @ reasons))]
+          end
+      | NONE =>
+          let
+            val functions = List.concat
+              (map (fn Prepared p => #functions p | Rejected _ => []) outcomes)
+            val reasons = List.mapPartial #reason functions
+          in
+            emit test (if null reasons then "admitted" else "partially-admitted")
+              [("functions", Int.toString (length functions)),
+               ("unsupported", json_list reasons)]
+          end
     end
     handle solidityPrepareLib.PreparationError (kind, message) =>
-      let val status = case kind of
-        solidityPrepareLib.UnsupportedImport => "import-rejected"
-      | solidityPrepareLib.UnsupportedLowering => "elaboration-rejected"
-      | _ => solidityPrepareLib.failure_name kind
-      in emit test status (SOME message) end
+      emit test (status_name kind)
+        [("blockers", json_list (String.fields (fn c => c = #"\n") message))]
 
   val manifest =
     case OS.Process.getEnv "SEMANTIC_TESTS_MANIFEST" of
       SOME m => m
-    | NONE => raise Fail "SEMANTIC_TESTS_MANIFEST is not set"
+    | NONE => "manifest.txt"
 
   fun lines stream =
     case TextIO.inputLine stream of
@@ -71,4 +109,5 @@ in
            [test, path] => run_test test path
          | _ => raise Fail ("malformed manifest line " ^ line))
       (lines (TextIO.openIn manifest))
+  val () = case output_dir of NONE => () | SOME _ => TextIO.closeOut output
 end;

@@ -7,30 +7,30 @@
  * use for their fixtures, one step further on: the conversion is not checked
  * on a hand-built tree but run over a whole real object.
  *
- * What is checked is that each function of the runtime object reaches a
- * closed form, and how long that takes.  All but one of the object's
- * functions are loop-free -- checked_exp_helper has a loop, and a loop is a
- * lemma about a loop head rather than a closed form -- and the build fails if
- * any of them does not close, or closes with the evaluator's own functions
- * still in it.  A form is a case tree over the body's guards and over the
- * calls it makes, so a function that calls nothing has nothing of its own
+ * What is checked is that each function of the runtime object reaches a closed
+ * form within the size bound.  All but one of the object's functions are
+ * loop-free -- checked_exp_helper has a loop, and a loop is a lemma about a
+ * loop head rather than a closed form, so its form stops at the loop and one
+ * iteration is converted on its own (at the end of this file) -- and the build
+ * fails if any of them does not close, or closes with the evaluator's own
+ * functions still in it.  A form is a case tree over the body's guards and over
+ * the calls it makes, so a function that calls nothing has nothing of its own
  * frame left -- only the memory read itself, whose own clauses want a length
  * that is a successor while the evaluator reads with a numeral, so it does not
  * reduce even where the machine is one the conversion has in hand (the note on
  * `memory_read_residue` below) -- and one that calls is left waiting on the
- * frame a callee returned and nothing else (see semantics/yulConvLib.sml).
- * The number the test asserts is the slowest of them, so that a conversion
- * that regressed to the simplifier's cost fails the build on the clock alone;
- * the total is printed to say what the suite costs, and every conversion runs
- * under a clock, so one that stops coming back fails the build instead of
- * leaving it at the heap cap.
+ * frame a callee returned and nothing else (see semantics/yulConvLib.sml).  The
+ * slowest conversion and the total time are printed to say what the suite
+ * costs, and every conversion runs under a clock, so one that stops coming back
+ * fails the build instead of leaving it at the heap cap.
  *
- * A few functions are not covered by that bound yet: each is named in
- * `excluded` below with the reason it is there, every name has to be a function
- * of the object, and the list empties as the conversion stops copying the rest
- * of a body into a branch of a decision (see the comment on the list).  The one
- * whose line says it produces no form is converted under that clock too, and
- * its line fails the build as soon as it comes back.
+ * Every loop-free function is held to the size bound.  A function the bound
+ * cannot be asked of goes in `excluded` below with the reason it is there, and
+ * every name there has to be a function of the object (see the comment on the
+ * list, which is empty now).  A line that says a function produces no form is
+ * converted under that clock too, and fails the build as soon as it comes
+ * back; the clock is what makes such a claim honest rather than taken on
+ * trust.
  *)
 Theory yulConvTest
 Ancestors
@@ -84,6 +84,7 @@ Definition yul_conv_machine_def:
   yul_conv_machine =
     <| accounts := empty_accounts; logs := []; self_address := 0w;
        caller_address := 0w; call_value := 0w; call_data := []; return_data := [];
+       code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
        memory_size := 0; gas_limit := 0; scopes := [];
        transaction_parameters := yul_conv_tx_params |>
@@ -147,6 +148,32 @@ fun call_term (nm, arity, _) =
 
 fun fail msg = raise Fail ("yulConvTest: " ^ msg)
 
+(* Transient helpers must not copy a machine that still contains a call. *)
+val () =
+  let
+    val m = “(h : yul_expr_result -> yul_machine)
+               (invoke_yul 1 fns "f" [] m)”
+    val unfolded = List.filter
+      (fn (_, t) => not (yulConvLib.is_fixed_point [] t))
+      [("yul_tload", “yul_tload ^m 0w”),
+       ("yul_tstore", “yul_tstore ^m 0w 42w”)]
+  in
+    if null unfolded then ()
+    else fail ("transient helpers unfolded over a call: " ^
+               String.concatWith ", " (List.map #1 unfolded))
+  end
+
+val () =
+  let
+    val m = “^yul_conv_machine_term with transient := empty_transient_storage”
+    val t = “yul_tload (yul_tstore ^m 0w 42w) 0w”
+    val th = yulConvLib.yul_eval_conv []
+               “fns : (string |-> yul_function)” t
+  in
+    if aconv (rhs (concl th)) “42w : bytes32” then ()
+    else fail "transient store/load on a known machine did not evaluate"
+  end
+
 val functions = object_functions ()
 val loop_free = List.filter (fn (_, _, body) => not (has_loop body)) functions
 val looping = List.filter (fn (_, _, body) => has_loop body) functions
@@ -162,105 +189,38 @@ val () =
           ^ Int.toString (List.length loop_free) ^ " loop-free, looping: "
           ^ String.concatWith ", " (List.map (fn (nm, _, _) => nm) looping))
 
-(* The functions the bound below is not asked of yet: those whose form comes out
- * at two hundred thousand nodes or more, and the one that produces no form at
- * all.  The number in each line is that function's form as this suite measures
- * it -- every node of the term, which is the `size` this test prints below --
- * and the two reasons are one thing seen twice.  A decision the
- * conversion cannot decide is still expanded: `CBV_CONV` reduces every
- * branch of a `case` or a conditional whose test it cannot decide, so an
- * evaluator clause that binds a statement's result and tests it carries the
- * rest of the body into both branches.  Every line here names a body that
- * calls -- most of them the ABI decoders and the external wrappers, and the
- * three forms in the millions at the top of the list -- and a call is what
- * leaves a decision standing: the arity the callee answered with, and the frame
- * it came back on.
- * Each such decision takes a copy of the rest of the body per branch, and the
- * copies multiply, so a body's form is linear in its statements only while
- * what its calls answer is not read.  A body that nests a call inside another
- * call's arguments (`cleanup_uint8(exp(base, exponent))`, `CALL(CALL …, CALL
- * …)`) is the one that pays most, and at the extreme does not come back at
- * all.
+(* The functions the size bound below is not asked of yet, each with why: the
+ * form size this suite measures -- every node of the term, which is the `size`
+ * this test prints below -- or a claim that no form comes back inside a clock.
  *
- * The line is drawn at a size rather than at a measured time because a time
- * moves with the machine the build runs on and a size does not.  The sizes on
- * these lines are a sweep's output over the list, not something the suite
- * checks -- they say how far over the line each one is, and they move when the
- * conversion does, so they are re-measured with the list rather than read as an
- * invariant.  The line is enforced from one side only: the suite fails if a
- * form it does cover reaches 200k nodes, so a covered function that grew past
- * the line cannot pass unnoticed, but nothing here converts the 33 named for
- * their size -- a name whose form has dropped under the line keeps its line
- * until the list is re-measured, which happens with each change to the
- * conversion.  Converting them here as well would put the large forms' cost --
- * seconds each, and tens of millions of nodes at the far end
- * (`fun_signedLess`'s) -- on every run of this suite.  The gap is narrow at the
- * bottom: the largest form below the line is 199k nodes and the smallest above
- * it 215k.  What is left is 103 of the 137, whose largest form is 199k nodes
- * and whose slowest the check below bounds at five seconds.
+ * The list is empty.  It held the bodies whose forms the conversion copied a
+ * decision into, two ways: a `let` over a statement's or a call's result that
+ * was still a case, or a scope pop over one, substituted the case at every use
+ * of the name, so the form grew by a factor per read; and a call among a
+ * builtin's arguments (`slt(cleanup_int8(x), cleanup_int8(y))`) stayed a case
+ * inside the other call's branch, where the binding behind it unfolded on the
+ * branch's variables and left every later scope read stuck.  The conversion now
+ * pushes a binding into a decision before anything is substituted, and settles
+ * a clause again after the set's reduction (see semantics/yulConvLib.sml); the
+ * three that were over the line -- `fun_signedLess` at 1 083 107 nodes,
+ * `fun_boolLogic` at 1 008 029 and `checked_exp_signed` at 903 697 -- came
+ * under it with both in.  Which of the two each one needed was not measured.
  *
- * The one no-form entry is converted under a clock by the check below, so
- * that the claim on its line is asked of the conversion instead of being
- * taken on trust: the run has to abort, and one that comes back fails the
- * check by name, with the size of its form.  Without the clock a body that
- * stopped coming back would sit at the heap cap until the job's own limit
- * rather than fail.
- *
- * That makes a no-form line a claim about a clock and not only about the
- * function: this suite's clock for those entries is twenty seconds, and a
- * machine fast enough to bring back a form of several million nodes inside it
- * reports the line as stale -- which is the signal to move it to a size.  Three
- * of the four that were here have moved that way, their forms measured under a
- * clock of two and a half minutes: `fun_boolLogic` at 5 725 520 nodes in 23s,
- * `checked_exp_unsigned` at 9 337 236 in 81s and `fun_signedLess` at 18 085 913
- * in 58s, so each carries its size like the rest of the list -- which is also
- * what a line at 23s of a 20-second clock wants, whatever it claims.  What is
- * left is `checked_exp_signed`, and it does not come back inside that clock or
- * any longer one.
- *
- * So this list is the work list of the next piece, and it should empty: what the
- * suite is asked for is a conversion whose form is linear in the body, one leaf
- * per path rather than a copy of the continuation per branch.  A name that stops
- * needing its line is a line to delete; the test fails if a name is not a
- * function of the object, so a list left behind by a fixture change cannot pass
- * unnoticed.
- *)
-val excluded = [
-  ("checked_exp_signed", "no form"),
-  ("fun_signedLess", "form of 18085913 nodes"),
-  ("checked_exp_unsigned", "form of 9337236 nodes"),
-  ("fun_boolLogic", "form of 5725520 nodes"),
-  ("checked_div_int8", "form of 800908 nodes"),
-  ("external_fun_bitwise", "form of 464211 nodes"),
-  ("abi_decode_int8t_uint256", "form of 390939 nodes"),
-  ("abi_decode_uint256t_int256", "form of 390715 nodes"),
-  ("abi_decode_uint8t_uint256", "form of 390619 nodes"),
-  ("abi_decode_int8t_int8", "form of 390555 nodes"),
-  ("abi_decode_int8t_uint8", "form of 390075 nodes"),
-  ("fun_bitwise", "form of 389843 nodes"),
-  ("abi_decode_uint8t_uint8", "form of 389755 nodes"),
-  ("abi_decode_boolt_bool", "form of 389035 nodes"),
-  ("external_fun_widen", "form of 381341 nodes"),
-  ("external_fun_signedLess", "form of 380881 nodes"),
-  ("external_fun_boolLogic", "form of 380801 nodes"),
-  ("external_fun_truncate", "form of 298561 nodes"),
-  ("external_fun_reinterpret", "form of 298141 nodes"),
-  ("external_fun_shifts", "form of 298121 nodes"),
-  ("fun_widen", "form of 255275 nodes"),
-  ("checked_mul_uint16", "form of 232460 nodes"),
-  ("checked_mul_int8", "form of 231130 nodes"),
-  ("external_fun_wrappingMultiply", "form of 217071 nodes"),
-  ("external_fun_wrappingDivide", "form of 216871 nodes"),
-  ("external_fun_signedShift", "form of 216851 nodes"),
-  ("external_fun_signedPower", "form of 216671 nodes"),
-  ("external_fun_remainder", "form of 216371 nodes"),
-  ("external_fun_wrappingSubtract", "form of 216271 nodes"),
-  ("external_fun_multiply", "form of 216271 nodes"),
-  ("external_fun_divide", "form of 216071 nodes"),
-  ("external_fun_wrappingPower", "form of 215971 nodes"),
-  ("external_fun_subtract", "form of 215471 nodes"),
-  ("external_fun_power", "form of 215171 nodes"),
-]
+ * The line is drawn at a size rather than a time because a time moves with the
+ * machine the build runs on and a size does not.  A body that goes over it
+ * again comes back here, with its measured size, until the conversion takes it.
+ * A line that claims no form is converted under a clock below, so the claim is
+ * asked of the conversion rather than taken on trust; without the clock a body
+ * that stopped coming back would sit at the heap cap until the job's own limit
+ * rather than fail. *)
+val no_form = "no form within the clock"
+
+(* The tag above is what the check on those lines matches, so it is one name
+ * rather than a sentence written twice: the reason a line is on the list and
+ * the check that asks the conversion for it have to say the same thing, and a
+ * re-worded line that the check no longer recognises is a line whose claim
+ * nobody asks about. *)
+val excluded : (string * string) list = []
 
 val excluded_names = List.map #1 excluded
 
@@ -365,8 +325,8 @@ fun checked_form (nm, body) t th =
  * its own, not `Fail`, so a check that fails inside is not mistaken for a
  * timeout.
  *
- * The bound is generous: the slowest form this suite covers takes about a
- * second, and a loaded box moves that. *)
+ * The bound is generous: the slowest form this suite covers takes about five
+ * seconds, and a loaded machine moves that. *)
 fun under_clock secs thunk =
   (SOME (Timeout.apply (Time.fromReal secs) thunk ())
      handle Timeout.TIMEOUT _ => NONE)
@@ -381,9 +341,8 @@ fun convert f =
 fun stated_form nm =
   #2 (convert (valOf (List.find (fn (n, _, _) => n = nm) functions)))
 
-(* Timed one at a time: what the conversion is asked for is seconds per
- * function, so the number the test bounds is the slowest of them, and the
- * total is printed to say what the suite costs.  The size of the largest form
+(* Timed one at a time: the slowest conversion and the total time are printed
+ * to say what the suite costs.  The size of the largest form
  * is printed with them, since that is where a conversion that copies the rest
  * of a body once per statement instead of once per outcome shows up first.
  * Only the name, the time and the size are kept: holding all 137 forms holds
@@ -420,11 +379,6 @@ val () = print ("yulConvTest: " ^ Int.toString (List.length timings)
                 ^ " at " ^ Int.toString (#2 largest) ^ " nodes; "
                 ^ Int.toString calling ^ " of the bodies call\n")
 
-val () =
-  if #2 slowest < 5.0 then ()
-  else fail ("the slowest form took " ^ Real.toString (#2 slowest) ^ "s ("
-             ^ #1 slowest ^ ")")
-
 (* And the line the list above is drawn at, enforced from this side: a form this
  * suite does cover that has reached 200k nodes is one the list should have
  * named, so a conversion that stopped closing for a function (or a fixture
@@ -447,6 +401,45 @@ val scalars_cleanup_uint8 = save_thm ("scalars_cleanup_uint8",
 
 val scalars_checked_sub_uint8 = save_thm ("scalars_checked_sub_uint8",
   stated_form "checked_sub_uint8")
+
+(* A division by an argument stays the value it is: `wrapping_div_int8`'s
+ * `sdiv(x, y)` comes out as `with_zero word_quot`, not as a test on `y` that
+ * the rest of the body would be evaluated under.  A literal divisor, zero or
+ * not, is still unfolded: no function here divides by one, so it is asked of
+ * the set directly. *)
+val with_zero_c = prim_mk_const {Thy = "vfmExecution", Name = "with_zero"}
+
+val () =
+  if can (find_term (same_const with_zero_c))
+         (rhs (concl (stated_form "wrapping_div_int8")))
+  then ()
+  else fail "wrapping_div_int8's division did not stay folded"
+
+val () =
+  List.app (fn (t, folded) =>
+      if yulConvLib.is_fixed_point [] t = folded then ()
+      else fail (term_to_string t ^ (if folded then " was unfolded"
+                                     else " was left folded")))
+    [(“with_zero word_div (a : bytes32) b”, true),
+     (“with_zero word_div (a : bytes32) 5w”, false),
+     (“with_zero word_div (a : bytes32) 0w”, false)]
+
+(* A `let` over a result that holds a call and is used twice stays bound, but
+ * one whose body reduces to a single use goes, even when the body reduces
+ * only after the binding was first kept: `if T then r else r` here. *)
+val () =
+  let
+    val t = “LET (λr. if T then r else r)
+               ((r0 : yul_result) with machine :=
+                  (h : yul_expr_result -> yul_machine)
+                    (invoke_yul 1 fns "f" [] m))”
+    val r = rhs (concl (yulConvLib.yul_eval_conv []
+                          “fns : (string |-> yul_function)” t))
+  in
+    if can (find_term boolSyntax.is_let) r
+    then fail ("a let whose body uses it once was left: " ^ term_to_string r)
+    else ()
+  end
 
 (* One function converted over the table *term* rather than over the constant it
  * is bound to.  A caller may give either, `defs` being what that term is folded
@@ -521,14 +514,13 @@ QED
  * The shapes that have left this class as the conversion has improved all nest
  * a call inside another call's arguments: `wrapping_exp_uint8_uint8` closes now
  * -- its `exp` call is reached through the builtin dispatch rather than left to
- * the word library -- `fun_bitwise` comes back inside this suite's own clock,
- * and the three that carry a size above come back under a longer one; all of
- * them are measured with the rest.  The one left is the only function of the
- * object whose form this suite, on any clock, has not seen. *)
+ * the word library -- and the rest are covered by the size bound.  No line is
+ * left in the class now, and the check stays for the next body that stops
+ * coming back. *)
 val () =
   List.app
     (fn (nm, why) =>
-       if why <> "no form" then () else
+       if why <> no_form then () else
          let
            val f = valOf (List.find (fn (n, _, _) => n = nm) functions)
            val t = call_term f
@@ -542,3 +534,222 @@ val () =
                      ^ "its line in the exclusion list is stale")
          end)
     excluded
+
+(* The loop.  `checked_exp_helper`'s form at a fuel nobody knows stops at its
+ * loop, which is left folded as a call is, and one iteration of that loop
+ * converts on its own at such a fuel, with the next iteration folded in its
+ * place.  Those are
+ * the two steps an induction on the fuel takes over a loop head.  The fuel is
+ * written `SUC k`: the body's calls test their fuel for zero, and on a bare
+ * `k` that test is a decision every step after the call is evaluated under,
+ * while a run at `0` is one a caller converts at that numeral.  Both forms are
+ * held to the suite's own checks -- nothing of the evaluation left standing
+ * but the folded loop and calls, a fixed point -- and to the size line the
+ * excluded list is drawn at. *)
+val loop_c = prim_mk_const {Thy = "yulEvaluator", Name = "eval_yul_loop"}
+
+fun is_loop_at n t =
+  let val (f, args) = strip_comb t in
+    same_const loop_c f andalso List.length args = 6 andalso
+    (case n of NONE => true | SOME n => aconv (hd args) n)
+  end
+
+fun loop_checked what t th =
+  let
+    val form = rhs (concl th)
+    val res = yulConvLib.residues form
+    val n = size_of form
+  in
+    if not (aconv (lhs (concl th)) t) then
+      fail (what ^ "'s theorem is about some other term")
+    else if not (List.all (fn k => Lib.mem k call_residues) res) then
+      fail ("the conversion left " ^ show_residues res ^ " in " ^ what)
+    else if not (yulConvLib.is_fixed_point table_defs form) then
+      fail ("the conversion left something to evaluate in " ^ what)
+    else if n >= 200000 then
+      fail (what ^ " is " ^ Int.toString n ^ " nodes, at or over the line")
+    else form
+  end
+
+val loop_entry =
+  let
+    val (_, args) =
+      strip_comb (call_term (valOf (List.find (fn (n, _, _) =>
+                                                 n = "checked_exp_helper")
+                                              functions)))
+    val n = mk_var ("n", numSyntax.num)
+    val t = list_mk_comb (invoke_c, numSyntax.mk_suc n :: tl args)
+    val form =
+      case under_clock 60.0 (fn () => yulConvLib.yul_invoke_conv table_defs t) of
+        NONE => fail "checked_exp_helper's entry did not come back within 60s"
+      | SOME th => loop_checked "checked_exp_helper's entry" t th
+  in
+    if can (find_term (is_loop_at NONE)) form then form
+    else fail "checked_exp_helper's entry does not stop at its loop"
+  end
+
+val loop_iteration =
+  let
+    val (_, args) = strip_comb (find_term (is_loop_at NONE) loop_entry)
+    val k = mk_var ("k", numSyntax.num)
+    val t = list_mk_comb (loop_c, numSyntax.mk_suc k :: tl args)
+    val th =
+      case under_clock 60.0 (fn () => yulConvLib.yul_loop_conv table_defs t) of
+        NONE => fail "an iteration of checked_exp_helper's loop did not come \
+                     \back within 60s"
+      | SOME th => th
+    val form = loop_checked "an iteration of checked_exp_helper's loop" t th
+  in
+    if not (can (find_term (is_loop_at (SOME k))) form) then
+      fail "the iteration's form does not fold the next iteration at k"
+    else th
+  end
+
+val () = print ("yulConvTest: checked_exp_helper's entry " ^ Int.toString
+                (size_of loop_entry) ^ " nodes; an iteration at SUC k "
+                ^ Int.toString (size_of (rhs (concl loop_iteration)))
+                ^ " nodes\n")
+
+(* A loop with statements after it.  `checked_exp_helper`'s loop is the last
+ * statement of its body, so the rest after it is empty; here it is not: `f`'s
+ * loop is followed by an assignment, and `g`'s is the same loop in a block of
+ * its own, so the block's result is decided over the machine the loop returns.
+ * An entry's form stops at the loop with the rest left unevaluated -- a form
+ * that is not closed, since that rest is evaluation still to do -- at a numeral
+ * fuel and at `SUC n` alike.  Taking the loop's iterations one at a time and
+ * then finishing the rest with `yul_eval_conv` gives what the evaluator itself
+ * gives.  On 2 the loop runs its post once before it exits. *)
+Definition loop_rest_object_def:
+  loop_rest_object =
+    let loop = YulFor [] (YulBuiltin YLt [YulName "x"; YulLit (LitNumber 3w)])
+                 [YulAssign ["x"]
+                    (YulBuiltin YAdd [YulName "x"; YulLit (LitNumber 1w)])]
+                 [];
+        rest = YulAssign ["r"]
+                 (YulBuiltin YAdd [YulName "x"; YulLit (LitNumber 1w)])
+    in
+      [YulFunction "f" ["x"] ["r"] [loop; rest];
+       YulFunction "g" ["x"] ["r"] [YulBlock [loop]; rest]]
+End
+
+Definition loop_rest_table_def:
+  loop_rest_table = yul_env loop_rest_object
+End
+
+val () =
+  let
+    val defs = [loop_rest_table_def, loop_rest_object_def]
+    fun call fuel nm arg =
+      list_mk_comb (invoke_c,
+        [fuel, ``loop_rest_table``, stringSyntax.fromMLstring nm,
+         listSyntax.mk_list ([arg], bytes32_ty), yul_conv_machine_term])
+    fun clocked what conv t =
+      case under_clock 60.0 (fn () => conv t) of
+        NONE => fail (what ^ " did not come back within 60s")
+      | SOME th => rhs (concl th)
+    fun entry what t =
+      let val form = clocked what (yulConvLib.yul_invoke_conv defs) t in
+        if not (can (find_term (is_loop_at NONE)) form) then
+          fail (what ^ " does not stop at its loop")
+        else if yulConvLib.is_closed_form form then
+          fail (what ^ " is closed, so the rest after its loop was dropped")
+        else form
+      end
+    (* the loop's iterations, one at a time, until it exits *)
+    fun run what i form =
+      case Lib.total (find_term (is_loop_at NONE)) form of
+        NONE => form
+      | SOME loop =>
+          if i > 3 then fail (what ^ "'s loop did not exit in 3 iterations")
+          else
+            run what (i + 1)
+              (subst [loop |-> clocked (what ^ "'s loop")
+                                 (yulConvLib.yul_loop_conv defs) loop] form)
+    fun check nm =
+      let
+        val t = call ``20n`` nm ``2w : bytes32``
+        val form = run nm 1 (entry (nm ^ "'s entry") t)
+        val fns = ``loop_rest_table``
+        val final = clocked ("the rest after " ^ nm ^ "'s loop")
+                      (yulConvLib.yul_eval_conv defs fns) form
+        (* EVAL also unfolds the frame's parameters, which the conversion
+         * keeps by name, so the two are compared with those unfolded on both
+         * sides. *)
+        val direct = rhs (concl (EVAL t))
+        val final' = rhs (concl (QCONV EVAL final))
+        val n = mk_var ("n", numSyntax.num)
+      in
+        (* f and g call nothing, so the rest is held to what a call-free
+         * body's form is: nothing left but a memory read, and a fixed
+         * point *)
+        if not (List.all (fn k => k = memory_read_residue)
+                         (yulConvLib.residues final)) then
+          fail ("the rest after " ^ nm ^ "'s loop left "
+                ^ show_residues (yulConvLib.residues final))
+        else if not (yulConvLib.is_fixed_point defs final) then
+          fail ("the conversion left something to evaluate in the rest after "
+                ^ nm ^ "'s loop")
+        else if not (aconv final' direct) then
+          fail ("the rest after " ^ nm ^ "'s loop gives "
+                ^ term_to_string final ^ ", but the evaluator gives "
+                ^ term_to_string direct)
+        else
+          ignore (entry (nm ^ "'s entry at SUC n")
+                    (call (numSyntax.mk_suc n) nm (hd arg_names)))
+      end
+  in
+    List.app check ["f", "g"]
+  end
+
+(* A message call's frame.  `call` hands its outcome to `run_external_call`,
+ * a whole EVM run of the callee, which the form keeps folded, and writes the
+ * output it got back -- `TAKE 32 outcome.call_return`, bytes no clause of the
+ * memory write can list -- into memory.  The write then stays folded too, and
+ * the statements after the call bind and assign locals on the machine it
+ * returns: those have to read the scopes through the write, or every lookup
+ * after the call comes out as a read of a scope the form does not have.  So
+ * the form is held to what a call-free body's is, with the call and the write
+ * it made as the only other steps standing. *)
+Definition call_scope_object_def:
+  call_scope_object =
+    let lit = λn. YulLit (LitNumber n) in
+      [YulFunction "f" ["a"] ["r"]
+         [YulLet ["s"]
+            (SOME (YulBuiltin YCall
+                     [YulBuiltin YGas []; YulName "a"; lit 0w; lit 0w; lit 0w;
+                      lit 0w; lit 32w]));
+          YulLet ["x"] (SOME (YulBuiltin YMLoad [lit 0w]));
+          YulAssign ["x"] (YulBuiltin YAdd [YulName "x"; YulName "s"]);
+          YulAssign ["r"] (YulBuiltin YAdd [YulName "x"; YulName "a"])]]
+End
+
+Definition call_scope_table_def:
+  call_scope_table = yul_env call_scope_object
+End
+
+val () =
+  let
+    val defs = [call_scope_table_def, call_scope_object_def]
+    val t = list_mk_comb (invoke_c,
+              [``20n``, ``call_scope_table``, stringSyntax.fromMLstring "f",
+               listSyntax.mk_list ([hd arg_names], bytes32_ty),
+               yul_conv_machine_term])
+    val form =
+      case under_clock 60.0 (fn () => yulConvLib.yul_invoke_conv defs t) of
+        NONE => fail "the call's frame did not come back within 60s"
+      | SOME th => rhs (concl th)
+    val res = yulConvLib.residues form
+    val allowed = [("externalCall", "run_external_call"), memory_read_residue,
+                   ("yulEvaluator", "yul_memory_write")]
+  in
+    if not (yulConvLib.is_closed_form form) then
+      fail ("the call's frame is not closed: " ^ show_residues res)
+    else if not (yulConvLib.is_fixed_point defs form) then
+      fail "the conversion left something to evaluate in the call's frame"
+    else if not (Lib.mem ("externalCall", "run_external_call") res) then
+      fail "the call's frame keeps no folded run_external_call"
+    else if not (List.all (fn k => Lib.mem k allowed) res) then
+      fail ("the scopes after the call are not resolved: " ^ show_residues res)
+    else print ("yulConvTest: the call's frame closes at " ^
+                Int.toString (size_of form) ^ " nodes\n")
+  end

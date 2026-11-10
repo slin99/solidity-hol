@@ -1,0 +1,77 @@
+{
+  "name": "code_lengths",
+  "source": "testdata/differential/code_lengths.sol",
+  "contract": "CodeLengths",
+  "artifact": "testdata/differential/expected/code_lengths.json",
+  "peer": {
+    "source": "testdata/differential/token.sol",
+    "contract": "Token",
+    "artifact": "testdata/differential/expected/token.json"
+  },
+  "cases": [
+    {
+      "name": "absent_account",
+      "function": "size",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "eoa",
+      "function": "size",
+      "args": [
+        8192
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "deployed_peer",
+      "function": "size",
+      "args": [
+        20480
+      ],
+      "expect": {
+        "return": [
+          2610
+        ]
+      }
+    },
+    {
+      "name": "payable_peer",
+      "function": "payableSize",
+      "args": [
+        20480
+      ],
+      "expect": {
+        "return": [
+          2610
+        ]
+      }
+    },
+    {
+      "name": "receiver_evaluated_once",
+      "function": "once",
+      "args": [
+        20480
+      ],
+      "expect": {
+        "return": [
+          2610,
+          1
+        ]
+      },
+      "final_storage": {
+        "0": 1
+      }
+    }
+  ]
+}
