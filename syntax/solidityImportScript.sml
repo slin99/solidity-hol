@@ -175,6 +175,7 @@ Datatype:
   | SrcTupleExpression node_info (src_expr option list) string
   | SrcFunctionCall node_info src_expr (src_expr list) (num list) string
   | SrcSuperCall node_info num (src_expr list) (num list) string
+  | SrcBaseCall node_info num (src_expr list) (num list) string
   | SrcBuiltinCall node_info node_info src_builtin (src_expr option)
       (src_expr option) string
   | SrcTypeConversion node_info src_type_name src_expr string
@@ -275,6 +276,7 @@ Datatype:
     fn_returns : src_variable list;
     fn_modifiers : (num # src_expr list) list;
     fn_super_calls : num list;
+    fn_static_calls : num list;
     fn_body : src_stmt;
     fn_unsupported : string option
   |>
@@ -335,6 +337,8 @@ Datatype:
     contract_libraries : num list;
     contract_constants : (src_variable # src_expr) list;
     contract_base_arguments : (num # num # src_expr list) list;
+    (* Static calls in initializers and inheritance specifiers. *)
+    contract_static_calls : num list;
     contract_storage : src_storage_entry list;
     contract_structs : src_struct list;
     (* the enums of the compilation, by id, with their member counts *)
@@ -909,6 +913,7 @@ Definition expr_ids_def:
   (expr_ids (SrcFunctionCall info f args _ _) =
     info.node_id :: expr_ids f ++ exprs_ids args) ∧
   (expr_ids (SrcSuperCall info _ args _ _) = info.node_id :: exprs_ids args) ∧
+  (expr_ids (SrcBaseCall info _ args _ _) = info.node_id :: exprs_ids args) ∧
   (expr_ids (SrcBuiltinCall info callee _ condition message _) =
     [info.node_id; callee.node_id] ++
     (case condition of NONE => [] | SOME c => expr_ids c) ++
@@ -1240,13 +1245,23 @@ Definition add_functions_def:
        then rs else rs ++ [g]) gs)
 End
 
+(* Statically named base implementations, without virtual redirection. *)
+Definition static_targets_def:
+  (static_targets fs [] = []) ∧
+  (static_targets fs ((f : src_function) :: rs) =
+    (if f.fn_unsupported ≠ NONE then [] else
+     FILTER (λ(g : src_function). MEM g.fn_info.node_id f.fn_static_calls) fs) ++
+    static_targets fs rs)
+End
+
 (* The functions calls reach: the live ones and those super calls reach from
  * them. Each round adds a function or ends, so as many rounds as there are
  * functions suffice. *)
 Definition reached_functions_def:
   (reached_functions fs bases 0 rs = rs) ∧
   (reached_functions fs bases (SUC k) rs =
-    let rs' = add_functions rs (super_targets fs bases rs) in
+    let rs' = add_functions rs
+                (super_targets fs bases rs ++ static_targets fs rs) in
     if LENGTH rs' = LENGTH rs then rs else reached_functions fs bases k rs')
 End
 
@@ -1255,6 +1270,16 @@ End
 Definition checked_functions_def:
   checked_functions fs bases =
     reached_functions fs bases (LENGTH fs) (live_functions fs)
+End
+
+(* Initializers also reach static implementations, even without a constructor. *)
+Definition checked_contract_functions_def:
+  checked_contract_functions (c : src_contract) =
+    reached_functions c.contract_functions c.contract_bases
+      (LENGTH c.contract_functions)
+      (add_functions (live_functions c.contract_functions)
+         (FILTER (λf. MEM f.fn_info.node_id c.contract_static_calls)
+            c.contract_functions))
 End
 
 (* The constructor a base declares, if any. *)
@@ -1391,7 +1416,7 @@ Definition check_contract_def:
     EVERY check_event c.contract_events ∧
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
     EVERY (function_header_ok c.contract_bases)
-      (checked_functions c.contract_functions c.contract_bases) ∧
+      (checked_contract_functions c) ∧
     EVERY (λf. f.fn_kind = FunctionKind ∧
                (f.fn_visibility = InternalVisibility ∨
                 f.fn_visibility = PrivateVisibility) ∧
@@ -1471,7 +1496,7 @@ Definition contract_rejections_def:
       (storage_layout_ok F c.contract_state_variables c.contract_storage)
       c.contract_info.node_id "storage layout" ++
     FLAT (MAP (function_header_rejections c.contract_bases)
-            (checked_functions c.contract_functions c.contract_bases)) ++
+            (checked_contract_functions c)) ++
     FLAT (MAP (λf. rejected_unless (f.fn_kind = FunctionKind) f.fn_info.node_id
                      "library function kind" ++
                    rejected_unless (f.fn_visibility = InternalVisibility ∨
@@ -1576,7 +1601,7 @@ Definition unit_functions_def:
   unit_functions (u : src_unit) =
     FLAT (MAP (λc.
       MAP (λ(f : src_function). (f.fn_info.node_id, f.fn_name, f.fn_unsupported))
-        (checked_functions c.contract_functions c.contract_bases ++
+        (checked_contract_functions c ++
          c.contract_library_functions)) u.unit_contracts)
 End
 
@@ -1663,8 +1688,10 @@ val () = cv_auto_trans super_target_def;
 val () = cv_auto_trans super_table_def;
 val () = cv_auto_trans super_targets_def;
 val () = cv_auto_trans add_functions_def;
+val () = cv_auto_trans static_targets_def;
 val () = cv_auto_trans reached_functions_def;
 val () = cv_auto_trans checked_functions_def;
+val () = cv_auto_trans checked_contract_functions_def;
 val () = cv_auto_trans storage_layout_ok_def;
 val () = cv_auto_trans function_header_ok_def;
 val () = cv_auto_trans modifier_header_ok_def;
