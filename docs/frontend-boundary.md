@@ -311,8 +311,9 @@ arrays, as constants, immutables or error parameters, returned by an
 external call and `delete` are rejected.
 
 `keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
-a `bytes32`. A literal argument is first made a memory `bytes`, and one in
-storage or calldata is copied to memory, as for an internal call's argument.
+a `bytes32`. A string or hex literal is hashed directly without allocating
+memory. A `bytes` value in storage or calldata is copied to memory, as for
+an internal call's argument.
 `ecrecover(h, v, r, s)` is the address that the signature `(v, r, s)` of the
 hash `h` recovers, or `address(0)` for an invalid signature, as the compiler's
 call to the precompile at address 1 gives. Its arguments are converted to
