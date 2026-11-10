@@ -30,7 +30,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/try_calls.json",
   "../testdata/differential/expected/inline_assembly.json",
   "../testdata/differential/expected/external.json",
-  "../testdata/differential/expected/udvt.json"
+  "../testdata/differential/expected/udvt.json",
+  "../testdata/differential/expected/virtual_modifiers.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -983,15 +984,51 @@ val using_source = "testdata/differential/using_for.sol"
 val using_ast = artifact_part using_fixture ["sources", using_source, "ast"]
 val using_contracts = artifact_part using_fixture ["contracts", using_source]
 
-(* A virtual modifier rejects the unit, like a function header would: only a
- * modifier's body failing import is confined to the functions using it. *)
+(* A virtual modifier with no override still runs its own body. *)
+val () = ignore (import_source_unit []
+  (edit_first "ModifierDefinition" (set_field "virtual" (JSON.BOOL true)) using_ast)
+  using_contracts)
+
+val virtual_fixture = "../testdata/differential/expected/virtual_modifiers.json"
+val virtual_source = "testdata/differential/virtual_modifiers.sol"
+val virtual_ast = artifact_part virtual_fixture ["sources", virtual_source, "ast"]
+val virtual_contracts = artifact_part virtual_fixture ["contracts", virtual_source]
+
+fun in_modifier owner name change =
+  edit_first_where
+    (fn v => is_node "ContractDefinition" v andalso
+             JSONUtil.asString (JSONUtil.get (v, [JSONUtil.SEL "name"])) = owner) owner
+    (edit_first_where
+      (fn v => is_node "ModifierDefinition" v andalso
+               JSONUtil.asString (JSONUtil.get (v, [JSONUtil.SEL "name"])) = name) name change)
+
+(* An unused overridden body must not reject its derived implementation. *)
 val () =
-  (import_source_unit []
-     (edit_first "ModifierDefinition" (set_field "virtual" (JSON.BOOL true))
-        using_ast)
-     using_contracts;
-   raise Fail "virtual modifier: imported")
-  handle ImportError _ => ()
+  if import_rejection []
+       (in_modifier "ModifierRight" "stamp"
+          (edit_first "Block" (set_field "nodeType" (JSON.STRING "UnknownStatement")))
+          virtual_ast) virtual_contracts = NONE
+  then () else raise Fail "unused overridden modifier rejected"
+
+(* Failure follows the resolved override, including calls declared in a base. *)
+val () =
+  case import_rejection []
+    (in_modifier "VirtualModifiers" "stamp"
+       (edit_first "Block" (set_field "nodeType" (JSON.STRING "UnknownStatement")))
+       virtual_ast) virtual_contracts of
+    SOME (UnsupportedFunction, reason) =>
+      if String.isSubstring "unsupported statement UnknownStatement" reason then ()
+      else raise Fail reason
+  | _ => raise Fail "failed modifier override not propagated"
+
+val () =
+  case import_rejection []
+    (in_modifier "VirtualModifiers" "gate" (set_field "body" JSON.NULL)
+       virtual_ast) virtual_contracts of
+    SOME (UnsupportedFunction, reason) =>
+      if String.isSubstring "modifier without a body" reason then ()
+      else raise Fail reason
+  | _ => raise Fail "unresolved bodyless modifier not rejected"
 
 (* A modifier whose body fails import keeps its header, so the source check
  * still sees it (here a parameter's scope); the functions invoking it are

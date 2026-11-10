@@ -1462,7 +1462,7 @@ val failed_modifiers : (IntInf.int * string list) list ref = ref []
  * resolve to it. Blockers in its header reject the unit too, and so does a
  * header the importer cannot represent at all. A fallback with parameters or
  * returns is unsupported likewise: the core's fallback takes neither. *)
-fun function v = within v (fn v =>
+fun function modifier_target v = within v (fn v =>
   let
     val () = super_calls := []
     val ((params_id, params, returns_id, returns), header) = with_blockers (fn () =>
@@ -1480,7 +1480,7 @@ fun function v = within v (fn v =>
         let
           val () = require m (string_field m "kind" = "modifierInvocation")
                      ("unsupported modifier invocation kind " ^ string_field m "kind")
-          val id = int_field (field m "modifierName") "referencedDeclaration"
+          val id = modifier_target (field m "modifierName")
           val args = case optional_field m "arguments" of
                        SOME args => JSONUtil.arrayMap expr args
                      | NONE => []
@@ -1535,24 +1535,16 @@ fun function v = within v (fn v =>
     handle ImportError msg => (blockers := !blockers @ lines; raise ImportError msg)
   end)
 
-(* A modifier invocation runs the modifier it names, so one that could be
- * overridden is not supported. A modifier whose body has blockers is
- * recorded in failed_modifiers, which makes the functions invoking it
- * unsupported; blockers in its parameters and the virtual check reject the
- * unit, like a function's header. *)
+(* Only invoked implementations are imported. A failed body makes the
+ * functions invoking it unsupported; parameter blockers reject the unit. *)
 fun modifier v = within v (fn v =>
   let
     val (params_id, params) = parameter_list (field v "parameters")
     val () = expect v "ModifierDefinition"
-    val () = recover v (fn () =>
-               require v (not (bool_field v "virtual") andalso
-                          not (isSome (optional_field v "overrides")))
-                 "virtual modifiers are not supported")
-    (* a modifier without a body (a virtual one) is left out *)
-    val body = case optional_field v "body" of
-                 SOME b => b
-               | NONE => fail (describe v ^ ": modifier without a body")
-    val (body, lines) = with_blockers (fn () => stmt body)
+    val (body, lines) = with_blockers (fn () =>
+      case optional_field v "body" of
+        SOME b => stmt b
+      | NONE => unsupported_stmt v (note v "modifier without a body") [])
     val () =
       if null lines then ()
       else failed_modifiers := !failed_modifiers @ [(int_field v "id", lines)]
@@ -1696,8 +1688,8 @@ fun contract external_structs contracts declared v = within v (fn v =>
      * modifiers no reachable function invokes. A super call runs the first
      * implemented function, along the bases after the caller's, with the name
      * and parameter types of the declaration it names (super_target in
-     * solidityImport); an invocation runs the modifier it names, since
-     * modifiers that could be overridden are not supported. *)
+     * solidityImport). Modifier targets are resolved below before selecting
+     * their bodies for library discovery and import. *)
     val functions = members_of "FunctionDefinition" bases
     val overriders = List.concat (map overridden functions)
     fun same_id f g = int_field f "id" = int_field g "id"
@@ -1738,13 +1730,33 @@ fun contract external_structs contracts declared v = within v (fn v =>
     val live =
       let val start = List.filter (not o is_overridden) functions
       in close start start end
+    val modifier_definitions = members_of "ModifierDefinition" bases
+    fun overridden_modifiers m =
+      case optional_field m "baseModifiers" of
+        NONE => []
+      | SOME ids =>
+          List.concat (map (fn id =>
+            id :: (case List.find (fn d => int_field d "id" = id) modifier_definitions of
+                     SOME d => overridden_modifiers d
+                   | NONE => []))
+            (JSONUtil.arrayMap JSONUtil.asIntInf ids))
+    val modifier_targets =
+      List.concat (map (fn m =>
+        map (fn id => (id, int_field m "id"))
+          (int_field m "id" :: overridden_modifiers m)) modifier_definitions)
+    fun modifier_target m =
+      let val id = int_field m "referencedDeclaration" in
+        if String.isSubstring "." (string_field m "name") then id
+        else case List.find (fn (i, _) => i = id) modifier_targets of
+               SOME (_, target) => target
+             | NONE => id
+      end
     val invoked =
       List.concat
         (map (fn f => List.mapPartial
                         (fn i => case optional_field i "kind" of
                                    SOME (JSON.STRING "modifierInvocation") =>
-                                     SOME (int_field (field i "modifierName")
-                                             "referencedDeclaration")
+                                     SOME (modifier_target (field i "modifierName"))
                                  | _ => NONE)
                         (JSONUtil.arrayMap I (field f "modifiers")))
            live)
@@ -1876,7 +1888,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
       end
     (* before the functions, which need the modifiers that failed *)
     val imported_modifiers =
-      modifiers (members_of "ModifierDefinition" bases @
+      modifiers (List.filter reachable modifier_definitions @
                  List.filter (fn m => node_type m = "ModifierDefinition")
                    used_members)
   in
@@ -1930,12 +1942,12 @@ fun contract external_structs contracts declared v = within v (fn v =>
           (imported_modifiers, import_type "src_modifier")),
        ("contract_functions",
         listSyntax.mk_list
-          (keep_all function
+          (keep_all (function modifier_target)
              (List.filter (fn f => bool_field f "implemented")
                 (members_of "FunctionDefinition" bases)),
            function_ty)),
        ("contract_library_functions",
-        listSyntax.mk_list (keep_all function library_functions, function_ty)),
+        listSyntax.mk_list (keep_all (function modifier_target) library_functions, function_ty)),
        ("contract_getters", listSyntax.mk_list
           (List.mapPartial
              (fn d => if string_field d "visibility" = "public" then

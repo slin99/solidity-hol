@@ -131,9 +131,13 @@ metadata. Inheritance needs two of these annotations (the differential fixture
 `inheritance.sol`): the importer flattens a contract along its
 `linearizedBaseContracts`, and `call_table` resolves overrides through each
 function's `baseFunctions`. Base-constructor specifiers on constructors
-(`constructors.sol`) and invocations of non-virtual modifiers
-(`modifiers.sol`) are resolved through their `referencedDeclaration`; virtual
-and overriding modifiers are rejected. A `super.f(...)` call
+(`constructors.sol`) use their `referencedDeclaration`. Unqualified modifier
+invocations resolve through the transitive `baseModifiers` relation in the
+contract's linearization; explicitly qualified `Base.modifier` invocations
+keep their declared target (`virtual_modifiers.sol`). Only invoked modifier
+implementations are imported, so overridden bodyless declarations do not
+reject a concrete contract. A bodyless declaration still reached by a call
+makes that function unsupported. A `super.f(...)` call
 (`super_calls.sol`) runs what the compiler's lookup finds in the deployed
 contract's linearization: the first function after the caller's contract with
 the name and parameter types of the declaration the call's
