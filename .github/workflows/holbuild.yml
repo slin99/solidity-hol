@@ -53,13 +53,10 @@ jobs:
         run: |
           toolchain_key="holbuild-v1-toolchain-${{ runner.os }}-${{ runner.arch }}-${{ steps.polyml.outputs.polyml-rev }}-${{ steps.holbuild.outputs.holbuild-rev }}"
           project_prefix="holbuild-v2-project-${{ runner.os }}-${{ runner.arch }}-${{ steps.polyml.outputs.polyml-rev }}-${{ steps.holbuild.outputs.holbuild-rev }}-${{ hashFiles('holproject.toml') }}"
-          # Migration fallback; remove after active branches have v2 shard snapshots.
-          legacy_prefix="holbuild-v1-project-${{ runner.os }}-${{ runner.arch }}-${{ steps.polyml.outputs.polyml-rev }}-${{ steps.holbuild.outputs.holbuild-rev }}-${{ hashFiles('holproject.toml') }}"
           build_prefix="${project_prefix}-shard-${{ matrix.shard }}"
           snapshot_key="${build_prefix}-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}"
           echo "toolchain-key=$toolchain_key" >> "$GITHUB_OUTPUT"
           echo "project-prefix=$project_prefix" >> "$GITHUB_OUTPUT"
-          echo "legacy-prefix=$legacy_prefix" >> "$GITHUB_OUTPUT"
           echo "build-prefix=$build_prefix" >> "$GITHUB_OUTPUT"
           echo "snapshot-key=$snapshot_key" >> "$GITHUB_OUTPUT"
 
@@ -72,7 +69,6 @@ jobs:
           restore-keys: |
             ${{ steps.cache-key.outputs.build-prefix }}-
             ${{ steps.cache-key.outputs.project-prefix }}-
-            ${{ steps.cache-key.outputs.legacy-prefix }}-
 
       - name: Restore toolchain cache
         id: cache-toolchain
