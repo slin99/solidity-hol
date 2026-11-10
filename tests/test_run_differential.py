@@ -441,9 +441,21 @@ class DriverTests(unittest.TestCase):
         data = {**corpus(), "suites": suites}
         shards = [driver.select_shard(data, 3, index)["suites"] for index in range(3)]
         names = [[suite["name"] for suite in shard] for shard in shards]
-        self.assertEqual(names, [["alpha", "delta"], ["bravo", "echo"], ["charlie"]])
+        self.assertEqual(names, [["charlie"], ["bravo", "delta"], ["alpha", "echo"]])
         self.assertEqual(sorted(name for shard in names for name in shard),
                          sorted(suite["name"] for suite in suites))
+
+        expanded = {**data, "suites": suites + [
+            {**corpus()["suites"][0], "name": "aardvark"},
+        ]}
+        assignments = {name: index for index, shard in enumerate(names) for name in shard}
+        expanded_assignments = {
+            suite["name"]: index
+            for index in range(3)
+            for suite in driver.select_shard(expanded, 3, index)["suites"]
+        }
+        self.assertEqual({name: expanded_assignments[name] for name in assignments},
+                         assignments)
 
     def test_rejects_invalid_or_empty_shards(self) -> None:
         for argv in (["--shard-count", "0"],

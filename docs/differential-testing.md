@@ -86,10 +86,11 @@ lists let holbuild schedule them independently and reuse unchanged bytecode
 results after a frontend change. Both runners reuse cached suite verdicts by
 default; `--force` explicitly rebuilds suites. The source runner still accepts
 `--allow-cached` for compatibility.
-`--shard-count N --shard-index I` selects suite names at positions
-`I, I + N, ...` after sorting them. The shards are stable, disjoint and cover
-the complete corpus. CI runs eight shards on separate runners, with `-j2`
-inside each runner to stay within its memory limit. For example, the third
+`--shard-count N --shard-index I` assigns each suite by the first 64 bits
+of its name's SHA-256 digest modulo `N`. Adding a suite therefore does not move
+existing suites between cache lineages. The shards are deterministic, disjoint
+and cover the complete corpus. CI runs eight shards on separate runners, with
+`-j2` inside each runner to stay within its memory limit. For example, the third
 of eight shards can be reproduced locally with:
 
 ```sh

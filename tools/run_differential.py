@@ -19,6 +19,7 @@ on any failure.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -260,18 +261,23 @@ def load_corpus(path: Path) -> dict[str, Any]:
                 raise CorpusError(f"{what}: unknown fields {sorted(unknown)}")
     return corpus
 
+def suite_shard(name: str, shard_count: int) -> int:
+    digest = hashlib.sha256(name.encode("ascii")).digest()
+    return int.from_bytes(digest[:8], "big") % shard_count
+
+
 def select_shard(corpus: dict[str, Any], shard_count: int,
                  shard_index: int) -> dict[str, Any]:
     """Select one stable, disjoint partition of the corpus suites."""
-    suites = sorted(corpus["suites"], key=lambda suite: suite["name"])
-    selected = suites[shard_index::shard_count]
+    selected = sorted(
+        (suite for suite in corpus["suites"]
+         if suite_shard(suite["name"], shard_count) == shard_index),
+        key=lambda suite: suite["name"],
+    )
     if not selected:
         raise CorpusError(
             f"corpus shard {shard_index} of {shard_count} contains no suites")
     return {**corpus, "suites": selected}
-
-
-
 
 def case_theorem(suite: dict[str, Any], case: dict[str, Any]) -> str:
     return f"{suite['name']}_{case['name']}"
