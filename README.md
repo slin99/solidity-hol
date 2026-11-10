@@ -63,13 +63,19 @@ offsets, integer, `bool` and fixed-bytes constants, and the addresses of the mem
 puts them, so its Yul functions see them too (a function's parameters and results may
 reuse such a name in its body; a memory reference may not be assigned). At a
 literal address it may write only the scratch space unless it halts and read
-only memory it wrote itself (not the free memory pointer, which the compiler
-may raise to keep variables in memory); at a computed address, a block that
+only the free memory pointer and memory it wrote itself (an `mstore`, or a
+call's output region); at a computed address, a block that
 exits normally may write only the scratch space and the byte sequences' data
-words, not their length words, and their bytes are read back. Whatever the
-address, a read outside the zero slot, the byte sequences' words and the bytes
-the block wrote fails with an `InvalidCompletion`. `return`/`stop`
-end the frame with a `HaltCompletion`. Memory
+words, not their length words or the free memory pointer, and their bytes are
+read back. Whatever the address, a read outside the free memory pointer, the
+zero slot, the byte sequences' words and the bytes the block wrote fails with
+an `InvalidCompletion`. `return`/`stop`
+end the frame with a `HaltCompletion`. `call` and `staticcall` run the
+callee through the same `externalCall` adapter as high-level calls, with the
+same fixed gas budget: `gas()` may only be a call's gas argument, where it
+stands for that budget, and `returndatasize`/`returndatacopy` only follow a
+call the block made itself (the source keeps no return data buffer). In a
+static frame a block naming `call` fails closed. Memory
 expansion gas is not modelled, so a halting block's write far past the used
 memory succeeds where the EVM runs out of gas. Memory/calldata execution and a memory
 model shared with inline assembly beyond byte sequences remain unresolved. High-level external calls run the callee on Verifereum

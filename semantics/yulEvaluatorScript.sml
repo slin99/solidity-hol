@@ -586,9 +586,9 @@ End
 
 (* Inline assembly may read only memory the block was given: the zero slot, the
  * bytes the Solidity side laid out for it, and the bytes it has written
- * since; the rest of solc's memory (the free memory pointer, other objects,
- * leftover scratch) is not modelled.  yul_read_regions gives the (offset,
- * size) regions a builtin reads from memory, on its evaluated arguments.
+ * since; the rest of solc's memory (other objects, leftover scratch) is not
+ * modelled.  yul_read_regions gives the (offset, size) regions a builtin
+ * reads from memory, on its evaluated arguments.
  *)
 Definition yul_read_regions_def:
   yul_read_regions op (vs : bytes32 list) : (num # num) list =

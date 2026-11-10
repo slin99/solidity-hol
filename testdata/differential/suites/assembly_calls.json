@@ -1,0 +1,192 @@
+{
+  "name": "assembly_calls",
+  "source": "testdata/differential/assembly_calls.sol",
+  "contract": "AssemblyCalls",
+  "artifact": "testdata/differential/expected/assembly_calls.json",
+  "peer": {
+    "source": "testdata/differential/assembly_calls_peer.sol",
+    "contract": "AsmPeer",
+    "artifact": "testdata/differential/expected/assembly_calls_peer.json"
+  },
+  "cases": [
+    {
+      "name": "call_success",
+      "function": "rawCall",
+      "args": [
+        20480,
+        5
+      ],
+      "peer_storage": {
+        "0": 7
+      },
+      "expect": {
+        "return": [
+          true,
+          32,
+          12
+        ]
+      }
+    },
+    {
+      "name": "call_revert",
+      "function": "rawCall",
+      "args": [
+        20480,
+        1
+      ],
+      "peer_storage": {
+        "0": 7
+      },
+      "expect": {
+        "return": [
+          false,
+          100,
+          7
+        ]
+      }
+    },
+    {
+      "name": "bubble_success",
+      "function": "bubble",
+      "args": [
+        20480,
+        5
+      ],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "bubble_revert",
+      "function": "bubble",
+      "args": [
+        20480,
+        1
+      ],
+      "expect": {
+        "revert": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c7065657220726566757365640000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "name": "staticcall_reads",
+      "function": "staticRead",
+      "args": [
+        20480
+      ],
+      "peer_storage": {
+        "0": 7
+      },
+      "expect": {
+        "return": [
+          7
+        ]
+      }
+    },
+    {
+      "name": "returndatacopy_tail",
+      "function": "copyBack",
+      "args": [
+        20480,
+        10
+      ],
+      "expect": {
+        "return": [
+          11,
+          12,
+          96
+        ]
+      }
+    },
+    {
+      "name": "literal_gas",
+      "function": "limitedGas",
+      "args": [
+        20480,
+        3
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "optional_return_true",
+      "function": "safeTransfer",
+      "args": [
+        20480,
+        5
+      ],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 5
+      }
+    },
+    {
+      "name": "optional_return_false",
+      "function": "safeTransfer",
+      "args": [
+        20480,
+        2
+      ],
+      "expect": {
+        "revert": "0x5274afe70000000000000000000000000000000000000000000000000000000000005000"
+      }
+    },
+    {
+      "name": "optional_return_bubbles",
+      "function": "safeTransfer",
+      "args": [
+        20480,
+        1
+      ],
+      "expect": {
+        "revert": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c7065657220726566757365640000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "name": "optional_return_bool_true",
+      "function": "trySafeTransfer",
+      "args": [
+        20480,
+        5
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "optional_return_bool_false",
+      "function": "trySafeTransfer",
+      "args": [
+        20480,
+        2
+      ],
+      "expect": {
+        "return": [
+          false
+        ]
+      }
+    },
+    {
+      "name": "optional_return_bool_revert",
+      "function": "trySafeTransfer",
+      "args": [
+        20480,
+        1
+      ],
+      "expect": {
+        "return": [
+          false
+        ]
+      }
+    }
+  ]
+}

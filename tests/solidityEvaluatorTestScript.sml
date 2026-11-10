@@ -591,13 +591,18 @@ Proof
   CONV_TAC cv_eval
 QED
 
-(* A block reads only the zero slot, b's words and what it wrote, however the
- * address is computed: the free memory pointer, scratch it hasn't written and
- * memory past b's last word fail closed; a zero-length read touches nothing. *)
+(* A block reads only the free memory pointer, the zero slot, b's words and
+ * what it wrote, however the address is computed: scratch it hasn't written
+ * and memory past b's last word fail closed; a zero-length read touches
+ * nothing. The free memory pointer is past b's two words. *)
 Theorem asm_memory_reads:
   run_asm_bytes [YulLet ["p"] (SOME (ylit 0x40w));
                  YulAssign ["r"] (YulBuiltin YMLoad [YulName "p"])] [1w; 2w; 3w] =
-    (InvalidCompletion "assembly read memory it was not given", SOME [1w; 2w; 3w]) ∧
+    (ReturnCompletion [ScalarValue (IntegerValue 0xc0)], SOME [1w; 2w; 3w]) ∧
+  run_asm_bytes [YulExprStmt (YulBuiltin YMStore [ylit 0x40w; ylit 0x100w])]
+    [1w; 2w; 3w] =
+    (InvalidCompletion "assembly wrote memory outside the scratch space and byte sequence data",
+     SOME [1w; 2w; 3w]) ∧
   run_asm_bytes [YulAssign ["r"] (YulBuiltin YMLoad [yadd (YulName "b") (ylit 0x60w)])]
     [1w; 2w; 3w] =
     (InvalidCompletion "assembly read memory it was not given", SOME [1w; 2w; 3w]) ∧
@@ -629,7 +634,7 @@ Theorem asm_memory_reads:
     (InvalidCompletion "assembly read memory it was not given", SOME [1w; 2w; 3w]) ∧
   run_asm_bytes [YulFunction "f" ["q"] ["v"]
                    [YulAssign ["v"] (YulBuiltin YMLoad [YulName "q"])];
-                 YulAssign ["r"] (YulApply "f" [ylit 0x40w])] [1w; 2w; 3w] =
+                 YulAssign ["r"] (YulApply "f" [ylit 0x20w])] [1w; 2w; 3w] =
     (InvalidCompletion "assembly read memory it was not given", SOME [1w; 2w; 3w])
 Proof
   CONV_TAC cv_eval
@@ -654,16 +659,17 @@ Proof
   CONV_TAC cv_eval
 QED
 
-(* What assembly_memory_ok admits: scratch written then read, and writes
- * above the scratch space only in a block that halts; not the free memory
- * pointer. *)
+(* What assembly_memory_ok admits: scratch written then read, the free
+ * memory pointer read, and writes above the scratch space only in a block
+ * that halts. *)
 Theorem asm_memory_rule:
   assembly_memory_ok
     [YulExprStmt (YulBuiltin YMStore [ylit 0w; YulName "x"]);
      YulExprStmt (YulBuiltin YMStore [ylit 32w; YulName "x"]);
      YulAssign ["x"] (YulBuiltin YKeccak256 [ylit 0w; ylit 64w])] ∧
   ¬assembly_memory_ok [YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])] ∧
-  ¬assembly_memory_ok [YulAssign ["x"] (YulBuiltin YMLoad [ylit 64w])] ∧
+  assembly_memory_ok [YulAssign ["x"] (YulBuiltin YMLoad [ylit 64w])] ∧
+  ¬assembly_memory_ok [YulAssign ["x"] (YulBuiltin YMLoad [ylit 65w])] ∧
   ¬assembly_memory_ok
     [YulExprStmt (YulBuiltin YMStore [ylit 1w; YulName "x"]);
      YulExprStmt (YulBuiltin YLog0 [ylit 0w; ylit 64w])] ∧
@@ -680,6 +686,134 @@ Theorem asm_memory_rule:
   ¬assembly_memory_ok [YulExprStmt (YulBuiltin YMStore [ylit 64w; YulName "b"])]
 Proof
   EVAL_TAC
+QED
+
+(* call(gas(), a, 0, i, isz, o, osz) with literal arguments. *)
+Definition ycall_def:
+  ycall a i isz out osz =
+    YulBuiltin YCall [YulBuiltin YGas []; a; ylit 0w; ylit i; ylit isz;
+                      ylit out; ylit osz]
+End
+
+(* A call's literal output region counts as written for later reads, at most
+ * what it asked for; its literal input must have been written, and its
+ * output, like returndatacopy's, may go above the scratch space only in a
+ * block that halts. A huge literal length is rejected without a byte walk. *)
+Theorem asm_call_memory_rule:
+  assembly_memory_ok
+    [YulLet ["s"] (SOME (ycall (YulName "t") 0w 0w 0w 32w));
+     YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])] ∧
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YPop [ycall (YulName "t") 0w 0w 0w 32w]);
+     YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])] ∧
+  ¬assembly_memory_ok
+    [YulLet ["s"] (SOME (ycall (YulName "t") 0w 0w 0w 32w));
+     YulAssign ["x"] (YulBuiltin YMLoad [ylit 1w])] ∧
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMStore [ylit 0w; YulName "x"]);
+     YulLet ["s"] (SOME (ycall (YulName "t") 0w 4w 0w 32w))] ∧
+  ¬assembly_memory_ok [YulLet ["s"] (SOME (ycall (YulName "t") 0w 4w 0w 32w))] ∧
+  ¬assembly_memory_ok [YulLet ["s"] (SOME (ycall (YulName "t") 0w 0w 128w 32w))] ∧
+  assembly_memory_ok
+    [YulLet ["s"] (SOME (ycall (YulName "t") 0w 0w 128w 32w));
+     YulExprStmt (YulBuiltin YRevert [ylit 128w; ylit 32w])] ∧
+  ¬assembly_memory_ok
+    [YulExprStmt (YulBuiltin YReturnDataCopy [ylit 128w; ylit 0w; ylit 32w])] ∧
+  ¬assembly_memory_ok
+    [YulLet ["s"] (SOME (ycall (YulName "t") 0w 0w 0w 32w));
+     YulAssign ["x"] (YulBuiltin YKeccak256 [ylit 0w; ylit (-1w)])]
+Proof
+  EVAL_TAC
+QED
+
+(* What assembly_calls_ok admits: gas() only as a call's gas argument, and
+ * return data only after a statement that calls, earlier in the same or an
+ * enclosing statement list. *)
+Theorem asm_calls_rule:
+  assembly_calls_ok
+    [YulLet ["s"] (SOME (ycall (YulName "t") 0w 0w 0w 32w));
+     YulIf (YulBuiltin YIsZero [YulName "s"])
+       [YulExprStmt (YulBuiltin YReturnDataCopy
+          [ylit 0w; ylit 0w; YulBuiltin YReturnDataSize []])];
+     YulAssign ["x"] (YulBuiltin YReturnDataSize [])] ∧
+  assembly_calls_ok
+    [YulLet ["s"] (SOME (YulBuiltin YStaticCall
+       [ylit 5000w; YulName "t"; ylit 0w; ylit 0w; ylit 0w; ylit 0w]));
+     YulAssign ["x"] (YulBuiltin YReturnDataSize [])] ∧
+  assembly_calls_ok
+    [YulIf (YulBuiltin YIsZero [ycall (YulName "t") 0w 0w 0w 0w])
+       [YulExprStmt (YulBuiltin YRevert [ylit 0w; YulBuiltin YReturnDataSize []])]] ∧
+  ¬assembly_calls_ok
+    [YulIf (YulBuiltin YIsZero [ycall (YulName "t") 0w 0w 0w 0w]) [];
+     YulAssign ["x"] (YulBuiltin YReturnDataSize [])] ∧
+  ¬assembly_calls_ok [YulAssign ["x"] (YulBuiltin YReturnDataSize [])] ∧
+  ¬assembly_calls_ok [YulAssign ["x"] (YulBuiltin YGas [])] ∧
+  ¬assembly_calls_ok
+    [YulLet ["s"] (SOME (YulBuiltin YCall
+       [ylit 0w; YulBuiltin YGas []; ylit 0w; ylit 0w; ylit 0w; ylit 0w; ylit 0w]))] ∧
+  ¬assembly_calls_ok
+    [YulAssign ["x"] (yadd (ycall (YulName "t") 0w 0w 0w 0w)
+                            (YulBuiltin YReturnDataSize []))] ∧
+  ¬assembly_calls_ok
+    [YulIf (YulName "x") [YulLet ["s"] (SOME (ycall (YulName "t") 0w 0w 0w 0w))];
+     YulAssign ["x"] (YulBuiltin YReturnDataSize [])] ∧
+  ¬assembly_calls_ok
+    [YulLet ["s"] (SOME (ycall (YulName "t") 0w 0w 0w 0w));
+     YulFunction "f" [] ["r"] [YulAssign ["r"] (YulBuiltin YReturnDataSize [])]]
+Proof
+  EVAL_TAC
+QED
+
+(* Callees at 0x5000 (returns the word 0x2a), 0x5001 (reverts with the word
+ * 0xaa) and 0x5002 (no code). *)
+Definition call_state_def:
+  call_state =
+    initial_state with world := (initial_state.world with accounts :=
+      update_account 0x5001w
+        (empty_account_state with
+           code := [0x60w; 0xaaw; 0x60w; 0w; 0x52w; 0x60w; 0x20w; 0x60w; 0w; 0xfdw])
+        (update_account 0x5000w
+           (empty_account_state with
+              code := [0x60w; 0x2aw; 0x60w; 0w; 0x52w; 0x60w; 0x20w; 0x60w; 0w; 0xf3w])
+           empty_accounts))
+End
+
+val () = cv_auto_trans ycall_def;
+val () = cv_auto_trans call_state_def;
+
+(* A call runs the callee and leaves its output and return data; a failed one
+ * is bubbled through the free memory pointer, as SafeERC20 does; a callee
+ * returning less than asked leaves the scratch unwritten, so reading it fails
+ * closed. A static frame refuses call but runs staticcall. *)
+Theorem asm_calls_run:
+  run_asm [YulExprStmt (YulBuiltin YPop [ycall (ylit 0x5000w) 0w 0w 0w 32w]);
+           YulAssign ["x"] (yadd (YulBuiltin YMLoad [ylit 0w])
+                                 (YulBuiltin YReturnDataSize []))]
+    call_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    ReturnCompletion [ScalarValue (IntegerValue 74)] ∧
+  run_asm [YulIf (YulBuiltin YIsZero [ycall (ylit 0x5001w) 0w 0w 0w 0w])
+             [YulLet ["p"] (SOME (YulBuiltin YMLoad [ylit 0x40w]));
+              YulExprStmt (YulBuiltin YReturnDataCopy
+                [YulName "p"; ylit 0w; YulBuiltin YReturnDataSize []]);
+              YulExprStmt (YulBuiltin YRevert
+                [YulName "p"; YulBuiltin YReturnDataSize []])]]
+    call_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    RevertCompletion (REPLICATE 31 0w ++ [0xaaw]) ∧
+  run_asm [YulExprStmt (YulBuiltin YPop [ycall (ylit 0x5002w) 0w 0w 0w 32w]);
+           YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])]
+    call_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    InvalidCompletion "assembly read memory it was not given" ∧
+  run_asm [YulAssign ["x"] (ycall (ylit 0x5000w) 0w 0w 0w 32w)]
+    (call_state with frame := call_state.frame with static_context := T)
+    (AstId 110) [ScalarValue (IntegerValue 7)] =
+    InvalidCompletion "unsupported assembly builtin" ∧
+  run_asm [YulAssign ["x"] (YulBuiltin YStaticCall
+             [YulBuiltin YGas []; ylit 0x5000w; ylit 0w; ylit 0w; ylit 0w; ylit 32w])]
+    (call_state with frame := call_state.frame with static_context := T)
+    (AstId 110) [ScalarValue (IntegerValue 7)] =
+    ReturnCompletion [ScalarValue (IntegerValue 1)]
+Proof
+  CONV_TAC cv_eval
 QED
 
 (* A memory reference may not be assigned, except where a Yul function's
