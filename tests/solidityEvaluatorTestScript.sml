@@ -867,8 +867,12 @@ QED
 
 Theorem transient_aggregate_state_rejected:
   storage_wf [counter with state_backend := TransientStorage] ∧
-  ¬storage_wf [counter with <| state_backend := TransientStorage;
-    state_type := MappingT (UintT 256) (UintT 8); state_offset := 0 |>]
+  wf_core_state_variable (core_program_environment (storage_program []))
+    (counter with <| state_type := MappingT (UintT 256) (UintT 8);
+      state_offset := 0 |>) ∧
+  ¬wf_core_state_variable (core_program_environment (storage_program []))
+    (counter with <| state_backend := TransientStorage;
+      state_type := MappingT (UintT 256) (UintT 8); state_offset := 0 |>)
 Proof
   EVAL_TAC
 QED
