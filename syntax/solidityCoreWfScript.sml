@@ -3,9 +3,10 @@
  *
  * Admitted: scalar/convert/tuple/internal-call definitions, reads of state
  * variables, capture of locals and state variables and scalar writes to them,
- * and structured control flow. Bindings hold elementary types, enums and
- * user-defined value types, plus located memory and calldata byte sequences.
- * Function values are deferred together with indirect calls; contract types
+ * and structured control flow. Bindings hold elementary types, enums,
+ * user-defined value types and internal function values, plus located memory
+ * and calldata byte sequences; calls through function values are admitted.
+ * External function values are deferred; contract types
  * are deferred until contract metadata (payability, bases) is in the
  * environment. Typed storage references support struct fields, mappings and
  * arrays, with scalar leaf reads/captures. Aggregate copies and external calls
@@ -146,10 +147,21 @@ Definition is_function_type_def[simp]:
   (is_function_type _ ⇔ F)
 End
 
-(* Stage 2 bindings, parameters and returns are non-function value types. *)
+(* A function type's admitted shape: an internal function, not payable,
+ * whose parameters and returns are non-function value types. Other types pass.
+ *)
+Definition function_type_ok_def:
+  (function_type_ok (FunctionT kind m ps rs) ⇔
+    kind = InternalFn ∧ m ≠ PayableMut ∧
+    EVERY (λty. is_value_type ty ∧ ¬is_function_type ty) (ps ++ rs)) ∧
+  (function_type_ok _ ⇔ T)
+End
+
+(* Stage 2 bindings, parameters and returns are value types: an internal
+ * function type only as function_type_ok admits it. *)
 Definition core_scalar_type_def:
   core_scalar_type env ty ⇔
-    is_value_type ty ∧ ¬is_function_type ty ∧ valid_type_shape ty ∧
+    is_value_type ty ∧ function_type_ok ty ∧ valid_type_shape ty ∧
     declared_type_ok env ty
 End
 
@@ -341,11 +353,21 @@ Definition elementary_scalar_has_type_def:
   (elementary_scalar_has_type _ _ ⇔ F)
 End
 
-(* Function types never reach this relation: core_scalar_type excludes them. *)
+(* An internal function value names a procedure with the type's parameter
+ * and return types, or is the zero value. *)
 Definition scalar_has_type_def:
   scalar_has_type env ty s ⇔
     case ty of
-      EnumT id =>
+      FunctionT InternalFn _ ps rs =>
+        (case s of
+           InternalFunctionValue NONE => T
+         | InternalFunctionValue (SOME f) =>
+             (case lookup_procedure env f of
+                SOME p =>
+                  MAP SND p.parameters = ps ∧ MAP SND p.return_bindings = rs
+              | NONE => F)
+         | _ => F)
+    | EnumT id =>
         (case (lookup_enum env id, s) of
            (SOME members, IntegerValue i) => 0 ≤ i ∧ i < &members
          | _ => F)
@@ -516,6 +538,13 @@ Definition scalar_operator_signature_def:
     | BoolNotOp => if ty = BoolT then SOME ([ty], ty) else NONE
 End
 
+(* An internal function converts implicitly to one with the same parameters
+ * and returns that promises less: pure to view to non-payable. *)
+Definition function_mutability_convertible_def:
+  function_mutability_convertible m m' ⇔
+    m = m' ∨ m = PureMut ∨ m' = NonpayableMut
+End
+
 (* Explicit elementary conversions as solc admits them, including the identity
  * used for moves and default initialization. A payable address converts to
  * integers and fixed bytes only through a non-payable address. Contract types
@@ -541,6 +570,8 @@ Definition elementary_convertible_def:
     | (EnumT _, UintT _) => T
     | (UintT _, EnumT _) => T
     | (IntT _, EnumT _) => T
+    | (FunctionT InternalFn m ps rs, FunctionT InternalFn m' ps' rs') =>
+        function_mutability_convertible m m' ∧ ps = ps' ∧ rs = rs'
     | _ => F
 End
 
@@ -571,6 +602,8 @@ Definition implicitly_convertible_def:
     | (IntT m, IntT n) => m ≤ n
     | (FixedBytesT m, FixedBytesT n) => m ≤ n
     | (AddressT PayableAddress, AddressT NonpayableAddress) => T
+    | (FunctionT InternalFn m ps rs, FunctionT InternalFn m' ps' rs') =>
+        function_mutability_convertible m m' ∧ ps = ps' ∧ rs = rs'
     | _ => F
 End
 
@@ -806,6 +839,16 @@ Definition wf_core_operation_def:
         wf_core_atoms env ctx (MAP (λ(_, ty). SingleType ty) p.parameters) args ∧
         annotation = call_result_type (MAP SND p.return_bindings)
     | NONE => F) ∧
+  (* The callee is a bound function value, so its type gives the signature. *)
+  (wf_core_operation env ctx annotation (FunctionValueCallOperation g args) ⇔
+    case g of
+      BoundAtom x =>
+        (case ALOOKUP ctx.bindings x of
+           SOME (SingleType (FunctionT InternalFn _ ps rs)) =>
+             wf_core_atoms env ctx (MAP SingleType ps) args ∧
+             annotation = call_result_type rs
+         | _ => F)
+    | ConstantAtom _ => F) ∧
   (wf_core_operation env ctx annotation (EnvironmentOperation f) ⇔
     annotation = SingleType (environment_type f)) ∧
   (* High-level calls pass elementary values; a view or pure callee is

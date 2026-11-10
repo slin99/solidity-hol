@@ -144,6 +144,7 @@ Definition default_elementary_def:
     | AddressT _ => SOME (AddressValue 0w)
     | FixedBytesT n => SOME (BytesValue (REPLICATE n 0w))
     | EnumT _ => SOME (IntegerValue 0)
+    | FunctionT InternalFn _ _ _ => SOME (InternalFunctionValue NONE)
     | _ => NONE
 End
 

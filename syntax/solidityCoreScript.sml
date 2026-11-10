@@ -36,7 +36,9 @@ Datatype:
   | IntegerValue int
   | AddressValue address
   | BytesValue (byte list)
-  | InternalFunctionValue ast_id
+  (* An internal function value: SOME f calls procedure f; NONE is the zero
+   * value, whose call panics. *)
+  | InternalFunctionValue (ast_id option)
   | ExternalFunctionValue address (byte list)
 End
 
@@ -158,6 +160,8 @@ Datatype:
   | ArrayPushOperation core_atom (core_atom option)
   | ArrayPopOperation core_atom
   | InternalCallOperation ast_id (core_atom list)
+  (* a call of the procedure an internal function value names *)
+  | FunctionValueCallOperation core_atom (core_atom list)
   | ExternalCallOperation external_kind (byte list) (sol_type list)
       (sol_type list) core_atom core_atom (core_atom list)
   | StaticCallOperation core_atom core_atom

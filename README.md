@@ -46,7 +46,8 @@ value types to their elementary underlying types and lowers their resolved
 operators to internal calls.
 
 The evaluator executes elementary scalar operations and conversions, locals,
-tuples, structured control flow, internal calls, built-in failures, packed
+tuples, structured control flow, internal calls, calls through internal
+function values, built-in failures, packed
 state values, scalar-key mappings, storage arrays and storage struct members.
 Assignment, compound assignment, increment and tuple writes share local or
 captured-reference destinations. `solidityStorage` owns packed access and

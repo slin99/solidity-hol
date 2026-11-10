@@ -306,7 +306,22 @@ function-typed value is rejected, and so are `sha256` and `ripemd160`.
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
 type the compiler gives the whole expression, which must be a value type or
 a memory reference (a memory operand is the same reference, not a copy).
-Conditionals of tuple, storage, calldata or function type are rejected.
+Conditionals of tuple, storage or calldata type are rejected.
+
+An internal function value names a function by its declaration: a private,
+internal or public function, a library's internal function (`L.f`) or a
+free function, resolved as a call of it would be, so a virtual function is
+its most derived override. Its type keeps the declared mutability, and a
+pure function converts implicitly to view and nonpayable function types, a
+view one to nonpayable. A call through a value evaluates the callee
+expression first and copies its value, then the arguments in order; the zero
+value, held by a local or named return never assigned, panics with 0x51
+after the arguments, as the compiler's internal dispatch does. Parameters
+and returns of a function type must be value types other than function
+types. External function values, function values in storage, arrays,
+structs, events, the ABI or inline assembly, and comparisons of function
+values are rejected; a function-typed state variable, or an external
+function type in a function's header, rejects the whole unit.
 
 `abi.encode`, `abi.encodePacked`, `abi.encodeWithSelector` and
 `abi.encodeWithSignature` give a new memory `bytes`, allocated as the

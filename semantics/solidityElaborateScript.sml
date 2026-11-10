@@ -442,10 +442,12 @@ Definition negate_value_def:
     in ((ss ++ ss', a'), n + 1)
 End
 
-(* Comparisons of two operands of type ty, by equality and less-than. *)
+(* Comparisons of two operands of type ty, by equality and less-than. The
+ * core does not compare function values. *)
 Definition comparison_def:
   comparison n ty op al ar =
-    if op = SrcEq then SOME (compare_value n ty EqualOp al ar, n + 1)
+    if is_function_type ty then NONE
+    else if op = SrcEq then SOME (compare_value n ty EqualOp al ar, n + 1)
     else if op = SrcNe then
       SOME (negate_value (n + 1) (compare_value n ty EqualOp al ar))
     else if op = SrcLt then SOME (compare_value n ty LessThanOp al ar, n + 1)
@@ -759,6 +761,49 @@ End
 (* A call of an internal function or a super call, annotated with tid: as
  * many arguments as parameters, in a valid order, a callee that is not
  * external, and the callee's return types as its type. *)
+(* The value of a reference to the function callee, annotated with tid: an
+ * internal function value of the annotated type, which has the function's
+ * parameter and return types. *)
+Definition function_value_type_def:
+  function_value_type (callee : src_function) tid =
+    case (callee_types callee, function_type_identifier tid) of
+      (SOME (params, rets), SOME (FunctionT InternalFn m ps rs)) =>
+        if callee.fn_visibility ≠ ExternalVisibility ∧ ps = params ∧ rs = rets
+        then SOME (FunctionT InternalFn m ps rs) else NONE
+    | _ => NONE
+End
+
+(* A value of internal function type: the type, its parameters and returns. *)
+Definition function_signature_def:
+  function_signature vt =
+    case vt of
+      ElabType (FunctionT InternalFn m ps rs) =>
+        SOME (FunctionT InternalFn m ps rs, ps, rs)
+    | _ => NONE
+End
+
+Definition is_array_member_def:
+  (is_array_member (SrcArrayMember _ _ _ _) ⇔ T) ∧
+  (is_array_member _ ⇔ F)
+End
+
+(* The function a call names directly, by its declaration. *)
+Definition direct_callee_def:
+  direct_callee ctx callee =
+    case callee of
+      SrcIdentifier _ _ f _ => ALOOKUP ctx.functions f
+    | _ => NONE
+End
+
+(* Why a call whose callee is neither a function nor a function value is
+ * rejected. *)
+Definition callee_failure_def:
+  callee_failure (id : num) callee =
+    case callee of
+      SrcIdentifier finfo _ _ _ => (finfo.node_id, "call of an unsupported function")
+    | _ => (id, "unsupported callee")
+End
+
 Definition internal_call_ok_def:
   internal_call_ok (callee : src_function) rets args order tid ⇔
     LENGTH args = LENGTH callee.fn_parameters ∧
@@ -804,7 +849,8 @@ Definition elab_expr_def:
         (case variable_destination ctx n x tid of
            SOME ((ls, target), n1) =>
              let ty = destination_type target in
-             if ¬(is_stored_scalar_type ty ∨ memory_object_type ty ∨ located_value_type ty)
+             if ¬(is_stored_scalar_type ty ∨ is_function_type ty ∨
+                  memory_object_type ty ∨ located_value_type ty)
              then INR [(info.node_id, "read of a value of this type")] else
              let (read, n2) = read_destination n1 target in
              let (ss, a) = read in
@@ -817,7 +863,18 @@ Definition elab_expr_def:
                  let p = if ctx.mode = CheckedArithmetic then x else w in
                  let (ss, a) = bind_value n ty (InternalCallOperation (AstId p) []) in
                  INL ((ss, a, ElabType ty), n + 1)
-             | NONE => unknown_reference ctx info.node_id "unsupported identifier" x)
+             | NONE =>
+                 case ALOOKUP ctx.functions x of
+                   SOME callee =>
+                     (* a function as an internal function value, naming the
+                        procedure a call of it would run *)
+                     (case function_value_type callee tid of
+                        SOME ty =>
+                          INL (([], ConstantAtom (InternalFunctionValue
+                                      (SOME (AstId callee.fn_info.node_id))),
+                                ElabType ty), n)
+                      | NONE => INR [(info.node_id, "unsupported function value")])
+                 | NONE => unknown_reference ctx info.node_id "unsupported identifier" x)
     | SrcArrayLength info root_expr tid =>
         ensure (tid = "t_uint256") (info.node_id, "type annotation mismatch")
         (case elab_expr ctx n root_expr of
@@ -1087,6 +1144,9 @@ Definition elab_expr_def:
         reject (info.node_id, "tuple used as a value") (elab_components ctx n cs)
     | SrcArrayMember info _ _ _ => INR [(info.node_id, "array member as a value")]
     | SrcFunctionCall info callee args order tid =>
+        (* the other callees are not matched as patterns, which would copy
+           their code into a clause per callee constructor *)
+        if is_array_member callee then
         (case callee of
            SrcArrayMember _ member root_expr _ =>
              (case elab_location ctx n root_expr of
@@ -1126,8 +1186,9 @@ Definition elab_expr_def:
                   reject (info.node_id, "unsupported array member call")
                     (elab_arg_values ctx n args)
               | INR bs => INR (bs ++ blockers (elab_arg_values ctx n args)))
-         | SrcIdentifier finfo _ f _ =>
-             (case ALOOKUP ctx.functions f of
+         | _ => INR [(info.node_id, "unsupported callee")])
+        else
+             (case direct_callee ctx callee of
                 SOME callee =>
                   (case callee_types callee of
                      SOME (params, rets) =>
@@ -1145,11 +1206,31 @@ Definition elab_expr_def:
                        reject (info.node_id, "unsupported parameter type")
                          (elab_arg_values ctx n args))
               | NONE =>
-                  INR ((finfo.node_id, "call of an unsupported function") ::
-                       blockers (elab_arg_values ctx n args)))
-         | _ =>
-             INR ((info.node_id, "unsupported callee") ::
-                  blockers (elab_arg_values ctx n args)))
+                  (* a call through an internal function value: the callee,
+                     copied before the arguments can change it, then the
+                     arguments *)
+                  case elab_expr ctx n callee of
+                    INL ((cs, g, vt), n1) =>
+                      (case function_signature vt of
+                         SOME (gty, ps, rs) =>
+                           if order ≠ [] ∨ LENGTH args ≠ LENGTH ps ∨
+                              decode_type_identifier tid ≠ SOME (call_value_type rs)
+                           then reject (info.node_id, "call does not match the function type")
+                                  (elab_arg_values ctx n args) else
+                           let (gs, g') = bind_value n1 gty (ConvertOperation gty g) in
+                           (case elab_args ctx (n1 + 1) info.node_id [] ps args of
+                              INL ((sa, atoms), n2) =>
+                                INL ((cs ++ gs ++ sa ++
+                                        [DefineStmt (AstId n2) (call_result_type rs)
+                                           (FunctionValueCallOperation g' atoms)],
+                                      BoundAtom (AstId n2), call_value rs), n2 + 1)
+                            | INR bs => INR bs)
+                       | NONE =>
+                           INR (callee_failure info.node_id callee ::
+                                blockers (elab_arg_values ctx n args)))
+                  | INR _ =>
+                      INR (callee_failure info.node_id callee ::
+                           blockers (elab_arg_values ctx n args)))
     | SrcSuperCall info r args order tid =>
         (case ALOOKUP ctx.supers r of
            SOME callee =>
@@ -1275,7 +1356,8 @@ Definition elab_expr_def:
                   (case identifier_type tid of
                      SOME ty =>
                        if ¬(case ty of LocatedT loc _ => loc = MemoryLoc
-                                     | _ => is_stored_scalar_type ty)
+                                     | _ => is_stored_scalar_type ty ∨
+                                            is_function_type ty)
                        then reject (info.node_id, "unsupported conditional type")
                               (elab_expr ctx n f) else
                        (case default_operation ty of

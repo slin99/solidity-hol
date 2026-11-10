@@ -1,0 +1,274 @@
+{
+  "name": "function_types",
+  "source": "testdata/differential/function_types.sol",
+  "contract": "FunctionTypes",
+  "artifact": "testdata/differential/expected/function_types.json",
+  "cases": [
+    {
+      "name": "private_function_value_converts_to_view",
+      "function": "privateValue",
+      "args": [
+        3,
+        4
+      ],
+      "expect": {
+        "return": [
+          7
+        ]
+      }
+    },
+    {
+      "name": "library_function_value",
+      "function": "libraryValue",
+      "args": [
+        3,
+        4
+      ],
+      "expect": {
+        "return": [
+          10
+        ]
+      }
+    },
+    {
+      "name": "free_function_value",
+      "function": "freeValue",
+      "args": [
+        3,
+        9
+      ],
+      "expect": {
+        "return": [
+          9
+        ]
+      }
+    },
+    {
+      "name": "virtual_function_value_is_the_override",
+      "function": "overriddenValue",
+      "args": [
+        3,
+        4
+      ],
+      "storage": {
+        "0": 5
+      },
+      "expect": {
+        "return": [
+          17
+        ]
+      }
+    },
+    {
+      "name": "function_value_with_modifier",
+      "function": "modifiedValue",
+      "args": [
+        3,
+        4
+      ],
+      "expect": {
+        "return": [
+          8
+        ]
+      },
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "returned_function_value",
+      "function": "picked",
+      "args": [
+        true,
+        3,
+        4
+      ],
+      "expect": {
+        "return": [
+          7
+        ]
+      }
+    },
+    {
+      "name": "unassigned_named_return_panics",
+      "function": "picked",
+      "args": [
+        false,
+        3,
+        4
+      ],
+      "expect": {
+        "panic": "0x51"
+      }
+    },
+    {
+      "name": "conditional_function_value_true",
+      "function": "chosen",
+      "args": [
+        true,
+        5,
+        2
+      ],
+      "expect": {
+        "return": [
+          7
+        ]
+      }
+    },
+    {
+      "name": "conditional_function_value_false",
+      "function": "chosen",
+      "args": [
+        false,
+        5,
+        2
+      ],
+      "expect": {
+        "return": [
+          3
+        ]
+      }
+    },
+    {
+      "name": "callee_checked_arithmetic_panics",
+      "function": "chosen",
+      "args": [
+        false,
+        2,
+        5
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "reassigned_function_value",
+      "function": "reassigned",
+      "args": [
+        5,
+        2
+      ],
+      "expect": {
+        "return": [
+          3
+        ]
+      }
+    },
+    {
+      "name": "unassigned_local_panics",
+      "function": "unassigned",
+      "args": [],
+      "expect": {
+        "panic": "0x51"
+      }
+    },
+    {
+      "name": "callee_copied_before_arguments",
+      "function": "calleeBeforeArguments",
+      "args": [],
+      "expect": {
+        "return": [
+          1105
+        ]
+      }
+    },
+    {
+      "name": "callee_expression_before_arguments",
+      "function": "order",
+      "args": [],
+      "expect": {
+        "return": [
+          129
+        ]
+      },
+      "final_storage": {
+        "0": 123
+      }
+    },
+    {
+      "name": "zero_value_panics_after_arguments",
+      "function": "zeroAfterArguments",
+      "args": [],
+      "expect": {
+        "panic": "0x51"
+      }
+    },
+    {
+      "name": "votes_push_add",
+      "function": "moveVotes",
+      "args": [
+        true,
+        10
+      ],
+      "expect": {
+        "return": [
+          0,
+          10
+        ]
+      },
+      "final_storage": {
+        "1": 10
+      }
+    },
+    {
+      "name": "votes_push_subtract",
+      "function": "moveVotes",
+      "args": [
+        false,
+        3
+      ],
+      "storage": {
+        "1": 10
+      },
+      "expect": {
+        "return": [
+          10,
+          7
+        ]
+      },
+      "final_storage": {
+        "1": 7
+      }
+    },
+    {
+      "name": "votes_push_subtract_underflow",
+      "function": "moveVotes",
+      "args": [
+        false,
+        3
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "aave_mint_scaled",
+      "function": "mintScaled",
+      "args": [
+        1000,
+        1500
+      ],
+      "expect": {
+        "return": [
+          1500
+        ]
+      },
+      "final_storage": {
+        "2": 1000
+      }
+    },
+    {
+      "name": "address_and_bytes_components",
+      "function": "typedComponents",
+      "args": [
+        103929005139824722894395387573023313875986306680,
+        305419896
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    }
+  ]
+}
