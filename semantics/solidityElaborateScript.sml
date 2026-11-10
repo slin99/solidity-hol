@@ -921,8 +921,11 @@ Definition elab_expr_def:
              then INR [(info.node_id, "unsupported calldata slice type")] else
              let (saved, n2) = snapshot n1 ref (ElabType (LocatedT CalldataLoc ty)) in
              let (sc, ref') = saved in
-             let es = (case start of NONE => [] | SOME e => [e]) ++
-                      (case end_bound of NONE => [] | SOME e => [e]) in
+             let es = case (start, end_bound) of
+                        (NONE, NONE) => []
+                      | (SOME a, NONE) => [a]
+                      | (NONE, SOME b) => [b]
+                      | (SOME a, SOME b) => [a; b] in
              (case elab_arg_values ctx n2 es of
                 INL ((bs, vs), n3) =>
                   if ¬EVERY (λ(a, vt). index_value_ok a vt) vs
@@ -930,13 +933,20 @@ Definition elab_expr_def:
                   (case convert_operands n3 info.node_id (MAP expr_id es)
                           (REPLICATE (LENGTH es) (ValueOf (UintT 256))) vs of
                      INL (cs, _, atoms, n4) =>
-                       let first = case start of NONE => ConstantAtom (IntegerValue 0)
-                                                | SOME _ => HD atoms in
-                       let last = case end_bound of NONE => NONE | SOME _ => SOME (LAST atoms) in
-                       let result_ty = LocatedT CalldataLoc ty in
-                       let (rs, value) = bind_value n4 result_ty
-                                          (CalldataSliceOperation ref' first last) in
-                       INL ((ss ++ sc ++ bs ++ cs ++ rs, value, ElabType result_ty), n4 + 1)
+                       (case (case (start, end_bound, atoms) of
+                                (NONE, NONE, []) =>
+                                  SOME (ConstantAtom (IntegerValue 0), NONE)
+                              | (SOME _, NONE, [a]) => SOME (a, NONE)
+                              | (NONE, SOME _, [b]) =>
+                                  SOME (ConstantAtom (IntegerValue 0), SOME b)
+                              | (SOME _, SOME _, [a; b]) => SOME (a, SOME b)
+                              | _ => NONE) of
+                          NONE => INR [(info.node_id, "invalid slice bounds")]
+                        | SOME (first, last) =>
+                          let result_ty = LocatedT CalldataLoc ty in
+                          let (rs, value) = bind_value n4 result_ty
+                                             (CalldataSliceOperation ref' first last) in
+                          INL ((ss ++ sc ++ bs ++ cs ++ rs, value, ElabType result_ty), n4 + 1))
                    | INR bs => INR bs)
               | INR bs => INR bs)
          | INL _ => INR [(info.node_id, "slice of a non-calldata array")]
