@@ -22,6 +22,7 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/imports.json",
   "../testdata/differential/expected/errors.json",
   "../testdata/differential/expected/type_bounds.json",
+  "../testdata/differential/expected/enum_bounds.json",
   "../testdata/differential/expected/using_for.json",
   "../testdata/differential/expected/hashes.json",
   "../testdata/differential/expected/conditionals.json",
@@ -31,7 +32,9 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/inline_assembly.json",
   "../testdata/differential/expected/external.json",
   "../testdata/differential/expected/low_level_calls.json",
-  "../testdata/differential/expected/udvt.json"
+  "../testdata/differential/expected/udvt.json",
+  "../testdata/differential/expected/virtual_modifiers.json",
+  "../testdata/differential/expected/literals.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -987,6 +990,32 @@ Proof
   EVAL_TAC
 QED
 
+Definition enum_bounds_unit_def:
+  enum_bounds_unit = ^(import_artifact
+    "../testdata/differential/expected/enum_bounds.json"
+    "testdata/differential/enum_bounds.sol")
+End
+
+val () = cv_auto_trans enum_bounds_unit_def;
+
+Theorem enum_bounds_valid:
+  valid_src_unit enum_bounds_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+val () = expect_function_lines "unknown enum type member"
+  "../testdata/differential/expected/enum_bounds.json"
+  "testdata/differential/enum_bounds.sol" "fileBounds"
+  (edit_first "MemberAccess" (set_field "memberName" (JSON.STRING "middle")))
+  ["unsupported enum type member"]
+
+val () = expect_function_lines "unknown enum bound declaration"
+  "../testdata/differential/expected/enum_bounds.json"
+  "testdata/differential/enum_bounds.sol" "fileBounds"
+  (edit_first "Identifier" (set_field "referencedDeclaration" (JSON.INT 999999)))
+  ["unknown enum declaration"]
+
 (* Libraries: only internal functions, attached through a library name, with a
  * receiver that is not copied, are imported; library functions are plain
  * functions.
@@ -997,15 +1026,51 @@ val using_source = "testdata/differential/using_for.sol"
 val using_ast = artifact_part using_fixture ["sources", using_source, "ast"]
 val using_contracts = artifact_part using_fixture ["contracts", using_source]
 
-(* A virtual modifier rejects the unit, like a function header would: only a
- * modifier's body failing import is confined to the functions using it. *)
+(* A virtual modifier with no override still runs its own body. *)
+val () = ignore (import_source_unit []
+  (edit_first "ModifierDefinition" (set_field "virtual" (JSON.BOOL true)) using_ast)
+  using_contracts)
+
+val virtual_fixture = "../testdata/differential/expected/virtual_modifiers.json"
+val virtual_source = "testdata/differential/virtual_modifiers.sol"
+val virtual_ast = artifact_part virtual_fixture ["sources", virtual_source, "ast"]
+val virtual_contracts = artifact_part virtual_fixture ["contracts", virtual_source]
+
+fun in_modifier owner name change =
+  edit_first_where
+    (fn v => is_node "ContractDefinition" v andalso
+             JSONUtil.asString (JSONUtil.get (v, [JSONUtil.SEL "name"])) = owner) owner
+    (edit_first_where
+      (fn v => is_node "ModifierDefinition" v andalso
+               JSONUtil.asString (JSONUtil.get (v, [JSONUtil.SEL "name"])) = name) name change)
+
+(* An unused overridden body must not reject its derived implementation. *)
 val () =
-  (import_source_unit []
-     (edit_first "ModifierDefinition" (set_field "virtual" (JSON.BOOL true))
-        using_ast)
-     using_contracts;
-   raise Fail "virtual modifier: imported")
-  handle ImportError _ => ()
+  if import_rejection []
+       (in_modifier "ModifierRight" "stamp"
+          (edit_first "Block" (set_field "nodeType" (JSON.STRING "UnknownStatement")))
+          virtual_ast) virtual_contracts = NONE
+  then () else raise Fail "unused overridden modifier rejected"
+
+(* Failure follows the resolved override, including calls declared in a base. *)
+val () =
+  case import_rejection []
+    (in_modifier "VirtualModifiers" "stamp"
+       (edit_first "Block" (set_field "nodeType" (JSON.STRING "UnknownStatement")))
+       virtual_ast) virtual_contracts of
+    SOME (UnsupportedFunction, reason) =>
+      if String.isSubstring "unsupported statement UnknownStatement" reason then ()
+      else raise Fail reason
+  | _ => raise Fail "failed modifier override not propagated"
+
+val () =
+  case import_rejection []
+    (in_modifier "VirtualModifiers" "gate" (set_field "body" JSON.NULL)
+       virtual_ast) virtual_contracts of
+    SOME (UnsupportedFunction, reason) =>
+      if String.isSubstring "modifier without a body" reason then ()
+      else raise Fail reason
+  | _ => raise Fail "unresolved bodyless modifier not rejected"
 
 (* A modifier whose body fails import keeps its header, so the source check
  * still sees it (here a parameter's scope); the functions invoking it are
@@ -1306,3 +1371,28 @@ val () = import_units_error_with UnsupportedFunction [udvt_types] udvt_contracts
      (fn v => is_node "BinaryOperation" v andalso
               isSome (JSONUtil.findField v "function")) "overloaded operator"
      (set_field "function" (declaration_id "FunctionDefinition" "bump" udvt_ast)) udvt_ast)
+
+val literals_fixture = "../testdata/differential/expected/literals.json"
+val literals_source = "testdata/differential/literals.sol"
+val literals_ast = artifact_part literals_fixture ["sources", literals_source, "ast"]
+val literals_contracts = artifact_part literals_fixture ["contracts", literals_source]
+
+fun literal_error name fn_name edit =
+  import_error_with UnsupportedFunction literals_contracts name
+    (edit_first_where (named "FunctionDefinition" fn_name) fn_name
+       (edit_first "Literal" edit) literals_ast)
+
+val () = literal_error "unknown subdenomination" "units"
+  (set_field "subdenomination" (JSON.STRING "years"))
+
+val () = literal_error "subdenomination on a boolean" "units"
+  (set_field "kind" (JSON.STRING "bool"))
+
+val () = literal_error "subdenomination on an address" "units"
+  (type_identifier "t_address")
+
+val () = literal_error "short address literal" "addressValue"
+  (set_field "value" (JSON.STRING "0x1234"))
+
+val () = literal_error "nonhex address literal" "addressValue"
+  (set_field "value" (JSON.STRING "0xgg175474E89094C44Da98b954EedeAC495271d0F"))
