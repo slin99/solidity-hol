@@ -658,20 +658,27 @@ Definition tuple_component_def:
           SOME (SrcRational i d) =>
             if d = 1 then SOME (if i < 0 then IntT 256 else UintT 256) else NONE
         | _ => NONE
+      else if isPREFIX "t_function_internal_" tid then function_type_identifier tid
       else decode_elementary_identifier tid
     else NONE
 End
 
 (* The components of a tuple identifier from its `$`-separated fields,
  * rejoining an array's fields: "_t_array" opens an array and a dimension,
- * the one field without a leading "_", closes one. *)
+ * the one field without a leading "_", closes one. A function type's fields
+ * are rejoined likewise: "_t_function_internal_..." opens it, its "returns"
+ * field stays inside, and the field "_" (its closing "$" then "_") closes
+ * it; its parameters and returns are never arrays or functions. *)
 Definition tuple_identifier_components_def:
   (tuple_identifier_components (depth : num) acc [] =
     if depth = 0 ∧ acc = "" then SOME [] else NONE) ∧
   (tuple_identifier_components depth acc (f :: fs) =
     let component = if acc = "" then f else acc ++ "$" ++ f in
-    let depth' = if f = "_t_array" then depth + 1
-                 else if isPREFIX "_" f then depth else depth - 1 in
+    let depth' = if f = "_t_array" ∨ isPREFIX "_t_function_internal_" f
+                 then depth + 1
+                 else if f = "_" then depth - 1
+                 else if isPREFIX "_" f ∨ f = "returns" then depth
+                 else depth - 1 in
     if depth' = 0 then
       case tuple_identifier_components 0 "" fs of
         SOME cs => SOME (component :: cs)
@@ -769,7 +776,7 @@ Theorem tuple_component_valid[local]:
 Proof
   rw[tuple_component_def, AllCaseEqs()] >>
   gvs[valid_type_shape_def, solidityASTTheory.valid_int_width_def] >>
-  metis_tac[decode_elementary_identifier_valid]
+  metis_tac[decode_elementary_identifier_valid, function_type_identifier_valid]
 QED
 
 Theorem decode_type_identifier_valid:

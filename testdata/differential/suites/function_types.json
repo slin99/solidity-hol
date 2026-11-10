@@ -188,9 +188,59 @@
     {
       "name": "zero_value_panics_after_arguments",
       "function": "zeroAfterArguments",
-      "args": [],
+      "args": [
+        1
+      ],
       "expect": {
         "panic": "0x51"
+      }
+    },
+    {
+      "name": "zero_value_arguments_fail_first",
+      "function": "zeroAfterArguments",
+      "args": [
+        0
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "tuple_returned_function_value_true",
+      "function": "pairCall",
+      "args": [
+        true,
+        3
+      ],
+      "expect": {
+        "return": [
+          10
+        ]
+      }
+    },
+    {
+      "name": "tuple_returned_function_value_false",
+      "function": "pairCall",
+      "args": [
+        false,
+        9
+      ],
+      "expect": {
+        "return": [
+          2
+        ]
+      }
+    },
+    {
+      "name": "tuple_assigned_function_value",
+      "function": "tupleAssigned",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          3
+        ]
       }
     },
     {

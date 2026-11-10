@@ -128,9 +128,29 @@ contract FunctionTypes is FunctionTypesBase {
         return chooser()(step(2), step(3));
     }
 
-    function zeroAfterArguments() external returns (uint256) {
+    // the arguments run before the zero value's panic: x = 0 fails in them
+    function zeroAfterArguments(uint256 x) external returns (uint256) {
         function(uint256, uint256) view returns (uint256) f;
-        return f(step(4), step(5));
+        return f(step(4), x - 1);
+    }
+
+    // function values as tuple components: returned, destructured, assigned
+    function pickPair(bool s)
+        internal pure returns (function(uint256, uint256) pure returns (uint256), uint256)
+    {
+        return (s ? add : sub, 7);
+    }
+
+    function pairCall(bool s, uint256 a) external pure returns (uint256) {
+        (function(uint256, uint256) pure returns (uint256) g, uint256 b) = pickPair(s);
+        return g(a, b);
+    }
+
+    function tupleAssigned(uint256 a) external pure returns (uint256) {
+        function(uint256, uint256) pure returns (uint256) f = add;
+        uint256 b;
+        (f, b) = (sub, 2);
+        return f(a, b);
     }
 
     // OpenZeppelin Votes._push: the operation is a parameter
