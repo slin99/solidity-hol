@@ -623,7 +623,7 @@ Definition expr_ids_def:
 End
 
 (* An argument of abi.encode*, with the ABI type it is encoded as: a scalar
- * as its type; a byte sequence, or a string literal, where it is, as the
+ * as its type; an unpacked array, byte sequence, or string literal where it is, as the
  * compiler encodes it in place; an integer literal (unpacked only) as its
  * mobile type, whose encoding is that of int256 or uint256. *)
 Definition abi_argument_def:
@@ -633,7 +633,7 @@ Definition abi_argument_def:
         if is_stored_scalar_type ty then INL (ty, a) else
         (case ty of
            LocatedT _ element =>
-             if byte_sequence_type element
+             if byte_sequence_type element ∨ (¬packed ∧ memory_object_type element)
              then INL (LocatedT MemoryLoc element, a)
              else INR "abi encoding of this type"
          | _ => INR "abi encoding of this type")
@@ -692,8 +692,8 @@ End
 
 (* The operation of abi.encode* on the values of its arguments, after any
  * statements converting the arguments: a selector given as an argument is
- * a bytes4, and the other arguments are scalars or byte sequences (integer
- * literals only unpacked, as the compiler requires). *)
+ * a bytes4, and the other arguments are scalars, arrays or byte sequences
+ * (arrays and integer literals only unpacked, as the compiler requires). *)
 Definition selector_encoding_def:
   selector_encoding (i : num) s svt r =
     let selector = (if svt = ElabType (FixedBytesT 4) then []

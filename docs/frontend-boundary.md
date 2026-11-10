@@ -318,7 +318,10 @@ their smallest type, which has the encoding of `int256` or `uint256`.
 bytes of a `bytes4` selector for `encodeWithSelector`, or of the Keccak-256
 hash of a literal signature for `encodeWithSignature`; `abi.encodePacked`
 gives each scalar in its own width, a `bytesN` as its N bytes, and a byte
-sequence as its contents. Arrays and structs as arguments, a selector that
+sequence as its contents. Unpacked encoding also accepts fixed and dynamic
+arrays of scalars, byte sequences and nested arrays in memory, calldata or
+storage, retaining the reference until all arguments have been evaluated.
+Packed arrays, structs as arguments, a selector that
 is not a `bytes4` value (a literal selector included), and a signature that is
 not a plain string literal are rejected.
 
