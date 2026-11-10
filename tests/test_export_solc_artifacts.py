@@ -9,14 +9,10 @@ import tempfile
 import textwrap
 import unittest
 from unittest.mock import patch
-from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 EXPORTER = ROOT / "tools" / "export_solc_artifacts.py"
 SOURCE = ROOT / "testdata" / "frontend" / "types.sol"
-sys.path.insert(0, str(ROOT / "tools"))
-import export_solc_artifacts as exporter
-
 sys.path.insert(0, str(ROOT / "tools"))
 
 import export_solc_artifacts as exporter  # noqa: E402
