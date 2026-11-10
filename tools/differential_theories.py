@@ -100,9 +100,13 @@ def write_wrappers(root: Path, expected: dict[Path, str]) -> None:
             target.write_text(text, encoding="utf-8")
 
 
-def refresh_rollup(root: Path, corpus: dict[str, Any]) -> None:
-    text = ("(* Compatibility roll-up; refreshed with the integration reports. *)\n"
+def rollup(corpus: dict[str, Any]) -> str:
+    return ("(* Compatibility roll-up; refreshed with the integration reports. *)\n"
             "Theory solidityDifferentialCorpus\nAncestors\n" +
             "\n".join("  " + theory_name(suite["name"], "source")
                        for suite in corpus["suites"]) + "\n")
-    (root / "tests/solidityDifferentialCorpusScript.sml").write_text(text, encoding="utf-8")
+
+
+def refresh_rollup(root: Path, corpus: dict[str, Any]) -> None:
+    (root / "tests/solidityDifferentialCorpusScript.sml").write_text(
+        rollup(corpus), encoding="utf-8")

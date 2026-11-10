@@ -97,13 +97,8 @@ of eight shards can be reproduced locally with:
 python3 tools/run_differential.py -j2 --shard-count 8 --shard-index 2
 ```
 
-Each CI shard has its own holbuild snapshot lineage, so a later run restores
-the corresponding shard rather than whichever matrix job saved most recently.
-Push builds on `main` and `bot/opus/solidity-e2e` save snapshots that their
-feature PRs can restore; PR-only snapshots are scoped to that PR and cannot
-warm sibling PRs. Branch runs have separate concurrency groups so a later
-merge cannot cancel a cache-warming run. Remove the integration-branch push
-trigger when that branch is merged into `main`.
+Integration pushes save all eight shard snapshots for later PRs; PR and
+merge-queue runs save only shard 0 to bound cache use.
 Source and Yul suite theories declare a `.results.jsonl` extra output beside
 their scripts. holbuild caches and restores it with the theory, so reports
 retain outcomes and stage admissions without an old build log. Missing suite

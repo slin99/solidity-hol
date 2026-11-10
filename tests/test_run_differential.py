@@ -168,6 +168,9 @@ class CorpusTests(unittest.TestCase):
         checks = driver.check_artifacts(ROOT, loaded)
         checks.append(driver.check_staging(ROOT, driver.CORPUS, loaded))
         self.assertEqual([c for c in checks if c["status"] != "pass"], [])
+        rollup = (ROOT / "tests/solidityDifferentialCorpusScript.sml").read_text(
+            encoding="utf-8")
+        self.assertEqual(rollup, driver.theories.rollup(loaded))
 
     def test_rejects_duplicate_cases(self) -> None:
         case = {"name": "f", "function": "f", "args": [], "expect": {"panic": 17}}

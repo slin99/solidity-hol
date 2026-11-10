@@ -3,6 +3,7 @@ Theory solidityDifferentialCorpus
 Ancestors
   solidityDifferentialCorpus_abi_decodes
   solidityDifferentialCorpus_abi_encoding
+  solidityDifferentialCorpus_assembly_calls
   solidityDifferentialCorpus_assembly_constants
   solidityDifferentialCorpus_assembly_memory
   solidityDifferentialCorpus_builtins
@@ -13,6 +14,7 @@ Ancestors
   solidityDifferentialCorpus_code_lengths
   solidityDifferentialCorpus_concats
   solidityDifferentialCorpus_conditionals
+  solidityDifferentialCorpus_constant_conversions
   solidityDifferentialCorpus_constants
   solidityDifferentialCorpus_constructors
   solidityDifferentialCorpus_context
@@ -36,6 +38,7 @@ Ancestors
   solidityDifferentialCorpus_initializers_only
   solidityDifferentialCorpus_inline_assembly
   solidityDifferentialCorpus_interface_ids
+  solidityDifferentialCorpus_literal_bytes
   solidityDifferentialCorpus_low_level_calls
   solidityDifferentialCorpus_mappings
   solidityDifferentialCorpus_memory_arrays
@@ -63,4 +66,5 @@ Ancestors
   solidityDifferentialCorpus_try_calls
   solidityDifferentialCorpus_tuple_literals
   solidityDifferentialCorpus_type_bounds
+  solidityDifferentialCorpus_udvt
   solidityDifferentialCorpus_using_for
