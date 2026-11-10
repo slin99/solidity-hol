@@ -977,6 +977,23 @@ Proof
   EVAL_TAC
 QED
 
+Theorem join_memory_annotation_checked:
+  wf_core_operation test_env
+    <| bindings := []; targets := []; returns := []; in_loop := F |>
+    (SingleType (LocatedT MemoryLoc (ArrayT (UintT 256) (SOME 1))))
+    (NullMemoryOperation (ArrayT (UintT 256) (SOME 1))) ∧
+  ¬wf_core_operation test_env
+    <| bindings := []; targets := []; returns := []; in_loop := F |>
+    (SingleType (LocatedT MemoryLoc (UintT 256)))
+    (NullMemoryOperation (UintT 256)) ∧
+  ¬wf_core_operation test_env
+    <| bindings := []; targets := []; returns := []; in_loop := F |>
+    (SingleType (LocatedT MemoryLoc (ArrayT (UintT 8) (SOME 1))))
+    (NullMemoryOperation (ArrayT (UintT 256) (SOME 1)))
+Proof
+  CONV_TAC cv_eval
+QED
+
 Theorem mapping_key_signedness_checked:
   ¬wf_core_operation test_env
     <| bindings := [(AstId 1, ReferenceType (MappingT (IntT 8) (UintT 8)));

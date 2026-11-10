@@ -210,7 +210,7 @@ Definition memory_array_length_def:
   memory_array_length (st : source_state) r =
     case r of
       MemoryReference (HeapId id) 0 (ArrayT element length) =>
-        if id = 0 then SOME 0 else
+        if id = 0 then (if length = NONE then SOME 0 else NONE) else
         (case FLOOKUP st.heap id of
            SOME obj =>
              if obj.object_type = ArrayT element length then SOME obj.object_length
