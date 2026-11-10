@@ -269,6 +269,8 @@ Datatype:
     fn_base_functions : num list;
     fn_parameters_id : num;
     fn_parameters : src_variable list;
+    (* Nominal compiler types, before runtime erasure, for super lookup. *)
+    fn_nominal_parameters : string list;
     fn_returns_id : num;
     fn_returns : src_variable list;
     fn_modifiers : (num # src_expr list) list;
@@ -1203,6 +1205,7 @@ Definition super_target_def:
     case FILTER (λ(g : src_function).
                    g.fn_scope = x ∧ g.fn_kind = FunctionKind ∧
                    g.fn_name = d.fn_name ∧
+                   g.fn_nominal_parameters = d.fn_nominal_parameters ∧
                    MAP variable_type g.fn_parameters =
                    MAP variable_type d.fn_parameters) fs of
       g :: _ => SOME g

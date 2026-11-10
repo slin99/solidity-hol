@@ -41,8 +41,9 @@ declarations and storage layouts. `core_program_environment` derives the
 checking/runtime environment from that program. Struct declarations describe
 field identities and types even when there is no storage layout. Storage
 layouts separately describe slots and offsets and must agree with the declared
-fields. Enum and user-defined value declarations also live in the program;
-the importer reads enums, and user-defined value types are still deferred.
+fields. Enums retain their declaration identities. The importer erases user-defined
+value types to their elementary underlying types and lowers their resolved
+operators to internal calls.
 
 The evaluator executes elementary scalar operations and conversions, locals,
 tuples, structured control flow, internal calls, built-in failures, packed

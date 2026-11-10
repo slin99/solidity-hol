@@ -23,14 +23,14 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/errors.json",
   "../testdata/differential/expected/type_bounds.json",
   "../testdata/differential/expected/using_for.json",
-  "../testdata/differential/expected/contract_types.json",
   "../testdata/differential/expected/hashes.json",
   "../testdata/differential/expected/conditionals.json",
   "../testdata/differential/expected/encode_calls.json",
   "../testdata/differential/expected/bytes_constants.json",
   "../testdata/differential/expected/try_calls.json",
   "../testdata/differential/expected/inline_assembly.json",
-  "../testdata/differential/expected/external.json"
+  "../testdata/differential/expected/external.json",
+  "../testdata/differential/expected/udvt.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -1126,18 +1126,6 @@ Proof
   CONV_TAC cv_eval
 QED
 
-(* Contract types are read as address, so overloads that differ only in them
- * are rejected: here balanceVia(address) and a renamed same(IToken). *)
-
-val contracts_fixture = "../testdata/differential/expected/contract_types.json"
-val contracts_source = "testdata/differential/contract_types.sol"
-val contracts_ast = artifact_part contracts_fixture ["sources", contracts_source, "ast"]
-val contracts_contracts = artifact_part contracts_fixture ["contracts", contracts_source]
-
-val () = import_error_with Unsupported contracts_contracts "overloads differing only in contract types"
-  (edit_first_where (named "FunctionDefinition" "same") "same"
-     (set_field "name" (JSON.STRING "balanceVia")) contracts_ast)
-
 (* Selectors: only names the compiler does not evaluate may be receivers, and
  * a state variable's selector is its getter's only through this. *)
 
@@ -1267,3 +1255,40 @@ End
 
 val () = cv_auto_trans bytes_constants_unit_def;
 
+(* UDVT signatures are erased, while resolved built-ins are checked against
+ * the nominal declaration before lowering. *)
+val udvt_fixture = "../testdata/differential/expected/udvt.json"
+val udvt_source = "testdata/differential/udvt.sol"
+val udvt_ast = artifact_part udvt_fixture ["sources", udvt_source, "ast"]
+val udvt_types = artifact_part udvt_fixture
+  ["sources", "testdata/differential/udvt_types.sol", "ast"]
+val udvt_contracts = artifact_part udvt_fixture ["contracts", udvt_source]
+
+Definition udvt_imported_def:
+  udvt_imported = ^(import_source_unit [udvt_types] udvt_ast udvt_contracts)
+End
+val () = cv_auto_trans udvt_imported_def
+
+Theorem udvt_imported_valid:
+  valid_src_unit udvt_imported
+Proof
+  CONV_TAC cv_eval
+QED
+
+val () = import_units_error_with Unsupported [udvt_types] udvt_contracts
+  "unknown UDVT declaration"
+  (edit_first "UserDefinedTypeName"
+     (set_field "referencedDeclaration" (JSON.INT 999999)) udvt_ast)
+
+val () = import_units_error_with UnsupportedFunction [udvt_types] udvt_contracts
+  "wrap signature mismatch"
+  (edit_first_where (named "FunctionDefinition" "identity") "identity"
+     (edit_first_where (member "wrap") "wrap"
+       (type_identifier "t_function_wrap_pure$_t_uint256_$returns$_t_uint256_$")) udvt_ast)
+
+val () = import_units_error_with UnsupportedFunction [udvt_types] udvt_contracts
+  "operator must be resolved to a pure free function"
+  (edit_first_where
+     (fn v => is_node "BinaryOperation" v andalso
+              isSome (JSONUtil.findField v "function")) "overloaded operator"
+     (set_field "function" (declaration_id "FunctionDefinition" "bump" udvt_ast)) udvt_ast)
