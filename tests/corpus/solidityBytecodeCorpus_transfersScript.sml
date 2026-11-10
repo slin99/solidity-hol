@@ -6,6 +6,7 @@ Libs solidityBytecodeLib
 fun holbuild_extra_deps (_ : string list) = ()
 val () = holbuild_extra_deps [
   "../../testdata/differential/expected/transfers.json",
+  "../../testdata/differential/expected/transfers_peer.json",
   "../../testdata/differential/suites/transfers.json"
 ]
 val () = solidityBytecodeLib.run_suite_file

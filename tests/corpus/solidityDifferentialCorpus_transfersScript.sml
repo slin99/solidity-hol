@@ -8,8 +8,10 @@ val () = holbuild_extra_deps [
   "../../SOLIDITY_PIN",
   "../../profiles/solc-0.8.37-via-ir-osaka.json",
   "../../testdata/differential/expected/transfers.json",
+  "../../testdata/differential/expected/transfers_peer.json",
   "../../testdata/differential/suites/transfers.json",
-  "../../testdata/differential/transfers.sol"
+  "../../testdata/differential/transfers.sol",
+  "../../testdata/differential/transfers_peer.sol"
 ]
 fun holbuild_extra_outputs (_ : string list) = ()
 val () = holbuild_extra_outputs ["solidityDifferentialCorpus_transfers.results.jsonl"]

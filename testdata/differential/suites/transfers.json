@@ -4,9 +4,9 @@
   "contract": "Transfers",
   "artifact": "testdata/differential/expected/transfers.json",
   "peer": {
-    "source": "testdata/differential/transfers.sol",
+    "source": "testdata/differential/transfers_peer.sol",
     "contract": "TransferPeer",
-    "artifact": "testdata/differential/expected/transfers.json"
+    "artifact": "testdata/differential/expected/transfers_peer.json"
   },
   "cases": [
     {
