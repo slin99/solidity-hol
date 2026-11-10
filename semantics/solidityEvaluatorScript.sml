@@ -884,10 +884,7 @@ End
  * sees. The return data buffer starts empty, and the static checks admit
  * returndatasize and returndatacopy only after a call of the block's own.
  *
- * Known gap: source values carry no dirty bits, so a block reading a local
- * sees its clean word. The compiler's word for a bool local can be dirty: a
- * bool read from a storage byte holding 2, or one an earlier block wrote 2
- * to, is 2 on the stack, where the block here sees 1.
+ * Non-canonical words and storage bytes are outside the model (InvalidCompletion).
  *)
 
 (* A value-type scalar as the stack word the compiler keeps it in: integers
@@ -1115,7 +1112,10 @@ Definition assembly_write_one_def:
          | SOME w =>
              case assembly_value ty (w2n w) of
                NONE => NONE
-             | SOME s => update_binding x (ScalarValue s) scopes)
+             | SOME s =>
+                 if assembly_word ty s = SOME (w2n w) then
+                   update_binding x (ScalarValue s) scopes
+                 else NONE)
     | _ => SOME scopes
 End
 

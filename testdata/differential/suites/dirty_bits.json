@@ -1,0 +1,131 @@
+{
+  "name": "dirty_bits",
+  "source": "testdata/differential/dirty_bits.sol",
+  "contract": "DirtyBits",
+  "artifact": "testdata/differential/expected/dirty_bits.json",
+  "cases": [
+    {
+      "name": "canonical_bool",
+      "function": "readBool",
+      "args": [],
+      "storage": {
+        "0": 1
+      },
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "canonical_unused_enum",
+      "function": "unusedEnum",
+      "args": [],
+      "storage": {
+        "0": 256
+      },
+      "expect": {
+        "return": [
+          7
+        ]
+      }
+    },
+    {
+      "name": "canonical_bool_encoding",
+      "function": "encodeBool",
+      "args": [],
+      "storage": {
+        "0": 1
+      },
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000001"
+        ]
+      }
+    },
+    {
+      "name": "canonical_enum_encoding",
+      "function": "encodeEnum",
+      "args": [],
+      "storage": {
+        "0": 256
+      },
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000001"
+        ]
+      }
+    },
+    {
+      "name": "canonical_dynamic_copy",
+      "function": "copyDynamic",
+      "args": [],
+      "storage": {
+        "1": 1,
+        "80084422859880547211683076133703299733277748156566366325829078699459944778998": 1
+      },
+      "expect": {
+        "return": [
+          1
+        ]
+      },
+      "final_storage": {
+        "2": 1,
+        "29102676481673041902632991033461445430619272659676223336789171408008386403022": 1
+      }
+    },
+    {
+      "name": "canonical_fixed_copy",
+      "function": "copyFixed",
+      "args": [],
+      "storage": {
+        "3": 257
+      },
+      "expect": {
+        "return": [
+          257
+        ]
+      },
+      "final_storage": {
+        "4": 257
+      }
+    },
+    {
+      "name": "canonical_array_encoding",
+      "function": "encodeBools",
+      "args": [],
+      "storage": {
+        "3": 257
+      },
+      "expect": {
+        "return": [
+          "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000001"
+        ]
+      }
+    },
+    {
+      "name": "canonical_signed_negative",
+      "function": "canonicalSigned",
+      "args": [
+        -1
+      ],
+      "expect": {
+        "return": [
+          -1
+        ]
+      }
+    },
+    {
+      "name": "canonical_signed_positive",
+      "function": "canonicalSigned",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          5
+        ]
+      }
+    }
+  ]
+}

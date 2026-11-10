@@ -143,6 +143,12 @@ overridden functions super calls reach are checked and elaborated, but not
 dispatched. `super` in a modifier body, an initializer or a base-constructor
 argument is rejected.
 
+Inline assembly writes a scalar local back only if decoding its word and
+encoding the resulting value reproduces that exact word. Non-canonical
+`uintN`, `intN`, `bool`, address and `bytesN` words fail closed with
+`InvalidCompletion`; they are not silently cleaned. Canonical negative signed
+words are sign-extended and fixed-byte words are left-aligned.
+
 Inline assembly reads a memory `bytes` or `string` local as its address
 (`assembly_memory.sol`). The source heap gives each object the address the
 compiler's allocator would (`object_address`: `0x80` plus the memory
@@ -275,8 +281,10 @@ their declaration id: type identifiers `t_enum$_E_$n` and storage-layout
 types `t_enum(E)n` become `t_enum_n`. `E.A` is the constant of `A`'s index,
 and `E(x)` and `uint8(e)` are conversions; converting an out-of-range value
 panics with 0x21. An enum occupies one byte of storage; reading a stored
-byte that is out of range panics with 0x21 when it is read, where the
-compiler checks it only where the value is used. It is
+byte outside its member range fails closed with `InvalidCompletion`, even if
+the value is never used. A `bool` storage byte other than 0 or 1 also fails
+closed. The compiler can retain these non-canonical bytes on its stack, which
+the core's source values cannot represent. An enum is
 ABI encoded as `uint8`, as a parameter, a return, an event argument or an
 external call's argument. A call or creation whose enum argument is out of
 range reverts when the decoder reaches it, before later arguments are read. Enums as mapping keys, as elements of memory or calldata
