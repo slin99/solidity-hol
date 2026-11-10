@@ -279,7 +279,7 @@ Definition storage_abi_value_def:
     | SOME (s, offset) =>
         let value =
           if is_elementary_type element then
-            (case read_storage accounts addr s offset element of
+            (case read_storage env accounts addr s offset element of
                SOME v =>
                  (case abi_value element (ScalarValue v) of
                     SOME a => INL (a, enc (abi_type element) a)
