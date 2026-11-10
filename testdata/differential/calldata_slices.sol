@@ -19,6 +19,14 @@ contract CalldataSlices {
         return bytes4(data[:end]);
     }
 
+    function conditionalSlice(bytes calldata data, uint256 a, uint256 b, bool selected) external pure returns (bytes4) {
+        return selected ? bytes4(data[a:b]) : bytes4(hex"11223344");
+    }
+
+    function shortCircuitSlice(bytes calldata data, uint256 a, uint256 b, bool selected) external pure returns (bool) {
+        return selected && bytes4(data[a:b]) != bytes4(0);
+    }
+
     function selector() external pure returns (bytes4) {
         return bytes4(msg.data[:4]);
     }

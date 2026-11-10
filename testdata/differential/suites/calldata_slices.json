@@ -233,6 +233,62 @@
       "expect": {
         "returned": "0x000000000000000000000000000000000000000000000000000000000000002a00000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000080"
       }
+    },
+    {
+      "name": "conditional_unselected_invalid",
+      "function": "conditionalSlice",
+      "args": [
+        "0x112233",
+        2,
+        1,
+        false
+      ],
+      "expect": {
+        "return": [
+          "0x11223344"
+        ]
+      }
+    },
+    {
+      "name": "conditional_selected_invalid",
+      "function": "conditionalSlice",
+      "args": [
+        "0x112233",
+        2,
+        1,
+        true
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "short_circuit_unselected_invalid",
+      "function": "shortCircuitSlice",
+      "args": [
+        "0x112233",
+        2,
+        1,
+        false
+      ],
+      "expect": {
+        "return": [
+          false
+        ]
+      }
+    },
+    {
+      "name": "short_circuit_selected_invalid",
+      "function": "shortCircuitSlice",
+      "args": [
+        "0x112233",
+        2,
+        1,
+        true
+      ],
+      "expect": {
+        "revert": "0x"
+      }
     }
   ]
 }
