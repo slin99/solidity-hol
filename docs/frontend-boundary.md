@@ -220,9 +220,10 @@ compiler. Elaboration copies slot and offset into the core program's
 `state_variables`. Initialisers are imported and run by the creation
 procedure, and so are immutables' (below). Mapping key/value types come from recursive type-name
 normalization. AST and layout type identifiers use different encodings; both
-are checked against the normalized type. Bytes/string mapping keys are passed
-as memory byte references: calldata and storage keys are copied through the
-existing byte-access path. Their unpadded contents followed by the root slot's
+are checked against the normalized type. Bytes/string mapping keys retain their
+memory, calldata or storage reference, or their literal bytes. Hashing reads
+them in place without allocating a memory object or advancing the free-memory
+pointer, as the compiler uses scratch memory. Their unpadded contents followed by the root slot's
 32-byte big-endian encoding determine the Keccak-256 slot; no length word or
 ABI padding is included. Public getters accept the same keys. The scalar leaf width determines
 its storage read/write, and aggregate root slots come from the layout. Fixed

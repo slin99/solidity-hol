@@ -231,6 +231,106 @@
           255
         ]
       }
+    },
+    {
+      "name": "calldata_lookup_keeps_pointer_2",
+      "function": "calldataKeyAllocation",
+      "args": [
+        "0x0001"
+      ],
+      "expect": {
+        "return": [
+          128,
+          128,
+          0
+        ]
+      }
+    },
+    {
+      "name": "storage_lookup_keeps_pointer_2",
+      "function": "storageKeyAllocation",
+      "args": [],
+      "storage": {
+        "3": "1766847064778384329583297500742918515827483896875618958121606201292619780"
+      },
+      "expect": {
+        "return": [
+          128,
+          128,
+          0
+        ]
+      }
+    },
+    {
+      "name": "calldata_lookup_keeps_pointer_33",
+      "function": "calldataKeyAllocation",
+      "args": [
+        "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+      ],
+      "expect": {
+        "return": [
+          128,
+          128,
+          0
+        ]
+      }
+    },
+    {
+      "name": "storage_lookup_keeps_pointer_33",
+      "function": "storageKeyAllocation",
+      "args": [],
+      "storage": {
+        "3": "67",
+        "87903029871075914254377627908054574944891091886930582284385770809450030037083": "1780731860627700044960722568376592200742329637303199754547598369979440671",
+        "87903029871075914254377627908054574944891091886930582284385770809450030037084": "14474011154664524427946373126085988481658748083205070504932198000989141204992"
+      },
+      "expect": {
+        "return": [
+          128,
+          128,
+          0
+        ]
+      }
+    },
+    {
+      "name": "string_lookup_keeps_pointer",
+      "function": "calldataStringAllocation",
+      "args": [
+        "0x616c696365"
+      ],
+      "expect": {
+        "return": [
+          128,
+          128,
+          0
+        ]
+      }
+    },
+    {
+      "name": "literal_lookups_keep_pointer",
+      "function": "literalKeyAllocation",
+      "args": [],
+      "expect": {
+        "return": [
+          128,
+          128,
+          0
+        ]
+      }
+    },
+    {
+      "name": "memory_lookup_keeps_existing_allocation",
+      "function": "memoryKeyAllocation",
+      "args": [
+        "0x0001"
+      ],
+      "expect": {
+        "return": [
+          192,
+          192,
+          0
+        ]
+      }
     }
   ]
 }

@@ -208,8 +208,8 @@ Definition byte_sequence_type_def:
   byte_sequence_type ty ⇔ ty = BytesT ∨ ty = StringT
 End
 
-(* Byte-sequence mapping keys are passed as memory references. Their contents
- * are hashed without the ABI's length or padding. *)
+(* Byte-sequence keys accept ABI byte operands in their original location,
+ * including literals, without allocating a memory object. *)
 Definition mapping_key_type_def:
   mapping_key_type key =
     if byte_sequence_type key then LocatedT MemoryLoc key else key
@@ -709,7 +709,7 @@ Definition wf_core_operation_def:
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
            SOME (ReferenceType (MappingT key value)) =>
-             value = ty ∧ wf_core_atom env ctx (SingleType (mapping_key_type key)) index
+             value = ty ∧ wf_abi_atom env ctx (mapping_key_type key) index
          | SOME (SingleType (LocatedT loc BytesT)) =>
              loc ≠ CalldataLoc ∧ ty = FixedBytesT 1 ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
          | SOME (ReferenceType (ArrayT element _)) =>

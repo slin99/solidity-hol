@@ -35,4 +35,44 @@ contract ByteMappingKeys {
         nested[key][name] = -21;
         return nested[key][name];
     }
+
+    function calldataKeyAllocation(bytes calldata key) external view
+        returns (uint256 beforeLookup, uint256 afterLookup, uint256 result)
+    {
+        assembly { beforeLookup := mload(0x40) }
+        result = executableAt[key];
+        assembly { afterLookup := mload(0x40) }
+    }
+
+    function calldataStringAllocation(string calldata key) external view
+        returns (uint256 beforeLookup, uint256 afterLookup, uint256 result)
+    {
+        assembly { beforeLookup := mload(0x40) }
+        result = names[key];
+        assembly { afterLookup := mload(0x40) }
+    }
+
+    function storageKeyAllocation() external view
+        returns (uint256 beforeLookup, uint256 afterLookup, uint256 result)
+    {
+        assembly { beforeLookup := mload(0x40) }
+        result = executableAt[saved];
+        assembly { afterLookup := mload(0x40) }
+    }
+
+    function literalKeyAllocation() external view
+        returns (uint256 beforeLookup, uint256 afterLookup, uint256 result)
+    {
+        assembly { beforeLookup := mload(0x40) }
+        result = executableAt[hex"0100"] + names["alice"];
+        assembly { afterLookup := mload(0x40) }
+    }
+
+    function memoryKeyAllocation(bytes memory key) external view
+        returns (uint256 beforeLookup, uint256 afterLookup, uint256 result)
+    {
+        assembly { beforeLookup := mload(0x40) }
+        result = executableAt[key];
+        assembly { afterLookup := mload(0x40) }
+    }
 }
