@@ -418,8 +418,9 @@ after evaluating its receiver once. Payable and nonpayable addresses use the
 same lookup. `bytesN.length` evaluates its receiver and gives N as a `uint8`.
 `address payable.transfer(value)` evaluates the receiver before the amount
 and runs an empty-data value call with exactly the 2300 gas stipend. Failure
-forwards the callee's revert bytes; success discards its return bytes without
-allocating memory. A failed call or enclosing revert rolls back the transfer.
+forwards the callee's revert bytes; success records its return bytes in the
+frame's return-data buffer without allocating memory. Subsequent assembly
+can read that buffer. A failed call or enclosing revert rolls back the transfer.
 
 External calls returning scalar values admit `try ... returns (...) { ... }
 catch (bytes memory reason) { ... }`. Only failure of the external call selects
