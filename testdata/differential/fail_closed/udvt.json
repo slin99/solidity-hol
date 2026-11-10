@@ -1,0 +1,20 @@
+{
+  "name": "rejected_udvt",
+  "source": "testdata/differential/udvt.sol",
+  "contract": "UDVT",
+  "artifact": "testdata/differential/expected/udvt.json",
+  "cases": [
+    {
+      "name": "wrap_cleans_underlying_bits",
+      "function": "dirtyWrap",
+      "args": [
+        65537
+      ],
+      "expect": {
+        "return": [
+          1
+        ]
+      }
+    }
+  ]
+}
