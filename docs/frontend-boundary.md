@@ -346,13 +346,14 @@ data after the encoding is ignored. It allocates nothing. Data in calldata or
 storage, and types other than elementary ones, are rejected.
 
 `a.call(data)`, `a.staticcall(data)` and `a.delegatecall(data)`, with `a`
-an address and `data` a memory `bytes` or a bytes literal, evaluate `a`, then
-their call options `{value: v, gas: g}` in the order written, then `data`, and
-call `a` with the bytes of `data` as its input, giving the success flag and
-the return data. The data is passed where it is: a literal is not copied into
-memory. `call` sends `v` (0 without the option): a caller that cannot pay it
-fails the call without running it, and sending value from a static frame is an
-`InvalidCompletion`. `staticcall` makes a static call. `delegatecall` runs
+an address and `data` a memory or calldata `bytes` or a bytes literal,
+evaluate `a`, then their call options `{value: v, gas: g}` in the order
+written, then `data`, and call `a` with the bytes of `data` as its input,
+giving the success flag and the return data. The data is passed where it is: a
+literal or calldata is not copied into allocated memory. `call` sends `v` (0
+without the option): a caller that cannot pay it fails the call without
+running it, and sending value from a static frame is an `InvalidCompletion`.
+`staticcall` makes a static call. `delegatecall` runs
 `a`'s code as this contract, on its own storage and balance, with this call's
 `msg.sender` and `msg.value`, and moves no value. The source does not track
 gas: without a gas option the callee gets the same fixed budget a high-level
@@ -362,7 +363,7 @@ call, the callee's revert included, gives `false` and leaves the caller's
 state as it was; a call to an address without code succeeds with no data.
 Return data is copied into a new memory `bytes`, allocated as the compiler
 allocates it, and no return data gives the shared empty `bytes`, allocating
-nothing. Data in calldata or storage is rejected.
+nothing. Data in storage is rejected.
 
 `bytes.concat(...)` uses packed encoding of its byte sequences, fixed-size bytes
 and literals. `string.concat(...)` concatenates strings and string literals.
