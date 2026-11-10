@@ -74,6 +74,7 @@ Libs
 Datatype:
   elab_ctx = <|
     functions : (num # src_function) list;
+    static_functions : (num # src_function) list;
     supers : (num # src_function) list;
     structs : src_struct list;
     enums : (num # num) list;
@@ -152,6 +153,7 @@ Definition expr_id_def:
   (expr_id (SrcTupleExpression info _ _) = info.node_id) ∧
   (expr_id (SrcFunctionCall info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcSuperCall info _ _ _ _) = info.node_id) ∧
+  (expr_id (SrcBaseCall info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcBuiltinCall info _ _ _ _ _) = info.node_id) ∧
   (expr_id (SrcTypeConversion info _ _ _) = info.node_id) ∧
   (expr_id (SrcEnvironment info _ _) = info.node_id) ∧
@@ -495,6 +497,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcAbiDecode _ _ e _ _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcStaticCall _ _ target data _) ⇔ expr_assigns target ∨ expr_assigns data) ∧
   (expr_assigns (SrcSuperCall _ _ args _ _) ⇔ exprs_assign args) ∧
+  (expr_assigns (SrcBaseCall _ _ args _ _) ⇔ exprs_assign args) ∧
   (expr_assigns _ ⇔ F) ∧
   (components_assign [] ⇔ F) ∧
   (components_assign (NONE :: cs) ⇔ components_assign cs) ∧
@@ -765,6 +768,26 @@ Definition internal_call_ok_def:
     argument_order_ok order (LENGTH args) ∧
     callee.fn_visibility ≠ ExternalVisibility ∧
     decode_type_identifier tid = SOME (call_value_type rets)
+End
+
+Definition internal_call_signature_def:
+  internal_call_signature callee args order tid =
+    case callee_types callee of
+      NONE => INR "unsupported parameter type"
+    | SOME (params, rets) =>
+        if internal_call_ok callee rets args order tid then INL (params, rets)
+        else INR "call does not match the function"
+End
+
+(* All internal call forms emit the same operation after argument evaluation. *)
+Definition internal_call_result_def:
+  internal_call_result (callee : src_function) rets result =
+    case result of
+      INR bs => INR bs
+    | INL ((ss, atoms), n) =>
+        INL ((ss ++ [DefineStmt (AstId n) (call_result_type rets)
+                       (InternalCallOperation (AstId callee.fn_info.node_id) atoms)],
+              BoundAtom (AstId n), call_value rets), n + 1)
 End
 
 (* A call's argument values, evaluated in the call's order, in its
@@ -1129,21 +1152,11 @@ Definition elab_expr_def:
          | SrcIdentifier finfo _ f _ =>
              (case ALOOKUP ctx.functions f of
                 SOME callee =>
-                  (case callee_types callee of
-                     SOME (params, rets) =>
-                       if ¬internal_call_ok callee rets args order tid
-                       then reject (info.node_id, "call does not match the function")
-                              (elab_arg_values ctx n args) else
-                       (case elab_args ctx n info.node_id order params args of
-                          INL ((sa, atoms), n1) =>
-                            INL ((sa ++ [DefineStmt (AstId n1) (call_result_type rets)
-                                           (InternalCallOperation
-                                              (AstId callee.fn_info.node_id) atoms)],
-                                  BoundAtom (AstId n1), call_value rets), n1 + 1)
-                        | INR bs => INR bs)
-                   | NONE =>
-                       reject (info.node_id, "unsupported parameter type")
-                         (elab_arg_values ctx n args))
+                  (case internal_call_signature callee args order tid of
+                     INL (params, rets) =>
+                       internal_call_result callee rets
+                         (elab_args ctx n info.node_id order params args)
+                   | INR why => reject (info.node_id, why) (elab_arg_values ctx n args))
               | NONE =>
                   INR ((finfo.node_id, "call of an unsupported function") ::
                        blockers (elab_arg_values ctx n args)))
@@ -1153,24 +1166,24 @@ Definition elab_expr_def:
     | SrcSuperCall info r args order tid =>
         (case ALOOKUP ctx.supers r of
            SOME callee =>
-             (case callee_types callee of
-                SOME (params, rets) =>
-                  if ¬internal_call_ok callee rets args order tid
-                  then reject (info.node_id, "call does not match the function")
-                         (elab_arg_values ctx n args) else
-                  (case elab_args ctx n info.node_id order params args of
-                     INL ((sa, atoms), n1) =>
-                       INL ((sa ++ [DefineStmt (AstId n1) (call_result_type rets)
-                                      (InternalCallOperation
-                                         (AstId callee.fn_info.node_id) atoms)],
-                             BoundAtom (AstId n1), call_value rets), n1 + 1)
-                   | INR bs => INR bs)
-              | NONE =>
-                  reject (info.node_id, "unsupported parameter type")
-                    (elab_arg_values ctx n args))
+             (case internal_call_signature callee args order tid of
+                INL (params, rets) =>
+                  internal_call_result callee rets
+                    (elab_args ctx n info.node_id order params args)
+              | INR why => reject (info.node_id, why) (elab_arg_values ctx n args))
          | NONE =>
              INR ((info.node_id, "unresolved super call") ::
                   blockers (elab_arg_values ctx n args)))
+    | SrcBaseCall info r args order tid =>
+        (case ALOOKUP ctx.static_functions r of
+           SOME callee =>
+             (case internal_call_signature callee args order tid of
+                INL (params, rets) =>
+                  internal_call_result callee rets
+                    (elab_args ctx n info.node_id order params args)
+              | INR why => reject (info.node_id, why) (elab_arg_values ctx n args))
+         | NONE => reject (info.node_id, "static call of an unsupported function")
+                     (elab_arg_values ctx n args))
     | SrcBuiltinCall info _ builtin condition message tid =>
         if ¬(builtin_shape builtin condition message ∧ tid = "t_tuple$__$") then
           INR ((info.node_id, "unsupported builtin call") ::
@@ -2341,7 +2354,10 @@ End
  * constants. Inline assembly may name any state variable's slot. *)
 Definition contract_ctx_def:
   contract_ctx (c : src_contract) calls state immutables constants =
-    <| functions := calls; supers := []; structs := c.contract_structs;
+    <| functions := calls;
+       static_functions := MAP (λf. (f.fn_info.node_id, f))
+         (FILTER (λf. f.fn_unsupported = NONE) c.contract_functions);
+       supers := []; structs := c.contract_structs;
        enums := c.contract_enums;
        events := MAP (λe. (e.event_info.node_id, e)) c.contract_events;
        variables := []; state := state; locations := state;
@@ -2736,7 +2752,7 @@ End
 Definition elaborated_functions_def:
   elaborated_functions (c : src_contract) =
     FILTER (λf. f.fn_unsupported = NONE)
-      (checked_functions c.contract_functions c.contract_bases)
+      (checked_contract_functions c)
 End
 
 Definition elaborated_library_functions_def:
@@ -2748,7 +2764,7 @@ Definition unsupported_functions_def:
   unsupported_functions (c : src_contract) =
     MAP (λf. AstId f.fn_info.node_id)
       (FILTER (λf. f.fn_unsupported ≠ NONE)
-         (checked_functions c.contract_functions c.contract_bases ++
+         (checked_contract_functions c ++
           c.contract_library_functions))
 End
 
@@ -2960,7 +2976,10 @@ Definition contract_elaboration_failures_def:
                             c0.contract_constants)) in
     let fs = c.contract_functions ++ c.contract_library_functions in
     let ctx = (contract_ctx c (if strict then function_table fs else call_table fs)
-                 state immutables (number_constants n0 table)) with bad_ids := bad in
+                 state immutables (number_constants n0 table)) with
+      <| bad_ids := bad;
+         static_functions := MAP (λf. (f.fn_info.node_id, f))
+           (FILTER (λf. ¬strict ∨ f.fn_unsupported = NONE) c.contract_functions) |> in
     let n = n0 + LENGTH table in
     let typed_ctx = contract_ctx c [] [] []
                       (number_constants 0
@@ -2976,7 +2995,7 @@ Definition contract_elaboration_failures_def:
     FLAT (MAP (λf. case elab_function ctx c strict F n f of
                      INL _ => []
                    | INR bs => [(f.fn_info.node_id, bs)])
-            (checked_functions c.contract_functions c.contract_bases)) ++
+            (checked_contract_functions c)) ++
     FLAT (MAP (λf. case elab_function ctx c strict T n f of
                      INL _ => []
                    | INR bs => [(f.fn_info.node_id, bs)])
