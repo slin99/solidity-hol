@@ -959,6 +959,99 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* Callees at 0x5003 (returns the bytes 01 02 03) and 0x5004 (reverts with
+ * them): return data shorter than a word. *)
+Definition short_return_state_def:
+  short_return_state =
+    initial_state with world := (initial_state.world with accounts :=
+      update_account 0x5004w
+        (empty_account_state with
+           code := [0x62w; 1w; 2w; 3w; 0x60w; 0w; 0x52w; 0x60w; 3w; 0x60w; 0x1dw; 0xfdw])
+        (update_account 0x5003w
+           (empty_account_state with
+              code := [0x62w; 1w; 2w; 3w; 0x60w; 0w; 0x52w; 0x60w; 3w; 0x60w; 0x1dw; 0xf3w])
+           empty_accounts))
+End
+
+(* The bytes op (a low-level staticcall, or a try that catches) gives as its
+ * second component, bound to a block's "b"; the block returns its "r". *)
+Definition return_bytes_proc_def:
+  return_bytes_proc op code = <|
+    procedure_id := AstId 150;
+    parameters := [];
+    return_bindings := [(AstId 154, u256)];
+    body := [
+      DefineStmt (AstId 151) (SingleType (LocatedT MemoryLoc BytesT))
+        (BytesLiteralOperation BytesT []);
+      DefineStmt (AstId 152)
+        (ProductType [SingleType BoolT; SingleType (LocatedT MemoryLoc BytesT)]) op;
+      DefineStmt (AstId 153) (SingleType (LocatedT MemoryLoc BytesT))
+        (TupleComponentOperation 1 (BoundAtom (AstId 152)));
+      AssemblyStmt code [("b", AssemblyMemory (AstId 153) BytesT);
+                         ("r", AssemblyLocal (AstId 154) u256)];
+      ReturnStmt [BoundAtom (AstId 154)]]
+  |>
+End
+
+Definition run_return_bytes_def:
+  run_return_bytes op code =
+    let env = core_program_environment <|
+      unsupported_procedures := []; procedures := [return_bytes_proc op code];
+      struct_layouts := []; type_declarations := [];
+      state_variables := []; immutables := [];
+      entry_procedure := AstId 150;
+      external_functions := []; receive_procedure := NONE;
+      fallback_procedure := NONE; creation_procedure := NONE |> in
+    (invoke_source 20 env (AstId 150) [] short_return_state []).completion
+End
+
+Definition short_static_def:
+  short_static =
+    StaticCallOperation (ConstantAtom (AddressValue 0x5003w)) (BoundAtom (AstId 151))
+End
+
+Definition short_try_def:
+  short_try =
+    TryExternalCallOperation ExternalCall [1w; 2w; 3w; 4w] [] []
+      (ConstantAtom (AddressValue 0x5004w)) (k 0) []
+End
+
+(* Reads b's last data word, padding included; copies its three bytes. *)
+Definition read_last_word_def:
+  read_last_word =
+    [YulAssign ["r"] (YulBuiltin YMLoad [yadd (YulName "b") (ylit 32w)])]
+End
+
+Definition copy_data_def:
+  copy_data =
+    [YulExprStmt (YulBuiltin YMStore [ylit 0w; ylit 0w]);
+     YulExprStmt (YulBuiltin YMCopy [ylit 0w; yadd (YulName "b") (ylit 32w); ylit 3w]);
+     YulAssign ["r"] (YulBuiltin YShr [ylit 232w; YulBuiltin YMLoad [ylit 0w]])]
+End
+
+val () = cv_auto_trans short_return_state_def;
+val () = cv_auto_trans short_static_def;
+val () = cv_auto_trans short_try_def;
+val () = cv_auto_trans read_last_word_def;
+val () = cv_auto_trans copy_data_def;
+val () = cv_auto_trans run_return_bytes_def;
+
+(* Bytes copied from return data, a staticcall's or a caught revert's, keep
+ * the padding solc's memory leaves as it was: a block reading their last
+ * word fails closed, while their bytes alone read as returned. *)
+Theorem asm_return_data_padding:
+  run_return_bytes short_static read_last_word =
+    InvalidCompletion "assembly read memory it was not given" ∧
+  run_return_bytes short_static copy_data =
+    ReturnCompletion [ScalarValue (IntegerValue 0x010203)] ∧
+  run_return_bytes short_try read_last_word =
+    InvalidCompletion "assembly read memory it was not given" ∧
+  run_return_bytes short_try copy_data =
+    ReturnCompletion [ScalarValue (IntegerValue 0x010203)]
+Proof
+  CONV_TAC cv_eval
+QED
+
 (* A memory reference may not be assigned, except where a Yul function's
  * parameter or result reuses its name. *)
 Theorem asm_memory_assign_rule:
