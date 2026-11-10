@@ -523,7 +523,7 @@ End
 (* The atom a call gives its option k, from the call's options in source
  * order and their atoms. *)
 Definition option_atom_def:
-  (option_atom k (k' :: ks) (a :: as) =
+  (option_atom (k : call_option) (k' :: ks) (a :: as) =
     if k = k' then SOME a else option_atom k ks as) ∧
   (option_atom k _ _ = NONE)
 End
