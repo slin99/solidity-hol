@@ -1669,6 +1669,32 @@ fun constant_declaration v = within v (fn v =>
  * constants it refers to, also through each other, come with it, the
  * constants after its own.
  *)
+(* The structs ss, imported, except one whose import records a blocker (a
+ * member type the importer cannot represent) and those that refer to such a
+ * one: they are left out, so a function using one is rejected, not the
+ * unit. *)
+fun importable_structs types ss =
+  let
+    val imported =
+      List.mapPartial
+        (fn s => case keep (fn s => with_blockers (fn () => struct_declaration types s)) s of
+                   SOME (tm, []) => SOME (s, tm)
+                 | _ => NONE) ss
+    fun close kept =
+      let
+        val dropped =
+          List.filter (fn s => not (List.exists (fn (k, _) => int_field k "id" = int_field s "id") kept)) ss
+        val kept' =
+          List.filter (fn (k, _) =>
+            not (List.exists (fn d => List.exists (fn i => i = int_field d "id") (references k))
+                   dropped)) kept
+      in
+        if length kept' = length kept then kept else close kept'
+      end
+  in
+    map #2 (close imported)
+  end
+
 fun contract external_structs contracts declared v = within v (fn v =>
   let
     val name = string_field v "name"
@@ -1925,7 +1951,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
           (keep_all storage_entry (JSONUtil.arrayMap I (field layout "storage")),
            storage_entry_ty)),
        ("contract_structs", listSyntax.mk_list
-          (keep_all (struct_declaration (field layout "types"))
+          (importable_structs (field layout "types")
              (used_structs @ members_of "StructDefinition" (rev bases)),
            struct_ty)),
        ("contract_enums", listSyntax.mk_list

@@ -17,6 +17,19 @@ contract Mid is Base {
     }
 }
 
+// A member type the importer cannot represent: the structs are left out,
+// so only the functions using them are unsupported.
+library Hooks {
+    struct Hook {
+        function () internal pure returns (uint256) f;
+        uint8 n;
+    }
+
+    struct Box {
+        Hook hook;
+    }
+}
+
 contract Partial is Mid {
     uint256 public total;
 
@@ -58,6 +71,11 @@ contract Partial is Mid {
     // imports, but assembly may not assign a memory reference
     function pointer(bytes memory b) public pure returns (uint256 p) {
         assembly { b := p }
+    }
+
+    function hookCount() public pure returns (uint8) {
+        Hooks.Box memory b;
+        return b.hook.n;
     }
 
     fallback() external {

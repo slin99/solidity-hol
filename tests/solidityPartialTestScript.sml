@@ -27,7 +27,9 @@ val prepared = #prepared (solidityPrepareLib.prepare_artifact
  * reach nothing, so neither Mid.twice nor Base.twice is among the
  * functions calls reach. The constant DIGITS does not elaborate, so it has
  * no procedure and digits, which reads it, uses an unsupported declaration;
- * pointer fails to elaborate, since its assembly assigns a bytes local. *)
+ * pointer fails to elaborate, since its assembly assigns a bytes local.
+ * hookCount's struct has a function-typed member, so the struct is left out
+ * and hookCount's local does not elaborate, while the unit still imports. *)
 val outcomes = map (fn {name, reason, ...} => (name, reason)) (#functions prepared);
 fun reasons name =
   map #2 (List.filter (fn (n, _) => n = name) outcomes);
@@ -60,7 +62,9 @@ val () =
      reasons "digits" = [SOME "uses an unsupported declaration"] andalso
      List.all elaboration_failure (reasons "pointer") andalso
      length (reasons "pointer") = 1 andalso
-     length outcomes = 9
+     List.all elaboration_failure (reasons "hookCount") andalso
+     length (reasons "hookCount") = 1 andalso
+     length outcomes = 10
   then ()
   else raise Fail ("unexpected function outcomes: " ^
     String.concatWith "; " (map (fn (n, r) => n ^ " " ^
