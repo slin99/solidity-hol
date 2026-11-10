@@ -217,7 +217,7 @@ def run_fleet_shard(holbuild: str, work: Path,
     script = work / HOL_SCRIPT.name
     shutil.copyfile(HOL_SCRIPT, script)
     supports = [manifest]
-    for source in (exporter.PIN_FILE, exporter.DEFAULT_PROFILE):
+    for source in (exporter.PIN_FILE, exporter.DEFAULT_PROFILE, exporter.OPTIMIZED_PROFILE):
         target = work / source.relative_to(ROOT)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)

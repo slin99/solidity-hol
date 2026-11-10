@@ -16,7 +16,9 @@ iterations independently of EVM gas.
 `solidityPrepareLib.prepare_artifact` is the checked entry point for artifact
 consumers. It checks the artifact format, compiler version/commit, profile and
 Standard JSON settings against `SOLIDITY_PIN` and
-`profiles/solc-0.8.37-via-ir-osaka.json`. It then imports and validates the source,
+`profiles/solc-0.8.37-via-ir-osaka.json`, accepting the optimized variant only
+with recorded unoptimized stack-depth failures (see [profiles.md](docs/profiles.md)).
+It then imports and validates the source,
 elaborates it, and checks the complete `wf_core_program` with `cv_eval`.
 Success retains the checked artifact alongside the source/core terms and HOL theorems for source validation,
 elaboration and core well-formedness. Artifact metadata checks run in SML;
