@@ -510,12 +510,39 @@ Proof
   EVAL_TAC
 QED
 
-(* Custom errors: a 4-byte selector and elementary arguments of their
- * parameter types. *)
+(* Custom errors: a 4-byte selector and scalar arguments of their
+ * parameter types, including declared enums. *)
 Theorem revert_error_admitted:
   wf_core_procedure test_env (with_body [
      RevertErrorStmt [1w; 2w; 3w; 4w] [u256; BoolT]
        [BoundAtom (AstId 80); ConstantAtom (BoolValue T)];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_enum_admitted:
+  wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [EnumT (AstId 900)]
+       [ConstantAtom (IntegerValue 2)];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_undeclared_enum_rejected:
+  ¬wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [EnumT (AstId 999)]
+       [ConstantAtom (IntegerValue 0)];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_enum_out_of_range_rejected:
+  ¬wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [EnumT (AstId 900)]
+       [ConstantAtom (IntegerValue 3)];
      ReturnStmt [BoundAtom (AstId 80)]])
 Proof
   EVAL_TAC

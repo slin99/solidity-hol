@@ -2133,15 +2133,15 @@ Definition elab_stmts_def:
                        ctx), n1)
              | INR bs => INR bs)
         | _ => INR [(info.node_id, "argument order")]) ∧
-  (* Arguments are coerced to the error's parameter types, which must be
-     elementary for the revert data's ABI encoding. *)
+  (* Error arguments are scalar values, including enums, encoded using the
+     error's parameter types. *)
   (elab_stmt ctx n (SrcRevertError info err args order) =
     case all_some (MAP variable_type err.error_parameters) of
       NONE =>
         INR (variables_blockers (MAP SOME err.error_parameters) ++
              blockers (elab_arg_values ctx n args))
     | SOME params =>
-        if ¬EVERY is_elementary_type params ∨ LENGTH err.error_selector ≠ 4 ∨
+        if ¬EVERY is_stored_scalar_type params ∨ LENGTH err.error_selector ≠ 4 ∨
            LENGTH args ≠ LENGTH params ∨ ¬argument_order_ok order (LENGTH args)
         then reject (info.node_id, "revert does not match the error")
                (elab_arg_values ctx n args) else
