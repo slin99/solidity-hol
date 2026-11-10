@@ -287,19 +287,6 @@ Definition eval_operation_def:
                             (w2n (word_of_bytes_be (Keccak_256_w64 bs) : bytes32)))))
               | INR c => ValueAbrupt c)
          | _ => ValueAbrupt (InvalidCompletion "bad keccak256 operand"))
-    (* The precompile at address 1, as the compiler calls it: an invalid
-     * signature returns nothing, which reads as address(0). *)
-    | EcrecoverOperation h v r s =>
-        (case (eval_atom st.scopes h, eval_atom st.scopes v,
-               eval_atom st.scopes r, eval_atom st.scopes s) of
-           (SOME (ScalarValue (BytesValue hb)), SOME (ScalarValue (IntegerValue vi)),
-            SOME (ScalarValue (BytesValue rb)), SOME (ScalarValue (BytesValue sb))) =>
-             ValueOk (ScalarValue (AddressValue
-               (case ecrecover (word_of_bytes_be hb) (Num vi)
-                       (num_of_be_bytes rb) (num_of_be_bytes sb) of
-                  SOME a => a
-                | NONE => 0w)))
-         | _ => ValueAbrupt (InvalidCompletion "bad ecrecover operands"))
     (* The compiler's decoder from memory: short data, or a value outside its
      * type, reverts with no data; data after the encoding is ignored. *)
     | AbiDecodeOperation tys a =>
@@ -587,7 +574,8 @@ End
  * after the selector; a call that expects no return data reverts on a target
  * without code; a failed call reverts with the callee's revert data; return
  * data the decoder rejects reverts with none. A successful call leaves the
- * world the callee left, with its logs after the caller's.
+ * world the callee left, with its logs after the caller's. Whatever the
+ * outcome, the callee's return or revert bytes become the return data.
  *)
 (* The unused success fields of a failed try call still have their declared
  * scalar types. *)
@@ -621,6 +609,7 @@ Definition call_external_mode_def:
                NONE =>
                  abrupt_result (InvalidCompletion "call outside the model") st gas
              | SOME r =>
+               let st = st with return_data := SOME r.call_return in
                if ¬r.call_success then
                  if ¬catching then abrupt_result (RevertCompletion r.call_return) st gas
                  else
@@ -675,7 +664,8 @@ End
  * it is, no check that the target has code, and a failure returned rather
  * than reverted. A delegate call runs the target's code in this contract's
  * account, with this frame's sender and value. No return data is the empty
- * array at 0x60; other return data is copied to a new memory bytes.
+ * array at 0x60; other return data is copied to a new memory bytes. The
+ * call's return data is also the frame's return data from then on.
  *)
 Definition call_low_level_def:
   call_low_level x ty kind target value g data (st : source_state) gas =
@@ -703,6 +693,7 @@ Definition call_low_level_def:
                      st.frame.tx_params) of
              NONE => abrupt_result (InvalidCompletion "call outside the model") st gas
            | SOME res =>
+             let st = st with return_data := SOME res.call_return in
              let st' = if res.call_success then
                    st with world :=
                      <| accounts := res.call_accounts;
@@ -831,6 +822,20 @@ Definition simple_stmt_def:
                          value g args) =>
         call_external_mode T env x ty kind selector params rets target value g
           args st gas
+    (* The precompile at address 1, as the compiler calls it: an invalid
+     * signature returns nothing, which reads as address(0). The call leaves
+     * return data the source computes no bytes for. *)
+    | DefineStmt x ty (EcrecoverOperation h v r s) =>
+        (case (eval_atom st.scopes h, eval_atom st.scopes v,
+               eval_atom st.scopes r, eval_atom st.scopes s) of
+           (SOME (ScalarValue (BytesValue hb)), SOME (ScalarValue (IntegerValue vi)),
+            SOME (ScalarValue (BytesValue rb)), SOME (ScalarValue (BytesValue sb))) =>
+             normal_result (define_binding x ty (ScalarValue (AddressValue
+               (case ecrecover (word_of_bytes_be hb) (Num vi)
+                       (num_of_be_bytes rb) (num_of_be_bytes sb) of
+                  SOME a => a
+                | NONE => 0w))) (st with return_data := NONE)) gas
+         | _ => abrupt_result (InvalidCompletion "bad ecrecover operands") st gas)
     | DefineStmt x ty op =>
         (case eval_operation env st op of
            ValueOk v => normal_result (define_binding x ty v st) gas
@@ -939,8 +944,9 @@ End
  * (run_external_call), with the machine's gas budget the one every call from
  * the source gets: gas() stands for it, and the static checks admit gas()
  * only as a call's gas argument, so the budget is never a value the block
- * sees. The return data buffer starts empty, and the static checks admit
- * returndatasize and returndatacopy only after a call of the block's own.
+ * sees. The return data buffer starts as the source's return data. Where the
+ * source does not know it, the buffer starts empty and a block that could
+ * read it before a call of its own (assembly_calls_ok) fails closed.
  *
  * Non-canonical words and storage bytes are outside the model (InvalidCompletion).
  *)
@@ -1106,7 +1112,8 @@ Definition assembly_machine_def:
             logs := st.world.logs; self_address := st.frame.self_address;
             caller_address := st.frame.sender_address;
             call_value := n2w st.frame.call_value;
-            call_data := st.frame.call_data; return_data := [];
+            call_data := st.frame.call_data;
+            return_data := (case st.return_data of NONE => [] | SOME bs => bs);
             code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
             immutables := FEMPTY; memory := FEMPTY; memory_size := 0;
             gas_limit := external_call_gas; scopes := [scope];
@@ -1199,6 +1206,16 @@ Definition assembly_write_back_def:
     | SOME scopes' => assembly_write_back refs scopes' yscopes)
 End
 
+(* The return data after a block that exits normally. A non-empty buffer
+ * shows a call of the block ran; an empty one may also be the start's empty
+ * buffer standing for return data the source does not know, which stays
+ * unknown. *)
+Definition assembly_return_data_def:
+  assembly_return_data (st : source_state) (m : yul_machine) =
+    if st.return_data = NONE ∧ m.return_data = [] then NONE
+    else SOME m.return_data
+End
+
 Definition assembly_result_def:
   assembly_result refs (st : source_state) m0 (r : yul_result) gas =
     let world = assembly_world r.machine in
@@ -1216,7 +1233,8 @@ Definition assembly_result_def:
           (case assembly_write_back refs st.scopes r.machine.scopes of
              SOME scopes =>
                normal_result (st with <| world := world; scopes := scopes;
-                   heap := assembly_read_back st.heap st.next_heap_id r.machine |>) gas
+                   heap := assembly_read_back st.heap st.next_heap_id r.machine;
+                   return_data := assembly_return_data st r.machine |>) gas
            | NONE =>
                abrupt_result (InvalidCompletion "assembly write-back failed")
                  st gas)
@@ -1237,6 +1255,8 @@ Definition eval_assembly_def:
               else assembly_unsupported in
     if ¬assembly_stmts_ok bad code then
       abrupt_result (InvalidCompletion "unsupported assembly builtin") st gas
+    else if st.return_data = NONE ∧ ¬assembly_calls_ok code then
+      abrupt_result (InvalidCompletion "assembly reads return data the source does not know") st gas
     else
     case assembly_inputs env st refs of
       NONE => abrupt_result (InvalidCompletion "bad assembly reference") st gas
