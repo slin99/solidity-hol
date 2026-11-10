@@ -284,7 +284,7 @@ Definition storage_array_data_def:
 End
 
 (* The value of a storage array, as a copy reads it: arrays as the tuple of
- * their elements, byte sequences as their bytes and scalars cleaned. A length
+ * their elements, byte sequences as their bytes and canonical scalars. A length
  * of 2^64 or more panics with 0x41, as the compiler's copies do. *)
 Definition storage_array_value_def:
   (storage_array_value env accounts addr slot ty =
@@ -310,7 +310,7 @@ Definition storage_array_value_def:
       NONE => INR (InvalidCompletion "bad array element type")
     | SOME (s, offset) =>
         let value =
-          if is_elementary_type element then
+          if is_stored_scalar_type element then
             (case read_storage env accounts addr s offset element of
                SOME v => INL (ScalarValue v)
              | NONE => INR (InvalidCompletion "bad storage read"))
@@ -351,7 +351,7 @@ Definition clear_storage_value_def:
              if 2 ** 64 ≤ length then INR FuelExhausted else
              let accounts1 = if l = NONE then set_storage_word accounts addr slot 0w
                              else accounts in
-             if is_elementary_type element then
+             if is_stored_scalar_type element then
                (case fixed_storage_slots env (ArrayT element (SOME length)) of
                   SOME slots => INL (clear_byte_slots slots accounts1 addr data)
                 | NONE => INL accounts1)
@@ -402,7 +402,7 @@ Definition store_storage_value_def:
                         else accounts in
         let data = if l = NONE then mapping_slot [] slot else slot in
         let accounts2 =
-          if is_elementary_type e' then
+          if is_stored_scalar_type e' then
             (case fixed_storage_slots env (ArrayT e' (SOME (LENGTH vs))) of
                SOME slots => clear_byte_slots slots accounts1 addr data
              | NONE => accounts1)
@@ -415,7 +415,7 @@ Definition store_storage_value_def:
       NONE => INR (InvalidCompletion "bad array element type")
     | SOME (s, offset) =>
         let stored =
-          if is_elementary_type dst then
+          if is_stored_scalar_type dst then
             (case v of
                ScalarValue x =>
                  (case eval_conversion env src dst x of
