@@ -1265,8 +1265,7 @@ Definition reached_functions_def:
     if LENGTH rs' = LENGTH rs then rs else reached_functions fs bases k rs')
 End
 
-(* The functions checked and elaborated: the live ones, then those only super
- * calls reach, which the dispatch table does not list. *)
+(* The live functions and implementations reached by super or static calls. *)
 Definition checked_functions_def:
   checked_functions fs bases =
     reached_functions fs bases (LENGTH fs) (live_functions fs)
@@ -1390,11 +1389,10 @@ Definition check_struct_def:
         storage_layout_ok T s.struct_members fields
 End
 
-(* Event parameters are elementary value types declared by the event. *)
+(* Event parameters belong to their declaration; emit sites check their types. *)
 Definition check_event_def:
   check_event (e : src_event) ⇔
-    EVERY (λp. (FST p).var_scope = e.event_info.node_id ∧
-                  IS_SOME (event_variable_type (FST p)))
+    EVERY (λp. (FST p).var_scope = e.event_info.node_id)
       e.event_parameters
 End
 
