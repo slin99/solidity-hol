@@ -541,7 +541,7 @@ Theorem external_call_operands_all_report:
                (SrcExternalCall ^(at 30)
                   <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut;
                      ext_parameters := []; ext_returns := [] |>
-                  F [^(bad_at 32); ^(bad_at 33)] [] "t_tuple$__$")”
+                  [] [^(bad_at 32); ^(bad_at 33)] [] "t_tuple$__$")”
      (“(30, "unsupported external call")” :: bad_32_33))
 Proof
   EVAL_TAC
