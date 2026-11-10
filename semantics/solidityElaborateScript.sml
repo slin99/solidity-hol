@@ -1360,8 +1360,8 @@ Definition elab_expr_def:
              INL ((ss ++ rs, r, ElabType (UintT 256)), n1 + 1)
          | INL _ => INR [(info.node_id, "code length of a non-address")]
          | INR bs => INR bs)
-    (* keccak256 takes bytes memory; a literal, or bytes in another location,
-       converts to it as an argument would *)
+    (* Literal hashes are constants; other bytes convert to memory as an
+       argument would. *)
     | SrcKeccak256 info _ e tid =>
         (case elab_expr ctx n e of
            INL ((ss, a, vt), n1) =>
@@ -1370,7 +1370,11 @@ Definition elab_expr_def:
                     ElabBytesLiteral => T
                   | ElabType (LocatedT _ BytesT) => T
                   | _ => F) then INR [(info.node_id, "keccak256 of this type")] else
-             (case coerce n1 (LocatedT MemoryLoc BytesT) a vt of
+             (case (vt, a) of
+                (ElabBytesLiteral, ConstantAtom (BytesValue bs)) =>
+                  INL ((ss, ConstantAtom (BytesValue (Keccak_256_w64 bs)),
+                        ElabType (FixedBytesT 32)), n1)
+              | _ => case coerce n1 (LocatedT MemoryLoc BytesT) a vt of
                 INL ((cs, b), n2) =>
                   let (hs, h) = bind_value n2 (FixedBytesT 32) (Keccak256Operation b) in
                   INL ((ss ++ cs ++ hs, h, ElabType (FixedBytesT 32)), n2 + 1)
