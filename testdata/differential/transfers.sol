@@ -36,6 +36,15 @@ contract Transfers {
         assembly { gap := sub(second, first) }
     }
 
+    function returnDataSizes(address payable first, address payable second)
+        external returns (uint256 firstSize, uint256 secondSize)
+    {
+        first.transfer(0);
+        assembly { firstSize := returndatasize() }
+        second.transfer(0);
+        assembly { secondSize := returndatasize() }
+    }
+
     function laterFailure(address payable target) external payable {
         target.transfer(msg.value);
         revert("later");
