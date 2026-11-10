@@ -1576,10 +1576,15 @@ Definition elab_expr_def:
       SrcIdentifier info _ x tid =>
         (case ALOOKUP ctx.variables x of
            SOME (LocatedT StorageLoc ty) =>
-             (* A storage pointer local holds the reference itself. *)
+             (* A storage pointer local holds the reference: a copy of it, so
+                an index or argument that rebinds the local after this
+                evaluates leaves the location as it was. *)
              if ¬source_type_matches (LocatedT StorageLoc ty) tid
              then INR [(info.node_id, "type annotation mismatch")] else
-             INL (([], BoundAtom (AstId x), ty), n)
+             let (copied, n1) = snapshot n (BoundAtom (AstId x))
+                                  (ElabType (LocatedT StorageLoc ty)) in
+             let (ss, a) = copied in
+             INL ((ss, a, ty), n1)
          | SOME _ => INR [(info.node_id, "not a storage location")]
          | NONE =>
            case ALOOKUP ctx.state x of

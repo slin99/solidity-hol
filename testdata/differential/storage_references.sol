@@ -68,6 +68,8 @@ contract StorageReferences {
     mapping(uint256 => mapping(uint256 => uint256)) grid;
     Pair[] list;
     Color[] colors;
+    uint256[] left;
+    uint256[] right;
 
     function appendCheckpoint(uint48 key, uint208 value) public returns (uint256, uint208) {
         uint256 n = history.append(key, value);
@@ -139,5 +141,19 @@ contract StorageReferences {
         colors.push(c);
         Color[] storage cs = colors;
         return (cs.length, cs[cs.length - 1], colors[0]);
+    }
+
+    function rebindInIndex(uint256 v) public returns (uint256, uint256, uint256) {
+        uint256[] storage p = left;
+        uint256[] storage q = right;
+        p[(p = q).length - 1] = v;
+        return (left[1], right[1], p.length);
+    }
+
+    function rebindInPush() public returns (uint256, uint256, uint256) {
+        uint256[] storage p = left;
+        uint256[] storage q = right;
+        p.push((p = q).length);
+        return (left.length, right.length, left[left.length - 1]);
     }
 }
