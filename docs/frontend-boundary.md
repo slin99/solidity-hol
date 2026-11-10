@@ -228,15 +228,16 @@ struct-typed member, or with no member to return, has no getter here, and
 neither has a mapping whose key is not an elementary value type.
 
 Constants of elementary value types, `string` and `bytes`, declared in the
-contract or a base, are imported with their values. Each elaborates to two
+contract, a base, a reached library or at file level are imported with their
+values when reachable. Each elaborates to two
 procedures without parameters that evaluate the value and convert it to the
 declared type, one with checked and one with wrapping arithmetic; byte
 sequences are copied to fresh memory. Every reference to the constant calls
 the procedure of the arithmetic it is in, as the compiler's IR calls one of
 two functions per constant, and a public constant's getter is the checked
 one. So a value that overflows its type panics with `0x11` when it is
-referenced in checked code, and wraps inside `unchecked`. File-level constants and references through a contract name
-other than a library (`C.X`) are rejected. An operation over literals that the compiler types
+referenced in checked code, and wraps inside `unchecked`. References through
+a contract name other than a library (`C.X`) are rejected. An operation over literals that the compiler types
 as an integer (`10 ** 27`, `-1`) elaborates to that integer, as the compiler
 folds it; one over other rational constants is still rejected. A number
 literal the compiler takes as a fixed-size bytes (zero, or hex digits that
@@ -265,9 +266,9 @@ identifiers of expressions and in storage layouts. `I(a)` is a conversion to
 `address`, `this` is the contract's own address, and an external call
 `c.f{value: v}(args)` may name any contract-typed `c`. `new C`, `type(C)`
 other than `type(I).interfaceId` (below), external calls to getters and the
-members of external functions other than `selector` (below) are rejected, as
-are overloads that differ only in contract-typed parameters, which reading
-them as `address` would merge.
+members of external functions other than `selector` (below) are rejected.
+Nominal parameter type identifiers keep overloads distinct for `super`
+lookup even when their runtime representations agree.
 
 Enums, declared at file level, in a contract or in a library, are read by
 their declaration id: type identifiers `t_enum$_E_$n` and storage-layout
@@ -381,11 +382,21 @@ receiver is in storage or calldata and whose first parameter is in memory is
 rejected: the compiler copies the receiver before evaluating the other
 arguments, while elaboration converts arguments after evaluating them all.
 Public and external library functions, which a contract calls with
-`DELEGATECALL`, every `using {f, ...} for T` with a function list (library
-functions included) and user-defined operators, and library structs and
-events are rejected; a file-level directive with a function list rejects the
-compilation, whichever file it is in. In the Yul the compiler emits, `linkersymbol`, a linked
+`DELEGATECALL`, and library structs and events are rejected. Function-list
+`using` directives are accepted: attached free and library functions use the
+same internal-call path. In the Yul the compiler emits, `linkersymbol`, a linked
 library's address, is not admitted.
+
+User-defined value types declared at file, contract or library scope are
+imported as their elementary underlying types, including nested mapping,
+array and struct-field types and storage-layout annotations. `T.wrap` and
+`T.unwrap` are scalar conversions, checked against the referenced declaration.
+ABI signatures, event topics and error selectors use the compiler's underlying
+types. Constants and reachable free functions accompany their callers; a
+resolved user-defined operator is an internal call of its pure free function,
+with operands evaluated left to right. Its checked arithmetic context belongs
+to the callee. Raw parameter type identifiers are retained separately for
+nominal `super` overload lookup after runtime type erasure.
 
 Named arguments, `f({b: y, a: x})`, are implemented for internal, bound
 library, `super` and external calls, `emit` and `revert` with a custom error.
@@ -465,8 +476,8 @@ closed: an unknown node type, a missing required field or a construct outside
 the admitted subset below is an import error (for a function body, the
 function is kept unsupported; see Partial admission). The importer decodes
 the compiler's string-valued kinds once, into datatypes: function kinds
-(`function`, `receive`, `fallback`, `constructor`; free functions and others
-are import errors), visibilities, state mutabilities, address payability,
+(`function` and reachable `freeFunction` both become `FunctionKind`, plus
+`receive`, `fallback` and `constructor`), visibilities, state mutabilities, address payability,
 data locations (`transient` is an import error), literal kinds and the
 unary, binary and assignment operators. It also holds the one table of the
 compiler's built-in declaration ids (`abi`, `msg`, `block`, `tx`, `this`,

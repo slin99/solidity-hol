@@ -425,6 +425,7 @@ fun function_of ps rs ss =
       fn_kind := FunctionKind; fn_visibility := InternalVisibility;
       fn_mutability := NonpayableMut; fn_selector := NONE;
       fn_base_functions := []; fn_parameters_id := 2; fn_parameters := ^ps;
+      fn_nominal_parameters := [];
       fn_returns_id := 3; fn_returns := ^rs; fn_modifiers := [];
       fn_super_calls := []; fn_body := SrcBlock ^(at 9) ^ss;
       fn_unsupported := NONE |>”;

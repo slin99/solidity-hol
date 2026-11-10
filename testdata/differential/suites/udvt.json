@@ -1,0 +1,312 @@
+{
+  "name": "udvt",
+  "source": "testdata/differential/udvt.sol",
+  "contract": "UDVT",
+  "artifact": "testdata/differential/expected/udvt.json",
+  "cases": [
+    {
+      "name": "wrap_unwrap_zero",
+      "function": "identity",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "wrap_unwrap_max",
+      "function": "identity",
+      "args": [
+        65535
+      ],
+      "expect": {
+        "return": [
+          65535
+        ]
+      }
+    },
+    {
+      "name": "abi_rejects_dirty_uint16",
+      "calldata": "0x90303cdc0000000000000000000000000000000000000000000000000000000000010000",
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "underlying_kinds",
+      "function": "kinds",
+      "args": [
+        -3,
+        true,
+        "0x12345678",
+        4660
+      ],
+      "expect": {
+        "return": [
+          -3,
+          true,
+          "0x12345678",
+          4660
+        ]
+      }
+    },
+    {
+      "name": "qualified_type_names",
+      "function": "qualified",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x12345678",
+          7
+        ]
+      }
+    },
+    {
+      "name": "packed_containers",
+      "function": "save",
+      "args": [
+        4,
+        123
+      ],
+      "expect": {
+        "return": [
+          123,
+          123,
+          123,
+          123
+        ]
+      },
+      "storage": {
+        "0": 30064771073
+      },
+      "final_storage": {
+        "0": 30065361019,
+        "107553882524790531947385985832592837884442228935463780553192851707863573624387": 123,
+        "2": 8060928,
+        "3": 1,
+        "87903029871075914254377627908054574944891091886930582284385770809450030037083": 123,
+        "4": 458875
+      }
+    },
+    {
+      "name": "underlying_getter",
+      "function": "stored",
+      "args": [],
+      "expect": {
+        "return": [
+          123
+        ]
+      },
+      "storage": {
+        "0": 123
+      }
+    },
+    {
+      "name": "constant_wrap",
+      "function": "LIMIT",
+      "args": [],
+      "expect": {
+        "return": [
+          42
+        ]
+      }
+    },
+    {
+      "name": "immutable_underlying",
+      "function": "seed",
+      "args": [],
+      "expect": {
+        "return": [
+          456
+        ]
+      },
+      "immutables": {
+        "seed": 456
+      }
+    },
+    {
+      "name": "constructor_wrap",
+      "deploy": true,
+      "args": [
+        456
+      ],
+      "expect": {
+        "returned": "0x00000000000000000000000000000000000000000000000000000000000001c8"
+      },
+      "final_storage": {
+        "0": 456
+      }
+    },
+    {
+      "name": "event_underlying_signature",
+      "function": "announce",
+      "args": [
+        4,
+        123
+      ],
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [
+            "0x4d803bfd1031f20229959bbd1027bd8386f59182ae12510ff7961177777c42ac",
+            "0x0000000000000000000000000000000000000000000000000000000000000004"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000007b"
+        }
+      ]
+    },
+    {
+      "name": "error_underlying_signature",
+      "function": "fail",
+      "args": [
+        123
+      ],
+      "expect": {
+        "revert": "0xe1b2ad6e000000000000000000000000000000000000000000000000000000000000007b"
+      }
+    },
+    {
+      "name": "abi_encode_decode",
+      "function": "roundtrip",
+      "args": [
+        123
+      ],
+      "expect": {
+        "return": [
+          123
+        ]
+      }
+    },
+    {
+      "name": "external_abi",
+      "function": "viaThis",
+      "args": [
+        123
+      ],
+      "expect": {
+        "return": [
+          123
+        ]
+      }
+    },
+    {
+      "name": "calldata_array_underlying",
+      "calldata": "0x443d326a0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000070000000000000000000000000000000000000000000000000000000000000013",
+      "expect": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000013"
+      }
+    },
+    {
+      "name": "memory_array_underlying",
+      "function": "memoryArray",
+      "args": [],
+      "expect": {
+        "return": [
+          17
+        ]
+      }
+    },
+    {
+      "name": "resolved_operators",
+      "function": "operators",
+      "args": [
+        12,
+        2
+      ],
+      "expect": {
+        "return": [
+          15,
+          118,
+          88,
+          65523,
+          true,
+          24
+        ]
+      }
+    },
+    {
+      "name": "operator_arguments_left_to_right",
+      "function": "order",
+      "args": [],
+      "expect": {
+        "return": [
+          8,
+          2
+        ]
+      },
+      "final_storage": {
+        "5": 2
+      }
+    },
+    {
+      "name": "wrap_evaluates_once",
+      "function": "wrappedEffect",
+      "args": [],
+      "expect": {
+        "return": [
+          1,
+          1
+        ]
+      },
+      "final_storage": {
+        "5": 1
+      }
+    },
+    {
+      "name": "operator_callee_stays_checked",
+      "function": "checkedInUnchecked",
+      "args": [
+        65535,
+        1
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    },
+    {
+      "name": "operator_revert_rolls_back",
+      "function": "rollback",
+      "args": [],
+      "expect": {
+        "panic": "0x11"
+      },
+      "storage": {
+        "5": 7
+      },
+      "final_storage": {
+        "5": 7
+      }
+    },
+    {
+      "name": "nominal_super_overloads",
+      "function": "nominal",
+      "args": [],
+      "expect": {
+        "return": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ]
+      }
+    },
+    {
+      "name": "wrap_cleans_underlying_bits",
+      "function": "dirtyWrap",
+      "args": [
+        65537
+      ],
+      "expect": {
+        "return": [
+          1
+        ]
+      }
+    }
+  ]
+}

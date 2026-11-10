@@ -426,13 +426,24 @@ fun artifact_immutables artifact source contract =
     val declarations = List.concat (map (fn c => array_field c "nodes")
       (List.filter (fn c => List.exists (fn id => id = integer (field c "id")) bases)
          contracts))
+    val value_types = List.filter
+      (fn n => string_field n "nodeType" = "UserDefinedValueTypeDefinition")
+      (List.concat (map (fn (_, s) => array_field (field s "ast") "nodes") sources) @
+       List.concat (map (fn c => array_field c "nodes") contracts))
     val imms = List.filter (fn v =>
       string_field v "nodeType" = "VariableDeclaration" andalso
       string_field v "mutability" = "immutable") declarations
     fun immutable v =
       let
         val name = string_field v "name"
-        val text = string_field (field v "typeDescriptions") "typeString"
+        val type_name = field v "typeName"
+        val underlying = case JSONUtil.findField type_name "referencedDeclaration" of
+            SOME id => List.find (fn d => integer (field d "id") = integer id) value_types
+          | NONE => NONE
+        val type_node = case underlying of
+            SOME d => field d "underlyingType"
+          | NONE => v
+        val text = string_field (field type_node "typeDescriptions") "typeString"
         val ty = if String.isPrefix "contract " text orelse text = "address payable"
                  then contractABISyntax.parse_abi_type "address"
                  else if String.isPrefix "enum " text then “Uint 8”
