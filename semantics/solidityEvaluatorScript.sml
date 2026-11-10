@@ -607,7 +607,7 @@ Definition call_external_mode_def:
                                 32 + 32 * ((LENGTH r.call_return + 31) DIV 32) then
                           abrupt_result (PanicCompletion 65) st gas
                         else
-                          let (data, st1) = allocate_bytes BytesT r.call_return st in
+                          let (data, st1) = allocate_bytes F BytesT r.call_return st in
                           normal_result (define_binding x ty
                             (TupleValue (values ++ [data])) st1) gas)
                else
@@ -672,7 +672,7 @@ Definition call_static_def:
                                32 * ((LENGTH res.call_return + 31) DIV 32)
              then abrupt_result (PanicCompletion 65) st' gas
              else
-               let (v, st1) = allocate_bytes BytesT res.call_return st' in
+               let (v, st1) = allocate_bytes F BytesT res.call_return st' in
                normal_result (define_binding x ty (TupleValue [success; v]) st1) gas)
     | _ => abrupt_result (InvalidCompletion "bad staticcall operands") st gas
 End
@@ -697,7 +697,7 @@ Definition allocate_encoding_def:
     then abrupt_result (PanicCompletion 65) st gas
     else let element = if ty = SingleType (LocatedT MemoryLoc StringT) then StringT
                        else BytesT in
-         let (v, st') = allocate_bytes element bs st in
+         let (v, st') = allocate_bytes T element bs st in
          normal_result (define_binding x ty v st') gas
 End
 
@@ -726,7 +726,7 @@ Definition simple_stmt_def:
   simple_stmt env s st gas =
     case s of
       DefineStmt x ty (BytesLiteralOperation element bs) =>
-        let (v, st') = allocate_bytes element bs st in
+        let (v, st') = allocate_bytes T element bs st in
         normal_result (define_binding x ty v st') gas
     | DefineStmt x ty (DefaultMemoryOperation element) =>
         (case default_memory_value element st of
@@ -740,7 +740,7 @@ Definition simple_stmt_def:
              else if byte_sequence_type element then
                if 2 ** 64 ≤ 128 + st.memory_allocated + 32 + 32 * ((Num n + 31) DIV 32)
                then abrupt_result (PanicCompletion 65) st gas else
-               let (v, st') = allocate_bytes element (REPLICATE (Num n) 0w) st in
+               let (v, st') = allocate_bytes T element (REPLICATE (Num n) 0w) st in
                normal_result (define_binding x ty v st') gas
              else
                (case zero_array element (Num n) st of
@@ -872,9 +872,12 @@ End
  * read of memory the block was not given. On normal exit the referenced
  * locals are written back, cleaned per type as the compiler cleans a value on
  * every Solidity read, and each byte sequence's bytes are read back from
- * memory; writes outside the scratch space [0, 0x40) and the byte sequences'
- * data words fail closed, and so do writes to a length word or the free
- * memory pointer. In a static frame, a block that names a builtin changing
+ * memory; writes outside the scratch space [0, 0x40), the byte sequences'
+ * data words and the memory from the free memory pointer up fail closed, and
+ * so do writes to a length word or the free memory pointer. The memory from
+ * the free memory pointer up is the temporary memory the Solidity docs let a
+ * memory-safe block use: the source keeps nothing there, and the block's
+ * writes there are dropped. In a static frame, a block that names a builtin changing
  * the world (call included) fails closed, whether or not it would run it.
  *
  * A call and staticcall run the callee as the source's own calls do
@@ -1019,8 +1022,10 @@ Definition yul_substitute_stmt_def:
 End
 
 (* m with the byte sequence objects with ids 1 to i written into memory, each
- * as its length word and its data zero-padded to whole words, the memory solc
- * allocates for it. *)
+ * as its length word and its data, zero-padded to whole words where the
+ * compiler's memory holds the zeros (object_padded), the memory solc
+ * allocates for it. Padding the compiler leaves as it was stays unwritten,
+ * so a block reading it fails closed. *)
 Definition assembly_project_def:
   (assembly_project heap 0 (m : yul_machine) = SOME m) ∧
   (assembly_project heap (SUC i) m =
@@ -1032,8 +1037,10 @@ Definition assembly_project_def:
               assembly_project heap i
                 (yul_memory_write m obj.object_address
                    (word_to_bytes_be (n2w obj.object_length : bytes32) ++ bs ++
-                    REPLICATE (32 * ((obj.object_length + 31) DIV 32) -
-                               obj.object_length) 0w))
+                    (if obj.object_padded then
+                       REPLICATE (32 * ((obj.object_length + 31) DIV 32) -
+                                  obj.object_length) 0w
+                     else [])))
           | NONE => NONE
         else assembly_project heap i m
     | NONE => assembly_project heap i m)
@@ -1082,8 +1089,15 @@ Definition without_ranges_def:
   (without_ranges ((a, n) :: rs) mem = without_ranges rs (without_range a n mem))
 End
 
+(* The n bytes from a are all written, and zero. *)
+Definition memory_zeros_def:
+  (memory_zeros (mem : num |-> word8) a 0 ⇔ T) ∧
+  (memory_zeros mem a (SUC n) ⇔
+     FLOOKUP mem a = SOME 0w ∧ memory_zeros mem (a + 1) n)
+End
+
 (* The heap with the bytes of each byte sequence object with id 1 to i read
- * back from the block's final memory. *)
+ * back from the block's final memory, and whether its padding is zero. *)
 Definition assembly_read_back_def:
   (assembly_read_back heap 0 (m : yul_machine) = heap) ∧
   (assembly_read_back heap (SUC i) m =
@@ -1091,9 +1105,12 @@ Definition assembly_read_back_def:
       (case FLOOKUP heap (SUC i) of
          SOME obj =>
            if byte_sequence_type obj.object_type then
-             heap |+ (SUC i, obj with object_cells :=
-               byte_cells (yul_memory_read m (obj.object_address + 32)
-                             obj.object_length))
+             heap |+ (SUC i, obj with <|
+               object_cells := byte_cells
+                 (yul_memory_read m (obj.object_address + 32) obj.object_length);
+               object_padded := memory_zeros m.memory
+                 (obj.object_address + 32 + obj.object_length)
+                 (32 * ((obj.object_length + 31) DIV 32) - obj.object_length) |>)
            else heap
        | NONE => heap) i m)
 End
@@ -1132,7 +1149,9 @@ Definition assembly_result_def:
     let world = assembly_world r.machine in
     case r.completion of
       YulNormal =>
-        let writable = assembly_writable st.heap st.next_heap_id in
+        let free = memory_free_pointer st in
+        let writable = (free, r.machine.memory_size - free) ::
+                       assembly_writable st.heap st.next_heap_id in
         if without_ranges writable r.machine.memory ≠
            without_ranges writable m0.memory then
           abrupt_result
@@ -1326,6 +1345,7 @@ val () = cv_auto_trans assembly_machine_def;
 val () = cv_auto_trans assembly_writable_def;
 val () = cv_auto_trans without_range_def;
 val () = cv_auto_trans without_ranges_def;
+val () = cv_auto_trans memory_zeros_def;
 val () = cv_auto_trans assembly_read_back_def;
 val () = cv_auto_trans assembly_world_def;
 val () = cv_auto_trans assembly_write_one_def;

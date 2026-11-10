@@ -152,12 +152,16 @@ a memory holding each byte sequence's length word and bytes there. Under
 arithmetic relative to a pointer is modelled but returning, storing or
 comparing a raw pointer value is outside the boundary. The block's memory also
 holds the free memory pointer at `0x40`, `0x80` plus the memory allocated so
-far, under the same boundary; a block that exits normally may not change it. A
-literal address is read only at the free memory pointer or where the block
-wrote it before (an `mstore`, or a call's output region), as the elaborator
-checks. At a computed address a block may read only the free memory pointer,
+far, under the same boundary; a block that exits normally may not change it,
+and what it wrote from it up is dropped (the temporary memory the Solidity
+docs allow a memory-safe block). A literal address with a literal length is
+read only at the free memory pointer or where the block wrote it before (an
+`mstore`, a call's output region or a `returndatacopy`, also in an argument to
+the right, since arguments run right to left), as the elaborator checks. At a computed address a block may read only the free memory pointer,
 the zero slot `[0x60, 0x80)`, each byte sequence's length word and data
-(zero-padded to whole words), and bytes it has written itself; any other read,
+(zero-padded to whole words where solc's memory holds the zeros: not for
+bytes copied from return data, a low-level call's or a `catch`'s, whose
+padding solc leaves as it was), and bytes it has written itself; any other read,
 another kind of memory object, the scratch space before the block writes it,
 or past an object's last word, ends the block with an `InvalidCompletion`.
 A callee that returns fewer bytes than the block's output region leaves the
@@ -172,10 +176,12 @@ means the fixed budget every call from the source gets, and a literal gas
 argument is capped at that budget. The source keeps no return data buffer
 either, so `returndatasize` and `returndatacopy` are admitted only after a
 statement of the block that calls, earlier in the same or an enclosing
-statement list (a Yul function's body starts afresh). A block in a static
-frame that names `call` fails closed; `staticcall` runs. Bytes a block writes past an
-object's length, in its last word, aren't kept for the next block: a later block
-reads them as the padding's zeros. solc lets a block assign a memory
+statement list, or in an argument left of a call, since arguments run right
+to left (a Yul function's body starts afresh). A block in a static
+frame that names `call` fails closed; `staticcall` runs. A block that leaves
+an object's padding (the bytes past its length, in its last word) unwritten
+or not zero leaves it out of later blocks' memory, where reading it fails
+closed. solc lets a block assign a memory
 reference (`b := ...`); the elaborator rejects it, since the block reads the
 name as a literal.
 
