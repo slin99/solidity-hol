@@ -51,7 +51,10 @@ The evaluator executes elementary scalar operations and conversions, locals,
 tuples, structured control flow, internal calls, built-in failures, packed
 state values, scalar-key mappings, storage arrays and storage struct members.
 Assignment, compound assignment, increment and tuple writes share local or
-captured-reference destinations. `solidityStorage` owns packed access and
+captured-reference destinations. Non-canonical `bool` and enum storage bytes,
+and non-canonical words written back to locals by inline assembly, fail with
+`InvalidCompletion`: core source values carry no dirty bits. This applies to
+storage array copies and ABI encoding too. `solidityStorage` owns packed access and
 navigation; the evaluator owns bindings, frame checks and control flow.
 Scalar writes, reference
 rebinding and content copying are distinct core operations; the latter two
