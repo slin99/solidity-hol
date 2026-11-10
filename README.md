@@ -74,8 +74,10 @@ an `InvalidCompletion`. `return`/`stop`
 end the frame with a `HaltCompletion`. `call` and `staticcall` run the
 callee through the same `externalCall` adapter as high-level calls, with the
 same fixed gas budget: `gas()` may only be a call's gas argument, where it
-stands for that budget, and `returndatasize`/`returndatacopy` only follow a
-call the block made itself (the source keeps no return data buffer). In a
+stands for that budget. The block sees the frame's return data as the
+source's calls left it; after an `ecrecover`, whose return data the source
+doesn't compute, `returndatasize`/`returndatacopy` must follow a call the
+block made itself, else the block fails closed. In a
 static frame a block naming `call` fails closed. Memory
 expansion gas is not modelled, so a halting block's write far past the used
 memory succeeds where the EVM runs out of gas. Memory/calldata execution and a memory

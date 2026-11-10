@@ -1,0 +1,144 @@
+{
+  "name": "assembly_return_data",
+  "source": "testdata/differential/assembly_return_data.sol",
+  "contract": "AssemblyReturnData",
+  "artifact": "testdata/differential/expected/assembly_return_data.json",
+  "peer": {
+    "source": "testdata/differential/assembly_calls_peer.sol",
+    "contract": "AsmPeer",
+    "artifact": "testdata/differential/expected/assembly_calls_peer.json"
+  },
+  "cases": [
+    {
+      "name": "at_entry",
+      "function": "atEntry",
+      "args": [],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "after_call",
+      "function": "afterCall",
+      "args": [
+        20480,
+        5
+      ],
+      "expect": {
+        "return": [
+          5,
+          96
+        ]
+      }
+    },
+    {
+      "name": "after_low_level",
+      "function": "afterLowLevel",
+      "args": [
+        20480,
+        5
+      ],
+      "expect": {
+        "return": [
+          true,
+          32
+        ]
+      }
+    },
+    {
+      "name": "after_low_level_false",
+      "function": "afterLowLevel",
+      "args": [
+        20480,
+        2
+      ],
+      "expect": {
+        "return": [
+          true,
+          32
+        ]
+      }
+    },
+    {
+      "name": "after_low_level_revert",
+      "function": "afterLowLevel",
+      "args": [
+        20480,
+        1
+      ],
+      "expect": {
+        "return": [
+          false,
+          100
+        ]
+      }
+    },
+    {
+      "name": "bubble_caught_success",
+      "function": "bubbleCaught",
+      "args": [
+        20480,
+        5
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "bubble_caught_false",
+      "function": "bubbleCaught",
+      "args": [
+        20480,
+        2
+      ],
+      "expect": {
+        "return": [
+          false
+        ]
+      }
+    },
+    {
+      "name": "bubble_caught_revert",
+      "function": "bubbleCaught",
+      "args": [
+        20480,
+        1
+      ],
+      "expect": {
+        "revert": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c7065657220726566757365640000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "name": "after_internal",
+      "function": "afterInternal",
+      "args": [
+        20480,
+        5
+      ],
+      "expect": {
+        "return": [
+          5,
+          96
+        ]
+      }
+    },
+    {
+      "name": "across_blocks",
+      "function": "acrossBlocks",
+      "args": [
+        20480,
+        5
+      ],
+      "expect": {
+        "return": [
+          true,
+          96
+        ]
+      }
+    }
+  ]
+}

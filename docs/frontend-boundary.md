@@ -169,10 +169,16 @@ Inline assembly's `call` and `staticcall` (`assembly_calls.sol`) run the
 callee on Verifereum through `externalCall`, as high-level calls do. The source
 tracks no gas, so `gas()` is admitted only as a call's gas argument, where it
 means the fixed budget every call from the source gets, and a literal gas
-argument is capped at that budget. The source keeps no return data buffer
-either, so `returndatasize` and `returndatacopy` are admitted only after a
+argument is capped at that budget. The source state keeps the frame's return
+data buffer: every high-level, try and low-level call sets it to the callee's
+return or revert bytes, and a block starts with it and leaves its own final
+buffer behind. `ecrecover` calls a precompile whose return data the source
+doesn't compute, so after one the buffer is unknown: a block that could read
+it before a call of its own (`returndatasize` or `returndatacopy` not after a
 statement of the block that calls, earlier in the same or an enclosing
-statement list (a Yul function's body starts afresh). A block in a static
+statement list) then fails with an `InvalidCompletion`, and a block that
+leaves an empty buffer keeps it unknown. A Yul function's body may read return
+data only after a call of its own. A block in a static
 frame that names `call` fails closed; `staticcall` runs. Bytes a block writes past an
 object's length, in its last word, aren't kept for the next block: a later block
 reads them as the padding's zeros. solc lets a block assign a memory
