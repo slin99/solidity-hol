@@ -125,11 +125,14 @@ End
  * sequence as its contents, as a new memory bytes, or as a new memory string
  * (string.concat) when the result is defined as one.
  * ExternalCallOperation kind selector parameter_types return_types target
- * value arguments: a high-level call I(target).f{value: value}(arguments) of
- * the function with that selector and those ABI types.
- * StaticCallOperation target data: the low-level target.staticcall(data) of
- * the memory bytes data, giving whether it succeeded and its return data as a
- * new memory bytes.
+ * value gas arguments: a high-level call
+ * I(target).f{value: value, gas: gas}(arguments) of the function with that
+ * selector and those ABI types; with no gas option, the callee gets the gas
+ * every call gives.
+ * LowLevelCallOperation kind target value gas data: the low-level
+ * target.call{value: value, gas: gas}(data), target.staticcall(data) or
+ * target.delegatecall(data) of the memory bytes or bytes literal data,
+ * giving whether it succeeded and its return data as a new memory bytes.
  *)
 Datatype:
   core_operation
@@ -161,15 +164,16 @@ Datatype:
   | ArrayPopOperation core_atom
   | InternalCallOperation ast_id (core_atom list)
   | ExternalCallOperation external_kind (byte list) (sol_type list)
-      (sol_type list) core_atom core_atom (core_atom list)
-  | StaticCallOperation core_atom core_atom
+      (sol_type list) core_atom core_atom (core_atom option) (core_atom list)
+  | LowLevelCallOperation external_kind core_atom core_atom (core_atom option)
+      core_atom
   (* target.transfer(value): exact stipend, failure bytes forwarded, no
    * return-data allocation. *)
   | TransferOperation core_atom core_atom
   (* success flag, scalar returns, raw failure bytes; only a failed EVM call
    * is caught. Operand and return-decoding failures still propagate. *)
   | TryExternalCallOperation external_kind (byte list) (sol_type list)
-      (sol_type list) core_atom core_atom (core_atom list)
+      (sol_type list) core_atom core_atom (core_atom option) (core_atom list)
   | EnvironmentOperation environment_field
 End
 
