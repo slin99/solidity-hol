@@ -25,8 +25,8 @@ val prepared = #prepared (solidityPrepareLib.prepare_artifact
  * callsTwice call unsupported functions; the constructor's halting assembly
  * does not elaborate. Once Partial.twice is unsupported its super calls
  * reach nothing, so neither Mid.twice nor Base.twice is among the
- * functions calls reach. The constant DIGITS does not elaborate, so it has
- * no procedure and digits, which reads it, uses an unsupported declaration;
+ * functions calls reach. The constant DIGITS and digits, which reads it,
+ * elaborate through the shared fixed-byte indexed access;
  * pointer fails to elaborate, since its assembly assigns a bytes local. *)
 val outcomes = map (fn {name, reason, ...} => (name, reason)) (#functions prepared);
 fun reasons name =
@@ -57,7 +57,7 @@ val () =
      reasons "digestTwice" = [calls_unsupported] andalso
      reasons "callsTwice" = [calls_unsupported] andalso
      reasons "twice" = [calls_unsupported] andalso
-     reasons "digits" = [SOME "uses an unsupported declaration"] andalso
+     reasons "digits" = [NONE] andalso
      List.all elaboration_failure (reasons "pointer") andalso
      length (reasons "pointer") = 1 andalso
      length outcomes = 9
@@ -119,20 +119,19 @@ Proof
   CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
 QED
 
-(* The getter of the constant that does not elaborate is refused, as are
- * digits, which reads it, and pointer. *)
-Theorem partial_constant_getter_refused:
-  partial_call ^(listSyntax.mk_list (selector "d0263f8c", “:word8”)) =
-  ContractInvalid "unknown procedure"
+(* Both the constant getter and digits return bytes16(bytes1("0")). *)
+Theorem partial_constant_getter_runs:
+  ∃w. partial_call ^(listSyntax.mk_list (selector "d0263f8c", “:word8”)) =
+      ContractReturned (48w :: REPLICATE 31 0w) w
 Proof
-  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
+  CONV_TAC (QUANT_CONV (LAND_CONV cv_eval)) >> simp[] >> EVAL_TAC
 QED
 
-Theorem partial_digits_refused:
-  partial_call ^(listSyntax.mk_list (selector "9e20437c", “:word8”)) =
-  ContractInvalid "unknown procedure"
+Theorem partial_digits_runs:
+  ∃w. partial_call ^(listSyntax.mk_list (selector "9e20437c", “:word8”)) =
+      ContractReturned (48w :: REPLICATE 31 0w) w
 Proof
-  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
+  CONV_TAC (QUANT_CONV (LAND_CONV cv_eval)) >> simp[] >> EVAL_TAC
 QED
 
 Theorem partial_pointer_refused:
