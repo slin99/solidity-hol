@@ -3208,12 +3208,11 @@ Definition elaborate_contract_def:
           INR _ => NONE
         | INL (cps, n) =>
         let ps = fps ++ gps ++ cps in
-        (case (if unsupported_creation c then INL (INR (AstId n))
-               else case elab_creation (ctx with creation := T) c n of
-                      INL (p, _) => INL (INL p)
-                    | INR bs => INR bs) of
-           INR _ => NONE
-         | INL creation =>
+        let creation =
+          if unsupported_creation c then INR (AstId n)
+          else case elab_creation (ctx with creation := T) c n of
+                 INL (p, _) => INL p
+               | INR _ => INR (AstId n) in
         let creation_id = (case creation of
                              INL p => p.procedure_id
                            | INR x => x) in
@@ -3243,7 +3242,7 @@ Definition elaborate_contract_def:
                 fallback_procedure :=
                   special_function FallbackKind fs;
                 creation_procedure :=
-                  SOME (creation_id, creation_payable c) |>)))
+                  SOME (creation_id, creation_payable c) |>))
     | _ => NONE
 End
 

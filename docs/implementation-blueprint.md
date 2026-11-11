@@ -15,6 +15,10 @@ and the semanticTests acceptance scanner share this API. Metadata validation is
 an SML check; source validation, elaboration and core checking return HOL
 certificates. Metadata is not proof that the recorded compiler output is genuine.
 
+When creation cannot be lowered, preparation retains the checked runtime
+procedures and marks creation unsupported. Deployment then fails closed with
+`ContractInvalid "unknown procedure"`; unsupported helpers remain excluded.
+
 Malformed artifacts, unsupported import/lowering, source rejection and invalid
 generated core are separate failures. Invalid generated core is an implementation
 error. Lower-level importer/elaborator functions remain available; their callers
