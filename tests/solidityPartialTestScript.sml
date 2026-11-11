@@ -30,9 +30,8 @@ val prepared = #prepared (solidityPrepareLib.prepare_artifact
  * pointer fails to elaborate, since its assembly assigns a bytes local.
  * hookCount's struct has a function-typed member, so the struct is left out
  * and hookCount's local does not elaborate, while the unit still imports.
- * Likewise Roles.Grant has an enum-keyed mapping and Roles.Named a
- * string-keyed one, so the storage locals of grantCount and namedCount do
- * not elaborate. *)
+ * Likewise Roles.Grant has an enum-keyed mapping, so the storage local of
+ * grantCount does not elaborate. *)
 val outcomes = map (fn {name, reason, ...} => (name, reason)) (#functions prepared);
 fun reasons name =
   map #2 (List.filter (fn (n, _) => n = name) outcomes);
@@ -69,9 +68,7 @@ val () =
      length (reasons "hookCount") = 1 andalso
      List.all elaboration_failure (reasons "grantCount") andalso
      length (reasons "grantCount") = 1 andalso
-     List.all elaboration_failure (reasons "namedCount") andalso
-     length (reasons "namedCount") = 1 andalso
-     length outcomes = 12
+     length outcomes = 11
   then ()
   else raise Fail ("unexpected function outcomes: " ^
     String.concatWith "; " (map (fn (n, r) => n ^ " " ^

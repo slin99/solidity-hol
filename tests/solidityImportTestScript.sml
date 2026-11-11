@@ -407,7 +407,7 @@ val () =
       [": unsupported expression UnknownTarget", "typed catch clauses are not supported"]
   end
 
-(* A state variable of a struct left out (a string-keyed mapping member)
+(* A state variable of a struct left out (a function-typed member)
  * rejects the unit at import, rather than reaching the core unchecked. *)
 val () =
   case (ignore (import_artifact "../testdata/frontend/expected/struct_state.json"
