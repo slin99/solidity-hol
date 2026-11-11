@@ -265,7 +265,7 @@ Definition external_call_body_def:
   external_call_body kind value = [
     DefineStmt (AstId 82) (SingleType u256)
       (ExternalCallOperation kind [1w; 2w; 3w; 4w] [u256] [u256]
-         (ConstantAtom (AddressValue 0x5000w)) value
+         (ConstantAtom (AddressValue 0x5000w)) value NONE
          [BoundAtom (AstId 80)])]
 End
 
@@ -285,7 +285,7 @@ Theorem external_byte_sequence_memory_results_accepted:
         (ExternalCallOperation ExternalCall [1w; 2w; 3w; 4w] []
           [LocatedT MemoryLoc element]
           (ConstantAtom (AddressValue 0x5000w))
-          (ConstantAtom (IntegerValue 0)) [])])) [BytesT; StringT]
+          (ConstantAtom (IntegerValue 0)) NONE [])])) [BytesT; StringT]
 Proof
   EVAL_TAC
 QED
@@ -297,7 +297,73 @@ Theorem external_byte_sequence_calldata_results_rejected:
         (ExternalCallOperation ExternalCall [1w; 2w; 3w; 4w] []
           [LocatedT CalldataLoc element]
           (ConstantAtom (AddressValue 0x5000w))
-          (ConstantAtom (IntegerValue 0)) [])])) [BytesT; StringT]
+          (ConstantAtom (IntegerValue 0)) NONE [])])) [BytesT; StringT]
+Proof
+  EVAL_TAC
+QED
+
+(* A low-level call of a constant address with the parameter as gas. *)
+Definition low_level_call_body_def:
+  low_level_call_body kind value gas data = [
+    DefineStmt (AstId 82)
+      (call_result_type [BoolT; LocatedT MemoryLoc BytesT])
+      (LowLevelCallOperation kind (ConstantAtom (AddressValue 0x5000w)) value
+         gas data)]
+End
+
+val () = cv_auto_trans low_level_call_body_def;
+
+(* call sends value; every kind takes a gas option and a bytes literal. *)
+Theorem low_level_calls_accepted:
+  wf_core_procedure test_env
+    (with_body (low_level_call_body ExternalCall (ConstantAtom (IntegerValue 1))
+                  (SOME (BoundAtom (AstId 80))) (ConstantAtom (BytesValue [])))) ∧
+  EVERY (λkind.
+    wf_core_procedure test_env
+      (with_body (low_level_call_body kind (ConstantAtom (IntegerValue 0))
+                    (SOME (BoundAtom (AstId 80))) (ConstantAtom (BytesValue [1w])))))
+    [ExternalStaticCall; ExternalDelegateCall]
+Proof
+  EVAL_TAC
+QED
+
+(* Only call sends value, and the data is bytes, not a word. *)
+Theorem low_level_calls_rejected:
+  EVERY (λkind.
+    ¬wf_core_procedure test_env
+       (with_body (low_level_call_body kind (ConstantAtom (IntegerValue 1)) NONE
+                     (ConstantAtom (BytesValue [])))))
+    [ExternalStaticCall; ExternalDelegateCall] ∧
+  ¬wf_core_procedure test_env
+     (with_body (low_level_call_body ExternalCall (ConstantAtom (IntegerValue 0))
+                   NONE (BoundAtom (AstId 80))))
+Proof
+  EVAL_TAC
+QED
+
+(* Calldata bytes are call data too, read where they are; a calldata string
+   is not. *)
+Definition calldata_data_call_def:
+  calldata_data_call kind element =
+    with_body (low_level_call_body kind (ConstantAtom (IntegerValue 0)) NONE
+                 (BoundAtom (AstId 83))) with
+      parameters := [(AstId 80, u256); (AstId 83, LocatedT CalldataLoc element)]
+End
+
+Theorem low_level_calldata_data_accepted:
+  EVERY (λkind. wf_core_procedure test_env (calldata_data_call kind BytesT))
+    [ExternalCall; ExternalStaticCall; ExternalDelegateCall] ∧
+  ¬wf_core_procedure test_env (calldata_data_call ExternalCall StringT)
+Proof
+  EVAL_TAC
+QED
+
+Theorem external_call_gas_option_accepted:
+  wf_core_procedure test_env (with_body [
+    DefineStmt (AstId 82) (SingleType u256)
+      (ExternalCallOperation ExternalCall [1w; 2w; 3w; 4w] [u256] [u256]
+         (ConstantAtom (AddressValue 0x5000w)) (ConstantAtom (IntegerValue 0))
+         (SOME (BoundAtom (AstId 80))) [BoundAtom (AstId 80)])])
 Proof
   EVAL_TAC
 QED
@@ -510,12 +576,39 @@ Proof
   EVAL_TAC
 QED
 
-(* Custom errors: a 4-byte selector and elementary arguments of their
- * parameter types. *)
+(* Custom errors: a 4-byte selector and scalar arguments of their
+ * parameter types, including declared enums. *)
 Theorem revert_error_admitted:
   wf_core_procedure test_env (with_body [
      RevertErrorStmt [1w; 2w; 3w; 4w] [u256; BoolT]
        [BoundAtom (AstId 80); ConstantAtom (BoolValue T)];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_enum_admitted:
+  wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [EnumT (AstId 900)]
+       [ConstantAtom (IntegerValue 2)];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_undeclared_enum_rejected:
+  ¬wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [EnumT (AstId 999)]
+       [ConstantAtom (IntegerValue 0)];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_enum_out_of_range_rejected:
+  ¬wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [EnumT (AstId 900)]
+       [ConstantAtom (IntegerValue 3)];
      ReturnStmt [BoundAtom (AstId 80)]])
 Proof
   EVAL_TAC
@@ -911,6 +1004,48 @@ Proof
   EVAL_TAC
 QED
 
+Theorem join_memory_annotation_checked:
+  wf_core_operation test_env
+    <| bindings := []; targets := []; returns := []; in_loop := F |>
+    (SingleType (LocatedT MemoryLoc (ArrayT (UintT 256) (SOME 1))))
+    (NullMemoryOperation (ArrayT (UintT 256) (SOME 1))) ∧
+  ¬wf_core_operation test_env
+    <| bindings := []; targets := []; returns := []; in_loop := F |>
+    (SingleType (LocatedT MemoryLoc (UintT 256)))
+    (NullMemoryOperation (UintT 256)) ∧
+  ¬wf_core_operation test_env
+    <| bindings := []; targets := []; returns := []; in_loop := F |>
+    (SingleType (LocatedT MemoryLoc (ArrayT (UintT 8) (SOME 1))))
+    (NullMemoryOperation (ArrayT (UintT 256) (SOME 1)))
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem byte_mapping_storage_bases_checked:
+  EVERY (λbinding.
+    wf_core_operation test_env
+      <| bindings := [(AstId 1, binding);
+                      (AstId 2, SingleType (LocatedT CalldataLoc BytesT))];
+         targets := []; returns := []; in_loop := F |>
+      (ReferenceType (UintT 8))
+      (NavigateOperation (UintT 8) (BoundAtom (AstId 1))
+        (IndexNavigation (BoundAtom (AstId 2)))))
+    [ReferenceType (MappingT BytesT (UintT 8));
+     SingleType (LocatedT StorageLoc (MappingT BytesT (UintT 8)))] ∧
+  EVERY (λbinding.
+    ¬wf_core_operation test_env
+      <| bindings := [(AstId 1, binding);
+                      (AstId 2, SingleType (UintT 256))];
+         targets := []; returns := []; in_loop := F |>
+      (ReferenceType (UintT 8))
+      (NavigateOperation (UintT 8) (BoundAtom (AstId 1))
+        (IndexNavigation (BoundAtom (AstId 2)))))
+    [ReferenceType (MappingT BytesT (UintT 8));
+     SingleType (LocatedT StorageLoc (MappingT BytesT (UintT 8)))]
+Proof
+  EVAL_TAC
+QED
+
 Theorem mapping_key_signedness_checked:
   ¬wf_core_operation test_env
     <| bindings := [(AstId 1, ReferenceType (MappingT (IntT 8) (UintT 8)));
@@ -951,9 +1086,9 @@ Definition packed_struct_layout_def:
     struct_slots := 1;
     struct_fields :=
       [<| state_id := AstId 951; state_type := UintT 8;
-          state_slot := 0w; state_offset := 0 |>;
+          state_backend := PersistentStorage; state_slot := 0w; state_offset := 0 |>;
        <| state_id := AstId 952; state_type := IntT 16;
-          state_slot := 0w; state_offset := 1 |>]
+          state_backend := PersistentStorage; state_slot := 0w; state_offset := 1 |>]
   |>
 End
 
@@ -987,15 +1122,15 @@ Theorem malformed_struct_fields_rejected:
   ¬wf_core_environment
     (struct_layout_environment [packed_struct_layout with struct_fields :=
       [<| state_id := AstId 951; state_type := UintT 16;
-          state_slot := 0w; state_offset := 31 |>]]) ∧
+          state_backend := PersistentStorage; state_slot := 0w; state_offset := 31 |>]]) ∧
   ¬wf_core_environment
     (struct_layout_environment [packed_struct_layout with struct_fields :=
       [<| state_id := AstId 951; state_type := UintT 8;
-          state_slot := 1w; state_offset := 0 |>]]) ∧
+          state_backend := PersistentStorage; state_slot := 1w; state_offset := 0 |>]]) ∧
   ¬wf_core_environment
     (struct_layout_environment [packed_struct_layout with struct_fields :=
       [<| state_id := AstId 951; state_type := StructT (AstId 950);
-          state_slot := 0w; state_offset := 0 |>]])
+          state_backend := PersistentStorage; state_slot := 0w; state_offset := 0 |>]])
 Proof
   EVAL_TAC
 QED
@@ -1026,10 +1161,10 @@ Theorem recursive_struct_behind_mapping_checked:
       struct_slots := 2;
       struct_fields :=
         [<| state_id := AstId 951; state_type := UintT 8;
-            state_slot := 0w; state_offset := 0 |>;
+            state_backend := PersistentStorage; state_slot := 0w; state_offset := 0 |>;
          <| state_id := AstId 952;
             state_type := MappingT (UintT 256) (StructT (AstId 950));
-            state_slot := 1w; state_offset := 0 |>] |>])
+            state_backend := PersistentStorage; state_slot := 1w; state_offset := 0 |>] |>])
 Proof
   EVAL_TAC
 QED

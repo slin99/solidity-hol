@@ -16,7 +16,9 @@ iterations independently of EVM gas.
 `solidityPrepareLib.prepare_artifact` is the checked entry point for artifact
 consumers. It checks the artifact format, compiler version/commit, profile and
 Standard JSON settings against `SOLIDITY_PIN` and
-`profiles/solc-0.8.37-via-ir-osaka.json`. It then imports and validates the source,
+`profiles/solc-0.8.37-via-ir-osaka.json`, accepting the optimized variant only
+with recorded unoptimized stack-depth failures (see [profiles.md](docs/profiles.md)).
+It then imports and validates the source,
 elaborates it, and checks the complete `wf_core_program` with `cv_eval`.
 Success retains the checked artifact alongside the source/core terms and HOL theorems for source validation,
 elaboration and core well-formedness. Artifact metadata checks run in SML;
@@ -47,9 +49,15 @@ operators to internal calls.
 
 The evaluator executes elementary scalar operations and conversions, locals,
 tuples, structured control flow, internal calls, built-in failures, packed
-state values, scalar-key mappings, storage arrays and storage struct members.
+state values, scalar and bytes/string mapping keys, storage arrays and storage
+struct members. Transient value-type state variables use a separate backend
+with transaction lifetime; custom storage bases use the compiler's absolute
+layout slots. See [frontend-boundary.md](docs/frontend-boundary.md#storage-layout).
 Assignment, compound assignment, increment and tuple writes share local or
-captured-reference destinations. `solidityStorage` owns packed access and
+captured-reference destinations. Non-canonical `bool` and enum storage bytes,
+and non-canonical words written back to locals by inline assembly, fail with
+`InvalidCompletion`: core source values carry no dirty bits. This applies to
+storage array copies and ABI encoding too. `solidityStorage` owns packed access and
 navigation; the evaluator owns bindings, frame checks and control flow.
 Scalar writes, reference
 rebinding and content copying are distinct core operations; the latter two
@@ -59,29 +67,41 @@ An inline assembly block (`AssemblyStmt`) runs on the Yul evaluator, over a
 memory holding each memory `bytes` and `string` object where the compiler
 allocates it (its length word at its address, then its bytes): it reads and
 writes back the value-type locals it names, reads state variables' slots and
-offsets, integer, `bool` and fixed-bytes constants, and the addresses of the memory
+offsets and storage pointer locals' slots and offsets (assigning a pointer's
+`x.slot` points it at that slot of the executing account), integer, `bool` and fixed-bytes constants, and the addresses of the memory
 `bytes` and `string` locals it names as literals in its code, as the compiler
 puts them, so its Yul functions see them too (a function's parameters and results may
-reuse such a name in its body; a memory reference may not be assigned). At a
-literal address it may write only the scratch space unless it halts and read
-only the free memory pointer and memory it wrote itself (an `mstore`, or a
-call's output region); at a computed address, a block that
-exits normally may write only the scratch space and the byte sequences' data
-words, not their length words or the free memory pointer, and their bytes are
-read back. Whatever the address, a read outside the free memory pointer, the
+reuse such a name in its body; a memory reference may not be assigned). Code
+that can reach the block's normal exit may write at a literal address only in
+the scratch space (an `if` or `switch` body or a Yul function's body that ends
+in `return`, `revert` or `stop` may write anywhere), and a literal address and
+length are read only at the free memory pointer and memory the block wrote
+itself (an `mstore`, a call's output region or a `returndatacopy`, also in an
+argument to the right, since arguments run right to left); at a computed
+address, a block that exits normally may write only the scratch space, the byte
+sequences' data words and the memory from the free memory pointer up, not their
+length words or the free memory pointer itself; their bytes are read back, and
+the writes from the free memory pointer up, the temporary memory the Solidity
+docs allow a memory-safe block, are dropped. Whatever the address, a read outside the free memory pointer, the
 zero slot, the byte sequences' words and the bytes the block wrote fails with
 an `InvalidCompletion`. `return`/`stop`
-end the frame with a `HaltCompletion`. `call` and `staticcall` run the
-callee through the same `externalCall` adapter as high-level calls, with the
+end the frame with a `HaltCompletion`. `call`, `staticcall` and
+`delegatecall` run the callee through the same `externalCall` adapter as
+high-level calls (`delegatecall` in this contract's account), with the
 same fixed gas budget: `gas()` may only be a call's gas argument, where it
-stands for that budget, and `returndatasize`/`returndatacopy` only follow a
-call the block made itself (the source keeps no return data buffer). In a
-static frame a block naming `call` fails closed. Memory
+stands for that budget. The block sees the frame's return data as the
+source's calls left it; after an `ecrecover`, whose return data the source
+doesn't compute, `returndatasize`/`returndatacopy` must follow a call the
+block made itself, else the block fails closed. In a
+static frame a block naming `call` or `delegatecall` fails closed. Memory
 expansion gas is not modelled, so a halting block's write far past the used
 memory succeeds where the EVM runs out of gas. Memory/calldata execution and a memory
-model shared with inline assembly beyond byte sequences remain unresolved. High-level external calls run the callee on Verifereum
-through `externalCall`, a provisional adapter with a fixed gas budget and a
-fresh callee frame; creation is not connected yet. Core well-formedness alone does not rule out `InvalidCompletion`:
+model shared with inline assembly beyond byte sequences remain unresolved. High-level external calls and
+the low-level `call`, `staticcall` and `delegatecall` run the callee on
+Verifereum through `externalCall`, a provisional adapter with a fixed gas
+budget (a `gas` option caps it) and a fresh callee frame; a delegate call's
+frame runs the callee's code in the caller's account. Creation is not
+connected yet. Core well-formedness alone does not rule out `InvalidCompletion`:
 for example, a storage write in a static frame is deliberately invalid.
 
 ## Yul

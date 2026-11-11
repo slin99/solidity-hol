@@ -28,12 +28,12 @@ End
 Definition stored_value_def:
   stored_value ty (n : num) =
     case ty of
-      BoolT => SOME (BoolValue (n ≠ 0))
+      BoolT => if n < 2 then SOME (BoolValue (n = 1)) else NONE
     | UintT _ => SOME (IntegerValue (&n))
     | IntT w => SOME (IntegerValue (wrap_integer T w (&n)))
     | AddressT _ => SOME (AddressValue (n2w n))
     | FixedBytesT k => SOME (BytesValue (num_to_bytes k n))
-    (* any byte; read_storage_reference checks it against the members *)
+    (* read_storage_word checks enum membership against the environment *)
     | EnumT _ => SOME (IntegerValue (&n))
     | _ => NONE
 End
@@ -42,40 +42,51 @@ End
  * a slot of an account. Reading keeps only those bytes, as the compiler's
  * storage cleanup does; writing replaces only them.
  *)
-Definition read_storage_def:
-  read_storage accounts addr slot offset ty =
+Definition read_storage_word_def:
+  read_storage_word env (word : bytes32) offset ty =
     case storage_bytes ty of
       SOME b =>
-        stored_value ty
-          ((w2n (lookup_storage slot (lookup_account addr accounts).storage)
-            DIV 2 ** (8 * offset)) MOD 2 ** (8 * b))
+        (case stored_value ty
+          ((w2n word DIV 2 ** (8 * offset)) MOD 2 ** (8 * b)) of
+           SOME v => if scalar_has_type env ty v then SOME v else NONE
+         | NONE => NONE)
     | NONE => NONE
 End
 
-Definition write_storage_def:
-  write_storage accounts addr slot offset ty s =
+Definition read_storage_def:
+  read_storage env accounts addr slot offset ty =
+    read_storage_word env
+      (lookup_storage slot (lookup_account addr accounts).storage) offset ty
+End
+
+Definition write_storage_word_def:
+  write_storage_word (word : bytes32) offset ty s =
     case storage_bytes ty of
       NONE => NONE
     | SOME b =>
         case stored_number b s of
           NONE => NONE
         | SOME v =>
-            let account = lookup_account addr accounts in
-            let w = w2n (lookup_storage slot account.storage) in
+            let w = w2n word in
             let lo = 2 ** (8 * offset) in
             let hi = 2 ** (8 * (offset + b)) in
             let w' = w DIV hi * hi + v MOD 2 ** (8 * b) * lo + w MOD lo in
-            SOME (update_account addr
-                    (account with storage :=
-                       update_storage slot (n2w w') account.storage)
-                    accounts)
+            SOME (n2w w' : bytes32)
+End
+
+Definition write_storage_def:
+  write_storage accounts addr slot offset ty s =
+    let account = lookup_account addr accounts in
+    OPTION_MAP (λword. update_account addr
+      (account with storage := update_storage slot word account.storage) accounts)
+      (write_storage_word (lookup_storage slot account.storage) offset ty s)
 End
 
 (* A declaration's concrete location in the executing account. *)
 Definition state_reference_def:
   state_reference env addr (AstId x) =
     case lookup_state_variable env (AstId x) of
-      SOME v => SOME (StorageReference PersistentStorage addr
+      SOME v => SOME (StorageReference v.state_backend addr
         v.state_slot v.state_offset v.state_type (LayoutId x))
     | NONE => NONE
 End
@@ -85,7 +96,8 @@ End
  *)
 Definition mapping_key_bytes_def:
   mapping_key_bytes key s =
-    if ¬elementary_storage_type_ok key ∨ ¬elementary_scalar_has_type key s then NONE
+    if byte_sequence_type key then (case s of BytesValue bs => SOME bs | _ => NONE)
+    else if ¬elementary_storage_type_ok key ∨ ¬elementary_scalar_has_type key s then NONE
     else case s of
       BytesValue bs => SOME (bs ++ REPLICATE (32 - LENGTH bs) 0w)
     | _ => OPTION_MAP (num_to_bytes 32) (stored_number 32 s)
@@ -309,7 +321,7 @@ Definition storage_array_value_def:
     | SOME (s, offset) =>
         let value =
           if is_elementary_type element then
-            (case read_storage accounts addr s offset element of
+            (case read_storage env accounts addr s offset element of
                SOME v => INL (ScalarValue v)
              | NONE => INR (InvalidCompletion "bad storage read"))
           else storage_array_value env accounts addr s element in
@@ -486,21 +498,18 @@ End
 (* Access and navigation consume concrete references, independently of atoms,
  * bindings, scopes and evaluator control flow.
  *)
-(* A stored enum byte out of range panics as the compiler's cleanup does at
- * the value's first use. *)
 Definition read_storage_reference_def:
-  read_storage_reference env accounts ty r =
+  read_storage_reference env world ty r =
     case r of
-      StorageReference PersistentStorage addr slot offset rty _ =>
+      StorageReference backend addr slot offset rty _ =>
         if rty ≠ ty then ValueAbrupt (InvalidCompletion "bad read type")
-        else if offset = 0 ∧ memory_object_type ty then ValueOk (ReferenceValue r)
-        else (case read_storage accounts addr slot offset ty of
-                SOME scalar =>
-                  (case ty of
-                     EnumT _ =>
-                       if scalar_has_type env ty scalar then ValueOk (ScalarValue scalar)
-                       else ValueAbrupt (PanicCompletion panic_enum_conversion)
-                   | _ => ValueOk (ScalarValue scalar))
+        else if backend = PersistentStorage ∧ offset = 0 ∧ storage_object_type ty
+        then ValueOk (ReferenceValue r)
+        else (case read_storage_word env
+                (lookup_storage slot (case backend of
+                   PersistentStorage => (lookup_account addr world.accounts).storage
+                 | TransientStorage => lookup_transient_storage addr world.transient)) offset ty of
+                SOME scalar => ValueOk (ScalarValue scalar)
               | NONE => ValueAbrupt (InvalidCompletion "bad storage read"))
     | _ => ValueAbrupt (InvalidCompletion "bad storage reference")
 End
@@ -535,7 +544,9 @@ Definition navigate_storage_field_def:
     | _ => ValueAbrupt (InvalidCompletion "bad struct reference")
 End
 
+val () = cv_auto_trans read_storage_word_def;
 val () = cv_auto_trans read_storage_def;
+val () = cv_auto_trans write_storage_word_def;
 val () = cv_auto_trans write_storage_def;
 val () = cv_auto_trans state_reference_def;
 val () = cv_auto_trans storage_byte_length_def;

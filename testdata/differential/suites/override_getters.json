@@ -1,0 +1,126 @@
+{
+  "name": "override_getters",
+  "source": "testdata/differential/override_getters.sol",
+  "contract": "OverrideGetters",
+  "artifact": "testdata/differential/expected/override_getters.json",
+  "cases": [
+    {
+      "name": "concrete_getter_override",
+      "function": "value",
+      "args": [],
+      "expect": {
+        "return": [
+          41
+        ]
+      },
+      "storage": {
+        "0": 41
+      }
+    },
+    {
+      "name": "constant_getter_override",
+      "function": "limit",
+      "args": [],
+      "expect": {
+        "return": [
+          29
+        ]
+      }
+    },
+    {
+      "name": "immutable_interface_getter",
+      "function": "identity",
+      "args": [],
+      "expect": {
+        "return": [
+          8192
+        ]
+      },
+      "immutables": {
+        "identity": 8192
+      }
+    },
+    {
+      "name": "mapping_interface_getter",
+      "function": "balances",
+      "args": [
+        8192
+      ],
+      "expect": {
+        "return": [
+          23
+        ]
+      },
+      "storage": {
+        "25715781186296158224001710118960932423450321551045909348728027348286247426170": 23
+      }
+    },
+    {
+      "name": "mapping_missing_key",
+      "function": "balances",
+      "args": [
+        12288
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      },
+      "storage": {
+        "25715781186296158224001710118960932423450321551045909348728027348286247426170": 23
+      }
+    },
+    {
+      "name": "direct_variable_read",
+      "function": "readValue",
+      "args": [],
+      "expect": {
+        "return": [
+          41
+        ]
+      },
+      "storage": {
+        "0": 41
+      }
+    },
+    {
+      "name": "set_overridden_variable",
+      "function": "setValue",
+      "args": [
+        42
+      ],
+      "expect": {
+        "return": []
+      },
+      "storage": {
+        "0": 41
+      },
+      "final_storage": {
+        "0": 42
+      }
+    },
+    {
+      "name": "initialize_overriding_getters",
+      "deploy": true,
+      "args": [
+        8192
+      ],
+      "expect": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000002000"
+      },
+      "final_storage": {
+        "0": 17,
+        "25715781186296158224001710118960932423450321551045909348728027348286247426170": 23
+      }
+    },
+    {
+      "name": "getter_rejects_value",
+      "function": "value",
+      "args": [],
+      "value": 1,
+      "expect": {
+        "revert": "0x"
+      }
+    }
+  ]
+}

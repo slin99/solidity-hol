@@ -299,7 +299,7 @@ def check_artifacts(root: Path, corpus: dict[str, Any]) -> list[dict[str, str]]:
     compiler/profile contract again when building the kernel-checked corpus.
     """
     pin = (root / exporter.PIN_FILE.relative_to(exporter.ROOT)).read_text(encoding="ascii").strip()
-    profile = exporter.read_json(root / exporter.DEFAULT_PROFILE.relative_to(exporter.ROOT))
+    default_profile = exporter.read_json(root / exporter.DEFAULT_PROFILE.relative_to(exporter.ROOT))
     checks: list[dict[str, str]] = []
     artifacts: dict[str, dict[str, Any] | None] = {}
     for suite in (c for s in corpus["suites"] for c in compiled_contracts(s)):
@@ -318,10 +318,25 @@ def check_artifacts(root: Path, corpus: dict[str, Any]) -> list[dict[str, str]]:
                 "artifact-compiler-pin", path,
                 None if recorded_pin == pin else f"records {recorded_pin}, SOLIDITY_PIN is {pin}",
             ))
+            profile = default_profile
+            failure = artifact.get("unoptimizedFailure")
+            profile_matches = (artifact.get("profile") == default_profile
+                               and "unoptimizedFailure" not in artifact)
+            if artifact.get("profile") != default_profile:
+                try:
+                    optimized = exporter.read_json(
+                        root / exporter.OPTIMIZED_PROFILE.relative_to(exporter.ROOT))
+                except (OSError, json.JSONDecodeError):
+                    optimized = None
+                if optimized is not None and artifact.get("profile") == optimized:
+                    profile = optimized
+                    profile_matches = (isinstance(failure, dict)
+                                       and failure.get("profile") == default_profile
+                                       and exporter.stack_depth_errors(failure.get("errors")))
             checks.append(check(
                 "artifact-profile", path,
-                None if artifact.get("profile") == profile
-                else "recorded profile differs from the pinned profile",
+                None if profile_matches else
+                "recorded profile is not the default or a documented stack-depth fallback",
             ))
             reported_version = artifact.get("compiler", {}).get("reportedVersion")
             identity = (exporter.VERSION_RE.search(reported_version)

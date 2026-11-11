@@ -93,6 +93,16 @@ types, or every literal category.
 
 ## Expressions and calls
 
+Numeric literals retain solc's exact rational type annotation, including the
+scale of `wei`, `gwei`, `ether`, `seconds`, `minutes`, `hours`, `days` and
+`weeks`. Elaboration uses that annotation for decimal, hexadecimal and
+scientific notation and folded integer expressions; it does not round through
+floating point or multiply a unit literal a second time. Fractional literals
+are admitted as operands of supported expressions folded to integers.
+Address literals have the distinct `t_address` annotation. The importer
+validates their 40 hexadecimal digits and normalizes their value to decimal;
+elaboration checks the 160-bit bound and produces an address value.
+
 Observed expression nodes include identifiers, literals, member and index
 access, tuple expressions, assignments, binary operations, and function calls.
 The AST already supplies useful analyzed annotations:
@@ -130,10 +140,17 @@ selectors. Contract definitions record inheritance-related and used-event/error
 metadata. Inheritance needs two of these annotations (the differential fixture
 `inheritance.sol`): the importer flattens a contract along its
 `linearizedBaseContracts`, and `call_table` resolves overrides through each
-function's `baseFunctions`. Base-constructor specifiers on constructors
-(`constructors.sol`) and invocations of non-virtual modifiers
-(`modifiers.sol`) are resolved through their `referencedDeclaration`; virtual
-and overriding modifiers are rejected. A `super.f(...)` call
+function's `baseFunctions`. A public state variable, constant or immutable may
+override an external function. The importer removes the transitively replaced
+functions using the variable's `baseFunctions`, leaving its getter as the sole
+dispatch entry for that selector. Base-constructor specifiers on constructors
+(`constructors.sol`) use their `referencedDeclaration`. Unqualified modifier
+invocations resolve through the transitive `baseModifiers` relation in the
+contract's linearization; explicitly qualified `Base.modifier` invocations
+keep their declared target (`virtual_modifiers.sol`). Only invoked modifier
+implementations are imported, so overridden bodyless declarations do not
+reject a concrete contract. A bodyless modifier still reached by an invocation
+makes that function unsupported. A `super.f(...)` call
 (`super_calls.sol`) runs what the compiler's lookup finds in the deployed
 contract's linearization: the first function after the caller's contract with
 the name and parameter types of the declaration the call's
@@ -142,6 +159,36 @@ own contract, so in a diamond it can differ from the function that runs. The
 overridden functions super calls reach are checked and elaborated, but not
 dispatched. `super` in a modifier body, an initializer or a base-constructor
 argument is rejected.
+
+An explicit `Base.f(...)` call (`qualified_base_calls.sol`) runs the named
+declaration's implementation, including its modifiers, even when a derived
+function overrides it. Its arguments keep their written evaluation order and
+are reordered to the declaration's parameters only afterward. Ordinary calls
+inside that implementation still resolve virtually. Static calls in modifier
+bodies and initialization expressions also retain the base procedures they
+reach. Calls through bodyless declarations use the same transitive
+`baseFunctions` table as other virtual calls; an unsupported most-derived
+override remains unsupported rather than falling back to a base body.
+
+Event emission resolves a declaration ID for unqualified names, library and
+interface names, and names qualified through an imported module
+(`qualified_events.sol`). Referenced events from outside the contract's bases,
+including file-level declarations, accompany the imported contract. Qualifiers
+are declaration names with no runtime evaluation; event arguments retain their
+written order, including named arguments. Log encoding and transaction rollback
+use the ordinary event semantics.
+
+Inline assembly writes a scalar local back only if decoding its word and
+encoding the resulting value reproduces that exact word. Non-canonical
+`uintN`, `intN`, `bool`, address and `bytesN` words fail closed with
+`InvalidCompletion`; they are not silently cleaned. Canonical negative signed
+words are sign-extended and fixed-byte words are left-aligned.
+
+Inline assembly reads a storage pointer local's `x.slot` and `x.offset` as
+its reference's slot and offset (`assembly_pointers.sol`). Assigning `x.slot`,
+as OpenZeppelin's `StorageSlot` and ERC-7201 namespaced storage getters do,
+points the local at that slot of the executing account, at offset 0, with its
+declared type; the compiler rejects assigning `x.offset`.
 
 Inline assembly reads a memory `bytes` or `string` local as its address
 (`assembly_memory.sol`). The source heap gives each object the address the
@@ -152,12 +199,16 @@ a memory holding each byte sequence's length word and bytes there. Under
 arithmetic relative to a pointer is modelled but returning, storing or
 comparing a raw pointer value is outside the boundary. The block's memory also
 holds the free memory pointer at `0x40`, `0x80` plus the memory allocated so
-far, under the same boundary; a block that exits normally may not change it. A
-literal address is read only at the free memory pointer or where the block
-wrote it before (an `mstore`, or a call's output region), as the elaborator
-checks. At a computed address a block may read only the free memory pointer,
+far, under the same boundary; a block that exits normally may not change it,
+and what it wrote from it up is dropped (the temporary memory the Solidity
+docs allow a memory-safe block). A literal address with a literal length is
+read only at the free memory pointer or where the block wrote it before (an
+`mstore`, a call's output region or a `returndatacopy`, also in an argument to
+the right, since arguments run right to left), as the elaborator checks. At a computed address a block may read only the free memory pointer,
 the zero slot `[0x60, 0x80)`, each byte sequence's length word and data
-(zero-padded to whole words), and bytes it has written itself; any other read,
+(zero-padded to whole words where solc's memory holds the zeros: not for
+bytes copied from return data, a low-level call's or a `catch`'s, whose
+padding solc leaves as it was), and bytes it has written itself; any other read,
 another kind of memory object, the scratch space before the block writes it,
 or past an object's last word, ends the block with an `InvalidCompletion`.
 A callee that returns fewer bytes than the block's output region leaves the
@@ -165,23 +216,33 @@ rest unwritten, so reading it fails closed where the EVM reads stale scratch:
 OpenZeppelin's `SafeERC20` against a token whose `transfer` returns nothing
 runs to that.
 
-Inline assembly's `call` and `staticcall` (`assembly_calls.sol`) run the
-callee on Verifereum through `externalCall`, as high-level calls do. The source
+Inline assembly's `call`, `staticcall` and `delegatecall` (`assembly_calls.sol`,
+`assembly_delegate.sol`) run the callee on Verifereum through `externalCall`,
+as high-level and low-level calls do; `delegatecall` runs the callee's code
+in this contract's account, with its caller and value. The source
 tracks no gas, so `gas()` is admitted only as a call's gas argument, where it
 means the fixed budget every call from the source gets, and a literal gas
-argument is capped at that budget. The source keeps no return data buffer
-either, so `returndatasize` and `returndatacopy` are admitted only after a
+argument is capped at that budget. The source state keeps the frame's return
+data buffer: every high-level, try and low-level call sets it to the callee's
+return or revert bytes, and a block starts with it and leaves its own final
+buffer behind. `ecrecover` calls a precompile whose return data the source
+doesn't compute, so after one the buffer is unknown: a block that could read
+it before a call of its own (`returndatasize` or `returndatacopy` not after a
 statement of the block that calls, earlier in the same or an enclosing
-statement list (a Yul function's body starts afresh). A block in a static
-frame that names `call` fails closed; `staticcall` runs. Bytes a block writes past an
-object's length, in its last word, aren't kept for the next block: a later block
-reads them as the padding's zeros. solc lets a block assign a memory
+statement list, or in an argument left of a call, since arguments run right
+to left) then fails with an `InvalidCompletion`, and a block that leaves an
+empty buffer keeps it unknown. A Yul function's body may read return data only
+after a call of its own. A block in a static frame that names `call` or
+`delegatecall` fails closed; `staticcall` runs. A block that leaves an
+object's padding (the bytes past its length, in its last word) unwritten or
+not zero leaves it out of later blocks' memory, where reading it fails closed.
+solc lets a block assign a memory
 reference (`b := ...`); the elaborator rejects it, since the block reads the
 name as a literal.
 
 ## Storage layout
 
-`storageLayout` is separate from the AST. It contains state-variable entries
+`storageLayout` and `transientStorageLayout` are separate from the AST. They contain state-variable entries
 with declaration IDs, slots, byte offsets, contract names, and references into a
 layout type table. Type-table entries describe encodings such as `inplace`,
 `mapping`, and `dynamic_array`, byte widths, member offsets, keys, values, and
@@ -190,9 +251,25 @@ base element types.
 Source types and layout descriptors must remain separate formal structures. The
 compiler initially supplies layout calculation; Solidity-HOL interprets the
 layout when reading, writing, and capturing references. The declaration IDs in
-layout entries must resolve to compatible state-variable declarations.
+layout entries must resolve to compatible state-variable declarations. The importer
+interleaves the two tables in declaration order and checks each entry's backend
+against its declaration. Transient variables support value types, as solc 0.8.37
+does; transient mappings and other reference types are rejected.
 
-Storage declarations now include elementary scalars, structs, scalar-key
+Persistent and transient slots have independent numbering. `layout at <expr>`
+needs no source expression evaluator here: the compiler resolves the expression
+and records absolute persistent slots, including inherited variables and mapping
+roots. It leaves transient slots unchanged. These layout calculations are part
+of the existing compiler metadata boundary.
+
+Transient scalar reads and writes use `source_world.transient`, retaining the
+same packing and cleanup as persistent scalars. A static frame cannot write
+either backend. `call_contract` executes a frame, so it retains transient state
+across calls and restores it on revert. The transaction driver starts each
+transaction with empty transient storage and discards it afterward; it must not
+clear it between calls in the same transaction.
+
+Storage declarations now include elementary scalars, structs, scalar-key and byte-sequence-key
 mappings, and fixed/dynamic arrays, including their storage combinations.
 Scalar leaves can be read and updated through member/index paths.
 The importer takes each
@@ -204,7 +281,12 @@ compiler. Elaboration copies slot and offset into the core program's
 `state_variables`. Initialisers are imported and run by the creation
 procedure, and so are immutables' (below). Mapping key/value types come from recursive type-name
 normalization. AST and layout type identifiers use different encodings; both
-are checked against the normalized type. The scalar leaf width determines
+are checked against the normalized type. Bytes/string mapping keys retain their
+memory, calldata or storage reference, or their literal bytes. Hashing reads
+them in place without allocating a memory object or advancing the free-memory
+pointer, as the compiler uses scratch memory. Their unpadded contents followed by the root slot's
+32-byte big-endian encoding determine the Keccak-256 slot; no length word or
+ABI padding is included. Public getters accept the same keys. The scalar leaf width determines
 its storage read/write, and aggregate root slots come from the layout. Fixed
 array dimensions come from the compiler's resolved integer type of the length
 expression. Scalar elements pack without straddling slots; each nested row
@@ -225,7 +307,7 @@ It returns the value it reaches, a byte sequence copied to memory; for a
 struct, its members in declaration order, skipping mappings and arrays other
 than `bytes` and `string`, as the compiler's getter does. A struct with a
 struct-typed member, or with no member to return, has no getter here, and
-neither has a mapping whose key is not an elementary value type.
+neither has a mapping whose key is neither an elementary value type nor bytes/string.
 
 Constants of elementary value types, `string` and `bytes`, declared in the
 contract, a base, a reached library or at file level are imported with their
@@ -264,7 +346,8 @@ A contract or interface type is read as `address`, which is its value at
 run time, stored and ABI encoded as one: in type names, in the type
 identifiers of expressions and in storage layouts. `I(a)` is a conversion to
 `address`, `this` is the contract's own address, and an external call
-`c.f{value: v}(args)` may name any contract-typed `c`. `new C`, `type(C)`
+`c.f{value: v, gas: g}(args)` may name any contract-typed `c`; a gas option
+caps the callee's gas as it does for `a.call`, below. `new C`, `type(C)`
 other than `type(I).interfaceId` (below), external calls to getters and the
 members of external functions other than `selector` (below) are rejected.
 Nominal parameter type identifiers keep overloads distinct for `super`
@@ -275,17 +358,22 @@ their declaration id: type identifiers `t_enum$_E_$n` and storage-layout
 types `t_enum(E)n` become `t_enum_n`. `E.A` is the constant of `A`'s index,
 and `E(x)` and `uint8(e)` are conversions; converting an out-of-range value
 panics with 0x21. An enum occupies one byte of storage; reading a stored
-byte that is out of range panics with 0x21 when it is read, where the
-compiler checks it only where the value is used. It is
+byte outside its member range fails closed with `InvalidCompletion`, even if
+the value is never used. A `bool` storage byte other than 0 or 1 also fails
+closed. The compiler can retain these non-canonical bytes on its stack, which
+the core's source values cannot represent. An enum is
 ABI encoded as `uint8`, as a parameter, a return, an event argument or an
 external call's argument. A call or creation whose enum argument is out of
-range reverts when the decoder reaches it, before later arguments are read. Enums as mapping keys, as elements of memory or calldata
-arrays, as constants, immutables or error parameters, returned by an
-external call, `type(E).min/max` and `delete` are rejected.
+range reverts when the decoder reaches it, before later arguments are read.
+`type(E).min` and `type(E).max` are the first and last enum values.
+Enums as mapping keys, as elements of memory or calldata
+arrays, as constants or immutables, or returned by an
+external call are rejected.
 
 `keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
-a `bytes32`. A literal argument is first made a memory `bytes`, and one in
-storage or calldata is copied to memory, as for an internal call's argument.
+a `bytes32`. A string or hex literal is hashed directly without allocating
+memory. A `bytes` value in storage or calldata is copied to memory, as for
+an internal call's argument.
 `ecrecover(h, v, r, s)` is the address that the signature `(v, r, s)` of the
 hash `h` recovers, or `address(0)` for an invalid signature, as the compiler's
 call to the precompile at address 1 gives. Its arguments are converted to
@@ -293,10 +381,10 @@ call to the precompile at address 1 gives. Its arguments are converted to
 `f.selector`, `I.f.selector` and `E.selector` are constants: the selector the
 compiler records on the function, error or event they name (four bytes, or 32
 for an event), also of a library's public function or event, and
-`this.x.selector` is that of a public state variable's getter. The receiver in
-`x.f.selector` must be `this`, a contract, interface or library name,
-possibly qualified by imported modules (`M.I.f.selector`), or an imported
-module (`M.E.selector`), none of which the compiler evaluates.
+`this.x.selector` is that of a public state variable's getter. A contract
+value in `x.f.selector` or `x.getter.selector` is evaluated first, including
+its effects and failures; the selector still comes from the declaration.
+`this`, contract, interface, library and module names need no evaluation.
 `type(I).interfaceId` is the constant XOR of the selectors of the functions
 the interface `I` declares itself, not those it inherits, nor its `fallback`
 or `receive`; `I` must name an interface directly, not through a module, and
@@ -304,9 +392,10 @@ an abstract contract's `interfaceId` is rejected. A selector of any other
 function-typed value is rejected, and so are `sha256` and `ripemd160`.
 
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
-type the compiler gives the whole expression, which must be a value type or
-a memory reference (a memory operand is the same reference, not a copy).
-Conditionals of tuple, storage, calldata or function type are rejected.
+type the compiler gives the whole expression, which must be a value type,
+a memory reference or a tuple of supported component types (a memory operand
+is the same reference, not a copy). Conditionals of storage, calldata or
+function type are rejected.
 
 `abi.encode`, `abi.encodePacked`, `abi.encodeWithSelector` and
 `abi.encodeWithSignature` give a new memory `bytes`, allocated as the
@@ -318,7 +407,10 @@ their smallest type, which has the encoding of `int256` or `uint256`.
 bytes of a `bytes4` selector for `encodeWithSelector`, or of the Keccak-256
 hash of a literal signature for `encodeWithSignature`; `abi.encodePacked`
 gives each scalar in its own width, a `bytesN` as its N bytes, and a byte
-sequence as its contents. Arrays and structs as arguments, a selector that
+sequence as its contents. Unpacked encoding also accepts fixed and dynamic
+arrays of scalars, byte sequences and nested arrays in memory, calldata or
+storage, retaining the reference until all arguments have been evaluated.
+Packed arrays, structs as arguments, a selector that
 is not a `bytes4` value (a literal selector included), and a signature that is
 not a plain string literal are rejected.
 
@@ -334,23 +426,35 @@ parameters, are rejected.
 
 `abi.decode(data, (T1, ..., Tk))` decodes a memory `bytes` into values of
 elementary types (booleans, integers, addresses and fixed-size byte
-sequences; an `address` decodes as `address payable`, as the compiler types
-it), as the compiler's decoder from memory does: data shorter than the
+sequences, including erased user-defined value types), as the compiler's
+decoder from memory does. The result keeps the compiler's annotated types:
+a plain `address` target decodes as `address payable`, while a user-defined
+value type backed by nonpayable `address` keeps that underlying type.
+Each result must match its requested elementary type or its payable-address
+decoding variant. Data shorter than the
 encoding, or a word that is not a value of its type, reverts with no data, and
 data after the encoding is ignored. It allocates nothing. Data in calldata or
 storage, and types other than elementary ones, are rejected.
 
-`a.staticcall(data)`, with `a` an address and `data` a memory `bytes`,
-evaluates `a`, then `data`, and makes a static call to `a` with the bytes of
-`data` as its input, giving the success flag and the return data. The source
-does not track gas: the callee gets the same fixed budget a high-level call
-gives it (`external_call_gas`), where the compiled code forwards all but a 64th
-of what is left. A failed call, the callee's revert included, gives
-`false` and leaves the caller's state as it was; a call to an address without
-code succeeds with no data. Return data is copied into a new memory `bytes`,
-allocated as the compiler allocates it, and no return data gives the shared
-empty `bytes`, allocating nothing. Data in calldata, storage or a literal, gas
-options, `call` and `delegatecall` are rejected.
+`a.call(data)`, `a.staticcall(data)` and `a.delegatecall(data)`, with `a`
+an address and `data` a memory or calldata `bytes` or a bytes literal,
+evaluate `a`, then their call options `{value: v, gas: g}` in the order
+written, then `data`, and call `a` with the bytes of `data` as its input,
+giving the success flag and the return data. The data is passed where it is: a
+literal or calldata is not copied into allocated memory. `call` sends `v` (0
+without the option): a caller that cannot pay it fails the call without
+running it, and sending value from a static frame is an `InvalidCompletion`.
+`staticcall` makes a static call. `delegatecall` runs
+`a`'s code as this contract, on its own storage and balance, with this call's
+`msg.sender` and `msg.value`, and moves no value. The source does not track
+gas: without a gas option the callee gets the same fixed budget a high-level
+call gives it (`external_call_gas`), where the compiled code forwards all but
+a 64th of what is left; with one, it gets `g` capped at that budget. A failed
+call, the callee's revert included, gives `false` and leaves the caller's
+state as it was; a call to an address without code succeeds with no data.
+Return data is copied into a new memory `bytes`, allocated as the compiler
+allocates it, and no return data gives the shared empty `bytes`, allocating
+nothing. Data in storage is rejected.
 
 `bytes.concat(...)` uses packed encoding of its byte sequences, fixed-size bytes
 and literals. `string.concat(...)` concatenates strings and string literals.
@@ -360,6 +464,14 @@ type, including the zero-argument and single-argument forms.
 `address.code.length` reads the account's code size directly, including zero for
 an account without code. The receiver is evaluated once and no memory bytes
 object is allocated. Standalone `address.code` remains unsupported.
+`address.balance` reads the account's current balance from the source world,
+after evaluating its receiver once. Payable and nonpayable addresses use the
+same lookup. `bytesN.length` evaluates its receiver and gives N as a `uint8`.
+`address payable.transfer(value)` evaluates the receiver before the amount
+and runs an empty-data value call with exactly the 2300 gas stipend. Failure
+forwards the callee's revert bytes; success records its return bytes in the
+frame's return-data buffer without allocating memory. Subsequent assembly
+can read that buffer. A failed call or enclosing revert rolls back the transfer.
 
 External calls returning scalar values admit `try ... returns (...) { ... }
 catch (bytes memory reason) { ... }`. Only failure of the external call selects
@@ -372,7 +484,7 @@ catch clauses without a bytes parameter remain unsupported.
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
 from the functions calls can reach (an overridden function counts only when
-a super call may run it): `L.f(args)` is an internal call of `f`,
+a `super` or explicit base call may run it): `L.f(args)` is an internal call of `f`,
 `x.f(args)`, with `f` attached to the type of `x` by `using L for T`, is one
 with `x` as the first argument, evaluated before the others, and `L.c` names
 the constant `c`. Library functions see no state variables. `using`
@@ -382,7 +494,8 @@ receiver is in storage or calldata and whose first parameter is in memory is
 rejected: the compiler copies the receiver before evaluating the other
 arguments, while elaboration converts arguments after evaluating them all.
 Public and external library functions, which a contract calls with
-`DELEGATECALL`, and library structs and events are rejected. Function-list
+`DELEGATECALL`, and library structs are rejected. Referenced library events
+are imported with the contracts that emit them. Function-list
 `using` directives are accepted: attached free and library functions use the
 same internal-call path. In the Yul the compiler emits, `linkersymbol`, a linked
 library's address, is not admitted.
@@ -465,8 +578,8 @@ array strides use each struct's whole-slot size. Raw elaboration preserves
 these declarations; the complete core checker rejects missing or inconsistent
 runtime layouts as invalid generated core at the checked preparation boundary.
 
-The selected compiler also emits `transientStorageLayout`. It is empty for the
-initial corpus, so transient layout remains unvalidated.
+The importer validates `transientStorageLayout` alongside `storageLayout`,
+preserving each table's order while interleaving their entries by declaration.
 
 ## Normalized AST
 
@@ -478,10 +591,12 @@ function is kept unsupported; see Partial admission). The importer decodes
 the compiler's string-valued kinds once, into datatypes: function kinds
 (`function` and reachable `freeFunction` both become `FunctionKind`, plus
 `receive`, `fallback` and `constructor`), visibilities, state mutabilities, address payability,
-data locations (`transient` is an import error), literal kinds and the
+data locations, literal kinds and the
 unary, binary and assignment operators. It also holds the one table of the
 compiler's built-in declaration ids (`abi`, `msg`, `block`, `tx`, `this`,
 `keccak256`, `ecrecover`, `addmod`, `mulmod`, `require`, `assert`, `revert`).
+Transient state declarations carry a separate flag; `transient` on a local,
+parameter or return declaration is rejected.
 `tests/solidityImportTestScript.sml` holds the positive fixtures and negative
 fixtures derived from them.
 
@@ -500,7 +615,7 @@ fixtures derived from them.
   with it; the storage layout lists the state variables in linearization
   order, bases first, each with its own type identifier;
 - constants are of elementary value types or byte sequences, declared by a
-  base or a library; event parameters are elementary, scoped by their event;
+  base or a library; event parameters are scoped by their event;
 - initializers name state variables or immutables, base-constructor
   arguments name a constructor, and getters name a state variable, an
   immutable or a constant.
@@ -518,8 +633,8 @@ in Verifereum and requires equal ABI-encoded outcomes; see
 
 Admitted: one contract, flattened along its bases, with
 
-- functions over elementary value types, value-type state variables and
-  immutables, storage structs, scalar-key mappings and fixed or dynamic
+- functions over elementary value types, persistent/transient value-type state
+  variables and immutables, storage structs, value-type or bytes/string-key mappings and fixed or dynamic
   storage arrays; member and indexed scalar reads and updates, array lengths,
   scalar push and pop; bytes and string literals and memory or calldata
   values, which keep their locations (memory assignments alias,
@@ -529,24 +644,34 @@ Admitted: one contract, flattened along its bases, with
   assignment to locals and state variables, tuple assignment, `++` and `--`;
 - literals (no subdenominations), explicit elementary conversions (not
   `bytesN(b)` of a dynamic byte sequence `b`),
-  `type(T).max` and `.min` of integer types, unary, binary, comparison and
+  `type(T).max` and `.min` of integer and enum types, unary, binary, comparison and
   short-circuit operators, conditional expressions over value types; an
   operation over literals that the compiler types as an integer is that
   integer, as the compiler folds it;
 - `if`, `while`, `do`-`while`, `for`, `break`, `continue`, `return`,
   unchecked blocks, inline assembly over value-type locals, state-variable
-  slots, value-type constants and memory `bytes` and `string` locals, with
+  slots, storage pointer slots and offsets, value-type constants and memory `bytes` and `string` locals, with
   `call`, `staticcall` and their return data;
 - internal calls with single or multiple returns, library calls (`L.f(args)`
   and `x.f(args)` through a using directive) and library constants (`L.c`),
-  `super` in calls, external calls of contract types;
+  `super` and explicit base calls, external calls of contract types with
+  `value` and `gas` options; low-level `call`, `staticcall` and `delegatecall`
+  of addresses;
 - `require`, `assert` and `revert` with boolean conditions and computed string
   messages; reads of `msg`, `tx` and `block` members and `address(this)`;
-  emits of events and reverts with custom errors, including byte-sequence
-  parameters; `keccak256`, `abi.encode*`, selectors;
+  emits of events with scalar, byte-sequence and array parameters (including
+  indexed arrays), and reverts with custom errors with elementary, enum, string or bytes
+  parameters; unsupported event parameter types reject the emitting function,
+  leaving unrelated functions available; `keccak256`, `abi.encode*`, selectors;
 - constants, state-variable initializers, constructors and base-constructor
   arguments (inheritance specifiers or constructor modifiers), which form one
   creation procedure.
+
+Event arrays use their existing memory, calldata or storage references until
+serialization, so later argument side effects are visible in the log. Data
+uses standard ABI encoding. Indexed arrays hash concatenated element encodings
+without array lengths or offsets; byte and string elements occupy padded words.
+Storage byte/string padding is preserved as the pinned compiler copies it.
 
 A contract or interface type is read as address, its value at run time,
 stored and ABI encoded as one: in type names, type identifiers and storage
@@ -571,9 +696,10 @@ annotations, at the node whose type it computes:
   modifier bodies make no super call, and modifier arguments see the
   function's parameters but not its return variables;
 - a fallback takes no parameters and returns nothing, as the core's does;
-- `delete` is not admitted; every scalar result is annotated with its own
-  type, and every other annotation decodes to an elementary, rational literal
-  or tuple type.
+- `delete` captures a scalar destination once and writes its default value,
+  preserving neighboring packed storage. Aggregate deletion is rejected;
+  every scalar result is annotated with its own type, and every other
+  annotation decodes to an elementary, rational literal or tuple type.
 
 Left to the compiler: storage layout calculation, that view functions write
 no state variable, and the override metadata (which declarations each
@@ -590,13 +716,13 @@ leaving a placeholder (`SrcUnsupportedTypeName`, `SrcUnsupportedExpr`,
 `SrcUnsupportedStmt`) with the children it could import, so the reason has a
 line for every unsupported node, each naming it. `solidityPrepareLib` then marks, until nothing changes,
 every function that fails to elaborate, also by calling an unsupported one (by
-a call or a super call). The elaborator builds no
+an ordinary, `super` or explicit base call). The elaborator builds no
 procedure for them and lists their ids in `core_program.unsupported_procedures`,
 so their selectors, and receive, fallback or the constructor when unsupported,
 still dispatch to them and an external call of one is invalid
 (`call_contract_unsupported`), never a return or the fallback; it still
 reverts first, as a supported one would, when it is sent value it does not
-accept. An unsupported function never runs, so its super calls reach nothing:
+accept. An unsupported function never runs, so its `super` and base calls reach nothing:
 a base function only they reach is neither checked nor elaborated. A constant
 whose value does not elaborate, also by reading such a constant, has no
 procedure either: its getter is listed as unsupported, and a function reading
@@ -673,7 +799,26 @@ partial semantic result.
 
 Before fixing a complete core AST, extend the corpus to cover control flow,
 tuple holes, modifiers, external calls, creation,
-try/catch, errors, fallback/receive, dynamic and memory/calldata arrays, bytes/string, function
-pointers, transient storage, and custom storage layout bases. The first HOL type
+try/catch, errors, fallback/receive, dynamic and memory/calldata arrays, bytes/string, and function
+pointers. Transient value types and custom storage bases have differential fixtures.
+The first HOL type
 theory can begin from the normalized types already observed, provided unsupported
 forms continue to fail closed.
+
+## Tuple expressions and assignments
+
+Tuple literals and conditional tuple results use the existing product values.
+Conditional components convert to the conditional expression's annotated types;
+only the selected branch runs. Destructuring supports the same destinations as
+ordinary assignment, including storage members, indexed storage locations and
+memory elements. It first evaluates and snapshots the right-hand values, then
+evaluates left-hand operands from left to right, then writes from right to left.
+Storage navigation checks bounds during operand evaluation; memory indices are
+saved and bounds-checked at each write. Holes consume a value without
+capturing a location. Repeated destinations therefore retain the leftmost
+assigned component.
+
+Scalar and tuple conditional joins bind the selected memory reference without
+allocating a default object. Their temporary references cannot be read as fixed
+arrays before assignment; declarations of fixed memory arrays still allocate
+their normal zero-filled objects.

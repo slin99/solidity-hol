@@ -46,6 +46,8 @@ class FakeRoot:
         (directory / "profiles").mkdir()
         profile = driver.exporter.DEFAULT_PROFILE
         shutil.copyfile(profile, directory / "profiles" / profile.name)
+        optimized = driver.exporter.OPTIMIZED_PROFILE
+        shutil.copyfile(optimized, directory / "profiles" / optimized.name)
         self.write_corpus(corpus())
         self.write(SOURCE, source)
         pin = (ROOT / "SOLIDITY_PIN").read_text(encoding="ascii").strip()
@@ -386,6 +388,45 @@ class CorpusTests(unittest.TestCase):
                     checks = driver.check_artifacts(fake.root, corpus())
                     self.assertEqual([c["check"] for c in checks if c["status"] != "pass"],
                                      ["artifact-settings"])
+
+    def test_optimized_profile_requires_stack_depth_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            artifact = json.loads((fake.root / ARTIFACT).read_text())
+            default = artifact["profile"]
+            optimized = driver.exporter.read_json(driver.exporter.OPTIMIZED_PROFILE)
+            artifact["profile"] = optimized
+            artifact["input"]["settings"].update(optimized["settings"])
+            stack = {"severity": "error", "type": "YulException",
+                     "message": "variable too deep in the stack"}
+            for failure, accepted in (
+                (None, False), ({"profile": default, "errors": []}, False),
+                ({"profile": default, "errors": [stack]}, True),
+                ({"profile": optimized, "errors": [stack]}, False),
+                ({"profile": default, "errors": [{**stack, "type": "ParserError"}]}, False),
+            ):
+                with self.subTest(failure=failure):
+                    if failure is None:
+                        artifact.pop("unoptimizedFailure", None)
+                    else:
+                        artifact["unoptimizedFailure"] = failure
+                    fake.write(ARTIFACT, json.dumps(artifact))
+                    checks = driver.check_artifacts(fake.root, corpus())
+                    self.assertEqual([c["check"] for c in checks if c["status"] != "pass"],
+                                     [] if accepted else ["artifact-profile"])
+            fake.wrappers()
+            wrapper = fake.root / "tests/corpus/solidityDifferentialCorpus_aScript.sml"
+            self.assertIn(driver.exporter.OPTIMIZED_PROFILE.name, wrapper.read_text())
+
+    def test_default_profile_rejects_fallback_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            artifact = json.loads((fake.root / ARTIFACT).read_text())
+            artifact["unoptimizedFailure"] = None
+            fake.write(ARTIFACT, json.dumps(artifact))
+            checks = driver.check_artifacts(fake.root, corpus())
+            self.assertEqual([c["check"] for c in checks if c["status"] != "pass"],
+                             ["artifact-profile"])
 
 
 class DriverTests(unittest.TestCase):

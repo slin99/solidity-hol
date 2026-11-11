@@ -8,7 +8,8 @@ validation and execution rules as existing consumers.
 ## Preparation and declarations
 
 `solidityPrepareLib.prepare_artifact` checks the pinned compiler, artifact format,
-profile and Standard JSON settings, imports and validates the normalized source,
+profile and Standard JSON settings (including the restricted
+[stack-depth fallback](profiles.md#stack-depth-fallback)), imports and validates the normalized source,
 elaborates it, and cv-evaluates the full `wf_core_program`. Differential tests
 and the semanticTests acceptance scanner share this API. Metadata validation is
 an SML check; source validation, elaboration and core checking return HOL
@@ -27,11 +28,21 @@ must agree with those declarations. Enums retain their semantic declarations. Us
 erased to their underlying elementary types by the importer; `wrap` and
 `unwrap` use scalar conversions, and overloaded operators use internal calls.
 
+Public state variables, constants and immutables may override external
+functions. The importer removes the replaced function implementations along
+`baseFunctions`, including transitive overrides, so the existing getter is the
+only dispatch entry for that selector. Replaced implementations do not pull in
+unused library dependencies. Custom errors accept elementary and enum
+parameters; enums keep their declaration identity and encode as `uint8` through
+the existing scalar ABI encoder.
+
 ## Destinations and storage
 
 Elaboration represents an assignment destination as a local binding or an
 already evaluated reference. `elab_destination`, `read_destination` and
-`write_destination` are shared by assignment, compound assignment and increment.
+`write_destination` are shared by assignment, compound assignment, increment
+and scalar `delete`. Deletion writes the type's default without reading its
+old value, so it preserves neighboring packed storage.
 Tuple writes use the same helpers, retaining identifier-only target coverage and
 right-to-left writes. The pinned profile evaluates the assignment RHS before
 capturing a computed LHS. Snapshots keep earlier values stable while later
@@ -45,7 +56,11 @@ read/capture operation. `WriteScalarStmt`, `BindReferenceStmt` and
 The latter operations are extension points, not aggregate execution coverage.
 
 `solidityStorage` owns concrete storage encoding, packed scalar access, mapping
-hashing, array navigation, state references and struct-field navigation. These
+hashing, array navigation, state references and struct-field navigation. Scalar
+word extraction and replacement are shared by persistent and transient state;
+state descriptors select the backend. Byte-sequence mapping keys use their
+unpadded contents, read through the existing memory/calldata/storage byte path.
+These
 helpers take evaluated values/references and accounts; they do not evaluate core
 atoms or change scopes. `solidityEvaluator` owns atom evaluation, bindings,
 captured targets, frame checks and control flow. Its static-frame write rejection
