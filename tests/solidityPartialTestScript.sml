@@ -14,7 +14,9 @@ val () = holbuild_extra_deps [
   "../SOLIDITY_PIN", "../profiles/solc-0.8.37-via-ir-osaka.json",
   "../testdata/frontend/expected/partial.json",
   "../testdata/frontend/expected/fallback_params.json",
-  "../testdata/frontend/expected/creation_argument.json"
+  "../testdata/frontend/expected/creation_argument.json",
+  "../testdata/frontend/expected/function_type_limits.json",
+  "../testdata/frontend/expected/function_type_refused.json"
 ]
 
 val prepared = #prepared (solidityPrepareLib.prepare_artifact
@@ -291,3 +293,71 @@ Theorem creation_argument_deploy_refused:
 Proof
   CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
 QED
+
+(* Function types the core does not model
+ * (testdata/frontend/function_type_limits.sol): a comparison of function
+ * values and a function value in inline assembly leave their functions
+ * unsupported, while a local internal function value runs. *)
+val limits_prepared = #prepared (solidityPrepareLib.prepare_artifact
+  {root = "..", path = "../testdata/frontend/expected/function_type_limits.json",
+   source = "testdata/frontend/function_type_limits.sol"});
+
+val limits_outcomes =
+  map (fn {name, reason, ...} => (name, reason)) (#functions limits_prepared);
+fun limits_reasons name =
+  map #2 (List.filter (fn (n, _) => n = name) limits_outcomes);
+val () =
+  if limits_reasons "local" = [NONE] andalso
+     limits_reasons "inc" = [NONE] andalso
+     List.all elaboration_failure (limits_reasons "compares") andalso
+     List.all elaboration_failure (limits_reasons "inAssembly") andalso
+     length limits_outcomes = 4
+  then ()
+  else raise Fail ("unexpected function_type_limits outcomes: " ^
+    String.concatWith "; " (map (fn (n, r) => n ^ " " ^
+      (case r of SOME m => m | NONE => "supported")) limits_outcomes));
+
+Definition limits_program_def:
+  limits_program = ^(#program limits_prepared)
+End
+
+val () = cv_auto_trans limits_program_def;
+
+Definition limits_call_def:
+  limits_call data =
+    call_contract 1000 limits_program FEMPTY
+      (differential_frame (n2w 0x1212) 0 data)
+      (differential_world empty_accounts)
+End
+
+val () = cv_auto_trans limits_call_def;
+
+(* local(4) calls inc through a function value and returns 5. *)
+Theorem limits_local_runs:
+  ∃w. limits_call ^(with_word "183d1e0c" 4) =
+      ContractReturned (word_to_bytes (5w : bytes32) T) w
+Proof
+  CONV_TAC (QUANT_CONV (LAND_CONV cv_eval)) >> simp[] >> EVAL_TAC
+QED
+
+Theorem limits_compares_refused:
+  limits_call ^(listSyntax.mk_list (selector "df6b2ec9", “:word8”)) =
+  ContractInvalid "unknown procedure"
+Proof
+  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
+QED
+
+(* A function value in storage and an external function type parameter
+ * (testdata/frontend/function_type_refused.sol) each refuse the whole unit:
+ * the core models neither the storage layout nor the function's header. *)
+val () =
+  (ignore (solidityPrepareLib.prepare_artifact
+     {root = "..", path = "../testdata/frontend/expected/function_type_refused.json",
+      source = "testdata/frontend/function_type_refused.sol"});
+   raise Fail "function_type_refused unexpectedly prepared")
+  handle solidityPrepareLib.PreparationError
+           (solidityPrepareLib.UnsupportedImport, msg) =>
+    if String.isSubstring "unsupported state variable" msg andalso
+       String.isSubstring "external function types are not supported" msg
+    then ()
+    else raise Fail ("function_type_refused reason missing: " ^ msg);

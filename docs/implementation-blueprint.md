@@ -32,6 +32,14 @@ must agree with those declarations. Enums retain their semantic declarations. Us
 erased to their underlying elementary types by the importer; `wrap` and
 `unwrap` use scalar conversions, and overloaded operators use internal calls.
 
+Public state variables, constants and immutables may override external
+functions. The importer removes the replaced function implementations along
+`baseFunctions`, including transitive overrides, so the existing getter is the
+only dispatch entry for that selector. Replaced implementations do not pull in
+unused library dependencies. Custom errors accept elementary and enum
+parameters; enums keep their declaration identity and encode as `uint8` through
+the existing scalar ABI encoder.
+
 ## Destinations and storage
 
 Elaboration represents an assignment destination as a local binding or an
