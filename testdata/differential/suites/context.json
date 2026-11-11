@@ -312,6 +312,163 @@
       "expect": {
         "revert": "0x"
       }
+    },
+    {
+      "name": "my_balance",
+      "function": "myBalance",
+      "args": [],
+      "storage": {
+        "89763286142317501589595024209078243862963138635113563398721111233253339524495": 9,
+        "21987800960947102566595827861683645587027584348847848000601093930772808621145": 4
+      },
+      "expect": {
+        "return": [
+          9
+        ]
+      }
+    },
+    {
+      "name": "owner_balance_passes",
+      "function": "ownerBalance",
+      "args": [],
+      "storage": {
+        "3": 8192,
+        "89763286142317501589595024209078243862963138635113563398721111233253339524495": 9
+      },
+      "expect": {
+        "return": [
+          9
+        ]
+      }
+    },
+    {
+      "name": "owner_balance_reverts_for_stranger",
+      "function": "ownerBalance",
+      "args": [],
+      "storage": {
+        "3": 12288,
+        "89763286142317501589595024209078243862963138635113563398721111233253339524495": 9
+      },
+      "expect": {
+        "revert": "0x08c379a0000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000096e6f74206f776e65720000000000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "name": "caller_through_helper",
+      "function": "caller",
+      "args": [],
+      "sender": 16384,
+      "expect": {
+        "return": [
+          16384
+        ]
+      }
+    },
+    {
+      "name": "owner_check_true",
+      "function": "ownerCheck",
+      "args": [],
+      "storage": {
+        "3": 8192
+      },
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "owner_check_false",
+      "function": "ownerCheck",
+      "args": [],
+      "storage": {
+        "3": 12288
+      },
+      "expect": {
+        "return": [
+          false
+        ]
+      }
+    },
+    {
+      "name": "emit_if_true",
+      "function": "emitIf",
+      "args": [
+        true,
+        7
+      ],
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [
+            "0xff0c7f7b06a20eca4250394c03d994f0560c2cc82c3349fe9d95f30ee2d9d2d7"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000007"
+        }
+      ]
+    },
+    {
+      "name": "emit_if_false",
+      "function": "emitIf",
+      "args": [
+        false,
+        7
+      ],
+      "expect": {
+        "return": []
+      }
+    },
+    {
+      "name": "tally_zero",
+      "function": "tally",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "tally_three",
+      "function": "tally",
+      "args": [
+        3
+      ],
+      "storage": {
+        "0": 10
+      },
+      "expect": {
+        "return": [
+          6
+        ]
+      },
+      "final_storage": {
+        "0": 16
+      },
+      "logs": [
+        {
+          "topics": [
+            "0xff0c7f7b06a20eca4250394c03d994f0560c2cc82c3349fe9d95f30ee2d9d2d7"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000003"
+        },
+        {
+          "topics": [
+            "0xff0c7f7b06a20eca4250394c03d994f0560c2cc82c3349fe9d95f30ee2d9d2d7"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000002"
+        },
+        {
+          "topics": [
+            "0xff0c7f7b06a20eca4250394c03d994f0560c2cc82c3349fe9d95f30ee2d9d2d7"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000001"
+        }
+      ]
     }
   ]
 }
