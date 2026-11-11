@@ -1363,3 +1363,57 @@ Theorem asm_gas_rule:
 Proof
   EVAL_TAC
 QED
+
+(* Storage pointers. run_asm_pointer runs a block with the pointer parameter
+ * p as "p.slot" and "p.offset" and the local r, from an account at address
+ * 5, and returns r and p. *)
+Definition asm_pointer_proc_def:
+  asm_pointer_proc code = <|
+    procedure_id := AstId 160;
+    parameters := [(AstId 161, LocatedT StorageLoc (ArrayT u256 NONE))];
+    return_bindings := [(AstId 162, u256)];
+    body := [AssemblyStmt code [("r", AssemblyLocal (AstId 162) u256);
+                                ("p.slot", AssemblyPointerSlot (AstId 161));
+                                ("p.offset", AssemblyPointerOffset (AstId 161))];
+             ReturnStmt [BoundAtom (AstId 162); BoundAtom (AstId 161)]]
+  |>
+End
+
+Definition run_asm_pointer_def:
+  run_asm_pointer code p =
+    let env = core_program_environment <|
+      unsupported_procedures := []; procedures := [asm_pointer_proc code];
+      struct_layouts := []; type_declarations := [];
+      state_variables := []; immutables := [];
+      entry_procedure := AstId 160;
+      external_functions := []; receive_procedure := NONE;
+      fallback_procedure := NONE; creation_procedure := NONE |> in
+    let st = initial_state with frame := initial_state.frame with self_address := 5w in
+    (invoke_source 20 env (AstId 160) [p] st []).completion
+End
+
+val () = cv_auto_trans run_asm_pointer_def;
+
+(* The block reads the pointer's slot and offset; assigning its slot rebinds
+ * it to that slot of the executing account, keeping its type and layout,
+ * and leaving it alone rebinds it to its own slot. A pointer that doesn't
+ * hold a storage reference fails closed. *)
+Theorem asm_storage_pointers:
+  run_asm_pointer [YulAssign ["r"] (yadd (YulName "p.slot") (YulName "p.offset"))]
+    (ReferenceValue (StorageReference PersistentStorage 5w 4w 0 (ArrayT u256 NONE)
+       (LayoutId 3))) =
+    ReturnCompletion [ScalarValue (IntegerValue 4);
+      ReferenceValue (StorageReference PersistentStorage 5w 4w 0 (ArrayT u256 NONE)
+        (LayoutId 3))] ∧
+  run_asm_pointer [YulAssign ["p.slot"] (yadd (YulName "p.slot") (ylit 6w))]
+    (ReferenceValue (StorageReference PersistentStorage 0w 4w 0 (ArrayT u256 NONE)
+       (LayoutId 3))) =
+    ReturnCompletion [ScalarValue (IntegerValue 0);
+      ReferenceValue (StorageReference PersistentStorage 5w 10w 0 (ArrayT u256 NONE)
+        (LayoutId 3))] ∧
+  run_asm_pointer [YulAssign ["r"] (YulName "p.slot")]
+    (ReferenceValue (MemoryReference (HeapId 0) 0 (ArrayT u256 NONE))) =
+    InvalidCompletion "bad assembly reference"
+Proof
+  CONV_TAC cv_eval
+QED

@@ -2143,6 +2143,13 @@ Definition placeholder_call_def:
     (call :: ss ++ return_writes n1 rs vs, n1 + LENGTH rs)
 End
 
+Definition storage_pointer_def:
+  storage_pointer ctx x ⇔
+    case ALOOKUP ctx.variables x of
+      SOME (LocatedT StorageLoc _) => T
+    | _ => F
+End
+
 (* Statements; lists return the context after their declarations. Nested
  * blocks are spliced into the enclosing list: ids are unique, so the core
  * scopes need not mirror the source blocks.
@@ -2150,7 +2157,8 @@ End
 (* A local keeps its declared type, one of the value types the block can read
  * and write as a word, or a memory byte sequence, which the block reads as
  * its address. A constant of value type is read before the block, as an
- * expression reads it.
+ * expression reads it. x.slot and x.offset name a state variable's location,
+ * or that of the reference a storage pointer local holds.
  *)
 Definition elab_assembly_reference_def:
   (elab_assembly_reference ctx n (id : num) (SrcAssemblyValue x) =
@@ -2174,9 +2182,11 @@ Definition elab_assembly_reference_def:
       | NONE => unknown_reference ctx id "unsupported assembly reference" x) ∧
   (elab_assembly_reference ctx n id (SrcAssemblySlot x) =
     if IS_SOME (ALOOKUP ctx.locations x) then INL (([], AssemblySlot (AstId x)), n)
+    else if storage_pointer ctx x then INL (([], AssemblyPointerSlot (AstId x)), n)
     else unknown_reference ctx id "unsupported assembly reference" x) ∧
   (elab_assembly_reference ctx n id (SrcAssemblyOffset x) =
     if IS_SOME (ALOOKUP ctx.locations x) then INL (([], AssemblyOffset (AstId x)), n)
+    else if storage_pointer ctx x then INL (([], AssemblyPointerOffset (AstId x)), n)
     else unknown_reference ctx id "unsupported assembly reference" x)
 End
 

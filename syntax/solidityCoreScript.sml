@@ -180,16 +180,19 @@ End
 
 (* What an inline assembly block's Yul variable stands for: a local of value
  * type (read on entry, written back on exit), the storage slot or byte offset
- * of a state variable (x.slot, x.offset), the value of a constant of value
- * type, held in an atom, or the memory address of a local holding a memory
- * byte sequence of the given type (bytes or string). All but the first are
- * read-only.
+ * of a state variable (x.slot, x.offset), the slot or offset of the reference
+ * a storage pointer local holds (assigning its slot rebinds the local), the
+ * value of a constant of value type, held in an atom, or the memory address
+ * of a local holding a memory byte sequence of the given type (bytes or
+ * string). Only locals and storage pointer slots are assignable.
  *)
 Datatype:
   assembly_reference
   = AssemblyLocal ast_id sol_type
   | AssemblySlot ast_id
   | AssemblyOffset ast_id
+  | AssemblyPointerSlot ast_id
+  | AssemblyPointerOffset ast_id
   | AssemblyConstant core_atom sol_type
   | AssemblyMemory ast_id sol_type
 End
