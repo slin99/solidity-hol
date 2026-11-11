@@ -96,7 +96,7 @@ Definition initial_state_def:
     heap := FEMPTY;
     next_heap_id := 0; immutables := FEMPTY;
     memory_allocated := 0;
-    targets := FEMPTY
+    targets := FEMPTY; return_data := SOME []
   |>
 End
 
@@ -539,7 +539,7 @@ Theorem external_call_operands_all_report:
                (SrcExternalCall ^(at 30)
                   <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut;
                      ext_parameters := []; ext_returns := [] |>
-                  F [^(bad_at 32); ^(bad_at 33)] [] "t_tuple$__$")”
+                  [] [^(bad_at 32); ^(bad_at 33)] [] "t_tuple$__$")”
      (“(30, "unsupported external call")” :: bad_32_33))
 Proof
   EVAL_TAC
@@ -710,4 +710,16 @@ Theorem function_conditional_fails_elaboration:
   unit_elaboration_failures T function_conditional ≠ []
 Proof
   CONV_TAC cv_eval
+QED
+
+Theorem address_literal_bounds_checked:
+  elab_expr ^ctx0 10
+    (SrcLiteral ^(at 30) NumberLiteral
+       "1461501637330902918203684832716283019655932542976" "t_address") =
+    INR [(30, "unsupported literal")] ∧
+  elab_expr ^ctx0 10
+    (SrcLiteral ^(at 30) NumberLiteral "-1" "t_address") =
+    INR [(30, "unsupported literal")]
+Proof
+  EVAL_TAC
 QED
