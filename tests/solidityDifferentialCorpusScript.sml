@@ -1,12 +1,20 @@
 (* Compatibility roll-up; refreshed with the integration reports. *)
 Theory solidityDifferentialCorpus
 Ancestors
+  solidityDifferentialCorpus_abi_arrays
+  solidityDifferentialCorpus_abi_decode_udvt
   solidityDifferentialCorpus_abi_decodes
   solidityDifferentialCorpus_abi_encoding
+  solidityDifferentialCorpus_array_events
   solidityDifferentialCorpus_assembly_calls
   solidityDifferentialCorpus_assembly_constants
+  solidityDifferentialCorpus_assembly_delegate
   solidityDifferentialCorpus_assembly_memory
+  solidityDifferentialCorpus_assembly_pointers
+  solidityDifferentialCorpus_assembly_return_data
+  solidityDifferentialCorpus_assembly_scratch
   solidityDifferentialCorpus_builtins
+  solidityDifferentialCorpus_byte_mapping_keys
   solidityDifferentialCorpus_bytes_constants
   solidityDifferentialCorpus_calldata_arrays
   solidityDifferentialCorpus_calldata_bytes
@@ -20,12 +28,15 @@ Ancestors
   solidityDifferentialCorpus_context
   solidityDifferentialCorpus_contract_types
   solidityDifferentialCorpus_control
+  solidityDifferentialCorpus_dirty_bits
   solidityDifferentialCorpus_dynamic_bytes
   solidityDifferentialCorpus_dynamic_storage_arrays
   solidityDifferentialCorpus_ecrecovers
   solidityDifferentialCorpus_encode_calls
+  solidityDifferentialCorpus_enum_bounds
   solidityDifferentialCorpus_enums
   solidityDifferentialCorpus_errors
+  solidityDifferentialCorpus_expression_members
   solidityDifferentialCorpus_external
   solidityDifferentialCorpus_fallback
   solidityDifferentialCorpus_hashes
@@ -38,7 +49,9 @@ Ancestors
   solidityDifferentialCorpus_initializers_only
   solidityDifferentialCorpus_inline_assembly
   solidityDifferentialCorpus_interface_ids
+  solidityDifferentialCorpus_keccak_literal_memory
   solidityDifferentialCorpus_literal_bytes
+  solidityDifferentialCorpus_literals
   solidityDifferentialCorpus_low_level_calls
   solidityDifferentialCorpus_mappings
   solidityDifferentialCorpus_memory_arrays
@@ -49,6 +62,8 @@ Ancestors
   solidityDifferentialCorpus_oz_erc20
   solidityDifferentialCorpus_public_getters
   solidityDifferentialCorpus_pure_core
+  solidityDifferentialCorpus_qualified_base_calls
+  solidityDifferentialCorpus_qualified_events
   solidityDifferentialCorpus_receive
   solidityDifferentialCorpus_scalars
   solidityDifferentialCorpus_shadowed_builtins
@@ -58,13 +73,20 @@ Ancestors
   solidityDifferentialCorpus_storage_arrays
   solidityDifferentialCorpus_storage_bytes
   solidityDifferentialCorpus_storage_bytes_aliases
+  solidityDifferentialCorpus_storage_pointer_base
+  solidityDifferentialCorpus_storage_pointers
+  solidityDifferentialCorpus_storage_references
   solidityDifferentialCorpus_storage_structs
   solidityDifferentialCorpus_storage_structs_top_level
   solidityDifferentialCorpus_struct_getters
   solidityDifferentialCorpus_super_calls
   solidityDifferentialCorpus_token
+  solidityDifferentialCorpus_transfers
+  solidityDifferentialCorpus_transient_values
   solidityDifferentialCorpus_try_calls
   solidityDifferentialCorpus_tuple_literals
+  solidityDifferentialCorpus_tuple_values
   solidityDifferentialCorpus_type_bounds
   solidityDifferentialCorpus_udvt
   solidityDifferentialCorpus_using_for
+  solidityDifferentialCorpus_virtual_modifiers
