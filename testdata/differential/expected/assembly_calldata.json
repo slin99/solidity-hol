@@ -39,7 +39,7 @@
     },
     "sources": {
       "testdata/differential/assembly_calldata.sol": {
-        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\n// Inline assembly over calldata references: x.offset and x.length of a\n// calldata byte sequence or dynamic array, and the plain name of a calldata\n// static array, read and rebound.\nlibrary CalldataSlices {\n    // OpenZeppelin's Calldata.emptyBytes\n    function emptyBytes() internal pure returns (bytes calldata result) {\n        assembly (\"memory-safe\") {\n            result.offset := 0\n            result.length := 0\n        }\n    }\n\n    uint256 constant OFFSET_OR_LENGTH_MASK = 0xffffffff;\n    uint256 constant SLICE_ERROR_SELECTOR = 0x3b99b53d;\n\n    // Uniswap v4's CalldataDecoder.toBytes: argument i of an ABI-encoded\n    // tuple of byte sequences\n    function toBytes(bytes calldata _bytes, uint256 _arg) internal pure returns (bytes calldata res) {\n        uint256 length;\n        assembly (\"memory-safe\") {\n            let lengthPtr :=\n                add(_bytes.offset, and(calldataload(add(_bytes.offset, shl(5, _arg))), OFFSET_OR_LENGTH_MASK))\n            length := and(calldataload(lengthPtr), OFFSET_OR_LENGTH_MASK)\n            let offset := add(lengthPtr, 0x20)\n            res.length := length\n            res.offset := offset\n            if lt(add(_bytes.length, _bytes.offset), add(length, offset)) {\n                mstore(0, SLICE_ERROR_SELECTOR)\n                revert(0x1c, 4)\n            }\n        }\n    }\n}\n\ncontract AssemblyCalldata {\n    function bounds(bytes calldata b) external pure returns (uint256 o, uint256 l) {\n        assembly {\n            o := b.offset\n            l := b.length\n        }\n    }\n\n    function words(uint256[] calldata xs) external pure returns (uint256 o, uint256 l, uint256 first) {\n        assembly {\n            o := xs.offset\n            l := xs.length\n            first := calldataload(xs.offset)\n        }\n    }\n\n    function tail(uint256[] calldata xs) external pure returns (uint256[] calldata ys) {\n        require(xs.length > 0);\n        assembly {\n            ys.offset := add(xs.offset, 32)\n            ys.length := sub(xs.length, 1)\n        }\n    }\n\n    function argument(bytes calldata data, uint256 i) external pure returns (bytes calldata) {\n        return CalldataSlices.toBytes(data, i);\n    }\n\n    function emptyLength() external pure returns (uint256) {\n        return CalldataSlices.emptyBytes().length;\n    }\n\n    function where(uint256[2] calldata a) external pure returns (uint256 o) {\n        assembly {\n            o := a\n        }\n    }\n\n    function pick(uint256[2] calldata a, uint256[2] calldata b, bool second) external pure returns (uint256[2] calldata r) {\n        r = a;\n        assembly {\n            if second {\n                r := b\n            }\n        }\n    }\n}\n"
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity ^0.8.0;\n\n// Inline assembly over calldata references: x.offset and x.length of a\n// calldata byte sequence or dynamic array, and the plain name of a calldata\n// static array, read and rebound.\nlibrary CalldataSlices {\n    // OpenZeppelin's Calldata.emptyBytes\n    function emptyBytes() internal pure returns (bytes calldata result) {\n        assembly (\"memory-safe\") {\n            result.offset := 0\n            result.length := 0\n        }\n    }\n\n    uint256 constant OFFSET_OR_LENGTH_MASK = 0xffffffff;\n    uint256 constant SLICE_ERROR_SELECTOR = 0x3b99b53d;\n\n    // Uniswap v4's CalldataDecoder.toBytes: argument i of an ABI-encoded\n    // tuple of byte sequences\n    function toBytes(bytes calldata _bytes, uint256 _arg) internal pure returns (bytes calldata res) {\n        uint256 length;\n        assembly (\"memory-safe\") {\n            let lengthPtr :=\n                add(_bytes.offset, and(calldataload(add(_bytes.offset, shl(5, _arg))), OFFSET_OR_LENGTH_MASK))\n            length := and(calldataload(lengthPtr), OFFSET_OR_LENGTH_MASK)\n            let offset := add(lengthPtr, 0x20)\n            res.length := length\n            res.offset := offset\n            if lt(add(_bytes.length, _bytes.offset), add(length, offset)) {\n                mstore(0, SLICE_ERROR_SELECTOR)\n                revert(0x1c, 4)\n            }\n        }\n    }\n}\n\ncontract AssemblyCalldata {\n    function bounds(bytes calldata b) external pure returns (uint256 o, uint256 l) {\n        assembly {\n            o := b.offset\n            l := b.length\n        }\n    }\n\n    function words(uint256[] calldata xs) external pure returns (uint256 o, uint256 l, uint256 first) {\n        assembly {\n            o := xs.offset\n            l := xs.length\n            first := calldataload(xs.offset)\n        }\n    }\n\n    function tail(uint256[] calldata xs) external pure returns (uint256[] calldata ys) {\n        require(xs.length > 0);\n        assembly {\n            ys.offset := add(xs.offset, 32)\n            ys.length := sub(xs.length, 1)\n        }\n    }\n\n    function argument(bytes calldata data, uint256 i) external pure returns (bytes calldata) {\n        return CalldataSlices.toBytes(data, i);\n    }\n\n    function emptyLength() external pure returns (uint256) {\n        return CalldataSlices.emptyBytes().length;\n    }\n\n    function where(uint256[2] calldata a) external pure returns (uint256 o) {\n        assembly {\n            o := a\n        }\n    }\n\n    function pick(uint256[2] calldata a, uint256[2] calldata b, bool second) external pure returns (uint256[2] calldata r) {\n        r = a;\n        assembly {\n            if second {\n                r := b\n            }\n        }\n    }\n\n    // A reference rebound past the end of the calldata: solc reads zeros\n    // there, the source model fails closed.\n    function overLength(uint256[] calldata xs) external pure returns (uint256) {\n        assembly {\n            xs.length := add(xs.length, 100)\n        }\n        return xs.length;\n    }\n\n    function overOffset(bytes calldata b) external pure returns (uint256) {\n        assembly {\n            b.offset := calldatasize()\n        }\n        return b.length;\n    }\n\n    function overStatic(uint256[2] calldata a) external pure returns (uint256) {\n        assembly {\n            a := sub(calldatasize(), 32)\n        }\n        return a[0];\n    }\n}\n"
       }
     }
   },
@@ -99,6 +99,63 @@
             {
               "inputs": [],
               "name": "emptyLength",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "pure",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256[]",
+                  "name": "xs",
+                  "type": "uint256[]"
+                }
+              ],
+              "name": "overLength",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "pure",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "bytes",
+                  "name": "b",
+                  "type": "bytes"
+                }
+              ],
+              "name": "overOffset",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "pure",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256[2]",
+                  "name": "a",
+                  "type": "uint256[2]"
+                }
+              ],
+              "name": "overStatic",
               "outputs": [
                 {
                   "internalType": "uint256",
@@ -208,16 +265,19 @@
           ],
           "evm": {
             "bytecode": {
-              "object": "608060405234601c57600e6020565b61070b61002b823961070b90f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b61057b565b61001d5f3561008c565b806311864a7a146100875780637623ed311461008257806398a256df1461007d578063cfd6ca4814610078578063dc95fc7e14610073578063de5747141461006e5763e21615590361000e57610546565b6104f2565b61041f565b6103b6565b6102ab565b61021b565b6100d4565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f9103126100aa57565b61009c565b90565b6100bb906100af565b9052565b91906100d2905f602085019401906100b2565b565b34610104576100e43660046100a0565b6101006100ef610587565b6100f7610092565b918291826100bf565b0390f35b610098565b5f80fd5b5f80fd5b5f80fd5b5f80fd5b909182601f830112156101535781359167ffffffffffffffff831161014e57602001926001830284011161014957565b610115565b610111565b61010d565b610161816100af565b0361016857565b5f80fd5b9050359061017982610158565b565b916040838303126101bb575f83013567ffffffffffffffff81116101b6576101a8836101b3928601610119565b93909460200161016c565b90565b610109565b61009c565b60209181520190565b90825f939282370152565b601f801991011690565b91906101f8816101f1816101fd956101c0565b80956101c9565b6101d4565b0190565b90916102189260208301925f8185039101526101de565b90565b3461024d5761023461022e36600461017b565b916105aa565b90610249610240610092565b92839283610201565b0390f35b610098565b90602082820312610283575f82013567ffffffffffffffff811161027e5761027a9201610119565b9091565b610109565b61009c565b9160206102a99294936102a260408201965f8301906100b2565b01906100b2565b565b346102dd576102c46102be366004610252565b906105c8565b906102d96102d0610092565b92839283610288565b0390f35b610098565b909182601f8301121561031c5781359167ffffffffffffffff831161031757602001926020830284011161031257565b610115565b610111565b61010d565b90602082820312610352575f82013567ffffffffffffffff811161034d5761034992016102e2565b9091565b610109565b61009c565b60209181520190565b5f80fd5b9037565b90918261037491610357565b9160018060fb1b03811161039757829160206103939202938491610364565b0190565b610360565b90916103b39260208301925f818503910152610368565b90565b346103e8576103cf6103c9366004610321565b90610618565b906103e46103db610092565b9283928361039c565b0390f35b610098565b60409061041661041d949695939661040c60608401985f8501906100b2565b60208301906100b2565b01906100b2565b565b346104535761044f61043b610435366004610321565b90610657565b610446939193610092565b938493846103ed565b0390f35b610098565b9190602060020283011161046857565b610115565b151590565b61047b8161046d565b0361048257565b5f80fd5b9050359061049382610472565b565b909160a0828403126104ca576104c76104b0845f8501610458565b936104be8160408601610458565b93608001610486565b90565b61009c565b6104db91604091610364565b565b91906104f0905f604085019401906104cf565b565b346105235761051f61050e610508366004610495565b9161067f565b610516610092565b918291826104dd565b0390f35b610098565b906040828203126105415761053e915f01610458565b90565b61009c565b346105765761057261056161055c366004610528565b61069e565b610569610092565b918291826100bf565b0390f35b610098565b5f80fd5b5f90565b5090565b61058f61057f565b506105a161059b6106aa565b90610583565b90565b36905f90565b916105c2926105b76105a4565b9050509190916106bb565b91909190565b9190916105d361057f565b506105dc61057f565b509190565b36905f90565b5090565b90565b90565b61060561060061060a926105eb565b6105ee565b6100af565b90565b1561061457565b5f80fd5b60206001919392936106286105e1565b9050506106516106398287906105e7565b61064b6106455f6105f1565b916100af565b1161060d565b01920390565b909161066161057f565b5061066a61057f565b5061067361057f565b508192913590565b3690565b92919261068a61067b565b5092610694575b50565b909150905f610691565b6106a661057f565b5090565b6106b26105a4565b9050505f905f90565b9163ffffffff909391936106cd6105a4565b9050506106d861057f565b5060051b83013516820192602063ffffffff85351694019284938095019101106106fe57565b633b99b53d5f526004601cfd"
+              "object": "608060405234601c57600e6020565b61086e61002b823961086e90f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b61064c565b61001d5f356100bc565b80630d5d5a07146100b757806311864a7a146100b257806328305dcd146100ad5780637623ed31146100a857806398a256df146100a3578063cfd6ca481461009e578063dc95fc7e14610099578063de57471414610094578063e21615591461008f5763ef44a7970361000e57610617565b6105e2565b61058e565b6104bb565b610452565b6103bc565b610362565b610269565b6101bf565b61017a565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f80fd5b5f80fd5b5f80fd5b5f80fd5b909182601f8301121561011a5781359167ffffffffffffffff831161011557602001926020830284011161011057565b6100dc565b6100d8565b6100d4565b90602082820312610150575f82013567ffffffffffffffff811161014b5761014792016100e0565b9091565b6100d0565b6100cc565b90565b61016190610155565b9052565b9190610178905f60208501940190610158565b565b346101ab576101a761019661019036600461011f565b90610658565b61019e6100c2565b91829182610165565b0390f35b6100c8565b5f9103126101ba57565b6100cc565b346101ef576101cf3660046101b0565b6101eb6101da610675565b6101e26100c2565b91829182610165565b0390f35b6100c8565b909182601f8301121561022e5781359167ffffffffffffffff831161022957602001926001830284011161022457565b6100dc565b6100d8565b6100d4565b90602082820312610264575f82013567ffffffffffffffff811161025f5761025b92016101f4565b9091565b6100d0565b6100cc565b3461029a5761029661028561027f366004610233565b90610692565b61028d6100c2565b91829182610165565b0390f35b6100c8565b6102a881610155565b036102af57565b5f80fd5b905035906102c08261029f565b565b91604083830312610302575f83013567ffffffffffffffff81116102fd576102ef836102fa9286016101f4565b9390946020016102b3565b90565b6100d0565b6100cc565b60209181520190565b90825f939282370152565b601f801991011690565b919061033f816103388161034495610307565b8095610310565b61031b565b0190565b909161035f9260208301925f818503910152610325565b90565b346103945761037b6103753660046102c2565b916106af565b906103906103876100c2565b92839283610348565b0390f35b6100c8565b9160206103ba9294936103b360408201965f830190610158565b0190610158565b565b346103ee576103d56103cf366004610233565b906106cd565b906103ea6103e16100c2565b92839283610399565b0390f35b6100c8565b60209181520190565b5f80fd5b9037565b909182610410916103f3565b9160018060fb1b038111610433578291602061042f9202938491610400565b0190565b6103fc565b909161044f9260208301925f818503910152610404565b90565b346104845761046b61046536600461011f565b90610719565b906104806104776100c2565b92839283610438565b0390f35b6100c8565b6040906104b26104b994969593966104a860608401985f850190610158565b6020830190610158565b0190610158565b565b346104ef576104eb6104d76104d136600461011f565b90610758565b6104e29391936100c2565b93849384610489565b0390f35b6100c8565b9190602060020283011161050457565b6100dc565b151590565b61051781610509565b0361051e57565b5f80fd5b9050359061052f8261050e565b565b909160a0828403126105665761056361054c845f85016104f4565b9361055a81604086016104f4565b93608001610522565b90565b6100cc565b61057791604091610400565b565b919061058c905f6040850194019061056b565b565b346105bf576105bb6105aa6105a4366004610531565b91610780565b6105b26100c2565b91829182610579565b0390f35b6100c8565b906040828203126105dd576105da915f016104f4565b90565b6100cc565b346106125761060e6105fd6105f83660046105c4565b61079f565b6106056100c2565b91829182610165565b0390f35b6100c8565b346106475761064361063261062d3660046105c4565b6107e2565b61063a6100c2565b91829182610165565b0390f35b6100c8565b5f80fd5b5f90565b5090565b606461066e92610666610650565b500190610654565b90565b5090565b61067d610650565b5061068f61068961080d565b90610671565b90565b506106a69061069f610650565b5036610671565b90565b36905f90565b916106c7926106bc6106a9565b90505091909161081e565b91909190565b9190916106d8610650565b506106e1610650565b509190565b36905f90565b90565b90565b61070661070161070b926106ec565b6106ef565b610155565b90565b1561071557565b5f80fd5b60206001919392936107296106e6565b90505061075261073a828790610654565b61074c6107465f6106f2565b91610155565b1161070e565b01920390565b9091610762610650565b5061076b610650565b50610774610650565b508192913590565b3690565b92919261078b61077c565b5092610795575b50565b909150905f610792565b6107a7610650565b5090565b634e487b7160e01b5f52603260045260245ffd5b9060028110156107d0576020020190565b6107ab565b356107df8161029f565b90565b506107eb610650565b5061080a610805602036036107ff5f6106f2565b906107bf565b6107d5565b90565b6108156106a9565b9050505f905f90565b9163ffffffff909391936108306106a9565b90505061083b610650565b5060051b83013516820192602063ffffffff853516940192849380950191011061086157565b633b99b53d5f526004601cfd"
             },
             "deployedBytecode": {
               "immutableReferences": {},
-              "object": "60806040526004361015610013575b61057b565b61001d5f3561008c565b806311864a7a146100875780637623ed311461008257806398a256df1461007d578063cfd6ca4814610078578063dc95fc7e14610073578063de5747141461006e5763e21615590361000e57610546565b6104f2565b61041f565b6103b6565b6102ab565b61021b565b6100d4565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f9103126100aa57565b61009c565b90565b6100bb906100af565b9052565b91906100d2905f602085019401906100b2565b565b34610104576100e43660046100a0565b6101006100ef610587565b6100f7610092565b918291826100bf565b0390f35b610098565b5f80fd5b5f80fd5b5f80fd5b5f80fd5b909182601f830112156101535781359167ffffffffffffffff831161014e57602001926001830284011161014957565b610115565b610111565b61010d565b610161816100af565b0361016857565b5f80fd5b9050359061017982610158565b565b916040838303126101bb575f83013567ffffffffffffffff81116101b6576101a8836101b3928601610119565b93909460200161016c565b90565b610109565b61009c565b60209181520190565b90825f939282370152565b601f801991011690565b91906101f8816101f1816101fd956101c0565b80956101c9565b6101d4565b0190565b90916102189260208301925f8185039101526101de565b90565b3461024d5761023461022e36600461017b565b916105aa565b90610249610240610092565b92839283610201565b0390f35b610098565b90602082820312610283575f82013567ffffffffffffffff811161027e5761027a9201610119565b9091565b610109565b61009c565b9160206102a99294936102a260408201965f8301906100b2565b01906100b2565b565b346102dd576102c46102be366004610252565b906105c8565b906102d96102d0610092565b92839283610288565b0390f35b610098565b909182601f8301121561031c5781359167ffffffffffffffff831161031757602001926020830284011161031257565b610115565b610111565b61010d565b90602082820312610352575f82013567ffffffffffffffff811161034d5761034992016102e2565b9091565b610109565b61009c565b60209181520190565b5f80fd5b9037565b90918261037491610357565b9160018060fb1b03811161039757829160206103939202938491610364565b0190565b610360565b90916103b39260208301925f818503910152610368565b90565b346103e8576103cf6103c9366004610321565b90610618565b906103e46103db610092565b9283928361039c565b0390f35b610098565b60409061041661041d949695939661040c60608401985f8501906100b2565b60208301906100b2565b01906100b2565b565b346104535761044f61043b610435366004610321565b90610657565b610446939193610092565b938493846103ed565b0390f35b610098565b9190602060020283011161046857565b610115565b151590565b61047b8161046d565b0361048257565b5f80fd5b9050359061049382610472565b565b909160a0828403126104ca576104c76104b0845f8501610458565b936104be8160408601610458565b93608001610486565b90565b61009c565b6104db91604091610364565b565b91906104f0905f604085019401906104cf565b565b346105235761051f61050e610508366004610495565b9161067f565b610516610092565b918291826104dd565b0390f35b610098565b906040828203126105415761053e915f01610458565b90565b61009c565b346105765761057261056161055c366004610528565b61069e565b610569610092565b918291826100bf565b0390f35b610098565b5f80fd5b5f90565b5090565b61058f61057f565b506105a161059b6106aa565b90610583565b90565b36905f90565b916105c2926105b76105a4565b9050509190916106bb565b91909190565b9190916105d361057f565b506105dc61057f565b509190565b36905f90565b5090565b90565b90565b61060561060061060a926105eb565b6105ee565b6100af565b90565b1561061457565b5f80fd5b60206001919392936106286105e1565b9050506106516106398287906105e7565b61064b6106455f6105f1565b916100af565b1161060d565b01920390565b909161066161057f565b5061066a61057f565b5061067361057f565b508192913590565b3690565b92919261068a61067b565b5092610694575b50565b909150905f610691565b6106a661057f565b5090565b6106b26105a4565b9050505f905f90565b9163ffffffff909391936106cd6105a4565b9050506106d861057f565b5060051b83013516820192602063ffffffff85351694019284938095019101106106fe57565b633b99b53d5f526004601cfd"
+              "object": "60806040526004361015610013575b61064c565b61001d5f356100bc565b80630d5d5a07146100b757806311864a7a146100b257806328305dcd146100ad5780637623ed31146100a857806398a256df146100a3578063cfd6ca481461009e578063dc95fc7e14610099578063de57471414610094578063e21615591461008f5763ef44a7970361000e57610617565b6105e2565b61058e565b6104bb565b610452565b6103bc565b610362565b610269565b6101bf565b61017a565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f80fd5b5f80fd5b5f80fd5b5f80fd5b909182601f8301121561011a5781359167ffffffffffffffff831161011557602001926020830284011161011057565b6100dc565b6100d8565b6100d4565b90602082820312610150575f82013567ffffffffffffffff811161014b5761014792016100e0565b9091565b6100d0565b6100cc565b90565b61016190610155565b9052565b9190610178905f60208501940190610158565b565b346101ab576101a761019661019036600461011f565b90610658565b61019e6100c2565b91829182610165565b0390f35b6100c8565b5f9103126101ba57565b6100cc565b346101ef576101cf3660046101b0565b6101eb6101da610675565b6101e26100c2565b91829182610165565b0390f35b6100c8565b909182601f8301121561022e5781359167ffffffffffffffff831161022957602001926001830284011161022457565b6100dc565b6100d8565b6100d4565b90602082820312610264575f82013567ffffffffffffffff811161025f5761025b92016101f4565b9091565b6100d0565b6100cc565b3461029a5761029661028561027f366004610233565b90610692565b61028d6100c2565b91829182610165565b0390f35b6100c8565b6102a881610155565b036102af57565b5f80fd5b905035906102c08261029f565b565b91604083830312610302575f83013567ffffffffffffffff81116102fd576102ef836102fa9286016101f4565b9390946020016102b3565b90565b6100d0565b6100cc565b60209181520190565b90825f939282370152565b601f801991011690565b919061033f816103388161034495610307565b8095610310565b61031b565b0190565b909161035f9260208301925f818503910152610325565b90565b346103945761037b6103753660046102c2565b916106af565b906103906103876100c2565b92839283610348565b0390f35b6100c8565b9160206103ba9294936103b360408201965f830190610158565b0190610158565b565b346103ee576103d56103cf366004610233565b906106cd565b906103ea6103e16100c2565b92839283610399565b0390f35b6100c8565b60209181520190565b5f80fd5b9037565b909182610410916103f3565b9160018060fb1b038111610433578291602061042f9202938491610400565b0190565b6103fc565b909161044f9260208301925f818503910152610404565b90565b346104845761046b61046536600461011f565b90610719565b906104806104776100c2565b92839283610438565b0390f35b6100c8565b6040906104b26104b994969593966104a860608401985f850190610158565b6020830190610158565b0190610158565b565b346104ef576104eb6104d76104d136600461011f565b90610758565b6104e29391936100c2565b93849384610489565b0390f35b6100c8565b9190602060020283011161050457565b6100dc565b151590565b61051781610509565b0361051e57565b5f80fd5b9050359061052f8261050e565b565b909160a0828403126105665761056361054c845f85016104f4565b9361055a81604086016104f4565b93608001610522565b90565b6100cc565b61057791604091610400565b565b919061058c905f6040850194019061056b565b565b346105bf576105bb6105aa6105a4366004610531565b91610780565b6105b26100c2565b91829182610579565b0390f35b6100c8565b906040828203126105dd576105da915f016104f4565b90565b6100cc565b346106125761060e6105fd6105f83660046105c4565b61079f565b6106056100c2565b91829182610165565b0390f35b6100c8565b346106475761064361063261062d3660046105c4565b6107e2565b61063a6100c2565b91829182610165565b0390f35b6100c8565b5f80fd5b5f90565b5090565b606461066e92610666610650565b500190610654565b90565b5090565b61067d610650565b5061068f61068961080d565b90610671565b90565b506106a69061069f610650565b5036610671565b90565b36905f90565b916106c7926106bc6106a9565b90505091909161081e565b91909190565b9190916106d8610650565b506106e1610650565b509190565b36905f90565b90565b90565b61070661070161070b926106ec565b6106ef565b610155565b90565b1561071557565b5f80fd5b60206001919392936107296106e6565b90505061075261073a828790610654565b61074c6107465f6106f2565b91610155565b1161070e565b01920390565b9091610762610650565b5061076b610650565b50610774610650565b508192913590565b3690565b92919261078b61077c565b5092610795575b50565b909150905f610792565b6107a7610650565b5090565b634e487b7160e01b5f52603260045260245ffd5b9060028110156107d0576020020190565b6107ab565b356107df8161029f565b90565b506107eb610650565b5061080a610805602036036107ff5f6106f2565b906107bf565b6107d5565b90565b6108156106a9565b9050505f905f90565b9163ffffffff909391936108306106a9565b90505061083b610650565b5060051b83013516820192602063ffffffff853516940192849380950191011061086157565b633b99b53d5f526004601cfd"
             },
             "methodIdentifiers": {
               "argument(bytes,uint256)": "7623ed31",
               "bounds(bytes)": "98a256df",
               "emptyLength()": "11864a7a",
+              "overLength(uint256[])": "0d5d5a07",
+              "overOffset(bytes)": "28305dcd",
+              "overStatic(uint256[2])": "ef44a797",
               "pick(uint256[2],uint256[2],bool)": "de574714",
               "tail(uint256[])": "cfd6ca48",
               "where(uint256[2])": "e2161559",
@@ -262,13 +322,13 @@
           "absolutePath": "testdata/differential/assembly_calldata.sol",
           "exportedSymbols": {
             "AssemblyCalldata": [
-              134
+              174
             ],
             "CalldataSlices": [
               29
             ]
           },
-          "id": 135,
+          "id": 175,
           "license": "MIT",
           "nodeType": "SourceUnit",
           "nodes": [
@@ -1172,7 +1232,7 @@
                   "visibility": "internal"
                 }
               ],
-              "scope": 135,
+              "scope": 175,
               "src": "241:1150:0",
               "usedErrors": [],
               "usedEvents": []
@@ -1184,9 +1244,9 @@
               "contractDependencies": [],
               "contractKind": "contract",
               "fullyImplemented": true,
-              "id": 134,
+              "id": 174,
               "linearizedBaseContracts": [
-                134
+                174
               ],
               "name": "AssemblyCalldata",
               "nameLocation": "1402:16:0",
@@ -1386,7 +1446,7 @@
                     ],
                     "src": "1481:22:0"
                   },
-                  "scope": 134,
+                  "scope": 174,
                   "src": "1425:167:0",
                   "stateMutability": "pure",
                   "virtual": false,
@@ -1669,7 +1729,7 @@
                     ],
                     "src": "1658:37:0"
                   },
-                  "scope": 134,
+                  "scope": 174,
                   "src": "1598:233:0",
                   "stateMutability": "pure",
                   "virtual": false,
@@ -2011,7 +2071,7 @@
                     ],
                     "src": "1896:23:0"
                   },
-                  "scope": 134,
+                  "scope": 174,
                   "src": "1837:238:0",
                   "stateMutability": "pure",
                   "virtual": false,
@@ -2215,7 +2275,7 @@
                     ],
                     "src": "2153:16:0"
                   },
-                  "scope": 134,
+                  "scope": 174,
                   "src": "2081:144:0",
                   "stateMutability": "pure",
                   "virtual": false,
@@ -2345,7 +2405,7 @@
                     ],
                     "src": "2276:9:0"
                   },
-                  "scope": 134,
+                  "scope": 174,
                   "src": "2231:113:0",
                   "stateMutability": "pure",
                   "virtual": false,
@@ -2508,7 +2568,7 @@
                     ],
                     "src": "2410:11:0"
                   },
-                  "scope": 134,
+                  "scope": 174,
                   "src": "2350:127:0",
                   "stateMutability": "pure",
                   "virtual": false,
@@ -2843,20 +2903,624 @@
                     ],
                     "src": "2578:23:0"
                   },
-                  "scope": 134,
+                  "scope": 174,
                   "src": "2483:231:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 145,
+                    "nodeType": "Block",
+                    "src": "2914:107:0",
+                    "statements": [
+                      {
+                        "AST": {
+                          "nativeSrc": "2933:56:0",
+                          "nodeType": "YulBlock",
+                          "src": "2933:56:0",
+                          "statements": [
+                            {
+                              "nativeSrc": "2947:32:0",
+                              "nodeType": "YulAssignment",
+                              "src": "2947:32:0",
+                              "value": {
+                                "arguments": [
+                                  {
+                                    "name": "xs.length",
+                                    "nativeSrc": "2964:9:0",
+                                    "nodeType": "YulIdentifier",
+                                    "src": "2964:9:0"
+                                  },
+                                  {
+                                    "kind": "number",
+                                    "nativeSrc": "2975:3:0",
+                                    "nodeType": "YulLiteral",
+                                    "src": "2975:3:0",
+                                    "type": "",
+                                    "value": "100"
+                                  }
+                                ],
+                                "functionName": {
+                                  "name": "add",
+                                  "nativeSrc": "2960:3:0",
+                                  "nodeType": "YulIdentifier",
+                                  "src": "2960:3:0"
+                                },
+                                "nativeSrc": "2960:19:0",
+                                "nodeType": "YulFunctionCall",
+                                "src": "2960:19:0"
+                              },
+                              "variableNames": [
+                                {
+                                  "name": "xs.length",
+                                  "nativeSrc": "2947:9:0",
+                                  "nodeType": "YulIdentifier",
+                                  "src": "2947:9:0"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        "evmVersion": "osaka",
+                        "externalReferences": [
+                          {
+                            "declaration": 136,
+                            "isOffset": false,
+                            "isSlot": false,
+                            "src": "2947:9:0",
+                            "suffix": "length",
+                            "valueSize": 1
+                          },
+                          {
+                            "declaration": 136,
+                            "isOffset": false,
+                            "isSlot": false,
+                            "src": "2964:9:0",
+                            "suffix": "length",
+                            "valueSize": 1
+                          }
+                        ],
+                        "id": 141,
+                        "nodeType": "InlineAssembly",
+                        "src": "2924:65:0"
+                      },
+                      {
+                        "expression": {
+                          "expression": {
+                            "id": 142,
+                            "name": "xs",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 136,
+                            "src": "3005:2:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_uint256_$dyn_calldata_ptr",
+                              "typeString": "uint256[] calldata"
+                            }
+                          },
+                          "id": 143,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "memberLocation": "3008:6:0",
+                          "memberName": "length",
+                          "nodeType": "MemberAccess",
+                          "src": "3005:9:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 140,
+                        "id": 144,
+                        "nodeType": "Return",
+                        "src": "2998:16:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "0d5d5a07",
+                  "id": 146,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "overLength",
+                  "nameLocation": "2848:10:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 137,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 136,
+                        "mutability": "mutable",
+                        "name": "xs",
+                        "nameLocation": "2878:2:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 146,
+                        "src": "2859:21:0",
+                        "stateVariable": false,
+                        "storageLocation": "calldata",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_array$_t_uint256_$dyn_calldata_ptr",
+                          "typeString": "uint256[]"
+                        },
+                        "typeName": {
+                          "baseType": {
+                            "id": 134,
+                            "name": "uint256",
+                            "nodeType": "ElementaryTypeName",
+                            "src": "2859:7:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "id": 135,
+                          "nodeType": "ArrayTypeName",
+                          "src": "2859:9:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_array$_t_uint256_$dyn_storage_ptr",
+                            "typeString": "uint256[]"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "2858:23:0"
+                  },
+                  "returnParameters": {
+                    "id": 140,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 139,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 146,
+                        "src": "2905:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 138,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "2905:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "2904:9:0"
+                  },
+                  "scope": 174,
+                  "src": "2839:182:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 157,
+                    "nodeType": "Block",
+                    "src": "3097:100:0",
+                    "statements": [
+                      {
+                        "AST": {
+                          "nativeSrc": "3116:50:0",
+                          "nodeType": "YulBlock",
+                          "src": "3116:50:0",
+                          "statements": [
+                            {
+                              "nativeSrc": "3130:26:0",
+                              "nodeType": "YulAssignment",
+                              "src": "3130:26:0",
+                              "value": {
+                                "arguments": [],
+                                "functionName": {
+                                  "name": "calldatasize",
+                                  "nativeSrc": "3142:12:0",
+                                  "nodeType": "YulIdentifier",
+                                  "src": "3142:12:0"
+                                },
+                                "nativeSrc": "3142:14:0",
+                                "nodeType": "YulFunctionCall",
+                                "src": "3142:14:0"
+                              },
+                              "variableNames": [
+                                {
+                                  "name": "b.offset",
+                                  "nativeSrc": "3130:8:0",
+                                  "nodeType": "YulIdentifier",
+                                  "src": "3130:8:0"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        "evmVersion": "osaka",
+                        "externalReferences": [
+                          {
+                            "declaration": 148,
+                            "isOffset": true,
+                            "isSlot": false,
+                            "src": "3130:8:0",
+                            "suffix": "offset",
+                            "valueSize": 1
+                          }
+                        ],
+                        "id": 153,
+                        "nodeType": "InlineAssembly",
+                        "src": "3107:59:0"
+                      },
+                      {
+                        "expression": {
+                          "expression": {
+                            "id": 154,
+                            "name": "b",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 148,
+                            "src": "3182:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_bytes_calldata_ptr",
+                              "typeString": "bytes calldata"
+                            }
+                          },
+                          "id": 155,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "memberLocation": "3184:6:0",
+                          "memberName": "length",
+                          "nodeType": "MemberAccess",
+                          "src": "3182:8:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 152,
+                        "id": 156,
+                        "nodeType": "Return",
+                        "src": "3175:15:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "28305dcd",
+                  "id": 158,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "overOffset",
+                  "nameLocation": "3036:10:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 149,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 148,
+                        "mutability": "mutable",
+                        "name": "b",
+                        "nameLocation": "3062:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 158,
+                        "src": "3047:16:0",
+                        "stateVariable": false,
+                        "storageLocation": "calldata",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bytes_calldata_ptr",
+                          "typeString": "bytes"
+                        },
+                        "typeName": {
+                          "id": 147,
+                          "name": "bytes",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "3047:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bytes_storage_ptr",
+                            "typeString": "bytes"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "3046:18:0"
+                  },
+                  "returnParameters": {
+                    "id": 152,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 151,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 158,
+                        "src": "3088:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 150,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "3088:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "3087:9:0"
+                  },
+                  "scope": 174,
+                  "src": "3027:170:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 172,
+                    "nodeType": "Block",
+                    "src": "3278:98:0",
+                    "statements": [
+                      {
+                        "AST": {
+                          "nativeSrc": "3297:52:0",
+                          "nodeType": "YulBlock",
+                          "src": "3297:52:0",
+                          "statements": [
+                            {
+                              "nativeSrc": "3311:28:0",
+                              "nodeType": "YulAssignment",
+                              "src": "3311:28:0",
+                              "value": {
+                                "arguments": [
+                                  {
+                                    "arguments": [],
+                                    "functionName": {
+                                      "name": "calldatasize",
+                                      "nativeSrc": "3320:12:0",
+                                      "nodeType": "YulIdentifier",
+                                      "src": "3320:12:0"
+                                    },
+                                    "nativeSrc": "3320:14:0",
+                                    "nodeType": "YulFunctionCall",
+                                    "src": "3320:14:0"
+                                  },
+                                  {
+                                    "kind": "number",
+                                    "nativeSrc": "3336:2:0",
+                                    "nodeType": "YulLiteral",
+                                    "src": "3336:2:0",
+                                    "type": "",
+                                    "value": "32"
+                                  }
+                                ],
+                                "functionName": {
+                                  "name": "sub",
+                                  "nativeSrc": "3316:3:0",
+                                  "nodeType": "YulIdentifier",
+                                  "src": "3316:3:0"
+                                },
+                                "nativeSrc": "3316:23:0",
+                                "nodeType": "YulFunctionCall",
+                                "src": "3316:23:0"
+                              },
+                              "variableNames": [
+                                {
+                                  "name": "a",
+                                  "nativeSrc": "3311:1:0",
+                                  "nodeType": "YulIdentifier",
+                                  "src": "3311:1:0"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        "evmVersion": "osaka",
+                        "externalReferences": [
+                          {
+                            "declaration": 162,
+                            "isOffset": false,
+                            "isSlot": false,
+                            "src": "3311:1:0",
+                            "valueSize": 1
+                          }
+                        ],
+                        "id": 167,
+                        "nodeType": "InlineAssembly",
+                        "src": "3288:61:0"
+                      },
+                      {
+                        "expression": {
+                          "baseExpression": {
+                            "id": 168,
+                            "name": "a",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 162,
+                            "src": "3365:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_uint256_$2_calldata_ptr",
+                              "typeString": "uint256[2] calldata"
+                            }
+                          },
+                          "id": 170,
+                          "indexExpression": {
+                            "hexValue": "30",
+                            "id": 169,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "number",
+                            "lValueRequested": false,
+                            "nodeType": "Literal",
+                            "src": "3367:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_rational_0_by_1",
+                              "typeString": "int_const 0"
+                            },
+                            "value": "0"
+                          },
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "nodeType": "IndexAccess",
+                          "src": "3365:4:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 166,
+                        "id": 171,
+                        "nodeType": "Return",
+                        "src": "3358:11:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "ef44a797",
+                  "id": 173,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "overStatic",
+                  "nameLocation": "3212:10:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 163,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 162,
+                        "mutability": "mutable",
+                        "name": "a",
+                        "nameLocation": "3243:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 173,
+                        "src": "3223:21:0",
+                        "stateVariable": false,
+                        "storageLocation": "calldata",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_array$_t_uint256_$2_calldata_ptr",
+                          "typeString": "uint256[2]"
+                        },
+                        "typeName": {
+                          "baseType": {
+                            "id": 159,
+                            "name": "uint256",
+                            "nodeType": "ElementaryTypeName",
+                            "src": "3223:7:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "id": 161,
+                          "length": {
+                            "hexValue": "32",
+                            "id": 160,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "number",
+                            "lValueRequested": false,
+                            "nodeType": "Literal",
+                            "src": "3231:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_rational_2_by_1",
+                              "typeString": "int_const 2"
+                            },
+                            "value": "2"
+                          },
+                          "nodeType": "ArrayTypeName",
+                          "src": "3223:10:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_array$_t_uint256_$2_storage_ptr",
+                            "typeString": "uint256[2]"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "3222:23:0"
+                  },
+                  "returnParameters": {
+                    "id": 166,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 165,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 173,
+                        "src": "3269:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 164,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "3269:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "3268:9:0"
+                  },
+                  "scope": 174,
+                  "src": "3203:173:0",
                   "stateMutability": "pure",
                   "virtual": false,
                   "visibility": "external"
                 }
               ],
-              "scope": 135,
-              "src": "1393:1323:0",
+              "scope": 175,
+              "src": "1393:1985:0",
               "usedErrors": [],
               "usedEvents": []
             }
           ],
-          "src": "32:2685:0"
+          "src": "32:3347:0"
         },
         "id": 0
       }

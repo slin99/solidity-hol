@@ -81,4 +81,27 @@ contract AssemblyCalldata {
             }
         }
     }
+
+    // A reference rebound past the end of the calldata: solc reads zeros
+    // there, the source model fails closed.
+    function overLength(uint256[] calldata xs) external pure returns (uint256) {
+        assembly {
+            xs.length := add(xs.length, 100)
+        }
+        return xs.length;
+    }
+
+    function overOffset(bytes calldata b) external pure returns (uint256) {
+        assembly {
+            b.offset := calldatasize()
+        }
+        return b.length;
+    }
+
+    function overStatic(uint256[2] calldata a) external pure returns (uint256) {
+        assembly {
+            a := sub(calldatasize(), 32)
+        }
+        return a[0];
+    }
 }

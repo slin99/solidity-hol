@@ -1,5 +1,6 @@
-(* These calls are admitted source programs, but their non-canonical values
- * must fail closed. Compiler outcomes are checked independently by the ancestor;
+(* These calls are admitted source programs, but their non-canonical values,
+ * and calldata references an assembly block leaves past the calldata, must
+ * fail closed. Compiler outcomes are checked independently by the ancestor;
  * an InvalidCompletion is never counted as differential agreement. *)
 Theory solidityDirtyBitsTest
 Ancestors solidityDifferential solidityDirtyBitsBytecodeTest
@@ -9,6 +10,7 @@ Ancestors solidityDifferential solidityDirtyBitsBytecodeTest
   solidityDifferentialCorpus_enums
   solidityDifferentialCorpus_dirty_bits
   solidityDifferentialCorpus_udvt
+  solidityDifferentialCorpus_assembly_calldata
 Libs solidityBytecodeLib cv_transLib wordsLib
 
 fun holbuild_extra_deps (_ : string list) = ()
@@ -18,7 +20,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/fail_closed/storage_arrays.json",
   "../testdata/differential/fail_closed/enums.json",
   "../testdata/differential/fail_closed/dirty_bits.json",
-  "../testdata/differential/fail_closed/udvt.json"
+  "../testdata/differential/fail_closed/udvt.json",
+  "../testdata/differential/fail_closed/assembly_calldata.json"
 ]
 
 fun rejected_suite group =
@@ -251,3 +254,29 @@ Proof
   CONV_TAC cv_eval
 QED
 
+Theorem reject_assembly_calldata_length_past_end:
+  source_execution bytecode_rejected_assembly_calldata_code
+    corpus_assembly_calldata_unit corpus_assembly_calldata_program 1000
+    ^(rejected_case "assembly_calldata" "length_past_end") =
+  (Diagnostic InvalidCompletion, NONE, [])
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem reject_assembly_calldata_offset_past_end:
+  source_execution bytecode_rejected_assembly_calldata_code
+    corpus_assembly_calldata_unit corpus_assembly_calldata_program 1000
+    ^(rejected_case "assembly_calldata" "offset_past_end") =
+  (Diagnostic InvalidCompletion, NONE, [])
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem reject_assembly_calldata_static_past_end:
+  source_execution bytecode_rejected_assembly_calldata_code
+    corpus_assembly_calldata_unit corpus_assembly_calldata_program 1000
+    ^(rejected_case "assembly_calldata" "static_past_end") =
+  (Diagnostic InvalidCompletion, NONE, [])
+Proof
+  CONV_TAC cv_eval
+QED
