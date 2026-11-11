@@ -34,6 +34,11 @@ jobs:
       - name: Report holbuild version
         run: holbuild --version
 
+      - name: Keep transient stages out of HOL project discovery
+        run: |
+          mkdir -p .holbuild
+          printf 'holmake = false\n' > .holbuild/holproject.toml
+
       - name: Test compiler artifact exporter
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
 
