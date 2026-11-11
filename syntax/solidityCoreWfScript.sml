@@ -753,6 +753,11 @@ Definition wf_core_operation_def:
     (byte_sequence_type ty ∨
      (memory_object_type ty ∧ case ty of ArrayT _ NONE => T | _ => F)) ∧
     wf_core_atom env ctx (SingleType (UintT 256)) length) ∧
+  (wf_core_operation env ctx annotation (BytesToFixedOperation k a) ⇔
+    valid_fixed_bytes_width k ∧ annotation = SingleType (FixedBytesT k) ∧
+    (wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a ∨
+     wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a ∨
+     wf_core_atom env ctx (SingleType (LocatedT StorageLoc BytesT)) a)) ∧
   (wf_core_operation env ctx annotation (ByteIndexOperation a index) ⇔
     annotation = SingleType (FixedBytesT 1) ∧
     (wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a ∨
@@ -768,6 +773,16 @@ Definition wf_core_operation_def:
              located_value_type (LocatedT loc (ArrayT element length)) ∧
              annotation = SingleType (element_type loc element)
          | _ => F)
+    | _ => F) ∧
+  (wf_core_operation env ctx annotation (CalldataSliceOperation a start end_bound) ⇔
+    case annotation of
+      SingleType (LocatedT CalldataLoc ty) =>
+        located_value_type (LocatedT CalldataLoc ty) ∧
+        (ty = BytesT ∨ case ty of ArrayT element NONE => static_object_type element | _ => F) ∧
+        wf_core_atom env ctx annotation a ∧
+        wf_core_atom env ctx (SingleType (UintT 256)) start ∧
+        (case end_bound of NONE => T | SOME end_index =>
+          wf_core_atom env ctx (SingleType (UintT 256)) end_index)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (CopyToMemoryOperation a) ⇔
     case (a, annotation) of
@@ -825,7 +840,8 @@ Definition wf_core_operation_def:
   (wf_core_operation env ctx annotation (AbiDecodeOperation tys a) ⇔
     tys ≠ [] ∧ EVERY (λty. is_elementary_type ty ∧ valid_type_shape ty) tys ∧
     annotation = call_result_type tys ∧
-    wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a) ∧
+    (wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a ∨
+     wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a)) ∧
   (wf_core_operation env ctx annotation (ArrayLengthOperation a) ⇔
     annotation = SingleType (UintT 256) ∧
     case a of
