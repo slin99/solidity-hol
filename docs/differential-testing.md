@@ -182,9 +182,6 @@ comparison then observes the immutable words, complete storage and logs, just
 as the source/bytecode deployment comparison does. Unsupported object names and
 layouts remain failures, including when the runtime object itself was admitted.
 
-`delegatecall` is not implemented and the dialect does not name it, so a stage
-that uses one is rejected at import rather than run wrongly.
-
 The ASTs are tens of megabytes across the corpus, so the tool generates them
 with the pinned compiler instead of committing them. It also generates one
 wrapper per suite under ignored `tests/yul-generated/`, with exact artifact

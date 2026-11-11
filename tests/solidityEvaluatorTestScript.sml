@@ -985,6 +985,55 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* A callee at 0x5005 returning ADDRESS, and a delegatecall to it. *)
+Definition delegate_state_def:
+  delegate_state =
+    call_state with world := (call_state.world with accounts :=
+      update_account 0x5005w
+        (empty_account_state with
+           code := [0x30w; 0x60w; 0w; 0x52w; 0x60w; 0x20w; 0x60w; 0w; 0xf3w])
+        call_state.world.accounts)
+End
+
+Definition ydelegate_def:
+  ydelegate a out osz =
+    YulBuiltin YDelegateCall [YulBuiltin YGas []; a; ylit 0w; ylit 0w;
+                              ylit out; ylit osz]
+End
+
+val () = cv_auto_trans delegate_state_def;
+val () = cv_auto_trans ydelegate_def;
+
+(* A delegatecall is a call to the static rules: gas() as its gas argument,
+ * return data after it, and its output region written. It runs the callee's
+ * code as this account (0 here), where a call runs it as the callee; a static
+ * frame refuses it. *)
+Theorem asm_delegate_call:
+  assembly_calls_ok
+    [YulLet ["s"] (SOME (ydelegate (YulName "t") 0w 32w));
+     YulAssign ["x"] (YulBuiltin YReturnDataSize [])] ∧
+  assembly_memory_ok
+    [YulLet ["s"] (SOME (ydelegate (YulName "t") 0w 32w));
+     YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])] ∧
+  ¬assembly_memory_ok [YulLet ["s"] (SOME (ydelegate (YulName "t") 0x80w 32w))] ∧
+  run_asm [YulExprStmt (YulBuiltin YPop [ydelegate (ylit 0x5005w) 0w 32w]);
+           YulAssign ["x"] (yadd (YulBuiltin YMLoad [ylit 0w])
+                                 (YulBuiltin YReturnDataSize []))]
+    delegate_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    ReturnCompletion [ScalarValue (IntegerValue 32)] ∧
+  run_asm [YulExprStmt (YulBuiltin YPop [ycall (ylit 0x5005w) 0w 0w 0w 32w]);
+           YulAssign ["x"] (yadd (YulBuiltin YMLoad [ylit 0w])
+                                 (YulBuiltin YReturnDataSize []))]
+    delegate_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    ReturnCompletion [ScalarValue (IntegerValue 0x5025)] ∧
+  run_asm [YulAssign ["x"] (ydelegate (ylit 0x5005w) 0w 32w)]
+    (delegate_state with frame := delegate_state.frame with static_context := T)
+    (AstId 110) [ScalarValue (IntegerValue 7)] =
+    InvalidCompletion "unsupported assembly builtin"
+Proof
+  CONV_TAC cv_eval
+QED
+
 (* Callees at 0x5003 (returns the bytes 01 02 03) and 0x5004 (reverts with
  * them): return data shorter than a word. *)
 Definition short_return_state_def:

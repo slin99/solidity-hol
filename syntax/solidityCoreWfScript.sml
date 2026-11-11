@@ -955,10 +955,12 @@ Definition assembly_unsupported_def:
 End
 
 (* The builtins that change the world, which a static frame forbids. A call
- * may move value; staticcall is a static frame's call. *)
+ * may move value, and a delegatecall runs code that may write this account,
+ * as a call the block's machine never makes static; staticcall is a static
+ * frame's call. *)
 Definition assembly_state_writes_def:
   assembly_state_writes =
-    [YSStore; YTStore; YLog0; YLog1; YLog2; YLog3; YLog4; YCall]
+    [YSStore; YTStore; YLog0; YLog1; YLog2; YLog3; YLog4; YCall; YDelegateCall]
 End
 
 (* Whether a block's code calls none of the builtins in bad. *)
@@ -1079,6 +1081,8 @@ Definition builtin_memory_ok_def:
         memory_read_ok ws p l ∧ memory_write_ok halts d (yul_lit dl)
     | (YStaticCall, [_; _; p; l; d; dl]) =>
         memory_read_ok ws p l ∧ memory_write_ok halts d (yul_lit dl)
+    | (YDelegateCall, [_; _; p; l; d; dl]) =>
+        memory_read_ok ws p l ∧ memory_write_ok halts d (yul_lit dl)
     | (YKeccak256, [p; l]) => memory_read_ok ws p l
     | (YReturn, [p; l]) => memory_read_ok ws p l
     | (YRevert, [p; l]) => memory_read_ok ws p l
@@ -1095,6 +1099,7 @@ Definition builtin_memory_ok_def:
     | (YReturnDataCopy, _) => F
     | (YCall, _) => F
     | (YStaticCall, _) => F
+    | (YDelegateCall, _) => F
     | (YKeccak256, _) => F
     | (YReturn, _) => F
     | (YRevert, _) => F
@@ -1122,6 +1127,7 @@ Definition builtin_store_def:
       (YMStore, [p; _]) => literal_range p (YulLit (LitNumber 32w))
     | (YCall, [_; _; _; _; _; d; dl]) => literal_range d dl
     | (YStaticCall, [_; _; _; _; d; dl]) => literal_range d dl
+    | (YDelegateCall, [_; _; _; _; d; dl]) => literal_range d dl
     | (YReturnDataCopy, [d; _; l]) =>
         (case (yul_lit d, yul_lit l) of
            (SOME a, NONE) => if a < 64 then [(a, 64 - a)] else []
@@ -1240,17 +1246,21 @@ End
  * gas argument, where it stands for the budget every call from the source
  * gets. call_stmts_ok F also has returndatasize and returndatacopy come only
  * after a statement of the block that calls (a let, assignment or expression
- * statement whose expression has a call or staticcall in it), earlier in their
- * statement list or an enclosing one, or inside an if, switch or for whose
- * condition calls, or in an argument left of one that calls, since arguments
- * run right to left. A Yul function's body starts with no call made. The
- * evaluator asks for that order only where the source does not know the
- * return data (assembly_calls_ok); the static rule is assembly_gas_ok, which
- * admits return data reads before the block's own calls, except in a Yul
- * function's body. *)
+ * statement whose expression has a call, staticcall or delegatecall in it),
+ * earlier in their statement list or an enclosing one, or inside an if,
+ * switch or for whose condition calls, or in an argument left of one that
+ * calls, since arguments run right to left. A Yul function's body starts with
+ * no call made. The evaluator asks for that order only where the source does
+ * not know the return data (assembly_calls_ok); the static rule is
+ * assembly_gas_ok, which admits return data reads before the block's own
+ * calls, except in a Yul function's body. *)
+Definition is_call_builtin_def:
+  is_call_builtin b ⇔ b = YCall ∨ b = YStaticCall ∨ b = YDelegateCall
+End
+
 Definition expr_calls_def:
   (expr_calls (YulBuiltin b es) ⇔
-    b = YCall ∨ b = YStaticCall ∨ exprs_calls es) ∧
+    is_call_builtin b ∨ exprs_calls es) ∧
   (expr_calls (YulApply _ es) ⇔ exprs_calls es) ∧
   (expr_calls _ ⇔ F) ∧
   (exprs_calls [] ⇔ F) ∧
@@ -1269,7 +1279,7 @@ Definition call_expr_ok_def:
   (call_expr_ok called (YulBuiltin b es) ⇔
     b ≠ YGas ∧
     (called ∨ exprs_calls es ∨ b ≠ YReturnDataSize ∧ b ≠ YReturnDataCopy) ∧
-    call_args_ok called (b = YCall ∨ b = YStaticCall) es) ∧
+    call_args_ok called (is_call_builtin b) es) ∧
   (call_expr_ok called (YulApply _ es) ⇔ call_args_ok called F es) ∧
   (call_expr_ok called (YulCheckedBuiltin _ _) ⇔ F) ∧
   (call_expr_ok called _ ⇔ T) ∧
@@ -1728,6 +1738,7 @@ val () = cv_auto_trans block_halts_def;
 val () = cv_auto_trans memory_expr_ok_def;
 val () = cv_auto_trans memory_stmt_ok_def;
 val () = cv_auto_trans assembly_memory_ok_def;
+val () = cv_auto_trans is_call_builtin_def;
 val () = cv_auto_trans expr_calls_def;
 val () = cv_auto_trans stmt_calls_def;
 val () = cv_auto_trans call_expr_ok_def;

@@ -207,8 +207,10 @@ rest unwritten, so reading it fails closed where the EVM reads stale scratch:
 OpenZeppelin's `SafeERC20` against a token whose `transfer` returns nothing
 runs to that.
 
-Inline assembly's `call` and `staticcall` (`assembly_calls.sol`) run the
-callee on Verifereum through `externalCall`, as high-level calls do. The source
+Inline assembly's `call`, `staticcall` and `delegatecall` (`assembly_calls.sol`,
+`assembly_delegate.sol`) run the callee on Verifereum through `externalCall`,
+as high-level and low-level calls do; `delegatecall` runs the callee's code
+in this contract's account, with its caller and value. The source
 tracks no gas, so `gas()` is admitted only as a call's gas argument, where it
 means the fixed budget every call from the source gets, and a literal gas
 argument is capped at that budget. The source state keeps the frame's return
@@ -221,10 +223,11 @@ statement of the block that calls, earlier in the same or an enclosing
 statement list, or in an argument left of a call, since arguments run right
 to left) then fails with an `InvalidCompletion`, and a block that leaves an
 empty buffer keeps it unknown. A Yul function's body may read return data only
-after a call of its own. A block in a static frame that names `call` fails
-closed; `staticcall` runs. A block that leaves an object's padding (the bytes
-past its length, in its last word) unwritten or not zero leaves it out of
-later blocks' memory, where reading it fails closed. solc lets a block assign a memory
+after a call of its own. A block in a static frame that names `call` or
+`delegatecall` fails closed; `staticcall` runs. A block that leaves an
+object's padding (the bytes past its length, in its last word) unwritten or
+not zero leaves it out of later blocks' memory, where reading it fails closed.
+solc lets a block assign a memory
 reference (`b := ...`); the elaborator rejects it, since the block reads the
 name as a literal.
 
