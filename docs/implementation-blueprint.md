@@ -58,6 +58,13 @@ atoms or change scopes. `solidityEvaluator` owns atom evaluation, bindings,
 captured targets, frame checks and control flow. Its static-frame write rejection
 is deliberate and remains `InvalidCompletion`.
 
+Fixed bytes, dynamic bytes and arrays use `ArrayIndexOperation` with one
+indexed-element typing rule. The elaborator evaluates the base before the
+index and retains that value: fixed bytes are captured scalars, while byte
+sequences and arrays keep their reference identity. Storage uses its packed
+layout; memory and calldata use their existing element readers. All report
+panic `0x32` for an index outside the current bounds.
+
 ## Evaluator interfaces and validation
 
 The evaluator exposes unconditional block, loop and call equations in

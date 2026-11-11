@@ -308,6 +308,18 @@ Definition element_type_def:
     if is_stored_scalar_type element then element else LocatedT loc element
 End
 
+(* Indexed values share their element type independently of their layout. *)
+Definition indexed_element_type_def:
+  indexed_element_type ty =
+    case ty of
+      FixedBytesT k => if valid_fixed_bytes_width k then SOME (FixedBytesT 1) else NONE
+    | LocatedT loc BytesT =>
+        if located_value_type ty then SOME (FixedBytesT 1) else NONE
+    | LocatedT loc (ArrayT element length) =>
+        if located_value_type ty then SOME (element_type loc element) else NONE
+    | _ => NONE
+End
+
 (* ABI values contain scalars (an enum as a uint8), byte sequences in
  * memory/calldata and memory arrays; storage pointers never cross an ABI
  * boundary. *)
@@ -768,21 +780,18 @@ Definition wf_core_operation_def:
     (wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a ∨
      wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a ∨
      wf_core_atom env ctx (SingleType (LocatedT StorageLoc BytesT)) a)) ∧
-  (wf_core_operation env ctx annotation (ByteIndexOperation a index) ⇔
-    annotation = SingleType (FixedBytesT 1) ∧
-    (wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a ∨
-     wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a ∨
-     wf_core_atom env ctx (SingleType (LocatedT StorageLoc BytesT)) a) ∧
-    wf_core_atom env ctx (SingleType (UintT 256)) index) ∧
   (wf_core_operation env ctx annotation (ArrayIndexOperation a index) ⇔
     wf_core_atom env ctx (SingleType (UintT 256)) index ∧
     case a of
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
-           SOME (SingleType (LocatedT loc (ArrayT element length))) =>
-             located_value_type (LocatedT loc (ArrayT element length)) ∧
-             annotation = SingleType (element_type loc element)
+           SOME (SingleType ty) =>
+             (case indexed_element_type ty of
+                SOME element => annotation = SingleType element
+              | NONE => F)
          | _ => F)
+    | ConstantAtom (BytesValue bs) =>
+        valid_fixed_bytes_width (LENGTH bs) ∧ annotation = SingleType (FixedBytesT 1)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (CalldataSliceOperation a start end_bound) ⇔
     case annotation of
