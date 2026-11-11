@@ -1,0 +1,85 @@
+{
+  "name": "keccak_literal_memory",
+  "source": "testdata/differential/keccak_literal_memory.sol",
+  "contract": "KeccakLiteralMemory",
+  "artifact": "testdata/differential/expected/keccak_literal_memory.json",
+  "cases": [
+    {
+      "name": "stringLiteral",
+      "function": "stringLiteral",
+      "args": [],
+      "expect": {
+        "return": [
+          64,
+          "0xacd0c377fe36d5b209125185bc3ac41155ed1bf7103ef9f0c2aff4320460b6df"
+        ]
+      }
+    },
+    {
+      "name": "hexLiteral",
+      "function": "hexLiteral",
+      "args": [],
+      "expect": {
+        "return": [
+          64,
+          "0xccad3f5300e77cf5347e3c6200a08bd8cf71f94a0b347bcb39486b17b88a8a71"
+        ]
+      }
+    },
+    {
+      "name": "emptyString",
+      "function": "emptyString",
+      "args": [],
+      "expect": {
+        "return": [
+          64,
+          "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+        ]
+      }
+    },
+    {
+      "name": "emptyHex",
+      "function": "emptyHex",
+      "args": [],
+      "expect": {
+        "return": [
+          64,
+          "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+        ]
+      }
+    },
+    {
+      "name": "multiwordLiteral",
+      "function": "multiwordLiteral",
+      "args": [],
+      "expect": {
+        "return": [
+          64,
+          "0xe4fbac26c1df44745b0883b234fffe5824333593f07e53b16fda1303580e381f"
+        ]
+      }
+    },
+    {
+      "name": "constantHash",
+      "function": "constantHash",
+      "args": [],
+      "expect": {
+        "return": [
+          64,
+          "0xed9ea7bc2a13bc59432ab07436e7f7f5450f82d4b48c401bed177bfaf36b1873"
+        ]
+      }
+    },
+    {
+      "name": "memoryBytes",
+      "function": "memoryBytes",
+      "args": [],
+      "expect": {
+        "return": [
+          128,
+          "0xacd0c377fe36d5b209125185bc3ac41155ed1bf7103ef9f0c2aff4320460b6df"
+        ]
+      }
+    }
+  ]
+}

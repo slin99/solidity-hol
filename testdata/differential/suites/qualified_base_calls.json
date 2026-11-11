@@ -1,0 +1,133 @@
+{
+  "name": "qualified_base_calls",
+  "source": "testdata/differential/qualified_base_calls.sol",
+  "contract": "QualifiedBaseCalls",
+  "artifact": "testdata/differential/expected/qualified_base_calls.json",
+  "cases": [
+    {
+      "name": "base_call_bypasses_override",
+      "function": "fromBase",
+      "args": [],
+      "expect": {
+        "return": [
+          107
+        ]
+      }
+    },
+    {
+      "name": "virtual_entry_uses_leaf",
+      "function": "value",
+      "args": [],
+      "expect": {
+        "return": [
+          307
+        ]
+      }
+    },
+    {
+      "name": "super_uses_deployed_linearization",
+      "function": "fromSuper",
+      "args": [],
+      "expect": {
+        "return": [
+          217
+        ]
+      }
+    },
+    {
+      "name": "same_declaration_has_distinct_static_and_super_targets",
+      "function": "staticAndSuper",
+      "args": [],
+      "expect": {
+        "return": [
+          107,
+          207
+        ]
+      }
+    },
+    {
+      "name": "nested_static_base_keeps_library_dependency",
+      "function": "nestedStatic",
+      "args": [],
+      "expect": {
+        "return": [
+          148
+        ]
+      }
+    },
+    {
+      "name": "static_overloads_use_declaration_id",
+      "function": "overloads",
+      "args": [],
+      "expect": {
+        "return": [
+          160,
+          256
+        ]
+      }
+    },
+    {
+      "name": "named_static_arguments_run_in_written_order",
+      "function": "orderedArguments",
+      "args": [],
+      "expect": {
+        "return": [
+          21
+        ]
+      },
+      "final_storage": {
+        "4": 2
+      }
+    },
+    {
+      "name": "static_target_in_modifier_is_retained",
+      "function": "viaModifier",
+      "args": [],
+      "expect": {
+        "return": [
+          17
+        ]
+      },
+      "final_storage": {
+        "0": 17
+      }
+    },
+    {
+      "name": "multihop_abstract_hook_dispatches_to_leaf",
+      "function": "abstractCall",
+      "args": [],
+      "expect": {
+        "return": [
+          7
+        ]
+      }
+    },
+    {
+      "name": "initialization_calls_base_body_with_virtual_nested_call",
+      "deploy": true,
+      "args": [],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 107,
+        "3": 308
+      }
+    },
+    {
+      "name": "static_storage_pointer_is_a_value_and_writable_location",
+      "function": "storagePointer",
+      "args": [],
+      "expect": {
+        "return": [
+          12,
+          19
+        ]
+      },
+      "final_storage": {
+        "1": 12,
+        "2": 19
+      }
+    }
+  ]
+}
