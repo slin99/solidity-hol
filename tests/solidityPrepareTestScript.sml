@@ -11,6 +11,7 @@ fun holbuild_extra_deps (_ : string list) = ()
 val () = holbuild_extra_deps [
   "../SOLIDITY_PIN", "../profiles/solc-0.8.37-via-ir-osaka.json",
   "../testdata/frontend/expected/pure_core.json",
+  "../testdata/frontend/expected/qualified_unsupported_event.json",
   "../profiles/solc-0.8.37-via-ir-osaka-optimized.json",
   "../testdata/frontend/expected/stack_depth.json"
 ]
@@ -31,6 +32,20 @@ Theorem prepared_program_checked:
 Proof
   CONV_TAC cv_eval
 QED
+
+(* An unsupported qualified event must not reject unrelated functions. *)
+val qualified_event_artifact = solidityPrepareLib.prepare_artifact
+  {root = "..", path = "../testdata/frontend/expected/qualified_unsupported_event.json",
+   source = "testdata/frontend/qualified_unsupported_event.sol"};
+val qualified_event_functions = #functions (#prepared qualified_event_artifact);
+val () =
+  case List.find (fn {name, ...} => name = "supported") qualified_event_functions of
+    SOME {reason = NONE, ...} => ()
+  | _ => raise Fail "supported: rejected by an unrelated qualified event";
+val () =
+  case List.find (fn {name, ...} => name = "emitsUnsupported") qualified_event_functions of
+    SOME {reason = SOME _, ...} => ()
+  | _ => raise Fail "emitsUnsupported: not marked unsupported";
 
 fun rejects expected work =
   (work (); raise Fail "preparation unexpectedly accepted input")

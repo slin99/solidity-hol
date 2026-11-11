@@ -721,6 +721,14 @@ fun is_library_member v =
        List.exists (fn (i, _) => i = JSONUtil.asIntInf d) (!library_members)
    | NONE => false)
 
+(* Base.f names a declaration; its receiver has no runtime evaluation. *)
+fun is_base_member v =
+  node_type v = "MemberAccess" andalso
+  String.isPrefix "t_function_internal_" (raw_type_id v) andalso
+  String.isPrefix "t_type$_t_contract$_" (raw_type_id (field v "expression")) andalso
+  unevaluated_receiver (field v "expression") andalso
+  not (is_library_member v)
+
 fun is_attached v =
   String.isSubstring "$attached_to$"
     (string_field (field v "typeDescriptions") "typeIdentifier")
@@ -1048,6 +1056,12 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                 if List.exists (fn x => x = r) (!super_calls) then ()
                 else super_calls := !super_calls @ [r];
                 con "SrcSuperCall"
+                  [info v, mk_num r, listSyntax.mk_list (args, expr_ty),
+                   argument_order v r 0, type_id v]
+              end
+            else if is_base_member callee then
+              let val r = int_field callee "referencedDeclaration" in
+                con "SrcBaseCall"
                   [info v, mk_num r, listSyntax.mk_list (args, expr_ty),
                    argument_order v r 0, type_id v]
               end
@@ -1483,7 +1497,11 @@ fun stmt v = guarded (fn st => [StmtChild st]) unsupported_stmt (fn v => within 
             val args = JSONUtil.arrayMap expr (field call "arguments")
             val ev = int_field (field call "expression") "referencedDeclaration"
           in
-            within (field call "expression") (fn e => expect e "Identifier");
+            within (field call "expression") (fn e =>
+              require e (node_type e = "Identifier" orelse
+                         (node_type e = "MemberAccess" andalso
+                          unevaluated_receiver (field e "expression")))
+                "unsupported event name");
             con "SrcEmit"
               [info v, mk_num ev, listSyntax.mk_list (args, expr_ty),
                argument_order call ev 0]
@@ -1539,7 +1557,7 @@ val failed_modifiers : (IntInf.int * string list) list ref = ref []
  * resolve to it. Blockers in its header reject the unit too, and so does a
  * header the importer cannot represent at all. A fallback with parameters or
  * returns is unsupported likewise: the core's fallback takes neither. *)
-fun function modifier_target v = within v (fn v =>
+fun function modifier_target function_statics v = within v (fn v =>
   let
     val () = super_calls := []
     val ((params_id, params, returns_id, returns), header) = with_blockers (fn () =>
@@ -1603,6 +1621,8 @@ fun function modifier_target v = within v (fn v =>
           (modifiers, pairSyntax.mk_prod
                         (numSyntax.num, listSyntax.mk_list_type expr_ty))),
        ("fn_super_calls", listSyntax.mk_list (map mk_num supers, numSyntax.num)),
+       ("fn_static_calls", listSyntax.mk_list
+          (map mk_num (function_statics v), numSyntax.num)),
        ("fn_body", body),
        ("fn_unsupported",
         mk_opt stringSyntax.string_ty
@@ -1693,6 +1713,16 @@ fun super_members (v as JSON.OBJECT fields) =
       List.concat (map (super_members o #2) fields)
   | super_members (JSON.ARRAY vs) = List.concat (map super_members vs)
   | super_members _ = []
+
+(* Only a call executes a static member; f.selector does not. *)
+fun static_references (v as JSON.OBJECT fields) =
+      (if JSONUtil.testField "nodeType"
+            (fn JSON.STRING s => s = "FunctionCall" | _ => false) v andalso
+          is_base_member (field v "expression")
+       then [int_field (field v "expression") "referencedDeclaration"] else []) @
+      List.concat (map (static_references o #2) fields)
+  | static_references (JSON.ARRAY vs) = List.concat (map static_references vs)
+  | static_references _ = []
 
 (* The declarations the nodes of v refer to. *)
 fun references (v as JSON.OBJECT fields) =
@@ -1797,17 +1827,6 @@ fun contract external_structs contracts declared v = within v (fn v =>
                functions
            end)
         (super_members f)
-    fun close live [] = live
-      | close live (f :: fs) =
-          let
-            val new = List.foldl
-                        (fn (g, acc) =>
-                           if List.exists (same_id g) (live @ acc) then acc else acc @ [g])
-                        [] (super_targets f)
-          in close (live @ new) (fs @ new) end
-    val live =
-      let val start = List.filter (not o is_overridden) functions
-      in close start start end
     val modifier_definitions = members_of "ModifierDefinition" bases
     fun overridden_modifiers m =
       case optional_field m "baseModifiers" of
@@ -1829,6 +1848,36 @@ fun contract external_structs contracts declared v = within v (fn v =>
                SOME (_, target) => target
              | NONE => id
       end
+    fun invoked_modifiers f =
+      List.mapPartial
+        (fn i => case optional_field i "kind" of
+                   SOME (JSON.STRING "modifierInvocation") =>
+                     let val id = modifier_target (field i "modifierName") in
+                       List.find (fn m => int_field m "id" = id) modifier_definitions
+                     end
+                 | _ => NONE)
+        (JSONUtil.arrayMap I (field f "modifiers"))
+    fun function_statics f =
+      static_references f @ List.concat (map static_references (invoked_modifiers f))
+    val root_statics =
+      List.concat (map static_references
+        (List.concat (map (fn c =>
+           List.filter (fn m => node_type m <> "FunctionDefinition" andalso
+                               node_type m <> "ModifierDefinition") (nodes c) @
+           JSONUtil.arrayMap I (field c "baseContracts")) bases)))
+    fun static_targets ids =
+      List.filter (fn f => List.exists (fn id => id = int_field f "id") ids) functions
+    fun close live [] = live
+      | close live (f :: fs) =
+          let
+            val new = List.foldl
+                        (fn (g, acc) =>
+                           if List.exists (same_id g) (live @ acc) then acc else acc @ [g])
+                        [] (super_targets f @ static_targets (function_statics f))
+          in close (live @ new) (fs @ new) end
+    val live =
+      let val start = List.filter (not o is_overridden) functions @ static_targets root_statics
+      in close start start end
     val invoked =
       List.concat
         (map (fn f => List.mapPartial
@@ -1877,6 +1926,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
               "library variables are not supported"
         | "ModifierDefinition" => ()
         | "ErrorDefinition" => ()
+        | "EventDefinition" => ()
         | "EnumDefinition" => ()
         | "UserDefinedValueTypeDefinition" => ()
         | other => fail (describe m ^ ": unsupported library member " ^ other))))
@@ -1979,6 +2029,16 @@ fun contract external_structs contracts declared v = within v (fn v =>
                    | NONE => NONE)
           (JSONUtil.arrayMap JSONUtil.asIntInf (field x "linearizedBaseContracts"))
       end
+    val inherited_events = members_of "EventDefinition" bases
+    val event_ids = List.concat (map references (reachable_bases @ used_members))
+    val external_events =
+      List.mapPartial
+        (fn (id, d) =>
+           if node_type d = "EventDefinition" andalso
+              List.exists (fn i => i = id) event_ids andalso
+              not (List.exists (same_id d) inherited_events)
+           then SOME d else NONE)
+        (!selector_declarations)
     (* before the functions, which need the modifiers that failed *)
     val imported_modifiers =
       modifiers (List.filter reachable modifier_definitions @
@@ -2013,6 +2073,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
               List.filter (fn d => node_type d = "VariableDeclaration")
                 used_members),
            pairSyntax.mk_prod (variable_ty, expr_ty))),
+       ("contract_static_calls", listSyntax.mk_list (map mk_num root_statics, numSyntax.num)),
        ("contract_base_arguments", listSyntax.mk_list
           (List.concat (map base_arguments bases),
            pairSyntax.list_mk_prod
@@ -2030,17 +2091,17 @@ fun contract external_structs contracts declared v = within v (fn v =>
              (!enum_declarations),
            pairSyntax.mk_prod (numSyntax.num, numSyntax.num))),
        ("contract_events", listSyntax.mk_list
-          (keep_all event (members_of "EventDefinition" bases), event_ty)),
+          (keep_all event (inherited_events @ external_events), event_ty)),
        ("contract_modifiers", listSyntax.mk_list
           (imported_modifiers, import_type "src_modifier")),
        ("contract_functions",
         listSyntax.mk_list
-          (keep_all (function modifier_target)
+          (keep_all (function modifier_target function_statics)
              (List.filter (fn f => bool_field f "implemented")
                 (members_of "FunctionDefinition" bases)),
            function_ty)),
        ("contract_library_functions",
-        listSyntax.mk_list (keep_all (function modifier_target) library_functions, function_ty)),
+        listSyntax.mk_list (keep_all (function modifier_target function_statics) library_functions, function_ty)),
        ("contract_getters", listSyntax.mk_list
           (List.mapPartial
              (fn d => if string_field d "visibility" = "public" then
@@ -2171,6 +2232,7 @@ fun import_unit units v contracts = within v (fn v =>
       | "VariableDeclaration" => NONE
       | "EnumDefinition" => NONE
       | "ErrorDefinition" => NONE
+      | "EventDefinition" => NONE
       | "UsingForDirective" => NONE
       | "ContractDefinition" =>
           if string_field m "contractKind" = "interface" orelse
