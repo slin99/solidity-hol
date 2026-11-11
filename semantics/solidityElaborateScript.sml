@@ -2179,8 +2179,10 @@ Definition elab_assembly_reference_def:
              LocatedT MemoryLoc t =>
                if byte_sequence_type t then INL (([], AssemblyMemory (AstId x) t), n)
                else INR [(id, "assembly reference of this type")]
-           | LocatedT CalldataLoc (ArrayT _ (SOME _)) =>
-               INL (([], AssemblyCalldataOffset (AstId x)), n)
+           | LocatedT CalldataLoc t =>
+               if calldata_object_type t ∧ ¬calldata_slice_type t then
+                 INL (([], AssemblyCalldataOffset (AstId x)), n)
+               else INR [(id, "assembly reference of this type")]
            | _ => INR [(id, "assembly reference of this type")])
     | NONE =>
       case ALOOKUP ctx.constants x of
