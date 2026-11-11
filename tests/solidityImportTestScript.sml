@@ -12,6 +12,7 @@ Libs
 fun holbuild_extra_deps (_ : string list) = ()
 val () = holbuild_extra_deps [
   "../testdata/frontend/expected/pure_core.json",
+  "../testdata/frontend/expected/struct_state.json",
   "../testdata/differential/expected/storage.json",
   "../testdata/differential/expected/mappings.json",
   "../testdata/differential/expected/storage_arrays.json",
@@ -400,6 +401,18 @@ val () =
       [": unsupported expression UnknownTarget", "typed catch clauses are not supported"]
   end
 
+(* A state variable of a struct left out (a string-keyed mapping member)
+ * rejects the unit at import, rather than reaching the core unchecked. *)
+val () =
+  case (ignore (import_artifact "../testdata/frontend/expected/struct_state.json"
+                  "testdata/frontend/struct_state.sol"); NONE)
+       handle ImportError msg => SOME msg of
+    SOME msg =>
+      if String.isSubstring "state variable of a struct the core cannot hold" msg
+      then ()
+      else raise Fail ("state variable of a left-out struct: " ^ msg)
+  | NONE => raise Fail "state variable of a left-out struct: imported"
+
 (* An unsupported call option does not hide the blockers of the receiver. *)
 val () =
   expect_function_lines "gas option on an unsupported receiver"
@@ -772,7 +785,9 @@ Definition struct_unit_def:
 End
 val () = cv_auto_trans struct_unit_def;
 
-val () = edited_unit_with struct_contracts "struct_type_identity_mismatch"
+(* A member type naming another struct than its annotation leaves the struct
+ * out, and the state variables of that struct then reject the unit. *)
+val () = import_error_with Unsupported struct_contracts "struct type identity mismatch"
   (edit_first "UserDefinedTypeName"
     (set_field "referencedDeclaration" (JSON.INT 999999)) struct_ast)
 
@@ -782,12 +797,6 @@ val () = edited_unit_with struct_contracts "struct_field_identity_mismatch"
 
 val () = edited_unit_with struct_contracts "struct_field_type_mismatch"
   (edit_first "MemberAccess" (type_identifier "t_uint16") struct_ast)
-
-Theorem struct_type_identity_checked:
-  ¬valid_src_unit struct_type_identity_mismatch
-Proof
-  CONV_TAC cv_eval
-QED
 
 (* A public struct has a getter when each member it returns is a value or a
  * byte sequence: item's members are values, nested's include a struct. *)

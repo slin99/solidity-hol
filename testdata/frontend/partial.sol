@@ -30,12 +30,17 @@ library Hooks {
     }
 }
 
-// A mapping key type the core cannot hold: the struct is left out too.
+// Mapping key types the core cannot hold: the structs are left out too.
 library Roles {
     enum Role { A, B }
 
     struct Grant {
         mapping(Role => bool) granted;
+        uint8 n;
+    }
+
+    struct Named {
+        mapping(string => uint256) m;
         uint8 n;
     }
 }
@@ -92,6 +97,12 @@ contract Partial is Mid {
         Roles.Grant storage g;
         assembly { g.slot := 0 }
         return g.n;
+    }
+
+    function namedCount() internal view returns (uint8) {
+        Roles.Named storage r;
+        assembly { r.slot := 0 }
+        return r.n;
     }
 
     fallback() external {
