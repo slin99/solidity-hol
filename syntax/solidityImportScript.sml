@@ -98,6 +98,7 @@ Datatype:
     var_scope : num;
     var_type_name : src_type_name;
     var_type_id : string;
+    var_transient : bool;
     var_location : data_location option
   |>
 End
@@ -298,6 +299,7 @@ End
 Datatype:
   src_storage_entry = <|
     storage_id : num;
+    storage_backend : storage_backend;
     storage_slot : num;
     storage_offset : num;
     storage_type_id : string
@@ -420,7 +422,7 @@ Definition normalize_type_name_def:
   (normalize_type_name (SrcMappingTypeName _ key value) =
     case (normalize_type_name key, normalize_type_name value) of
       (SOME k, SOME v) =>
-        if is_elementary_type k then SOME (MappingT k v) else NONE
+        if is_elementary_type k ∨ byte_sequence_type k then SOME (MappingT k v) else NONE
     | _ => NONE)
 End
 
@@ -660,7 +662,8 @@ Proof
   Induct_on ‘tn’ >> rw[normalize_type_name_def, AllCaseEqs()] >>
   imp_res_tac elementary_type_valid >>
   imp_res_tac elementary_type_outer_free >>
-  gvs[valid_type_shape_def, outer_location_free_def, valid_array_length_def] >>
+  gvs[valid_type_shape_def, outer_location_free_def, valid_array_length_def,
+      solidityCoreWfTheory.byte_sequence_type_def, valid_mapping_key_def] >>
   metis_tac[elementary_mapping_key]
 QED
 
@@ -751,7 +754,10 @@ Definition storage_type_identifier_def:
   (storage_type_identifier (ArrayT element NONE) =
     "t_array$_" ++ storage_type_identifier element ++ "_$dyn_storage") ∧
   (storage_type_identifier (MappingT key value) =
-    "t_mapping$_" ++ storage_type_identifier key ++ "_$_" ++
+    "t_mapping$_" ++
+    (if key = BytesT then "t_bytes_memory_ptr"
+     else if key = StringT then "t_string_memory_ptr"
+     else storage_type_identifier key) ++ "_$_" ++
     storage_type_identifier value ++ "_$") ∧
   (storage_type_identifier _ = "")
 End
@@ -764,7 +770,10 @@ Definition storage_layout_identifier_def:
   (storage_layout_identifier (ArrayT element NONE) =
     "t_array(" ++ storage_layout_identifier element ++ ")dyn_storage") ∧
   (storage_layout_identifier (MappingT key value) =
-    "t_mapping(" ++ storage_layout_identifier key ++ "," ++
+    "t_mapping(" ++
+    (if key = BytesT then "t_bytes_memory_ptr"
+     else if key = StringT then "t_string_memory_ptr"
+     else storage_layout_identifier key) ++ "," ++
     storage_layout_identifier value ++ ")") ∧
   (storage_layout_identifier (StructT (AstId id)) =
     "t_struct()" ++ toString id ++ "_storage") ∧
@@ -818,6 +827,7 @@ End
  *)
 Definition variable_type_def:
   variable_type (v : src_variable) =
+    if v.var_transient then NONE else
     case normalize_type_name v.var_type_name of
       SOME ty =>
         if byte_sequence_type ty ∨
@@ -862,6 +872,7 @@ End
  * unlike state declarations. Mappings retain their ordinary identifier. *)
 Definition field_variable_type_def:
   field_variable_type (v : src_variable) =
+    if v.var_transient then NONE else
     case normalize_type_name v.var_type_name of
       SOME ty =>
         let suffix = case ty of ArrayT _ _ => "_ptr" | StructT _ => "_ptr"
@@ -1136,7 +1147,11 @@ Definition state_variable_def:
     if ¬MEM v.var_scope bases then NONE else
     case normalize_type_name v.var_type_name of
       SOME ty =>
-        if byte_sequence_type ty then
+        if v.var_transient then
+          if v.var_location = NONE ∧ is_stored_scalar_type ty ∧
+             source_type_matches ty v.var_type_id
+          then SOME (v.var_info.node_id, ty) else NONE
+        else if byte_sequence_type ty then
           if v.var_location = NONE ∧ source_type_matches ty v.var_type_id then
             SOME (v.var_info.node_id, ty) else NONE
         else scoped_variable v.var_scope v
@@ -1147,7 +1162,7 @@ End
  * type its references have: byte sequences are in memory. *)
 Definition constant_variable_def:
   constant_variable bases (v : src_variable) =
-    if ¬MEM v.var_scope bases ∨ IS_SOME v.var_location then NONE else
+    if ¬MEM v.var_scope bases ∨ IS_SOME v.var_location ∨ v.var_transient then NONE else
     case normalize_type_name v.var_type_name of
       SOME ty =>
         let ty' = if byte_sequence_type ty then LocatedT MemoryLoc ty else ty in
@@ -1166,6 +1181,7 @@ End
 (* An immutable, declared by one of the contract's bases, of elementary type. *)
 Definition immutable_variable_def:
   immutable_variable bases (v : src_variable) =
+    if v.var_transient then NONE else
     case state_variable bases v of
       SOME (x, ty) => if is_elementary_type ty then SOME (x, ty) else NONE
     | NONE => NONE
@@ -1324,8 +1340,8 @@ Definition getter_shape_def:
   getter_shape structs ty =
     case ty of
       MappingT key value =>
-        if is_elementary_type key then
-          OPTION_MAP (λ(ps, r). (key :: ps, r)) (getter_shape structs value)
+        if is_elementary_type key ∨ byte_sequence_type key then
+          OPTION_MAP (λ(ps, r). (mapping_key_type key :: ps, r)) (getter_shape structs value)
         else NONE
     | ArrayT element _ =>
         OPTION_MAP (λ(ps, r). (UintT 256 :: ps, r)) (getter_shape structs element)
@@ -1364,6 +1380,8 @@ Definition storage_layout_ok_def:
   (storage_layout_ok fields [] [] ⇔ T) ∧
   (storage_layout_ok fields ((v : src_variable) :: vs) (e :: es) ⇔
      e.storage_id = v.var_info.node_id ∧
+     e.storage_backend = (if ¬fields ∧ v.var_transient
+                          then TransientStorage else PersistentStorage) ∧
      (case (if fields then field_variable_type v
             else OPTION_MAP SND (state_variable [v.var_scope] v)) of
         SOME ty => canonical_storage_identifier 0 0 e.storage_type_id = storage_layout_identifier ty

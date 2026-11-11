@@ -539,7 +539,7 @@ End
 (* The atom a call gives its option k, from the call's options in source
  * order and their atoms. *)
 Definition option_atom_def:
-  (option_atom k (k' :: ks) (a :: as) =
+  (option_atom (k : call_option) (k' :: ks) (a :: as) =
     if k = k' then SOME a else option_atom k ks as) ∧
   (option_atom k _ _ = NONE)
 End
@@ -1784,8 +1784,8 @@ Definition elab_expr_def:
              ensure (source_type_matches value tid) (info.node_id, "type annotation mismatch")
              (case elab_expr ctx n1 index of
                 INL ((si, a, vt), n2) =>
-                  (case coerce n2 key a vt of
-                     INL ((cs, a'), n3) =>
+                  (case convert_operand n2 (EncodedAs (mapping_key_type key)) a vt of
+                     INL ((cs, _, a'), n3) =>
                        INL ((ss ++ si ++ cs ++
                              [DefineStmt (AstId n3) (ReferenceType value)
                                (NavigateOperation value ref (IndexNavigation a'))],
@@ -2637,6 +2637,7 @@ Definition core_state_variables_def:
     case core_state_variables vs es of
       SOME cvs =>
         SOME (<| state_id := AstId x; state_type := ty;
+                 state_backend := e.storage_backend;
                  state_slot := n2w e.storage_slot;
                  state_offset := e.storage_offset |> :: cvs)
     | NONE => NONE) ∧

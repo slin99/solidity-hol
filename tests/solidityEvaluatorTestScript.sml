@@ -281,7 +281,7 @@ QED
  * 0, and returns it read back. *)
 
 Definition counter_def:
-  counter = <| state_id := AstId 200; state_type := u8; state_slot := 0w;
+  counter = <| state_id := AstId 200; state_type := u8; state_backend := PersistentStorage; state_slot := 0w;
                state_offset := 1 |>
 End
 
@@ -1090,6 +1090,93 @@ Theorem asm_memory_assign_rule:
   assembly_assigns_ok ["b"] [YulAssign ["x"] (YulName "b")]
 Proof
   EVAL_TAC
+QED
+
+Definition transient_counter_run_def:
+  transient_counter_run st x =
+    invoke_source 10
+      (core_program_environment (storage_program [counter with state_backend := TransientStorage]))
+      (AstId 20) [ScalarValue (IntegerValue x)] st []
+End
+
+Definition transient_counter_state_def:
+  transient_counter_state = initial_state with world := initial_state.world with
+    transient := update_transient_storage 0w (update_storage 0w 0xaabbccw empty_storage)
+      (update_transient_storage 7w (update_storage 0w 123w empty_storage)
+        empty_transient_storage)
+End
+
+val () = cv_auto_trans transient_counter_run_def;
+val () = cv_auto_trans transient_counter_state_def;
+
+Theorem transient_scalar_writes_preserve_other_bytes_and_accounts:
+  (transient_counter_run transient_counter_state 5).completion =
+    ReturnCompletion [ScalarValue (IntegerValue 5)] ∧
+  lookup_storage 0w (lookup_transient_storage 0w
+    (transient_counter_run transient_counter_state 5).state.world.transient) = 0xaa05ccw ∧
+  lookup_storage 0w (lookup_transient_storage 7w
+    (transient_counter_run transient_counter_state 5).state.world.transient) = 123w ∧
+  lookup_storage 0w (lookup_account 0w
+    (transient_counter_run transient_counter_state 5).state.world.accounts).storage = 0w
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem transient_static_write_rejected:
+  (transient_counter_run static_state 5).completion = InvalidCompletion "bad scalar write"
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem transient_aggregate_state_rejected:
+  storage_wf [counter with state_backend := TransientStorage] ∧
+  wf_core_state_variable (core_program_environment (storage_program []))
+    (counter with <| state_type := MappingT (UintT 256) (UintT 8);
+      state_offset := 0 |>) ∧
+  ¬wf_core_state_variable (core_program_environment (storage_program []))
+    (counter with <| state_backend := TransientStorage;
+      state_type := MappingT (UintT 256) (UintT 8); state_offset := 0 |>)
+Proof
+  EVAL_TAC
+QED
+
+(* Canonical packed values survive their neighboring bytes; invalid bool and
+ * enum bytes fail closed in transient storage just as in persistent storage. *)
+Definition transient_read_test_def:
+  transient_read_test word ty =
+    read_storage_reference
+      (core_program_environment (storage_program [] with
+        type_declarations := [(AstId 900, EnumDeclaration 3)]))
+      (initial_state.world with transient :=
+        update_transient_storage 7w (update_storage 3w word empty_storage)
+          empty_transient_storage)
+      ty (StorageReference TransientStorage 7w 3w 1 ty (LayoutId 0))
+End
+
+val () = cv_auto_trans transient_read_test_def;
+
+Theorem transient_bool_reads_fail_closed:
+  transient_read_test 0xaa0000w BoolT = ValueOk (ScalarValue (BoolValue F)) ∧
+  transient_read_test 0xaa0100w BoolT = ValueOk (ScalarValue (BoolValue T)) ∧
+  transient_read_test 0xaa0200w BoolT =
+    ValueAbrupt (InvalidCompletion "bad storage read") ∧
+  transient_read_test 0xaaff00w BoolT =
+    ValueAbrupt (InvalidCompletion "bad storage read")
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem transient_enum_reads_fail_closed:
+  transient_read_test 0xaa0000w (EnumT (AstId 900)) =
+    ValueOk (ScalarValue (IntegerValue 0)) ∧
+  transient_read_test 0xaa0200w (EnumT (AstId 900)) =
+    ValueOk (ScalarValue (IntegerValue 2)) ∧
+  transient_read_test 0xaa0300w (EnumT (AstId 900)) =
+    ValueAbrupt (InvalidCompletion "bad storage read") ∧
+  transient_read_test 0xaaff00w (EnumT (AstId 900)) =
+    ValueAbrupt (InvalidCompletion "bad storage read")
+Proof
+  CONV_TAC cv_eval
 QED
 
 (* Return data across the source and its blocks: a procedure running the

@@ -326,7 +326,7 @@ Theorem declaration_body_and_tuple_fraction_rejected:
                                     loc_source := 0 |> |>;
       x = <| var_info := info with node_id := 1; var_name := "x"; var_scope := 0;
              var_type_name := SrcElementaryTypeName info "uint256" NONE;
-             var_type_id := "t_uint256"; var_location := NONE |>;
+             var_type_id := "t_uint256"; var_transient := F; var_location := NONE |>;
       d = SrcVariableDeclarationStatement info [SOME 1] [SOME x] NONE;
       c = SrcLiteral info BoolLiteral "true" "t_bool";
       half = SrcLiteral info NumberLiteral "" "t_rational_1_by_2";
@@ -381,7 +381,7 @@ val ctx0 = “<| functions := []; supers := []; structs := []; enums := [];
                scope := 0; returns_id := 0; in_loop := F; bad_ids := [] |>”;
 fun local_y tn = “<| var_info := ^(at 4); var_name := "y"; var_scope := 0;
                      var_type_name := ^tn; var_type_id := "t_uint256";
-                     var_location := NONE |>”;
+                     var_transient := F; var_location := NONE |>”;
 val supported_y = local_y “SrcElementaryTypeName ^(at 7) "uint256" NONE”;
 val unsupported_y = local_y “SrcUnsupportedTypeName ^(at 7) "function type"”;
 val read_y = “SrcExpressionStatement ^(at 5) (SrcIdentifier ^(at 6) "y" 4 "t_uint256")”;

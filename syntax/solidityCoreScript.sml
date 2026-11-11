@@ -235,6 +235,7 @@ End
 Datatype:
   core_state_variable = <|
     state_id : ast_id;
+    state_backend : storage_backend;
     state_type : sol_type;
     state_slot : bytes32;
     state_offset : num
