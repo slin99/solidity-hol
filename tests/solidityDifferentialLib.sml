@@ -40,6 +40,17 @@ fun prepared_constants prefix (prepared : solidityPrepareLib.prepared) =
     val _ = named "_source_valid" (#source_valid prepared)
     val _ = named "_elaborates" (#elaborates prepared)
     val _ = named "_program_wf" (#core_wf prepared)
+    (* Independently calculate every supplied solc struct layout. This also
+     * runs for suites whose cases never navigate a struct field. *)
+    fun check_layouts c =
+      let val structs = record_field "contract_structs" c in
+        EQT_ELIM (cv_eval
+          “SOME (computed_struct_layouts (LENGTH ^structs) ^structs) =
+           elab_struct_layouts ^structs”)
+      end
+    val _ = save_thm (prefix ^ "_struct_layouts_match_solc",
+      LIST_CONJ (map check_layouts
+        (fst (listSyntax.dest_list (record_field "unit_contracts" (#unit prepared))))))
   in
     (lhs (concl unit_def), lhs (concl program_def))
   end

@@ -140,7 +140,10 @@ selectors. Contract definitions record inheritance-related and used-event/error
 metadata. Inheritance needs two of these annotations (the differential fixture
 `inheritance.sol`): the importer flattens a contract along its
 `linearizedBaseContracts`, and `call_table` resolves overrides through each
-function's `baseFunctions`. Base-constructor specifiers on constructors
+function's `baseFunctions`. A public state variable, constant or immutable may
+override an external function. The importer removes the transitively replaced
+functions using the variable's `baseFunctions`, leaving its getter as the sole
+dispatch entry for that selector. Base-constructor specifiers on constructors
 (`constructors.sol`) use their `referencedDeclaration`. Unqualified modifier
 invocations resolve through the transitive `baseModifiers` relation in the
 contract's linearization; explicitly qualified `Base.modifier` invocations
@@ -373,7 +376,7 @@ argument or an external call's argument. A call or creation whose enum
 argument is out of range reverts when the decoder reaches it, before later arguments are read.
 `type(E).min` and `type(E).max` are the first and last enum values.
 Enums as mapping keys, as elements of memory or calldata
-arrays, as constants, immutables or error parameters, or returned by an
+arrays, as constants or immutables, or returned by an
 external call are rejected.
 
 `keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
@@ -400,8 +403,23 @@ function-typed value is rejected, and so are `sha256` and `ripemd160`.
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
 type the compiler gives the whole expression, which must be a value type,
 a memory reference or a tuple of supported component types (a memory operand
-is the same reference, not a copy). Conditionals of storage, calldata or
-function type are rejected.
+is the same reference, not a copy). Conditionals of storage or calldata
+type are rejected.
+
+An internal function value names a function by its declaration: a private,
+internal or public function, a library's internal function (`L.f`) or a
+free function, resolved as a call of it would be, so a virtual function is
+its most derived override. Its type keeps the declared mutability, and a
+pure function converts implicitly to view and nonpayable function types, a
+view one to nonpayable. A call through a value evaluates the callee
+expression first and copies its value, then the arguments in order; the zero
+value, held by a local or named return never assigned, panics with 0x51
+after the arguments, as the compiler's internal dispatch does. Parameters
+and returns of a function type must be value types other than function
+types. External function values, function values in storage, arrays,
+structs, events, the ABI or inline assembly, and comparisons of function
+values are rejected; a function-typed state variable, or an external
+function type in a function's header, rejects the whole unit.
 
 `abi.encode`, `abi.encodePacked`, `abi.encodeWithSelector` and
 `abi.encodeWithSignature` give a new memory `bytes`, allocated as the
@@ -575,8 +593,16 @@ inside a struct type identifier, retaining its declaration ID and location.
 slots/offsets and size. Member IDs/types must match the declaration; sizes must
 be positive multiples of a slot. Core layout checks reject fields outside the
 struct's stride, scalar fields crossing a slot boundary, unaligned aggregates,
-and cyclic inline containment. Layout calculation and byte disjointness remain
-trusted compiler work. Unused declarations need no runtime layout.
+and cyclic inline containment. When solc omits a struct layout (for example, a
+type used only through a storage pointer), elaboration computes it from the declared member types using
+Solidity's [storage packing rules](https://docs.soliditylang.org/en/v0.8.37/internals/layout_in_storage.html).
+It packs scalar members into slots and aligns structs, arrays, mappings and
+byte sequences to whole slots. Nested struct sizes are resolved in bounded
+rounds over all declarations, independently of declaration order. A struct
+whose members cannot be laid out is omitted. Supplied layouts still undergo
+the same checks and are used unchanged; the differential corpus checks that
+computed layouts equal them. Byte disjointness of supplied layouts remains
+trusted compiler work.
 
 The core program owns semantic struct declarations independently of keyed
 storage layouts, including unused structs with no runtime layout. Its environment
@@ -667,9 +693,9 @@ Admitted: one contract, flattened along its bases, with
 - `require`, `assert` and `revert` with boolean conditions and literal string
   messages; reads of `msg`, `tx` and `block` members and `address(this)`;
   emits of events with scalar, byte-sequence and array parameters (including
-  indexed arrays), and reverts with custom errors with elementary parameters;
-  unsupported event parameter types reject the emitting function, leaving
-  unrelated functions available; `keccak256`, `abi.encode*`, selectors;
+  indexed arrays), and reverts with custom errors with elementary or enum
+  parameters; unsupported event parameter types reject the emitting function,
+  leaving unrelated functions available; `keccak256`, `abi.encode*`, selectors;
 - constants, state-variable initializers, constructors and base-constructor
   arguments (inheritance specifiers or constructor modifiers), which form one
   creation procedure.
@@ -708,8 +734,8 @@ annotations, at the node whose type it computes:
   every scalar result is annotated with its own type, and every other
   annotation decodes to an elementary, rational literal or tuple type.
 
-Left to the compiler: storage layout calculation, that view functions write
-no state variable, and the override metadata (which declarations each
+Left to the compiler: supplied storage layout calculation, that view functions
+write no state variable, and the override metadata (which declarations each
 function overrides, and that functions come most derived first).
 
 ## Partial admission
@@ -771,7 +797,8 @@ effects. Dynamic message expressions remain rejected, including on a successful
 require; future string support must evaluate them on both paths according to
 the compiler profile's argument schedule. A revert with a custom error,
 `revert E(args)`, reverts with the error's 4-byte selector followed by the ABI
-encoding of its arguments, which must be of elementary types.
+encoding of its arguments, which must be elementary values or enums. Enum
+parameters use their declared enum type and encode as `uint8`.
 
 ## Required validation
 

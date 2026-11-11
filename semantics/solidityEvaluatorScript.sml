@@ -1443,6 +1443,15 @@ Definition eval_block_def:
     case eval_atoms st.scopes atoms of
       SOME args => bind_call_result x ty (invoke_source n env f args st gas)
     | NONE => abrupt_result (InvalidCompletion "unbound atom") st gas) ∧
+  (* The zero function value panics after the arguments are evaluated, as the
+   * compiler's internal dispatch does for an unknown function. *)
+  (eval_stmt n env (DefineStmt x ty (FunctionValueCallOperation g atoms)) st gas =
+    case (eval_atom st.scopes g, eval_atoms st.scopes atoms) of
+      (SOME (ScalarValue (InternalFunctionValue (SOME f))), SOME args) =>
+        bind_call_result x ty (invoke_source n env f args st gas)
+    | (SOME (ScalarValue (InternalFunctionValue NONE)), SOME _) =>
+        abrupt_result (PanicCompletion panic_zero_function) st gas
+    | _ => abrupt_result (InvalidCompletion "bad function value call") st gas) ∧
   (eval_stmt n env (IfStmt c ts es) st gas =
     case branch_of st c of
       SOME T => pop_result (eval_block n env ts (push_scope st) gas)
