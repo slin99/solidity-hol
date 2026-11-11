@@ -355,8 +355,8 @@ external call's argument. A call or creation whose enum argument is out of
 range reverts when the decoder reaches it, before later arguments are read.
 `type(E).min` and `type(E).max` are the first and last enum values.
 Enums as mapping keys, as elements of memory or calldata
-arrays, as constants, immutables or error parameters, returned by an
-external call and `delete` are rejected.
+arrays, as constants, immutables or error parameters, or returned by an
+external call are rejected.
 
 `keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
 a `bytes32`. A string or hex literal is hashed directly without allocating
@@ -369,10 +369,10 @@ call to the precompile at address 1 gives. Its arguments are converted to
 `f.selector`, `I.f.selector` and `E.selector` are constants: the selector the
 compiler records on the function, error or event they name (four bytes, or 32
 for an event), also of a library's public function or event, and
-`this.x.selector` is that of a public state variable's getter. The receiver in
-`x.f.selector` must be `this`, a contract, interface or library name,
-possibly qualified by imported modules (`M.I.f.selector`), or an imported
-module (`M.E.selector`), none of which the compiler evaluates.
+`this.x.selector` is that of a public state variable's getter. A contract
+value in `x.f.selector` or `x.getter.selector` is evaluated first, including
+its effects and failures; the selector still comes from the declaration.
+`this`, contract, interface, library and module names need no evaluation.
 `type(I).interfaceId` is the constant XOR of the selectors of the functions
 the interface `I` declares itself, not those it inherits, nor its `fallback`
 or `receive`; `I` must name an interface directly, not through a module, and
@@ -452,6 +452,14 @@ type, including the zero-argument and single-argument forms.
 `address.code.length` reads the account's code size directly, including zero for
 an account without code. The receiver is evaluated once and no memory bytes
 object is allocated. Standalone `address.code` remains unsupported.
+`address.balance` reads the account's current balance from the source world,
+after evaluating its receiver once. Payable and nonpayable addresses use the
+same lookup. `bytesN.length` evaluates its receiver and gives N as a `uint8`.
+`address payable.transfer(value)` evaluates the receiver before the amount
+and runs an empty-data value call with exactly the 2300 gas stipend. Failure
+forwards the callee's revert bytes; success records its return bytes in the
+frame's return-data buffer without allocating memory. Subsequent assembly
+can read that buffer. A failed call or enclosing revert rolls back the transfer.
 
 External calls returning scalar values admit `try ... returns (...) { ... }
 catch (bytes memory reason) { ... }`. Only failure of the external call selects
@@ -676,9 +684,10 @@ annotations, at the node whose type it computes:
   modifier bodies make no super call, and modifier arguments see the
   function's parameters but not its return variables;
 - a fallback takes no parameters and returns nothing, as the core's does;
-- `delete` is not admitted; every scalar result is annotated with its own
-  type, and every other annotation decodes to an elementary, rational literal
-  or tuple type.
+- `delete` captures a scalar destination once and writes its default value,
+  preserving neighboring packed storage. Aggregate deletion is rejected;
+  every scalar result is annotated with its own type, and every other
+  annotation decodes to an elementary, rational literal or tuple type.
 
 Left to the compiler: storage layout calculation, that view functions write
 no state variable, and the override metadata (which declarations each

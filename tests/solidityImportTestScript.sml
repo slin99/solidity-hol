@@ -1207,8 +1207,8 @@ Proof
   CONV_TAC cv_eval
 QED
 
-(* Selectors: only names the compiler does not evaluate may be receivers, and
- * a state variable's selector is its getter's only through this. *)
+(* Selectors retain computed contract receivers. A bare state variable's
+ * selector is a function value's, rather than its getter's. *)
 
 val hashes_fixture = "../testdata/differential/expected/hashes.json"
 val hashes_source = "testdata/differential/hashes.sol"
@@ -1236,9 +1236,9 @@ fun hashes_error name v = import_units_error_with UnsupportedFunction [hashes_ba
 
 val _ = import_source_unit [hashes_base] hashes_ast hashes_contracts
 
-val () = hashes_error "selector through a contract-typed value"
+val _ = import_source_unit [hashes_base]
   (edit_first_where (named "Identifier" "IReceiver") "IReceiver"
-     (type_identifier "t_contract$_IReceiver_$1") hashes_ast)
+     (type_identifier "t_contract$_IReceiver_$1") hashes_ast) hashes_contracts
 
 val () = hashes_error "selector of a state variable through a contract name"
   (edit_first_where (member "total") "this.total"

@@ -172,6 +172,10 @@ Datatype:
 End
 
 Datatype:
+  address_member = AddressCodeLength | AddressBalance
+End
+
+Datatype:
   src_expr
   = SrcIdentifier node_info string num string
   | SrcArrayLength node_info src_expr string
@@ -198,13 +202,14 @@ Datatype:
   | SrcEnumValue node_info src_type_name num string
   | SrcKeccak256 node_info node_info src_expr string
   | SrcModular node_info node_info core_operator (src_expr list) string
-  | SrcAddressCodeLength node_info node_info src_expr string
-  | SrcSelector node_info (byte list) string
+  | SrcAddressMember node_info node_info address_member src_expr string
+  | SrcSelector node_info (byte list) (src_expr option) string
   | SrcEcrecover node_info node_info (src_expr list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
   | SrcAbiDecode node_info node_info src_expr (src_type_name list) string
   | SrcLowLevelCall node_info node_info low_level_kind (call_option list)
       (src_expr list) string
+  | SrcTransfer node_info node_info src_expr src_expr string
   | SrcUnsupportedExpr node_info string (src_expr list)
 End
 
@@ -958,15 +963,20 @@ Definition expr_ids_def:
     info.node_id :: callee.node_id :: expr_ids e) ∧
   (expr_ids (SrcModular info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
-  (expr_ids (SrcAddressCodeLength info member e _) =
-    info.node_id :: member.node_id :: expr_ids e) ∧
-  (expr_ids (SrcSelector info _ _) = [info.node_id]) ∧
+  (expr_ids (SrcAddressMember info member kind e _) =
+    info.node_id ::
+    (case kind of AddressCodeLength => [member.node_id] | AddressBalance => []) ++
+    expr_ids e) ∧
+  (expr_ids (SrcSelector info _ receiver _) =
+    info.node_id :: (case receiver of NONE => [] | SOME e => expr_ids e)) ∧
   (expr_ids (SrcEcrecover info callee args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcAbiEncode info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcLowLevelCall info callee _ _ operands _) =
     info.node_id :: callee.node_id :: exprs_ids operands) ∧
+  (expr_ids (SrcTransfer info callee target value _) =
+    info.node_id :: callee.node_id :: expr_ids target ++ expr_ids value) ∧
   (expr_ids (SrcAbiDecode info callee e tns _) =
     info.node_id :: callee.node_id :: expr_ids e ++ FLAT (MAP type_name_ids tns)) ∧
   (expr_ids (SrcExternalCall info _ _ operands _ _) =

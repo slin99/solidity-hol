@@ -618,18 +618,25 @@ fun unevaluated_receiver r =
     | _ => false
   end
 
-(* f.selector, E.selector, this.f.selector, I.f.selector, this.x.selector for a
- * public state variable: the selector the compiler records on the declaration
- * the base names. In a member base, the receiver must be one the compiler does
- * not evaluate. *)
+(* A bound external function's receiver is evaluated even though its selector
+ * is fixed by the declaration. Contract/module names and this need no work. *)
+fun selector_receiver base =
+  if node_type base = "MemberAccess" andalso
+     not (unevaluated_receiver (field base "expression")) then
+    SOME (field base "expression")
+  else NONE
+
+(* The selector the compiler records on the named declaration, including a
+ * public state variable's getter through a contract receiver. *)
 fun selector_bytes v base =
   let
     val id =
       case node_type base of
         "Identifier" => int_field base "referencedDeclaration"
       | "MemberAccess" =>
-          (require v (unevaluated_receiver (field base "expression"))
-             "selectors of computed values are not supported";
+          (require v (unevaluated_receiver (field base "expression") orelse
+                      String.isPrefix "t_function_external_" (raw_type_id base))
+             "selectors of function values are not supported";
            case optional_field base "referencedDeclaration" of
              SOME d => JSONUtil.asIntInf d
            | NONE => fail (describe v ^ ": unsupported selector"))
@@ -638,12 +645,13 @@ fun selector_bytes v base =
       case List.find (fn (i, _) => i = id) (!selector_declarations) of
         SOME (_, d) => d
       | NONE => fail (describe v ^ ": unsupported selector")
-    (* x.selector and C.x.selector for a variable x are the selector of the
-     * function value it holds; only this.x names x's getter *)
+    (* x.selector and C.x.selector for a variable x name its function value;
+     * this.x and value.x name the getter. *)
     val () = require v (node_type d <> "VariableDeclaration" orelse
                         (node_type base = "MemberAccess" andalso
-                         node_type (field base "expression") = "Identifier" andalso
-                         int_field (field base "expression") "referencedDeclaration" = this_id))
+                         (isSome (selector_receiver base) orelse
+                          (node_type (field base "expression") = "Identifier" andalso
+                           int_field (field base "expression") "referencedDeclaration" = this_id))))
                "selectors of function values are not supported"
     val key =
       case node_type d of
@@ -822,7 +830,7 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                      string_field v "memberName" = "interfaceId" then
                     con "SrcSelector"
                       [info v, interface_id v (int_field arg "referencedDeclaration"),
-                       type_id v]
+                       mk_opt expr_ty NONE, type_id v]
                   else if String.isPrefix "t_type$_t_enum$_" (raw_type_id arg) then
                     let
                       val declaration = int_field arg "referencedDeclaration"
@@ -855,13 +863,20 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                  (* a base that is not admitted is imported for its blockers *)
                  (selector_bytes v base
                   handle ImportError msg => (ignore (expr base); raise ImportError msg)),
-                 type_id v]
+                 mk_opt expr_ty (Option.map expr (selector_receiver base)), type_id v]
             else case string_field v "memberName" of
               "length" =>
                 if is_address_code base then
-                  con "SrcAddressCodeLength"
-                    [info v, info base, expr (field base "expression"), type_id v]
+                  con "SrcAddressMember"
+                    [info v, info base, con "AddressCodeLength" [],
+                     expr (field base "expression"), type_id v]
                 else con "SrcArrayLength" [info v, expr base, type_id v]
+            | "balance" =>
+                (require v (List.exists (fn t => t = raw_type_id base)
+                              ["t_address", "t_address_payable"])
+                   "balance of a non-address";
+                 con "SrcAddressMember"
+                   [info v, info v, con "AddressBalance" [], expr base, type_id v])
             | member =>
                 let val receiver = expr (field v "expression") in
                   require v (member = "push" orelse member = "pop")
@@ -994,6 +1009,14 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                require v (length args = 4) "ecrecover takes four arguments";
                con "SrcEcrecover"
                  [info v, info callee, listSyntax.mk_list (args, expr_ty), type_id v])
+            else if node_type callee = "MemberAccess" andalso
+                    string_field callee "memberName" = "transfer" andalso
+                    not (isSome (optional_field callee "referencedDeclaration")) andalso
+                    raw_type_id (field callee "expression") = "t_address_payable" then
+              (positional ();
+               require v (length args = 1) "transfer takes one argument";
+               con "SrcTransfer"
+                 [info v, info callee, expr (field callee "expression"), hd args, type_id v])
             else if abi_decode then
               (positional (); abi_decode_call v callee args)
             else if node_type callee = "Identifier" andalso
@@ -1234,7 +1257,8 @@ and abi_encode_call v callee =
       | NONE => fail (describe v ^ ": unsupported encodeCall function")
     val () = require v (node_type d = "FunctionDefinition") "abi.encodeCall of a getter is not supported"
     val selector =
-      con "SrcSelector" [info f, mk_bytes d (string_field d "functionSelector"), mk_str "t_bytes4"]
+      con "SrcSelector" [info f, mk_bytes d (string_field d "functionSelector"),
+                         mk_opt expr_ty NONE, mk_str "t_bytes4"]
     val parameters = JSONUtil.arrayMap I (field (field d "parameters") "parameters")
     val () = require v (length arguments = length parameters)
                "abi.encodeCall takes one argument per parameter"
@@ -1726,9 +1750,13 @@ fun static_references (v as JSON.OBJECT fields) =
 
 (* The declarations the nodes of v refer to. *)
 fun references (v as JSON.OBJECT fields) =
-      (* Selectors and using declarations do not execute their references. *)
-      if is_selector v orelse
-         JSONUtil.testField "nodeType"
+      (* Only a selector's computed receiver executes, not the function it
+       * names. Include that receiver's helper and constant dependencies. *)
+      if is_selector v then
+        (case selector_receiver (field v "expression") of
+           SOME receiver => references receiver
+         | NONE => [])
+      else if JSONUtil.testField "nodeType"
            (fn JSON.STRING s => s = "UsingForDirective" | _ => false) v
       then [] else
       List.concat
