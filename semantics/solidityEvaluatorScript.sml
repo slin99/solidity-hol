@@ -1122,13 +1122,15 @@ Definition assembly_reference_word_def:
         (case eval_atom st.scopes a of
            SOME (ScalarValue s) => assembly_word ty s
          | _ => NONE)
-    (* the shared empty byte sequence is the compiler's zero slot, 0x60 *)
+    (* the shared empty byte sequence or dynamic array is the compiler's
+     * zero slot, 0x60; a static array is never it *)
     | AssemblyMemory x ty =>
         (case lookup_binding x st.scopes of
            SOME b =>
              (case b.binding_value of
                 ReferenceValue (MemoryReference (HeapId id) 0 _) =>
-                  if id = 0 then SOME 0x60
+                  if id = 0 then
+                    (case ty of ArrayT _ (SOME _) => NONE | _ => SOME 0x60)
                   else OPTION_MAP (λobj. obj.object_address) (FLOOKUP st.heap id)
               | _ => NONE)
          | NONE => NONE)
@@ -1219,6 +1221,54 @@ Definition object_padding_def:
     (obj.object_address + 32 + obj.object_length)
 End
 
+(* The element type of a memory array a block sees, and whether the array is
+ * dynamic, with a length word before its elements. *)
+Definition assembly_array_def:
+  assembly_array ty =
+    case ty of
+      ArrayT element length =>
+        if assembly_value_type element then SOME (element, length = NONE)
+        else NONE
+    | _ => NONE
+End
+
+(* The words of elements i to i + n - 1 of a memory array, as the compiler
+ * keeps them in memory, a word each. *)
+Definition assembly_element_words_def:
+  (assembly_element_words element obj i 0 = SOME []) ∧
+  (assembly_element_words element obj i (SUC n) =
+    case memory_cell obj element i of
+      ScalarValue s =>
+        (case (assembly_word element s,
+               assembly_element_words element obj (i + 1) n) of
+           (SOME w, SOME bs) => SOME (word_to_bytes_be (n2w w : bytes32) ++ bs)
+         | _ => NONE)
+    | _ => NONE)
+End
+
+(* The memory of an object a block sees, from its address, as solc allocates
+ * it: a byte sequence's length word and data, zero-padded to whole words
+ * where the compiler's memory holds the zeros (object_padded), and an array's
+ * length word if it is dynamic and then a word per element. Padding the
+ * compiler leaves as it was stays unwritten, so a block reading it fails
+ * closed. *)
+Definition assembly_object_bytes_def:
+  assembly_object_bytes obj =
+    let length_word = word_to_bytes_be (n2w obj.object_length : bytes32) in
+    if byte_sequence_type obj.object_type then
+      OPTION_MAP (λbs. length_word ++ bs ++
+                    (if obj.object_padded then
+                       REPLICATE (object_padding obj) 0w
+                     else []))
+        (heap_bytes obj 0 obj.object_length)
+    else
+      case assembly_array obj.object_type of
+        SOME (element, dynamic) =>
+          OPTION_MAP (λbs. (if dynamic then length_word else []) ++ bs)
+            (assembly_element_words element obj 0 obj.object_length)
+      | NONE => NONE
+End
+
 (* Project objects chronologically so newer allocations replace older data.
  * Returndata padding stays unwritten where the compiler does not zero it;
  * assembly reads there fail closed. *)
@@ -1230,14 +1280,9 @@ Definition assembly_project_def:
     | SOME m1 =>
       case FLOOKUP heap (SUC i) of
         SOME obj =>
-          if byte_sequence_type obj.object_type then
-            case heap_bytes obj 0 obj.object_length of
-              SOME bs =>
-                SOME (yul_memory_write m1 obj.object_address
-                  (word_to_bytes_be (n2w obj.object_length : bytes32) ++ bs ++
-                   (if obj.object_padded then
-                      REPLICATE (object_padding obj) 0w
-                    else [])))
+          if assembly_memory_type obj.object_type then
+            case assembly_object_bytes obj of
+              SOME bs => SOME (yul_memory_write m1 obj.object_address bs)
             | NONE => NONE
           else SOME m1
       | NONE => SOME m1)
@@ -1260,17 +1305,28 @@ Definition assembly_machine_def:
          0x40 (word_to_bytes_be (n2w (memory_free_pointer st) : bytes32)))
 End
 
+(* The data of an object a block sees, as (start, length): a byte sequence's
+ * in whole words (a 32-byte mstore at its last byte is in bounds) and an
+ * array's elements, not their length word. *)
+Definition assembly_data_def:
+  assembly_data obj =
+    case assembly_array obj.object_type of
+      SOME (element, dynamic) =>
+        (obj.object_address + (if dynamic then 32 else 0), 32 * obj.object_length)
+    | NONE =>
+        (obj.object_address + 32, obj.object_length + object_padding obj)
+End
+
 (* The memory a block may change and still exit normally, as (start, length)
- * ranges: the scratch space, and the data of each byte sequence object with
- * id 1 to i through their aligned allocation ends, excluding length words. *)
+ * ranges: the scratch space, and the data of each object with id 1 to i the
+ * block sees. *)
 Definition assembly_writable_def:
   (assembly_writable heap 0 = [(0, 64)]) ∧
   (assembly_writable heap (SUC i) =
     case FLOOKUP heap (SUC i) of
       SOME obj =>
-        if byte_sequence_type obj.object_type then
-          (obj.object_address + 32, obj.object_length + object_padding obj) ::
-          assembly_writable heap i
+        if assembly_memory_type obj.object_type then
+          assembly_data obj :: assembly_writable heap i
         else assembly_writable heap i
     | NONE => assembly_writable heap i)
 End
@@ -1293,23 +1349,50 @@ Definition memory_zeros_def:
      FLOOKUP mem a = SOME 0w ∧ memory_zeros mem (a + 1) n)
 End
 
-(* The heap with the bytes of each byte sequence object with id 1 to i read
- * back from the block's final memory, and whether its padding is zero. *)
+(* The cells of n array elements from the words at a in the block's final
+ * memory, from element i; a word must be the one its value is kept as, as a
+ * local's must, since the source keeps no dirty bits. *)
+Definition assembly_read_elements_def:
+  (assembly_read_elements element (m : yul_machine) a i 0 cells = SOME cells) ∧
+  (assembly_read_elements element m a i (SUC n) cells =
+    let w = num_of_be_bytes (yul_memory_read m a 32) in
+    case assembly_value element w of
+      SOME s =>
+        if assembly_word element s = SOME w then
+          assembly_read_elements element m (a + 32) (i + 1) n
+            (cells |+ (i, ScalarValue s))
+        else NONE
+    | NONE => NONE)
+End
+
+(* The heap with each object with id 1 to i the block sees read back from its
+ * final memory: a byte sequence's bytes, and whether its padding is zero, and
+ * an array's elements. *)
 Definition assembly_read_back_def:
-  (assembly_read_back heap 0 (m : yul_machine) = heap) ∧
+  (assembly_read_back heap 0 (m : yul_machine) = SOME heap) ∧
   (assembly_read_back heap (SUC i) m =
-    assembly_read_back
-      (case FLOOKUP heap (SUC i) of
-         SOME obj =>
-           if byte_sequence_type obj.object_type then
-             heap |+ (SUC i, obj with <|
+    case FLOOKUP heap (SUC i) of
+      SOME obj =>
+        if byte_sequence_type obj.object_type then
+          assembly_read_back
+            (heap |+ (SUC i, obj with <|
                object_cells := byte_cells
                  (yul_memory_read m (obj.object_address + 32) obj.object_length);
                object_padded := memory_zeros m.memory
                  (obj.object_address + 32 + obj.object_length)
-                 (object_padding obj) |>)
-           else heap
-       | NONE => heap) i m)
+                 (object_padding obj) |>))
+            i m
+        else
+          (case assembly_array obj.object_type of
+             SOME (element, _) =>
+               (case assembly_read_elements element m (FST (assembly_data obj)) 0
+                       obj.object_length FEMPTY of
+                  SOME cells =>
+                    assembly_read_back
+                      (heap |+ (SUC i, obj with object_cells := cells)) i m
+                | NONE => NONE)
+           | NONE => assembly_read_back heap i m)
+    | NONE => assembly_read_back heap i m)
 End
 
 Definition assembly_world_def:
@@ -1382,13 +1465,14 @@ Definition assembly_result_def:
             (InvalidCompletion "assembly wrote memory outside the scratch space and byte sequence data")
             st gas
         else
-          (case assembly_write_back st.frame.self_address refs st.scopes
-                  r.machine.scopes of
-             SOME scopes =>
+          (case (assembly_write_back st.frame.self_address refs st.scopes
+                   r.machine.scopes,
+                 assembly_read_back st.heap st.next_heap_id r.machine) of
+             (SOME scopes, SOME heap) =>
                normal_result (st with <| world := world; scopes := scopes;
-                   heap := assembly_read_back st.heap st.next_heap_id r.machine;
+                   heap := heap;
                    return_data := assembly_return_data st r.machine |>) gas
-           | NONE =>
+           | _ =>
                abrupt_result (InvalidCompletion "assembly write-back failed")
                  st gas)
     | YulReturn data =>
@@ -1494,6 +1578,15 @@ Definition eval_block_def:
     case eval_atoms st.scopes atoms of
       SOME args => bind_call_result x ty (invoke_source n env f args st gas)
     | NONE => abrupt_result (InvalidCompletion "unbound atom") st gas) ∧
+  (* The zero function value panics after the arguments are evaluated, as the
+   * compiler's internal dispatch does for an unknown function. *)
+  (eval_stmt n env (DefineStmt x ty (FunctionValueCallOperation g atoms)) st gas =
+    case (eval_atom st.scopes g, eval_atoms st.scopes atoms) of
+      (SOME (ScalarValue (InternalFunctionValue (SOME f))), SOME args) =>
+        bind_call_result x ty (invoke_source n env f args st gas)
+    | (SOME (ScalarValue (InternalFunctionValue NONE)), SOME _) =>
+        abrupt_result (PanicCompletion panic_zero_function) st gas
+    | _ => abrupt_result (InvalidCompletion "bad function value call") st gas) ∧
   (eval_stmt n env (IfStmt c ts es) st gas =
     case branch_of st c of
       SOME T => pop_result (eval_block n env ts (push_scope st) gas)
@@ -1569,12 +1662,17 @@ val () = cv_auto_trans yul_substitute_expr_def;
 val () = cv_auto_trans yul_unbind_def;
 val () = cv_auto_trans yul_substitute_stmt_def;
 val () = cv_auto_trans object_padding_def;
+val () = cv_auto_trans assembly_array_def;
+val () = cv_auto_trans assembly_element_words_def;
+val () = cv_auto_trans assembly_object_bytes_def;
 val () = cv_auto_trans assembly_project_def;
 val () = cv_auto_trans assembly_machine_def;
+val () = cv_auto_trans assembly_data_def;
 val () = cv_auto_trans assembly_writable_def;
 val () = cv_auto_trans without_range_def;
 val () = cv_auto_trans without_ranges_def;
 val () = cv_auto_trans memory_zeros_def;
+val () = cv_auto_trans assembly_read_elements_def;
 val () = cv_auto_trans assembly_read_back_def;
 val () = cv_auto_trans assembly_world_def;
 val () = cv_auto_trans assembly_write_one_def;

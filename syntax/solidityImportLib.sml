@@ -399,6 +399,10 @@ fun type_name v = guarded (fn _ => []) unsupported_type_name (fn v => within v (
       in
         con "SrcArrayTypeName" [info v, base, mk_num n]
       end)
+  | "FunctionTypeName" =>
+      (require v (string_field v "visibility" = "internal")
+         "external function types are not supported";
+       con "SrcFunctionTypeName" [info v, type_id v])
   | other => fail (describe v ^ ": unsupported type name " ^ other))) v
 
 (* Declarations *)
@@ -435,8 +439,9 @@ fun declaration state v = within v (fn v =>
          "immutable variables are not supported";
        require v (state orelse not (isSome (optional_field v "value")))
          "declaration values are not supported";
-       require v (not (isSome (optional_field v "overrides")))
-         "overriding state variables are not supported"));
+       require v (not (isSome (optional_field v "overrides")) orelse
+                  state andalso string_field v "visibility" = "public")
+         "only public state variables can override functions"));
     imported
   end)
 
@@ -1817,8 +1822,10 @@ fun constant_declaration v = within v (fn v =>
     val value = expr (field v "value")
   in
     recover v (fn () =>
-      (require v (not (isSome (optional_field v "overrides")))
-         "overriding state variables are not supported";
+      (require v (not (isSome (optional_field v "overrides")) orelse
+                  bool_field v "stateVariable" andalso
+                  string_field v "visibility" = "public")
+         "only public state variables can override functions";
        require v (not (String.isPrefix "t_enum$_" (raw_type_id v)))
          "enum constants are not supported"));
     pairSyntax.mk_pair (imported, value)
@@ -1836,6 +1843,59 @@ fun constant_declaration v = within v (fn v =>
  * constants it refers to, also through each other, come with it, the
  * constants after its own.
  *)
+(* Whether the source check admits each member of the imported struct tm:
+ * a member can import and still have no core type, such as a mapping with
+ * an enum, string or bytes key. *)
+fun members_representable tm =
+  let
+    val members =
+      case Lib.assoc1 "struct_members" (#2 (TypeBase.dest_record tm)) of
+        SOME (_, ms) => #1 (listSyntax.dest_list ms)
+      | NONE => raise Fail "a struct record without members"
+    val field_type =
+      prim_mk_const {Thy = "solidityImport", Name = "field_variable_type"}
+    fun representable m =
+      optionSyntax.is_some (rhs (concl (cv_transLib.cv_eval (mk_comb (field_type, m)))))
+  in
+    List.all representable members
+  end
+
+(* The structs the type names within v name. *)
+fun struct_references (v as JSON.OBJECT fields) =
+      if JSONUtil.testField "nodeType"
+           (fn JSON.STRING s => s = "UserDefinedTypeName" | _ => false) v andalso
+         String.isPrefix "t_struct$_" (raw_type_id v)
+      then [int_field v "referencedDeclaration"]
+      else List.concat (map (struct_references o #2) fields)
+  | struct_references (JSON.ARRAY vs) = List.concat (map struct_references vs)
+  | struct_references _ = []
+
+(* Whether every struct a type name within v names is among the structs. *)
+fun structs_present structs v =
+  List.all (fn i => List.exists (fn (s, _) => int_field s "id" = i) structs)
+    (struct_references v)
+
+(* The structs ss, each with its import, except one with a member the core
+ * cannot hold (its import records a blocker, or the source check rejects
+ * it) and those that refer to a struct not kept: they are left out, so a
+ * function using one is rejected, not the unit. *)
+fun importable_structs types ss =
+  let
+    val imported =
+      List.mapPartial
+        (fn s => case with_blockers (fn () => keep (struct_declaration types) s) of
+                   (SOME tm, []) => if members_representable tm then SOME (s, tm) else NONE
+                 | _ => NONE) ss
+    fun close kept =
+      let
+        val kept' = List.filter (fn (k, _) => structs_present kept (field k "members")) kept
+      in
+        if length kept' = length kept then kept else close kept'
+      end
+  in
+    close imported
+  end
+
 fun contract external_structs contracts declared v = within v (fn v =>
   let
     val name = string_field v "name"
@@ -1865,7 +1925,22 @@ fun contract external_structs contracts declared v = within v (fn v =>
      * and parameter types of the declaration it names (super_target in
      * solidityImport). Modifier targets are resolved below before selecting
      * their bodies for library discovery and import. *)
-    val functions = members_of "FunctionDefinition" bases
+    (* A getter can replace only external functions, so no internal or super
+     * call can reach the replaced implementation. *)
+    val getter_overrides =
+      List.concat
+        (map (fn d =>
+                if string_field d "visibility" <> "public" then [] else
+                let val ids = overridden d in
+                  List.app (fn id =>
+                    require d (string_field (function_declaration d id) "visibility" = "external")
+                      "a getter can only override external functions") ids;
+                  ids
+                end)
+          (members_of "VariableDeclaration" bases))
+    val functions =
+      List.filter (fn f => not (List.exists (fn id => id = int_field f "id") getter_overrides))
+        (members_of "FunctionDefinition" bases)
     val overriders = List.concat (map overridden functions)
     fun same_id f g = int_field f "id" = int_field g "id"
     fun is_overridden f = List.exists (fn i => i = int_field f "id") overriders
@@ -1973,7 +2048,10 @@ fun contract external_structs contracts declared v = within v (fn v =>
       let
         val ids = List.concat (map references (reachable_bases @ picked))
         val picked' =
-          map #2 (List.filter (fn (i, _) => List.exists (fn j => j = i) ids)
+          map #2 (List.filter (fn (i, m) => List.exists (fn j => j = i) ids andalso
+                      (node_type m <> "FunctionDefinition" orelse
+                       string_field m "visibility" = "internal" orelse
+                       string_field m "visibility" = "private"))
                     (!library_members))
       in
         if length picked' = length picked then picked else reached picked'
@@ -1995,6 +2073,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
         | "ErrorDefinition" => ()
         | "EventDefinition" => ()
         | "EnumDefinition" => ()
+        | "StructDefinition" => ()
         | "UserDefinedValueTypeDefinition" => ()
         | other => fail (describe m ^ ": unsupported library member " ^ other))))
         used_members
@@ -2004,22 +2083,38 @@ fun contract external_structs contracts declared v = within v (fn v =>
                   then recover d (fn () => check_using d)
                   else ())
         (!library_directives)
-    val libraries =
-      List.foldr (fn (m, ls) =>
-                    if List.exists (fn l => l = int_field m "scope") ls then ls
-                    else int_field m "scope" :: ls)
-        [] (List.filter (fn m => node_type m = "FunctionDefinition" orelse
-                                 node_type m = "VariableDeclaration") used_members)
-    (* The file-level structs the bases refer to, also through other structs. *)
+    (* The file-level structs and those of libraries, interfaces and other
+     * contracts that the bases and library members refer to, also through
+     * other structs. A struct's scope joins the libraries, so the source
+     * check admits it. *)
+    val library_structs =
+      List.filter (fn m => node_type m = "StructDefinition")
+        (map #2 (!library_members)) @
+      List.concat
+        (map (fn (_, c) =>
+                if string_field c "contractKind" = "library" orelse
+                   List.exists (fn b => int_field b "id" = int_field c "id") bases
+                then []
+                else List.filter (fn m => node_type m = "StructDefinition") (nodes c))
+           declared)
     fun used picked =
       let
         val ids = List.concat (map references (bases @ used_members @ picked))
         val picked' =
           List.filter (fn s => List.exists (fn i => i = int_field s "id") ids)
-            external_structs
+            (external_structs @ library_structs)
       in
         if length picked' = length picked then picked else used picked'
       end
+    val used_structs = used []
+    val libraries =
+      List.foldr (fn (m, ls) =>
+                    if List.exists (fn l => l = int_field m "scope") ls then ls
+                    else int_field m "scope" :: ls)
+        [] (List.filter (fn m => node_type m = "FunctionDefinition" orelse
+                                 node_type m = "VariableDeclaration") used_members @
+            List.filter (fn s => List.exists (fn l => int_field l "id" = int_field s "id")
+                                   library_structs) used_structs)
     val () =
       List.app (fn c => within c (fn c =>
         (recover c (fn () =>
@@ -2096,6 +2191,15 @@ fun contract external_structs contracts declared v = within v (fn v =>
                    | NONE => NONE)
           (JSONUtil.arrayMap JSONUtil.asIntInf (field x "linearizedBaseContracts"))
       end
+    val candidate_structs = used_structs @ members_of "StructDefinition" (rev bases)
+    val structs = importable_structs (field layout "types") candidate_structs
+    (* A state variable of a struct left out has no layout in the core, so
+     * it rejects the unit. *)
+    val () =
+      app (fn d => recover d (fn () =>
+             require d (structs_present structs (field d "typeName"))
+               "state variable of a struct the core cannot hold"))
+        state_variables
     val inherited_events = members_of "EventDefinition" bases
     val event_ids = List.concat (map references (reachable_bases @ used_members))
     val external_events =
@@ -2149,10 +2253,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
         listSyntax.mk_list
           (List.mapPartial (fn (backend, e) => keep (storage_entry backend) e) ordered_entries,
            storage_entry_ty)),
-       ("contract_structs", listSyntax.mk_list
-          (keep_all (struct_declaration (field layout "types"))
-             (used [] @ members_of "StructDefinition" (rev bases)),
-           struct_ty)),
+       ("contract_structs", listSyntax.mk_list (map #2 structs, struct_ty)),
        ("contract_enums", listSyntax.mk_list
           (map (fn (i, k) => pairSyntax.mk_pair (mk_num i, mk_num (IntInf.fromInt k)))
              (!enum_declarations),
@@ -2165,7 +2266,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
         listSyntax.mk_list
           (keep_all (function modifier_target function_statics)
              (List.filter (fn f => bool_field f "implemented")
-                (members_of "FunctionDefinition" bases)),
+                functions),
            function_ty)),
        ("contract_library_functions",
         listSyntax.mk_list (keep_all (function modifier_target function_statics) library_functions, function_ty)),
