@@ -190,11 +190,18 @@ as OpenZeppelin's `StorageSlot` and ERC-7201 namespaced storage getters do,
 points the local at that slot of the executing account, at offset 0, with its
 declared type; the compiler rejects assigning `x.offset`.
 
-Inline assembly reads a memory `bytes` or `string` local as its address
-(`assembly_memory.sol`). The source heap gives each object the address the
-compiler's allocator would (`object_address`: `0x80` plus the memory
-allocated so far, `0x60` for the shared empty object), and a block runs over
-a memory holding each byte sequence's length word and bytes there. Under
+Inline assembly reads a memory `bytes` or `string` local, or a memory array
+of value types (`uint8[]`, `address[]`, `bytes32[2]`), as its address
+(`assembly_memory.sol`, `assembly_arrays.sol`). The source heap gives each
+object the address the compiler's allocator would (`object_address`: `0x80`
+plus the memory allocated so far, `0x60` for the shared empty object), and a
+block runs over a memory holding each byte sequence's length word and bytes
+there, and each such array's length word, if it is dynamic, and a word per
+element, as solc keeps the element in memory. On normal exit each element is
+read back from its word, which must be the exact word its value is kept as
+(a `uint8` of 256 or a `bool` of 2 fails closed, where solc would clean it
+when it reads the element); arrays of other element types are not in the
+block's memory. Under
 `memoryguard` the compiler may start its free memory pointer above `0x80`, so
 arithmetic relative to a pointer is modelled but returning, storing or
 comparing a raw pointer value is outside the boundary. The block's memory also
@@ -205,7 +212,7 @@ docs allow a memory-safe block). A literal address with a literal length is
 read only at the free memory pointer or where the block wrote it before (an
 `mstore`, a call's output region or a `returndatacopy`, also in an argument to
 the right, since arguments run right to left), as the elaborator checks. At a computed address a block may read only the free memory pointer,
-the zero slot `[0x60, 0x80)`, each byte sequence's length word and data
+the zero slot `[0x60, 0x80)`, each array's words, each byte sequence's length word and data
 (zero-padded to whole words where solc's memory holds the zeros: not for
 bytes copied from return data, a low-level call's or a `catch`'s, whose
 padding solc leaves as it was), and bytes it has written itself; any other read,
@@ -683,7 +690,8 @@ Admitted: one contract, flattened along its bases, with
   integer, as the compiler folds it;
 - `if`, `while`, `do`-`while`, `for`, `break`, `continue`, `return`,
   unchecked blocks, inline assembly over value-type locals, state-variable
-  slots, storage pointer slots and offsets, value-type constants and memory `bytes` and `string` locals, with
+  slots, storage pointer slots and offsets, value-type constants and memory
+  `bytes`, `string` and value-type array locals, with
   `call`, `staticcall` and their return data;
 - internal calls with single or multiple returns, library calls (`L.f(args)`
   and `x.f(args)` through a using directive) and library constants (`L.c`),
