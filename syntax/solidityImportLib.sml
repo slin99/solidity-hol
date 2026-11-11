@@ -408,9 +408,11 @@ fun variable_record v =
      ("var_scope", mk_num (int_field v "scope")),
      ("var_type_name", type_name (field v "typeName")),
      ("var_type_id", type_id v),
+     ("var_transient", mk_bool (string_field v "storageLocation" = "transient")),
      ("var_location",
       case string_field v "storageLocation" of
         "default" => mk_opt (mk_thy_type {Thy = "solidityAST", Tyop = "data_location", Args = []}) NONE
+      | "transient" => mk_opt (mk_thy_type {Thy = "solidityAST", Tyop = "data_location", Args = []}) NONE
       | l => optionSyntax.mk_some (decode v "storage location" locations l))]
 
 (* A local, parameter or return variable, or, given state, a state variable
@@ -425,6 +427,8 @@ fun declaration state v = within v (fn v =>
        require v (bool_field v "stateVariable" = state)
          (if state then "expected a state variable"
           else "expected a local variable");
+       require v (state orelse string_field v "storageLocation" <> "transient")
+         "transient location on a non-state variable";
        require v (string_field v "mutability" = "mutable" orelse
                   state andalso string_field v "mutability" = "immutable")
          "immutable variables are not supported";
@@ -615,18 +619,25 @@ fun unevaluated_receiver r =
     | _ => false
   end
 
-(* f.selector, E.selector, this.f.selector, I.f.selector, this.x.selector for a
- * public state variable: the selector the compiler records on the declaration
- * the base names. In a member base, the receiver must be one the compiler does
- * not evaluate. *)
+(* A bound external function's receiver is evaluated even though its selector
+ * is fixed by the declaration. Contract/module names and this need no work. *)
+fun selector_receiver base =
+  if node_type base = "MemberAccess" andalso
+     not (unevaluated_receiver (field base "expression")) then
+    SOME (field base "expression")
+  else NONE
+
+(* The selector the compiler records on the named declaration, including a
+ * public state variable's getter through a contract receiver. *)
 fun selector_bytes v base =
   let
     val id =
       case node_type base of
         "Identifier" => int_field base "referencedDeclaration"
       | "MemberAccess" =>
-          (require v (unevaluated_receiver (field base "expression"))
-             "selectors of computed values are not supported";
+          (require v (unevaluated_receiver (field base "expression") orelse
+                      String.isPrefix "t_function_external_" (raw_type_id base))
+             "selectors of function values are not supported";
            case optional_field base "referencedDeclaration" of
              SOME d => JSONUtil.asIntInf d
            | NONE => fail (describe v ^ ": unsupported selector"))
@@ -635,12 +646,13 @@ fun selector_bytes v base =
       case List.find (fn (i, _) => i = id) (!selector_declarations) of
         SOME (_, d) => d
       | NONE => fail (describe v ^ ": unsupported selector")
-    (* x.selector and C.x.selector for a variable x are the selector of the
-     * function value it holds; only this.x names x's getter *)
+    (* x.selector and C.x.selector for a variable x name its function value;
+     * this.x and value.x name the getter. *)
     val () = require v (node_type d <> "VariableDeclaration" orelse
                         (node_type base = "MemberAccess" andalso
-                         node_type (field base "expression") = "Identifier" andalso
-                         int_field (field base "expression") "referencedDeclaration" = this_id))
+                         (isSome (selector_receiver base) orelse
+                          (node_type (field base "expression") = "Identifier" andalso
+                           int_field (field base "expression") "referencedDeclaration" = this_id))))
                "selectors of function values are not supported"
     val key =
       case node_type d of
@@ -717,6 +729,14 @@ fun is_library_member v =
      SOME d =>
        List.exists (fn (i, _) => i = JSONUtil.asIntInf d) (!library_members)
    | NONE => false)
+
+(* Base.f names a declaration; its receiver has no runtime evaluation. *)
+fun is_base_member v =
+  node_type v = "MemberAccess" andalso
+  String.isPrefix "t_function_internal_" (raw_type_id v) andalso
+  String.isPrefix "t_type$_t_contract$_" (raw_type_id (field v "expression")) andalso
+  unevaluated_receiver (field v "expression") andalso
+  not (is_library_member v)
 
 fun is_attached v =
   String.isSubstring "$attached_to$"
@@ -811,7 +831,7 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                      string_field v "memberName" = "interfaceId" then
                     con "SrcSelector"
                       [info v, interface_id v (int_field arg "referencedDeclaration"),
-                       type_id v]
+                       mk_opt expr_ty NONE, type_id v]
                   else if String.isPrefix "t_type$_t_enum$_" (raw_type_id arg) then
                     let
                       val declaration = int_field arg "referencedDeclaration"
@@ -844,13 +864,20 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                  (* a base that is not admitted is imported for its blockers *)
                  (selector_bytes v base
                   handle ImportError msg => (ignore (expr base); raise ImportError msg)),
-                 type_id v]
+                 mk_opt expr_ty (Option.map expr (selector_receiver base)), type_id v]
             else case string_field v "memberName" of
               "length" =>
                 if is_address_code base then
-                  con "SrcAddressCodeLength"
-                    [info v, info base, expr (field base "expression"), type_id v]
+                  con "SrcAddressMember"
+                    [info v, info base, con "AddressCodeLength" [],
+                     expr (field base "expression"), type_id v]
                 else con "SrcArrayLength" [info v, expr base, type_id v]
+            | "balance" =>
+                (require v (List.exists (fn t => t = raw_type_id base)
+                              ["t_address", "t_address_payable"])
+                   "balance of a non-address";
+                 con "SrcAddressMember"
+                   [info v, info v, con "AddressBalance" [], expr base, type_id v])
             | member =>
                 let val receiver = expr (field v "expression") in
                   require v (member = "push" orelse member = "pop")
@@ -983,6 +1010,14 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                require v (length args = 4) "ecrecover takes four arguments";
                con "SrcEcrecover"
                  [info v, info callee, listSyntax.mk_list (args, expr_ty), type_id v])
+            else if node_type callee = "MemberAccess" andalso
+                    string_field callee "memberName" = "transfer" andalso
+                    not (isSome (optional_field callee "referencedDeclaration")) andalso
+                    raw_type_id (field callee "expression") = "t_address_payable" then
+              (positional ();
+               require v (length args = 1) "transfer takes one argument";
+               con "SrcTransfer"
+                 [info v, info callee, expr (field callee "expression"), hd args, type_id v])
             else if abi_decode then
               (positional (); abi_decode_call v callee args)
             else if node_type callee = "Identifier" andalso
@@ -1045,6 +1080,12 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                 if List.exists (fn x => x = r) (!super_calls) then ()
                 else super_calls := !super_calls @ [r];
                 con "SrcSuperCall"
+                  [info v, mk_num r, listSyntax.mk_list (args, expr_ty),
+                   argument_order v r 0, type_id v]
+              end
+            else if is_base_member callee then
+              let val r = int_field callee "referencedDeclaration" in
+                con "SrcBaseCall"
                   [info v, mk_num r, listSyntax.mk_list (args, expr_ty),
                    argument_order v r 0, type_id v]
               end
@@ -1217,7 +1258,8 @@ and abi_encode_call v callee =
       | NONE => fail (describe v ^ ": unsupported encodeCall function")
     val () = require v (node_type d = "FunctionDefinition") "abi.encodeCall of a getter is not supported"
     val selector =
-      con "SrcSelector" [info f, mk_bytes d (string_field d "functionSelector"), mk_str "t_bytes4"]
+      con "SrcSelector" [info f, mk_bytes d (string_field d "functionSelector"),
+                         mk_opt expr_ty NONE, mk_str "t_bytes4"]
     val parameters = JSONUtil.arrayMap I (field (field d "parameters") "parameters")
     val () = require v (length arguments = length parameters)
                "abi.encodeCall takes one argument per parameter"
@@ -1480,7 +1522,11 @@ fun stmt v = guarded (fn st => [StmtChild st]) unsupported_stmt (fn v => within 
             val args = JSONUtil.arrayMap expr (field call "arguments")
             val ev = int_field (field call "expression") "referencedDeclaration"
           in
-            within (field call "expression") (fn e => expect e "Identifier");
+            within (field call "expression") (fn e =>
+              require e (node_type e = "Identifier" orelse
+                         (node_type e = "MemberAccess" andalso
+                          unevaluated_receiver (field e "expression")))
+                "unsupported event name");
             con "SrcEmit"
               [info v, mk_num ev, listSyntax.mk_list (args, expr_ty),
                argument_order call ev 0]
@@ -1536,7 +1582,7 @@ val failed_modifiers : (IntInf.int * string list) list ref = ref []
  * resolve to it. Blockers in its header reject the unit too, and so does a
  * header the importer cannot represent at all. A fallback with parameters or
  * returns is unsupported likewise: the core's fallback takes neither. *)
-fun function modifier_target v = within v (fn v =>
+fun function modifier_target function_statics v = within v (fn v =>
   let
     val () = super_calls := []
     val ((params_id, params, returns_id, returns), header) = with_blockers (fn () =>
@@ -1600,6 +1646,8 @@ fun function modifier_target v = within v (fn v =>
           (modifiers, pairSyntax.mk_prod
                         (numSyntax.num, listSyntax.mk_list_type expr_ty))),
        ("fn_super_calls", listSyntax.mk_list (map mk_num supers, numSyntax.num)),
+       ("fn_static_calls", listSyntax.mk_list
+          (map mk_num (function_statics v), numSyntax.num)),
        ("fn_body", body),
        ("fn_unsupported",
         mk_opt stringSyntax.string_ty
@@ -1643,9 +1691,10 @@ fun event v = within v (fn v =>
           pairSyntax.mk_prod (variable_ty, bool)))]))
 
 (* An entry of a contract's storageLayout. *)
-fun storage_entry v = within v (fn v =>
+fun storage_entry backend v = within v (fn v =>
   record "src_storage_entry"
     [("storage_id", mk_num (int_field v "astId")),
+     ("storage_backend", prim_mk_const {Thy = "solidityCore", Name = backend}),
      ("storage_slot",
       case IntInf.fromString (string_field v "slot") of
         SOME i => mk_num i
@@ -1670,7 +1719,7 @@ fun struct_declaration types v = within v (fn v =>
                 SOME bytes => mk_num bytes
               | NONE => fail "malformed struct layout size",
               listSyntax.mk_list
-                (JSONUtil.arrayMap storage_entry (field desc "members"),
+                (JSONUtil.arrayMap (storage_entry "PersistentStorage") (field desc "members"),
                  storage_entry_ty))))
   in
     record "src_struct"
@@ -1690,11 +1739,25 @@ fun super_members (v as JSON.OBJECT fields) =
   | super_members (JSON.ARRAY vs) = List.concat (map super_members vs)
   | super_members _ = []
 
+(* Only a call executes a static member; f.selector does not. *)
+fun static_references (v as JSON.OBJECT fields) =
+      (if JSONUtil.testField "nodeType"
+            (fn JSON.STRING s => s = "FunctionCall" | _ => false) v andalso
+          is_base_member (field v "expression")
+       then [int_field (field v "expression") "referencedDeclaration"] else []) @
+      List.concat (map (static_references o #2) fields)
+  | static_references (JSON.ARRAY vs) = List.concat (map static_references vs)
+  | static_references _ = []
+
 (* The declarations the nodes of v refer to. *)
 fun references (v as JSON.OBJECT fields) =
-      (* Selectors and using declarations do not execute their references. *)
-      if is_selector v orelse
-         JSONUtil.testField "nodeType"
+      (* Only a selector's computed receiver executes, not the function it
+       * names. Include that receiver's helper and constant dependencies. *)
+      if is_selector v then
+        (case selector_receiver (field v "expression") of
+           SOME receiver => references receiver
+         | NONE => [])
+      else if JSONUtil.testField "nodeType"
            (fn JSON.STRING s => s = "UsingForDirective" | _ => false) v
       then [] else
       List.concat
@@ -1810,17 +1873,6 @@ fun contract external_structs contracts declared v = within v (fn v =>
                functions
            end)
         (super_members f)
-    fun close live [] = live
-      | close live (f :: fs) =
-          let
-            val new = List.foldl
-                        (fn (g, acc) =>
-                           if List.exists (same_id g) (live @ acc) then acc else acc @ [g])
-                        [] (super_targets f)
-          in close (live @ new) (fs @ new) end
-    val live =
-      let val start = List.filter (not o is_overridden) functions
-      in close start start end
     val modifier_definitions = members_of "ModifierDefinition" bases
     fun overridden_modifiers m =
       case optional_field m "baseModifiers" of
@@ -1842,6 +1894,36 @@ fun contract external_structs contracts declared v = within v (fn v =>
                SOME (_, target) => target
              | NONE => id
       end
+    fun invoked_modifiers f =
+      List.mapPartial
+        (fn i => case optional_field i "kind" of
+                   SOME (JSON.STRING "modifierInvocation") =>
+                     let val id = modifier_target (field i "modifierName") in
+                       List.find (fn m => int_field m "id" = id) modifier_definitions
+                     end
+                 | _ => NONE)
+        (JSONUtil.arrayMap I (field f "modifiers"))
+    fun function_statics f =
+      static_references f @ List.concat (map static_references (invoked_modifiers f))
+    val root_statics =
+      List.concat (map static_references
+        (List.concat (map (fn c =>
+           List.filter (fn m => node_type m <> "FunctionDefinition" andalso
+                               node_type m <> "ModifierDefinition") (nodes c) @
+           JSONUtil.arrayMap I (field c "baseContracts")) bases)))
+    fun static_targets ids =
+      List.filter (fn f => List.exists (fn id => id = int_field f "id") ids) functions
+    fun close live [] = live
+      | close live (f :: fs) =
+          let
+            val new = List.foldl
+                        (fn (g, acc) =>
+                           if List.exists (same_id g) (live @ acc) then acc else acc @ [g])
+                        [] (super_targets f @ static_targets (function_statics f))
+          in close (live @ new) (fs @ new) end
+    val live =
+      let val start = List.filter (not o is_overridden) functions @ static_targets root_statics
+      in close start start end
     val invoked =
       List.concat
         (map (fn f => List.mapPartial
@@ -1890,6 +1972,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
               "library variables are not supported"
         | "ModifierDefinition" => ()
         | "ErrorDefinition" => ()
+        | "EventDefinition" => ()
         | "EnumDefinition" => ()
         | "UserDefinedValueTypeDefinition" => ()
         | other => fail (describe m ^ ": unsupported library member " ^ other))))
@@ -1946,6 +2029,21 @@ fun contract external_structs contracts declared v = within v (fn v =>
       List.filter (fn d => not (bool_field d "constant")) variables
     fun immutable d = string_field d "mutability" = "immutable"
     val state_variables = List.filter (not o immutable) assigned
+    val transient_layout = JSONUtil.get (contracts,
+      [JSONUtil.SEL name, JSONUtil.SEL "transientStorageLayout"])
+    (* Interleave the two layouts without repairing reordered or extra entries:
+     * the formal layout check must still reject malformed metadata. *)
+    fun merge_layout [] persistent transient =
+          map (fn e => ("PersistentStorage", e)) persistent @
+          map (fn e => ("TransientStorage", e)) transient
+      | merge_layout (d :: ds) persistent transient =
+          case (string_field d "storageLocation" = "transient", persistent, transient) of
+            (true, _, e :: es) => ("TransientStorage", e) :: merge_layout ds persistent es
+          | (false, e :: es, _) => ("PersistentStorage", e) :: merge_layout ds es transient
+          | _ => merge_layout ds persistent transient
+    val ordered_entries = merge_layout state_variables
+      (JSONUtil.arrayMap I (field layout "storage"))
+      (JSONUtil.arrayMap I (field transient_layout "storage"))
     (* The base constructor arguments base x gives: those of its inheritance
      * specifiers and its constructor's base constructor specifiers, in the
      * order of x's own linearization. *)
@@ -1977,6 +2075,16 @@ fun contract external_structs contracts declared v = within v (fn v =>
                    | NONE => NONE)
           (JSONUtil.arrayMap JSONUtil.asIntInf (field x "linearizedBaseContracts"))
       end
+    val inherited_events = members_of "EventDefinition" bases
+    val event_ids = List.concat (map references (reachable_bases @ used_members))
+    val external_events =
+      List.mapPartial
+        (fn (id, d) =>
+           if node_type d = "EventDefinition" andalso
+              List.exists (fn i => i = id) event_ids andalso
+              not (List.exists (same_id d) inherited_events)
+           then SOME d else NONE)
+        (!selector_declarations)
     (* before the functions, which need the modifiers that failed *)
     val imported_modifiers =
       modifiers (List.filter reachable modifier_definitions @
@@ -2011,13 +2119,14 @@ fun contract external_structs contracts declared v = within v (fn v =>
               List.filter (fn d => node_type d = "VariableDeclaration")
                 used_members),
            pairSyntax.mk_prod (variable_ty, expr_ty))),
+       ("contract_static_calls", listSyntax.mk_list (map mk_num root_statics, numSyntax.num)),
        ("contract_base_arguments", listSyntax.mk_list
           (List.concat (map base_arguments bases),
            pairSyntax.list_mk_prod
              [numSyntax.num, numSyntax.num, listSyntax.mk_list_type expr_ty])),
        ("contract_storage",
         listSyntax.mk_list
-          (keep_all storage_entry (JSONUtil.arrayMap I (field layout "storage")),
+          (List.mapPartial (fn (backend, e) => keep (storage_entry backend) e) ordered_entries,
            storage_entry_ty)),
        ("contract_structs", listSyntax.mk_list
           (keep_all (struct_declaration (field layout "types"))
@@ -2028,17 +2137,17 @@ fun contract external_structs contracts declared v = within v (fn v =>
              (!enum_declarations),
            pairSyntax.mk_prod (numSyntax.num, numSyntax.num))),
        ("contract_events", listSyntax.mk_list
-          (keep_all event (members_of "EventDefinition" bases), event_ty)),
+          (keep_all event (inherited_events @ external_events), event_ty)),
        ("contract_modifiers", listSyntax.mk_list
           (imported_modifiers, import_type "src_modifier")),
        ("contract_functions",
         listSyntax.mk_list
-          (keep_all (function modifier_target)
+          (keep_all (function modifier_target function_statics)
              (List.filter (fn f => bool_field f "implemented")
                 functions),
            function_ty)),
        ("contract_library_functions",
-        listSyntax.mk_list (keep_all (function modifier_target) library_functions, function_ty)),
+        listSyntax.mk_list (keep_all (function modifier_target function_statics) library_functions, function_ty)),
        ("contract_getters", listSyntax.mk_list
           (List.mapPartial
              (fn d => if string_field d "visibility" = "public" then
@@ -2169,6 +2278,7 @@ fun import_unit units v contracts = within v (fn v =>
       | "VariableDeclaration" => NONE
       | "EnumDefinition" => NONE
       | "ErrorDefinition" => NONE
+      | "EventDefinition" => NONE
       | "UsingForDirective" => NONE
       | "ContractDefinition" =>
           if string_field m "contractKind" = "interface" orelse

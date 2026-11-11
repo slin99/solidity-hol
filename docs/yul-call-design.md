@@ -1,10 +1,9 @@
 # How a Yul frame's message calls relate to Verifereum's `run_call`
 
-Status: implemented. It adds `call`, `staticcall`,
+Status: implemented. It adds `call`, `staticcall`, `delegatecall`,
 `extcodesize`, `returndatasize`, `returndatacopy` and `gas` to
 `semantics/yulEvaluatorScript.sml`, and two fields to the Yul frame; the limits
-are listed at the end. `delegatecall` is not implemented; its section says what
-it would take.
+are listed at the end.
 
 ## The problem
 
@@ -54,7 +53,7 @@ frame's caller supplies them, and nothing in the frame writes `gas_limit`.
 ## The callee's run
 
 `call` and `staticcall` share one definition, `yul_call`, differing only in the
-`static` flag. It reads the input region out of the caller's memory, then hands
+`static` flag; `delegatecall` is the third use of it, below. It reads the input region out of the caller's memory, then hands
 the call to `run_external_call`:
 
 ```
@@ -113,12 +112,13 @@ output at all and still read what came back.
   `YulInvalid "return data out of bounds"` — the frame's world rolls back, as
   `finish_yul_frame` says for any invalid.
 
-## The six builtins
+## The seven builtins
 
 | Builtin | Effect | Result |
 | --- | --- | --- |
 | `call(g, a, v, in, insz, out, outsz)` | `EffectCall` | success flag |
 | `staticcall(g, a, in, insz, out, outsz)` | `EffectCall` | success flag |
+| `delegatecall(g, a, in, insz, out, outsz)` | `EffectCall` | success flag |
 | `extcodesize(a)` | `EffectCall` | `LENGTH (lookup_account a accounts).code` |
 | `returndatasize()` | `EffectFrame` | `LENGTH return_data` |
 | `returndatacopy(d, o, s)` | `EffectMemory` | none |
@@ -131,20 +131,23 @@ reads the account's own code and not a delegate's, which is what Verifereum's
 
 ## `delegatecall`
 
-Not implemented, and the dialect does not name it, so the importer refuses Yul
-that uses it and the stage is reported as not admitted rather than run wrongly.
+A Yul `delegatecall` is the same construction as `call` with three
+differences: the callee's *code* runs under the caller's own address, storage
+and balance, its caller and call value are the frame's own, and the call moves
+no value. `external_call_state` builds a state whose `to` is the callee, which
+is `call`/`staticcall` semantics, so `yul_call` with its `delegate` flag set
+hands the call to `run_delegate_call` instead, the builder the source's
+low-level `a.delegatecall(data)` uses:
 
-Taking a position, as the design has to: a Yul `delegatecall` is the same
-construction as `call` with three differences — the callee's *code* runs under
-the caller's own address, storage and call value, and the call carries no
-value. Verifereum's `run_call` can reach that, but only through the
-DELEGATECALL opcode's own path in `step_call`; `external_call_state` builds a
-state whose `to` is the callee, which is `call`/`staticcall` semantics. So a
-faithful `delegatecall` needs a second state builder beside
-`external_call_state` — the call mechanics is still `run_call`, and that is the
-point: it is one more builder, not a second call mechanics. Nothing in the
-corpus and nothing in the OZ ERC20 runtime object emits it, so it is left out
-until something does.
+```
+run_delegate_call m.self_address m.caller_address m.call_value callee calldata
+  static (min gas m.gas_limit) m.accounts m.transient m.transaction_parameters
+```
+
+Its state's `to` is the frame's own address and its code the callee's (a
+delegated account's delegate's; a precompile runs as the precompile). The call
+mechanics is still `run_call`, and the outcome, the world and the return data
+follow the same table as `call`'s.
 
 ## What the model does not do
 

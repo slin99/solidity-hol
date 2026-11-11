@@ -1127,6 +1127,57 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* The call frame with one more callee, 0x7d, which returns its caller. *)
+Definition yul_delegate_machine_def:
+  yul_delegate_machine =
+    yul_call_machine with accounts :=
+      update_account 0x7dw
+        (empty_account_state with
+           code := [0x33w; 0x60w; 0x00w; 0x52w; 0x60w; 0x20w; 0x60w; 0x00w; 0xf3w])
+        yul_call_machine.accounts
+End
+
+(* delegatecall(gas(), a, 0, 0, 0, 32) for a = 0x78, 0x77 and 0x7d, then
+ * return(0, 96) of the flags' sum and the two words the last two left at 0
+ * and 32: 0x78 writes slot 0, 0x77 returns 7, 0x7d returns its caller. *)
+Definition dcall_def:
+  dcall a out = YulBuiltin YDelegateCall
+    [YulBuiltin YGas []; YulLit (LitNumber a); YulLit (LitNumber 0w);
+     YulLit (LitNumber 0w); YulLit (LitNumber out); YulLit (LitNumber 32w)]
+End
+
+Definition delegatecall_builtin_code_def:
+  delegatecall_builtin_code =
+    [YulLet ["a"] (SOME (dcall 0x78w 64w));
+     YulLet ["b"] (SOME (dcall 0x77w 0w));
+     YulLet ["c"] (SOME (dcall 0x7dw 32w));
+     YulExprStmt (YulBuiltin YMStore [YulLit (LitNumber 64w);
+       YulBuiltin YAdd [YulName "a"; YulBuiltin YAdd [YulName "b"; YulName "c"]]]);
+     YulExprStmt (YulBuiltin YReturn
+       [YulLit (LitNumber 0w); YulLit (LitNumber 96w)])]
+End
+
+val () = cv_auto_trans yul_delegate_machine_def;
+val () = cv_auto_trans delegatecall_builtin_code_def;
+
+(* A delegate call runs the callee's code in this frame's account, with this
+ * frame's caller: 0x78's write lands in 0x1234's storage and not in 0x78's,
+ * and 0x7d sees the frame's caller 0x5678 rather than 0x1234. *)
+Theorem a_delegate_call_runs_in_the_frames_account:
+  (run_yul 20 delegatecall_builtin_code yul_delegate_machine).completion =
+  YulReturn (word_to_bytes_be (7w : bytes32) ++
+             word_to_bytes_be (0x5678w : bytes32) ++
+             word_to_bytes_be (3w : bytes32)) ∧
+  (lookup_account 0x1234w
+     (run_yul 20 delegatecall_builtin_code yul_delegate_machine).machine.accounts).storage =
+    update_storage 0w 1w empty_storage ∧
+  (lookup_account 0x78w
+     (run_yul 20 delegatecall_builtin_code yul_delegate_machine).machine.accounts).storage =
+    empty_storage
+Proof
+  CONV_TAC cv_eval
+QED
+
 Theorem a_callee_sees_the_transient_storage_an_earlier_call_left:
   (run_call_frame 20 transient_call_builtin_code).completion =
   YulReturn (word_to_bytes_be (1w : bytes32) ++ word_to_bytes_be (2w : bytes32)) ∧

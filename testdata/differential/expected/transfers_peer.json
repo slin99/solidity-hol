@@ -1,0 +1,444 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/transfers_peer.sol": {
+        "content": "// SPDX-License-Identifier: GPL-3.0\npragma solidity 0.8.37;\n\ncontract TransferPeer {\n    fallback() external payable {\n        assembly {\n            switch sload(0)\n            case 0 { mstore(0, 0x1234) return(0, 32) }\n            case 1 { mstore(0, 0x5678) revert(0, 32) }\n            default { sstore(1, 1) }\n        }\n    }\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/transfers_peer.sol": {
+        "TransferPeer": {
+          "abi": [
+            {
+              "stateMutability": "payable",
+              "type": "fallback"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "608060405234601957600e601d565b603460288239603490f35b6023565b60405190565b5f80fdfe6080604052600a600c565b005b5f54805f14602a5760011460205760018055565b6156785f5260205ffd5b6112345f5260205ff3"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": "6080604052600a600c565b005b5f54805f14602a5760011460205760018055565b6156785f5260205ffd5b6112345f5260205ff3"
+            },
+            "methodIdentifiers": {}
+          },
+          "storageLayout": {
+            "storage": [],
+            "types": null
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/transfers_peer.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/transfers_peer.sol",
+          "exportedSymbols": {
+            "TransferPeer": [
+              7
+            ]
+          },
+          "id": 8,
+          "license": "GPL-3.0",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "36:23:0"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "TransferPeer",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 7,
+              "linearizedBaseContracts": [
+                7
+              ],
+              "name": "TransferPeer",
+              "nameLocation": "70:12:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "body": {
+                    "id": 5,
+                    "nodeType": "Block",
+                    "src": "117:211:0",
+                    "statements": [
+                      {
+                        "AST": {
+                          "nativeSrc": "136:186:0",
+                          "nodeType": "YulBlock",
+                          "src": "136:186:0",
+                          "statements": [
+                            {
+                              "cases": [
+                                {
+                                  "body": {
+                                    "nativeSrc": "185:35:0",
+                                    "nodeType": "YulBlock",
+                                    "src": "185:35:0",
+                                    "statements": [
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "194:1:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "194:1:0",
+                                              "type": "",
+                                              "value": "0"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "197:6:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "197:6:0",
+                                              "type": "",
+                                              "value": "0x1234"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "mstore",
+                                            "nativeSrc": "187:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "187:6:0"
+                                          },
+                                          "nativeSrc": "187:17:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "187:17:0"
+                                        },
+                                        "nativeSrc": "187:17:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "187:17:0"
+                                      },
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "212:1:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "212:1:0",
+                                              "type": "",
+                                              "value": "0"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "215:2:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "215:2:0",
+                                              "type": "",
+                                              "value": "32"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "return",
+                                            "nativeSrc": "205:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "205:6:0"
+                                          },
+                                          "nativeSrc": "205:13:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "205:13:0"
+                                        },
+                                        "nativeSrc": "205:13:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "205:13:0"
+                                      }
+                                    ]
+                                  },
+                                  "nativeSrc": "178:42:0",
+                                  "nodeType": "YulCase",
+                                  "src": "178:42:0",
+                                  "value": {
+                                    "kind": "number",
+                                    "nativeSrc": "183:1:0",
+                                    "nodeType": "YulLiteral",
+                                    "src": "183:1:0",
+                                    "type": "",
+                                    "value": "0"
+                                  }
+                                },
+                                {
+                                  "body": {
+                                    "nativeSrc": "240:35:0",
+                                    "nodeType": "YulBlock",
+                                    "src": "240:35:0",
+                                    "statements": [
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "249:1:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "249:1:0",
+                                              "type": "",
+                                              "value": "0"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "252:6:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "252:6:0",
+                                              "type": "",
+                                              "value": "0x5678"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "mstore",
+                                            "nativeSrc": "242:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "242:6:0"
+                                          },
+                                          "nativeSrc": "242:17:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "242:17:0"
+                                        },
+                                        "nativeSrc": "242:17:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "242:17:0"
+                                      },
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "267:1:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "267:1:0",
+                                              "type": "",
+                                              "value": "0"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "270:2:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "270:2:0",
+                                              "type": "",
+                                              "value": "32"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "revert",
+                                            "nativeSrc": "260:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "260:6:0"
+                                          },
+                                          "nativeSrc": "260:13:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "260:13:0"
+                                        },
+                                        "nativeSrc": "260:13:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "260:13:0"
+                                      }
+                                    ]
+                                  },
+                                  "nativeSrc": "233:42:0",
+                                  "nodeType": "YulCase",
+                                  "src": "233:42:0",
+                                  "value": {
+                                    "kind": "number",
+                                    "nativeSrc": "238:1:0",
+                                    "nodeType": "YulLiteral",
+                                    "src": "238:1:0",
+                                    "type": "",
+                                    "value": "1"
+                                  }
+                                },
+                                {
+                                  "body": {
+                                    "nativeSrc": "296:16:0",
+                                    "nodeType": "YulBlock",
+                                    "src": "296:16:0",
+                                    "statements": [
+                                      {
+                                        "expression": {
+                                          "arguments": [
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "305:1:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "305:1:0",
+                                              "type": "",
+                                              "value": "1"
+                                            },
+                                            {
+                                              "kind": "number",
+                                              "nativeSrc": "308:1:0",
+                                              "nodeType": "YulLiteral",
+                                              "src": "308:1:0",
+                                              "type": "",
+                                              "value": "1"
+                                            }
+                                          ],
+                                          "functionName": {
+                                            "name": "sstore",
+                                            "nativeSrc": "298:6:0",
+                                            "nodeType": "YulIdentifier",
+                                            "src": "298:6:0"
+                                          },
+                                          "nativeSrc": "298:12:0",
+                                          "nodeType": "YulFunctionCall",
+                                          "src": "298:12:0"
+                                        },
+                                        "nativeSrc": "298:12:0",
+                                        "nodeType": "YulExpressionStatement",
+                                        "src": "298:12:0"
+                                      }
+                                    ]
+                                  },
+                                  "nativeSrc": "288:24:0",
+                                  "nodeType": "YulCase",
+                                  "src": "288:24:0",
+                                  "value": "default"
+                                }
+                              ],
+                              "expression": {
+                                "arguments": [
+                                  {
+                                    "kind": "number",
+                                    "nativeSrc": "163:1:0",
+                                    "nodeType": "YulLiteral",
+                                    "src": "163:1:0",
+                                    "type": "",
+                                    "value": "0"
+                                  }
+                                ],
+                                "functionName": {
+                                  "name": "sload",
+                                  "nativeSrc": "157:5:0",
+                                  "nodeType": "YulIdentifier",
+                                  "src": "157:5:0"
+                                },
+                                "nativeSrc": "157:8:0",
+                                "nodeType": "YulFunctionCall",
+                                "src": "157:8:0"
+                              },
+                              "nativeSrc": "150:162:0",
+                              "nodeType": "YulSwitch",
+                              "src": "150:162:0"
+                            }
+                          ]
+                        },
+                        "evmVersion": "osaka",
+                        "externalReferences": [],
+                        "id": 4,
+                        "nodeType": "InlineAssembly",
+                        "src": "127:195:0"
+                      }
+                    ]
+                  },
+                  "id": 6,
+                  "implemented": true,
+                  "kind": "fallback",
+                  "modifiers": [],
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 2,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "97:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 3,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "117:0:0"
+                  },
+                  "scope": 7,
+                  "src": "89:239:0",
+                  "stateMutability": "payable",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 8,
+              "src": "61:269:0",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "36:295:0"
+        },
+        "id": 0
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}

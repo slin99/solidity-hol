@@ -1021,6 +1021,31 @@ Proof
   CONV_TAC cv_eval
 QED
 
+Theorem byte_mapping_storage_bases_checked:
+  EVERY (λbinding.
+    wf_core_operation test_env
+      <| bindings := [(AstId 1, binding);
+                      (AstId 2, SingleType (LocatedT CalldataLoc BytesT))];
+         targets := []; returns := []; in_loop := F |>
+      (ReferenceType (UintT 8))
+      (NavigateOperation (UintT 8) (BoundAtom (AstId 1))
+        (IndexNavigation (BoundAtom (AstId 2)))))
+    [ReferenceType (MappingT BytesT (UintT 8));
+     SingleType (LocatedT StorageLoc (MappingT BytesT (UintT 8)))] ∧
+  EVERY (λbinding.
+    ¬wf_core_operation test_env
+      <| bindings := [(AstId 1, binding);
+                      (AstId 2, SingleType (UintT 256))];
+         targets := []; returns := []; in_loop := F |>
+      (ReferenceType (UintT 8))
+      (NavigateOperation (UintT 8) (BoundAtom (AstId 1))
+        (IndexNavigation (BoundAtom (AstId 2)))))
+    [ReferenceType (MappingT BytesT (UintT 8));
+     SingleType (LocatedT StorageLoc (MappingT BytesT (UintT 8)))]
+Proof
+  EVAL_TAC
+QED
+
 Theorem mapping_key_signedness_checked:
   ¬wf_core_operation test_env
     <| bindings := [(AstId 1, ReferenceType (MappingT (IntT 8) (UintT 8)));
@@ -1061,9 +1086,9 @@ Definition packed_struct_layout_def:
     struct_slots := 1;
     struct_fields :=
       [<| state_id := AstId 951; state_type := UintT 8;
-          state_slot := 0w; state_offset := 0 |>;
+          state_backend := PersistentStorage; state_slot := 0w; state_offset := 0 |>;
        <| state_id := AstId 952; state_type := IntT 16;
-          state_slot := 0w; state_offset := 1 |>]
+          state_backend := PersistentStorage; state_slot := 0w; state_offset := 1 |>]
   |>
 End
 
@@ -1097,15 +1122,15 @@ Theorem malformed_struct_fields_rejected:
   ¬wf_core_environment
     (struct_layout_environment [packed_struct_layout with struct_fields :=
       [<| state_id := AstId 951; state_type := UintT 16;
-          state_slot := 0w; state_offset := 31 |>]]) ∧
+          state_backend := PersistentStorage; state_slot := 0w; state_offset := 31 |>]]) ∧
   ¬wf_core_environment
     (struct_layout_environment [packed_struct_layout with struct_fields :=
       [<| state_id := AstId 951; state_type := UintT 8;
-          state_slot := 1w; state_offset := 0 |>]]) ∧
+          state_backend := PersistentStorage; state_slot := 1w; state_offset := 0 |>]]) ∧
   ¬wf_core_environment
     (struct_layout_environment [packed_struct_layout with struct_fields :=
       [<| state_id := AstId 951; state_type := StructT (AstId 950);
-          state_slot := 0w; state_offset := 0 |>]])
+          state_backend := PersistentStorage; state_slot := 0w; state_offset := 0 |>]])
 Proof
   EVAL_TAC
 QED
@@ -1136,10 +1161,10 @@ Theorem recursive_struct_behind_mapping_checked:
       struct_slots := 2;
       struct_fields :=
         [<| state_id := AstId 951; state_type := UintT 8;
-            state_slot := 0w; state_offset := 0 |>;
+            state_backend := PersistentStorage; state_slot := 0w; state_offset := 0 |>;
          <| state_id := AstId 952;
             state_type := MappingT (UintT 256) (StructT (AstId 950));
-            state_slot := 1w; state_offset := 0 |>] |>])
+            state_backend := PersistentStorage; state_slot := 1w; state_offset := 0 |>] |>])
 Proof
   EVAL_TAC
 QED

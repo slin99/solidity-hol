@@ -40,7 +40,9 @@ the existing scalar ABI encoder.
 
 Elaboration represents an assignment destination as a local binding or an
 already evaluated reference. `elab_destination`, `read_destination` and
-`write_destination` are shared by assignment, compound assignment and increment.
+`write_destination` are shared by assignment, compound assignment, increment
+and scalar `delete`. Deletion writes the type's default without reading its
+old value, so it preserves neighboring packed storage.
 Tuple writes use the same helpers, retaining identifier-only target coverage and
 right-to-left writes. The pinned profile evaluates the assignment RHS before
 capturing a computed LHS. Snapshots keep earlier values stable while later
@@ -54,7 +56,11 @@ read/capture operation. `WriteScalarStmt`, `BindReferenceStmt` and
 The latter operations are extension points, not aggregate execution coverage.
 
 `solidityStorage` owns concrete storage encoding, packed scalar access, mapping
-hashing, array navigation, state references and struct-field navigation. These
+hashing, array navigation, state references and struct-field navigation. Scalar
+word extraction and replacement are shared by persistent and transient state;
+state descriptors select the backend. Byte-sequence mapping keys use their
+unpadded contents, read through the existing memory/calldata/storage byte path.
+These
 helpers take evaluated values/references and accounts; they do not evaluate core
 atoms or change scopes. `solidityEvaluator` owns atom evaluation, bindings,
 captured targets, frame checks and control flow. Its static-frame write rejection

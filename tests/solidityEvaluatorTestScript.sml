@@ -27,7 +27,7 @@ Definition initial_state_def:
     heap := FEMPTY;
     next_heap_id := 0; immutables := FEMPTY;
     memory_allocated := 0;
-    targets := FEMPTY
+    targets := FEMPTY; return_data := SOME []
   |>
 End
 
@@ -281,7 +281,7 @@ QED
  * 0, and returns it read back. *)
 
 Definition counter_def:
-  counter = <| state_id := AstId 200; state_type := u8; state_slot := 0w;
+  counter = <| state_id := AstId 200; state_type := u8; state_backend := PersistentStorage; state_slot := 0w;
                state_offset := 1 |>
 End
 
@@ -985,6 +985,55 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* A callee at 0x5005 returning ADDRESS, and a delegatecall to it. *)
+Definition delegate_state_def:
+  delegate_state =
+    call_state with world := (call_state.world with accounts :=
+      update_account 0x5005w
+        (empty_account_state with
+           code := [0x30w; 0x60w; 0w; 0x52w; 0x60w; 0x20w; 0x60w; 0w; 0xf3w])
+        call_state.world.accounts)
+End
+
+Definition ydelegate_def:
+  ydelegate a out osz =
+    YulBuiltin YDelegateCall [YulBuiltin YGas []; a; ylit 0w; ylit 0w;
+                              ylit out; ylit osz]
+End
+
+val () = cv_auto_trans delegate_state_def;
+val () = cv_auto_trans ydelegate_def;
+
+(* A delegatecall is a call to the static rules: gas() as its gas argument,
+ * return data after it, and its output region written. It runs the callee's
+ * code as this account (0 here), where a call runs it as the callee; a static
+ * frame refuses it. *)
+Theorem asm_delegate_call:
+  assembly_calls_ok
+    [YulLet ["s"] (SOME (ydelegate (YulName "t") 0w 32w));
+     YulAssign ["x"] (YulBuiltin YReturnDataSize [])] ∧
+  assembly_memory_ok
+    [YulLet ["s"] (SOME (ydelegate (YulName "t") 0w 32w));
+     YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])] ∧
+  ¬assembly_memory_ok [YulLet ["s"] (SOME (ydelegate (YulName "t") 0x80w 32w))] ∧
+  run_asm [YulExprStmt (YulBuiltin YPop [ydelegate (ylit 0x5005w) 0w 32w]);
+           YulAssign ["x"] (yadd (YulBuiltin YMLoad [ylit 0w])
+                                 (YulBuiltin YReturnDataSize []))]
+    delegate_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    ReturnCompletion [ScalarValue (IntegerValue 32)] ∧
+  run_asm [YulExprStmt (YulBuiltin YPop [ycall (ylit 0x5005w) 0w 0w 0w 32w]);
+           YulAssign ["x"] (yadd (YulBuiltin YMLoad [ylit 0w])
+                                 (YulBuiltin YReturnDataSize []))]
+    delegate_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    ReturnCompletion [ScalarValue (IntegerValue 0x5025)] ∧
+  run_asm [YulAssign ["x"] (ydelegate (ylit 0x5005w) 0w 32w)]
+    (delegate_state with frame := delegate_state.frame with static_context := T)
+    (AstId 110) [ScalarValue (IntegerValue 7)] =
+    InvalidCompletion "unsupported assembly builtin"
+Proof
+  CONV_TAC cv_eval
+QED
+
 (* Callees at 0x5003 (returns the bytes 01 02 03) and 0x5004 (reverts with
  * them): return data shorter than a word. *)
 Definition short_return_state_def:
@@ -1090,4 +1139,281 @@ Theorem asm_memory_assign_rule:
   assembly_assigns_ok ["b"] [YulAssign ["x"] (YulName "b")]
 Proof
   EVAL_TAC
+QED
+
+Definition transient_counter_run_def:
+  transient_counter_run st x =
+    invoke_source 10
+      (core_program_environment (storage_program [counter with state_backend := TransientStorage]))
+      (AstId 20) [ScalarValue (IntegerValue x)] st []
+End
+
+Definition transient_counter_state_def:
+  transient_counter_state = initial_state with world := initial_state.world with
+    transient := update_transient_storage 0w (update_storage 0w 0xaabbccw empty_storage)
+      (update_transient_storage 7w (update_storage 0w 123w empty_storage)
+        empty_transient_storage)
+End
+
+val () = cv_auto_trans transient_counter_run_def;
+val () = cv_auto_trans transient_counter_state_def;
+
+Theorem transient_scalar_writes_preserve_other_bytes_and_accounts:
+  (transient_counter_run transient_counter_state 5).completion =
+    ReturnCompletion [ScalarValue (IntegerValue 5)] ∧
+  lookup_storage 0w (lookup_transient_storage 0w
+    (transient_counter_run transient_counter_state 5).state.world.transient) = 0xaa05ccw ∧
+  lookup_storage 0w (lookup_transient_storage 7w
+    (transient_counter_run transient_counter_state 5).state.world.transient) = 123w ∧
+  lookup_storage 0w (lookup_account 0w
+    (transient_counter_run transient_counter_state 5).state.world.accounts).storage = 0w
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem transient_static_write_rejected:
+  (transient_counter_run static_state 5).completion = InvalidCompletion "bad scalar write"
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem transient_aggregate_state_rejected:
+  storage_wf [counter with state_backend := TransientStorage] ∧
+  wf_core_state_variable (core_program_environment (storage_program []))
+    (counter with <| state_type := MappingT (UintT 256) (UintT 8);
+      state_offset := 0 |>) ∧
+  ¬wf_core_state_variable (core_program_environment (storage_program []))
+    (counter with <| state_backend := TransientStorage;
+      state_type := MappingT (UintT 256) (UintT 8); state_offset := 0 |>)
+Proof
+  EVAL_TAC
+QED
+
+(* Canonical packed values survive their neighboring bytes; invalid bool and
+ * enum bytes fail closed in transient storage just as in persistent storage. *)
+Definition transient_read_test_def:
+  transient_read_test word ty =
+    read_storage_reference
+      (core_program_environment (storage_program [] with
+        type_declarations := [(AstId 900, EnumDeclaration 3)]))
+      (initial_state.world with transient :=
+        update_transient_storage 7w (update_storage 3w word empty_storage)
+          empty_transient_storage)
+      ty (StorageReference TransientStorage 7w 3w 1 ty (LayoutId 0))
+End
+
+val () = cv_auto_trans transient_read_test_def;
+
+Theorem transient_bool_reads_fail_closed:
+  transient_read_test 0xaa0000w BoolT = ValueOk (ScalarValue (BoolValue F)) ∧
+  transient_read_test 0xaa0100w BoolT = ValueOk (ScalarValue (BoolValue T)) ∧
+  transient_read_test 0xaa0200w BoolT =
+    ValueAbrupt (InvalidCompletion "bad storage read") ∧
+  transient_read_test 0xaaff00w BoolT =
+    ValueAbrupt (InvalidCompletion "bad storage read")
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem transient_enum_reads_fail_closed:
+  transient_read_test 0xaa0000w (EnumT (AstId 900)) =
+    ValueOk (ScalarValue (IntegerValue 0)) ∧
+  transient_read_test 0xaa0200w (EnumT (AstId 900)) =
+    ValueOk (ScalarValue (IntegerValue 2)) ∧
+  transient_read_test 0xaa0300w (EnumT (AstId 900)) =
+    ValueAbrupt (InvalidCompletion "bad storage read") ∧
+  transient_read_test 0xaaff00w (EnumT (AstId 900)) =
+    ValueAbrupt (InvalidCompletion "bad storage read")
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* Return data across the source and its blocks: a procedure running the
+ * statements pre and then one block per code, each with x bound to its
+ * parameter, against call_state's callees. *)
+Definition rd_proc_def:
+  rd_proc pre codes = <|
+    procedure_id := AstId 130;
+    parameters := [(AstId 131, u256)];
+    return_bindings := [(AstId 132, u256)];
+    body := pre ++
+      MAP (λc. AssemblyStmt c [("x", AssemblyLocal (AstId 131) u256)]) codes ++
+      [ReturnStmt [BoundAtom (AstId 131)]]
+  |>
+End
+
+Definition run_rd_def:
+  run_rd pre codes =
+    (invoke_source 20 (core_program_environment <|
+        unsupported_procedures := []; procedures := [rd_proc pre codes];
+        struct_layouts := []; type_declarations := [];
+        state_variables := []; immutables := [];
+        entry_procedure := AstId 130;
+        external_functions := []; receive_procedure := NONE;
+        fallback_procedure := NONE; creation_procedure := NONE |>)
+      (AstId 130) [ScalarValue (IntegerValue 7)] call_state []).completion
+End
+
+(* A high-level call to 0x5000 (returns a word), a try call to 0x5001
+ * (reverts with a word, caught), a low-level call to 0x5000, and an
+ * ecrecover of an invalid signature. *)
+Definition rd_high_def:
+  rd_high =
+    DefineStmt (AstId 133) (SingleType u256)
+      (ExternalCallOperation ExternalCall [1w; 2w; 3w; 4w] [] [u256]
+         (ConstantAtom (AddressValue 0x5000w)) (k 0) NONE [])
+End
+
+Definition rd_try_def:
+  rd_try =
+    DefineStmt (AstId 134)
+      (ProductType [SingleType BoolT; SingleType u256;
+                    SingleType (LocatedT MemoryLoc BytesT)])
+      (TryExternalCallOperation ExternalCall [1w; 2w; 3w; 4w] [] [u256]
+         (ConstantAtom (AddressValue 0x5001w)) (k 0) NONE [])
+End
+
+Definition rd_low_def:
+  rd_low =
+    DefineStmt (AstId 135)
+      (ProductType [SingleType BoolT; SingleType (LocatedT MemoryLoc BytesT)])
+      (LowLevelCallOperation ExternalCall (ConstantAtom (AddressValue 0x5000w))
+         (k 0) NONE (ConstantAtom (BytesValue [])))
+End
+
+Definition rd_ecrecover_def:
+  rd_ecrecover =
+    DefineStmt (AstId 136) (SingleType (AddressT NonpayableAddress))
+      (EcrecoverOperation (ConstantAtom (BytesValue (REPLICATE 32 0w))) (k 27)
+         (ConstantAtom (BytesValue (REPLICATE 32 0w)))
+         (ConstantAtom (BytesValue (REPLICATE 32 0w))))
+End
+
+Definition rd_size_def:
+  rd_size = [YulAssign ["x"] (YulBuiltin YReturnDataSize [])]
+End
+
+Definition rd_bubble_def:
+  rd_bubble =
+    [YulLet ["p"] (SOME (YulBuiltin YMLoad [ylit 0x40w]));
+     YulExprStmt (YulBuiltin YReturnDataCopy
+       [YulName "p"; ylit 0w; YulBuiltin YReturnDataSize []]);
+     YulExprStmt (YulBuiltin YRevert [YulName "p"; YulBuiltin YReturnDataSize []])]
+End
+
+Definition rd_no_call_def:
+  rd_no_call = [YulAssign ["x"] (YulBuiltin YAdd [YulName "x"; ylit 1w])]
+End
+
+Definition rd_call_def:
+  rd_call a = [YulExprStmt (YulBuiltin YPop [ycall (ylit a) 0w 0w 0w 0w])]
+End
+
+val () = cv_auto_trans run_rd_def;
+val () = List.app cv_auto_trans
+  [rd_high_def, rd_try_def, rd_low_def, rd_ecrecover_def, rd_size_def,
+   rd_bubble_def, rd_no_call_def, rd_call_def];
+
+(* A frame starts with no return data; each call of the source leaves its
+ * callee's return or revert bytes, the caught revert of a try included, and
+ * a block keeps them for the next. *)
+Theorem asm_return_data_known:
+  run_rd [] [rd_size] = ReturnCompletion [ScalarValue (IntegerValue 0)] ∧
+  run_rd [rd_high] [rd_size] = ReturnCompletion [ScalarValue (IntegerValue 32)] ∧
+  run_rd [rd_low] [rd_size] = ReturnCompletion [ScalarValue (IntegerValue 32)] ∧
+  run_rd [rd_try] [rd_size] = ReturnCompletion [ScalarValue (IntegerValue 32)] ∧
+  run_rd [rd_try] [rd_bubble] = RevertCompletion (REPLICATE 31 0w ++ [0xaaw]) ∧
+  run_rd [rd_high] [rd_no_call; rd_size] =
+    ReturnCompletion [ScalarValue (IntegerValue 32)] ∧
+  run_rd [] [rd_call 0x5000w; rd_size] =
+    ReturnCompletion [ScalarValue (IntegerValue 32)]
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* After an ecrecover the source does not know the return data: a block that
+ * could read it before a call of its own fails closed, also after a block
+ * that made no call or a call that returned nothing; a call that returned
+ * bytes makes it known again. *)
+Theorem asm_return_data_unknown:
+  run_rd [rd_ecrecover] [rd_size] =
+    InvalidCompletion "assembly reads return data the source does not know" ∧
+  run_rd [rd_high; rd_ecrecover] [rd_size] =
+    InvalidCompletion "assembly reads return data the source does not know" ∧
+  run_rd [rd_ecrecover] [rd_no_call; rd_size] =
+    InvalidCompletion "assembly reads return data the source does not know" ∧
+  run_rd [rd_ecrecover] [rd_call 0x5002w; rd_size] =
+    InvalidCompletion "assembly reads return data the source does not know" ∧
+  run_rd [rd_ecrecover] [rd_call 0x5000w ++ rd_size] =
+    ReturnCompletion [ScalarValue (IntegerValue 32)] ∧
+  run_rd [rd_ecrecover] [rd_call 0x5000w; rd_size] =
+    ReturnCompletion [ScalarValue (IntegerValue 32)]
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* The static rule admits return data reads before a call of the block's own,
+ * but not in a Yul function's body, and gas() only as a call's gas argument. *)
+Theorem asm_gas_rule:
+  assembly_gas_ok rd_size ∧
+  assembly_gas_ok rd_bubble ∧
+  ¬assembly_gas_ok [YulFunction "f" [] ["r"]
+                      [YulAssign ["r"] (YulBuiltin YReturnDataSize [])]] ∧
+  ¬assembly_gas_ok [YulAssign ["x"] (YulBuiltin YGas [])]
+Proof
+  EVAL_TAC
+QED
+
+(* Storage pointers. run_asm_pointer runs a block with the pointer parameter
+ * p as "p.slot" and "p.offset" and the local r, from an account at address
+ * 5, and returns r and p. *)
+Definition asm_pointer_proc_def:
+  asm_pointer_proc code = <|
+    procedure_id := AstId 160;
+    parameters := [(AstId 161, LocatedT StorageLoc (ArrayT u256 NONE))];
+    return_bindings := [(AstId 162, u256)];
+    body := [AssemblyStmt code [("r", AssemblyLocal (AstId 162) u256);
+                                ("p.slot", AssemblyPointerSlot (AstId 161));
+                                ("p.offset", AssemblyPointerOffset (AstId 161))];
+             ReturnStmt [BoundAtom (AstId 162); BoundAtom (AstId 161)]]
+  |>
+End
+
+Definition run_asm_pointer_def:
+  run_asm_pointer code p =
+    let env = core_program_environment <|
+      unsupported_procedures := []; procedures := [asm_pointer_proc code];
+      struct_layouts := []; type_declarations := [];
+      state_variables := []; immutables := [];
+      entry_procedure := AstId 160;
+      external_functions := []; receive_procedure := NONE;
+      fallback_procedure := NONE; creation_procedure := NONE |> in
+    let st = initial_state with frame := initial_state.frame with self_address := 5w in
+    (invoke_source 20 env (AstId 160) [p] st []).completion
+End
+
+val () = cv_auto_trans run_asm_pointer_def;
+
+(* The block reads the pointer's slot and offset; assigning its slot rebinds
+ * it to that slot of the executing account, keeping its type and layout,
+ * and leaving it alone rebinds it to its own slot. A pointer that doesn't
+ * hold a storage reference fails closed. *)
+Theorem asm_storage_pointers:
+  run_asm_pointer [YulAssign ["r"] (yadd (YulName "p.slot") (YulName "p.offset"))]
+    (ReferenceValue (StorageReference PersistentStorage 5w 4w 0 (ArrayT u256 NONE)
+       (LayoutId 3))) =
+    ReturnCompletion [ScalarValue (IntegerValue 4);
+      ReferenceValue (StorageReference PersistentStorage 5w 4w 0 (ArrayT u256 NONE)
+        (LayoutId 3))] ∧
+  run_asm_pointer [YulAssign ["p.slot"] (yadd (YulName "p.slot") (ylit 6w))]
+    (ReferenceValue (StorageReference PersistentStorage 0w 4w 0 (ArrayT u256 NONE)
+       (LayoutId 3))) =
+    ReturnCompletion [ScalarValue (IntegerValue 0);
+      ReferenceValue (StorageReference PersistentStorage 5w 10w 0 (ArrayT u256 NONE)
+        (LayoutId 3))] ∧
+  run_asm_pointer [YulAssign ["r"] (YulName "p.slot")]
+    (ReferenceValue (MemoryReference (HeapId 0) 0 (ArrayT u256 NONE))) =
+    InvalidCompletion "bad assembly reference"
+Proof
+  CONV_TAC cv_eval
 QED
