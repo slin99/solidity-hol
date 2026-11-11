@@ -508,8 +508,16 @@ inside a struct type identifier, retaining its declaration ID and location.
 slots/offsets and size. Member IDs/types must match the declaration; sizes must
 be positive multiples of a slot. Core layout checks reject fields outside the
 struct's stride, scalar fields crossing a slot boundary, unaligned aggregates,
-and cyclic inline containment. Layout calculation and byte disjointness remain
-trusted compiler work. Unused declarations need no runtime layout.
+and cyclic inline containment. When solc omits a struct layout (for example, a
+type used only through a storage pointer), elaboration computes it from the declared member types using
+Solidity's [storage packing rules](https://docs.soliditylang.org/en/v0.8.37/internals/layout_in_storage.html).
+It packs scalar members into slots and aligns structs, arrays, mappings and
+byte sequences to whole slots. Nested struct sizes are resolved in bounded
+rounds over all declarations, independently of declaration order. A struct
+whose members cannot be laid out is omitted. Supplied layouts still undergo
+the same checks and are used unchanged; the differential corpus checks that
+computed layouts equal them. Byte disjointness of supplied layouts remains
+trusted compiler work.
 
 The core program owns semantic struct declarations independently of keyed
 storage layouts, including unused structs with no runtime layout. Its environment
@@ -637,8 +645,8 @@ annotations, at the node whose type it computes:
   type, and every other annotation decodes to an elementary, rational literal
   or tuple type.
 
-Left to the compiler: storage layout calculation, that view functions write
-no state variable, and the override metadata (which declarations each
+Left to the compiler: supplied storage layout calculation, that view functions
+write no state variable, and the override metadata (which declarations each
 function overrides, and that functions come most derived first).
 
 ## Partial admission
