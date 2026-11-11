@@ -140,7 +140,10 @@ selectors. Contract definitions record inheritance-related and used-event/error
 metadata. Inheritance needs two of these annotations (the differential fixture
 `inheritance.sol`): the importer flattens a contract along its
 `linearizedBaseContracts`, and `call_table` resolves overrides through each
-function's `baseFunctions`. Base-constructor specifiers on constructors
+function's `baseFunctions`. A public state variable, constant or immutable may
+override an external function. The importer removes the transitively replaced
+functions using the variable's `baseFunctions`, leaving its getter as the sole
+dispatch entry for that selector. Base-constructor specifiers on constructors
 (`constructors.sol`) use their `referencedDeclaration`. Unqualified modifier
 invocations resolve through the transitive `baseModifiers` relation in the
 contract's linearization; explicitly qualified `Base.modifier` invocations
@@ -196,11 +199,18 @@ reference whose data runs past the end of the calldata ends with an
 `InvalidCompletion`: the model has no bytes there to read, where the EVM
 reads zeros.
 
-Inline assembly reads a memory `bytes` or `string` local as its address
-(`assembly_memory.sol`). The source heap gives each object the address the
-compiler's allocator would (`object_address`: `0x80` plus the memory
-allocated so far, `0x60` for the shared empty object), and a block runs over
-a memory holding each byte sequence's length word and bytes there. Under
+Inline assembly reads a memory `bytes` or `string` local, or a memory array
+of value types (`uint8[]`, `address[]`, `bytes32[2]`), as its address
+(`assembly_memory.sol`, `assembly_arrays.sol`). The source heap gives each
+object the address the compiler's allocator would (`object_address`: `0x80`
+plus the memory allocated so far, `0x60` for the shared empty object), and a
+block runs over a memory holding each byte sequence's length word and bytes
+there, and each such array's length word, if it is dynamic, and a word per
+element, as solc keeps the element in memory. On normal exit each element is
+read back from its word, which must be the exact word its value is kept as
+(a `uint8` of 256 or a `bool` of 2 fails closed, where solc would clean it
+when it reads the element); arrays of other element types are not in the
+block's memory. Under
 `memoryguard` the compiler may start its free memory pointer above `0x80`, so
 arithmetic relative to a pointer is modelled but returning, storing or
 comparing a raw pointer value is outside the boundary. The block's memory also
@@ -211,7 +221,7 @@ docs allow a memory-safe block). A literal address with a literal length is
 read only at the free memory pointer or where the block wrote it before (an
 `mstore`, a call's output region or a `returndatacopy`, also in an argument to
 the right, since arguments run right to left), as the elaborator checks. At a computed address a block may read only the free memory pointer,
-the zero slot `[0x60, 0x80)`, each byte sequence's length word and data
+the zero slot `[0x60, 0x80)`, each array's words, each byte sequence's length word and data
 (zero-padded to whole words where solc's memory holds the zeros: not for
 bytes copied from return data, a low-level call's or a `catch`'s, whose
 padding solc leaves as it was), and bytes it has written itself; any other read,
@@ -367,13 +377,22 @@ panics with 0x21. An enum occupies one byte of storage; reading a stored
 byte outside its member range fails closed with `InvalidCompletion`, even if
 the value is never used. A `bool` storage byte other than 0 or 1 also fails
 closed. The compiler can retain these non-canonical bytes on its stack, which
-the core's source values cannot represent. An enum is
-ABI encoded as `uint8`, as a parameter, a return, an event argument or an
-external call's argument. A call or creation whose enum argument is out of
-range reverts when the decoder reaches it, before later arguments are read.
+the core's source values cannot represent.
+
+Whole fixed-size and dynamic storage arrays of enums can be read as storage
+values and copied to other storage arrays (`storage_enum_arrays.sol`). Copies
+clear old destination contents and pack enum elements one byte each. A copy that reads an out-of-range source byte
+fails closed with `InvalidCompletion`; copying an array onto itself is a
+no-op and reads no elements. Clearing old destination contents does not
+validate the bytes being discarded. Memory and calldata enum arrays remain
+outside the supported boundary.
+
+An enum is ABI encoded as `uint8`, as a parameter, a return, an event
+argument or an external call's argument. A call or creation whose enum
+argument is out of range reverts when the decoder reaches it, before later arguments are read.
 `type(E).min` and `type(E).max` are the first and last enum values.
 Enums as mapping keys, as elements of memory or calldata
-arrays, as constants, immutables or error parameters, or returned by an
+arrays, as constants or immutables, or returned by an
 external call are rejected.
 
 `keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
@@ -400,8 +419,23 @@ function-typed value is rejected, and so are `sha256` and `ripemd160`.
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
 type the compiler gives the whole expression, which must be a value type,
 a memory reference or a tuple of supported component types (a memory operand
-is the same reference, not a copy). Conditionals of storage, calldata or
-function type are rejected.
+is the same reference, not a copy). Conditionals of storage or calldata
+type are rejected.
+
+An internal function value names a function by its declaration: a private,
+internal or public function, a library's internal function (`L.f`) or a
+free function, resolved as a call of it would be, so a virtual function is
+its most derived override. Its type keeps the declared mutability, and a
+pure function converts implicitly to view and nonpayable function types, a
+view one to nonpayable. A call through a value evaluates the callee
+expression first and copies its value, then the arguments in order; the zero
+value, held by a local or named return never assigned, panics with 0x51
+after the arguments, as the compiler's internal dispatch does. Parameters
+and returns of a function type must be value types other than function
+types. External function values, function values in storage, arrays,
+structs, events, the ABI or inline assembly, and comparisons of function
+values are rejected; a function-typed state variable, or an external
+function type in a function's header, rejects the whole unit.
 
 `abi.encode`, `abi.encodePacked`, `abi.encodeWithSelector` and
 `abi.encodeWithSignature` give a new memory `bytes`, allocated as the
@@ -430,7 +464,7 @@ scalars or byte sequences; other receivers (a constant, whose initializer the
 compiler evaluates and which may fail, included), and array and struct
 parameters, are rejected.
 
-`abi.decode(data, (T1, ..., Tk))` decodes a memory `bytes` into values of
+`abi.decode(data, (T1, ..., Tk))` decodes memory or calldata `bytes` into values of
 elementary types (booleans, integers, addresses and fixed-size byte
 sequences, including erased user-defined value types), as the compiler's
 decoder from memory does. The result keeps the compiler's annotated types:
@@ -439,8 +473,9 @@ value type backed by nonpayable `address` keeps that underlying type.
 Each result must match its requested elementary type or its payable-address
 decoding variant. Data shorter than the
 encoding, or a word that is not a value of its type, reverts with no data, and
-data after the encoding is ignored. It allocates nothing. Data in calldata or
-storage, and types other than elementary ones, are rejected.
+data after the encoding is ignored. Memory and calldata bytes, including
+slices, decode in place without allocating memory. Storage input and types
+other than elementary ones are rejected.
 
 `a.call(data)`, `a.staticcall(data)` and `a.delegatecall(data)`, with `a`
 an address and `data` a memory or calldata `bytes` or a bytes literal,
@@ -574,8 +609,16 @@ inside a struct type identifier, retaining its declaration ID and location.
 slots/offsets and size. Member IDs/types must match the declaration; sizes must
 be positive multiples of a slot. Core layout checks reject fields outside the
 struct's stride, scalar fields crossing a slot boundary, unaligned aggregates,
-and cyclic inline containment. Layout calculation and byte disjointness remain
-trusted compiler work. Unused declarations need no runtime layout.
+and cyclic inline containment. When solc omits a struct layout (for example, a
+type used only through a storage pointer), elaboration computes it from the declared member types using
+Solidity's [storage packing rules](https://docs.soliditylang.org/en/v0.8.37/internals/layout_in_storage.html).
+It packs scalar members into slots and aligns structs, arrays, mappings and
+byte sequences to whole slots. Nested struct sizes are resolved in bounded
+rounds over all declarations, independently of declaration order. A struct
+whose members cannot be laid out is omitted. Supplied layouts still undergo
+the same checks and are used unchanged; the differential corpus checks that
+computed layouts equal them. Byte disjointness of supplied layouts remains
+trusted compiler work.
 
 The core program owns semantic struct declarations independently of keyed
 storage layouts, including unused structs with no runtime layout. Its environment
@@ -648,8 +691,8 @@ Admitted: one contract, flattened along its bases, with
   ABI values are rejected;
 - locals, including tuple declarations with holes; simple and compound
   assignment to locals and state variables, tuple assignment, `++` and `--`;
-- literals (no subdenominations), explicit elementary conversions (not
-  `bytesN(b)` of a dynamic byte sequence `b`),
+- literals (no subdenominations), explicit elementary conversions and
+  `bytesN(b)` of dynamic bytes in memory, calldata or storage,
   `type(T).max` and `.min` of integer and enum types, unary, binary, comparison and
   short-circuit operators, conditional expressions over value types; an
   operation over literals that the compiler types as an integer is that
@@ -657,7 +700,8 @@ Admitted: one contract, flattened along its bases, with
 - `if`, `while`, `do`-`while`, `for`, `break`, `continue`, `return`,
   unchecked blocks, inline assembly over value-type locals, state-variable
   slots, storage pointer slots and offsets, calldata offsets and lengths,
-  value-type constants and memory `bytes` and `string` locals, with
+  value-type constants and memory `bytes`, `string` and value-type array
+  locals, with
   `call`, `staticcall` and their return data;
 - internal calls with single or multiple returns, library calls (`L.f(args)`
   and `x.f(args)` through a using directive) and library constants (`L.c`),
@@ -667,9 +711,9 @@ Admitted: one contract, flattened along its bases, with
 - `require`, `assert` and `revert` with boolean conditions and literal string
   messages; reads of `msg`, `tx` and `block` members and `address(this)`;
   emits of events with scalar, byte-sequence and array parameters (including
-  indexed arrays), and reverts with custom errors with elementary parameters;
-  unsupported event parameter types reject the emitting function, leaving
-  unrelated functions available; `keccak256`, `abi.encode*`, selectors;
+  indexed arrays), and reverts with custom errors with elementary or enum
+  parameters; unsupported event parameter types reject the emitting function,
+  leaving unrelated functions available; `keccak256`, `abi.encode*`, selectors;
 - constants, state-variable initializers, constructors and base-constructor
   arguments (inheritance specifiers or constructor modifiers), which form one
   creation procedure.
@@ -708,8 +752,8 @@ annotations, at the node whose type it computes:
   every scalar result is annotated with its own type, and every other
   annotation decodes to an elementary, rational literal or tuple type.
 
-Left to the compiler: storage layout calculation, that view functions write
-no state variable, and the override metadata (which declarations each
+Left to the compiler: supplied storage layout calculation, that view functions
+write no state variable, and the override metadata (which declarations each
 function overrides, and that functions come most derived first).
 
 ## Partial admission
@@ -771,7 +815,8 @@ effects. Dynamic message expressions remain rejected, including on a successful
 require; future string support must evaluate them on both paths according to
 the compiler profile's argument schedule. A revert with a custom error,
 `revert E(args)`, reverts with the error's 4-byte selector followed by the ABI
-encoding of its arguments, which must be of elementary types.
+encoding of its arguments, which must be elementary values or enums. Enum
+parameters use their declared enum type and encode as `uint8`.
 
 ## Required validation
 
@@ -804,6 +849,24 @@ pointers. Transient value types and custom storage bases have differential fixtu
 The first HOL type
 theory can begin from the normalized types already observed, provided unsupported
 forms continue to fail closed.
+
+## Calldata slices
+
+`data[start:end]` produces a view into calldata, keeping its offset and length.
+Bounds may be omitted; the defaults are zero and the input view's length.
+Bounds outside the input view or in reverse order revert with empty data,
+whereas indexing an empty view still produces the ordinary index panic.
+Slices support `bytes` and dynamic calldata arrays with statically encoded
+elements, including fixed-size arrays. Slicing again adds to the existing
+offset, using each element's ABI stride. The importer normalizes solc's slice
+identifier suffix to the existing calldata-reference type.
+
+`bytesN(data)` reads the first N bytes of a dynamic `bytes` reference in
+memory, calldata or storage, right-padding shorter inputs with zeros. It
+returns a scalar and does not allocate memory. Slice length controls the
+conversion, so bytes beyond the selected view never contribute to its value.
+Storage conversions validate the length header and read at most N bytes;
+they do not copy the complete array or impose a memory-allocation length cap.
 
 ## Tuple expressions and assignments
 

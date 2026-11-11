@@ -684,6 +684,130 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* Memory arrays of value types. run_asm_array ty vs code runs code on an
+ * array of type ty holding vs, the first allocation (at 0x80), with its
+ * address bound to "a", and gives the block's "r" and the elements after. *)
+Definition asm_array_proc_def:
+  asm_array_proc ty code = <|
+    procedure_id := AstId 140;
+    parameters := [(AstId 141, LocatedT MemoryLoc ty)];
+    return_bindings := [(AstId 142, u256)];
+    body := [AssemblyStmt code [("a", AssemblyMemory (AstId 141) ty);
+                                ("r", AssemblyLocal (AstId 142) u256)];
+             ReturnStmt [BoundAtom (AstId 142)]]
+  |>
+End
+
+Definition run_asm_array_def:
+  run_asm_array ty vs code =
+    case ty of
+      ArrayT element length =>
+        let n = LENGTH vs in
+        let obj = <| object_type := ty; object_length := n;
+                     object_cells := FEMPTY |++ ZIP (COUNT_LIST n, MAP ScalarValue vs);
+                     object_address := 0x80; object_padded := T |> in
+        let st = initial_state with <|
+                   heap := FEMPTY |+ (1, obj); next_heap_id := 1;
+                   memory_allocated := (if length = NONE then 32 else 0) + 32 * n |> in
+        let env = core_program_environment <|
+          unsupported_procedures := []; procedures := [asm_array_proc ty code];
+          struct_layouts := []; type_declarations := [];
+          state_variables := []; immutables := [];
+          entry_procedure := AstId 140;
+          external_functions := []; receive_procedure := NONE;
+          fallback_procedure := NONE; creation_procedure := NONE |> in
+        let r = invoke_source 20 env (AstId 140)
+                  [ReferenceValue (MemoryReference (HeapId 1) 0 ty)] st [] in
+        (r.completion,
+         case FLOOKUP r.state.heap 1 of
+           SOME obj => MAP (memory_cell obj element) (COUNT_LIST n)
+         | NONE => [])
+    | _ => (InvalidCompletion "not an array", [])
+End
+
+(* The same block run on the shared empty object, HeapId 0. *)
+Definition run_asm_null_def:
+  run_asm_null ty code =
+    let env = core_program_environment <|
+      unsupported_procedures := []; procedures := [asm_array_proc ty code];
+      struct_layouts := []; type_declarations := [];
+      state_variables := []; immutables := [];
+      entry_procedure := AstId 140;
+      external_functions := []; receive_procedure := NONE;
+      fallback_procedure := NONE; creation_procedure := NONE |> in
+    (invoke_source 20 env (AstId 140)
+       [ReferenceValue (MemoryReference (HeapId 0) 0 ty)] initial_state []).completion
+End
+
+val () = cv_auto_trans run_asm_array_def;
+val () = cv_auto_trans run_asm_null_def;
+
+Definition uints_def:
+  uints ns = MAP (λn. IntegerValue (&n)) ns
+End
+
+Definition scalars_def:
+  scalars vs = MAP ScalarValue vs
+End
+
+val () = cv_auto_trans uints_def;
+val () = cv_auto_trans scalars_def;
+
+(* A dynamic array has its length word at its address and a word per element
+ * after it; a static one has no length word. A word written in an element is
+ * read back; one that isn't the word its element type keeps (a uint8 of 256,
+ * a bool of 2, an address with high bits) fails closed, and so does a write
+ * to the length word. A negative element is sign-extended. The shared empty
+ * object stands for an empty dynamic array at 0x60, never a static one. *)
+Theorem asm_memory_arrays:
+  run_asm_array (ArrayT (UintT 8) NONE) (uints [1; 2; 3])
+    [YulAssign ["r"] (YulBuiltin YMLoad [YulName "a"])] =
+    (ReturnCompletion [ScalarValue (IntegerValue 3)],
+     scalars (uints [1; 2; 3])) ∧
+  run_asm_array (ArrayT (UintT 8) NONE) (uints [1; 2; 3])
+    [YulAssign ["r"] (YulBuiltin YMLoad [yadd (YulName "a") (ylit 0x40w)])] =
+    (ReturnCompletion [ScalarValue (IntegerValue 2)],
+     scalars (uints [1; 2; 3])) ∧
+  run_asm_array (ArrayT (UintT 8) NONE) (uints [1; 2; 3])
+    [YulExprStmt (YulBuiltin YMStore [yadd (YulName "a") (ylit 0x60w); ylit 9w])] =
+    (ReturnCompletion [ScalarValue (IntegerValue 0)],
+     scalars (uints [1; 2; 9])) ∧
+  run_asm_array (ArrayT (UintT 8) NONE) (uints [1; 2; 3])
+    [YulExprStmt (YulBuiltin YMStore [yadd (YulName "a") (ylit 0x20w); ylit 256w])] =
+    (InvalidCompletion "assembly write-back failed",
+     scalars (uints [1; 2; 3])) ∧
+  run_asm_array (ArrayT (UintT 8) NONE) (uints [1; 2; 3])
+    [YulExprStmt (YulBuiltin YMStore [YulName "a"; ylit 2w])] =
+    (InvalidCompletion "assembly wrote memory outside the scratch space and byte sequence data",
+     scalars (uints [1; 2; 3])) ∧
+  run_asm_array (ArrayT BoolT NONE) [BoolValue T]
+    [YulExprStmt (YulBuiltin YMStore [yadd (YulName "a") (ylit 0x20w); ylit 2w])] =
+    (InvalidCompletion "assembly write-back failed", [ScalarValue (BoolValue T)]) ∧
+  run_asm_array (ArrayT (AddressT NonpayableAddress) NONE) [AddressValue 0w]
+    [YulExprStmt (YulBuiltin YMStore [yadd (YulName "a") (ylit 0x20w);
+       YulBuiltin YShl [ylit 160w; ylit 1w]])] =
+    (InvalidCompletion "assembly write-back failed", [ScalarValue (AddressValue 0w)]) ∧
+  run_asm_array (ArrayT (IntT 8) NONE) [IntegerValue (-1)]
+    [YulAssign ["r"] (YulBuiltin YMLoad [yadd (YulName "a") (ylit 0x20w)])] =
+    (ReturnCompletion [ScalarValue (IntegerValue 115792089237316195423570985008687907853269984665640564039457584007913129639935)],
+     [ScalarValue (IntegerValue (-1))]) ∧
+  run_asm_array (ArrayT (UintT 256) (SOME 2)) (uints [5; 6])
+    [YulAssign ["r"] (YulBuiltin YMLoad [YulName "a"]);
+     YulExprStmt (YulBuiltin YMStore [yadd (YulName "a") (ylit 0x20w); ylit 7w])] =
+    (ReturnCompletion [ScalarValue (IntegerValue 5)],
+     scalars (uints [5; 7])) ∧
+  run_asm_array (ArrayT (UintT 256) (SOME 2)) (uints [5; 6])
+    [YulAssign ["r"] (YulBuiltin YMLoad [yadd (YulName "a") (ylit 0x40w)])] =
+    (InvalidCompletion "assembly read memory it was not given",
+     scalars (uints [5; 6])) ∧
+  run_asm_null (ArrayT (UintT 256) NONE) [YulAssign ["r"] (YulName "a")] =
+    ReturnCompletion [ScalarValue (IntegerValue 0x60)] ∧
+  run_asm_null (ArrayT (UintT 256) (SOME 2)) [YulAssign ["r"] (YulName "a")] =
+    InvalidCompletion "bad assembly reference"
+Proof
+  CONV_TAC cv_eval
+QED
+
 (* Memory from the free memory pointer (0xc0 here) up is the block's
  * temporary memory: it reads back what it wrote there, and the next block
  * starts without it. *)

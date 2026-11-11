@@ -2,9 +2,10 @@
 pragma solidity 0.8.37;
 
 // Value-type state variables: packed slots, signed and fixed-bytes values,
-// writes seen across internal calls, and reverts discarding writes. The
-// admitted subset has no require or revert, so the reverts are panics, and
-// no negative literals.
+// writes seen across internal calls, and reverts discarding writes; writes
+// under an if, and storage-free loops (one with a require in its body) in
+// functions that read or write state. Reverts are panics or a bare require,
+// and there are no negative literals.
 contract Storage {
     uint256 total;
     uint8 small;
@@ -92,5 +93,48 @@ contract Storage {
         wide = int256(uint256(small)) - 5;
         wide -= int256(uint256(small));
         return wide;
+    }
+
+    function writeIf(bool c, uint256 x) public returns (uint256) {
+        if (c) total = x;
+        return total;
+    }
+
+    function writeIfElse(bool c, uint256 x) public returns (uint256, int256) {
+        if (c) {
+            total = x;
+        } else {
+            wide = int256(x);
+        }
+        return (total, wide);
+    }
+
+    function loopThenWrite(uint256 n) public returns (uint256) {
+        uint256 acc;
+        for (uint256 i = 0; i < n; i++) {
+            acc += i;
+        }
+        total = acc;
+        return total;
+    }
+
+    function readLoopWrite(uint256 n) public returns (uint256) {
+        uint256 acc = total;
+        for (uint256 i = 0; i < n; i++) {
+            acc += i;
+        }
+        low = uint128(acc);
+        return uint256(low);
+    }
+
+    function requireInLoop(uint256 n, uint256 limit) public returns (uint256) {
+        total = 1;
+        uint256 acc;
+        for (uint256 i = 0; i < n; i++) {
+            require(i < limit);
+            acc += i;
+        }
+        total = acc;
+        return total;
     }
 }

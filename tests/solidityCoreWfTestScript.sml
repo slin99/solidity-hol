@@ -515,9 +515,24 @@ Proof
   EVAL_TAC
 QED
 
-Theorem function_parameter_rejected:
-  ¬wf_core_procedure test_env
+Theorem internal_function_parameter_accepted:
+  wf_core_procedure test_env
      (with_body [] with parameters := [(AstId 80, FunctionT InternalFn PureMut [] [])])
+Proof
+  EVAL_TAC
+QED
+
+Theorem external_function_parameter_rejected:
+  ¬wf_core_procedure test_env
+     (with_body [] with parameters := [(AstId 80, FunctionT ExternalFn PureMut [] [])])
+Proof
+  EVAL_TAC
+QED
+
+Theorem payable_function_parameter_rejected:
+  ¬wf_core_procedure test_env
+     (with_body [] with parameters :=
+        [(AstId 80, FunctionT InternalFn PayableMut [] [])])
 Proof
   EVAL_TAC
 QED
@@ -576,12 +591,39 @@ Proof
   EVAL_TAC
 QED
 
-(* Custom errors: a 4-byte selector and elementary arguments of their
- * parameter types. *)
+(* Custom errors: a 4-byte selector and scalar arguments of their
+ * parameter types, including declared enums. *)
 Theorem revert_error_admitted:
   wf_core_procedure test_env (with_body [
      RevertErrorStmt [1w; 2w; 3w; 4w] [u256; BoolT]
        [BoundAtom (AstId 80); ConstantAtom (BoolValue T)];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_enum_admitted:
+  wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [EnumT (AstId 900)]
+       [ConstantAtom (IntegerValue 2)];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_undeclared_enum_rejected:
+  ¬wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [EnumT (AstId 999)]
+       [ConstantAtom (IntegerValue 0)];
+     ReturnStmt [BoundAtom (AstId 80)]])
+Proof
+  EVAL_TAC
+QED
+
+Theorem revert_error_enum_out_of_range_rejected:
+  ¬wf_core_procedure test_env (with_body [
+     RevertErrorStmt [1w; 2w; 3w; 4w] [EnumT (AstId 900)]
+       [ConstantAtom (IntegerValue 3)];
      ReturnStmt [BoundAtom (AstId 80)]])
 Proof
   EVAL_TAC
@@ -1182,4 +1224,48 @@ Theorem calldata_byte_is_not_a_writable_reference:
       (IndexNavigation (ConstantAtom (IntegerValue 0))))
 Proof
   EVAL_TAC
+QED
+
+Theorem calldata_slice_locations:
+  MAP (λloc. wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT loc BytesT))];
+       targets := []; returns := []; in_loop := F |>
+    (SingleType (LocatedT loc BytesT))
+    (CalldataSliceOperation (BoundAtom (AstId 1)) (ConstantAtom (IntegerValue 0)) NONE))
+    [StorageLoc; MemoryLoc; CalldataLoc] = [F; F; T]
+Proof
+  simp_tac std_ss [listTheory.MAP] >> CONV_TAC cv_eval
+QED
+
+Theorem calldata_slice_rejects_dynamic_elements:
+  ¬wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT CalldataLoc (ArrayT BytesT NONE)))];
+       targets := []; returns := []; in_loop := F |>
+    (SingleType (LocatedT CalldataLoc (ArrayT BytesT NONE)))
+    (CalldataSliceOperation (BoundAtom (AstId 1)) (ConstantAtom (IntegerValue 0)) NONE)
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem calldata_slice_rejects_bool_bound:
+  ¬wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT CalldataLoc BytesT))];
+       targets := []; returns := []; in_loop := F |>
+    (SingleType (LocatedT CalldataLoc BytesT))
+    (CalldataSliceOperation (BoundAtom (AstId 1)) (ConstantAtom (BoolValue T)) NONE)
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem byte_prefix_rejects_bad_width_and_type:
+  ¬wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT MemoryLoc BytesT))];
+       targets := []; returns := []; in_loop := F |>
+    (SingleType (FixedBytesT 33)) (BytesToFixedOperation 33 (BoundAtom (AstId 1))) ∧
+  ¬wf_core_operation test_env
+    <| bindings := [(AstId 1, SingleType (LocatedT MemoryLoc StringT))];
+       targets := []; returns := []; in_loop := F |>
+    (SingleType (FixedBytesT 4)) (BytesToFixedOperation 4 (BoundAtom (AstId 1)))
+Proof
+  CONV_TAC cv_eval
 QED

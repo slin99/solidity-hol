@@ -1,0 +1,1825 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/enum_errors.sol": {
+        "content": "// SPDX-License-Identifier: CC0-1.0\npragma solidity 0.8.37;\n\ninterface IEnumErrors {\n    enum State { Pending, Active, Finished }\n    error Unexpected(uint256 id, State current, bytes32 allowed);\n}\n\nlibrary EnumErrors {\n    error Changed(IEnumErrors.State current, int8 delta, uint8 code);\n}\n\ncontract EnumErrorCases is IEnumErrors {\n    uint256 public changes;\n\n    function unexpected(uint256 id, State current, bytes32 allowed) external pure {\n        revert IEnumErrors.Unexpected(id, current, allowed);\n    }\n\n    function named(uint256 id, State current) external pure {\n        revert Unexpected({allowed: bytes32(uint256(7)), current: current, id: id});\n    }\n\n    function changed(uint256 raw) external {\n        changes += 1;\n        revert EnumErrors.Changed(State(raw), -3, 7);\n    }\n\n    function nextState() internal returns (State) {\n        changes += 1;\n        return State.Finished;\n    }\n\n    function effectful() external {\n        revert EnumErrors.Changed(nextState(), -3, 7);\n    }\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/enum_errors.sol": {
+        "EnumErrorCases": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "enum IEnumErrors.State",
+                  "name": "current",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "int8",
+                  "name": "delta",
+                  "type": "int8"
+                },
+                {
+                  "internalType": "uint8",
+                  "name": "code",
+                  "type": "uint8"
+                }
+              ],
+              "name": "Changed",
+              "type": "error"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "id",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "enum IEnumErrors.State",
+                  "name": "current",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "bytes32",
+                  "name": "allowed",
+                  "type": "bytes32"
+                }
+              ],
+              "name": "Unexpected",
+              "type": "error"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "raw",
+                  "type": "uint256"
+                }
+              ],
+              "name": "changed",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "changes",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "effectful",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "id",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "enum IEnumErrors.State",
+                  "name": "current",
+                  "type": "uint8"
+                }
+              ],
+              "name": "named",
+              "outputs": [],
+              "stateMutability": "pure",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "id",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "enum IEnumErrors.State",
+                  "name": "current",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "bytes32",
+                  "name": "allowed",
+                  "type": "bytes32"
+                }
+              ],
+              "name": "unexpected",
+              "outputs": [],
+              "stateMutability": "pure",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "608060405234601c57600e6020565b6105d061002b82396105d090f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b610279565b61001d5f3561006c565b80634395ed49146100675780637bbbc35e1461006257806383b6f5101461005d578063c14253ed146100585763e2f75de80361000e5761025e565b610216565b61017f565b61014a565b6100c4565b60e01c90565b60405190565b5f80fd5b5f80fd5b90565b61008c81610080565b0361009357565b5f80fd5b905035906100a482610083565b565b906020828203126100bf576100bc915f01610097565b90565b61007c565b346100d9576100d43660046100a6565b610451565b610078565b5f9103126100e857565b61007c565b1c90565b90565b61010490600861010993026100ed565b6100f1565b90565b9061011791546100f4565b90565b6101255f5f9061010c565b90565b61013190610080565b9052565b9190610148905f60208501940190610128565b565b3461017a5761015a3660046100de565b61017661016561011a565b61016d610072565b91829182610135565b0390f35b610078565b346101945761018f3660046100de565b6104a2565b610078565b600311156101a357565b5f80fd5b905035906101b482610199565b565b90565b6101c2816101b6565b036101c957565b5f80fd5b905035906101da826101b9565b565b90916060828403126102115761020e6101f7845f8501610097565b9361020581602086016101a7565b936040016101cd565b90565b61007c565b3461022c576102263660046101dc565b9161050d565b610078565b9190604083820312610259578061024d610256925f8601610097565b936020016101a7565b90565b61007c565b346102745761026e366004610231565b90610566565b610078565b5f80fd5b90565b90565b61029761029261029c9261027d565b610280565b610080565b90565b5f1c90565b6102b06102b59161029f565b6100f1565b90565b6102c290546102a4565b90565b634e487b7160e01b5f52601160045260245ffd5b6102e86102ee91939293610080565b92610080565b82018092116102f957565b6102c5565b5f1b90565b9061030f5f19916102fe565b9181191691161790565b61032d61032861033292610080565b610280565b610080565b90565b90565b9061034d61034861035492610319565b610335565b8254610303565b9055565b634e487b7160e01b5f52602160045260245ffd5b6003111561037657565b610358565b906103858261036c565b565b61039b6103966103a092610080565b610280565b61037b565b90565b6103ac9061037b565b90565b6103b8906103a3565b9052565b90565b5f0b90565b6103d86103d36103dd926103bc565b610280565b6103bf565b90565b6103e9906103c4565b9052565b90565b60ff1690565b61040a61040561040f926103ed565b610280565b6103f0565b90565b61041b906103f6565b9052565b60409061044861044f949695939661043e60608401985f8501906103af565b60208301906103e0565b0190610412565b565b61047e906104796104736104656001610283565b61046e5f6102b8565b6102d9565b5f610338565b610387565b6002199061049e60075f938493639e8f12b160e01b85526004850161041f565b0390fd5b6104aa61059e565b600219906104ca60075f938493639e8f12b160e01b85526004850161041f565b0390fd5b6104d7906101b6565b9052565b60409061050461050b94969593966104fa60608401985f850190610128565b60208301906103af565b01906104ce565b565b61052a9091925f938493638584660360e01b8552600485016104db565b0390fd5b61054261053d610547926103ed565b610280565b610080565b90565b61055e61055961056392610080565b6102fe565b6101b6565b90565b9061059661057c610577600761052e565b61054a565b9192915f938493638584660360e01b8552600485016104db565b0390fd5b5f90565b6105a661059a565b506105cb6105c56105b76001610283565b6105c05f6102b8565b6102d9565b5f610338565b60029056"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": "60806040526004361015610013575b610279565b61001d5f3561006c565b80634395ed49146100675780637bbbc35e1461006257806383b6f5101461005d578063c14253ed146100585763e2f75de80361000e5761025e565b610216565b61017f565b61014a565b6100c4565b60e01c90565b60405190565b5f80fd5b5f80fd5b90565b61008c81610080565b0361009357565b5f80fd5b905035906100a482610083565b565b906020828203126100bf576100bc915f01610097565b90565b61007c565b346100d9576100d43660046100a6565b610451565b610078565b5f9103126100e857565b61007c565b1c90565b90565b61010490600861010993026100ed565b6100f1565b90565b9061011791546100f4565b90565b6101255f5f9061010c565b90565b61013190610080565b9052565b9190610148905f60208501940190610128565b565b3461017a5761015a3660046100de565b61017661016561011a565b61016d610072565b91829182610135565b0390f35b610078565b346101945761018f3660046100de565b6104a2565b610078565b600311156101a357565b5f80fd5b905035906101b482610199565b565b90565b6101c2816101b6565b036101c957565b5f80fd5b905035906101da826101b9565b565b90916060828403126102115761020e6101f7845f8501610097565b9361020581602086016101a7565b936040016101cd565b90565b61007c565b3461022c576102263660046101dc565b9161050d565b610078565b9190604083820312610259578061024d610256925f8601610097565b936020016101a7565b90565b61007c565b346102745761026e366004610231565b90610566565b610078565b5f80fd5b90565b90565b61029761029261029c9261027d565b610280565b610080565b90565b5f1c90565b6102b06102b59161029f565b6100f1565b90565b6102c290546102a4565b90565b634e487b7160e01b5f52601160045260245ffd5b6102e86102ee91939293610080565b92610080565b82018092116102f957565b6102c5565b5f1b90565b9061030f5f19916102fe565b9181191691161790565b61032d61032861033292610080565b610280565b610080565b90565b90565b9061034d61034861035492610319565b610335565b8254610303565b9055565b634e487b7160e01b5f52602160045260245ffd5b6003111561037657565b610358565b906103858261036c565b565b61039b6103966103a092610080565b610280565b61037b565b90565b6103ac9061037b565b90565b6103b8906103a3565b9052565b90565b5f0b90565b6103d86103d36103dd926103bc565b610280565b6103bf565b90565b6103e9906103c4565b9052565b90565b60ff1690565b61040a61040561040f926103ed565b610280565b6103f0565b90565b61041b906103f6565b9052565b60409061044861044f949695939661043e60608401985f8501906103af565b60208301906103e0565b0190610412565b565b61047e906104796104736104656001610283565b61046e5f6102b8565b6102d9565b5f610338565b610387565b6002199061049e60075f938493639e8f12b160e01b85526004850161041f565b0390fd5b6104aa61059e565b600219906104ca60075f938493639e8f12b160e01b85526004850161041f565b0390fd5b6104d7906101b6565b9052565b60409061050461050b94969593966104fa60608401985f850190610128565b60208301906103af565b01906104ce565b565b61052a9091925f938493638584660360e01b8552600485016104db565b0390fd5b61054261053d610547926103ed565b610280565b610080565b90565b61055e61055961056392610080565b6102fe565b6101b6565b90565b9061059661057c610577600761052e565b61054a565b9192915f938493638584660360e01b8552600485016104db565b0390fd5b5f90565b6105a661059a565b506105cb6105c56105b76001610283565b6105c05f6102b8565b6102d9565b5f610338565b60029056"
+            },
+            "methodIdentifiers": {
+              "changed(uint256)": "4395ed49",
+              "changes()": "7bbbc35e",
+              "effectful()": "83b6f510",
+              "named(uint256,uint8)": "e2f75de8",
+              "unexpected(uint256,uint8,bytes32)": "c14253ed"
+            }
+          },
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 29,
+                "contract": "testdata/differential/enum_errors.sol:EnumErrorCases",
+                "label": "changes",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_uint256"
+              }
+            ],
+            "types": {
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        },
+        "EnumErrors": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "enum IEnumErrors.State",
+                  "name": "current",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "int8",
+                  "name": "delta",
+                  "type": "int8"
+                },
+                {
+                  "internalType": "uint8",
+                  "name": "code",
+                  "type": "uint8"
+                }
+              ],
+              "name": "Changed",
+              "type": "error"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "608060405234601d57600e6021565b6008602c823930815050600890f35b6027565b60405190565b5f80fdfe60806040525f80fd"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": "60806040525f80fd"
+            },
+            "methodIdentifiers": {}
+          },
+          "storageLayout": {
+            "storage": [],
+            "types": null
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        },
+        "IEnumErrors": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "id",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "enum IEnumErrors.State",
+                  "name": "current",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "bytes32",
+                  "name": "allowed",
+                  "type": "bytes32"
+                }
+              ],
+              "name": "Unexpected",
+              "type": "error"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": ""
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": ""
+            },
+            "methodIdentifiers": {}
+          },
+          "storageLayout": {
+            "storage": [],
+            "types": null
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/enum_errors.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/enum_errors.sol",
+          "exportedSymbols": {
+            "EnumErrorCases": [
+              119
+            ],
+            "EnumErrors": [
+              25
+            ],
+            "IEnumErrors": [
+              15
+            ]
+          },
+          "id": 120,
+          "license": "CC0-1.0",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "36:23:0"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "IEnumErrors",
+              "contractDependencies": [],
+              "contractKind": "interface",
+              "fullyImplemented": true,
+              "id": 15,
+              "linearizedBaseContracts": [
+                15
+              ],
+              "name": "IEnumErrors",
+              "nameLocation": "71:11:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "canonicalName": "IEnumErrors.State",
+                  "id": 5,
+                  "members": [
+                    {
+                      "id": 2,
+                      "name": "Pending",
+                      "nameLocation": "102:7:0",
+                      "nodeType": "EnumValue",
+                      "src": "102:7:0"
+                    },
+                    {
+                      "id": 3,
+                      "name": "Active",
+                      "nameLocation": "111:6:0",
+                      "nodeType": "EnumValue",
+                      "src": "111:6:0"
+                    },
+                    {
+                      "id": 4,
+                      "name": "Finished",
+                      "nameLocation": "119:8:0",
+                      "nodeType": "EnumValue",
+                      "src": "119:8:0"
+                    }
+                  ],
+                  "name": "State",
+                  "nameLocation": "94:5:0",
+                  "nodeType": "EnumDefinition",
+                  "src": "89:40:0"
+                },
+                {
+                  "errorSelector": "85846603",
+                  "id": 14,
+                  "name": "Unexpected",
+                  "nameLocation": "140:10:0",
+                  "nodeType": "ErrorDefinition",
+                  "parameters": {
+                    "id": 13,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 7,
+                        "mutability": "mutable",
+                        "name": "id",
+                        "nameLocation": "159:2:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 14,
+                        "src": "151:10:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 6,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "151:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 10,
+                        "mutability": "mutable",
+                        "name": "current",
+                        "nameLocation": "169:7:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 14,
+                        "src": "163:13:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_enum$_State_$5",
+                          "typeString": "enum IEnumErrors.State"
+                        },
+                        "typeName": {
+                          "id": 9,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 8,
+                            "name": "State",
+                            "nameLocations": [
+                              "163:5:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 5,
+                            "src": "163:5:0"
+                          },
+                          "referencedDeclaration": 5,
+                          "src": "163:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_enum$_State_$5",
+                            "typeString": "enum IEnumErrors.State"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 12,
+                        "mutability": "mutable",
+                        "name": "allowed",
+                        "nameLocation": "186:7:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 14,
+                        "src": "178:15:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bytes32",
+                          "typeString": "bytes32"
+                        },
+                        "typeName": {
+                          "id": 11,
+                          "name": "bytes32",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "178:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bytes32",
+                            "typeString": "bytes32"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "150:44:0"
+                  },
+                  "src": "134:61:0"
+                }
+              ],
+              "scope": 120,
+              "src": "61:136:0",
+              "usedErrors": [
+                14
+              ],
+              "usedEvents": []
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "EnumErrors",
+              "contractDependencies": [],
+              "contractKind": "library",
+              "fullyImplemented": true,
+              "id": 25,
+              "linearizedBaseContracts": [
+                25
+              ],
+              "name": "EnumErrors",
+              "nameLocation": "207:10:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "errorSelector": "9e8f12b1",
+                  "id": 24,
+                  "name": "Changed",
+                  "nameLocation": "230:7:0",
+                  "nodeType": "ErrorDefinition",
+                  "parameters": {
+                    "id": 23,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 18,
+                        "mutability": "mutable",
+                        "name": "current",
+                        "nameLocation": "256:7:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 24,
+                        "src": "238:25:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_enum$_State_$5",
+                          "typeString": "enum IEnumErrors.State"
+                        },
+                        "typeName": {
+                          "id": 17,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 16,
+                            "name": "IEnumErrors.State",
+                            "nameLocations": [
+                              "238:11:0",
+                              "250:5:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 5,
+                            "src": "238:17:0"
+                          },
+                          "referencedDeclaration": 5,
+                          "src": "238:17:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_enum$_State_$5",
+                            "typeString": "enum IEnumErrors.State"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 20,
+                        "mutability": "mutable",
+                        "name": "delta",
+                        "nameLocation": "270:5:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 24,
+                        "src": "265:10:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_int8",
+                          "typeString": "int8"
+                        },
+                        "typeName": {
+                          "id": 19,
+                          "name": "int8",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "265:4:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_int8",
+                            "typeString": "int8"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 22,
+                        "mutability": "mutable",
+                        "name": "code",
+                        "nameLocation": "283:4:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 24,
+                        "src": "277:10:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint8",
+                          "typeString": "uint8"
+                        },
+                        "typeName": {
+                          "id": 21,
+                          "name": "uint8",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "277:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint8",
+                            "typeString": "uint8"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "237:51:0"
+                  },
+                  "src": "224:65:0"
+                }
+              ],
+              "scope": 120,
+              "src": "199:92:0",
+              "usedErrors": [
+                24
+              ],
+              "usedEvents": []
+            },
+            {
+              "abstract": false,
+              "baseContracts": [
+                {
+                  "baseName": {
+                    "id": 26,
+                    "name": "IEnumErrors",
+                    "nameLocations": [
+                      "320:11:0"
+                    ],
+                    "nodeType": "IdentifierPath",
+                    "referencedDeclaration": 15,
+                    "src": "320:11:0"
+                  },
+                  "id": 27,
+                  "nodeType": "InheritanceSpecifier",
+                  "src": "320:11:0"
+                }
+              ],
+              "canonicalName": "EnumErrorCases",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 119,
+              "linearizedBaseContracts": [
+                119,
+                15
+              ],
+              "name": "EnumErrorCases",
+              "nameLocation": "302:14:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": false,
+                  "functionSelector": "7bbbc35e",
+                  "id": 29,
+                  "mutability": "mutable",
+                  "name": "changes",
+                  "nameLocation": "353:7:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 119,
+                  "src": "338:22:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 28,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "338:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 47,
+                    "nodeType": "Block",
+                    "src": "445:68:0",
+                    "statements": [
+                      {
+                        "errorCall": {
+                          "arguments": [
+                            {
+                              "id": 42,
+                              "name": "id",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 31,
+                              "src": "485:2:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            {
+                              "id": 43,
+                              "name": "current",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 34,
+                              "src": "489:7:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_enum$_State_$5",
+                                "typeString": "enum IEnumErrors.State"
+                              }
+                            },
+                            {
+                              "id": 44,
+                              "name": "allowed",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 36,
+                              "src": "498:7:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_bytes32",
+                                "typeString": "bytes32"
+                              }
+                            }
+                          ],
+                          "expression": {
+                            "argumentTypes": [
+                              {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              },
+                              {
+                                "typeIdentifier": "t_enum$_State_$5",
+                                "typeString": "enum IEnumErrors.State"
+                              },
+                              {
+                                "typeIdentifier": "t_bytes32",
+                                "typeString": "bytes32"
+                              }
+                            ],
+                            "expression": {
+                              "id": 39,
+                              "name": "IEnumErrors",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 15,
+                              "src": "462:11:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_type$_t_contract$_IEnumErrors_$15_$",
+                                "typeString": "type(contract IEnumErrors)"
+                              }
+                            },
+                            "id": 41,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "474:10:0",
+                            "memberName": "Unexpected",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 14,
+                            "src": "462:22:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_error_pure$_t_uint256_$_t_enum$_State_$5_$_t_bytes32_$returns$_t_error_$",
+                              "typeString": "function (uint256,enum IEnumErrors.State,bytes32) pure returns (error)"
+                            }
+                          },
+                          "id": 45,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "462:44:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_error",
+                            "typeString": "error"
+                          }
+                        },
+                        "id": 46,
+                        "nodeType": "RevertStatement",
+                        "src": "455:51:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "c14253ed",
+                  "id": 48,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "unexpected",
+                  "nameLocation": "376:10:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 37,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 31,
+                        "mutability": "mutable",
+                        "name": "id",
+                        "nameLocation": "395:2:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 48,
+                        "src": "387:10:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 30,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "387:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 34,
+                        "mutability": "mutable",
+                        "name": "current",
+                        "nameLocation": "405:7:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 48,
+                        "src": "399:13:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_enum$_State_$5",
+                          "typeString": "enum IEnumErrors.State"
+                        },
+                        "typeName": {
+                          "id": 33,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 32,
+                            "name": "State",
+                            "nameLocations": [
+                              "399:5:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 5,
+                            "src": "399:5:0"
+                          },
+                          "referencedDeclaration": 5,
+                          "src": "399:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_enum$_State_$5",
+                            "typeString": "enum IEnumErrors.State"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 36,
+                        "mutability": "mutable",
+                        "name": "allowed",
+                        "nameLocation": "422:7:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 48,
+                        "src": "414:15:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bytes32",
+                          "typeString": "bytes32"
+                        },
+                        "typeName": {
+                          "id": 35,
+                          "name": "bytes32",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "414:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bytes32",
+                            "typeString": "bytes32"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "386:44:0"
+                  },
+                  "returnParameters": {
+                    "id": 38,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "445:0:0"
+                  },
+                  "scope": 119,
+                  "src": "367:146:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 68,
+                    "nodeType": "Block",
+                    "src": "575:92:0",
+                    "statements": [
+                      {
+                        "errorCall": {
+                          "arguments": [
+                            {
+                              "arguments": [
+                                {
+                                  "arguments": [
+                                    {
+                                      "hexValue": "37",
+                                      "id": 61,
+                                      "isConstant": false,
+                                      "isLValue": false,
+                                      "isPure": true,
+                                      "kind": "number",
+                                      "lValueRequested": false,
+                                      "nodeType": "Literal",
+                                      "src": "629:1:0",
+                                      "typeDescriptions": {
+                                        "typeIdentifier": "t_rational_7_by_1",
+                                        "typeString": "int_const 7"
+                                      },
+                                      "value": "7"
+                                    }
+                                  ],
+                                  "expression": {
+                                    "argumentTypes": [
+                                      {
+                                        "typeIdentifier": "t_rational_7_by_1",
+                                        "typeString": "int_const 7"
+                                      }
+                                    ],
+                                    "id": 60,
+                                    "isConstant": false,
+                                    "isLValue": false,
+                                    "isPure": true,
+                                    "lValueRequested": false,
+                                    "nodeType": "ElementaryTypeNameExpression",
+                                    "src": "621:7:0",
+                                    "typeDescriptions": {
+                                      "typeIdentifier": "t_type$_t_uint256_$",
+                                      "typeString": "type(uint256)"
+                                    },
+                                    "typeName": {
+                                      "id": 59,
+                                      "name": "uint256",
+                                      "nodeType": "ElementaryTypeName",
+                                      "src": "621:7:0",
+                                      "typeDescriptions": {}
+                                    }
+                                  },
+                                  "id": 62,
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": true,
+                                  "kind": "typeConversion",
+                                  "lValueRequested": false,
+                                  "nameLocations": [],
+                                  "names": [],
+                                  "nodeType": "FunctionCall",
+                                  "src": "621:10:0",
+                                  "tryCall": false,
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_uint256",
+                                    "typeString": "uint256"
+                                  }
+                                }
+                              ],
+                              "expression": {
+                                "argumentTypes": [
+                                  {
+                                    "typeIdentifier": "t_uint256",
+                                    "typeString": "uint256"
+                                  }
+                                ],
+                                "id": 58,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "lValueRequested": false,
+                                "nodeType": "ElementaryTypeNameExpression",
+                                "src": "613:7:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_type$_t_bytes32_$",
+                                  "typeString": "type(bytes32)"
+                                },
+                                "typeName": {
+                                  "id": 57,
+                                  "name": "bytes32",
+                                  "nodeType": "ElementaryTypeName",
+                                  "src": "613:7:0",
+                                  "typeDescriptions": {}
+                                }
+                              },
+                              "id": 63,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "typeConversion",
+                              "lValueRequested": false,
+                              "nameLocations": [],
+                              "names": [],
+                              "nodeType": "FunctionCall",
+                              "src": "613:19:0",
+                              "tryCall": false,
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_bytes32",
+                                "typeString": "bytes32"
+                              }
+                            },
+                            {
+                              "id": 64,
+                              "name": "current",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 53,
+                              "src": "643:7:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_enum$_State_$5",
+                                "typeString": "enum IEnumErrors.State"
+                              }
+                            },
+                            {
+                              "id": 65,
+                              "name": "id",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 50,
+                              "src": "656:2:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            }
+                          ],
+                          "expression": {
+                            "argumentTypes": [
+                              {
+                                "typeIdentifier": "t_bytes32",
+                                "typeString": "bytes32"
+                              },
+                              {
+                                "typeIdentifier": "t_enum$_State_$5",
+                                "typeString": "enum IEnumErrors.State"
+                              },
+                              {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            ],
+                            "id": 56,
+                            "name": "Unexpected",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 14,
+                            "src": "592:10:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_error_pure$_t_uint256_$_t_enum$_State_$5_$_t_bytes32_$returns$_t_error_$",
+                              "typeString": "function (uint256,enum IEnumErrors.State,bytes32) pure returns (error)"
+                            }
+                          },
+                          "id": 66,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [
+                            "604:7:0",
+                            "634:7:0",
+                            "652:2:0"
+                          ],
+                          "names": [
+                            "allowed",
+                            "current",
+                            "id"
+                          ],
+                          "nodeType": "FunctionCall",
+                          "src": "592:68:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_error",
+                            "typeString": "error"
+                          }
+                        },
+                        "id": 67,
+                        "nodeType": "RevertStatement",
+                        "src": "585:75:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "e2f75de8",
+                  "id": 69,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "named",
+                  "nameLocation": "528:5:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 54,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 50,
+                        "mutability": "mutable",
+                        "name": "id",
+                        "nameLocation": "542:2:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 69,
+                        "src": "534:10:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 49,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "534:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 53,
+                        "mutability": "mutable",
+                        "name": "current",
+                        "nameLocation": "552:7:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 69,
+                        "src": "546:13:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_enum$_State_$5",
+                          "typeString": "enum IEnumErrors.State"
+                        },
+                        "typeName": {
+                          "id": 52,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 51,
+                            "name": "State",
+                            "nameLocations": [
+                              "546:5:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 5,
+                            "src": "546:5:0"
+                          },
+                          "referencedDeclaration": 5,
+                          "src": "546:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_enum$_State_$5",
+                            "typeString": "enum IEnumErrors.State"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "533:27:0"
+                  },
+                  "returnParameters": {
+                    "id": 55,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "575:0:0"
+                  },
+                  "scope": 119,
+                  "src": "519:148:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 89,
+                    "nodeType": "Block",
+                    "src": "712:83:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 76,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 74,
+                            "name": "changes",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 29,
+                            "src": "722:7:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "+=",
+                          "rightHandSide": {
+                            "hexValue": "31",
+                            "id": 75,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "number",
+                            "lValueRequested": false,
+                            "nodeType": "Literal",
+                            "src": "733:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_rational_1_by_1",
+                              "typeString": "int_const 1"
+                            },
+                            "value": "1"
+                          },
+                          "src": "722:12:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 77,
+                        "nodeType": "ExpressionStatement",
+                        "src": "722:12:0"
+                      },
+                      {
+                        "errorCall": {
+                          "arguments": [
+                            {
+                              "arguments": [
+                                {
+                                  "id": 82,
+                                  "name": "raw",
+                                  "nodeType": "Identifier",
+                                  "overloadedDeclarations": [],
+                                  "referencedDeclaration": 71,
+                                  "src": "776:3:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_uint256",
+                                    "typeString": "uint256"
+                                  }
+                                }
+                              ],
+                              "expression": {
+                                "argumentTypes": [
+                                  {
+                                    "typeIdentifier": "t_uint256",
+                                    "typeString": "uint256"
+                                  }
+                                ],
+                                "id": 81,
+                                "name": "State",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 5,
+                                "src": "770:5:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_type$_t_enum$_State_$5_$",
+                                  "typeString": "type(enum IEnumErrors.State)"
+                                }
+                              },
+                              "id": 83,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "kind": "typeConversion",
+                              "lValueRequested": false,
+                              "nameLocations": [],
+                              "names": [],
+                              "nodeType": "FunctionCall",
+                              "src": "770:10:0",
+                              "tryCall": false,
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_enum$_State_$5",
+                                "typeString": "enum IEnumErrors.State"
+                              }
+                            },
+                            {
+                              "id": 85,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "lValueRequested": false,
+                              "nodeType": "UnaryOperation",
+                              "operator": "-",
+                              "prefix": true,
+                              "src": "782:2:0",
+                              "subExpression": {
+                                "hexValue": "33",
+                                "id": 84,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "783:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_3_by_1",
+                                  "typeString": "int_const 3"
+                                },
+                                "value": "3"
+                              },
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_rational_minus_3_by_1",
+                                "typeString": "int_const -3"
+                              }
+                            },
+                            {
+                              "hexValue": "37",
+                              "id": 86,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "number",
+                              "lValueRequested": false,
+                              "nodeType": "Literal",
+                              "src": "786:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_rational_7_by_1",
+                                "typeString": "int_const 7"
+                              },
+                              "value": "7"
+                            }
+                          ],
+                          "expression": {
+                            "argumentTypes": [
+                              {
+                                "typeIdentifier": "t_enum$_State_$5",
+                                "typeString": "enum IEnumErrors.State"
+                              },
+                              {
+                                "typeIdentifier": "t_rational_minus_3_by_1",
+                                "typeString": "int_const -3"
+                              },
+                              {
+                                "typeIdentifier": "t_rational_7_by_1",
+                                "typeString": "int_const 7"
+                              }
+                            ],
+                            "expression": {
+                              "id": 78,
+                              "name": "EnumErrors",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 25,
+                              "src": "751:10:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_type$_t_contract$_EnumErrors_$25_$",
+                                "typeString": "type(library EnumErrors)"
+                              }
+                            },
+                            "id": 80,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "762:7:0",
+                            "memberName": "Changed",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 24,
+                            "src": "751:18:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_error_pure$_t_enum$_State_$5_$_t_int8_$_t_uint8_$returns$_t_error_$",
+                              "typeString": "function (enum IEnumErrors.State,int8,uint8) pure returns (error)"
+                            }
+                          },
+                          "id": 87,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "751:37:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_error",
+                            "typeString": "error"
+                          }
+                        },
+                        "id": 88,
+                        "nodeType": "RevertStatement",
+                        "src": "744:44:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "4395ed49",
+                  "id": 90,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "changed",
+                  "nameLocation": "682:7:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 72,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 71,
+                        "mutability": "mutable",
+                        "name": "raw",
+                        "nameLocation": "698:3:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 90,
+                        "src": "690:11:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 70,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "690:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "689:13:0"
+                  },
+                  "returnParameters": {
+                    "id": 73,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "712:0:0"
+                  },
+                  "scope": 119,
+                  "src": "673:122:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 103,
+                    "nodeType": "Block",
+                    "src": "847:60:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 98,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 96,
+                            "name": "changes",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 29,
+                            "src": "857:7:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "+=",
+                          "rightHandSide": {
+                            "hexValue": "31",
+                            "id": 97,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "number",
+                            "lValueRequested": false,
+                            "nodeType": "Literal",
+                            "src": "868:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_rational_1_by_1",
+                              "typeString": "int_const 1"
+                            },
+                            "value": "1"
+                          },
+                          "src": "857:12:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 99,
+                        "nodeType": "ExpressionStatement",
+                        "src": "857:12:0"
+                      },
+                      {
+                        "expression": {
+                          "expression": {
+                            "id": 100,
+                            "name": "State",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 5,
+                            "src": "886:5:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_type$_t_enum$_State_$5_$",
+                              "typeString": "type(enum IEnumErrors.State)"
+                            }
+                          },
+                          "id": 101,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": true,
+                          "lValueRequested": false,
+                          "memberLocation": "892:8:0",
+                          "memberName": "Finished",
+                          "nodeType": "MemberAccess",
+                          "referencedDeclaration": 4,
+                          "src": "886:14:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_enum$_State_$5",
+                            "typeString": "enum IEnumErrors.State"
+                          }
+                        },
+                        "functionReturnParameters": 95,
+                        "id": 102,
+                        "nodeType": "Return",
+                        "src": "879:21:0"
+                      }
+                    ]
+                  },
+                  "id": 104,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "nextState",
+                  "nameLocation": "810:9:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 91,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "819:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 95,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 94,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 104,
+                        "src": "840:5:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_enum$_State_$5",
+                          "typeString": "enum IEnumErrors.State"
+                        },
+                        "typeName": {
+                          "id": 93,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 92,
+                            "name": "State",
+                            "nameLocations": [
+                              "840:5:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 5,
+                            "src": "840:5:0"
+                          },
+                          "referencedDeclaration": 5,
+                          "src": "840:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_enum$_State_$5",
+                            "typeString": "enum IEnumErrors.State"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "839:7:0"
+                  },
+                  "scope": 119,
+                  "src": "801:106:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "internal"
+                },
+                {
+                  "body": {
+                    "id": 117,
+                    "nodeType": "Block",
+                    "src": "943:62:0",
+                    "statements": [
+                      {
+                        "errorCall": {
+                          "arguments": [
+                            {
+                              "arguments": [],
+                              "expression": {
+                                "argumentTypes": [],
+                                "id": 110,
+                                "name": "nextState",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 104,
+                                "src": "979:9:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_function_internal_nonpayable$__$returns$_t_enum$_State_$5_$",
+                                  "typeString": "function () returns (enum IEnumErrors.State)"
+                                }
+                              },
+                              "id": 111,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "kind": "functionCall",
+                              "lValueRequested": false,
+                              "nameLocations": [],
+                              "names": [],
+                              "nodeType": "FunctionCall",
+                              "src": "979:11:0",
+                              "tryCall": false,
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_enum$_State_$5",
+                                "typeString": "enum IEnumErrors.State"
+                              }
+                            },
+                            {
+                              "id": 113,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "lValueRequested": false,
+                              "nodeType": "UnaryOperation",
+                              "operator": "-",
+                              "prefix": true,
+                              "src": "992:2:0",
+                              "subExpression": {
+                                "hexValue": "33",
+                                "id": 112,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "993:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_3_by_1",
+                                  "typeString": "int_const 3"
+                                },
+                                "value": "3"
+                              },
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_rational_minus_3_by_1",
+                                "typeString": "int_const -3"
+                              }
+                            },
+                            {
+                              "hexValue": "37",
+                              "id": 114,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "number",
+                              "lValueRequested": false,
+                              "nodeType": "Literal",
+                              "src": "996:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_rational_7_by_1",
+                                "typeString": "int_const 7"
+                              },
+                              "value": "7"
+                            }
+                          ],
+                          "expression": {
+                            "argumentTypes": [
+                              {
+                                "typeIdentifier": "t_enum$_State_$5",
+                                "typeString": "enum IEnumErrors.State"
+                              },
+                              {
+                                "typeIdentifier": "t_rational_minus_3_by_1",
+                                "typeString": "int_const -3"
+                              },
+                              {
+                                "typeIdentifier": "t_rational_7_by_1",
+                                "typeString": "int_const 7"
+                              }
+                            ],
+                            "expression": {
+                              "id": 107,
+                              "name": "EnumErrors",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 25,
+                              "src": "960:10:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_type$_t_contract$_EnumErrors_$25_$",
+                                "typeString": "type(library EnumErrors)"
+                              }
+                            },
+                            "id": 109,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "971:7:0",
+                            "memberName": "Changed",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 24,
+                            "src": "960:18:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_error_pure$_t_enum$_State_$5_$_t_int8_$_t_uint8_$returns$_t_error_$",
+                              "typeString": "function (enum IEnumErrors.State,int8,uint8) pure returns (error)"
+                            }
+                          },
+                          "id": 115,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "960:38:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_error",
+                            "typeString": "error"
+                          }
+                        },
+                        "id": 116,
+                        "nodeType": "RevertStatement",
+                        "src": "953:45:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "83b6f510",
+                  "id": 118,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "effectful",
+                  "nameLocation": "922:9:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 105,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "931:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 106,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "943:0:0"
+                  },
+                  "scope": 119,
+                  "src": "913:92:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 120,
+              "src": "293:714:0",
+              "usedErrors": [
+                14,
+                24
+              ],
+              "usedEvents": []
+            }
+          ],
+          "src": "36:972:0"
+        },
+        "id": 0
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}
