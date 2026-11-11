@@ -140,7 +140,10 @@ selectors. Contract definitions record inheritance-related and used-event/error
 metadata. Inheritance needs two of these annotations (the differential fixture
 `inheritance.sol`): the importer flattens a contract along its
 `linearizedBaseContracts`, and `call_table` resolves overrides through each
-function's `baseFunctions`. Base-constructor specifiers on constructors
+function's `baseFunctions`. A public state variable, constant or immutable may
+override an external function. The importer removes the transitively replaced
+functions using the variable's `baseFunctions`, leaving its getter as the sole
+dispatch entry for that selector. Base-constructor specifiers on constructors
 (`constructors.sol`) use their `referencedDeclaration`. Unqualified modifier
 invocations resolve through the transitive `baseModifiers` relation in the
 contract's linearization; explicitly qualified `Base.modifier` invocations
@@ -373,7 +376,7 @@ argument or an external call's argument. A call or creation whose enum
 argument is out of range reverts when the decoder reaches it, before later arguments are read.
 `type(E).min` and `type(E).max` are the first and last enum values.
 Enums as mapping keys, as elements of memory or calldata
-arrays, as constants, immutables or error parameters, or returned by an
+arrays, as constants or immutables, or returned by an
 external call are rejected.
 
 `keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
@@ -690,9 +693,9 @@ Admitted: one contract, flattened along its bases, with
 - `require`, `assert` and `revert` with boolean conditions and literal string
   messages; reads of `msg`, `tx` and `block` members and `address(this)`;
   emits of events with scalar, byte-sequence and array parameters (including
-  indexed arrays), and reverts with custom errors with elementary parameters;
-  unsupported event parameter types reject the emitting function, leaving
-  unrelated functions available; `keccak256`, `abi.encode*`, selectors;
+  indexed arrays), and reverts with custom errors with elementary or enum
+  parameters; unsupported event parameter types reject the emitting function,
+  leaving unrelated functions available; `keccak256`, `abi.encode*`, selectors;
 - constants, state-variable initializers, constructors and base-constructor
   arguments (inheritance specifiers or constructor modifiers), which form one
   creation procedure.
@@ -794,7 +797,8 @@ effects. Dynamic message expressions remain rejected, including on a successful
 require; future string support must evaluate them on both paths according to
 the compiler profile's argument schedule. A revert with a custom error,
 `revert E(args)`, reverts with the error's 4-byte selector followed by the ABI
-encoding of its arguments, which must be of elementary types.
+encoding of its arguments, which must be elementary values or enums. Enum
+parameters use their declared enum type and encode as `uint8`.
 
 ## Required validation
 

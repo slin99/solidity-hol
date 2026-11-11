@@ -33,6 +33,7 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/external.json",
   "../testdata/differential/expected/low_level_calls.json",
   "../testdata/differential/expected/udvt.json",
+  "../testdata/differential/expected/override_getters.json",
   "../testdata/differential/expected/transient_values.json",
   "../testdata/differential/expected/byte_mapping_keys.json",
   "../testdata/differential/expected/virtual_modifiers.json",
@@ -1373,6 +1374,25 @@ val () = import_units_error_with UnsupportedFunction [udvt_types] udvt_contracts
      (fn v => is_node "BinaryOperation" v andalso
               isSome (JSONUtil.findField v "function")) "overloaded operator"
      (set_field "function" (declaration_id "FunctionDefinition" "bump" udvt_ast)) udvt_ast)
+
+(* A getter may replace only an external function, and its references must
+ * resolve to function declarations. *)
+val override_getters_fixture = "../testdata/differential/expected/override_getters.json"
+val override_getters_source = "testdata/differential/override_getters.sol"
+val override_getters_ast =
+  artifact_part override_getters_fixture ["sources", override_getters_source, "ast"]
+val override_getters_contracts =
+  artifact_part override_getters_fixture ["contracts", override_getters_source]
+
+val () = import_error_with Unsupported override_getters_contracts "getter overrides a public function"
+  (edit_first "FunctionDefinition"
+     (set_field "visibility" (JSON.STRING "public")) override_getters_ast)
+val () = import_error_with Unsupported override_getters_contracts "getter override reference is missing"
+  (edit_first_where
+     (fn v => is_node "VariableDeclaration" v andalso
+              JSONUtil.testField "name" (fn JSON.STRING s => s = "value" | _ => false) v)
+     "overriding variable"
+     (set_field "baseFunctions" (JSON.ARRAY [JSON.INT 999999])) override_getters_ast)
 
 Definition transient_unit_def:
   transient_unit = ^(import_artifact

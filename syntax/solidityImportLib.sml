@@ -439,8 +439,9 @@ fun declaration state v = within v (fn v =>
          "immutable variables are not supported";
        require v (state orelse not (isSome (optional_field v "value")))
          "declaration values are not supported";
-       require v (not (isSome (optional_field v "overrides")))
-         "overriding state variables are not supported"));
+       require v (not (isSome (optional_field v "overrides")) orelse
+                  state andalso string_field v "visibility" = "public")
+         "only public state variables can override functions"));
     imported
   end)
 
@@ -1788,8 +1789,10 @@ fun constant_declaration v = within v (fn v =>
     val value = expr (field v "value")
   in
     recover v (fn () =>
-      (require v (not (isSome (optional_field v "overrides")))
-         "overriding state variables are not supported";
+      (require v (not (isSome (optional_field v "overrides")) orelse
+                  bool_field v "stateVariable" andalso
+                  string_field v "visibility" = "public")
+         "only public state variables can override functions";
        require v (not (String.isPrefix "t_enum$_" (raw_type_id v)))
          "enum constants are not supported"));
     pairSyntax.mk_pair (imported, value)
@@ -1836,7 +1839,22 @@ fun contract external_structs contracts declared v = within v (fn v =>
      * and parameter types of the declaration it names (super_target in
      * solidityImport). Modifier targets are resolved below before selecting
      * their bodies for library discovery and import. *)
-    val functions = members_of "FunctionDefinition" bases
+    (* A getter can replace only external functions, so no internal or super
+     * call can reach the replaced implementation. *)
+    val getter_overrides =
+      List.concat
+        (map (fn d =>
+                if string_field d "visibility" <> "public" then [] else
+                let val ids = overridden d in
+                  List.app (fn id =>
+                    require d (string_field (function_declaration d id) "visibility" = "external")
+                      "a getter can only override external functions") ids;
+                  ids
+                end)
+          (members_of "VariableDeclaration" bases))
+    val functions =
+      List.filter (fn f => not (List.exists (fn id => id = int_field f "id") getter_overrides))
+        (members_of "FunctionDefinition" bases)
     val overriders = List.concat (map overridden functions)
     fun same_id f g = int_field f "id" = int_field g "id"
     fun is_overridden f = List.exists (fn i => i = int_field f "id") overriders
@@ -2136,7 +2154,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
         listSyntax.mk_list
           (keep_all (function modifier_target function_statics)
              (List.filter (fn f => bool_field f "implemented")
-                (members_of "FunctionDefinition" bases)),
+                functions),
            function_ty)),
        ("contract_library_functions",
         listSyntax.mk_list (keep_all (function modifier_target function_statics) library_functions, function_ty)),
