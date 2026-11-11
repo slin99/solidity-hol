@@ -399,6 +399,10 @@ fun type_name v = guarded (fn _ => []) unsupported_type_name (fn v => within v (
       in
         con "SrcArrayTypeName" [info v, base, mk_num n]
       end)
+  | "FunctionTypeName" =>
+      (require v (string_field v "visibility" = "internal")
+         "external function types are not supported";
+       con "SrcFunctionTypeName" [info v, type_id v])
   | other => fail (describe v ^ ": unsupported type name " ^ other))) v
 
 (* Declarations *)

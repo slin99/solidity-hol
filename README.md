@@ -48,7 +48,8 @@ value types to their elementary underlying types and lowers their resolved
 operators to internal calls.
 
 The evaluator executes elementary scalar operations and conversions, locals,
-tuples, structured control flow, internal calls, built-in failures, packed
+tuples, structured control flow, internal calls, calls through internal
+function values, built-in failures, packed
 state values, scalar and bytes/string mapping keys, storage arrays and storage
 struct members. Transient value-type state variables use a separate backend
 with transaction lifetime; custom storage bases use the compiler's absolute

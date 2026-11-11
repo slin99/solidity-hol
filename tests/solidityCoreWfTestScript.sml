@@ -515,9 +515,24 @@ Proof
   EVAL_TAC
 QED
 
-Theorem function_parameter_rejected:
-  ¬wf_core_procedure test_env
+Theorem internal_function_parameter_accepted:
+  wf_core_procedure test_env
      (with_body [] with parameters := [(AstId 80, FunctionT InternalFn PureMut [] [])])
+Proof
+  EVAL_TAC
+QED
+
+Theorem external_function_parameter_rejected:
+  ¬wf_core_procedure test_env
+     (with_body [] with parameters := [(AstId 80, FunctionT ExternalFn PureMut [] [])])
+Proof
+  EVAL_TAC
+QED
+
+Theorem payable_function_parameter_rejected:
+  ¬wf_core_procedure test_env
+     (with_body [] with parameters :=
+        [(AstId 80, FunctionT InternalFn PayableMut [] [])])
 Proof
   EVAL_TAC
 QED
