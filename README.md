@@ -49,7 +49,10 @@ operators to internal calls.
 
 The evaluator executes elementary scalar operations and conversions, locals,
 tuples, structured control flow, internal calls, built-in failures, packed
-state values, scalar-key mappings, storage arrays and storage struct members.
+state values, scalar and bytes/string mapping keys, storage arrays and storage
+struct members. Transient value-type state variables use a separate backend
+with transaction lifetime; custom storage bases use the compiler's absolute
+layout slots. See [frontend-boundary.md](docs/frontend-boundary.md#storage-layout).
 Assignment, compound assignment, increment and tuple writes share local or
 captured-reference destinations. Non-canonical `bool` and enum storage bytes,
 and non-canonical words written back to locals by inline assembly, fail with
@@ -64,7 +67,8 @@ An inline assembly block (`AssemblyStmt`) runs on the Yul evaluator, over a
 memory holding each memory `bytes` and `string` object where the compiler
 allocates it (its length word at its address, then its bytes): it reads and
 writes back the value-type locals it names, reads state variables' slots and
-offsets, integer, `bool` and fixed-bytes constants, and the addresses of the memory
+offsets and storage pointer locals' slots and offsets (assigning a pointer's
+`x.slot` points it at that slot of the executing account), integer, `bool` and fixed-bytes constants, and the addresses of the memory
 `bytes` and `string` locals it names as literals in its code, as the compiler
 puts them, so its Yul functions see them too (a function's parameters and results may
 reuse such a name in its body; a memory reference may not be assigned). Code
@@ -81,14 +85,15 @@ the writes from the free memory pointer up, the temporary memory the Solidity
 docs allow a memory-safe block, are dropped. Whatever the address, a read outside the free memory pointer, the
 zero slot, the byte sequences' words and the bytes the block wrote fails with
 an `InvalidCompletion`. `return`/`stop`
-end the frame with a `HaltCompletion`. `call` and `staticcall` run the
-callee through the same `externalCall` adapter as high-level calls, with the
+end the frame with a `HaltCompletion`. `call`, `staticcall` and
+`delegatecall` run the callee through the same `externalCall` adapter as
+high-level calls (`delegatecall` in this contract's account), with the
 same fixed gas budget: `gas()` may only be a call's gas argument, where it
 stands for that budget. The block sees the frame's return data as the
 source's calls left it; after an `ecrecover`, whose return data the source
 doesn't compute, `returndatasize`/`returndatacopy` must follow a call the
 block made itself, else the block fails closed. In a
-static frame a block naming `call` fails closed. Memory
+static frame a block naming `call` or `delegatecall` fails closed. Memory
 expansion gas is not modelled, so a halting block's write far past the used
 memory succeeds where the EVM runs out of gas. Memory/calldata execution and a memory
 model shared with inline assembly beyond byte sequences remain unresolved. High-level external calls and

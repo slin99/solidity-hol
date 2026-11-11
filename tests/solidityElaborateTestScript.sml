@@ -356,14 +356,14 @@ QED
 Theorem asm_halt_rejected_in_constructor:
   ∀info.
     ISL (elab_stmt
-      <| functions := []; supers := []; structs := []; enums := []; events := [];
+      <| functions := []; static_functions := []; supers := []; structs := []; enums := []; events := [];
          variables := []; state := []; locations := []; immutables := [];
          constants := []; returns := []; placeholder := NONE;
          mode := CheckedArithmetic; creation := F; scope := 0;
          returns_id := 0; in_loop := F; bad_ids := [] |> 0
       (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] [])) ∧
     elab_stmt
-      <| functions := []; supers := []; structs := []; enums := []; events := [];
+      <| functions := []; static_functions := []; supers := []; structs := []; enums := []; events := [];
          variables := []; state := []; locations := []; immutables := [];
          constants := []; returns := []; placeholder := NONE;
          mode := CheckedArithmetic; creation := T; scope := 0;
@@ -390,11 +390,11 @@ Theorem declaration_body_and_tuple_fraction_rejected:
                                     loc_source := 0 |> |>;
       x = <| var_info := info with node_id := 1; var_name := "x"; var_scope := 0;
              var_type_name := SrcElementaryTypeName info "uint256" NONE;
-             var_type_id := "t_uint256"; var_location := NONE |>;
+             var_type_id := "t_uint256"; var_transient := F; var_location := NONE |>;
       d = SrcVariableDeclarationStatement info [SOME 1] [SOME x] NONE;
       c = SrcLiteral info BoolLiteral "true" "t_bool";
       half = SrcLiteral info NumberLiteral "" "t_rational_1_by_2";
-      ctx = <| functions := []; supers := []; structs := []; enums := [];
+      ctx = <| functions := []; static_functions := []; supers := []; structs := []; enums := [];
                events := []; variables := []; state := []; locations := [];
                immutables := []; constants := []; returns := [];
                placeholder := NONE; mode := CheckedArithmetic; creation := F;
@@ -416,7 +416,7 @@ Theorem bytes_to_fixed_bytes_rejected:
                                     loc_source := 0 |> |>;
       to16 e = SrcTypeConversion info
                  (SrcElementaryTypeName info "bytes16" NONE) e "t_bytes16";
-      ctx = <| functions := []; supers := []; structs := []; enums := [];
+      ctx = <| functions := []; static_functions := []; supers := []; structs := []; enums := [];
                events := [];
                variables := [(1, LocatedT MemoryLoc BytesT); (2, FixedBytesT 32)];
                state := []; locations := [];
@@ -438,14 +438,14 @@ val info0 = “<| node_id := 0;
                 node_location := <| loc_start := 0; loc_length := 0;
                                     loc_source := 0 |> |>”;
 fun at id = “^info0 with node_id := ^(numSyntax.term_of_int id)”;
-val ctx0 = “<| functions := []; supers := []; structs := []; enums := [];
+val ctx0 = “<| functions := []; static_functions := []; supers := []; structs := []; enums := [];
                events := []; variables := []; state := []; locations := [];
                immutables := []; constants := []; returns := [];
                placeholder := NONE; mode := CheckedArithmetic; creation := F;
                scope := 0; returns_id := 0; in_loop := F; bad_ids := [] |>”;
 fun local_y tn = “<| var_info := ^(at 4); var_name := "y"; var_scope := 0;
                      var_type_name := ^tn; var_type_id := "t_uint256";
-                     var_location := NONE |>”;
+                     var_transient := F; var_location := NONE |>”;
 val supported_y = local_y “SrcElementaryTypeName ^(at 7) "uint256" NONE”;
 val unsupported_y = local_y “SrcUnsupportedTypeName ^(at 7) "function type"”;
 val read_y = “SrcExpressionStatement ^(at 5) (SrcIdentifier ^(at 6) "y" 4 "t_uint256")”;
@@ -480,7 +480,7 @@ val empty_contract =
       contract_bases := []; contract_state_variables := [];
       contract_immutables := []; contract_initializers := [];
       contract_libraries := []; contract_constants := [];
-      contract_base_arguments := []; contract_storage := [];
+      contract_base_arguments := []; contract_static_calls := []; contract_storage := [];
       contract_structs := []; contract_enums := []; contract_events := [];
       contract_modifiers := []; contract_functions := [];
       contract_library_functions := []; contract_getters := [] |>”;
@@ -491,7 +491,7 @@ fun function_of ps rs ss =
       fn_base_functions := []; fn_parameters_id := 2; fn_parameters := ^ps;
       fn_nominal_parameters := [];
       fn_returns_id := 3; fn_returns := ^rs; fn_modifiers := [];
-      fn_super_calls := []; fn_body := SrcBlock ^(at 9) ^ss;
+      fn_super_calls := []; fn_static_calls := []; fn_body := SrcBlock ^(at 9) ^ss;
       fn_unsupported := NONE |>”;
 val break_11 = “SrcBreak ^(at 11)”;
 val return_1 = “SrcReturn ^(at 12) 3

@@ -1,0 +1,125 @@
+{
+  "name": "transient_values",
+  "source": "testdata/differential/transient_values.sol",
+  "contract": "TransientValues",
+  "artifact": "testdata/differential/expected/transient_values.json",
+  "cases": [
+    {
+      "name": "packed_value_kinds",
+      "function": "roundTrip",
+      "args": [],
+      "expect": {
+        "return": [
+          9,
+          11,
+          -19,
+          4660,
+          "0x12345678",
+          456
+        ]
+      },
+      "final_storage": {
+        "42": "1795"
+      }
+    },
+    {
+      "name": "zero_small",
+      "function": "small",
+      "args": [],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "zero_wide",
+      "function": "wide",
+      "args": [],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "guard_enters",
+      "function": "enter",
+      "args": [],
+      "expect": {
+        "return": [
+          11
+        ]
+      },
+      "storage": {
+        "0": "999",
+        "42": "287"
+      }
+    },
+    {
+      "name": "static_read_sees_caller_write",
+      "function": "guardRead",
+      "args": [],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "guard_rejects_reentry",
+      "function": "reenter",
+      "args": [],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "callee_revert_restores_transient",
+      "function": "rollback",
+      "args": [],
+      "expect": {
+        "return": [
+          17
+        ]
+      }
+    },
+    {
+      "name": "outer_revert_discards_write",
+      "function": "fail",
+      "args": [],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "layout_mapping_root",
+      "function": "layoutMapping",
+      "args": [
+        9,
+        37
+      ],
+      "expect": {
+        "return": [
+          37
+        ]
+      },
+      "final_storage": {
+        "85026533812092425889718487276236752371798834278037170069906704857946188432002": "37"
+      }
+    },
+    {
+      "name": "custom_base_packed_getter",
+      "function": "persistentTail",
+      "args": [],
+      "storage": {
+        "42": "3336"
+      },
+      "expect": {
+        "return": [
+          13
+        ]
+      }
+    }
+  ]
+}
