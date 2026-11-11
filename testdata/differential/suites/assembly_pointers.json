@@ -1,0 +1,140 @@
+{
+  "name": "assembly_pointers",
+  "source": "testdata/differential/assembly_pointers.sol",
+  "contract": "AssemblyPointers",
+  "artifact": "testdata/differential/expected/assembly_pointers.json",
+  "cases": [
+    {
+      "name": "set_owner",
+      "function": "setOwner",
+      "args": [
+        4660
+      ],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "100": 4660
+      }
+    },
+    {
+      "name": "owner",
+      "function": "owner",
+      "args": [],
+      "storage": {
+        "100": "0x000000000000000000000000000000000000000000000000000000000000abcd"
+      },
+      "expect": {
+        "return": [
+          43981
+        ]
+      }
+    },
+    {
+      "name": "add_at",
+      "function": "addAt",
+      "args": [
+        7,
+        5
+      ],
+      "storage": {
+        "7": 10
+      },
+      "expect": {
+        "return": [
+          15
+        ]
+      },
+      "final_storage": {
+        "7": 15
+      }
+    },
+    {
+      "name": "bytes_at",
+      "function": "bytesAt",
+      "args": [
+        9
+      ],
+      "expect": {
+        "return": [
+          7
+        ]
+      },
+      "final_storage": {
+        "9": "0x706f696e7465720000000000000000000000000000000000000000000000000e"
+      }
+    },
+    {
+      "name": "namespaced_counter",
+      "function": "bumpCounter",
+      "args": [
+        3
+      ],
+      "storage": {
+        "0x183a6125c38840424c4a85fa12bab2ab606c4b6d0e7cc73c0c06ba5300eab500": 4
+      },
+      "expect": {
+        "return": [
+          7
+        ]
+      },
+      "final_storage": {
+        "0x183a6125c38840424c4a85fa12bab2ab606c4b6d0e7cc73c0c06ba5300eab500": 7
+      }
+    },
+    {
+      "name": "namespaced_mapping",
+      "function": "deposit",
+      "args": [
+        4660,
+        9
+      ],
+      "storage": {
+        "0x9ed42f0c9c42b2458475673e8392eea943db4cd6d120a043f00d7caab32cbe28": 1
+      },
+      "expect": {
+        "return": [
+          10
+        ]
+      },
+      "final_storage": {
+        "0x9ed42f0c9c42b2458475673e8392eea943db4cd6d120a043f00d7caab32cbe28": 10
+      }
+    },
+    {
+      "name": "pointer_locations",
+      "function": "locations",
+      "args": [
+        3
+      ],
+      "expect": {
+        "return": [
+          56988696150268759067033853745049141362335364605175666696514897554729450063371,
+          0,
+          56988696150268759067033853745049141362335364605175666696514897554729450063372,
+          2
+        ]
+      }
+    },
+    {
+      "name": "repoint",
+      "function": "repoint",
+      "args": [
+        5,
+        9
+      ],
+      "storage": {
+        "5": 7
+      },
+      "expect": {
+        "return": [
+          7,
+          9
+        ]
+      },
+      "final_storage": {
+        "5": "0x0000000000000000000000000000000900000000000000000000000000000007"
+      }
+    }
+  ]
+}

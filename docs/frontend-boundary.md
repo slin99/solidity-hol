@@ -146,7 +146,7 @@ invocations resolve through the transitive `baseModifiers` relation in the
 contract's linearization; explicitly qualified `Base.modifier` invocations
 keep their declared target (`virtual_modifiers.sol`). Only invoked modifier
 implementations are imported, so overridden bodyless declarations do not
-reject a concrete contract. A bodyless declaration still reached by a call
+reject a concrete contract. A bodyless modifier still reached by an invocation
 makes that function unsupported. A `super.f(...)` call
 (`super_calls.sol`) runs what the compiler's lookup finds in the deployed
 contract's linearization: the first function after the caller's contract with
@@ -157,11 +157,35 @@ overridden functions super calls reach are checked and elaborated, but not
 dispatched. `super` in a modifier body, an initializer or a base-constructor
 argument is rejected.
 
+An explicit `Base.f(...)` call (`qualified_base_calls.sol`) runs the named
+declaration's implementation, including its modifiers, even when a derived
+function overrides it. Its arguments keep their written evaluation order and
+are reordered to the declaration's parameters only afterward. Ordinary calls
+inside that implementation still resolve virtually. Static calls in modifier
+bodies and initialization expressions also retain the base procedures they
+reach. Calls through bodyless declarations use the same transitive
+`baseFunctions` table as other virtual calls; an unsupported most-derived
+override remains unsupported rather than falling back to a base body.
+
+Event emission resolves a declaration ID for unqualified names, library and
+interface names, and names qualified through an imported module
+(`qualified_events.sol`). Referenced events from outside the contract's bases,
+including file-level declarations, accompany the imported contract. Qualifiers
+are declaration names with no runtime evaluation; event arguments retain their
+written order, including named arguments. Log encoding and transaction rollback
+use the ordinary event semantics.
+
 Inline assembly writes a scalar local back only if decoding its word and
 encoding the resulting value reproduces that exact word. Non-canonical
 `uintN`, `intN`, `bool`, address and `bytesN` words fail closed with
 `InvalidCompletion`; they are not silently cleaned. Canonical negative signed
 words are sign-extended and fixed-byte words are left-aligned.
+
+Inline assembly reads a storage pointer local's `x.slot` and `x.offset` as
+its reference's slot and offset (`assembly_pointers.sol`). Assigning `x.slot`,
+as OpenZeppelin's `StorageSlot` and ERC-7201 namespaced storage getters do,
+points the local at that slot of the executing account, at offset 0, with its
+declared type; the compiler rejects assigning `x.offset`.
 
 Inline assembly reads a memory `bytes` or `string` local as its address
 (`assembly_memory.sol`). The source heap gives each object the address the
@@ -189,8 +213,10 @@ rest unwritten, so reading it fails closed where the EVM reads stale scratch:
 OpenZeppelin's `SafeERC20` against a token whose `transfer` returns nothing
 runs to that.
 
-Inline assembly's `call` and `staticcall` (`assembly_calls.sol`) run the
-callee on Verifereum through `externalCall`, as high-level calls do. The source
+Inline assembly's `call`, `staticcall` and `delegatecall` (`assembly_calls.sol`,
+`assembly_delegate.sol`) run the callee on Verifereum through `externalCall`,
+as high-level and low-level calls do; `delegatecall` runs the callee's code
+in this contract's account, with its caller and value. The source
 tracks no gas, so `gas()` is admitted only as a call's gas argument, where it
 means the fixed budget every call from the source gets, and a literal gas
 argument is capped at that budget. The source state keeps the frame's return
@@ -203,16 +229,17 @@ statement of the block that calls, earlier in the same or an enclosing
 statement list, or in an argument left of a call, since arguments run right
 to left) then fails with an `InvalidCompletion`, and a block that leaves an
 empty buffer keeps it unknown. A Yul function's body may read return data only
-after a call of its own. A block in a static frame that names `call` fails
-closed; `staticcall` runs. A block that leaves an object's padding (the bytes
-past its length, in its last word) unwritten or not zero leaves it out of
-later blocks' memory, where reading it fails closed. solc lets a block assign a memory
+after a call of its own. A block in a static frame that names `call` or
+`delegatecall` fails closed; `staticcall` runs. A block that leaves an
+object's padding (the bytes past its length, in its last word) unwritten or
+not zero leaves it out of later blocks' memory, where reading it fails closed.
+solc lets a block assign a memory
 reference (`b := ...`); the elaborator rejects it, since the block reads the
 name as a literal.
 
 ## Storage layout
 
-`storageLayout` is separate from the AST. It contains state-variable entries
+`storageLayout` and `transientStorageLayout` are separate from the AST. They contain state-variable entries
 with declaration IDs, slots, byte offsets, contract names, and references into a
 layout type table. Type-table entries describe encodings such as `inplace`,
 `mapping`, and `dynamic_array`, byte widths, member offsets, keys, values, and
@@ -221,9 +248,25 @@ base element types.
 Source types and layout descriptors must remain separate formal structures. The
 compiler initially supplies layout calculation; Solidity-HOL interprets the
 layout when reading, writing, and capturing references. The declaration IDs in
-layout entries must resolve to compatible state-variable declarations.
+layout entries must resolve to compatible state-variable declarations. The importer
+interleaves the two tables in declaration order and checks each entry's backend
+against its declaration. Transient variables support value types, as solc 0.8.37
+does; transient mappings and other reference types are rejected.
 
-Storage declarations now include elementary scalars, structs, scalar-key
+Persistent and transient slots have independent numbering. `layout at <expr>`
+needs no source expression evaluator here: the compiler resolves the expression
+and records absolute persistent slots, including inherited variables and mapping
+roots. It leaves transient slots unchanged. These layout calculations are part
+of the existing compiler metadata boundary.
+
+Transient scalar reads and writes use `source_world.transient`, retaining the
+same packing and cleanup as persistent scalars. A static frame cannot write
+either backend. `call_contract` executes a frame, so it retains transient state
+across calls and restores it on revert. The transaction driver starts each
+transaction with empty transient storage and discards it afterward; it must not
+clear it between calls in the same transaction.
+
+Storage declarations now include elementary scalars, structs, scalar-key and byte-sequence-key
 mappings, and fixed/dynamic arrays, including their storage combinations.
 Scalar leaves can be read and updated through member/index paths.
 The importer takes each
@@ -235,7 +278,12 @@ compiler. Elaboration copies slot and offset into the core program's
 `state_variables`. Initialisers are imported and run by the creation
 procedure, and so are immutables' (below). Mapping key/value types come from recursive type-name
 normalization. AST and layout type identifiers use different encodings; both
-are checked against the normalized type. The scalar leaf width determines
+are checked against the normalized type. Bytes/string mapping keys retain their
+memory, calldata or storage reference, or their literal bytes. Hashing reads
+them in place without allocating a memory object or advancing the free-memory
+pointer, as the compiler uses scratch memory. Their unpadded contents followed by the root slot's
+32-byte big-endian encoding determine the Keccak-256 slot; no length word or
+ABI padding is included. Public getters accept the same keys. The scalar leaf width determines
 its storage read/write, and aggregate root slots come from the layout. Fixed
 array dimensions come from the compiler's resolved integer type of the length
 expression. Scalar elements pack without straddling slots; each nested row
@@ -256,7 +304,7 @@ It returns the value it reaches, a byte sequence copied to memory; for a
 struct, its members in declaration order, skipping mappings and arrays other
 than `bytes` and `string`, as the compiler's getter does. A struct with a
 struct-typed member, or with no member to return, has no getter here, and
-neither has a mapping whose key is not an elementary value type.
+neither has a mapping whose key is neither an elementary value type nor bytes/string.
 
 Constants of elementary value types, `string` and `bytes`, declared in the
 contract, a base, a reached library or at file level are imported with their
@@ -316,8 +364,8 @@ external call's argument. A call or creation whose enum argument is out of
 range reverts when the decoder reaches it, before later arguments are read.
 `type(E).min` and `type(E).max` are the first and last enum values.
 Enums as mapping keys, as elements of memory or calldata
-arrays, as constants, immutables or error parameters, returned by an
-external call and `delete` are rejected.
+arrays, as constants, immutables or error parameters, or returned by an
+external call are rejected.
 
 `keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
 a `bytes32`. A string or hex literal is hashed directly without allocating
@@ -330,10 +378,10 @@ call to the precompile at address 1 gives. Its arguments are converted to
 `f.selector`, `I.f.selector` and `E.selector` are constants: the selector the
 compiler records on the function, error or event they name (four bytes, or 32
 for an event), also of a library's public function or event, and
-`this.x.selector` is that of a public state variable's getter. The receiver in
-`x.f.selector` must be `this`, a contract, interface or library name,
-possibly qualified by imported modules (`M.I.f.selector`), or an imported
-module (`M.E.selector`), none of which the compiler evaluates.
+`this.x.selector` is that of a public state variable's getter. A contract
+value in `x.f.selector` or `x.getter.selector` is evaluated first, including
+its effects and failures; the selector still comes from the declaration.
+`this`, contract, interface, library and module names need no evaluation.
 `type(I).interfaceId` is the constant XOR of the selectors of the functions
 the interface `I` declares itself, not those it inherits, nor its `fallback`
 or `receive`; `I` must name an interface directly, not through a module, and
@@ -428,6 +476,14 @@ type, including the zero-argument and single-argument forms.
 `address.code.length` reads the account's code size directly, including zero for
 an account without code. The receiver is evaluated once and no memory bytes
 object is allocated. Standalone `address.code` remains unsupported.
+`address.balance` reads the account's current balance from the source world,
+after evaluating its receiver once. Payable and nonpayable addresses use the
+same lookup. `bytesN.length` evaluates its receiver and gives N as a `uint8`.
+`address payable.transfer(value)` evaluates the receiver before the amount
+and runs an empty-data value call with exactly the 2300 gas stipend. Failure
+forwards the callee's revert bytes; success records its return bytes in the
+frame's return-data buffer without allocating memory. Subsequent assembly
+can read that buffer. A failed call or enclosing revert rolls back the transfer.
 
 External calls returning scalar values admit `try ... returns (...) { ... }
 catch (bytes memory reason) { ... }`. Only failure of the external call selects
@@ -440,7 +496,7 @@ catch clauses without a bytes parameter remain unsupported.
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
 from the functions calls can reach (an overridden function counts only when
-a super call may run it): `L.f(args)` is an internal call of `f`,
+a `super` or explicit base call may run it): `L.f(args)` is an internal call of `f`,
 `x.f(args)`, with `f` attached to the type of `x` by `using L for T`, is one
 with `x` as the first argument, evaluated before the others, and `L.c` names
 the constant `c`. Library functions see no state variables. `using`
@@ -450,7 +506,8 @@ receiver is in storage or calldata and whose first parameter is in memory is
 rejected: the compiler copies the receiver before evaluating the other
 arguments, while elaboration converts arguments after evaluating them all.
 Public and external library functions, which a contract calls with
-`DELEGATECALL`, and library structs and events are rejected. Function-list
+`DELEGATECALL`, and library structs are rejected. Referenced library events
+are imported with the contracts that emit them. Function-list
 `using` directives are accepted: attached free and library functions use the
 same internal-call path. In the Yul the compiler emits, `linkersymbol`, a linked
 library's address, is not admitted.
@@ -533,8 +590,8 @@ array strides use each struct's whole-slot size. Raw elaboration preserves
 these declarations; the complete core checker rejects missing or inconsistent
 runtime layouts as invalid generated core at the checked preparation boundary.
 
-The selected compiler also emits `transientStorageLayout`. It is empty for the
-initial corpus, so transient layout remains unvalidated.
+The importer validates `transientStorageLayout` alongside `storageLayout`,
+preserving each table's order while interleaving their entries by declaration.
 
 ## Normalized AST
 
@@ -546,10 +603,12 @@ function is kept unsupported; see Partial admission). The importer decodes
 the compiler's string-valued kinds once, into datatypes: function kinds
 (`function` and reachable `freeFunction` both become `FunctionKind`, plus
 `receive`, `fallback` and `constructor`), visibilities, state mutabilities, address payability,
-data locations (`transient` is an import error), literal kinds and the
+data locations, literal kinds and the
 unary, binary and assignment operators. It also holds the one table of the
 compiler's built-in declaration ids (`abi`, `msg`, `block`, `tx`, `this`,
 `keccak256`, `ecrecover`, `addmod`, `mulmod`, `require`, `assert`, `revert`).
+Transient state declarations carry a separate flag; `transient` on a local,
+parameter or return declaration is rejected.
 `tests/solidityImportTestScript.sml` holds the positive fixtures and negative
 fixtures derived from them.
 
@@ -568,8 +627,7 @@ fixtures derived from them.
   with it; the storage layout lists the state variables in linearization
   order, bases first, each with its own type identifier;
 - constants are of elementary value types or byte sequences, declared by a
-  base or a library; event parameters are scalar, byte-sequence or supported
-  array types, scoped by their event;
+  base or a library; event parameters are scoped by their event;
 - initializers name state variables or immutables, base-constructor
   arguments name a constructor, and getters name a state variable, an
   immutable or a constant.
@@ -587,8 +645,8 @@ in Verifereum and requires equal ABI-encoded outcomes; see
 
 Admitted: one contract, flattened along its bases, with
 
-- functions over elementary value types, value-type state variables and
-  immutables, storage structs, scalar-key mappings and fixed or dynamic
+- functions over elementary value types, persistent/transient value-type state
+  variables and immutables, storage structs, value-type or bytes/string-key mappings and fixed or dynamic
   storage arrays; member and indexed scalar reads and updates, array lengths,
   scalar push and pop; bytes and string literals and memory or calldata
   values, which keep their locations (memory assignments alias,
@@ -604,17 +662,19 @@ Admitted: one contract, flattened along its bases, with
   integer, as the compiler folds it;
 - `if`, `while`, `do`-`while`, `for`, `break`, `continue`, `return`,
   unchecked blocks, inline assembly over value-type locals, state-variable
-  slots, value-type constants and memory `bytes` and `string` locals, with
+  slots, storage pointer slots and offsets, value-type constants and memory `bytes` and `string` locals, with
   `call`, `staticcall` and their return data;
 - internal calls with single or multiple returns, library calls (`L.f(args)`
   and `x.f(args)` through a using directive) and library constants (`L.c`),
-  `super` in calls, external calls of contract types, with `value` and `gas`
-  options; low-level `call`, `staticcall` and `delegatecall` of addresses;
+  `super` and explicit base calls, external calls of contract types with
+  `value` and `gas` options; low-level `call`, `staticcall` and `delegatecall`
+  of addresses;
 - `require`, `assert` and `revert` with boolean conditions and literal string
   messages; reads of `msg`, `tx` and `block` members and `address(this)`;
   emits of events with scalar, byte-sequence and array parameters (including
   indexed arrays), and reverts with custom errors with elementary parameters;
-  `keccak256`, `abi.encode*`, selectors;
+  unsupported event parameter types reject the emitting function, leaving
+  unrelated functions available; `keccak256`, `abi.encode*`, selectors;
 - constants, state-variable initializers, constructors and base-constructor
   arguments (inheritance specifiers or constructor modifiers), which form one
   creation procedure.
@@ -648,9 +708,10 @@ annotations, at the node whose type it computes:
   modifier bodies make no super call, and modifier arguments see the
   function's parameters but not its return variables;
 - a fallback takes no parameters and returns nothing, as the core's does;
-- `delete` is not admitted; every scalar result is annotated with its own
-  type, and every other annotation decodes to an elementary, rational literal
-  or tuple type.
+- `delete` captures a scalar destination once and writes its default value,
+  preserving neighboring packed storage. Aggregate deletion is rejected;
+  every scalar result is annotated with its own type, and every other
+  annotation decodes to an elementary, rational literal or tuple type.
 
 Left to the compiler: storage layout calculation, that view functions write
 no state variable, and the override metadata (which declarations each
@@ -667,13 +728,13 @@ leaving a placeholder (`SrcUnsupportedTypeName`, `SrcUnsupportedExpr`,
 `SrcUnsupportedStmt`) with the children it could import, so the reason has a
 line for every unsupported node, each naming it. `solidityPrepareLib` then marks, until nothing changes,
 every function that fails to elaborate, also by calling an unsupported one (by
-a call or a super call). The elaborator builds no
+an ordinary, `super` or explicit base call). The elaborator builds no
 procedure for them and lists their ids in `core_program.unsupported_procedures`,
 so their selectors, and receive, fallback or the constructor when unsupported,
 still dispatch to them and an external call of one is invalid
 (`call_contract_unsupported`), never a return or the fallback; it still
 reverts first, as a supported one would, when it is sent value it does not
-accept. An unsupported function never runs, so its super calls reach nothing:
+accept. An unsupported function never runs, so its `super` and base calls reach nothing:
 a base function only they reach is neither checked nor elaborated. A constant
 whose value does not elaborate, also by reading such a constant, has no
 procedure either: its getter is listed as unsupported, and a function reading
@@ -743,8 +804,9 @@ partial semantic result.
 
 Before fixing a complete core AST, extend the corpus to cover control flow,
 tuple holes, modifiers, external calls, creation,
-try/catch, errors, fallback/receive, dynamic and memory/calldata arrays, bytes/string, function
-pointers, transient storage, and custom storage layout bases. The first HOL type
+try/catch, errors, fallback/receive, dynamic and memory/calldata arrays, bytes/string, and function
+pointers. Transient value types and custom storage bases have differential fixtures.
+The first HOL type
 theory can begin from the normalized types already observed, provided unsupported
 forms continue to fail closed.
 
