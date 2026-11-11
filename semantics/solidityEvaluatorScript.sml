@@ -237,7 +237,15 @@ Definition eval_operation_def:
           ValueAbrupt (InvalidCompletion "bad fixed bytes width") else
         (case eval_atom st.scopes a of
            SOME (ReferenceValue r) =>
-             (case byte_contents st r of
+             (case (case r of
+                 StorageReference PersistentStorage addr slot 0 ty _ =>
+                   if ¬byte_sequence_type ty then
+                     INR (InvalidCompletion "not storage bytes")
+                   else (case storage_byte_length st.world.accounts addr slot of
+                     INR c => INR c
+                   | INL length => INL (storage_byte_range
+                       st.world.accounts addr slot length 0 (MIN k length)))
+               | _ => byte_contents st r) of
                 INL bs => ValueOk (ScalarValue (BytesValue (take_pad_0 k bs)))
               | INR c => ValueAbrupt c)
          | _ => ValueAbrupt (InvalidCompletion "bad bytes conversion operand"))

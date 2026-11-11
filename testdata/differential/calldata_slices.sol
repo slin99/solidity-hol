@@ -77,6 +77,10 @@ contract CalldataSlices {
         return bytes4(stored);
     }
 
+    function storagePrefix() external view returns (bytes4) {
+        return bytes4(stored);
+    }
+
 
     function decodeWithoutAllocation(bytes calldata data) external pure returns (uint256, uint256, uint256) {
         uint256 beforePointer;

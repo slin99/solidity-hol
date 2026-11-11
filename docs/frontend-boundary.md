@@ -687,3 +687,5 @@ identifier suffix to the existing calldata-reference type.
 memory, calldata or storage, right-padding shorter inputs with zeros. It
 returns a scalar and does not allocate memory. Slice length controls the
 conversion, so bytes beyond the selected view never contribute to its value.
+Storage conversions validate the length header and read at most N bytes;
+they do not copy the complete array or impose a memory-allocation length cap.
