@@ -72,11 +72,14 @@ remain extension points rather than implemented aggregate semantics.
 
 An inline assembly block (`AssemblyStmt`) runs on the Yul evaluator, over a
 memory holding each memory `bytes` and `string` object where the compiler
-allocates it (its length word at its address, then its bytes): it reads and
-writes back the value-type locals it names, reads state variables' slots and
-offsets and storage pointer locals' slots and offsets (assigning a pointer's
-`x.slot` points it at that slot of the executing account), integer, `bool` and fixed-bytes constants, and the addresses of the memory
-`bytes` and `string` locals it names as literals in its code, as the compiler
+allocates it (its length word at its address, then its bytes), and each
+memory array of value types (its length word if it is dynamic, then a word
+per element, read back on exit only if each element's word round-trips): it
+reads and writes back the value-type locals it names, reads state variables'
+slots and offsets and storage pointer locals' slots and offsets (assigning a
+pointer's `x.slot` points it at that slot of the executing account), integer,
+`bool` and fixed-bytes constants, and the addresses of the memory `bytes`,
+`string` and array locals it names as literals in its code, as the compiler
 puts them, so its Yul functions see them too (a function's parameters and results may
 reuse such a name in its body; a memory reference may not be assigned). Code
 that can reach the block's normal exit may write at a literal address only in
@@ -86,11 +89,11 @@ length are read only at the free memory pointer and memory the block wrote
 itself (an `mstore`, a call's output region or a `returndatacopy`, also in an
 argument to the right, since arguments run right to left); at a computed
 address, a block that exits normally may write only the scratch space, the byte
-sequences' data words and the memory from the free memory pointer up, not their
+sequences' data words, the arrays' elements and the memory from the free memory pointer up, not their
 length words or the free memory pointer itself; their bytes are read back, and
 the writes from the free memory pointer up, the temporary memory the Solidity
 docs allow a memory-safe block, are dropped. Whatever the address, a read outside the free memory pointer, the
-zero slot, the byte sequences' words and the bytes the block wrote fails with
+zero slot, the byte sequences' and arrays' words and the bytes the block wrote fails with
 an `InvalidCompletion`. `return`/`stop`
 end the frame with a `HaltCompletion`. `call`, `staticcall` and
 `delegatecall` run the callee through the same `externalCall` adapter as

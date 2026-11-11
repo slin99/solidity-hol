@@ -1570,7 +1570,8 @@ Definition check_contract_def:
     c.contract_scope = unit_id ∧
     (case c.contract_bases of x :: _ => x = c.contract_info.node_id | [] => F) ∧
     ALL_DISTINCT (c.contract_bases ++ c.contract_libraries) ∧
-    EVERY (check_struct sources c.contract_bases) c.contract_structs ∧
+    EVERY (check_struct sources (c.contract_bases ++ c.contract_libraries))
+      c.contract_structs ∧
     EVERY (λ(_, members). 0 < members ∧ members ≤ 256) c.contract_enums ∧
     EVERY check_event c.contract_events ∧
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
@@ -1646,7 +1647,8 @@ Definition contract_rejections_def:
       c.contract_info.node_id "linearization" ++
     rejected_unless (ALL_DISTINCT (c.contract_bases ++ c.contract_libraries))
       c.contract_info.node_id "duplicate bases" ++
-    FLAT (MAP (struct_rejections sources c.contract_bases) c.contract_structs) ++
+    FLAT (MAP (struct_rejections sources (c.contract_bases ++ c.contract_libraries))
+            c.contract_structs) ++
     FLAT (MAP (λ(x, members). rejected_unless (0 < members ∧ members ≤ 256) x "enum size")
             c.contract_enums) ++
     FLAT (MAP (λe. rejected_unless (check_event e) e.event_info.node_id

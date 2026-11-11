@@ -2279,10 +2279,11 @@ End
  * scopes need not mirror the source blocks.
  *)
 (* A local keeps its declared type, one of the value types the block can read
- * and write as a word, or a memory byte sequence, which the block reads as
- * its address. A constant of value type is read before the block, as an
- * expression reads it. x.slot and x.offset name a state variable's location,
- * or that of the reference a storage pointer local holds.
+ * and write as a word, or a memory byte sequence or array of value types,
+ * which the block reads as its address. A constant of value type is read
+ * before the block, as an expression reads it. x.slot and x.offset name a
+ * state variable's location, or that of the reference a storage pointer
+ * local holds.
  *)
 Definition elab_assembly_reference_def:
   (elab_assembly_reference ctx n (id : num) (SrcAssemblyValue x) =
@@ -2292,7 +2293,7 @@ Definition elab_assembly_reference_def:
         else
           (case ty of
              LocatedT MemoryLoc t =>
-               if byte_sequence_type t then INL (([], AssemblyMemory (AstId x) t), n)
+               if assembly_memory_type t then INL (([], AssemblyMemory (AstId x) t), n)
                else INR [(id, "assembly reference of this type")]
            | _ => INR [(id, "assembly reference of this type")])
     | NONE =>

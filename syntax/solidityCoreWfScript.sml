@@ -1022,6 +1022,16 @@ Definition assembly_value_type_def[simp]:
   (assembly_value_type _ ⇔ F)
 End
 
+(* The memory objects an inline assembly block sees: byte sequences, and
+ * arrays of value types, whose elements it sees as words. *)
+Definition assembly_memory_type_def:
+  assembly_memory_type ty ⇔
+    byte_sequence_type ty ∨
+    case ty of
+      ArrayT element _ => assembly_value_type element
+    | _ => F
+End
+
 (* The builtins an inline assembly block may not use. The source state keeps
  * no code, so the code and data builtins are left out, and so are
  * setimmutable and linkersymbol, which only the compiler's code uses. Gas,
@@ -1422,7 +1432,7 @@ Definition assembly_reference_ok_def:
         wf_core_atom env ctx (SingleType ty) a ∧ assembly_value_type ty
     | AssemblyMemory x ty =>
         ALOOKUP ctx.bindings x = SOME (SingleType (LocatedT MemoryLoc ty)) ∧
-        byte_sequence_type ty
+        assembly_memory_type ty
 End
 
 (* The names of a block's memory references. The block reads each as a
@@ -1833,6 +1843,7 @@ val () = cv_auto_trans call_stmt_ok_def;
 val () = cv_auto_trans assembly_calls_ok_def;
 val () = cv_auto_trans assembly_gas_ok_def;
 val () = cv_auto_trans assembly_value_type_def;
+val () = cv_auto_trans assembly_memory_type_def;
 val () = cv_auto_trans assembly_reference_ok_def;
 val () = cv_auto_trans assembly_memory_names_def;
 val () = cv_auto_trans assembly_assigns_ok_def;
