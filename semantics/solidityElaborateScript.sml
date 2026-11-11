@@ -1922,10 +1922,11 @@ Termination
        4 * list_size (option_size src_expr_size) cs + 3)’ >>
   conj_tac >- simp[prim_recTheory.WF_measure] >>
   (* only the equations naming the node matter: the case hypotheses about
-     the children's results are large, so they are dropped, not simplified *)
+     the children's results are large, so they are dropped, not simplified.
+     FIRST makes each of the several hundred goals its own step. *)
   rpt strip_tac >> rpt BasicProvers.VAR_EQ_TAC >> rpt (pop_assum kall_tac) >>
-  simp[prim_recTheory.measure_thm, solidityImportTheory.src_expr_size_def,
-       listTheory.list_size_def, basicSizeTheory.option_size_def]
+  FIRST [simp[prim_recTheory.measure_thm, solidityImportTheory.src_expr_size_def,
+              listTheory.list_size_def, basicSizeTheory.option_size_def]]
 End
 
 (* A boolean condition. *)
@@ -2385,7 +2386,7 @@ Definition elab_stmts_def:
        else []) ++
       (if assembly_memory_ok code then []
        else [(info.node_id, "unsupported assembly memory use")]) ++
-      (if assembly_calls_ok code then []
+      (if assembly_gas_ok code then []
        else [(info.node_id, "unsupported assembly gas or return data use")]) ++
       (if ALL_DISTINCT (MAP FST refs) then []
        else [(info.node_id, "repeated assembly reference")]) in

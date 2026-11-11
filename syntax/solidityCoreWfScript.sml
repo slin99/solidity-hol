@@ -939,7 +939,7 @@ End
 (* The builtins an inline assembly block may not use. The source state keeps
  * no code, so the code and data builtins are left out, and so are
  * setimmutable and linkersymbol, which only the compiler's code uses. Gas,
- * calls and return data are limited by assembly_calls_ok instead. *)
+ * calls and return data are limited by assembly_gas_ok instead. *)
 Definition assembly_unsupported_def:
   assembly_unsupported =
     [YCodeSize; YCodeCopy; YDataSize; YDataOffset; YSetImmutable;
@@ -1228,15 +1228,18 @@ Definition assembly_memory_ok_def:
   assembly_memory_ok code ⇔ memory_stmts_ok (block_halts code) [(0x40, 32)] code
 End
 
-(* Gas and return data. The source keeps no gas and no return data buffer, so
- * gas() may only be a call's gas argument, where it stands for the budget
- * every call from the source gets; and returndatasize and returndatacopy may
- * only come after a statement of the block that calls (a let, assignment or
- * expression statement whose expression has a call or staticcall in it),
- * earlier in their statement list or an enclosing one, or inside an if, switch
- * or for whose condition calls, or in an argument left of one that calls,
- * since arguments run right to left. A Yul function's body starts with no
- * call made. *)
+(* Gas and return data. The source keeps no gas, so gas() may only be a call's
+ * gas argument, where it stands for the budget every call from the source
+ * gets. call_stmts_ok F also has returndatasize and returndatacopy come only
+ * after a statement of the block that calls (a let, assignment or expression
+ * statement whose expression has a call or staticcall in it), earlier in their
+ * statement list or an enclosing one, or inside an if, switch or for whose
+ * condition calls, or in an argument left of one that calls, since arguments
+ * run right to left. A Yul function's body starts with no call made. The
+ * evaluator asks for that order only where the source does not know the
+ * return data (assembly_calls_ok); the static rule is assembly_gas_ok, which
+ * admits return data reads before the block's own calls, except in a Yul
+ * function's body. *)
 Definition expr_calls_def:
   (expr_calls (YulBuiltin b es) ⇔
     b = YCall ∨ b = YStaticCall ∨ exprs_calls es) ∧
@@ -1297,6 +1300,10 @@ End
 
 Definition assembly_calls_ok_def:
   assembly_calls_ok code ⇔ call_stmts_ok F code
+End
+
+Definition assembly_gas_ok_def:
+  assembly_gas_ok code ⇔ call_stmts_ok T code
 End
 
 Definition assembly_reference_ok_def:
@@ -1451,7 +1458,7 @@ Definition check_core_stmts_def:
     | NONE => NONE) ∧
   (check_core_stmts env ctx (AssemblyStmt code refs :: ss) =
     if assembly_stmts_ok assembly_unsupported code ∧ assembly_memory_ok code ∧
-       assembly_calls_ok code ∧
+       assembly_gas_ok code ∧
        ALL_DISTINCT (MAP FST refs) ∧
        EVERY (assembly_reference_ok env ctx) (MAP SND refs) ∧
        assembly_assigns_ok (assembly_memory_names refs) code
@@ -1717,6 +1724,7 @@ val () = cv_auto_trans stmt_calls_def;
 val () = cv_auto_trans call_expr_ok_def;
 val () = cv_auto_trans call_stmt_ok_def;
 val () = cv_auto_trans assembly_calls_ok_def;
+val () = cv_auto_trans assembly_gas_ok_def;
 val () = cv_auto_trans assembly_value_type_def;
 val () = cv_auto_trans assembly_reference_ok_def;
 val () = cv_auto_trans assembly_memory_names_def;
