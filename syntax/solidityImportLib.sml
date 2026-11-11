@@ -399,6 +399,10 @@ fun type_name v = guarded (fn _ => []) unsupported_type_name (fn v => within v (
       in
         con "SrcArrayTypeName" [info v, base, mk_num n]
       end)
+  | "FunctionTypeName" =>
+      (require v (string_field v "visibility" = "internal")
+         "external function types are not supported";
+       con "SrcFunctionTypeName" [info v, type_id v])
   | other => fail (describe v ^ ": unsupported type name " ^ other))) v
 
 (* Declarations *)
@@ -1985,7 +1989,10 @@ fun contract external_structs contracts declared v = within v (fn v =>
       let
         val ids = List.concat (map references (reachable_bases @ picked))
         val picked' =
-          map #2 (List.filter (fn (i, _) => List.exists (fn j => j = i) ids)
+          map #2 (List.filter (fn (i, m) => List.exists (fn j => j = i) ids andalso
+                      (node_type m <> "FunctionDefinition" orelse
+                       string_field m "visibility" = "internal" orelse
+                       string_field m "visibility" = "private"))
                     (!library_members))
       in
         if length picked' = length picked then picked else reached picked'

@@ -11,7 +11,8 @@ Libs
 
 fun holbuild_extra_deps (_ : string list) = ()
 val () = holbuild_extra_deps [
-  "../testdata/differential/expected/constant_conversions.json"
+  "../testdata/differential/expected/constant_conversions.json",
+  "../testdata/differential/expected/pointer_only_structs.json"
 ]
 
 val elaborated = cv_eval “elaborate_unit pure_core”;
@@ -268,22 +269,85 @@ Definition missing_struct_layout_unit_def:
   missing_struct_layout_unit =
     case struct_unit.unit_contracts of
       c :: cs =>
-        (case c.contract_structs of
-           s :: ss => struct_unit with unit_contracts :=
-             (c with contract_structs := (s with struct_layout := NONE) :: ss) :: cs
-         | [] => struct_unit)
+        struct_unit with unit_contracts :=
+          (c with contract_structs :=
+            MAP (λs. s with struct_layout := NONE) c.contract_structs) :: cs
     | [] => struct_unit
 End
 val () = cv_auto_trans missing_struct_layout_unit_def;
 
-Theorem struct_layout_required_for_execution:
+Theorem missing_struct_layouts_computed_for_execution:
   IS_SOME (elaborate_unit struct_unit) ∧
   valid_src_unit missing_struct_layout_unit ∧
   case elaborate_unit missing_struct_layout_unit of
-    SOME p => ¬wf_core_program (core_program_environment p) p
+    SOME p => wf_core_program (core_program_environment p) p
   | NONE => F
 Proof
   rpt conj_tac >- CONV_TAC cv_eval >- CONV_TAC cv_eval >>
+  CONV_TAC cv_eval
+QED
+
+Theorem computed_struct_layouts_match_solc:
+  elaborate_unit missing_struct_layout_unit = elaborate_unit struct_unit ∧
+  elab_struct_layouts (REVERSE (HD missing_struct_layout_unit.unit_contracts).contract_structs) =
+    OPTION_MAP REVERSE (elab_struct_layouts (HD struct_unit.unit_contracts).contract_structs)
+Proof
+  conj_tac >- CONV_TAC cv_eval >> EVAL_TAC
+QED
+
+Definition unlayoutable_structs_def:
+  unlayoutable_structs =
+    case struct_unit.unit_contracts of
+      c :: _ =>
+        (case c.contract_structs of
+           s :: _ => [s with <| struct_layout := NONE;
+             struct_members := MAP (λv. v with var_location := SOME MemoryLoc)
+               s.struct_members |>]
+         | [] => [])
+    | [] => []
+End
+val () = cv_auto_trans unlayoutable_structs_def;
+
+Theorem unlayoutable_struct_still_omitted:
+  LENGTH unlayoutable_structs = 1 ∧
+  elab_struct_layouts unlayoutable_structs = SOME []
+Proof
+  CONV_TAC cv_eval
+QED
+
+Definition pointer_only_structs_unit_def:
+  pointer_only_structs_unit = ^(import_artifact
+    "../testdata/differential/expected/pointer_only_structs.json"
+    "testdata/differential/pointer_only_structs.sol")
+End
+val () = cv_auto_trans pointer_only_structs_unit_def;
+
+Definition pointer_only_layouts_def:
+  pointer_only_layouts =
+    case pointer_only_structs_unit.unit_contracts of
+      c :: _ => computed_struct_layouts (LENGTH c.contract_structs) c.contract_structs
+    | [] => []
+End
+val () = cv_auto_trans pointer_only_layouts_def;
+
+Definition pointer_only_layout_summary_def:
+  pointer_only_layout_summary =
+    (EVERY (λs. s.struct_layout = NONE)
+       (FLAT (MAP (λc. c.contract_structs) pointer_only_structs_unit.unit_contracts)),
+     MAP (λs. (s.struct_slots,
+       MAP (λv. (w2n v.state_slot, v.state_offset)) s.struct_fields)) pointer_only_layouts)
+End
+val () = cv_auto_trans pointer_only_layout_summary_def;
+
+(* The outer struct's fixed uint24[11] uses two slots, not one; its nested
+ * struct is declared later. Neither has a compiler-provided layout. *)
+Theorem pointer_only_packing:
+  LENGTH pointer_only_layouts = 3 ∧
+  FST pointer_only_layout_summary ∧
+  MEM (11, [(0, 0); (0, 16); (1, 0); (2, 0); (4, 0); (5, 0);
+            (7, 0); (8, 0); (9, 0); (10, 0)])
+    (SND pointer_only_layout_summary)
+Proof
   CONV_TAC cv_eval
 QED
 

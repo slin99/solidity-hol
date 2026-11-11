@@ -31,6 +31,12 @@ and invalid generated core have distinct diagnostics. Source validation also
 contains supported-subset restrictions. Invalid generated core is an
 implementation failure. Unexpected HOL evaluation failures propagate.
 
+Internal and private library functions are imported with each contract that
+reaches them. Public and external library calls require linked-library
+execution, which is unsupported: their callers, including transitive callers,
+are marked unsupported while unrelated functions remain available. Their
+library bodies and declarations reached only through those bodies are omitted.
+
 The raw importer and `elaborate_unit` remain available for reasoning and
 frontend inspection. Their callers own the compiler/profile contract, source
 validation and full core check. `prepare_unit` performs the semantic checks for
@@ -48,7 +54,8 @@ value types to their elementary underlying types and lowers their resolved
 operators to internal calls.
 
 The evaluator executes elementary scalar operations and conversions, locals,
-tuples, structured control flow, internal calls, built-in failures, packed
+tuples, structured control flow, internal calls, calls through internal
+function values, built-in failures, packed
 state values, scalar and bytes/string mapping keys, storage arrays and storage
 struct members. Transient value-type state variables use a separate backend
 with transaction lifetime; custom storage bases use the compiler's absolute
