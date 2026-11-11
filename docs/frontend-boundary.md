@@ -358,10 +358,19 @@ panics with 0x21. An enum occupies one byte of storage; reading a stored
 byte outside its member range fails closed with `InvalidCompletion`, even if
 the value is never used. A `bool` storage byte other than 0 or 1 also fails
 closed. The compiler can retain these non-canonical bytes on its stack, which
-the core's source values cannot represent. An enum is
-ABI encoded as `uint8`, as a parameter, a return, an event argument or an
-external call's argument. A call or creation whose enum argument is out of
-range reverts when the decoder reaches it, before later arguments are read.
+the core's source values cannot represent.
+
+Whole fixed-size and dynamic storage arrays of enums can be read as storage
+values and copied to other storage arrays (`storage_enum_arrays.sol`). Copies
+clear old destination contents and pack enum elements one byte each. A copy that reads an out-of-range source byte
+fails closed with `InvalidCompletion`; copying an array onto itself is a
+no-op and reads no elements. Clearing old destination contents does not
+validate the bytes being discarded. Memory and calldata enum arrays remain
+outside the supported boundary.
+
+An enum is ABI encoded as `uint8`, as a parameter, a return, an event
+argument or an external call's argument. A call or creation whose enum
+argument is out of range reverts when the decoder reaches it, before later arguments are read.
 `type(E).min` and `type(E).max` are the first and last enum values.
 Enums as mapping keys, as elements of memory or calldata
 arrays, as constants, immutables or error parameters, or returned by an
@@ -421,7 +430,7 @@ scalars or byte sequences; other receivers (a constant, whose initializer the
 compiler evaluates and which may fail, included), and array and struct
 parameters, are rejected.
 
-`abi.decode(data, (T1, ..., Tk))` decodes a memory `bytes` into values of
+`abi.decode(data, (T1, ..., Tk))` decodes memory or calldata `bytes` into values of
 elementary types (booleans, integers, addresses and fixed-size byte
 sequences, including erased user-defined value types), as the compiler's
 decoder from memory does. The result keeps the compiler's annotated types:
@@ -430,8 +439,9 @@ value type backed by nonpayable `address` keeps that underlying type.
 Each result must match its requested elementary type or its payable-address
 decoding variant. Data shorter than the
 encoding, or a word that is not a value of its type, reverts with no data, and
-data after the encoding is ignored. It allocates nothing. Data in calldata or
-storage, and types other than elementary ones, are rejected.
+data after the encoding is ignored. Memory and calldata bytes, including
+slices, decode in place without allocating memory. Storage input and types
+other than elementary ones are rejected.
 
 `a.call(data)`, `a.staticcall(data)` and `a.delegatecall(data)`, with `a`
 an address and `data` a memory or calldata `bytes` or a bytes literal,
@@ -639,8 +649,8 @@ Admitted: one contract, flattened along its bases, with
   ABI values are rejected;
 - locals, including tuple declarations with holes; simple and compound
   assignment to locals and state variables, tuple assignment, `++` and `--`;
-- literals (no subdenominations), explicit elementary conversions (not
-  `bytesN(b)` of a dynamic byte sequence `b`),
+- literals (no subdenominations), explicit elementary conversions and
+  `bytesN(b)` of dynamic bytes in memory, calldata or storage,
   `type(T).max` and `.min` of integer and enum types, unary, binary, comparison and
   short-circuit operators, conditional expressions over value types; an
   operation over literals that the compiler types as an integer is that
@@ -794,6 +804,24 @@ pointers. Transient value types and custom storage bases have differential fixtu
 The first HOL type
 theory can begin from the normalized types already observed, provided unsupported
 forms continue to fail closed.
+
+## Calldata slices
+
+`data[start:end]` produces a view into calldata, keeping its offset and length.
+Bounds may be omitted; the defaults are zero and the input view's length.
+Bounds outside the input view or in reverse order revert with empty data,
+whereas indexing an empty view still produces the ordinary index panic.
+Slices support `bytes` and dynamic calldata arrays with statically encoded
+elements, including fixed-size arrays. Slicing again adds to the existing
+offset, using each element's ABI stride. The importer normalizes solc's slice
+identifier suffix to the existing calldata-reference type.
+
+`bytesN(data)` reads the first N bytes of a dynamic `bytes` reference in
+memory, calldata or storage, right-padding shorter inputs with zeros. It
+returns a scalar and does not allocate memory. Slice length controls the
+conversion, so bytes beyond the selected view never contribute to its value.
+Storage conversions validate the length header and read at most N bytes;
+they do not copy the complete array or impose a memory-allocation length cap.
 
 ## Tuple expressions and assignments
 

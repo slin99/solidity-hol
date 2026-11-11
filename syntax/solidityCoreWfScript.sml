@@ -249,6 +249,16 @@ Definition memory_object_type_def:
   (memory_object_type ty ⇔ byte_sequence_type ty)
 End
 
+(* Storage copies also admit enum leaves; memory and calldata retain their
+ * own array element boundaries. *)
+Definition storage_copy_object_type_def:
+  (storage_copy_object_type (ArrayT element length) ⇔
+    valid_array_length length ∧
+    ((is_stored_scalar_type element ∧ valid_type_shape element) ∨
+     storage_copy_object_type element)) ∧
+  (storage_copy_object_type ty ⇔ byte_sequence_type ty)
+End
+
 (* What a storage pointer denotes: a byte sequence, an array, a mapping or a
  * struct. Its shape is checked against the environment by storage_type_ok. *)
 Definition storage_object_type_def:
@@ -753,6 +763,11 @@ Definition wf_core_operation_def:
     (byte_sequence_type ty ∨
      (memory_object_type ty ∧ case ty of ArrayT _ NONE => T | _ => F)) ∧
     wf_core_atom env ctx (SingleType (UintT 256)) length) ∧
+  (wf_core_operation env ctx annotation (BytesToFixedOperation k a) ⇔
+    valid_fixed_bytes_width k ∧ annotation = SingleType (FixedBytesT k) ∧
+    (wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a ∨
+     wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a ∨
+     wf_core_atom env ctx (SingleType (LocatedT StorageLoc BytesT)) a)) ∧
   (wf_core_operation env ctx annotation (ByteIndexOperation a index) ⇔
     annotation = SingleType (FixedBytesT 1) ∧
     (wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a ∨
@@ -768,6 +783,16 @@ Definition wf_core_operation_def:
              located_value_type (LocatedT loc (ArrayT element length)) ∧
              annotation = SingleType (element_type loc element)
          | _ => F)
+    | _ => F) ∧
+  (wf_core_operation env ctx annotation (CalldataSliceOperation a start end_bound) ⇔
+    case annotation of
+      SingleType (LocatedT CalldataLoc ty) =>
+        located_value_type (LocatedT CalldataLoc ty) ∧
+        (ty = BytesT ∨ case ty of ArrayT element NONE => static_object_type element | _ => F) ∧
+        wf_core_atom env ctx annotation a ∧
+        wf_core_atom env ctx (SingleType (UintT 256)) start ∧
+        (case end_bound of NONE => T | SOME end_index =>
+          wf_core_atom env ctx (SingleType (UintT 256)) end_index)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (CopyToMemoryOperation a) ⇔
     case (a, annotation) of
@@ -825,7 +850,8 @@ Definition wf_core_operation_def:
   (wf_core_operation env ctx annotation (AbiDecodeOperation tys a) ⇔
     tys ≠ [] ∧ EVERY (λty. is_elementary_type ty ∧ valid_type_shape ty) tys ∧
     annotation = call_result_type tys ∧
-    wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a) ∧
+    (wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a ∨
+     wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a)) ∧
   (wf_core_operation env ctx annotation (ArrayLengthOperation a) ⇔
     annotation = SingleType (UintT 256) ∧
     case a of
@@ -1432,7 +1458,7 @@ Definition check_core_stmts_def:
               byte_sequence_value_type src ∧ loc ≠ CalldataLoc ∧ ty = ty'
             else
               located_value_type src ∧ located_value_type dst ∧
-              memory_object_type ty ∧ memory_object_type ty' ∧
+              storage_copy_object_type ty ∧ storage_copy_object_type ty' ∧
               loc = StorageLoc ∧ storage_copy_type ty ty'
         | _ => F) ∧
        wf_core_atom env ctx (SingleType src) a ∧
