@@ -329,6 +329,7 @@ fun normalize_type_id s =
         let val r = name_id (i + 24) in go (#2 r) (underlying r :: acc) end
       else if at i "t_userDefinedValueType(" then
         let val r = paren_id (i + 23) in go (#2 r) (underlying r :: acc) end
+      else if at i "_calldata_ptr_slice" then go (i + 19) ("_calldata_ptr" :: acc)
       else go (i + 1) (String.str (String.sub (s, i)) :: acc)
   in
     go 0 []
@@ -954,6 +955,11 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
         con "SrcIndexAccess"
           [info v, base, expr (field v "indexExpression"), type_id v]
       end
+  | "IndexRangeAccess" =>
+      con "SrcIndexRangeAccess"
+        [info v, expr (field v "baseExpression"),
+         mk_opt expr_ty (Option.map expr (optional_field v "startExpression")),
+         mk_opt expr_ty (Option.map expr (optional_field v "endExpression")), type_id v]
   | "TupleExpression" =>
       let
         val components =

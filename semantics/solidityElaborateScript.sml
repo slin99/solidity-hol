@@ -150,6 +150,7 @@ Definition expr_id_def:
   (expr_id (SrcConditional info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcAssignment info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcIndexAccess info _ _ _) = info.node_id) ∧
+  (expr_id (SrcIndexRangeAccess info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcTupleExpression info _ _) = info.node_id) ∧
   (expr_id (SrcFunctionCall info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcSuperCall info _ _ _ _) = info.node_id) ∧
@@ -386,7 +387,7 @@ Definition plain_assignment_def:
   plain_assignment n target a vt =
     case target of
       ReferenceDestination ref ty =>
-        if memory_object_type ty then
+        if storage_copy_object_type ty then
           let source =
             case vt of
               ElabBytesLiteral => coerce n (LocatedT MemoryLoc ty) a vt
@@ -504,6 +505,10 @@ Definition expr_assigns_def:
   (expr_assigns (SrcConditional _ c t f _) ⇔
     expr_assigns c ∨ expr_assigns t ∨ expr_assigns f) ∧
   (expr_assigns (SrcIndexAccess _ b i _) ⇔ expr_assigns b ∨ expr_assigns i) ∧
+  (expr_assigns (SrcIndexRangeAccess _ b start end_bound _) ⇔
+    expr_assigns b ∨
+    (case start of NONE => F | SOME e => expr_assigns e) ∨
+    (case end_bound of NONE => F | SOME e => expr_assigns e)) ∧
   (expr_assigns (SrcMemberAccess _ root_expr _ _) ⇔ expr_assigns root_expr) ∧
   (expr_assigns (SrcArrayLength _ root_expr _) ⇔ expr_assigns root_expr) ∧
   (expr_assigns (SrcTypeConversion _ _ e _) ⇔ expr_assigns e) ∧
@@ -1152,6 +1157,45 @@ Definition elab_expr_def:
                  INL ((ss ++ rs, a, ElabType (read_value_type ty)), n1 + 1)
                else INR [(info.node_id, "read of a value of this type")]
            | INR bs => INR bs)
+    | SrcIndexRangeAccess info base_expr start end_bound tid =>
+        (case elab_expr ctx n base_expr of
+           INL ((ss, ref, ElabType (LocatedT CalldataLoc ty)), n1) =>
+             if ¬(source_type_matches (LocatedT CalldataLoc ty) tid ∧
+                  (ty = BytesT ∨ case ty of
+                     ArrayT element NONE => static_object_type element | _ => F))
+             then INR [(info.node_id, "unsupported calldata slice type")] else
+             let (saved, n2) = snapshot n1 ref (ElabType (LocatedT CalldataLoc ty)) in
+             let (sc, ref') = saved in
+             let es = case (start, end_bound) of
+                        (NONE, NONE) => []
+                      | (SOME a, NONE) => [a]
+                      | (NONE, SOME b) => [b]
+                      | (SOME a, SOME b) => [a; b] in
+             (case elab_arg_values ctx n2 es of
+                INL ((bs, vs), n3) =>
+                  if ¬EVERY (λ(a, vt). index_value_ok a vt) vs
+                  then INR [(info.node_id, "slice bound of this type")] else
+                  (case convert_operands n3 info.node_id (MAP expr_id es)
+                          (REPLICATE (LENGTH es) (ValueOf (UintT 256))) vs of
+                     INL (cs, _, atoms, n4) =>
+                       (case (case (start, end_bound, atoms) of
+                                (NONE, NONE, []) =>
+                                  SOME (ConstantAtom (IntegerValue 0), NONE)
+                              | (SOME _, NONE, [a]) => SOME (a, NONE)
+                              | (NONE, SOME _, [b]) =>
+                                  SOME (ConstantAtom (IntegerValue 0), SOME b)
+                              | (SOME _, SOME _, [a; b]) => SOME (a, SOME b)
+                              | _ => NONE) of
+                          NONE => INR [(info.node_id, "invalid slice bounds")]
+                        | SOME (first, last) =>
+                          let result_ty = LocatedT CalldataLoc ty in
+                          let (rs, value) = bind_value n4 result_ty
+                                             (CalldataSliceOperation ref' first last) in
+                          INL ((ss ++ sc ++ bs ++ cs ++ rs, value, ElabType result_ty), n4 + 1))
+                   | INR bs => INR bs)
+              | INR bs => INR bs)
+         | INL _ => INR [(info.node_id, "slice of a non-calldata array")]
+         | INR bs => INR bs)
     | SrcUnaryOperation info op prefix e tid =>
         (if op = SrcDelete then
            ensure (tid = "t_tuple$__$") (info.node_id, "type annotation mismatch")
@@ -1711,9 +1755,10 @@ Definition elab_expr_def:
               | _ => INR [(info.node_id, "unsupported low-level call")])
          | INR bs => INR bs)
     | SrcAbiDecode info _ e tns tid =>
-        (* the data is decoded where it is, so it must already be memory bytes *)
         (case elab_expr ctx n e of
-           INL ((ss, a, ElabType (LocatedT MemoryLoc BytesT)), n1) =>
+           INL ((ss, a, ElabType (LocatedT loc BytesT)), n1) =>
+             if loc ≠ MemoryLoc ∧ loc ≠ CalldataLoc then
+               INR [(expr_id e, "abi decoding of data not in memory or calldata bytes")] else
              (case all_some (MAP normalize_type_name tns) of
                 SOME tys =>
                   let out_tys =
@@ -1732,7 +1777,7 @@ Definition elab_expr_def:
               | NONE =>
                   INR (FLAT (MAP (λtn. type_name_blockers
                                          (info.node_id, "unsupported type name") tn) tns)))
-         | INL _ => INR [(expr_id e, "abi decoding of data not in memory bytes")]
+         | INL _ => INR [(expr_id e, "abi decoding of data not in memory or calldata bytes")]
          | INR bs => INR bs)
     | SrcTransfer info _ target value tid =>
         ensure (tid = "t_tuple$__$") (info.node_id, "type annotation mismatch")
@@ -1787,7 +1832,9 @@ Definition elab_expr_def:
                   (case (vt, ty, a) of
                      (ElabTuple _, _, _) => INR [(expr_id e, "tuple used as a value")]
                    | (ElabRational, _, _) => INR [(expr_id e, "rational number value")]
-                   (* bytes to bytesN: the core has no such conversion *)
+                   | (ElabType (LocatedT _ BytesT), FixedBytesT k, _) =>
+                       let (cs, v) = bind_value n1 ty (BytesToFixedOperation k a) in
+                       INL ((ss ++ cs, v, ElabType ty), n1 + 1)
                    | (ElabType (LocatedT _ _), FixedBytesT _, _) =>
                        INR [(info.node_id, "unsupported type conversion")]
                    | (ElabBytesLiteral, _, _) =>
@@ -2096,7 +2143,9 @@ Termination
      FIRST makes each of the several hundred goals its own step. *)
   rpt strip_tac >> rpt BasicProvers.VAR_EQ_TAC >> rpt (pop_assum kall_tac) >>
   FIRST [simp[prim_recTheory.measure_thm, solidityImportTheory.src_expr_size_def,
-              listTheory.list_size_def, basicSizeTheory.option_size_def]]
+              listTheory.list_size_def, basicSizeTheory.option_size_def]] >>
+  Cases_on ‘start’ >> Cases_on ‘end_bound’ >>
+  simp[listTheory.list_size_def, basicSizeTheory.option_size_def]
 End
 
 (* A boolean condition. *)
@@ -3514,6 +3563,8 @@ val elab_expr_pre_def = cv_auto_trans_pre_rec
    | INR (INR (INR (INR (INR (INR (INL (ctx, n, es))))))) => 4 * cv_size es
    | INR (INR (INR (INR (INR (INR (INR (ctx, n, cs))))))) => 4 * cv_size cs + 3)’ >>
   cv_termination_tac >>
+  rpt IF_CASES_TAC >> gvs[] >>
+  simp[cvTheory.cv_size_def] >>
   (* The condition and error arguments occupy disjoint fields of one
    * encoded expression. Expose their common tuple spine to bound the sum. *)
   Cases_on ‘z’ >> gvs[] >>
@@ -3544,7 +3595,11 @@ Proof
   >~ [‘elab_expr_pre ctx n e’] >-
     (PURE_ONCE_REWRITE_TAC [elab_expr_pre_def] >>
      rpt conj_tac >> rpt gen_tac >> disch_then SUBST_ALL_TAC >>
-     simp[solidityImportTheory.src_expr_size_def])
+     simp[solidityImportTheory.src_expr_size_def] >>
+     rename1 `src_expr_size (SrcIndexRangeAccess id base_expr lo hi ty)` >>
+     Cases_on `lo` >> Cases_on `hi` >>
+     simp[solidityImportTheory.src_expr_size_def,
+          basicSizeTheory.option_size_def, listTheory.list_size_def])
   >~ [‘elab_location_pre ctx n e’] >-
     (PURE_ONCE_REWRITE_TAC [elab_expr_pre_def] >>
      rpt conj_tac >> rpt gen_tac >> disch_then SUBST_ALL_TAC >>
