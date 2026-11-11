@@ -31,6 +31,12 @@ and invalid generated core have distinct diagnostics. Source validation also
 contains supported-subset restrictions. Invalid generated core is an
 implementation failure. Unexpected HOL evaluation failures propagate.
 
+Internal and private library functions are imported with each contract that
+reaches them. Public and external library calls require linked-library
+execution, which is unsupported: their callers, including transitive callers,
+are marked unsupported while unrelated functions remain available. Their
+library bodies and declarations reached only through those bodies are omitted.
+
 The raw importer and `elaborate_unit` remain available for reasoning and
 frontend inspection. Their callers own the compiler/profile contract, source
 validation and full core check. `prepare_unit` performs the semantic checks for
