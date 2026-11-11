@@ -5,20 +5,21 @@ pragma solidity 0.8.37;
 // set a returned pointer's slot, an ERC-7201 namespaced struct reached
 // through a constant slot, x.slot and x.offset of pointers to a mapping
 // entry, an array field and a bytes value, and a pointer moved to another
-// slot and then written through.
+// slot and then written through. The slot structs are declared at file
+// level; OpenZeppelin's StorageSlot declares them in its library.
+struct AddressSlot {
+    address value;
+}
+
+struct Uint256Slot {
+    uint256 value;
+}
+
+struct BytesSlot {
+    bytes value;
+}
+
 library Slots {
-    struct AddressSlot {
-        address value;
-    }
-
-    struct Uint256Slot {
-        uint256 value;
-    }
-
-    struct BytesSlot {
-        bytes value;
-    }
-
     function getAddressSlot(bytes32 slot) internal pure returns (AddressSlot storage r) {
         assembly {
             r.slot := slot
@@ -58,6 +59,12 @@ contract AssemblyPointers {
     uint256 first;
     mapping(uint256 => Entry) entries;
     bytes data;
+    // Unused: solc gives a struct's storage layout only for a struct a state
+    // variable reaches, and the core needs one for each pointer type.
+    AddressSlot unusedAddress;
+    Uint256Slot unusedUint256;
+    BytesSlot unusedBytes;
+    MainStorage unusedMain;
 
     function _main() private pure returns (MainStorage storage $) {
         assembly {
@@ -74,7 +81,7 @@ contract AssemblyPointers {
     }
 
     function addAt(uint256 slot, uint256 v) public returns (uint256) {
-        Slots.Uint256Slot storage s = Slots.getUint256Slot(bytes32(slot));
+        Uint256Slot storage s = Slots.getUint256Slot(bytes32(slot));
         s.value += v;
         return s.value;
     }
