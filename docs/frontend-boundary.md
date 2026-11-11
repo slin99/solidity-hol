@@ -358,10 +358,19 @@ panics with 0x21. An enum occupies one byte of storage; reading a stored
 byte outside its member range fails closed with `InvalidCompletion`, even if
 the value is never used. A `bool` storage byte other than 0 or 1 also fails
 closed. The compiler can retain these non-canonical bytes on its stack, which
-the core's source values cannot represent. An enum is
-ABI encoded as `uint8`, as a parameter, a return, an event argument or an
-external call's argument. A call or creation whose enum argument is out of
-range reverts when the decoder reaches it, before later arguments are read.
+the core's source values cannot represent.
+
+Whole fixed-size and dynamic storage arrays of enums can be read as storage
+values and copied to other storage arrays (`storage_enum_arrays.sol`). Copies
+clear old destination contents and pack enum elements one byte each. A copy that reads an out-of-range source byte
+fails closed with `InvalidCompletion`; copying an array onto itself is a
+no-op and reads no elements. Clearing old destination contents does not
+validate the bytes being discarded. Memory and calldata enum arrays remain
+outside the supported boundary.
+
+An enum is ABI encoded as `uint8`, as a parameter, a return, an event
+argument or an external call's argument. A call or creation whose enum
+argument is out of range reverts when the decoder reaches it, before later arguments are read.
 `type(E).min` and `type(E).max` are the first and last enum values.
 Enums as mapping keys, as elements of memory or calldata
 arrays, as constants, immutables or error parameters, or returned by an

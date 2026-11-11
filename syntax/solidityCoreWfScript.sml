@@ -249,6 +249,16 @@ Definition memory_object_type_def:
   (memory_object_type ty ⇔ byte_sequence_type ty)
 End
 
+(* Storage copies also admit enum leaves; memory and calldata retain their
+ * own array element boundaries. *)
+Definition storage_copy_object_type_def:
+  (storage_copy_object_type (ArrayT element length) ⇔
+    valid_array_length length ∧
+    ((is_stored_scalar_type element ∧ valid_type_shape element) ∨
+     storage_copy_object_type element)) ∧
+  (storage_copy_object_type ty ⇔ byte_sequence_type ty)
+End
+
 (* What a storage pointer denotes: a byte sequence, an array, a mapping or a
  * struct. Its shape is checked against the environment by storage_type_ok. *)
 Definition storage_object_type_def:
@@ -1448,7 +1458,7 @@ Definition check_core_stmts_def:
               byte_sequence_value_type src ∧ loc ≠ CalldataLoc ∧ ty = ty'
             else
               located_value_type src ∧ located_value_type dst ∧
-              memory_object_type ty ∧ memory_object_type ty' ∧
+              storage_copy_object_type ty ∧ storage_copy_object_type ty' ∧
               loc = StorageLoc ∧ storage_copy_type ty ty'
         | _ => F) ∧
        wf_core_atom env ctx (SingleType src) a ∧
