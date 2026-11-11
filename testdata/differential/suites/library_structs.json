@@ -1,0 +1,89 @@
+{
+  "name": "library_structs",
+  "source": "testdata/differential/library_structs.sol",
+  "contract": "LibraryStructs",
+  "artifact": "testdata/differential/expected/library_structs.json",
+  "cases": [
+    {
+      "name": "file_struct_with_library_struct_field",
+      "function": "put",
+      "args": [
+        7,
+        16909060,
+        1286
+      ],
+      "storage": {
+        "0": "0xff00",
+        "2": "0xabcd0000"
+      },
+      "expect": {
+        "return": [
+          7,
+          16909060,
+          1286
+        ]
+      },
+      "final_storage": {
+        "0": "0xff07",
+        "1": "16909060",
+        "2": "0xabcd0506"
+      }
+    },
+    {
+      "name": "library_struct_with_library_function",
+      "function": "setPair",
+      "args": [
+        5,
+        9
+      ],
+      "storage": {},
+      "expect": {
+        "return": [
+          15
+        ]
+      },
+      "final_storage": {
+        "3": "3062541302288446171170371466885913903109"
+      }
+    },
+    {
+      "name": "library_struct_mapping_value",
+      "function": "setInner",
+      "args": [
+        3,
+        200
+      ],
+      "storage": {
+        "20847553505133914552257704385947491495280584372107674490781730384335512955553": "77"
+      },
+      "expect": {
+        "return": [
+          200
+        ]
+      },
+      "final_storage": {
+        "20847553505133914552257704385947491495280584372107674490781730384335512955552": "200",
+        "20847553505133914552257704385947491495280584372107674490781730384335512955553": "77"
+      }
+    },
+    {
+      "name": "interface_and_contract_structs",
+      "function": "setBox",
+      "args": [
+        3,
+        4,
+        5
+      ],
+      "storage": {},
+      "expect": {
+        "return": [
+          17
+        ]
+      },
+      "final_storage": {
+        "5": "73786976294838206467",
+        "6": "5"
+      }
+    }
+  ]
+}
