@@ -2143,6 +2143,13 @@ Definition placeholder_call_def:
     (call :: ss ++ return_writes n1 rs vs, n1 + LENGTH rs)
 End
 
+Definition calldata_slice_def:
+  calldata_slice ctx x ⇔
+    case ALOOKUP ctx.variables x of
+      SOME (LocatedT CalldataLoc ty) => calldata_slice_type ty
+    | _ => F
+End
+
 Definition storage_pointer_def:
   storage_pointer ctx x ⇔
     case ALOOKUP ctx.variables x of
@@ -2158,7 +2165,9 @@ End
  * and write as a word, or a memory byte sequence, which the block reads as
  * its address. A constant of value type is read before the block, as an
  * expression reads it. x.slot and x.offset name a state variable's location,
- * or that of the reference a storage pointer local holds.
+ * or that of the reference a storage pointer local holds; x.offset and
+ * x.length of a calldata byte sequence or dynamic array, and the plain name
+ * of a calldata static array, name the calldata the reference covers.
  *)
 Definition elab_assembly_reference_def:
   (elab_assembly_reference ctx n (id : num) (SrcAssemblyValue x) =
@@ -2170,6 +2179,8 @@ Definition elab_assembly_reference_def:
              LocatedT MemoryLoc t =>
                if byte_sequence_type t then INL (([], AssemblyMemory (AstId x) t), n)
                else INR [(id, "assembly reference of this type")]
+           | LocatedT CalldataLoc (ArrayT _ (SOME _)) =>
+               INL (([], AssemblyCalldataOffset (AstId x)), n)
            | _ => INR [(id, "assembly reference of this type")])
     | NONE =>
       case ALOOKUP ctx.constants x of
@@ -2187,6 +2198,10 @@ Definition elab_assembly_reference_def:
   (elab_assembly_reference ctx n id (SrcAssemblyOffset x) =
     if IS_SOME (ALOOKUP ctx.locations x) then INL (([], AssemblyOffset (AstId x)), n)
     else if storage_pointer ctx x then INL (([], AssemblyPointerOffset (AstId x)), n)
+    else if calldata_slice ctx x then INL (([], AssemblyCalldataOffset (AstId x)), n)
+    else unknown_reference ctx id "unsupported assembly reference" x) ∧
+  (elab_assembly_reference ctx n id (SrcAssemblyLength x) =
+    if calldata_slice ctx x then INL (([], AssemblyCalldataLength (AstId x)), n)
     else unknown_reference ctx id "unsupported assembly reference" x)
 End
 

@@ -219,12 +219,14 @@ End
  * positional arguments. RevertError: revert E(args), the error and the
  * positional arguments. InlineAssembly: the block's code, and each Solidity
  * variable it names, keyed by the name the code uses (x, or x.slot and
- * x.offset for a state variable's location).
+ * x.offset for a state variable's location or a storage pointer's, x.offset
+ * and x.length for a calldata reference).
  *)
 Datatype:
   src_assembly_reference = SrcAssemblyValue num
                          | SrcAssemblySlot num
                          | SrcAssemblyOffset num
+                         | SrcAssemblyLength num
 End
 
 Datatype:

@@ -182,9 +182,12 @@ End
  * type (read on entry, written back on exit), the storage slot or byte offset
  * of a state variable (x.slot, x.offset), the slot or offset of the reference
  * a storage pointer local holds (assigning its slot rebinds the local), the
- * value of a constant of value type, held in an atom, or the memory address
- * of a local holding a memory byte sequence of the given type (bytes or
- * string). Only locals and storage pointer slots are assignable.
+ * calldata offset or length of the reference a calldata local holds (x.offset
+ * and x.length of a byte sequence or dynamic array, the plain name of a
+ * static array; assigning either rebinds the local), the value of a constant
+ * of value type, held in an atom, or the memory address of a local holding a
+ * memory byte sequence of the given type (bytes or string). Only locals,
+ * storage pointer slots and calldata offsets and lengths are assignable.
  *)
 Datatype:
   assembly_reference
@@ -193,6 +196,8 @@ Datatype:
   | AssemblyOffset ast_id
   | AssemblyPointerSlot ast_id
   | AssemblyPointerOffset ast_id
+  | AssemblyCalldataOffset ast_id
+  | AssemblyCalldataLength ast_id
   | AssemblyConstant core_atom sol_type
   | AssemblyMemory ast_id sol_type
 End

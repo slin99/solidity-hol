@@ -1037,6 +1037,20 @@ Definition assembly_reference_word_def:
                   SOME offset
               | _ => NONE)
          | NONE => NONE)
+    | AssemblyCalldataOffset x =>
+        (case lookup_binding x st.scopes of
+           SOME b =>
+             (case b.binding_value of
+                ReferenceValue (CalldataReference offset _ _) => SOME offset
+              | _ => NONE)
+         | NONE => NONE)
+    | AssemblyCalldataLength x =>
+        (case lookup_binding x st.scopes of
+           SOME b =>
+             (case b.binding_value of
+                ReferenceValue (CalldataReference _ length _) => SOME length
+              | _ => NONE)
+         | NONE => NONE)
     | AssemblyConstant a ty =>
         (case eval_atom st.scopes a of
            SOME (ScalarValue s) => assembly_word ty s
@@ -1065,6 +1079,8 @@ Definition assembly_inputs_def:
         (case r of
            AssemblyLocal _ _ => SOME (scope |+ (name, n2w w), literals)
          | AssemblyPointerSlot _ => SOME (scope |+ (name, n2w w), literals)
+         | AssemblyCalldataOffset _ => SOME (scope |+ (name, n2w w), literals)
+         | AssemblyCalldataLength _ => SOME (scope |+ (name, n2w w), literals)
          | _ => SOME (scope, (name, n2w w) :: literals))
     | _ => NONE)
 End
@@ -1236,7 +1252,8 @@ End
  * or constant reference has nothing to write. A storage pointer whose slot
  * the block may have assigned is rebound to that slot of the executing
  * account, at offset 0, keeping its type, as the compiler keeps the pointer
- * as the slot alone. *)
+ * as the slot alone. A calldata reference is rebound to the offset and
+ * length the block leaves, keeping its type. *)
 Definition assembly_write_one_def:
   assembly_write_one self (name, r) scopes (yscopes : (string |-> bytes32) list) =
     case r of
@@ -1261,7 +1278,62 @@ Definition assembly_write_one_def:
                     scopes
               | _ => NONE)
          | _ => NONE)
+    | AssemblyCalldataOffset x =>
+        (case (yul_lookup name yscopes, lookup_binding x scopes) of
+           (SOME w, SOME b) =>
+             (case b.binding_value of
+                ReferenceValue (CalldataReference _ length ty) =>
+                  update_binding x
+                    (ReferenceValue (CalldataReference (w2n w) length ty)) scopes
+              | _ => NONE)
+         | _ => NONE)
+    | AssemblyCalldataLength x =>
+        (case (yul_lookup name yscopes, lookup_binding x scopes) of
+           (SOME w, SOME b) =>
+             (case b.binding_value of
+                ReferenceValue (CalldataReference offset _ ty) =>
+                  if calldata_slice_type ty then
+                    update_binding x
+                      (ReferenceValue (CalldataReference offset (w2n w) ty)) scopes
+                  else NONE
+              | _ => NONE)
+         | _ => NONE)
     | _ => SOME scopes
+End
+
+(* The calldata bytes a calldata reference of type ty and length n covers,
+ * as the compiler's accessors read them: a dynamic array's elements, a
+ * static array's whole encoding, a byte sequence's bytes. *)
+Definition calldata_span_def:
+  calldata_span ty n =
+    case ty of
+      ArrayT element NONE => n * abi_stride element
+    | ArrayT _ (SOME _) => static_length (abi_type ty)
+    | _ => n
+End
+
+(* A calldata local's reference lies inside the calldata. *)
+Definition calldata_in_bounds_def:
+  calldata_in_bounds cd scopes x ⇔
+    case lookup_binding x scopes of
+      SOME b =>
+        (case b.binding_value of
+           ReferenceValue (CalldataReference offset n ty) =>
+             offset + calldata_span ty n ≤ LENGTH (cd : byte list)
+         | _ => F)
+    | NONE => F
+End
+
+(* Each calldata reference a block names still lies inside the calldata on
+ * exit; one it rebound past the end fails closed. *)
+Definition assembly_calldata_ok_def:
+  (assembly_calldata_ok cd scopes [] ⇔ T) ∧
+  (assembly_calldata_ok cd scopes ((_, r) :: refs) ⇔
+    (case r of
+       AssemblyCalldataOffset x => calldata_in_bounds cd scopes x
+     | AssemblyCalldataLength x => calldata_in_bounds cd scopes x
+     | _ => T) ∧
+    assembly_calldata_ok cd scopes refs)
 End
 
 Definition assembly_write_back_def:
@@ -1299,6 +1371,11 @@ Definition assembly_result_def:
           (case assembly_write_back st.frame.self_address refs st.scopes
                   r.machine.scopes of
              SOME scopes =>
+               if ¬assembly_calldata_ok st.frame.call_data scopes refs then
+                 abrupt_result
+                   (InvalidCompletion "assembly left a calldata reference outside the calldata")
+                   st gas
+               else
                normal_result (st with <| world := world; scopes := scopes;
                    heap := assembly_read_back st.heap st.next_heap_id r.machine;
                    return_data := assembly_return_data st r.machine |>) gas
@@ -1491,6 +1568,9 @@ val () = cv_auto_trans memory_zeros_def;
 val () = cv_auto_trans assembly_read_back_def;
 val () = cv_auto_trans assembly_world_def;
 val () = cv_auto_trans assembly_write_one_def;
+val () = cv_auto_trans calldata_span_def;
+val () = cv_auto_trans calldata_in_bounds_def;
+val () = cv_auto_trans assembly_calldata_ok_def;
 val () = cv_auto_trans assembly_write_back_def;
 val () = cv_auto_trans assembly_result_def;
 val () = cv_auto_trans eval_assembly_def;

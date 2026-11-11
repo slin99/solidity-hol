@@ -1417,3 +1417,54 @@ Theorem asm_storage_pointers:
 Proof
   CONV_TAC cv_eval
 QED
+
+Definition asm_calldata_proc_def:
+  asm_calldata_proc code = <|
+    procedure_id := AstId 170;
+    parameters := [(AstId 171, LocatedT CalldataLoc BytesT)];
+    return_bindings := [(AstId 172, u256)];
+    body := [AssemblyStmt code [("r", AssemblyLocal (AstId 172) u256);
+                                ("b.offset", AssemblyCalldataOffset (AstId 171));
+                                ("b.length", AssemblyCalldataLength (AstId 171))];
+             ReturnStmt [BoundAtom (AstId 172); BoundAtom (AstId 171)]]
+  |>
+End
+
+Definition run_asm_calldata_def:
+  run_asm_calldata code b =
+    let env = core_program_environment <|
+      unsupported_procedures := []; procedures := [asm_calldata_proc code];
+      struct_layouts := []; type_declarations := [];
+      state_variables := []; immutables := [];
+      entry_procedure := AstId 170;
+      external_functions := []; receive_procedure := NONE;
+      fallback_procedure := NONE; creation_procedure := NONE |> in
+    let st = initial_state with frame :=
+               initial_state.frame with call_data := REPLICATE 100 0w in
+    (invoke_source 20 env (AstId 170) [b] st []).completion
+End
+
+val () = cv_auto_trans run_asm_calldata_def;
+
+(* The block reads a calldata reference's offset and length and may rebind
+ * both, keeping its type; a slice it leaves past the end of the calldata
+ * fails closed, and so does a local that doesn't hold a calldata reference. *)
+Theorem asm_calldata_references:
+  run_asm_calldata [YulAssign ["r"] (yadd (YulName "b.offset") (YulName "b.length"))]
+    (ReferenceValue (CalldataReference 4 64 BytesT)) =
+    ReturnCompletion [ScalarValue (IntegerValue 68);
+      ReferenceValue (CalldataReference 4 64 BytesT)] ∧
+  run_asm_calldata [YulAssign ["b.offset"] (yadd (YulName "b.offset") (ylit 32w));
+                    YulAssign ["b.length"] (ylit 10w)]
+    (ReferenceValue (CalldataReference 4 64 BytesT)) =
+    ReturnCompletion [ScalarValue (IntegerValue 0);
+      ReferenceValue (CalldataReference 36 10 BytesT)] ∧
+  run_asm_calldata [YulAssign ["b.length"] (ylit 200w)]
+    (ReferenceValue (CalldataReference 4 64 BytesT)) =
+    InvalidCompletion "assembly left a calldata reference outside the calldata" ∧
+  run_asm_calldata [YulAssign ["r"] (YulName "b.length")]
+    (ReferenceValue (MemoryReference (HeapId 0) 0 BytesT)) =
+    InvalidCompletion "bad assembly reference"
+Proof
+  CONV_TAC cv_eval
+QED
