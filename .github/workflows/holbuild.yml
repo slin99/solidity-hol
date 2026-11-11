@@ -29,15 +29,10 @@ jobs:
       - uses: ./.github/actions/setup-holbuild
         id: holbuild
         with:
-          holbuild-ref: v0.13.18
+          holbuild-ref: v0.14.21
 
       - name: Report holbuild version
         run: holbuild --version
-
-      - name: Keep transient stages out of HOL project discovery
-        run: |
-          mkdir -p .holbuild
-          printf 'holmake = false\n' > .holbuild/holproject.toml
 
       - name: Test compiler artifact exporter
         run: python3 -m unittest discover -s tests -p 'test_*.py' -v
@@ -85,6 +80,11 @@ jobs:
           echo "project cache key: ${PROJECT_CACHE_KEY:-<none>}"
           echo "toolchain cache hit: ${TOOLCHAIN_CACHE_HIT:-false}"
           echo "toolchain cache key: ${TOOLCHAIN_CACHE_KEY:-<none>}"
+
+      - name: Configure remote cache
+        uses: ./.github/actions/setup-remote-cache
+        with:
+          curl-config: ${{ (((github.ref == 'refs/heads/main' || github.ref == 'refs/heads/bot/opus/solidity-e2e') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) || (github.event_name == 'merge_group' && (github.event.merge_group.base_ref == 'refs/heads/main' || github.event.merge_group.base_ref == 'refs/heads/bot/opus/solidity-e2e')) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && secrets.HOLBUILD_REMOTE_CACHE_CURL_CONFIG || '' }}
 
       - name: Build HOL toolchain
         run: holbuild buildhol
