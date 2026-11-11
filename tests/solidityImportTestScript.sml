@@ -815,6 +815,13 @@ val () = edited_unit_with struct_contracts "struct_getter"
 val () = edited_unit_with struct_contracts "nested_struct_getter"
   (public_state_variable "nested" "4ce2d543" struct_ast)
 
+(* A member naming a struct the unit does not declare, with an annotation
+ * that agrees, leaves its struct out too. *)
+val () = import_error_with Unsupported struct_contracts "undeclared struct member type"
+  (edit_first "UserDefinedTypeName"
+    (set_field "referencedDeclaration" (JSON.INT 999999) o
+     type_identifier "t_struct$_Packed_$999999_storage_ptr") struct_ast)
+
 Theorem nested_struct_getter_rejected:
   valid_src_unit struct_getter ∧ ¬valid_src_unit nested_struct_getter
 Proof

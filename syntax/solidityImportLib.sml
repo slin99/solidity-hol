@@ -1686,25 +1686,35 @@ fun members_representable tm =
     List.all representable members
   end
 
+(* The structs the type names within v name. *)
+fun struct_references (v as JSON.OBJECT fields) =
+      if JSONUtil.testField "nodeType"
+           (fn JSON.STRING s => s = "UserDefinedTypeName" | _ => false) v andalso
+         String.isPrefix "t_struct$_" (raw_type_id v)
+      then [int_field v "referencedDeclaration"]
+      else List.concat (map (struct_references o #2) fields)
+  | struct_references (JSON.ARRAY vs) = List.concat (map struct_references vs)
+  | struct_references _ = []
+
+(* Whether every struct a type name within v names is among the structs. *)
+fun structs_present structs v =
+  List.all (fn i => List.exists (fn (s, _) => int_field s "id" = i) structs)
+    (struct_references v)
+
 (* The structs ss, each with its import, except one with a member the core
  * cannot hold (its import records a blocker, or the source check rejects
- * it) and those that refer to such a one: they are left out, so a function
- * using one is rejected, not the unit. *)
+ * it) and those that refer to a struct not kept: they are left out, so a
+ * function using one is rejected, not the unit. *)
 fun importable_structs types ss =
   let
     val imported =
       List.mapPartial
-        (fn s => case keep (fn s => with_blockers (fn () => struct_declaration types s)) s of
-                   SOME (tm, []) => if members_representable tm then SOME (s, tm) else NONE
+        (fn s => case with_blockers (fn () => keep (struct_declaration types) s) of
+                   (SOME tm, []) => if members_representable tm then SOME (s, tm) else NONE
                  | _ => NONE) ss
     fun close kept =
       let
-        val dropped =
-          List.filter (fn s => not (List.exists (fn (k, _) => int_field k "id" = int_field s "id") kept)) ss
-        val kept' =
-          List.filter (fn (k, _) =>
-            not (List.exists (fn d => List.exists (fn i => i = int_field d "id") (references k))
-                   dropped)) kept
+        val kept' = List.filter (fn (k, _) => structs_present kept (field k "members")) kept
       in
         if length kept' = length kept then kept else close kept'
       end
@@ -1841,11 +1851,20 @@ fun contract external_structs contracts declared v = within v (fn v =>
                   then recover d (fn () => check_using d)
                   else ())
         (!library_directives)
-    (* The file-level and library structs the bases and library members refer
-     * to, also through other structs. *)
+    (* The file-level structs and those of libraries, interfaces and other
+     * contracts that the bases and library members refer to, also through
+     * other structs. A struct's scope joins the libraries, so the source
+     * check admits it. *)
     val library_structs =
       List.filter (fn m => node_type m = "StructDefinition")
-        (map #2 (!library_members))
+        (map #2 (!library_members)) @
+      List.concat
+        (map (fn (_, c) =>
+                if string_field c "contractKind" = "library" orelse
+                   List.exists (fn b => int_field b "id" = int_field c "id") bases
+                then []
+                else List.filter (fn m => node_type m = "StructDefinition") (nodes c))
+           declared)
     fun used picked =
       let
         val ids = List.concat (map references (bases @ used_members @ picked))
@@ -1931,12 +1950,7 @@ fun contract external_structs contracts declared v = within v (fn v =>
      * it rejects the unit. *)
     val () =
       app (fn d => recover d (fn () =>
-             require d (not (List.exists
-                          (fn s => List.exists (fn i => i = int_field s "id")
-                                     (references (field d "typeName")) andalso
-                                   not (List.exists (fn (k, _) => int_field k "id" = int_field s "id")
-                                          structs))
-                          candidate_structs))
+             require d (structs_present structs (field d "typeName"))
                "state variable of a struct the core cannot hold"))
         state_variables
     (* before the functions, which need the modifiers that failed *)
