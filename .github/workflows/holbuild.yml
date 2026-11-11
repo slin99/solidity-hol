@@ -99,7 +99,7 @@ jobs:
         run: >-
           /usr/bin/time -v python3 tools/run_differential.py -j2 --allow-cached
           --report-dir "$RUNNER_TEMP/differential-report"
-          -- --max-heap 6000 --skip-checkpoints --skip-proof-steps
+          -- --max-heap 8192 --skip-checkpoints --skip-proof-steps
 
       - name: Upload differential report
         if: failure()
