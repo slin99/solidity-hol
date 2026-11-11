@@ -1,0 +1,94 @@
+{
+  "name": "assembly_delegate",
+  "source": "testdata/differential/assembly_delegate.sol",
+  "contract": "AssemblyDelegate",
+  "artifact": "testdata/differential/expected/assembly_delegate.json",
+  "peer": {
+    "source": "testdata/differential/assembly_delegate_peer.sol",
+    "contract": "DelegatePeer",
+    "artifact": "testdata/differential/expected/assembly_delegate_peer.json"
+  },
+  "cases": [
+    {
+      "name": "fallback_add",
+      "calldata": "0x1003e2d20000000000000000000000000000000000000000000000000000000000000005",
+      "storage": {
+        "0": 7,
+        "1": 20480
+      },
+      "expect": {
+        "returned": "0x000000000000000000000000000000000000000000000000000000000000000c"
+      },
+      "final_storage": {
+        "0": 12,
+        "1": 20480
+      }
+    },
+    {
+      "name": "fallback_revert",
+      "calldata": "0x1003e2d20000000000000000000000000000000000000000000000000000000000000001",
+      "storage": {
+        "0": 7,
+        "1": 20480
+      },
+      "expect": {
+        "revert": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000c7065657220726566757365640000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "name": "fallback_no_code",
+      "calldata": "0x1003e2d20000000000000000000000000000000000000000000000000000000000000005",
+      "storage": {
+        "0": 7
+      },
+      "expect": {
+        "returned": "0x"
+      },
+      "final_storage": {
+        "0": 7
+      }
+    },
+    {
+      "name": "delegate_add",
+      "function": "delegateAdd",
+      "args": [
+        5
+      ],
+      "storage": {
+        "0": 7,
+        "1": 20480
+      },
+      "expect": {
+        "return": [
+          true,
+          32
+        ]
+      },
+      "final_storage": {
+        "0": 12,
+        "1": 20480
+      }
+    },
+    {
+      "name": "delegate_add_revert",
+      "function": "delegateAdd",
+      "args": [
+        1
+      ],
+      "storage": {
+        "0": 7,
+        "1": 20480
+      },
+      "expect": {
+        "return": [
+          false,
+          100
+        ]
+      },
+      "final_storage": {
+        "0": 7,
+        "1": 20480
+      }
+    }
+  ]
+}

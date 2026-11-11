@@ -23,6 +23,7 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/imports.json",
   "../testdata/differential/expected/errors.json",
   "../testdata/differential/expected/type_bounds.json",
+  "../testdata/differential/expected/enum_bounds.json",
   "../testdata/differential/expected/using_for.json",
   "../testdata/differential/expected/hashes.json",
   "../testdata/differential/expected/conditionals.json",
@@ -31,7 +32,12 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/try_calls.json",
   "../testdata/differential/expected/inline_assembly.json",
   "../testdata/differential/expected/external.json",
-  "../testdata/differential/expected/udvt.json"
+  "../testdata/differential/expected/low_level_calls.json",
+  "../testdata/differential/expected/udvt.json",
+  "../testdata/differential/expected/transient_values.json",
+  "../testdata/differential/expected/byte_mapping_keys.json",
+  "../testdata/differential/expected/virtual_modifiers.json",
+  "../testdata/differential/expected/literals.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -415,16 +421,29 @@ val () =
 
 (* An unsupported call option does not hide the blockers of the receiver. *)
 val () =
-  expect_function_lines "gas option on an unsupported receiver"
+  expect_function_lines "salt option on an unsupported receiver"
     "../testdata/differential/expected/external.json" "testdata/differential/external.sol"
     "forward"
     (edit_first "FunctionCallOptions"
-       (set_field "names" (JSON.ARRAY [JSON.STRING "gas"]) o
+       (set_field "names" (JSON.ARRAY [JSON.STRING "salt"]) o
         edit_first_where
           (fn v => is_node "Identifier" v andalso
                    JSONUtil.testField "name" (fn JSON.STRING s => s = "this" | _ => false) v)
           "this" (set_field "nodeType" (JSON.STRING "UnknownThis"))))
-    [": unsupported expression UnknownThis", "only the value call option is supported"]
+    [": unsupported expression UnknownThis", ": unsupported call options"]
+
+(* A call option given twice is rejected, not reduced to one of its values. *)
+val () =
+  expect_function_lines "duplicate call options"
+    "../testdata/differential/expected/low_level_calls.json"
+    "testdata/differential/low_level_calls.sol" "rawCallGas"
+    (edit_first "FunctionCallOptions" (fn v =>
+       case (JSONUtil.findField v "options") of
+         SOME (JSON.ARRAY [g]) =>
+           set_field "options" (JSON.ARRAY [g, g])
+             (set_field "names" (JSON.ARRAY [JSON.STRING "gas", JSON.STRING "gas"]) v)
+       | _ => raise Fail "duplicate call options: no single option"))
+    [": duplicate call options"]
 
 (* Every unsupported reference of an inline assembly block is a line. *)
 val () =
@@ -989,6 +1008,32 @@ Proof
   EVAL_TAC
 QED
 
+Definition enum_bounds_unit_def:
+  enum_bounds_unit = ^(import_artifact
+    "../testdata/differential/expected/enum_bounds.json"
+    "testdata/differential/enum_bounds.sol")
+End
+
+val () = cv_auto_trans enum_bounds_unit_def;
+
+Theorem enum_bounds_valid:
+  valid_src_unit enum_bounds_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+val () = expect_function_lines "unknown enum type member"
+  "../testdata/differential/expected/enum_bounds.json"
+  "testdata/differential/enum_bounds.sol" "fileBounds"
+  (edit_first "MemberAccess" (set_field "memberName" (JSON.STRING "middle")))
+  ["unsupported enum type member"]
+
+val () = expect_function_lines "unknown enum bound declaration"
+  "../testdata/differential/expected/enum_bounds.json"
+  "testdata/differential/enum_bounds.sol" "fileBounds"
+  (edit_first "Identifier" (set_field "referencedDeclaration" (JSON.INT 999999)))
+  ["unknown enum declaration"]
+
 (* Libraries: only internal functions, attached through a library name, with a
  * receiver that is not copied, are imported; library functions are plain
  * functions.
@@ -999,15 +1044,51 @@ val using_source = "testdata/differential/using_for.sol"
 val using_ast = artifact_part using_fixture ["sources", using_source, "ast"]
 val using_contracts = artifact_part using_fixture ["contracts", using_source]
 
-(* A virtual modifier rejects the unit, like a function header would: only a
- * modifier's body failing import is confined to the functions using it. *)
+(* A virtual modifier with no override still runs its own body. *)
+val () = ignore (import_source_unit []
+  (edit_first "ModifierDefinition" (set_field "virtual" (JSON.BOOL true)) using_ast)
+  using_contracts)
+
+val virtual_fixture = "../testdata/differential/expected/virtual_modifiers.json"
+val virtual_source = "testdata/differential/virtual_modifiers.sol"
+val virtual_ast = artifact_part virtual_fixture ["sources", virtual_source, "ast"]
+val virtual_contracts = artifact_part virtual_fixture ["contracts", virtual_source]
+
+fun in_modifier owner name change =
+  edit_first_where
+    (fn v => is_node "ContractDefinition" v andalso
+             JSONUtil.asString (JSONUtil.get (v, [JSONUtil.SEL "name"])) = owner) owner
+    (edit_first_where
+      (fn v => is_node "ModifierDefinition" v andalso
+               JSONUtil.asString (JSONUtil.get (v, [JSONUtil.SEL "name"])) = name) name change)
+
+(* An unused overridden body must not reject its derived implementation. *)
 val () =
-  (import_source_unit []
-     (edit_first "ModifierDefinition" (set_field "virtual" (JSON.BOOL true))
-        using_ast)
-     using_contracts;
-   raise Fail "virtual modifier: imported")
-  handle ImportError _ => ()
+  if import_rejection []
+       (in_modifier "ModifierRight" "stamp"
+          (edit_first "Block" (set_field "nodeType" (JSON.STRING "UnknownStatement")))
+          virtual_ast) virtual_contracts = NONE
+  then () else raise Fail "unused overridden modifier rejected"
+
+(* Failure follows the resolved override, including calls declared in a base. *)
+val () =
+  case import_rejection []
+    (in_modifier "VirtualModifiers" "stamp"
+       (edit_first "Block" (set_field "nodeType" (JSON.STRING "UnknownStatement")))
+       virtual_ast) virtual_contracts of
+    SOME (UnsupportedFunction, reason) =>
+      if String.isSubstring "unsupported statement UnknownStatement" reason then ()
+      else raise Fail reason
+  | _ => raise Fail "failed modifier override not propagated"
+
+val () =
+  case import_rejection []
+    (in_modifier "VirtualModifiers" "gate" (set_field "body" JSON.NULL)
+       virtual_ast) virtual_contracts of
+    SOME (UnsupportedFunction, reason) =>
+      if String.isSubstring "modifier without a body" reason then ()
+      else raise Fail reason
+  | _ => raise Fail "unresolved bodyless modifier not rejected"
 
 (* A modifier whose body fails import keeps its header, so the source check
  * still sees it (here a parameter's scope); the functions invoking it are
@@ -1142,8 +1223,8 @@ Proof
   CONV_TAC cv_eval
 QED
 
-(* Selectors: only names the compiler does not evaluate may be receivers, and
- * a state variable's selector is its getter's only through this. *)
+(* Selectors retain computed contract receivers. A bare state variable's
+ * selector is a function value's, rather than its getter's. *)
 
 val hashes_fixture = "../testdata/differential/expected/hashes.json"
 val hashes_source = "testdata/differential/hashes.sol"
@@ -1171,9 +1252,9 @@ fun hashes_error name v = import_units_error_with UnsupportedFunction [hashes_ba
 
 val _ = import_source_unit [hashes_base] hashes_ast hashes_contracts
 
-val () = hashes_error "selector through a contract-typed value"
+val _ = import_source_unit [hashes_base]
   (edit_first_where (named "Identifier" "IReceiver") "IReceiver"
-     (type_identifier "t_contract$_IReceiver_$1") hashes_ast)
+     (type_identifier "t_contract$_IReceiver_$1") hashes_ast) hashes_contracts
 
 val () = hashes_error "selector of a state variable through a contract name"
   (edit_first_where (member "total") "this.total"
@@ -1308,3 +1389,81 @@ val () = import_units_error_with UnsupportedFunction [udvt_types] udvt_contracts
      (fn v => is_node "BinaryOperation" v andalso
               isSome (JSONUtil.findField v "function")) "overloaded operator"
      (set_field "function" (declaration_id "FunctionDefinition" "bump" udvt_ast)) udvt_ast)
+
+Definition transient_unit_def:
+  transient_unit = ^(import_artifact
+    "../testdata/differential/expected/transient_values.json"
+    "testdata/differential/transient_values.sol")
+End
+
+Definition byte_mapping_unit_def:
+  byte_mapping_unit = ^(import_artifact
+    "../testdata/differential/expected/byte_mapping_keys.json"
+    "testdata/differential/byte_mapping_keys.sol")
+End
+
+val () = cv_auto_trans transient_unit_def;
+val () = cv_auto_trans byte_mapping_unit_def;
+
+Theorem transient_and_byte_key_units_valid:
+  valid_src_unit transient_unit ∧ valid_src_unit byte_mapping_unit
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem transient_and_persistent_layouts_keep_declaration_order:
+  MAP (λe. (e.storage_backend, e.storage_slot, e.storage_offset))
+    (HD transient_unit.unit_contracts).contract_storage =
+  [(PersistentStorage, 42, 0); (TransientStorage, 0, 0);
+   (PersistentStorage, 42, 1); (TransientStorage, 0, 1);
+   (TransientStorage, 0, 2); (TransientStorage, 0, 4);
+   (TransientStorage, 0, 24); (TransientStorage, 0, 28);
+   (TransientStorage, 1, 0); (PersistentStorage, 43, 0)]
+Proof
+  EVAL_TAC
+QED
+
+Theorem wrong_storage_backend_rejected:
+  ¬storage_layout_ok F (HD transient_unit.unit_contracts).contract_state_variables
+    ((HD (HD transient_unit.unit_contracts).contract_storage with
+       storage_backend := TransientStorage) ::
+     TL (HD transient_unit.unit_contracts).contract_storage) ∧
+  ¬storage_layout_ok F (HD transient_unit.unit_contracts).contract_state_variables
+    (MAP (λe. e with storage_backend := PersistentStorage)
+      (HD transient_unit.unit_contracts).contract_storage)
+Proof
+  EVAL_TAC
+QED
+
+Theorem transient_mapping_and_local_rejected:
+  state_variable (HD byte_mapping_unit.unit_contracts).contract_bases
+    (HD (HD byte_mapping_unit.unit_contracts).contract_state_variables with
+      var_transient := T) = NONE ∧
+  variable_type (EL 3 (HD transient_unit.unit_contracts).contract_state_variables) = NONE
+Proof
+  EVAL_TAC
+QED
+val literals_fixture = "../testdata/differential/expected/literals.json"
+val literals_source = "testdata/differential/literals.sol"
+val literals_ast = artifact_part literals_fixture ["sources", literals_source, "ast"]
+val literals_contracts = artifact_part literals_fixture ["contracts", literals_source]
+
+fun literal_error name fn_name edit =
+  import_error_with UnsupportedFunction literals_contracts name
+    (edit_first_where (named "FunctionDefinition" fn_name) fn_name
+       (edit_first "Literal" edit) literals_ast)
+
+val () = literal_error "unknown subdenomination" "units"
+  (set_field "subdenomination" (JSON.STRING "years"))
+
+val () = literal_error "subdenomination on a boolean" "units"
+  (set_field "kind" (JSON.STRING "bool"))
+
+val () = literal_error "subdenomination on an address" "units"
+  (type_identifier "t_address")
+
+val () = literal_error "short address literal" "addressValue"
+  (set_field "value" (JSON.STRING "0x1234"))
+
+val () = literal_error "nonhex address literal" "addressValue"
+  (set_field "value" (JSON.STRING "0xgg175474E89094C44Da98b954EedeAC495271d0F"))

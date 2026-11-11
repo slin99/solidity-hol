@@ -204,12 +204,23 @@ Termination
   WF_REL_TAC ‘measure (sol_type_size o SND)’
 End
 
+Definition byte_sequence_type_def:
+  byte_sequence_type ty ⇔ ty = BytesT ∨ ty = StringT
+End
+
+(* Byte-sequence keys accept ABI byte operands in their original location,
+ * including literals, without allocating a memory object. *)
+Definition mapping_key_type_def:
+  mapping_key_type key =
+    if byte_sequence_type key then LocatedT MemoryLoc key else key
+End
+
 Definition storage_type_ok_def:
   (storage_type_ok env (ArrayT element (SOME n)) ⇔
     0 < n ∧ n < 2 ** 256 ∧ storage_type_ok env element ∧
     IS_SOME (fixed_storage_slots env (ArrayT element (SOME n)))) ∧
   (storage_type_ok env (MappingT key value) ⇔
-    elementary_storage_type_ok key ∧ storage_type_ok env value) ∧
+    (elementary_storage_type_ok key ∨ byte_sequence_type key) ∧ storage_type_ok env value) ∧
   (storage_type_ok env (ArrayT element NONE) ⇔ storage_type_ok env element) ∧
   (storage_type_ok env (StructT id) ⇔ IS_SOME (lookup_struct_layout env id)) ∧
   (storage_type_ok env (EnumT id) ⇔ IS_SOME (lookup_enum env id)) ∧
@@ -219,9 +230,7 @@ Definition storage_type_ok_def:
 End
 
 (* Located byte sequences are values; captured lvalues use ReferenceType. *)
-Definition byte_sequence_type_def:
-  byte_sequence_type ty ⇔ ty = BytesT ∨ ty = StringT
-End
+
 
 Definition byte_sequence_value_type_def:
   byte_sequence_value_type ty ⇔
@@ -238,6 +247,17 @@ Definition memory_object_type_def:
     ((is_elementary_type element ∧ valid_type_shape element) ∨
      memory_object_type element)) ∧
   (memory_object_type ty ⇔ byte_sequence_type ty)
+End
+
+(* What a storage pointer denotes: a byte sequence, an array, a mapping or a
+ * struct. Its shape is checked against the environment by storage_type_ok. *)
+Definition storage_object_type_def:
+  storage_object_type ty ⇔
+    case ty of
+      ArrayT _ _ => T
+    | MappingT _ _ => T
+    | StructT _ => T
+    | _ => byte_sequence_type ty
 End
 
 (* Whether an encoding of the type has a fixed size, with no offsets. *)
@@ -259,14 +279,14 @@ Definition calldata_object_type_def:
   (calldata_object_type ty ⇔ byte_sequence_type ty)
 End
 
-(* Located values: byte sequences in any location, and memory, calldata and
- * storage arrays. A storage array has the shapes of a memory one. *)
+(* Located values: byte sequences in any location, memory and calldata arrays,
+ * and storage pointers. *)
 Definition located_value_type_def:
   located_value_type ty ⇔
     case ty of
       LocatedT MemoryLoc element => memory_object_type element
     | LocatedT CalldataLoc element => calldata_object_type element
-    | LocatedT StorageLoc element => memory_object_type element
+    | LocatedT StorageLoc element => storage_object_type element
     | LocatedT loc element => byte_sequence_type element
     | _ => F
 End
@@ -275,7 +295,7 @@ End
  * reference in the array's location. *)
 Definition element_type_def:
   element_type loc element =
-    if is_elementary_type element then element else LocatedT loc element
+    if is_stored_scalar_type element then element else LocatedT loc element
 End
 
 (* ABI values contain scalars (an enum as a uint8), byte sequences in
@@ -289,7 +309,20 @@ Definition abi_value_type_def:
 End
 
 Definition core_binding_type_def:
-  core_binding_type env ty ⇔ core_scalar_type env ty ∨ located_value_type ty
+  core_binding_type env ty ⇔
+    core_scalar_type env ty ∨
+    (located_value_type ty ∧
+     case ty of LocatedT StorageLoc element => storage_type_ok env element | _ => T)
+End
+
+(* The storage type a binding can be navigated through: a captured lvalue or a
+ * storage pointer. *)
+Definition storage_base_def:
+  storage_base binding =
+    case binding of
+      SOME (ReferenceType ty) => SOME ty
+    | SOME (SingleType (LocatedT StorageLoc ty)) => SOME ty
+    | _ => NONE
 End
 
 (* ProductType is reserved for tuples and multiple returns: never singleton. *)
@@ -363,8 +396,9 @@ Definition value_has_type_def:
   (value_has_type env (SingleType ty) (ScalarValue s) ⇔
     scalar_has_type env ty s) ∧
   (value_has_type env (ReferenceType ty)
-     (ReferenceValue (StorageReference PersistentStorage _ _ offset rty _)) ⇔
+     (ReferenceValue (StorageReference backend _ _ offset rty _)) ⇔
     ty = rty ∧ storage_type_ok env ty ∧
+    (backend = TransientStorage ⇒ IS_SOME (storage_bytes ty)) ∧
     (case storage_bytes ty of SOME b => offset + b ≤ 32 | NONE => offset = 0)) ∧
   (value_has_type env (SingleType (LocatedT CalldataLoc ty))
      (ReferenceValue (CalldataReference _ _ rty)) ⇔
@@ -374,7 +408,7 @@ Definition value_has_type_def:
     ty = rty ∧ memory_object_type ty) ∧
   (value_has_type env (SingleType (LocatedT StorageLoc ty))
      (ReferenceValue (StorageReference PersistentStorage _ _ 0 rty _)) ⇔
-    ty = rty ∧ memory_object_type ty) ∧
+    ty = rty ∧ storage_object_type ty ∧ storage_type_ok env ty) ∧
   (value_has_type env (ProductType tys) (TupleValue vs) ⇔
     values_have_types env tys vs) ∧
   (value_has_type env _ _ ⇔ F) ∧
@@ -414,6 +448,12 @@ Definition wf_core_atom_def:
   (wf_core_atom env ctx (SingleType ty) (ConstantAtom s) ⇔
     scalar_has_type env ty s) ∧
   (wf_core_atom env ctx _ (ConstantAtom _) ⇔ F)
+End
+
+(* A call's gas option, if it has one, is a uint256. *)
+Definition wf_gas_atom_def:
+  (wf_gas_atom env ctx NONE ⇔ T) ∧
+  (wf_gas_atom env ctx (SOME g) ⇔ wf_core_atom env ctx (SingleType (UintT 256)) g)
 End
 
 (* ABI serialization consumes bytes from their original location. Literal
@@ -669,7 +709,7 @@ Definition wf_core_operation_def:
       SOME ty => annotation = ReferenceType ty
     | NONE => F) ∧
   (wf_core_operation env ctx annotation (ReadOperation ty a) ⇔
-    (if memory_object_type ty then
+    (if storage_object_type ty then
        annotation = SingleType (LocatedT StorageLoc ty)
      else annotation = SingleType ty ∧ core_scalar_type env ty ∧
           IS_SOME (storage_bytes ty)) ∧
@@ -679,8 +719,8 @@ Definition wf_core_operation_def:
     annotation = ReferenceType ty ∧
     case base of
       BoundAtom x =>
-        (case ALOOKUP ctx.bindings x of
-           SOME (ReferenceType (StructT id)) =>
+        (case storage_base (ALOOKUP ctx.bindings x) of
+           SOME (StructT id) =>
              (case lookup_struct env id of
                 SOME fields => ALOOKUP fields field = SOME ty
               | NONE => F)
@@ -692,15 +732,19 @@ Definition wf_core_operation_def:
     case base of
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
-           SOME (ReferenceType (MappingT key value)) =>
-             value = ty ∧ wf_core_atom env ctx (SingleType key) index
-         | SOME (SingleType (LocatedT loc BytesT)) =>
+           SOME (SingleType (LocatedT loc BytesT)) =>
              loc ≠ CalldataLoc ∧ ty = FixedBytesT 1 ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
-         | SOME (ReferenceType (ArrayT element _)) =>
-             element = ty ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
-         | _ => F)
+         | b =>
+           case storage_base b of
+             SOME (MappingT key value) =>
+               value = ty ∧ wf_abi_atom env ctx (mapping_key_type key) index
+           | SOME (ArrayT element _) =>
+               element = ty ∧ wf_core_atom env ctx (SingleType (UintT 256)) index
+           | _ => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (DefaultMemoryOperation ty) ⇔
+    memory_object_type ty ∧ annotation = SingleType (LocatedT MemoryLoc ty)) ∧
+  (wf_core_operation env ctx annotation (NullMemoryOperation ty) ⇔
     memory_object_type ty ∧ annotation = SingleType (LocatedT MemoryLoc ty)) ∧
   (wf_core_operation env ctx annotation (BytesLiteralOperation ty _) ⇔
     annotation = SingleType (LocatedT MemoryLoc ty) ∧ byte_sequence_type ty) ∧
@@ -745,6 +789,10 @@ Definition wf_core_operation_def:
     annotation = SingleType (UintT 256) ∧
     (wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) a ∨
      wf_core_atom env ctx (SingleType (AddressT PayableAddress)) a)) ∧
+  (wf_core_operation env ctx annotation (BalanceOperation a) ⇔
+    annotation = SingleType (UintT 256) ∧
+    (wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) a ∨
+     wf_core_atom env ctx (SingleType (AddressT PayableAddress)) a)) ∧
   (wf_core_operation env ctx annotation (AbiEncodeOperation selector tys args) ⇔
     annotation = SingleType (LocatedT MemoryLoc BytesT) ∧
     (case selector of
@@ -761,10 +809,19 @@ Definition wf_core_operation_def:
                   LocatedT MemoryLoc element => byte_sequence_type element
                 | _ => F) tys ∧
     LIST_REL (wf_abi_atom env ctx) tys args) ∧
-  (wf_core_operation env ctx annotation (StaticCallOperation target data) ⇔
+  (* Only call moves value. The data is packed where it is, so a bytes
+     literal or calldata bytes needs no memory copy. *)
+  (wf_core_operation env ctx annotation
+     (LowLevelCallOperation kind target value gas data) ⇔
     annotation = call_result_type [BoolT; LocatedT MemoryLoc BytesT] ∧
     wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
-    wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) data) ∧
+    wf_core_atom env ctx (SingleType (UintT 256)) value ∧
+    (kind ≠ ExternalCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
+    wf_gas_atom env ctx gas ∧
+    (case data of
+       ConstantAtom (BytesValue _) => T
+     | _ => wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) data ∨
+            wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) data)) ∧
   (wf_core_operation env ctx annotation (AbiDecodeOperation tys a) ⇔
     tys ≠ [] ∧ EVERY (λty. is_elementary_type ty ∧ valid_type_shape ty) tys ∧
     annotation = call_result_type tys ∧
@@ -782,21 +839,23 @@ Definition wf_core_operation_def:
   (wf_core_operation env ctx annotation (ArrayPushOperation a value) ⇔
     case a of
       BoundAtom x =>
-        (case ALOOKUP ctx.bindings x of
-           SOME (ReferenceType (ArrayT element NONE)) =>
-             storage_type_ok env element ∧ IS_SOME (storage_bytes element) ∧
+        (case storage_base (ALOOKUP ctx.bindings x) of
+           SOME (ArrayT element NONE) =>
+             storage_type_ok env element ∧
              annotation = ReferenceType element ∧
              (case value of
                 NONE => T
-              | SOME v => wf_core_atom env ctx (SingleType element) v)
+              | SOME v =>
+                  IS_SOME (storage_bytes element) ∧
+                  wf_core_atom env ctx (SingleType element) v)
          | _ => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (ArrayPopOperation a) ⇔
     annotation = ProductType [] ∧
     case a of
       BoundAtom x =>
-        (case ALOOKUP ctx.bindings x of
-           SOME (ReferenceType (ArrayT element NONE)) =>
+        (case storage_base (ALOOKUP ctx.bindings x) of
+           SOME (ArrayT element NONE) =>
              storage_type_ok env element ∧ IS_SOME (storage_bytes element)
          | _ => F)
     | _ => F) ∧
@@ -811,7 +870,7 @@ Definition wf_core_operation_def:
   (* High-level calls pass elementary values; a view or pure callee is
      called statically, with no value. *)
   (wf_core_operation env ctx annotation
-     (ExternalCallOperation kind selector params rets target value args) ⇔
+     (ExternalCallOperation kind selector params rets target value gas args) ⇔
     kind ≠ ExternalDelegateCall ∧ LENGTH selector = 4 ∧
     EVERY (λty. abi_value_type ty ∧ valid_type_shape ty) (params ++ rets) ∧
     (* Returndata belongs to the caller's memory, never its calldata. *)
@@ -820,19 +879,25 @@ Definition wf_core_operation_def:
     wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
     wf_core_atom env ctx (SingleType (UintT 256)) value ∧
     (kind = ExternalStaticCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
+    wf_gas_atom env ctx gas ∧
     LIST_REL (wf_abi_atom env ctx) params args ∧
     annotation = call_result_type rets) ∧
   (wf_core_operation env ctx annotation
-     (TryExternalCallOperation kind selector params rets target value args) ⇔
+     (TryExternalCallOperation kind selector params rets target value gas args) ⇔
     kind ≠ ExternalDelegateCall ∧ LENGTH selector = 4 ∧
     EVERY (λty. abi_value_type ty ∧ valid_type_shape ty) params ∧
     EVERY (λty. is_stored_scalar_type ty ∧ valid_type_shape ty) rets ∧
     wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
     wf_core_atom env ctx (SingleType (UintT 256)) value ∧
     (kind = ExternalStaticCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
+    wf_gas_atom env ctx gas ∧
     LIST_REL (wf_abi_atom env ctx) params args ∧
     annotation = ProductType
       (MAP SingleType (BoolT :: rets ++ [LocatedT MemoryLoc BytesT]))) ∧
+  (wf_core_operation env ctx annotation (TransferOperation target value) ⇔
+    annotation = ProductType [] ∧
+    wf_core_atom env ctx (SingleType (AddressT PayableAddress)) target ∧
+    wf_core_atom env ctx (SingleType (UintT 256)) value) ∧
   (wf_core_operation env ctx annotation _ ⇔ F)
 End
 
@@ -844,14 +909,13 @@ Definition provisional_revert_payload_def:
   (provisional_revert_payload _ ⇔ F)
 End
 
-(* Event arguments are ABI values, and an indexed one is no array; the count
- * of indexed ones, which with topic0 must fit the four topics of a log.
+(* Event arguments are ABI values; the count of indexed ones, which with
+ * topic0 must fit the four topics of a log.
  *)
 Definition emit_indexed_count_def:
   (emit_indexed_count env ctx [] = SOME (0 : num)) ∧
   (emit_indexed_count env ctx ((ty, indexed, a) :: args) =
     if abi_value_type ty ∧ valid_type_shape ty ∧
-       (indexed ⇒ ¬located_value_type ty ∨ byte_sequence_value_type ty) ∧
        wf_abi_atom env ctx ty a then
       case emit_indexed_count env ctx args of
         SOME n => SOME (if indexed then n + 1 else n)
@@ -883,7 +947,7 @@ End
 (* The builtins an inline assembly block may not use. The source state keeps
  * no code, so the code and data builtins are left out, and so are
  * setimmutable and linkersymbol, which only the compiler's code uses. Gas,
- * calls and return data are limited by assembly_calls_ok instead. *)
+ * calls and return data are limited by assembly_gas_ok instead. *)
 Definition assembly_unsupported_def:
   assembly_unsupported =
     [YCodeSize; YCodeCopy; YDataSize; YDataOffset; YSetImmutable;
@@ -891,10 +955,12 @@ Definition assembly_unsupported_def:
 End
 
 (* The builtins that change the world, which a static frame forbids. A call
- * may move value; staticcall is a static frame's call. *)
+ * may move value, and a delegatecall runs code that may write this account,
+ * as a call the block's machine never makes static; staticcall is a static
+ * frame's call. *)
 Definition assembly_state_writes_def:
   assembly_state_writes =
-    [YSStore; YTStore; YLog0; YLog1; YLog2; YLog3; YLog4; YCall]
+    [YSStore; YTStore; YLog0; YLog1; YLog2; YLog3; YLog4; YCall; YDelegateCall]
 End
 
 (* Whether a block's code calls none of the builtins in bad. *)
@@ -941,15 +1007,17 @@ End
  * starts from a memory holding the free memory pointer and the memory byte
  * sequences (bytes and string) and nothing else, so at a literal address it
  * may read only the free memory pointer and what it wrote itself earlier on
- * the same path; and a block that can exit normally may write at a literal
- * address only in the scratch space [0, 0x40). A read is covered by the
- * (start, length) ranges written at literal addresses before it in its
- * statement list or an enclosing one: an mstore's word, and a call's output
- * region, of which the callee may fill less (the runtime check then fails
- * the read closed). A block halts when its last statement is return, revert
- * or stop. An address the block computes (from a memory reference, say) is
- * checked as the block runs instead (assembly_result), and a read of length
- * zero touches nothing.
+ * the same path; and code that can reach the block's normal exit may write at
+ * a literal address only in the scratch space [0, 0x40). A read is covered by
+ * the (start, length) ranges written at literal addresses before it: by
+ * earlier statements of its statement list or an enclosing one, and by the
+ * arguments to its right, which run first. A range is an mstore's word, a
+ * call's output region or a returndatacopy's, of which less may be written
+ * (the runtime check then fails the read closed). A statement list that
+ * halts (block_halts), as a whole block, an if or switch body or a Yul
+ * function's body, may write anywhere. An address or length the block
+ * computes (from a memory reference, say) is checked as the block runs
+ * instead (assembly_result), and a read of length zero touches nothing.
  *)
 Definition yul_lit_def:
   (yul_lit (YulLit (LitNumber w)) = SOME (w2n (w : bytes32))) ∧
@@ -975,17 +1043,18 @@ Definition memory_covered_def:
     | NONE => F)
 End
 
+(* A read at a literal offset is checked here when its length is a literal
+ * too; a computed length is checked as the block runs. *)
 Definition memory_read_ok_def:
   memory_read_ok ws p l ⇔
-    yul_lit l = SOME 0 ∨
-    case yul_lit p of
-      NONE => T
-    | SOME a =>
-        case yul_lit l of
-          SOME n => memory_covered (LENGTH ws) ws a (a + n)
-        | NONE => F
+    case (yul_lit p, yul_lit l) of
+      (SOME a, SOME n) => n = 0 ∨ memory_covered (LENGTH ws) ws a (a + n)
+    | _ => T
 End
 
+(* A write at a literal offset of a computed length must start in the scratch
+ * space; the writes the block leaves at its normal exit are checked as it
+ * runs. *)
 Definition memory_write_ok_def:
   memory_write_ok halts p l ⇔
     halts ∨
@@ -994,7 +1063,7 @@ Definition memory_write_ok_def:
     | SOME a =>
         case l of
           SOME n => a + n ≤ 64n
-        | NONE => F
+        | NONE => a < 64
 End
 
 Definition builtin_memory_ok_def:
@@ -1012,6 +1081,8 @@ Definition builtin_memory_ok_def:
         memory_read_ok ws p l ∧ memory_write_ok halts d (yul_lit dl)
     | (YStaticCall, [_; _; p; l; d; dl]) =>
         memory_read_ok ws p l ∧ memory_write_ok halts d (yul_lit dl)
+    | (YDelegateCall, [_; _; p; l; d; dl]) =>
+        memory_read_ok ws p l ∧ memory_write_ok halts d (yul_lit dl)
     | (YKeccak256, [p; l]) => memory_read_ok ws p l
     | (YReturn, [p; l]) => memory_read_ok ws p l
     | (YRevert, [p; l]) => memory_read_ok ws p l
@@ -1028,6 +1099,7 @@ Definition builtin_memory_ok_def:
     | (YReturnDataCopy, _) => F
     | (YCall, _) => F
     | (YStaticCall, _) => F
+    | (YDelegateCall, _) => F
     | (YKeccak256, _) => F
     | (YReturn, _) => F
     | (YRevert, _) => F
@@ -1039,56 +1111,117 @@ Definition builtin_memory_ok_def:
     | _ => T
 End
 
-(* The output region of a call, when its offset and size are literals. *)
-Definition call_output_def:
-  (call_output (YulBuiltin YCall [_; _; _; _; _; d; dl]) =
-    case (yul_lit d, yul_lit dl) of
+Definition literal_range_def:
+  literal_range p l =
+    case (yul_lit p, yul_lit l) of
       (SOME a, SOME n) => [(a, n)]
-    | _ => []) ∧
-  (call_output (YulBuiltin YStaticCall [_; _; _; _; d; dl]) =
-    case (yul_lit d, yul_lit dl) of
-      (SOME a, SOME n) => [(a, n)]
-    | _ => []) ∧
-  (call_output _ = [])
+    | _ => []
 End
 
-(* The ranges a statement writes at literal addresses: an mstore's word, or
- * the output region of the call a let, an assignment or a pop takes. *)
-Definition memory_store_def:
-  (memory_store (YulExprStmt (YulBuiltin YMStore [p; _])) =
-    case yul_lit p of
-      SOME a => [(a, 32n)]
-    | NONE => []) ∧
-  (memory_store (YulExprStmt (YulBuiltin YPop [e])) = call_output e) ∧
-  (memory_store (YulLet _ (SOME e)) = call_output e) ∧
-  (memory_store (YulAssign _ e) = call_output e) ∧
-  (memory_store _ = [])
+(* The ranges a builtin writes at literal addresses: an mstore's word, a
+ * call's output region, and a returndatacopy's region, or the scratch space
+ * from its address when its length is computed. *)
+Definition builtin_store_def:
+  builtin_store b es =
+    case (b, es) of
+      (YMStore, [p; _]) => literal_range p (YulLit (LitNumber 32w))
+    | (YCall, [_; _; _; _; _; d; dl]) => literal_range d dl
+    | (YStaticCall, [_; _; _; _; d; dl]) => literal_range d dl
+    | (YDelegateCall, [_; _; _; _; d; dl]) => literal_range d dl
+    | (YReturnDataCopy, [d; _; l]) =>
+        (case (yul_lit d, yul_lit l) of
+           (SOME a, NONE) => if a < 64 then [(a, 64 - a)] else []
+         | _ => literal_range d l)
+    | _ => []
 End
 
+(* The ranges an expression's builtins write at literal addresses. *)
+Definition expr_stores_def:
+  (expr_stores (YulBuiltin b es) = builtin_store b es ++ exprs_stores es) ∧
+  (expr_stores (YulApply _ es) = exprs_stores es) ∧
+  (expr_stores _ = []) ∧
+  (exprs_stores [] = []) ∧
+  (exprs_stores (e :: es) = expr_stores e ++ exprs_stores es)
+End
+
+Definition stmt_stores_def:
+  (stmt_stores (YulLet _ (SOME e)) = expr_stores e) ∧
+  (stmt_stores (YulAssign _ e) = expr_stores e) ∧
+  (stmt_stores (YulExprStmt e) = expr_stores e) ∧
+  (stmt_stores _ = [])
+End
+
+(* Whether a statement list may leave by leave, or by break or continue
+ * outside a loop of its own (in_loop: inside one). *)
+Definition stmts_escape_def:
+  (stmt_escapes in_loop YulBreak ⇔ ¬in_loop) ∧
+  (stmt_escapes in_loop YulContinue ⇔ ¬in_loop) ∧
+  (stmt_escapes in_loop YulLeave ⇔ T) ∧
+  (stmt_escapes in_loop (YulBlock ss) ⇔ stmts_escape in_loop ss) ∧
+  (stmt_escapes in_loop (YulIf _ body) ⇔ stmts_escape in_loop body) ∧
+  (stmt_escapes in_loop (YulSwitch _ cases default) ⇔
+    cases_escape in_loop cases ∨ stmts_escape in_loop default) ∧
+  (stmt_escapes in_loop (YulFor pre _ post body) ⇔
+    stmts_escape in_loop pre ∨ stmts_escape T post ∨ stmts_escape T body) ∧
+  (stmt_escapes in_loop _ ⇔ F) ∧
+  (stmts_escape in_loop [] ⇔ F) ∧
+  (stmts_escape in_loop (s :: ss) ⇔
+    stmt_escapes in_loop s ∨ stmts_escape in_loop ss) ∧
+  (cases_escape in_loop [] ⇔ F) ∧
+  (cases_escape in_loop ((_, body) :: cases) ⇔
+    stmts_escape in_loop body ∨ cases_escape in_loop cases)
+End
+
+(* Whether a statement list's last statement is return, revert or stop, a
+ * block ending in one, or a switch with a default whose every branch ends
+ * in one. *)
+Definition ends_in_halt_def:
+  (ends_in_halt [] ⇔ F) ∧
+  (ends_in_halt [s] ⇔ halting_stmt s) ∧
+  (ends_in_halt (_ :: s :: ss) ⇔ ends_in_halt (s :: ss)) ∧
+  (halting_stmt (YulExprStmt (YulBuiltin b _)) ⇔ MEM b [YReturn; YRevert; YStop]) ∧
+  (halting_stmt (YulBlock ss) ⇔ ends_in_halt ss) ∧
+  (halting_stmt (YulSwitch _ cases default) ⇔
+    ends_in_halt default ∧ cases_end_in_halt cases) ∧
+  (halting_stmt _ ⇔ F) ∧
+  (cases_end_in_halt [] ⇔ T) ∧
+  (cases_end_in_halt ((_, body) :: cases) ⇔
+    ends_in_halt body ∧ cases_end_in_halt cases)
+End
+
+(* A statement list halts once it starts: it ends in a halt and nothing in
+ * it leaves it early. *)
+Definition block_halts_def:
+  block_halts ss ⇔ ¬stmts_escape F ss ∧ ends_in_halt ss
+End
+
+(* Arguments run right to left, so each sees what the ones after it wrote. A
+ * body that halts may write anywhere. *)
 Definition memory_expr_ok_def:
   (memory_expr_ok h ws (YulBuiltin b es) ⇔
-    builtin_memory_ok h ws b es ∧ memory_exprs_ok h ws es) ∧
+    memory_exprs_ok h ws es ∧ builtin_memory_ok h (exprs_stores es ++ ws) b es) ∧
   (memory_expr_ok h ws (YulApply _ es) ⇔ memory_exprs_ok h ws es) ∧
   (memory_expr_ok h ws (YulCheckedBuiltin _ _) ⇔ F) ∧
   (memory_expr_ok h ws (YulLit _) ⇔ T) ∧
   (memory_expr_ok h ws (YulName _) ⇔ T) ∧
   (memory_exprs_ok h ws [] ⇔ T) ∧
   (memory_exprs_ok h ws (e :: es) ⇔
-    memory_expr_ok h ws e ∧ memory_exprs_ok h ws es)
+    memory_exprs_ok h ws es ∧ memory_expr_ok h (exprs_stores es ++ ws) e)
 End
 
 Definition memory_stmt_ok_def:
   (memory_stmt_ok h ws (YulBlock ss) ⇔ memory_stmts_ok h ws ss) ∧
   (memory_stmt_ok h ws (YulFunction _ _ _ body) ⇔
-    memory_stmts_ok h [(0x40, 32)] body) ∧
+    memory_stmts_ok (h ∨ block_halts body) [(0x40, 32)] body) ∧
   (memory_stmt_ok h ws (YulLet _ NONE) ⇔ T) ∧
   (memory_stmt_ok h ws (YulLet _ (SOME e)) ⇔ memory_expr_ok h ws e) ∧
   (memory_stmt_ok h ws (YulAssign _ e) ⇔ memory_expr_ok h ws e) ∧
   (memory_stmt_ok h ws (YulIf e body) ⇔
-    memory_expr_ok h ws e ∧ memory_stmts_ok h ws body) ∧
+    memory_expr_ok h ws e ∧
+    memory_stmts_ok (h ∨ block_halts body) (expr_stores e ++ ws) body) ∧
   (memory_stmt_ok h ws (YulSwitch e cases default) ⇔
-    memory_expr_ok h ws e ∧ memory_cases_ok h ws cases ∧
-    memory_stmts_ok h ws default) ∧
+    memory_expr_ok h ws e ∧ memory_cases_ok h (expr_stores e ++ ws) cases ∧
+    memory_stmts_ok (h ∨ block_halts default) (expr_stores e ++ ws) default) ∧
   (memory_stmt_ok h ws (YulFor pre c post body) ⇔
     memory_stmts_ok h ws pre ∧ memory_expr_ok h ws c ∧
     memory_stmts_ok h ws post ∧ memory_stmts_ok h ws body) ∧
@@ -1099,35 +1232,35 @@ Definition memory_stmt_ok_def:
   (memory_stmts_ok h ws [] ⇔ T) ∧
   (memory_stmts_ok h ws (s :: ss) ⇔
     memory_stmt_ok h ws s ∧
-    memory_stmts_ok h (memory_store s ++ ws) ss) ∧
+    memory_stmts_ok h (stmt_stores s ++ ws) ss) ∧
   (memory_cases_ok h ws [] ⇔ T) ∧
   (memory_cases_ok h ws ((_, body) :: cases) ⇔
-    memory_stmts_ok h ws body ∧ memory_cases_ok h ws cases)
-End
-
-Definition block_halts_def:
-  (block_halts [] ⇔ F) ∧
-  (block_halts [YulExprStmt (YulBuiltin b _)] ⇔ MEM b [YReturn; YRevert; YStop]) ∧
-  (block_halts [_] ⇔ F) ∧
-  (block_halts (_ :: s :: ss) ⇔ block_halts (s :: ss))
+    memory_stmts_ok (h ∨ block_halts body) ws body ∧ memory_cases_ok h ws cases)
 End
 
 Definition assembly_memory_ok_def:
   assembly_memory_ok code ⇔ memory_stmts_ok (block_halts code) [(0x40, 32)] code
 End
 
-(* Gas and return data. The source keeps no gas and no return data buffer, so
- * gas() may only be a call's gas argument, where it stands for the budget
- * every call from the source gets; and returndatasize and returndatacopy may
- * only come after a statement of the block that calls (a let, assignment or
- * expression statement whose expression has a call or staticcall in it),
- * earlier in their statement list or an enclosing one, or inside an if, switch
- * or for whose condition calls. A Yul function's body
- * starts with no call made, and an expression sees only the statements before
- * it, since the order of its arguments' calls is the compiler's. *)
+(* Gas and return data. The source keeps no gas, so gas() may only be a call's
+ * gas argument, where it stands for the budget every call from the source
+ * gets. call_stmts_ok F also has returndatasize and returndatacopy come only
+ * after a statement of the block that calls (a let, assignment or expression
+ * statement whose expression has a call, staticcall or delegatecall in it),
+ * earlier in their statement list or an enclosing one, or inside an if,
+ * switch or for whose condition calls, or in an argument left of one that
+ * calls, since arguments run right to left. A Yul function's body starts with
+ * no call made. The evaluator asks for that order only where the source does
+ * not know the return data (assembly_calls_ok); the static rule is
+ * assembly_gas_ok, which admits return data reads before the block's own
+ * calls, except in a Yul function's body. *)
+Definition is_call_builtin_def:
+  is_call_builtin b ⇔ b = YCall ∨ b = YStaticCall ∨ b = YDelegateCall
+End
+
 Definition expr_calls_def:
   (expr_calls (YulBuiltin b es) ⇔
-    b = YCall ∨ b = YStaticCall ∨ exprs_calls es) ∧
+    is_call_builtin b ∨ exprs_calls es) ∧
   (expr_calls (YulApply _ es) ⇔ exprs_calls es) ∧
   (expr_calls _ ⇔ F) ∧
   (exprs_calls [] ⇔ F) ∧
@@ -1145,15 +1278,15 @@ End
 Definition call_expr_ok_def:
   (call_expr_ok called (YulBuiltin b es) ⇔
     b ≠ YGas ∧
-    (called ∨ b ≠ YReturnDataSize ∧ b ≠ YReturnDataCopy) ∧
-    call_args_ok called (b = YCall ∨ b = YStaticCall) es) ∧
+    (called ∨ exprs_calls es ∨ b ≠ YReturnDataSize ∧ b ≠ YReturnDataCopy) ∧
+    call_args_ok called (is_call_builtin b) es) ∧
   (call_expr_ok called (YulApply _ es) ⇔ call_args_ok called F es) ∧
   (call_expr_ok called (YulCheckedBuiltin _ _) ⇔ F) ∧
   (call_expr_ok called _ ⇔ T) ∧
   (call_args_ok called gas [] ⇔ T) ∧
   (call_args_ok called gas (e :: es) ⇔
-    (gas ∧ e = YulBuiltin YGas [] ∨ call_expr_ok called e) ∧
-    call_args_ok called F es)
+    call_args_ok called F es ∧
+    (gas ∧ e = YulBuiltin YGas [] ∨ call_expr_ok (called ∨ exprs_calls es) e))
 End
 
 Definition call_stmt_ok_def:
@@ -1187,6 +1320,17 @@ Definition assembly_calls_ok_def:
   assembly_calls_ok code ⇔ call_stmts_ok F code
 End
 
+Definition assembly_gas_ok_def:
+  assembly_gas_ok code ⇔ call_stmts_ok T code
+End
+
+Definition storage_pointer_binding_def:
+  storage_pointer_binding ctx x ⇔
+    case ALOOKUP ctx.bindings x of
+      SOME (SingleType (LocatedT StorageLoc _)) => T
+    | _ => F
+End
+
 Definition assembly_reference_ok_def:
   assembly_reference_ok env ctx r ⇔
     case r of
@@ -1194,6 +1338,8 @@ Definition assembly_reference_ok_def:
         ALOOKUP ctx.bindings x = SOME (SingleType ty) ∧ assembly_value_type ty
     | AssemblySlot x => IS_SOME (lookup_state_variable env x)
     | AssemblyOffset x => IS_SOME (lookup_state_variable env x)
+    | AssemblyPointerSlot x => storage_pointer_binding ctx x
+    | AssemblyPointerOffset x => storage_pointer_binding ctx x
     | AssemblyConstant a ty =>
         wf_core_atom env ctx (SingleType ty) a ∧ assembly_value_type ty
     | AssemblyMemory x ty =>
@@ -1261,7 +1407,12 @@ Definition check_core_stmts_def:
     case a of
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
-           SOME (SingleType (LocatedT MemoryLoc (ArrayT element length))) =>
+           SOME (SingleType (LocatedT MemoryLoc BytesT)) =>
+             if fresh_core_id ctx t ∧
+                wf_core_atom env ctx (SingleType (UintT 256)) i
+             then check_core_stmts env (capture_core_target t (FixedBytesT 1) ctx) ss
+             else NONE
+         | SOME (SingleType (LocatedT MemoryLoc (ArrayT element length))) =>
              if fresh_core_id ctx t ∧
                 memory_object_type (ArrayT element length) ∧
                 wf_core_atom env ctx (SingleType (UintT 256)) i
@@ -1281,6 +1432,7 @@ Definition check_core_stmts_def:
               byte_sequence_value_type src ∧ loc ≠ CalldataLoc ∧ ty = ty'
             else
               located_value_type src ∧ located_value_type dst ∧
+              memory_object_type ty ∧ memory_object_type ty' ∧
               loc = StorageLoc ∧ storage_copy_type ty ty'
         | _ => F) ∧
        wf_core_atom env ctx (SingleType src) a ∧
@@ -1333,7 +1485,7 @@ Definition check_core_stmts_def:
     | NONE => NONE) ∧
   (check_core_stmts env ctx (AssemblyStmt code refs :: ss) =
     if assembly_stmts_ok assembly_unsupported code ∧ assembly_memory_ok code ∧
-       assembly_calls_ok code ∧
+       assembly_gas_ok code ∧
        ALL_DISTINCT (MAP FST refs) ∧
        EVERY (assembly_reference_ok env ctx) (MAP SND refs) ∧
        assembly_assigns_ok (assembly_memory_names refs) code
@@ -1383,6 +1535,7 @@ End
 Definition wf_core_state_variable_def:
   wf_core_state_variable env (v : core_state_variable) ⇔
     storage_type_ok env v.state_type ∧
+    (v.state_backend = TransientStorage ⇒ IS_SOME (storage_bytes v.state_type)) ∧
     case storage_bytes v.state_type of
       SOME b => v.state_offset + b ≤ 32
     | NONE => v.state_offset = 0
@@ -1416,7 +1569,7 @@ Definition wf_core_struct_layout_def:
     lookup_struct env s.struct_id =
       SOME (MAP (λv. (v.state_id, v.state_type)) s.struct_fields) ∧
     inline_storage_shape env (LENGTH env.struct_layouts) (StructT s.struct_id) ∧
-    EVERY (λv. wf_core_state_variable env v ∧
+    EVERY (λv. v.state_backend = PersistentStorage ∧ wf_core_state_variable env v ∧
       case fixed_storage_slots env v.state_type of
         SOME slots => w2n v.state_slot + slots ≤ s.struct_slots
       | NONE => F) s.struct_fields
@@ -1571,6 +1724,7 @@ val () = cv_auto_trans_rec inline_storage_shape_def (
 );
 val () = cv_auto_trans environment_type_def;
 val () = cv_auto_trans wf_abi_atom_def;
+val () = cv_auto_trans wf_gas_atom_def;
 val () = cv_auto_trans (SPEC_ALL wf_core_operation_def);
 val () = cv_auto_trans emit_indexed_count_def;
 val () = cv_auto_trans assembly_unsupported_def;
@@ -1583,17 +1737,23 @@ val () = cv_auto_trans memory_covered_def;
 val () = cv_auto_trans memory_read_ok_def;
 val () = cv_auto_trans memory_write_ok_def;
 val () = cv_auto_trans builtin_memory_ok_def;
-val () = cv_auto_trans memory_expr_ok_def;
-val () = cv_auto_trans call_output_def;
-val () = cv_auto_trans memory_store_def;
-val () = cv_auto_trans memory_stmt_ok_def;
+val () = cv_auto_trans literal_range_def;
+val () = cv_auto_trans builtin_store_def;
+val () = cv_auto_trans expr_stores_def;
+val () = cv_auto_trans stmt_stores_def;
+val () = cv_auto_trans stmts_escape_def;
+val () = cv_auto_trans ends_in_halt_def;
 val () = cv_auto_trans block_halts_def;
+val () = cv_auto_trans memory_expr_ok_def;
+val () = cv_auto_trans memory_stmt_ok_def;
 val () = cv_auto_trans assembly_memory_ok_def;
+val () = cv_auto_trans is_call_builtin_def;
 val () = cv_auto_trans expr_calls_def;
 val () = cv_auto_trans stmt_calls_def;
 val () = cv_auto_trans call_expr_ok_def;
 val () = cv_auto_trans call_stmt_ok_def;
 val () = cv_auto_trans assembly_calls_ok_def;
+val () = cv_auto_trans assembly_gas_ok_def;
 val () = cv_auto_trans assembly_value_type_def;
 val () = cv_auto_trans assembly_reference_ok_def;
 val () = cv_auto_trans assembly_memory_names_def;
