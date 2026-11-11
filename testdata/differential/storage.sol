@@ -4,8 +4,8 @@ pragma solidity 0.8.37;
 // Value-type state variables: packed slots, signed and fixed-bytes values,
 // writes seen across internal calls, and reverts discarding writes; writes
 // under an if, and storage-free loops (one with a require in its body) in
-// functions that read or write state. Reverts are panics here, and there are
-// no negative literals.
+// functions that read or write state. Reverts are panics or a bare require,
+// and there are no negative literals.
 contract Storage {
     uint256 total;
     uint8 small;
