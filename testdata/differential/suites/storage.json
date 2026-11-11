@@ -220,6 +220,176 @@
       "final_storage": {
         "3": "0xfffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffb"
       }
+    },
+    {
+      "name": "write_if_taken",
+      "function": "writeIf",
+      "args": [
+        true,
+        7
+      ],
+      "storage": {
+        "0": 5
+      },
+      "expect": {
+        "return": [
+          7
+        ]
+      },
+      "final_storage": {
+        "0": 7
+      }
+    },
+    {
+      "name": "write_if_skipped",
+      "function": "writeIf",
+      "args": [
+        false,
+        7
+      ],
+      "storage": {
+        "0": 5
+      },
+      "expect": {
+        "return": [
+          5
+        ]
+      },
+      "final_storage": {
+        "0": 5
+      }
+    },
+    {
+      "name": "write_if_else_then",
+      "function": "writeIfElse",
+      "args": [
+        true,
+        9
+      ],
+      "storage": {
+        "0": 3
+      },
+      "expect": {
+        "return": [
+          9,
+          0
+        ]
+      },
+      "final_storage": {
+        "0": 9
+      }
+    },
+    {
+      "name": "write_if_else_else",
+      "function": "writeIfElse",
+      "args": [
+        false,
+        9
+      ],
+      "storage": {
+        "0": 3
+      },
+      "expect": {
+        "return": [
+          3,
+          9
+        ]
+      },
+      "final_storage": {
+        "0": 3,
+        "3": 9
+      }
+    },
+    {
+      "name": "loop_then_write",
+      "function": "loopThenWrite",
+      "args": [
+        5
+      ],
+      "storage": {
+        "0": 99
+      },
+      "expect": {
+        "return": [
+          10
+        ]
+      },
+      "final_storage": {
+        "0": 10
+      }
+    },
+    {
+      "name": "loop_then_write_zero_trips",
+      "function": "loopThenWrite",
+      "args": [
+        0
+      ],
+      "storage": {
+        "0": 99
+      },
+      "expect": {
+        "return": [
+          0
+        ]
+      },
+      "final_storage": {
+        "0": 0
+      }
+    },
+    {
+      "name": "read_loop_write",
+      "function": "readLoopWrite",
+      "args": [
+        4
+      ],
+      "storage": {
+        "0": 100
+      },
+      "expect": {
+        "return": [
+          106
+        ]
+      },
+      "final_storage": {
+        "0": 100,
+        "2": 106
+      }
+    },
+    {
+      "name": "require_in_loop_passes",
+      "function": "requireInLoop",
+      "args": [
+        3,
+        5
+      ],
+      "storage": {
+        "0": 9
+      },
+      "expect": {
+        "return": [
+          3
+        ]
+      },
+      "final_storage": {
+        "0": 3
+      }
+    },
+    {
+      "name": "require_in_loop_reverts",
+      "function": "requireInLoop",
+      "args": [
+        3,
+        2
+      ],
+      "storage": {
+        "0": 9
+      },
+      "expect": {
+        "revert": "0x"
+      },
+      "final_storage": {
+        "0": 9
+      }
     }
   ]
 }
