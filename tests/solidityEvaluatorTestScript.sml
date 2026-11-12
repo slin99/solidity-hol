@@ -1172,8 +1172,8 @@ Definition short_return_state_def:
            empty_accounts))
 End
 
-(* The bytes op (a low-level staticcall, or a try that catches) gives as its
- * second component, bound to a block's "b"; the block returns its "r". *)
+(* Bind low-level return bytes directly; a try's raw failure data is
+ * materialized by the generic catch before the block reads it. *)
 Definition return_bytes_proc_def:
   return_bytes_proc op code = <|
     procedure_id := AstId 150;
@@ -1183,10 +1183,19 @@ Definition return_bytes_proc_def:
       DefineStmt (AstId 151) (SingleType (LocatedT MemoryLoc BytesT))
         (BytesLiteralOperation BytesT []);
       DefineStmt (AstId 152)
-        (ProductType [SingleType BoolT; SingleType (LocatedT MemoryLoc BytesT)]) op;
-      DefineStmt (AstId 153) (SingleType (LocatedT MemoryLoc BytesT))
-        (TupleComponentOperation 1 (BoundAtom (AstId 152)));
-      AssemblyStmt code [("b", AssemblyMemory (AstId 153) BytesT);
+        (ProductType [SingleType BoolT;
+          case op of TryExternalCallOperation _ _ _ _ _ _ _ _ => RevertDataType
+                   | _ => SingleType (LocatedT MemoryLoc BytesT)]) op] ++
+      (case op of
+         TryExternalCallOperation _ _ _ _ _ _ _ _ =>
+           [DefineStmt (AstId 155) RevertDataType
+              (TupleComponentOperation 1 (BoundAtom (AstId 152)));
+            DefineStmt (AstId 153) (SingleType (LocatedT MemoryLoc BytesT))
+              (MaterializeRevertDataOperation (BoundAtom (AstId 155)))]
+       | _ =>
+           [DefineStmt (AstId 153) (SingleType (LocatedT MemoryLoc BytesT))
+              (TupleComponentOperation 1 (BoundAtom (AstId 152)))]) ++
+      [AssemblyStmt code [("b", AssemblyMemory (AstId 153) BytesT);
                          ("r", AssemblyLocal (AstId 154) u256)];
       ReturnStmt [BoundAtom (AstId 154)]]
   |>

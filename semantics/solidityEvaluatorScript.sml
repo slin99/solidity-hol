@@ -658,17 +658,9 @@ Definition call_external_mode_def:
                       NONE => abrupt_result (InvalidCompletion "bad try return types") st gas
                     | SOME defaults =>
                         let values = ScalarValue (BoolValue F) :: MAP ScalarValue defaults in
-                        if r.call_return = [] then
-                          normal_result (define_binding x ty
-                            (TupleValue (values ++ [ReferenceValue
-                              (MemoryReference (HeapId 0) 0 BytesT)])) st) gas
-                        else if 2 ** 64 ≤ 128 + st.memory_allocated +
-                                32 + 32 * ((LENGTH r.call_return + 31) DIV 32) then
-                          abrupt_result (PanicCompletion 65) st gas
-                        else
-                          let (data, st1) = allocate_bytes F BytesT r.call_return st in
-                          normal_result (define_binding x ty
-                            (TupleValue (values ++ [data])) st1) gas)
+                        normal_result (define_binding x ty
+                          (TupleValue (values ++
+                            [ScalarValue (BytesValue r.call_return)])) st) gas)
                else
                  let st' = st with world :=
                        <| accounts := r.call_accounts;
@@ -686,7 +678,7 @@ Definition call_external_mode_def:
                         SOME (values, st2) =>
                           let result = if catching then
                                 TupleValue (ScalarValue (BoolValue T) :: values ++
-                                  [ReferenceValue (MemoryReference (HeapId 0) 0 BytesT)])
+                                  [ScalarValue (BytesValue [])])
                               else pack_results values in
                           normal_result (define_binding x ty result st2) gas
                       | NONE => abrupt_result (InvalidCompletion "bad call results") st' gas)
@@ -698,6 +690,54 @@ Definition call_external_def:
   call_external env x ty kind selector params rets target value g args st gas =
     call_external_mode F env x ty kind selector params rets target value g args
       st gas
+End
+
+(* Copy raw returndata only when a source bytes value is required. *)
+Definition materialize_revert_data_def:
+  materialize_revert_data data st =
+    if data = [] then
+      INL (ReferenceValue (MemoryReference (HeapId 0) 0 BytesT), st)
+    else if 2 ** 64 ≤ memory_free_pointer st + 32 +
+                      32 * ((LENGTH data + 31) DIV 32)
+    then INR (PanicCompletion 65)
+    else INL (allocate_bytes F BytesT data st)
+End
+
+(* The pinned catch decoder does not require canonical offsets or padding.
+ * Error's copied string starts at free + offset, and only a successful
+ * decode advances the free pointer. *)
+Definition try_decode_error_def:
+  try_decode_error kind data st =
+    case kind of
+      PanicCatch =>
+        if 36 ≤ LENGTH data ∧ TAKE 4 data = [0x4ew; 0x48w; 0x7bw; 0x71w] then
+          INL (TupleValue [ScalarValue (BoolValue T);
+                            ScalarValue (IntegerValue (&(abi_word data 4)))], st)
+        else INL (TupleValue [ScalarValue (BoolValue F);
+                            ScalarValue (IntegerValue 0)], st)
+    | ErrorCatch =>
+        let missing = TupleValue [ScalarValue (BoolValue F);
+              ReferenceValue (MemoryReference (HeapId 0) 0 StringT)] in
+        if LENGTH data < 68 ∨ TAKE 4 data ≠ [0x08w; 0xc3w; 0x79w; 0xa0w] then
+          INL (missing, st) else
+        let offset = abi_word data 4 in
+        if 2 ** 64 ≤ offset ∨ offset + 36 > LENGTH data then INL (missing, st) else
+        let length = abi_word data (offset + 4) in
+        if 2 ** 64 ≤ length ∨ offset + 36 + length > LENGTH data then
+          INL (missing, st) else
+        let size = 32 * ((offset + 32 + length + 31) DIV 32) in
+        if 2 ** 64 ≤ memory_free_pointer st + size then INR (PanicCompletion 65) else
+        let bs = TAKE length (DROP (offset + 36) data) in
+        let (value, st1) = allocate_bytes F StringT bs st in
+        let id = st1.next_heap_id in
+        let obj = <| object_type := StringT; object_length := length;
+                     object_cells := byte_cells bs;
+                     object_address := memory_free_pointer st + offset;
+                     object_padded := F |> in
+        INL (TupleValue [ScalarValue (BoolValue T); value],
+             st1 with <| heap := st1.heap |+ (id, obj);
+                         memory_allocated := st.memory_allocated + size |>)
+    | GenericCatch => INR (InvalidCompletion "generic catch decoder")
 End
 
 (* transfer requests gas only when value is zero: the EVM adds the stipend
@@ -768,16 +808,10 @@ Definition call_low_level_def:
                         logs := st.world.logs ++ res.call_logs |>
                  else st in
              let success = ScalarValue (BoolValue res.call_success) in
-             if res.call_return = [] then
-               normal_result (define_binding x ty
-                 (TupleValue [success; ReferenceValue (MemoryReference (HeapId 0) 0 BytesT)])
-                 st') gas
-             else if 2 ** 64 ≤ 128 + st'.memory_allocated + 32 +
-                               32 * ((LENGTH res.call_return + 31) DIV 32)
-             then abrupt_result (PanicCompletion 65) st' gas
-             else
-               let (v, st1) = allocate_bytes F BytesT res.call_return st' in
-               normal_result (define_binding x ty (TupleValue [success; v]) st1) gas)
+             case materialize_revert_data res.call_return st' of
+               INL (v, st1) =>
+                 normal_result (define_binding x ty (TupleValue [success; v]) st1) gas
+             | INR c => abrupt_result c st' gas)
     | _ => abrupt_result (InvalidCompletion "bad low-level call operands") st gas
 End
 
@@ -885,6 +919,20 @@ Definition simple_stmt_def:
         call_external env x ty kind selector params rets target value g args st gas
     | DefineStmt x ty (LowLevelCallOperation kind target value g data) =>
         call_low_level x ty kind target value g data st gas
+    | DefineStmt x ty (TryDecodeErrorOperation kind a) =>
+        (case eval_atom st.scopes a of
+           SOME (ScalarValue (BytesValue data)) =>
+             (case try_decode_error kind data st of
+                INL (v, st1) => normal_result (define_binding x ty v st1) gas
+              | INR c => abrupt_result c st gas)
+         | _ => abrupt_result (InvalidCompletion "bad catch data") st gas)
+    | DefineStmt x ty (MaterializeRevertDataOperation a) =>
+        (case eval_atom st.scopes a of
+           SOME (ScalarValue (BytesValue data)) =>
+             (case materialize_revert_data data st of
+                INL (v, st1) => normal_result (define_binding x ty v st1) gas
+              | INR c => abrupt_result c st gas)
+         | _ => abrupt_result (InvalidCompletion "bad catch data") st gas)
     | DefineStmt x ty (TransferOperation target value) =>
         call_transfer x ty target value st gas
     | DefineStmt x ty (TryExternalCallOperation kind selector params rets target
@@ -1168,6 +1216,13 @@ Definition yul_substitute_stmt_def:
     (l, yul_substitute_stmts sub body) :: yul_substitute_cases sub cases)
 End
 
+(* Round the data end, since a caught Error string can start unaligned. *)
+Definition object_padding_def:
+  object_padding (obj : heap_object) =
+    32 * ((obj.object_address + 32 + obj.object_length + 31) DIV 32) -
+    (obj.object_address + 32 + obj.object_length)
+End
+
 (* The element type of a memory array a block sees, and whether the array is
  * dynamic, with a length word before its elements. *)
 Definition assembly_array_def:
@@ -1205,8 +1260,7 @@ Definition assembly_object_bytes_def:
     if byte_sequence_type obj.object_type then
       OPTION_MAP (λbs. length_word ++ bs ++
                     (if obj.object_padded then
-                       REPLICATE (32 * ((obj.object_length + 31) DIV 32) -
-                                  obj.object_length) 0w
+                       REPLICATE (object_padding obj) 0w
                      else []))
         (heap_bytes obj 0 obj.object_length)
     else
@@ -1217,19 +1271,23 @@ Definition assembly_object_bytes_def:
       | NONE => NONE
 End
 
-(* m with the objects with ids 1 to i that a block sees written into memory. *)
+(* Project objects chronologically so newer allocations replace older data.
+ * Returndata padding stays unwritten where the compiler does not zero it;
+ * assembly reads there fail closed. *)
 Definition assembly_project_def:
   (assembly_project heap 0 (m : yul_machine) = SOME m) ∧
   (assembly_project heap (SUC i) m =
-    case FLOOKUP heap (SUC i) of
-      SOME obj =>
-        if assembly_memory_type obj.object_type then
-          case assembly_object_bytes obj of
-            SOME bs =>
-              assembly_project heap i (yul_memory_write m obj.object_address bs)
-          | NONE => NONE
-        else assembly_project heap i m
-    | NONE => assembly_project heap i m)
+    case assembly_project heap i m of
+      NONE => NONE
+    | SOME m1 =>
+      case FLOOKUP heap (SUC i) of
+        SOME obj =>
+          if assembly_memory_type obj.object_type then
+            case assembly_object_bytes obj of
+              SOME bs => SOME (yul_memory_write m1 obj.object_address bs)
+            | NONE => NONE
+          else SOME m1
+      | NONE => SOME m1)
 End
 
 Definition assembly_machine_def:
@@ -1258,7 +1316,7 @@ Definition assembly_data_def:
       SOME (element, dynamic) =>
         (obj.object_address + (if dynamic then 32 else 0), 32 * obj.object_length)
     | NONE =>
-        (obj.object_address + 32, 32 * ((obj.object_length + 31) DIV 32))
+        (obj.object_address + 32, obj.object_length + object_padding obj)
 End
 
 (* The memory a block may change and still exit normally, as (start, length)
@@ -1324,7 +1382,7 @@ Definition assembly_read_back_def:
                  (yul_memory_read m (obj.object_address + 32) obj.object_length);
                object_padded := memory_zeros m.memory
                  (obj.object_address + 32 + obj.object_length)
-                 (32 * ((obj.object_length + 31) DIV 32) - obj.object_length) |>))
+                 (object_padding obj) |>))
             i m
         else
           (case assembly_array obj.object_type of
@@ -1605,6 +1663,7 @@ val () = cv_auto_trans assembly_inputs_def;
 val () = cv_auto_trans yul_substitute_expr_def;
 val () = cv_auto_trans yul_unbind_def;
 val () = cv_auto_trans yul_substitute_stmt_def;
+val () = cv_auto_trans object_padding_def;
 val () = cv_auto_trans assembly_array_def;
 val () = cv_auto_trans assembly_element_words_def;
 val () = cv_auto_trans assembly_object_bytes_def;

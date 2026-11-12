@@ -364,6 +364,7 @@ Definition wf_core_value_type_def:
   (wf_core_value_type env (SingleType ty) ⇔
     core_binding_type env ty) ∧
   (wf_core_value_type env (ReferenceType ty) ⇔ storage_type_ok env ty) ∧
+  (wf_core_value_type env RevertDataType ⇔ T) ∧
   (wf_core_value_type env (ProductType tys) ⇔
     LENGTH tys ≠ 1 ∧ wf_core_value_types env tys) ∧
   (wf_core_value_types env [] ⇔ T) ∧
@@ -437,6 +438,7 @@ End
  * are not typed until reference/layout environments exist.
  *)
 Definition value_has_type_def:
+  (value_has_type env RevertDataType (ScalarValue (BytesValue _)) ⇔ T) ∧
   (value_has_type env (SingleType ty) (ScalarValue s) ⇔
     scalar_has_type env ty s) ∧
   (value_has_type env (ReferenceType ty)
@@ -725,6 +727,13 @@ Definition reference_convertible_def:
     | _ => F
 End
 
+(* A catch binding's source type; raw returndata has a separate core type. *)
+Definition catch_parameter_type_def:
+  (catch_parameter_type ErrorCatch = LocatedT MemoryLoc StringT) ∧
+  (catch_parameter_type PanicCatch = UintT 256) ∧
+  (catch_parameter_type GenericCatch = LocatedT MemoryLoc BytesT)
+End
+
 Definition wf_core_operation_def:
   (wf_core_operation env ctx annotation
      (ScalarOperation ty mode op args) ⇔
@@ -894,6 +903,13 @@ Definition wf_core_operation_def:
     annotation = call_result_type tys ∧
     (wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a ∨
      wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a)) ∧
+  (wf_core_operation env ctx annotation (TryDecodeErrorOperation kind a) ⇔
+    kind ≠ GenericCatch ∧
+    annotation = call_result_type [BoolT; catch_parameter_type kind] ∧
+    wf_core_atom env ctx RevertDataType a) ∧
+  (wf_core_operation env ctx annotation (MaterializeRevertDataOperation a) ⇔
+    annotation = SingleType (LocatedT MemoryLoc BytesT) ∧
+    wf_core_atom env ctx RevertDataType a) ∧
   (wf_core_operation env ctx annotation (ArrayLengthOperation a) ⇔
     annotation = SingleType (UintT 256) ∧
     case a of
@@ -971,7 +987,7 @@ Definition wf_core_operation_def:
     wf_gas_atom env ctx gas ∧
     LIST_REL (wf_abi_atom env ctx) params args ∧
     annotation = ProductType
-      (MAP SingleType (BoolT :: rets ++ [LocatedT MemoryLoc BytesT]))) ∧
+      (MAP SingleType (BoolT :: rets) ++ [RevertDataType])) ∧
   (wf_core_operation env ctx annotation (TransferOperation target value) ⇔
     annotation = ProductType [] ∧
     wf_core_atom env ctx (SingleType (AddressT PayableAddress)) target ∧
@@ -1556,7 +1572,8 @@ Definition check_core_stmts_def:
   (check_core_stmts env ctx (PanicStmt code :: ss) =
     check_core_stmts env ctx ss) ∧
   (check_core_stmts env ctx (RevertStmt a :: ss) =
-    if provisional_revert_payload a then check_core_stmts env ctx ss
+    if provisional_revert_payload a ∨ wf_core_atom env ctx RevertDataType a
+    then check_core_stmts env ctx ss
     else NONE) ∧
   (* Revert data uses the same in-place ABI serialization as calls. *)
   (check_core_stmts env ctx (RevertErrorStmt selector params args :: ss) =
@@ -1811,6 +1828,7 @@ val () = cv_auto_trans_rec inline_storage_shape_def (
 );
 val () = cv_auto_trans environment_type_def;
 val () = cv_auto_trans wf_abi_atom_def;
+val () = cv_auto_trans catch_parameter_type_def;
 val () = cv_auto_trans wf_gas_atom_def;
 val () = cv_auto_trans (SPEC_ALL wf_core_operation_def);
 val () = cv_auto_trans emit_indexed_count_def;

@@ -201,7 +201,10 @@ element, as solc keeps the element in memory. On normal exit each element is
 read back from its word, which must be the exact word its value is kept as
 (a `uint8` of 256 or a `bool` of 2 fails closed, where solc would clean it
 when it reads the element); arrays of other element types are not in the
-block's memory. Under
+block's memory. Objects are projected in allocation order so an older object's
+word padding cannot overwrite a later allocation. Byte-sequence padding ends
+at the aligned allocation end, including for an unaligned caught Error string;
+it cannot make the next object's length word writable. Under
 `memoryguard` the compiler may start its free memory pointer above `0x80`, so
 arithmetic relative to a pointer is modelled but returning, storing or
 comparing a raw pointer value is outside the boundary. The block's memory also
@@ -218,6 +221,13 @@ bytes copied from return data, a low-level call's or a `catch`'s, whose
 padding solc leaves as it was), and bytes it has written itself; any other read,
 another kind of memory object, the scratch space before the block writes it,
 or past an object's last word, ends the block with an `InvalidCompletion`.
+This projection describes logical bytes, rather than physical ABI tail padding.
+In particular, `try_decode_error_message` can leave copied dirty padding or,
+for an unpadded string, bytes from the outbound call's temporary ABI buffer
+past the logical string end. Assembly that observes those physical tail bytes
+is outside this source-heap boundary and fails closed where those bytes are
+not projected. Caught Error strings and generic return bytes keep
+`object_padded = F`; no zeros are invented for their unmodelled tails.
 A callee that returns fewer bytes than the block's output region leaves the
 rest unwritten, so reading it fails closed where the EVM reads stale scratch:
 OpenZeppelin's `SafeERC20` against a token whose `transfer` returns nothing
@@ -505,13 +515,23 @@ forwards the callee's revert bytes; success records its return bytes in the
 frame's return-data buffer without allocating memory. Subsequent assembly
 can read that buffer. A failed call or enclosing revert rolls back the transfer.
 
-External calls returning scalar values admit `try ... returns (...) { ... }
-catch (bytes memory reason) { ... }`. Only failure of the external call selects
-the catch body; argument evaluation, missing-code checks, return decoding and
-the success/catch bodies keep their ordinary failure behavior. Nonempty revert
-data is copied into a fresh memory bytes object; empty data uses the default
-empty bytes reference. Contract creation, typed `Error`/`Panic` handlers and
-catch clauses without a bytes parameter remain unsupported.
+External calls returning scalar values admit `try ... returns (...) { ... }`
+with `catch Error(string memory reason)`, `catch Panic(uint256 code)`, and a
+generic `catch (bytes memory data)` or parameterless `catch`. Typed handlers run
+before the generic handler regardless of their source order. A matching selector
+with short or malformed data falls through to the generic handler, or bubbles
+the original revert data when there is none. The pinned decoder accepts
+noncanonical offsets, missing string padding and trailing data. Panic decoding
+allocates no memory; Error decoding materializes its string at the encoded
+offset, and generic bytes are copied only when that handler is selected. Empty
+generic bytes use the default empty reference, and a parameterless catch does
+not allocate. Raw failure data has the internal core type `RevertDataType` and
+cannot be used as a source value without materialization.
+
+Only failure of the external call selects a catch body; argument evaluation,
+missing-code checks, return decoding and the success/catch bodies keep their
+ordinary failure behavior. Contract creation and dynamic success returns in a
+try statement remain unsupported.
 
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,

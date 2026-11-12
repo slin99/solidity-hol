@@ -512,7 +512,8 @@ QED
 Theorem unsupported_try_keeps_clause_blockers:
   elab_stmt ^ctx0 10
     (SrcTryStatement ^(at 19) (SrcLiteral ^(at 20) BoolLiteral "true" "t_bool")
-       ^(at 21) [] (SrcBreak ^(at 11)) ^(at 22) ^supported_y (SrcContinue ^(at 12))) =
+       ^(at 21) [] (SrcBreak ^(at 11))
+       [SrcCatchClause ^(at 22) GenericCatch [] (SrcContinue ^(at 12))]) =
   INR [(19, "unsupported try statement"); (11, "break outside a loop");
        (12, "continue outside a loop")]
 Proof

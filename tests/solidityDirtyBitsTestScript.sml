@@ -10,6 +10,7 @@ Ancestors solidityDifferential solidityDirtyBitsBytecodeTest
   solidityDifferentialCorpus_enums
   solidityDifferentialCorpus_dirty_bits
   solidityDifferentialCorpus_udvt
+  solidityDifferentialCorpus_typed_catches
 Libs solidityBytecodeLib cv_transLib wordsLib
 
 fun holbuild_extra_deps (_ : string list) = ()
@@ -19,7 +20,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/fail_closed/storage_arrays.json",
   "../testdata/differential/fail_closed/enums.json",
   "../testdata/differential/fail_closed/dirty_bits.json",
-  "../testdata/differential/fail_closed/udvt.json"
+  "../testdata/differential/fail_closed/udvt.json",
+  "../testdata/differential/fail_closed/typed_catches.json"
 ]
 
 fun rejected_suite group =
@@ -31,8 +33,13 @@ fun rejected_case group name =
     val suite = rejected_suite group
     val c = valOf (List.find (fn c => string_field c "name" = name)
                     (array_field suite "cases"))
+    val peer =
+      case JSONUtil.findField suite "peer" of
+        NONE => “[] : byte list”
+      | SOME _ => prim_mk_const {Thy = "solidityDirtyBitsBytecodeTest",
+          Name = "bytecode_rejected_" ^ group ^ "_peer_code"}
   in
-    case_term “[] : byte list” {names = [], refs = “[] : (num # num list) list”}
+    case_term peer {names = [], refs = “[] : (num # num list) list”}
       (call_input (fn () => “[] : byte list”) c) c
   end;
 
@@ -252,3 +259,12 @@ Proof
   CONV_TAC cv_eval
 QED
 
+
+Theorem reject_typed_catches_unaligned_error_write_next_header:
+  source_execution bytecode_rejected_typed_catches_code
+    corpus_typed_catches_unit corpus_typed_catches_program 1000
+    ^(rejected_case "typed_catches" "unaligned_error_write_next_header") =
+  (Diagnostic InvalidCompletion, NONE, [])
+Proof
+  CONV_TAC cv_eval
+QED
