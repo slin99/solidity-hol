@@ -986,13 +986,29 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
           node_type (field callee "expression") = "Identifier" andalso
           int_field (field callee "expression") "referencedDeclaration" = abi_id
         val abi_decode = abi_member andalso string_field callee "memberName" = "decode"
+        val require_error =
+          if node_type callee = "Identifier" andalso
+             int_field callee "referencedDeclaration" = require_id then
+            (case JSONUtil.arrayMap I (field v "arguments") of
+               [condition, call] =>
+                 if node_type call = "FunctionCall" andalso
+                    (node_type (field call "expression") = "Identifier" orelse
+                     node_type (field call "expression") = "MemberAccess") andalso
+                    (case optional_field (field call "expression") "referencedDeclaration" of
+                       SOME ref_id => List.exists (fn (id, _) =>
+                         id = JSONUtil.asIntInf ref_id) (!error_declarations)
+                     | NONE => false)
+                 then SOME (condition, call) else NONE
+             | _ => NONE)
+          else NONE
         (* abi.decode's second argument names types, which abi_decode reads;
          * abi.encodeCall reads its arguments itself *)
         val args =
           case (abi_decode, JSONUtil.arrayMap I (field v "arguments")) of
             (true, data :: _) => [expr data]
           | (_, raw) =>
-              if abi_member andalso string_field callee "memberName" = "encodeCall" then []
+              if isSome require_error orelse
+                 (abi_member andalso string_field callee "memberName" = "encodeCall") then []
               else map expr raw
         val no_names = null (JSONUtil.arrayMap I (field v "names"))
         fun positional () = require v no_names "named arguments are not supported here"
@@ -1000,7 +1016,18 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
         require v (not (bool_field v "tryCall")) "try calls are not supported";
         case string_field v "kind" of
           "functionCall" =>
-            if isSome (low_level_kind (options_target callee)) then
+            if isSome require_error then
+              let
+                val () = positional ()
+                val (condition, call) = valOf require_error
+                val err = int_field (field call "expression") "referencedDeclaration"
+              in
+                con "SrcRequireError"
+                  [info v, info callee, expr condition, error_declaration call err,
+                   listSyntax.mk_list (JSONUtil.arrayMap expr (field call "arguments"), expr_ty),
+                   argument_order call err 0, type_id v]
+              end
+            else if isSome (low_level_kind (options_target callee)) then
               (positional (); low_level_call v callee args)
             else if node_type callee = "MemberAccess" andalso
                (String.isPrefix "t_function_wrap_" (raw_type_id callee) orelse
@@ -1496,23 +1523,56 @@ fun stmt v = guarded (fn st => [StmtChild st]) unsupported_stmt (fn v => within 
         val parameters = map (fn c => attempt (fn () => clause_parameters c)) clauses
         val blocks = map (fn c => stmt (field c "block")) clauses
         val (_, clause_failure) = attempt (fn () =>
-          (require v (length clauses = 2) "try requires one catch(bytes memory) clause";
-           require v (List.all (fn c => string_field c "errorName" = "") clauses)
-             "typed catch clauses are not supported";
-           case parameters of
-             [_, (SOME [_], _)] => ()
-           | [_, (NONE, _)] => ()
-           | _ => fail (describe (List.nth (clauses, 1)) ^
-                        ": catch requires one bytes parameter")))
-        val failures =
-          kind_failure @ call_failure @ List.concat (map #2 parameters) @ clause_failure
+          (require v (length clauses >= 2 andalso length clauses <= 4)
+             "try requires one to three catch clauses";
+           require v (string_field (hd clauses) "errorName" = "")
+             "success clause has an error name";
+           require v (length (Lib.mk_set (map (fn c => string_field c "errorName") (tl clauses))) =
+                      length clauses - 1)
+             "duplicate catch clauses"))
+        fun catch_clause (c, ((ps, _), block)) =
+          attempt (fn () =>
+            let
+              val name = string_field c "errorName"
+              val kind = case name of
+                  "Error" => "ErrorCatch"
+                | "Panic" => "PanicCatch"
+                | "" => "GenericCatch"
+                | _ => fail (describe c ^ ": unknown catch name " ^ name)
+              val vars = case ps of SOME vs => vs | NONE => []
+              val expected = case name of "Error" => "t_string_memory_ptr"
+                           | "Panic" => "t_uint256" | _ => "t_bytes_memory_ptr"
+              val json_ps = case optional_field c "parameters" of
+                  SOME ps => JSONUtil.arrayMap I (field ps "parameters")
+                | NONE => []
+              val () = require c
+                (not (isSome ps) orelse (name = "" andalso null vars) orelse
+                 (length vars = 1 andalso length json_ps = 1 andalso
+                  raw_type_id (hd json_ps) = expected))
+                (if name = "Error" then "Error catch requires one string memory parameter"
+                 else if name = "Panic" then "Panic catch requires one uint256 parameter"
+                 else "generic catch requires zero parameters or one bytes memory parameter")
+            in
+              (name = "", con "SrcCatchClause"
+                [info c, prim_mk_const {Thy = "solidityCore", Name = kind},
+                 listSyntax.mk_list (vars, variable_ty), block])
+            end)
+        val catches = if null clauses then [] else
+          ListPair.map catch_clause
+            (tl clauses, ListPair.zip (tl parameters, tl blocks))
+        val failures = kind_failure @ call_failure @
+          List.concat (map #2 parameters) @ clause_failure @ List.concat (map #2 catches)
       in
         case (failures, imported, parameters, blocks, clauses) of
-          ([], SOME imported, [(SOME returns, _), (SOME [reason], _)],
-           [ok_block, err_block], [ok, err]) =>
-            con "SrcTryStatement"
-              [info v, imported, info ok, listSyntax.mk_list (returns, variable_ty),
-               ok_block, info err, reason, err_block]
+          ([], SOME imported, (SOME returns, _) :: _, ok_block :: _, ok :: _) =>
+            let
+              val cs = map (valOf o #1) catches
+              val ordered = List.filter (not o #1) cs @ List.filter #1 cs
+            in
+              con "SrcTryStatement"
+                [info v, imported, info ok, listSyntax.mk_list (returns, variable_ty),
+                 ok_block, listSyntax.mk_list (map #2 ordered, import_type "src_catch")]
+            end
         | _ => fail (String.concatWith "\n" failures)
       end
   | "Break" => con "SrcBreak" [info v]

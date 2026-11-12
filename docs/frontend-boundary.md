@@ -210,7 +210,10 @@ element, as solc keeps the element in memory. On normal exit each element is
 read back from its word, which must be the exact word its value is kept as
 (a `uint8` of 256 or a `bool` of 2 fails closed, where solc would clean it
 when it reads the element); arrays of other element types are not in the
-block's memory. Under
+block's memory. Objects are projected in allocation order so an older object's
+word padding cannot overwrite a later allocation. Byte-sequence padding ends
+at the aligned allocation end, including for an unaligned caught Error string;
+it cannot make the next object's length word writable. Under
 `memoryguard` the compiler may start its free memory pointer above `0x80`, so
 arithmetic relative to a pointer is modelled but returning, storing or
 comparing a raw pointer value is outside the boundary. The block's memory also
@@ -227,6 +230,13 @@ bytes copied from return data, a low-level call's or a `catch`'s, whose
 padding solc leaves as it was), and bytes it has written itself; any other read,
 another kind of memory object, the scratch space before the block writes it,
 or past an object's last word, ends the block with an `InvalidCompletion`.
+This projection describes logical bytes, rather than physical ABI tail padding.
+In particular, `try_decode_error_message` can leave copied dirty padding or,
+for an unpadded string, bytes from the outbound call's temporary ABI buffer
+past the logical string end. Assembly that observes those physical tail bytes
+is outside this source-heap boundary and fails closed where those bytes are
+not projected. Caught Error strings and generic return bytes keep
+`object_padded = F`; no zeros are invented for their unmodelled tails.
 A callee that returns fewer bytes than the block's output region leaves the
 rest unwritten, so reading it fails closed where the EVM reads stale scratch:
 OpenZeppelin's `SafeERC20` against a token whose `transfer` returns nothing
@@ -514,13 +524,23 @@ forwards the callee's revert bytes; success records its return bytes in the
 frame's return-data buffer without allocating memory. Subsequent assembly
 can read that buffer. A failed call or enclosing revert rolls back the transfer.
 
-External calls returning scalar values admit `try ... returns (...) { ... }
-catch (bytes memory reason) { ... }`. Only failure of the external call selects
-the catch body; argument evaluation, missing-code checks, return decoding and
-the success/catch bodies keep their ordinary failure behavior. Nonempty revert
-data is copied into a fresh memory bytes object; empty data uses the default
-empty bytes reference. Contract creation, typed `Error`/`Panic` handlers and
-catch clauses without a bytes parameter remain unsupported.
+External calls returning scalar values admit `try ... returns (...) { ... }`
+with `catch Error(string memory reason)`, `catch Panic(uint256 code)`, and a
+generic `catch (bytes memory data)` or parameterless `catch`. Typed handlers run
+before the generic handler regardless of their source order. A matching selector
+with short or malformed data falls through to the generic handler, or bubbles
+the original revert data when there is none. The pinned decoder accepts
+noncanonical offsets, missing string padding and trailing data. Panic decoding
+allocates no memory; Error decoding materializes its string at the encoded
+offset, and generic bytes are copied only when that handler is selected. Empty
+generic bytes use the default empty reference, and a parameterless catch does
+not allocate. Raw failure data has the internal core type `RevertDataType` and
+cannot be used as a source value without materialization.
+
+Only failure of the external call selects a catch body; argument evaluation,
+missing-code checks, return decoding and the success/catch bodies keep their
+ordinary failure behavior. Contract creation and dynamic success returns in a
+try statement remain unsupported.
 
 Internal and private library functions, their modifiers, and library
 constants come with the contracts that use them, also through each other,
@@ -708,10 +728,10 @@ Admitted: one contract, flattened along its bases, with
   `super` and explicit base calls, external calls of contract types with
   `value` and `gas` options; low-level `call`, `staticcall` and `delegatecall`
   of addresses;
-- `require`, `assert` and `revert` with boolean conditions and literal string
+- `require`, `assert` and `revert` with boolean conditions and computed string
   messages; reads of `msg`, `tx` and `block` members and `address(this)`;
   emits of events with scalar, byte-sequence and array parameters (including
-  indexed arrays), and reverts with custom errors with elementary or enum
+  indexed arrays), and reverts with custom errors with elementary, enum, string or bytes
   parameters; unsupported event parameter types reject the emitting function,
   leaving unrelated functions available; `keccak256`, `abi.encode*`, selectors;
 - constants, state-variable initializers, constructors and base-constructor
@@ -800,23 +820,29 @@ The pinned compiler represents `require`, `assert` and built-in `revert` as
 ordinary calls with declaration references `-18`, `-3` and `-19`. Import maps
 those references to `SrcBuiltinCall`; identifier spelling does not select a
 built-in, so user declarations with those names remain internal calls.
-Normalized checking admits `require(bool)`, `require(bool, literal)`,
-`assert(bool)`, `revert()` and `revert(literal)`. Messages are string, Unicode
-string or string-compatible hex literals, read from `hexValue` to preserve
-exact bytes, including UTF-8 and NULs.
+Normalized checking admits `require(bool)`, `require(bool, string)`,
+`require(bool, CustomError(...))`, `assert(bool)`, `revert()` and
+`revert(string)`. String messages may be computed, or memory, calldata or
+storage references. Literals are read from `hexValue` to preserve exact bytes,
+including UTF-8 and NULs.
 
-Elaboration evaluates the condition before selecting the success/failure
-branch. A failed assertion emits `PanicCompletion 1`; bare require/revert emit
-empty revert bytes. Literal messages use ABI `Error(string)` with selector
-`08c379a0`, offset 32, byte length and zero padding to a multiple of 32 bytes.
-Existing internal-call propagation preserves the failure and the source-frame
-boundary rolls back all earlier writes. Literal messages have no evaluation
-effects. Dynamic message expressions remain rejected, including on a successful
-require; future string support must evaluate them on both paths according to
-the compiler profile's argument schedule. A revert with a custom error,
-`revert E(args)`, reverts with the error's 4-byte selector followed by the ABI
-encoding of its arguments, which must be elementary values or enums. Enum
-parameters use their declared enum type and encode as `uint8`.
+Elaboration evaluates the condition first, then every message or custom-error
+argument in source order, including when `require` succeeds. Named custom-error
+arguments are reordered to parameter order after evaluation. A successful
+condition can therefore still propagate a panic or revert from an argument.
+Only payload serialization and the built-in failure are conditional. This is
+the pinned compiler's via-IR evaluation schedule.
+
+A failed assertion emits `PanicCompletion 1`; bare require/revert emit empty
+revert bytes. String messages use ABI `Error(string)` with selector `08c379a0`.
+Custom errors use their four-byte selector followed by the ABI encoding of
+their elementary, enum, `string` or `bytes` arguments. Both use runtime ABI
+serialization, reading byte references directly from memory, calldata or
+storage without allocating a copy. Later arguments can mutate those contents
+before serialization. Storage header validation occurs only when serialized,
+so a successful require does not inspect a corrupt storage message's header.
+Existing internal-call propagation preserves the failure, and the source-frame
+boundary rolls back earlier writes.
 
 ## Required validation
 

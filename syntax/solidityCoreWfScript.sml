@@ -320,6 +320,18 @@ Definition element_type_def:
     if is_stored_scalar_type element then element else LocatedT loc element
 End
 
+(* Indexed values share their element type independently of their layout. *)
+Definition indexed_element_type_def:
+  indexed_element_type ty =
+    case ty of
+      FixedBytesT k => if valid_fixed_bytes_width k then SOME (FixedBytesT 1) else NONE
+    | LocatedT loc BytesT =>
+        if located_value_type ty then SOME (FixedBytesT 1) else NONE
+    | LocatedT loc (ArrayT element length) =>
+        if located_value_type ty then SOME (element_type loc element) else NONE
+    | _ => NONE
+End
+
 (* ABI values contain scalars (an enum as a uint8), byte sequences in
  * memory/calldata and memory arrays; storage pointers never cross an ABI
  * boundary. *)
@@ -352,6 +364,7 @@ Definition wf_core_value_type_def:
   (wf_core_value_type env (SingleType ty) ⇔
     core_binding_type env ty) ∧
   (wf_core_value_type env (ReferenceType ty) ⇔ storage_type_ok env ty) ∧
+  (wf_core_value_type env RevertDataType ⇔ T) ∧
   (wf_core_value_type env (ProductType tys) ⇔
     LENGTH tys ≠ 1 ∧ wf_core_value_types env tys) ∧
   (wf_core_value_types env [] ⇔ T) ∧
@@ -425,6 +438,7 @@ End
  * are not typed until reference/layout environments exist.
  *)
 Definition value_has_type_def:
+  (value_has_type env RevertDataType (ScalarValue (BytesValue _)) ⇔ T) ∧
   (value_has_type env (SingleType ty) (ScalarValue s) ⇔
     scalar_has_type env ty s) ∧
   (value_has_type env (ReferenceType ty)
@@ -713,6 +727,13 @@ Definition reference_convertible_def:
     | _ => F
 End
 
+(* A catch binding's source type; raw returndata has a separate core type. *)
+Definition catch_parameter_type_def:
+  (catch_parameter_type ErrorCatch = LocatedT MemoryLoc StringT) ∧
+  (catch_parameter_type PanicCatch = UintT 256) ∧
+  (catch_parameter_type GenericCatch = LocatedT MemoryLoc BytesT)
+End
+
 Definition wf_core_operation_def:
   (wf_core_operation env ctx annotation
      (ScalarOperation ty mode op args) ⇔
@@ -801,21 +822,18 @@ Definition wf_core_operation_def:
     (wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a ∨
      wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a ∨
      wf_core_atom env ctx (SingleType (LocatedT StorageLoc BytesT)) a)) ∧
-  (wf_core_operation env ctx annotation (ByteIndexOperation a index) ⇔
-    annotation = SingleType (FixedBytesT 1) ∧
-    (wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a ∨
-     wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a ∨
-     wf_core_atom env ctx (SingleType (LocatedT StorageLoc BytesT)) a) ∧
-    wf_core_atom env ctx (SingleType (UintT 256)) index) ∧
   (wf_core_operation env ctx annotation (ArrayIndexOperation a index) ⇔
     wf_core_atom env ctx (SingleType (UintT 256)) index ∧
     case a of
       BoundAtom x =>
         (case ALOOKUP ctx.bindings x of
-           SOME (SingleType (LocatedT loc (ArrayT element length))) =>
-             located_value_type (LocatedT loc (ArrayT element length)) ∧
-             annotation = SingleType (element_type loc element)
+           SOME (SingleType ty) =>
+             (case indexed_element_type ty of
+                SOME element => annotation = SingleType element
+              | NONE => F)
          | _ => F)
+    | ConstantAtom (BytesValue bs) =>
+        valid_fixed_bytes_width (LENGTH bs) ∧ annotation = SingleType (FixedBytesT 1)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (CalldataSliceOperation a start end_bound) ⇔
     case annotation of
@@ -885,6 +903,13 @@ Definition wf_core_operation_def:
     annotation = call_result_type tys ∧
     (wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a ∨
      wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) a)) ∧
+  (wf_core_operation env ctx annotation (TryDecodeErrorOperation kind a) ⇔
+    kind ≠ GenericCatch ∧
+    annotation = call_result_type [BoolT; catch_parameter_type kind] ∧
+    wf_core_atom env ctx RevertDataType a) ∧
+  (wf_core_operation env ctx annotation (MaterializeRevertDataOperation a) ⇔
+    annotation = SingleType (LocatedT MemoryLoc BytesT) ∧
+    wf_core_atom env ctx RevertDataType a) ∧
   (wf_core_operation env ctx annotation (ArrayLengthOperation a) ⇔
     annotation = SingleType (UintT 256) ∧
     case a of
@@ -962,7 +987,7 @@ Definition wf_core_operation_def:
     wf_gas_atom env ctx gas ∧
     LIST_REL (wf_abi_atom env ctx) params args ∧
     annotation = ProductType
-      (MAP SingleType (BoolT :: rets ++ [LocatedT MemoryLoc BytesT]))) ∧
+      (MAP SingleType (BoolT :: rets) ++ [RevertDataType])) ∧
   (wf_core_operation env ctx annotation (TransferOperation target value) ⇔
     annotation = ProductType [] ∧
     wf_core_atom env ctx (SingleType (AddressT PayableAddress)) target ∧
@@ -1570,14 +1595,14 @@ Definition check_core_stmts_def:
   (check_core_stmts env ctx (PanicStmt code :: ss) =
     check_core_stmts env ctx ss) ∧
   (check_core_stmts env ctx (RevertStmt a :: ss) =
-    if provisional_revert_payload a then check_core_stmts env ctx ss
+    if provisional_revert_payload a ∨ wf_core_atom env ctx RevertDataType a
+    then check_core_stmts env ctx ss
     else NONE) ∧
-  (* Error arguments are elementary values or declared enums. *)
+  (* Revert data uses the same in-place ABI serialization as calls. *)
   (check_core_stmts env ctx (RevertErrorStmt selector params args :: ss) =
     if LENGTH selector = 4 ∧
-       EVERY (λty. is_stored_scalar_type ty ∧ valid_type_shape ty ∧
-                   declared_type_ok env ty) params ∧
-       wf_core_atoms env ctx (MAP SingleType params) args
+       EVERY (λty. abi_value_type ty ∧ valid_type_shape ty ∧ declared_type_ok env ty) params ∧
+       LIST_REL (wf_abi_atom env ctx) params args
     then check_core_stmts env ctx ss else NONE) ∧
   (check_core_stmts env ctx (EmitStmt topic args :: ss) =
     case emit_indexed_count env ctx args of
@@ -1826,6 +1851,7 @@ val () = cv_auto_trans_rec inline_storage_shape_def (
 );
 val () = cv_auto_trans environment_type_def;
 val () = cv_auto_trans wf_abi_atom_def;
+val () = cv_auto_trans catch_parameter_type_def;
 val () = cv_auto_trans wf_gas_atom_def;
 val () = cv_auto_trans (SPEC_ALL wf_core_operation_def);
 val () = cv_auto_trans emit_indexed_count_def;

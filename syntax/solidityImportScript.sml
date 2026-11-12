@@ -196,6 +196,8 @@ Datatype:
   | SrcBaseCall node_info num (src_expr list) (num list) string
   | SrcBuiltinCall node_info node_info src_builtin (src_expr option)
       (src_expr option) string
+  | SrcRequireError node_info node_info src_expr src_error (src_expr list)
+      (num list) string
   | SrcTypeConversion node_info src_type_name src_expr string
   | SrcEnvironment node_info environment_field string
   | SrcExternalCall node_info src_external (call_option list) (src_expr list)
@@ -241,7 +243,7 @@ Datatype:
       (src_variable option list) (src_expr option)
   | SrcIfStatement node_info src_expr src_stmt (src_stmt option)
   | SrcTryStatement node_info src_expr
-      node_info (src_variable list) src_stmt node_info src_variable src_stmt
+      node_info (src_variable list) src_stmt (src_catch list)
   | SrcWhileStatement node_info src_expr src_stmt
   | SrcDoWhileStatement node_info src_stmt src_expr
   | SrcForStatement node_info (src_stmt option) (src_expr option)
@@ -255,6 +257,7 @@ Datatype:
       ((string # src_assembly_reference) list)
   | SrcPlaceholder node_info
   | SrcUnsupportedStmt node_info string (src_expr list) (src_stmt list)
+; src_catch = SrcCatchClause node_info catch_kind (src_variable list) src_stmt
 End
 
 (* A modifier: its parameters and its body, where SrcPlaceholder runs the
@@ -1068,6 +1071,8 @@ Definition expr_ids_def:
     [info.node_id; callee.node_id] ++
     (case condition of NONE => [] | SOME c => expr_ids c) ++
     (case message of NONE => [] | SOME m => expr_ids m)) ∧
+  (expr_ids (SrcRequireError info callee condition _ args _ _) =
+    [info.node_id; callee.node_id] ++ expr_ids condition ++ exprs_ids args) ∧
   (expr_ids (SrcTypeConversion info tn e _) =
     info.node_id :: type_name_ids tn ++ expr_ids e) ∧
   (expr_ids (SrcEnvironment info _ _) = [info.node_id]) ∧
@@ -1124,10 +1129,9 @@ Definition stmt_ids_def:
     info.node_id :: declarations_ids decls ++ option_expr_ids init) ∧
   (stmt_ids (SrcIfStatement info c t e) =
     info.node_id :: expr_ids c ++ stmt_ids t ++ option_stmt_ids e) ∧
-  (stmt_ids (SrcTryStatement info call ok ps body err reason handler) =
-    [info.node_id; ok.node_id; err.node_id] ++ expr_ids call ++
-    FLAT (MAP variable_ids ps) ++ variable_ids reason ++
-    stmt_ids body ++ stmt_ids handler) ∧
+  (stmt_ids (SrcTryStatement info call ok ps body handlers) =
+    [info.node_id; ok.node_id] ++ expr_ids call ++
+    FLAT (MAP variable_ids ps) ++ stmt_ids body ++ catches_ids handlers) ∧
   (stmt_ids (SrcWhileStatement info c body) =
     info.node_id :: expr_ids c ++ stmt_ids body) ∧
   (stmt_ids (SrcDoWhileStatement info body c) =
@@ -1147,7 +1151,19 @@ Definition stmt_ids_def:
   (option_stmt_ids NONE = []) ∧
   (option_stmt_ids (SOME s) = stmt_ids s) ∧
   (stmts_ids [] = []) ∧
-  (stmts_ids (s :: ss) = stmt_ids s ++ stmts_ids ss)
+  (stmts_ids (s :: ss) = stmt_ids s ++ stmts_ids ss) ∧
+  (catch_ids (SrcCatchClause info _ ps body) =
+    info.node_id :: FLAT (MAP variable_ids ps) ++ stmt_ids body) ∧
+  (catches_ids [] = []) ∧
+  (catches_ids (c :: cs) = catch_ids c ++ catches_ids cs)
+Termination
+  WF_REL_TAC ‘measure (λx. case x of
+    INL s => src_stmt_size s
+  | INR (INL s) => option_size src_stmt_size s
+  | INR (INR (INL ss)) => list_size src_stmt_size ss
+  | INR (INR (INR (INL c))) => src_catch_size c
+  | INR (INR (INR (INR cs))) => list_size src_catch_size cs)’ >>
+  rw[fetch "-" "src_stmt_size_def", listTheory.list_size_def, basicSizeTheory.option_size_def]
 End
 
 Definition function_ids_def:
@@ -1200,8 +1216,7 @@ Definition source_struct_field_def:
     | NONE => NONE
 End
 
-(* Literal bytes are imported from solc's hexValue, including UTF-8 and NULs.
- * Dynamic strings are a later runtime increment. *)
+(* Literal bytes are imported from solc's hexValue, including UTF-8 and NULs. *)
 Definition literal_message_def:
   (literal_message (SrcLiteral _ kind value tid) =
     if kind ≠ NumberLiteral ∧ kind ≠ BoolLiteral ∧
@@ -1211,14 +1226,12 @@ Definition literal_message_def:
 End
 
 Definition builtin_shape_def:
-  (builtin_shape AssertBuiltin condition message ⇔
+  (builtin_shape AssertBuiltin (condition : src_expr option) (message : src_expr option) ⇔
     IS_SOME condition ∧ message = NONE) ∧
   (builtin_shape RequireBuiltin condition message ⇔
-    IS_SOME condition ∧
-    (case message of NONE => T | SOME m => IS_SOME (literal_message m))) ∧
+    IS_SOME condition) ∧
   (builtin_shape RevertBuiltin condition message ⇔
-    condition = NONE ∧
-    (case message of NONE => T | SOME m => IS_SOME (literal_message m)))
+    condition = NONE)
 End
 
 (* type(T).max and type(T).min of an integer type T. *)
@@ -1806,18 +1819,20 @@ val () = cv_auto_trans_rec expr_ids_def (
 );
 
 val stmt_ids_pre_def = cv_auto_trans_pre_rec
-  "stmt_ids_pre option_stmt_ids_pre stmts_ids_pre" stmt_ids_def (
+  "stmt_ids_pre option_stmt_ids_pre stmts_ids_pre catch_ids_pre catches_ids_pre" stmt_ids_def (
   WF_REL_TAC ‘measure (λx. case x of
                  INL s => cv_size s
                | INR (INL s) => cv_size s
-               | INR (INR ss) => cv_size ss)’ >>
+               | INR (INR (INL ss)) => cv_size ss
+               | INR (INR (INR (INL c))) => cv_size c
+               | INR (INR (INR (INR cs))) => cv_size cs)’ >>
   cv_termination_tac
 );
 
 Theorem stmt_ids_pre[cv_pre,local]:
-  (∀v. stmt_ids_pre v) ∧ (∀v. stmts_ids_pre v) ∧ (∀v. option_stmt_ids_pre v)
+  (∀v. stmt_ids_pre v) ∧ (∀v. option_stmt_ids_pre v) ∧
+  (∀v. stmts_ids_pre v) ∧ (∀v. catch_ids_pre v) ∧ (∀v. catches_ids_pre v)
 Proof
-  CONV_TAC (RAND_CONV (REWR_CONV CONJ_COMM)) >>
   ho_match_mp_tac stmt_ids_ind >> rpt strip_tac >>
   simp[Once stmt_ids_pre_def] >> rw[] >> fs[]
 QED

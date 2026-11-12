@@ -405,7 +405,7 @@ val () =
     expect_function_lines "typed catch of an unsupported call"
       "../testdata/differential/expected/try_calls.json" "testdata/differential/try_calls.sol"
       "attempt" (edit_first "TryStatement" (typed_catch o in_call unknown_target))
-      [": unsupported expression UnknownTarget", "typed catch clauses are not supported"]
+      [": unsupported expression UnknownTarget", "Error catch requires one string memory parameter"]
   end
 
 (* A state variable of a struct left out (a function-typed member)

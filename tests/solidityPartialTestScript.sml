@@ -14,6 +14,7 @@ val () = holbuild_extra_deps [
   "../SOLIDITY_PIN", "../profiles/solc-0.8.37-via-ir-osaka.json",
   "../testdata/frontend/expected/partial.json",
   "../testdata/frontend/expected/fallback_params.json",
+  "../testdata/frontend/expected/creation_argument.json",
   "../testdata/frontend/expected/function_type_limits.json",
   "../testdata/frontend/expected/function_type_refused.json"
 ]
@@ -27,8 +28,8 @@ val prepared = #prepared (solidityPrepareLib.prepare_artifact
  * callsTwice call unsupported functions; the constructor's halting assembly
  * does not elaborate. Once Partial.twice is unsupported its super calls
  * reach nothing, so neither Mid.twice nor Base.twice is among the
- * functions calls reach. The constant DIGITS does not elaborate, so it has
- * no procedure and digits, which reads it, uses an unsupported declaration;
+ * functions calls reach. The constant DIGITS and digits, which reads it,
+ * elaborate through the shared fixed-byte indexed access;
  * pointer fails to elaborate, since its assembly assigns a bytes local.
  * hookCount's struct has a function-typed member, so the struct is left out
  * and hookCount's local does not elaborate, while the unit still imports.
@@ -63,7 +64,7 @@ val () =
      reasons "digestTwice" = [calls_unsupported] andalso
      reasons "callsTwice" = [calls_unsupported] andalso
      reasons "twice" = [calls_unsupported] andalso
-     reasons "digits" = [SOME "uses an unsupported declaration"] andalso
+     reasons "digits" = [NONE] andalso
      List.all elaboration_failure (reasons "pointer") andalso
      length (reasons "pointer") = 1 andalso
      List.all elaboration_failure (reasons "hookCount") andalso
@@ -129,20 +130,19 @@ Proof
   CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
 QED
 
-(* The getter of the constant that does not elaborate is refused, as are
- * digits, which reads it, and pointer. *)
-Theorem partial_constant_getter_refused:
-  partial_call ^(listSyntax.mk_list (selector "d0263f8c", “:word8”)) =
-  ContractInvalid "unknown procedure"
+(* Both the constant getter and digits return bytes16(bytes1("0")). *)
+Theorem partial_constant_getter_runs:
+  ∃w. partial_call ^(listSyntax.mk_list (selector "d0263f8c", “:word8”)) =
+      ContractReturned (48w :: REPLICATE 31 0w) w
 Proof
-  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
+  CONV_TAC (QUANT_CONV (LAND_CONV cv_eval)) >> simp[] >> EVAL_TAC
 QED
 
-Theorem partial_digits_refused:
-  partial_call ^(listSyntax.mk_list (selector "9e20437c", “:word8”)) =
-  ContractInvalid "unknown procedure"
+Theorem partial_digits_runs:
+  ∃w. partial_call ^(listSyntax.mk_list (selector "9e20437c", “:word8”)) =
+      ContractReturned (48w :: REPLICATE 31 0w) w
 Proof
-  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
+  CONV_TAC (QUANT_CONV (LAND_CONV cv_eval)) >> simp[] >> EVAL_TAC
 QED
 
 Theorem partial_pointer_refused:
@@ -245,6 +245,60 @@ Theorem fallback_params_unmarked_fails_elaboration:
   LENGTH (unit_elaboration_failures T fallback_params_unmarked) = 1
 Proof
   CONV_TAC cv_eval
+QED
+
+(* Both constructor bodies elaborate, but the base-constructor argument
+ * calls readString, whose dynamic ABI decoding does not. *)
+val creation_prepared = #prepared (solidityPrepareLib.prepare_artifact
+  {root = "..", path = "../testdata/frontend/expected/creation_argument.json",
+   source = "testdata/frontend/creation_argument.sol"});
+
+val creation_outcomes =
+  map (fn {name, reason, ...} => (name, reason)) (#functions creation_prepared);
+val () =
+  if List.filter (fn (n, _) => n = "") creation_outcomes =
+       [("", NONE), ("", NONE)] andalso
+     List.filter (fn (n, _) => n = "value") creation_outcomes = [("value", NONE)] andalso
+     (case List.filter (fn (n, _) => n = "readString") creation_outcomes of
+        [(_, SOME r)] => String.isSuffix ": abi decoding of these types" r
+      | _ => false)
+  then ()
+  else raise Fail "unexpected creation_argument function outcomes";
+
+Definition creation_argument_unit_def:
+  creation_argument_unit = ^(#unit creation_prepared)
+End
+
+val () = cv_auto_trans creation_argument_unit_def;
+
+Theorem creation_argument_constructor_bodies_supported:
+  MAP unsupported_creation creation_argument_unit.unit_contracts = [F]
+Proof
+  EVAL_TAC
+QED
+
+Definition creation_argument_program_def:
+  creation_argument_program = ^(#program creation_prepared)
+End
+
+val () = cv_auto_trans creation_argument_program_def;
+
+Theorem creation_argument_value_runs:
+  ∃w. call_contract 1000 creation_argument_program FEMPTY
+        (differential_frame (n2w 0x1212) 0
+          ^(listSyntax.mk_list (selector "3fa4f245", “:word8”)))
+        (differential_world empty_accounts) =
+      ContractReturned (word_to_bytes (7w : bytes32) T) w
+Proof
+  CONV_TAC (QUANT_CONV (LAND_CONV cv_eval)) >> simp[] >> EVAL_TAC
+QED
+
+Theorem creation_argument_deploy_refused:
+  deploy_contract 1000 creation_argument_program
+    (differential_frame (n2w 0x1212) 0 [])
+    (differential_world empty_accounts) = ContractInvalid "unknown procedure"
+Proof
+  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
 QED
 
 (* Function types the core does not model

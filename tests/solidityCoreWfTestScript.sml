@@ -1215,7 +1215,7 @@ Theorem calldata_byte_is_not_a_writable_reference:
     <| bindings := [(AstId 1, SingleType (LocatedT CalldataLoc BytesT))];
        targets := []; returns := []; in_loop := F |>
     (ReferenceType (FixedBytesT 1))
-    (ByteIndexOperation (BoundAtom (AstId 1)) (ConstantAtom (IntegerValue 0))) ∧
+    (ArrayIndexOperation (BoundAtom (AstId 1)) (ConstantAtom (IntegerValue 0))) ∧
   ¬wf_core_operation test_env
     <| bindings := [(AstId 1, SingleType (LocatedT CalldataLoc BytesT))];
        targets := []; returns := []; in_loop := F |>
