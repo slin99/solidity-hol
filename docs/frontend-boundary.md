@@ -698,10 +698,10 @@ Admitted: one contract, flattened along its bases, with
   `super` and explicit base calls, external calls of contract types with
   `value` and `gas` options; low-level `call`, `staticcall` and `delegatecall`
   of addresses;
-- `require`, `assert` and `revert` with boolean conditions and literal string
+- `require`, `assert` and `revert` with boolean conditions and computed string
   messages; reads of `msg`, `tx` and `block` members and `address(this)`;
   emits of events with scalar, byte-sequence and array parameters (including
-  indexed arrays), and reverts with custom errors with elementary or enum
+  indexed arrays), and reverts with custom errors with elementary, enum, string or bytes
   parameters; unsupported event parameter types reject the emitting function,
   leaving unrelated functions available; `keccak256`, `abi.encode*`, selectors;
 - constants, state-variable initializers, constructors and base-constructor
@@ -790,23 +790,29 @@ The pinned compiler represents `require`, `assert` and built-in `revert` as
 ordinary calls with declaration references `-18`, `-3` and `-19`. Import maps
 those references to `SrcBuiltinCall`; identifier spelling does not select a
 built-in, so user declarations with those names remain internal calls.
-Normalized checking admits `require(bool)`, `require(bool, literal)`,
-`assert(bool)`, `revert()` and `revert(literal)`. Messages are string, Unicode
-string or string-compatible hex literals, read from `hexValue` to preserve
-exact bytes, including UTF-8 and NULs.
+Normalized checking admits `require(bool)`, `require(bool, string)`,
+`require(bool, CustomError(...))`, `assert(bool)`, `revert()` and
+`revert(string)`. String messages may be computed, or memory, calldata or
+storage references. Literals are read from `hexValue` to preserve exact bytes,
+including UTF-8 and NULs.
 
-Elaboration evaluates the condition before selecting the success/failure
-branch. A failed assertion emits `PanicCompletion 1`; bare require/revert emit
-empty revert bytes. Literal messages use ABI `Error(string)` with selector
-`08c379a0`, offset 32, byte length and zero padding to a multiple of 32 bytes.
-Existing internal-call propagation preserves the failure and the source-frame
-boundary rolls back all earlier writes. Literal messages have no evaluation
-effects. Dynamic message expressions remain rejected, including on a successful
-require; future string support must evaluate them on both paths according to
-the compiler profile's argument schedule. A revert with a custom error,
-`revert E(args)`, reverts with the error's 4-byte selector followed by the ABI
-encoding of its arguments, which must be elementary values or enums. Enum
-parameters use their declared enum type and encode as `uint8`.
+Elaboration evaluates the condition first, then every message or custom-error
+argument in source order, including when `require` succeeds. Named custom-error
+arguments are reordered to parameter order after evaluation. A successful
+condition can therefore still propagate a panic or revert from an argument.
+Only payload serialization and the built-in failure are conditional. This is
+the pinned compiler's via-IR evaluation schedule.
+
+A failed assertion emits `PanicCompletion 1`; bare require/revert emit empty
+revert bytes. String messages use ABI `Error(string)` with selector `08c379a0`.
+Custom errors use their four-byte selector followed by the ABI encoding of
+their elementary, enum, `string` or `bytes` arguments. Both use runtime ABI
+serialization, reading byte references directly from memory, calldata or
+storage without allocating a copy. Later arguments can mutate those contents
+before serialization. Storage header validation occurs only when serialized,
+so a successful require does not inspect a corrupt storage message's header.
+Existing internal-call propagation preserves the failure, and the source-frame
+boundary rolls back earlier writes.
 
 ## Required validation
 

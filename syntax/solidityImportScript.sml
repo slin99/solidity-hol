@@ -196,6 +196,8 @@ Datatype:
   | SrcBaseCall node_info num (src_expr list) (num list) string
   | SrcBuiltinCall node_info node_info src_builtin (src_expr option)
       (src_expr option) string
+  | SrcRequireError node_info node_info src_expr src_error (src_expr list)
+      (num list) string
   | SrcTypeConversion node_info src_type_name src_expr string
   | SrcEnvironment node_info environment_field string
   | SrcExternalCall node_info src_external (call_option list) (src_expr list)
@@ -1066,6 +1068,8 @@ Definition expr_ids_def:
     [info.node_id; callee.node_id] ++
     (case condition of NONE => [] | SOME c => expr_ids c) ++
     (case message of NONE => [] | SOME m => expr_ids m)) ∧
+  (expr_ids (SrcRequireError info callee condition _ args _ _) =
+    [info.node_id; callee.node_id] ++ expr_ids condition ++ exprs_ids args) ∧
   (expr_ids (SrcTypeConversion info tn e _) =
     info.node_id :: type_name_ids tn ++ expr_ids e) ∧
   (expr_ids (SrcEnvironment info _ _) = [info.node_id]) ∧
@@ -1198,8 +1202,7 @@ Definition source_struct_field_def:
     | NONE => NONE
 End
 
-(* Literal bytes are imported from solc's hexValue, including UTF-8 and NULs.
- * Dynamic strings are a later runtime increment. *)
+(* Literal bytes are imported from solc's hexValue, including UTF-8 and NULs. *)
 Definition literal_message_def:
   (literal_message (SrcLiteral _ kind value tid) =
     if kind ≠ NumberLiteral ∧ kind ≠ BoolLiteral ∧
@@ -1209,14 +1212,12 @@ Definition literal_message_def:
 End
 
 Definition builtin_shape_def:
-  (builtin_shape AssertBuiltin condition message ⇔
+  (builtin_shape AssertBuiltin (condition : src_expr option) (message : src_expr option) ⇔
     IS_SOME condition ∧ message = NONE) ∧
   (builtin_shape RequireBuiltin condition message ⇔
-    IS_SOME condition ∧
-    (case message of NONE => T | SOME m => IS_SOME (literal_message m))) ∧
+    IS_SOME condition) ∧
   (builtin_shape RevertBuiltin condition message ⇔
-    condition = NONE ∧
-    (case message of NONE => T | SOME m => IS_SOME (literal_message m)))
+    condition = NONE)
 End
 
 (* type(T).max and type(T).min of an integer type T. *)

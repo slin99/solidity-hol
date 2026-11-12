@@ -980,9 +980,9 @@ Definition simple_stmt_def:
     | RevertErrorStmt selector params args =>
         (case eval_atoms st.scopes args of
            SOME vs =>
-             (case encoded_values params vs of
-                SOME data => abrupt_result (RevertCompletion (selector ++ data)) st gas
-              | NONE => abrupt_result (InvalidCompletion "bad error arguments") st gas)
+             (case encoded_runtime_values env st params vs of
+                INL data => abrupt_result (RevertCompletion (selector ++ data)) st gas
+              | INR c => abrupt_result c st gas)
          | NONE => abrupt_result (InvalidCompletion "unbound atom") st gas)
     | RevertStmt a =>
         (case eval_atom st.scopes a of
