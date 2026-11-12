@@ -1,0 +1,108 @@
+{
+  "name": "namespaced_storage",
+  "source": "testdata/differential/namespaced_storage.sol",
+  "contract": "NamespacedStorage",
+  "artifact": "testdata/differential/expected/namespaced_storage.json",
+  "cases": [
+    {
+      "name": "packed_write_keeps_other_bytes",
+      "function": "set",
+      "args": [
+        5,
+        true
+      ],
+      "storage": {
+        "4096": "1606938044258990275541962092341162602522202993782792835301376"
+      },
+      "expect": {
+        "return": [
+          5,
+          true
+        ]
+      },
+      "final_storage": {
+        "4096": "1606938044258990275541962092341162602522221440526866544852997"
+      }
+    },
+    {
+      "name": "packed_write_clears_flag",
+      "function": "set",
+      "args": [
+        11,
+        false
+      ],
+      "storage": {
+        "4096": "18446744073709551625"
+      },
+      "expect": {
+        "return": [
+          11,
+          false
+        ]
+      },
+      "final_storage": {
+        "4096": "11"
+      }
+    },
+    {
+      "name": "read_namespaced_pointer",
+      "function": "read",
+      "args": [],
+      "storage": {
+        "4096": "18446744073709551625"
+      },
+      "expect": {
+        "return": [
+          9,
+          true
+        ]
+      },
+      "final_storage": {
+        "4096": "18446744073709551625"
+      }
+    },
+    {
+      "name": "grant_keeps_other_namespace",
+      "function": "grant",
+      "args": [
+        "0x0000000000000000000000000000000000002000",
+        true
+      ],
+      "storage": {
+        "4096": "13"
+      },
+      "expect": {
+        "return": [
+          true,
+          13
+        ]
+      },
+      "final_storage": {
+        "4096": "13",
+        "8484629526411661353083031405567614933573543492487383794054300694200528199115": "1"
+      }
+    },
+    {
+      "name": "revoke_namespaced_mapping",
+      "function": "grant",
+      "args": [
+        "0x0000000000000000000000000000000000002000",
+        false
+      ],
+      "storage": {
+        "4096": "13",
+        "8484629526411661353083031405567614933573543492487383794054300694200528199115": "1"
+      },
+      "expect": {
+        "return": [
+          false,
+          13
+        ]
+      },
+      "final_storage": {
+        "4096": "13",
+        "8484629526411661353083031405567614933573543492487383794054300694200528199115": "0"
+      }
+    }
+  ]
+}
