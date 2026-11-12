@@ -1428,6 +1428,24 @@ Definition assembly_gas_ok_def:
   assembly_gas_ok code ⇔ call_stmts_ok T code
 End
 
+(* A calldata reference type whose offset and length a block may read and
+ * assign: a byte sequence or a dynamic array. *)
+Definition calldata_slice_type_def:
+  calldata_slice_type ty ⇔
+    case ty of
+      ArrayT _ NONE => T
+    | _ => byte_sequence_type ty
+End
+
+(* The calldata type of a local holding a calldata reference. *)
+Definition calldata_binding_def:
+  calldata_binding ctx x =
+    case ALOOKUP ctx.bindings x of
+      SOME (SingleType (LocatedT CalldataLoc ty)) =>
+        if calldata_object_type ty then SOME ty else NONE
+    | _ => NONE
+End
+
 Definition storage_pointer_binding_def:
   storage_pointer_binding ctx x ⇔
     case ALOOKUP ctx.bindings x of
@@ -1444,6 +1462,11 @@ Definition assembly_reference_ok_def:
     | AssemblyOffset x => IS_SOME (lookup_state_variable env x)
     | AssemblyPointerSlot x => storage_pointer_binding ctx x
     | AssemblyPointerOffset x => storage_pointer_binding ctx x
+    | AssemblyCalldataOffset x => IS_SOME (calldata_binding ctx x)
+    | AssemblyCalldataLength x =>
+        (case calldata_binding ctx x of
+           SOME ty => calldata_slice_type ty
+         | NONE => F)
     | AssemblyConstant a ty =>
         wf_core_atom env ctx (SingleType ty) a ∧ assembly_value_type ty
     | AssemblyMemory x ty =>
@@ -1861,6 +1884,8 @@ val () = cv_auto_trans assembly_calls_ok_def;
 val () = cv_auto_trans assembly_gas_ok_def;
 val () = cv_auto_trans assembly_value_type_def;
 val () = cv_auto_trans assembly_memory_type_def;
+val () = cv_auto_trans calldata_slice_type_def;
+val () = cv_auto_trans calldata_binding_def;
 val () = cv_auto_trans assembly_reference_ok_def;
 val () = cv_auto_trans assembly_memory_names_def;
 val () = cv_auto_trans assembly_assigns_ok_def;

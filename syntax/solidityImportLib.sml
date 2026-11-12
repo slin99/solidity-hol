@@ -1386,7 +1386,7 @@ fun optional_expr v k =
 (* An inline assembly block's code, and the Solidity variables it names. The
  * compiler lists each use of one in externalReferences, by the source range
  * of the identifier naming it, so the name comes from the identifier at that
- * range. A suffix other than slot and offset (length, address, selector) is
+ * range. A suffix other than slot, offset and length (address, selector) is
  * a reference this semantics does not read.
  *)
 fun yul_identifiers v =
@@ -1426,6 +1426,7 @@ fun inline_assembly v =
             NONE => "SrcAssemblyValue"
           | SOME (JSON.STRING "slot") => "SrcAssemblySlot"
           | SOME (JSON.STRING "offset") => "SrcAssemblyOffset"
+          | SOME (JSON.STRING "length") => "SrcAssemblyLength"
           | SOME _ => fail (describe v ^ ": unsupported reference " ^ name)
       in
         (name, con kind [decl])

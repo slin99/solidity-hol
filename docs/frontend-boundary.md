@@ -190,6 +190,15 @@ as OpenZeppelin's `StorageSlot` and ERC-7201 namespaced storage getters do,
 points the local at that slot of the executing account, at offset 0, with its
 declared type; the compiler rejects assigning `x.offset`.
 
+Inline assembly reads a calldata reference's `x.offset` and `x.length` (a
+byte sequence or dynamic array), or a static array's plain name, as its
+absolute calldata offset and its length (`assembly_calldata.sol`). Assigning
+them, as OpenZeppelin's `Calldata.emptyBytes` and slicing helpers do, rebinds
+the local to that offset and length with its type. A block that leaves a
+reference whose data runs past the end of the calldata ends with an
+`InvalidCompletion`: the model has no bytes there to read, where the EVM
+reads zeros.
+
 Inline assembly reads a memory `bytes` or `string` local, or a memory array
 of value types (`uint8[]`, `address[]`, `bytes32[2]`), as its address
 (`assembly_memory.sol`, `assembly_arrays.sol`). The source heap gives each
@@ -710,8 +719,9 @@ Admitted: one contract, flattened along its bases, with
   integer, as the compiler folds it;
 - `if`, `while`, `do`-`while`, `for`, `break`, `continue`, `return`,
   unchecked blocks, inline assembly over value-type locals, state-variable
-  slots, storage pointer slots and offsets, value-type constants and memory
-  `bytes`, `string` and value-type array locals, with
+  slots, storage pointer slots and offsets, calldata offsets and lengths,
+  value-type constants and memory `bytes`, `string` and value-type array
+  locals, with
   `call`, `staticcall` and their return data;
 - internal calls with single or multiple returns, library calls (`L.f(args)`
   and `x.f(args)` through a using directive) and library constants (`L.c`),
