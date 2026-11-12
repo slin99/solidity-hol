@@ -59,12 +59,6 @@ contract AssemblyPointers {
     uint256 first;
     mapping(uint256 => Entry) entries;
     bytes data;
-    // Unused: solc gives a struct's storage layout only for a struct a state
-    // variable reaches, and the core needs one for each pointer type.
-    AddressSlot unusedAddress;
-    Uint256Slot unusedUint256;
-    BytesSlot unusedBytes;
-    MainStorage unusedMain;
 
     function _main() private pure returns (MainStorage storage $) {
         assembly {
