@@ -138,7 +138,7 @@ Run the same checks as CI with:
 
 ```sh
 python3 tools/run_differential.py -j2 \
-  -- --max-heap 6000 --skip-checkpoints --skip-proof-steps
+  -- --max-heap 8192 --skip-checkpoints --skip-proof-steps
 holbuild -j8 build --skip-checkpoints --skip-proof-steps solidityHolTheory
 ```
 

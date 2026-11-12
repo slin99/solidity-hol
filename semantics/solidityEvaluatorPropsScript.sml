@@ -51,6 +51,16 @@ Proof
     rename1 ‘eval_stmt _ _ s _ _’ >>
     Cases_on ‘(eval_stmt n env s st gas).completion = NormalCompletion’ >>
     gvs[])
+  >~ [‘panic_zero_function’] >-
+   (strip_tac >>
+    Cases_on ‘eval_atom st.scopes g’ >> gvs[] >>
+    rename1 ‘eval_atom _ _ = SOME gv’ >> Cases_on ‘gv’ >> gvs[] >>
+    rename1 ‘eval_atom _ _ = SOME (ScalarValue gs)’ >> Cases_on ‘gs’ >> gvs[] >>
+    rename1 ‘eval_atom _ _ = SOME (ScalarValue (InternalFunctionValue go))’ >>
+    Cases_on ‘go’ >> Cases_on ‘eval_atoms st.scopes atoms’ >> gvs[] >>
+    rename1 ‘invoke_source _ _ f vs _ _’ >>
+    Cases_on ‘(invoke_source n env f vs st gas).completion = FuelExhausted’ >>
+    gvs[bind_call_result_def])
   >~ [‘bind_call_result’] >-
    (strip_tac >> Cases_on ‘eval_atoms st.scopes atoms’ >> gvs[] >>
     rename1 ‘invoke_source _ _ f vs _ _’ >>

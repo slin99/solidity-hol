@@ -11,7 +11,8 @@ Libs
 
 fun holbuild_extra_deps (_ : string list) = ()
 val () = holbuild_extra_deps [
-  "../testdata/differential/expected/constant_conversions.json"
+  "../testdata/differential/expected/constant_conversions.json",
+  "../testdata/differential/expected/pointer_only_structs.json"
 ]
 
 val elaborated = cv_eval “elaborate_unit pure_core”;
@@ -268,22 +269,85 @@ Definition missing_struct_layout_unit_def:
   missing_struct_layout_unit =
     case struct_unit.unit_contracts of
       c :: cs =>
-        (case c.contract_structs of
-           s :: ss => struct_unit with unit_contracts :=
-             (c with contract_structs := (s with struct_layout := NONE) :: ss) :: cs
-         | [] => struct_unit)
+        struct_unit with unit_contracts :=
+          (c with contract_structs :=
+            MAP (λs. s with struct_layout := NONE) c.contract_structs) :: cs
     | [] => struct_unit
 End
 val () = cv_auto_trans missing_struct_layout_unit_def;
 
-Theorem struct_layout_required_for_execution:
+Theorem missing_struct_layouts_computed_for_execution:
   IS_SOME (elaborate_unit struct_unit) ∧
   valid_src_unit missing_struct_layout_unit ∧
   case elaborate_unit missing_struct_layout_unit of
-    SOME p => ¬wf_core_program (core_program_environment p) p
+    SOME p => wf_core_program (core_program_environment p) p
   | NONE => F
 Proof
   rpt conj_tac >- CONV_TAC cv_eval >- CONV_TAC cv_eval >>
+  CONV_TAC cv_eval
+QED
+
+Theorem computed_struct_layouts_match_solc:
+  elaborate_unit missing_struct_layout_unit = elaborate_unit struct_unit ∧
+  elab_struct_layouts (REVERSE (HD missing_struct_layout_unit.unit_contracts).contract_structs) =
+    OPTION_MAP REVERSE (elab_struct_layouts (HD struct_unit.unit_contracts).contract_structs)
+Proof
+  conj_tac >- CONV_TAC cv_eval >> EVAL_TAC
+QED
+
+Definition unlayoutable_structs_def:
+  unlayoutable_structs =
+    case struct_unit.unit_contracts of
+      c :: _ =>
+        (case c.contract_structs of
+           s :: _ => [s with <| struct_layout := NONE;
+             struct_members := MAP (λv. v with var_location := SOME MemoryLoc)
+               s.struct_members |>]
+         | [] => [])
+    | [] => []
+End
+val () = cv_auto_trans unlayoutable_structs_def;
+
+Theorem unlayoutable_struct_still_omitted:
+  LENGTH unlayoutable_structs = 1 ∧
+  elab_struct_layouts unlayoutable_structs = SOME []
+Proof
+  CONV_TAC cv_eval
+QED
+
+Definition pointer_only_structs_unit_def:
+  pointer_only_structs_unit = ^(import_artifact
+    "../testdata/differential/expected/pointer_only_structs.json"
+    "testdata/differential/pointer_only_structs.sol")
+End
+val () = cv_auto_trans pointer_only_structs_unit_def;
+
+Definition pointer_only_layouts_def:
+  pointer_only_layouts =
+    case pointer_only_structs_unit.unit_contracts of
+      c :: _ => computed_struct_layouts (LENGTH c.contract_structs) c.contract_structs
+    | [] => []
+End
+val () = cv_auto_trans pointer_only_layouts_def;
+
+Definition pointer_only_layout_summary_def:
+  pointer_only_layout_summary =
+    (EVERY (λs. s.struct_layout = NONE)
+       (FLAT (MAP (λc. c.contract_structs) pointer_only_structs_unit.unit_contracts)),
+     MAP (λs. (s.struct_slots,
+       MAP (λv. (w2n v.state_slot, v.state_offset)) s.struct_fields)) pointer_only_layouts)
+End
+val () = cv_auto_trans pointer_only_layout_summary_def;
+
+(* The outer struct's fixed uint24[11] uses two slots, not one; its nested
+ * struct is declared later. Neither has a compiler-provided layout. *)
+Theorem pointer_only_packing:
+  LENGTH pointer_only_layouts = 3 ∧
+  FST pointer_only_layout_summary ∧
+  MEM (11, [(0, 0); (0, 16); (1, 0); (2, 0); (4, 0); (5, 0);
+            (7, 0); (8, 0); (9, 0); (10, 0)])
+    (SND pointer_only_layout_summary)
+Proof
   CONV_TAC cv_eval
 QED
 
@@ -344,9 +408,8 @@ Proof
   EVAL_TAC
 QED
 
-(* bytesN(b) of a dynamic byte sequence fails elaboration, since the core
- * has no such conversion; bytesN of a shorter or longer bytesM elaborates. *)
-Theorem bytes_to_fixed_bytes_rejected:
+(* Dynamic bytes and fixed bytes both convert to a fixed-size prefix. *)
+Theorem bytes_to_fixed_bytes_admitted:
   let info = <| node_id := 0;
                 node_location := <| loc_start := 0; loc_length := 0;
                                     loc_source := 0 |> |>;
@@ -359,8 +422,7 @@ Theorem bytes_to_fixed_bytes_rejected:
                immutables := []; constants := []; returns := [];
                placeholder := NONE; mode := CheckedArithmetic; creation := F;
                scope := 0; returns_id := 0; in_loop := F; bad_ids := [] |> in
-    elab_expr ctx 3 (to16 (SrcIdentifier info "b" 1 "t_bytes_memory_ptr")) =
-    INR [(0, "unsupported type conversion")] ∧
+    ISL (elab_expr ctx 3 (to16 (SrcIdentifier info "b" 1 "t_bytes_memory_ptr"))) ∧
     ISL (elab_expr ctx 3 (to16 (SrcIdentifier info "w" 2 "t_bytes32")))
 Proof
   EVAL_TAC
@@ -450,7 +512,8 @@ QED
 Theorem unsupported_try_keeps_clause_blockers:
   elab_stmt ^ctx0 10
     (SrcTryStatement ^(at 19) (SrcLiteral ^(at 20) BoolLiteral "true" "t_bool")
-       ^(at 21) [] (SrcBreak ^(at 11)) ^(at 22) ^supported_y (SrcContinue ^(at 12))) =
+       ^(at 21) [] (SrcBreak ^(at 11))
+       [SrcCatchClause ^(at 22) GenericCatch [] (SrcContinue ^(at 12))]) =
   INR [(19, "unsupported try statement"); (11, "break outside a loop");
        (12, "continue outside a loop")]
 Proof

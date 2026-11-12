@@ -1,0 +1,1111 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/pointer_only_structs.sol": {
+        "content": "// SPDX-License-Identifier: CC0-1.0\npragma solidity 0.8.37;\n\nstruct PointerOuter {\n    uint128 first;\n    uint128 second;\n    uint8 head;\n    PointerInner inner;\n    uint8 tail;\n    uint24[11] numbers;\n    uint8 afterNumbers;\n    mapping(uint256 => uint256) values;\n    bytes payload;\n    uint8 last;\n}\n\nstruct PointerInner {\n    uint128 x;\n    uint256 y;\n}\n\nstruct PointerAddressSlot {\n    address value;\n}\n\ncontract PointerOnlyStructs {\n    // No state declaration reaches these types. Even unused internal\n    // procedures must pass the core program's type checks.\n    function readOuter(PointerOuter storage item) internal view returns (uint256) {\n        return item.inner.y + item.values[0];\n    }\n\n    function identity(PointerAddressSlot storage item)\n        internal pure returns (PointerAddressSlot storage)\n    {\n        return item;\n    }\n\n    function increment(uint256 x) public pure returns (uint256) {\n        return x + 1;\n    }\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/pointer_only_structs.sol": {
+        "PointerOnlyStructs": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "x",
+                  "type": "uint256"
+                }
+              ],
+              "name": "increment",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "pure",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "608060405234601c57600e6020565b61015e61002b823961015e90f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b6100db565b61001d5f3561002c565b637cf5dab00361000e576100a6565b60e01c90565b60405190565b5f80fd5b5f80fd5b90565b61004c81610040565b0361005357565b5f80fd5b9050359061006482610043565b565b9060208282031261007f5761007c915f01610057565b90565b61003c565b61008d90610040565b9052565b91906100a4905f60208501940190610084565b565b346100d6576100d26100c16100bc366004610066565b61013e565b6100c9610032565b91829182610091565b0390f35b610038565b5f80fd5b5f90565b90565b90565b6100fd6100f8610102926100e3565b6100e6565b610040565b90565b634e487b7160e01b5f52601160045260245ffd5b61012861012e91939293610040565b92610040565b820180921161013957565b610105565b61015b9061014a6100df565b5061015560016100e9565b90610119565b9056"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": "60806040526004361015610013575b6100db565b61001d5f3561002c565b637cf5dab00361000e576100a6565b60e01c90565b60405190565b5f80fd5b5f80fd5b90565b61004c81610040565b0361005357565b5f80fd5b9050359061006482610043565b565b9060208282031261007f5761007c915f01610057565b90565b61003c565b61008d90610040565b9052565b91906100a4905f60208501940190610084565b565b346100d6576100d26100c16100bc366004610066565b61013e565b6100c9610032565b91829182610091565b0390f35b610038565b5f80fd5b5f90565b90565b90565b6100fd6100f8610102926100e3565b6100e6565b610040565b90565b634e487b7160e01b5f52601160045260245ffd5b61012861012e91939293610040565b92610040565b820180921161013957565b610105565b61015b9061014a6100df565b5061015560016100e9565b90610119565b9056"
+            },
+            "methodIdentifiers": {
+              "increment(uint256)": "7cf5dab0"
+            }
+          },
+          "storageLayout": {
+            "storage": [],
+            "types": null
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/pointer_only_structs.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/pointer_only_structs.sol",
+          "exportedSymbols": {
+            "PointerAddressSlot": [
+              35
+            ],
+            "PointerInner": [
+              32
+            ],
+            "PointerOnlyStructs": [
+              78
+            ],
+            "PointerOuter": [
+              27
+            ]
+          },
+          "id": 79,
+          "license": "CC0-1.0",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "36:23:0"
+            },
+            {
+              "canonicalName": "PointerOuter",
+              "id": 27,
+              "members": [
+                {
+                  "constant": false,
+                  "id": 3,
+                  "mutability": "mutable",
+                  "name": "first",
+                  "nameLocation": "95:5:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27,
+                  "src": "87:13:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint128",
+                    "typeString": "uint128"
+                  },
+                  "typeName": {
+                    "id": 2,
+                    "name": "uint128",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "87:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint128",
+                      "typeString": "uint128"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 5,
+                  "mutability": "mutable",
+                  "name": "second",
+                  "nameLocation": "114:6:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27,
+                  "src": "106:14:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint128",
+                    "typeString": "uint128"
+                  },
+                  "typeName": {
+                    "id": 4,
+                    "name": "uint128",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "106:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint128",
+                      "typeString": "uint128"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 7,
+                  "mutability": "mutable",
+                  "name": "head",
+                  "nameLocation": "132:4:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27,
+                  "src": "126:10:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint8",
+                    "typeString": "uint8"
+                  },
+                  "typeName": {
+                    "id": 6,
+                    "name": "uint8",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "126:5:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint8",
+                      "typeString": "uint8"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 10,
+                  "mutability": "mutable",
+                  "name": "inner",
+                  "nameLocation": "155:5:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27,
+                  "src": "142:18:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_PointerInner_$32_storage_ptr",
+                    "typeString": "struct PointerInner"
+                  },
+                  "typeName": {
+                    "id": 9,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 8,
+                      "name": "PointerInner",
+                      "nameLocations": [
+                        "142:12:0"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 32,
+                      "src": "142:12:0"
+                    },
+                    "referencedDeclaration": 32,
+                    "src": "142:12:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_PointerInner_$32_storage_ptr",
+                      "typeString": "struct PointerInner"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 12,
+                  "mutability": "mutable",
+                  "name": "tail",
+                  "nameLocation": "172:4:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27,
+                  "src": "166:10:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint8",
+                    "typeString": "uint8"
+                  },
+                  "typeName": {
+                    "id": 11,
+                    "name": "uint8",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "166:5:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint8",
+                      "typeString": "uint8"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 16,
+                  "mutability": "mutable",
+                  "name": "numbers",
+                  "nameLocation": "193:7:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27,
+                  "src": "182:18:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_uint24_$11_storage_ptr",
+                    "typeString": "uint24[11]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 13,
+                      "name": "uint24",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "182:6:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint24",
+                        "typeString": "uint24"
+                      }
+                    },
+                    "id": 15,
+                    "length": {
+                      "hexValue": "3131",
+                      "id": 14,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": true,
+                      "kind": "number",
+                      "lValueRequested": false,
+                      "nodeType": "Literal",
+                      "src": "189:2:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_rational_11_by_1",
+                        "typeString": "int_const 11"
+                      },
+                      "value": "11"
+                    },
+                    "nodeType": "ArrayTypeName",
+                    "src": "182:10:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_uint24_$11_storage_ptr",
+                      "typeString": "uint24[11]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 18,
+                  "mutability": "mutable",
+                  "name": "afterNumbers",
+                  "nameLocation": "212:12:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27,
+                  "src": "206:18:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint8",
+                    "typeString": "uint8"
+                  },
+                  "typeName": {
+                    "id": 17,
+                    "name": "uint8",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "206:5:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint8",
+                      "typeString": "uint8"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 22,
+                  "mutability": "mutable",
+                  "name": "values",
+                  "nameLocation": "258:6:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27,
+                  "src": "230:34:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_mapping$_t_uint256_$_t_uint256_$",
+                    "typeString": "mapping(uint256 => uint256)"
+                  },
+                  "typeName": {
+                    "id": 21,
+                    "keyName": "",
+                    "keyNameLocation": "-1:-1:-1",
+                    "keyType": {
+                      "id": 19,
+                      "name": "uint256",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "238:7:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    },
+                    "nodeType": "Mapping",
+                    "src": "230:27:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_mapping$_t_uint256_$_t_uint256_$",
+                      "typeString": "mapping(uint256 => uint256)"
+                    },
+                    "valueName": "",
+                    "valueNameLocation": "-1:-1:-1",
+                    "valueType": {
+                      "id": 20,
+                      "name": "uint256",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "249:7:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 24,
+                  "mutability": "mutable",
+                  "name": "payload",
+                  "nameLocation": "276:7:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27,
+                  "src": "270:13:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes_storage_ptr",
+                    "typeString": "bytes"
+                  },
+                  "typeName": {
+                    "id": 23,
+                    "name": "bytes",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "270:5:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes_storage_ptr",
+                      "typeString": "bytes"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 26,
+                  "mutability": "mutable",
+                  "name": "last",
+                  "nameLocation": "295:4:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 27,
+                  "src": "289:10:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint8",
+                    "typeString": "uint8"
+                  },
+                  "typeName": {
+                    "id": 25,
+                    "name": "uint8",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "289:5:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint8",
+                      "typeString": "uint8"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "name": "PointerOuter",
+              "nameLocation": "68:12:0",
+              "nodeType": "StructDefinition",
+              "scope": 79,
+              "src": "61:241:0",
+              "visibility": "public"
+            },
+            {
+              "canonicalName": "PointerInner",
+              "id": 32,
+              "members": [
+                {
+                  "constant": false,
+                  "id": 29,
+                  "mutability": "mutable",
+                  "name": "x",
+                  "nameLocation": "338:1:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 32,
+                  "src": "330:9:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint128",
+                    "typeString": "uint128"
+                  },
+                  "typeName": {
+                    "id": 28,
+                    "name": "uint128",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "330:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint128",
+                      "typeString": "uint128"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 31,
+                  "mutability": "mutable",
+                  "name": "y",
+                  "nameLocation": "353:1:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 32,
+                  "src": "345:9:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 30,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "345:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "name": "PointerInner",
+              "nameLocation": "311:12:0",
+              "nodeType": "StructDefinition",
+              "scope": 79,
+              "src": "304:53:0",
+              "visibility": "public"
+            },
+            {
+              "canonicalName": "PointerAddressSlot",
+              "id": 35,
+              "members": [
+                {
+                  "constant": false,
+                  "id": 34,
+                  "mutability": "mutable",
+                  "name": "value",
+                  "nameLocation": "399:5:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 35,
+                  "src": "391:13:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 33,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "391:7:0",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "name": "PointerAddressSlot",
+              "nameLocation": "366:18:0",
+              "nodeType": "StructDefinition",
+              "scope": 79,
+              "src": "359:48:0",
+              "visibility": "public"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "PointerOnlyStructs",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 78,
+              "linearizedBaseContracts": [
+                78
+              ],
+              "name": "PointerOnlyStructs",
+              "nameLocation": "418:18:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "body": {
+                    "id": 52,
+                    "nodeType": "Block",
+                    "src": "651:53:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "commonType": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          },
+                          "id": 50,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftExpression": {
+                            "expression": {
+                              "expression": {
+                                "id": 43,
+                                "name": "item",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 38,
+                                "src": "668:4:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_PointerOuter_$27_storage_ptr",
+                                  "typeString": "struct PointerOuter storage pointer"
+                                }
+                              },
+                              "id": 44,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "673:5:0",
+                              "memberName": "inner",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 10,
+                              "src": "668:10:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_PointerInner_$32_storage",
+                                "typeString": "struct PointerInner storage ref"
+                              }
+                            },
+                            "id": 45,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "679:1:0",
+                            "memberName": "y",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 31,
+                            "src": "668:12:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "BinaryOperation",
+                          "operator": "+",
+                          "rightExpression": {
+                            "baseExpression": {
+                              "expression": {
+                                "id": 46,
+                                "name": "item",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 38,
+                                "src": "683:4:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_PointerOuter_$27_storage_ptr",
+                                  "typeString": "struct PointerOuter storage pointer"
+                                }
+                              },
+                              "id": 47,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "688:6:0",
+                              "memberName": "values",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 22,
+                              "src": "683:11:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_mapping$_t_uint256_$_t_uint256_$",
+                                "typeString": "mapping(uint256 => uint256)"
+                              }
+                            },
+                            "id": 49,
+                            "indexExpression": {
+                              "hexValue": "30",
+                              "id": 48,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "number",
+                              "lValueRequested": false,
+                              "nodeType": "Literal",
+                              "src": "695:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_rational_0_by_1",
+                                "typeString": "int_const 0"
+                              },
+                              "value": "0"
+                            },
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "nodeType": "IndexAccess",
+                            "src": "683:14:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "668:29:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 42,
+                        "id": 51,
+                        "nodeType": "Return",
+                        "src": "661:36:0"
+                      }
+                    ]
+                  },
+                  "id": 53,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "readOuter",
+                  "nameLocation": "582:9:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 39,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 38,
+                        "mutability": "mutable",
+                        "name": "item",
+                        "nameLocation": "613:4:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 53,
+                        "src": "592:25:0",
+                        "stateVariable": false,
+                        "storageLocation": "storage",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_struct$_PointerOuter_$27_storage_ptr",
+                          "typeString": "struct PointerOuter"
+                        },
+                        "typeName": {
+                          "id": 37,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 36,
+                            "name": "PointerOuter",
+                            "nameLocations": [
+                              "592:12:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 27,
+                            "src": "592:12:0"
+                          },
+                          "referencedDeclaration": 27,
+                          "src": "592:12:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_PointerOuter_$27_storage_ptr",
+                            "typeString": "struct PointerOuter"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "591:27:0"
+                  },
+                  "returnParameters": {
+                    "id": 42,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 41,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 53,
+                        "src": "642:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 40,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "642:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "641:9:0"
+                  },
+                  "scope": 78,
+                  "src": "573:131:0",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "internal"
+                },
+                {
+                  "body": {
+                    "id": 64,
+                    "nodeType": "Block",
+                    "src": "824:28:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 62,
+                          "name": "item",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 56,
+                          "src": "841:4:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_PointerAddressSlot_$35_storage_ptr",
+                            "typeString": "struct PointerAddressSlot storage pointer"
+                          }
+                        },
+                        "functionReturnParameters": 61,
+                        "id": 63,
+                        "nodeType": "Return",
+                        "src": "834:11:0"
+                      }
+                    ]
+                  },
+                  "id": 65,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "identity",
+                  "nameLocation": "719:8:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 57,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 56,
+                        "mutability": "mutable",
+                        "name": "item",
+                        "nameLocation": "755:4:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 65,
+                        "src": "728:31:0",
+                        "stateVariable": false,
+                        "storageLocation": "storage",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_struct$_PointerAddressSlot_$35_storage_ptr",
+                          "typeString": "struct PointerAddressSlot"
+                        },
+                        "typeName": {
+                          "id": 55,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 54,
+                            "name": "PointerAddressSlot",
+                            "nameLocations": [
+                              "728:18:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 35,
+                            "src": "728:18:0"
+                          },
+                          "referencedDeclaration": 35,
+                          "src": "728:18:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_PointerAddressSlot_$35_storage_ptr",
+                            "typeString": "struct PointerAddressSlot"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "727:33:0"
+                  },
+                  "returnParameters": {
+                    "id": 61,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 60,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 65,
+                        "src": "792:26:0",
+                        "stateVariable": false,
+                        "storageLocation": "storage",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_struct$_PointerAddressSlot_$35_storage_ptr",
+                          "typeString": "struct PointerAddressSlot"
+                        },
+                        "typeName": {
+                          "id": 59,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 58,
+                            "name": "PointerAddressSlot",
+                            "nameLocations": [
+                              "792:18:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 35,
+                            "src": "792:18:0"
+                          },
+                          "referencedDeclaration": 35,
+                          "src": "792:18:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_PointerAddressSlot_$35_storage_ptr",
+                            "typeString": "struct PointerAddressSlot"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "791:28:0"
+                  },
+                  "scope": 78,
+                  "src": "710:142:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "internal"
+                },
+                {
+                  "body": {
+                    "id": 76,
+                    "nodeType": "Block",
+                    "src": "918:29:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "commonType": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          },
+                          "id": 74,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftExpression": {
+                            "id": 72,
+                            "name": "x",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 67,
+                            "src": "935:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "BinaryOperation",
+                          "operator": "+",
+                          "rightExpression": {
+                            "hexValue": "31",
+                            "id": 73,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "number",
+                            "lValueRequested": false,
+                            "nodeType": "Literal",
+                            "src": "939:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_rational_1_by_1",
+                              "typeString": "int_const 1"
+                            },
+                            "value": "1"
+                          },
+                          "src": "935:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 71,
+                        "id": 75,
+                        "nodeType": "Return",
+                        "src": "928:12:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "7cf5dab0",
+                  "id": 77,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "increment",
+                  "nameLocation": "867:9:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 68,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 67,
+                        "mutability": "mutable",
+                        "name": "x",
+                        "nameLocation": "885:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 77,
+                        "src": "877:9:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 66,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "877:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "876:11:0"
+                  },
+                  "returnParameters": {
+                    "id": 71,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 70,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 77,
+                        "src": "909:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 69,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "909:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "908:9:0"
+                  },
+                  "scope": 78,
+                  "src": "858:89:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "public"
+                }
+              ],
+              "scope": 79,
+              "src": "409:540:0",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "36:914:0"
+        },
+        "id": 0
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}

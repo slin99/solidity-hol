@@ -34,7 +34,7 @@ jobs:
       - uses: ./.github/actions/setup-holbuild
         id: holbuild
         with:
-          holbuild-ref: v0.13.18
+          holbuild-ref: v0.14.21
 
       - name: Report holbuild version
         run: holbuild --version
@@ -90,6 +90,11 @@ jobs:
           echo "toolchain cache hit: ${TOOLCHAIN_CACHE_HIT:-false}"
           echo "toolchain cache key: ${TOOLCHAIN_CACHE_KEY:-<none>}"
 
+      - name: Configure remote cache
+        uses: ./.github/actions/setup-remote-cache
+        with:
+          curl-config: ${{ (((github.ref == 'refs/heads/main' || github.ref == 'refs/heads/bot/opus/solidity-e2e') && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')) || (github.event_name == 'merge_group' && (github.event.merge_group.base_ref == 'refs/heads/main' || github.event.merge_group.base_ref == 'refs/heads/bot/opus/solidity-e2e')) || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && secrets.HOLBUILD_REMOTE_CACHE_CURL_CONFIG || '' }}
+
       - name: Build HOL toolchain
         run: holbuild buildhol
 
@@ -109,7 +114,7 @@ jobs:
           /usr/bin/time -v python3 tools/run_differential.py -j2 --allow-cached
           --shard-count 8 --shard-index ${{ matrix.shard }}
           --report-dir "$RUNNER_TEMP/differential-report"
-          -- --max-heap 6000 --skip-checkpoints --skip-proof-steps
+          -- --max-heap 8192 --skip-checkpoints --skip-proof-steps
 
       - name: Upload differential report
         if: failure()

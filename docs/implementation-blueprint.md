@@ -15,6 +15,10 @@ and the semanticTests acceptance scanner share this API. Metadata validation is
 an SML check; source validation, elaboration and core checking return HOL
 certificates. Metadata is not proof that the recorded compiler output is genuine.
 
+When creation cannot be lowered, preparation retains the checked runtime
+procedures and marks creation unsupported. Deployment then fails closed with
+`ContractInvalid "unknown procedure"`; unsupported helpers remain excluded.
+
 Malformed artifacts, unsupported import/lowering, source rejection and invalid
 generated core are separate failures. Invalid generated core is an implementation
 error. Lower-level importer/elaborator functions remain available; their callers
@@ -27,6 +31,14 @@ without storage metadata. Layouts give relative slots, offsets and extents and
 must agree with those declarations. Enums retain their semantic declarations. User-defined value types are
 erased to their underlying elementary types by the importer; `wrap` and
 `unwrap` use scalar conversions, and overloaded operators use internal calls.
+
+Public state variables, constants and immutables may override external
+functions. The importer removes the replaced function implementations along
+`baseFunctions`, including transitive overrides, so the existing getter is the
+only dispatch entry for that selector. Replaced implementations do not pull in
+unused library dependencies. Custom errors accept elementary and enum
+parameters; enums keep their declaration identity and encode as `uint8` through
+the existing scalar ABI encoder.
 
 ## Destinations and storage
 
@@ -57,6 +69,13 @@ helpers take evaluated values/references and accounts; they do not evaluate core
 atoms or change scopes. `solidityEvaluator` owns atom evaluation, bindings,
 captured targets, frame checks and control flow. Its static-frame write rejection
 is deliberate and remains `InvalidCompletion`.
+
+Fixed bytes, dynamic bytes and arrays use `ArrayIndexOperation` with one
+indexed-element typing rule. The elaborator evaluates the base before the
+index and retains that value: fixed bytes are captured scalars, while byte
+sequences and arrays keep their reference identity. Storage uses its packed
+layout; memory and calldata use their existing element readers. All report
+panic `0x32` for an index outside the current bounds.
 
 ## Evaluator interfaces and validation
 

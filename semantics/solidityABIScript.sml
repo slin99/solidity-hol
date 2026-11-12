@@ -278,7 +278,7 @@ Definition storage_abi_value_def:
       NONE => INR (InvalidCompletion "bad array element type")
     | SOME (s, offset) =>
         let value =
-          if is_elementary_type element then
+          if is_stored_scalar_type element then
             (case read_storage env accounts addr s offset element of
                SOME v =>
                  (case abi_value element (ScalarValue v) of
