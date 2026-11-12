@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 jobs:
-  build:
+  shards:
     runs-on: ubuntu-latest
     name: build (corpus shard ${{ matrix.shard }})
     strategy:
@@ -140,3 +140,10 @@ jobs:
             find .holbuild/checkpoints \( -name '*.save' -o -name '*.save.ok' \) 2>/dev/null | head -50 >&2
             exit 1
           fi
+
+  build:
+    needs: shards
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.shards.result }}" = success
