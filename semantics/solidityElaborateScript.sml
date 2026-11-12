@@ -363,8 +363,19 @@ Definition read_destination_def:
     (bind_value n (read_value_type ty) (ReadOperation ty ref), n + 1)) ∧
   (read_destination n (ElementDestination array index ty) =
     (bind_value n (destination_type (ElementDestination array index ty))
-       (if ty = BytesT then ByteIndexOperation array index
-        else ArrayIndexOperation array index), n + 1))
+       (ArrayIndexOperation array index), n + 1))
+End
+
+(* A captured location is read with its type, retaining aggregate references. *)
+Definition read_location_def:
+  read_location (id : num) result =
+    case result of
+      INL ((ss, ref, ty), n) =>
+        if is_stored_scalar_type ty ∨ storage_object_type ty then
+          let (rs, a) = bind_value n (read_value_type ty) (ReadOperation ty ref) in
+          INL ((ss ++ rs, a, ElabType (read_value_type ty)), n + 1)
+        else INR [(id, "read of a value of this type")]
+    | INR bs => INR bs
 End
 
 Definition capture_destination_def:
@@ -1140,56 +1151,30 @@ Definition elab_expr_def:
                else INL (([], ConstantAtom (BoolValue F), ElabRational), n)
            | _ => INR [(info.node_id, "unsupported literal")])
     | SrcMemberAccess info _ _ _ =>
-        (case elab_location ctx n expression of
-           INL ((ss, ref, ty), n1) =>
-             if is_stored_scalar_type ty ∨ storage_object_type ty then
-               let (rs, a) = bind_value n1 (read_value_type ty) (ReadOperation ty ref) in
-               INL ((ss ++ rs, a, ElabType (read_value_type ty)), n1 + 1)
-             else INR [(info.node_id, "read of a value of this type")]
-         | INR bs => INR bs)
+        read_location info.node_id (elab_location ctx n expression)
     | SrcIndexAccess info root_expr index tid =>
         (case elab_expr ctx n root_expr of
-           INL ((ss, ref, ElabType (LocatedT loc BytesT)), n1) =>
-             let (captured, next) = snapshot n1 ref (ElabType (LocatedT loc BytesT)) in
-             let (saved, ref') = captured in
-             ensure (tid = "t_bytes1") (info.node_id, "type annotation mismatch")
-             (case elab_expr ctx next index of
-                INL ((si, i, vt), n2) =>
-                  if ¬index_value_ok i vt then INR [(expr_id index, "index of this type")] else
-                  (case coerce n2 (UintT 256) i vt of
-                     INL ((cs, i'), n3) =>
-                       let (rs, a) = bind_value n3 (FixedBytesT 1)
-                                       (ByteIndexOperation ref' i') in
-                       INL ((ss ++ saved ++ si ++ cs ++ rs, a, ElabType (FixedBytesT 1)), n3 + 1)
-                   | INR why => INR [(expr_id index, why)])
-              | INR bs => INR bs)
-         | INL ((ss, ref, ElabType (LocatedT loc (ArrayT element length))), n1) =>
-             let ty = LocatedT loc (ArrayT element length) in
-             let (captured, next) = snapshot n1 ref (ElabType ty) in
-             let (saved, ref') = captured in
-             (* a storage array's elements are annotated as stored, unlocated *)
-             ensure (source_type_matches
-                       (if loc = StorageLoc then element else element_type loc element) tid)
-               (info.node_id, "type annotation mismatch")
-             (case elab_expr ctx next index of
-                INL ((si, i, vt), n2) =>
-                  if ¬index_value_ok i vt then INR [(expr_id index, "index of this type")] else
-                  (case coerce n2 (UintT 256) i vt of
-                     INL ((cs, i'), n3) =>
-                       let ety = element_type loc element in
-                       let (rs, a) = bind_value n3 ety (ArrayIndexOperation ref' i') in
-                       INL ((ss ++ saved ++ si ++ cs ++ rs, a, ElabType ety), n3 + 1)
-                   | INR why => INR [(expr_id index, why)])
-              | INR bs => INR bs)
-         | _ =>
-           (* elab_location reports the value's reason when both fail *)
-           case elab_location ctx n expression of
-             INL ((ss, ref, ty), n1) =>
-               if is_stored_scalar_type ty ∨ storage_object_type ty then
-                 let (rs, a) = bind_value n1 (read_value_type ty) (ReadOperation ty ref) in
-                 INL ((ss ++ rs, a, ElabType (read_value_type ty)), n1 + 1)
-               else INR [(info.node_id, "read of a value of this type")]
-           | INR bs => INR bs)
+           INL ((ss, root, ElabType ty), n1) =>
+             (case indexed_element_type ty of
+                SOME element =>
+                  let (captured, next) = snapshot n1 root (ElabType ty) in
+                  let (saved, root') = captured in
+                  (* Storage aggregate elements have an unlocated source annotation. *)
+                  let source_element = case element of
+                    LocatedT StorageLoc t => t | _ => element in
+                  ensure (source_type_matches source_element tid)
+                    (info.node_id, "type annotation mismatch")
+                  (case elab_expr ctx next index of
+                     INL ((si, i, vt), n2) =>
+                       if ¬index_value_ok i vt then INR [(expr_id index, "index of this type")] else
+                       (case coerce n2 (UintT 256) i vt of
+                          INL ((cs, i'), n3) =>
+                            let (rs, a) = bind_value n3 element (ArrayIndexOperation root' i') in
+                            INL ((ss ++ saved ++ si ++ cs ++ rs, a, ElabType element), n3 + 1)
+                        | INR why => INR [(expr_id index, why)])
+                   | INR bs => INR bs)
+              | NONE => read_location info.node_id (elab_location ctx n expression))
+         | _ => read_location info.node_id (elab_location ctx n expression))
     | SrcIndexRangeAccess info base_expr start end_bound tid =>
         (case elab_expr ctx n base_expr of
            INL ((ss, ref, ElabType (LocatedT CalldataLoc ty)), n1) =>
@@ -3572,6 +3557,7 @@ val () = cv_auto_trans variable_destination_def;
 val () = cv_auto_trans destination_type_def;
 val () = cv_auto_trans read_value_type_def;
 val () = cv_auto_trans read_destination_def;
+val () = cv_auto_trans read_location_def;
 val () = cv_auto_trans capture_destination_def;
 val () = cv_auto_trans write_destination_def;
 val () = cv_auto_trans plain_assignment_def;

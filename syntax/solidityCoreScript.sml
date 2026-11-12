@@ -112,9 +112,9 @@ End
 
 (* DefaultMemoryOperation ty: the default value of a memory variable of type
  * ty. AllocateMemoryOperation ty n: new ty(n), a zeroed byte sequence or
- * dynamic array of length n. ArrayIndexOperation a i: element i of the memory
- * or calldata array a. CopyToMemoryOperation a: a new memory copy of the
- * calldata array a. Keccak256Operation a: the Keccak-256 hash of the memory
+ * dynamic array of length n. ArrayIndexOperation a i: element i of fixed bytes,
+ * or a located byte sequence or array a. CopyToMemoryOperation a: a new memory
+ * copy of the calldata array a. Keccak256Operation a: the Keccak-256 hash of the memory
  * byte sequence a, as bytes32. EcrecoverOperation h v r s: ecrecover(h, v, r,
  * s), the address the signature (v, r, s) of the bytes32 hash h recovers, or
  * address(0) if it is invalid; v is a uint8 and r and s are bytes32.
@@ -151,7 +151,6 @@ Datatype:
   | BytesLiteralOperation sol_type (byte list)
   | AllocateMemoryOperation sol_type core_atom
   | BytesToFixedOperation num core_atom
-  | ByteIndexOperation core_atom core_atom
   | ArrayIndexOperation core_atom core_atom
   (* Calldata view [start:end], with an omitted end using the current length. *)
   | CalldataSliceOperation core_atom core_atom (core_atom option)

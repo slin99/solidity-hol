@@ -207,6 +207,15 @@ Definition pack_results_def:
   (pack_results vs = TupleValue vs)
 End
 
+(* A byte of a fixed or dynamic byte sequence, in source order. *)
+Definition indexed_byte_def:
+  indexed_byte bs i =
+    if i < 0 ∨ &(LENGTH bs) ≤ i then ValueAbrupt (PanicCompletion 50)
+    else case oEL (Num i) bs of
+      SOME b => ValueOk (ScalarValue (BytesValue [b]))
+    | NONE => ValueAbrupt (InvalidCompletion "bad byte index")
+End
+
 (* Pure operations; calls and array mutations are handled by statements. *)
 Definition eval_operation_def:
   eval_operation env (st : source_state) op =
@@ -251,44 +260,37 @@ Definition eval_operation_def:
                 INL bs => ValueOk (ScalarValue (BytesValue (take_pad_0 k bs)))
               | INR c => ValueAbrupt c)
          | _ => ValueAbrupt (InvalidCompletion "bad bytes conversion operand"))
-    | ByteIndexOperation a index =>
-        (case (eval_atom st.scopes a, eval_atom st.scopes index) of
-           (SOME (ReferenceValue r), SOME (ScalarValue (IntegerValue i))) =>
-             (case r of
-                StorageReference _ _ _ _ _ _ =>
-                  (case navigate_storage env st.world.accounts r (IntegerValue i) of
-                     ValueOk (ReferenceValue element) =>
-                       read_storage_reference env st.world (FixedBytesT 1) element
-                   | ValueAbrupt c => ValueAbrupt c
-                   | _ => ValueAbrupt (InvalidCompletion "bad storage byte reference"))
-              | _ => case byte_contents st r of
-                INL bs =>
-                  if i < 0 ∨ &(LENGTH bs) ≤ i then ValueAbrupt (PanicCompletion 50)
-                  else (case oEL (Num i) bs of
-                          SOME b => ValueOk (ScalarValue (BytesValue [b]))
-                        | NONE => ValueAbrupt (InvalidCompletion "bad byte index"))
-              | INR c => ValueAbrupt c)
-         | _ => ValueAbrupt (InvalidCompletion "bad byte index operands"))
     | ArrayIndexOperation a index =>
         (case (eval_atom st.scopes a, eval_atom st.scopes index) of
-           (SOME (ReferenceValue (CalldataReference data n (ArrayT element _))),
-            SOME (ScalarValue (IntegerValue i))) =>
-             if i < 0 ∨ &n ≤ i then ValueAbrupt (PanicCompletion 50) else
-             (case calldata_element st.frame.call_data element data (Num i) of
-                INL v => ValueOk v
-              | INR c => ValueAbrupt c)
-         | (SOME (ReferenceValue r), SOME (ScalarValue (IntegerValue i))) =>
-             (case r of
-                StorageReference _ _ _ _ (ArrayT element _) _ =>
-                  (case navigate_storage env st.world.accounts r (IntegerValue i) of
-                     ValueOk (ReferenceValue r') =>
-                       read_storage_reference env st.world element r'
-                   | ValueOk _ => ValueAbrupt (InvalidCompletion "bad storage array element")
-                   | ValueAbrupt c => ValueAbrupt c)
-              | _ =>
-                case memory_array_element st r i of
-                  INL (_, _, _, v) => ValueOk v
-                | INR c => ValueAbrupt c)
+           (SOME value, SOME (ScalarValue (IntegerValue i))) =>
+             (case value of
+                ScalarValue (BytesValue bs) => indexed_byte bs i
+              | ReferenceValue r =>
+                (case r of
+                   StorageReference _ _ _ _ ty _ =>
+                     (case indexed_element_type (LocatedT StorageLoc ty) of
+                        SOME element =>
+                          (case navigate_storage env st.world.accounts r (IntegerValue i) of
+                             ValueOk (ReferenceValue r') =>
+                               read_storage_reference env st.world
+                                 (case element of LocatedT _ t => t | _ => element) r'
+                           | ValueAbrupt c => ValueAbrupt c
+                           | _ => ValueAbrupt (InvalidCompletion "bad storage array element"))
+                      | NONE => ValueAbrupt (InvalidCompletion "bad indexed storage type"))
+                 | CalldataReference data n (ArrayT element _) =>
+                     if i < 0 ∨ &n ≤ i then ValueAbrupt (PanicCompletion 50) else
+                     (case calldata_element st.frame.call_data element data (Num i) of
+                        INL v => ValueOk v
+                      | INR c => ValueAbrupt c)
+                 | MemoryReference _ _ (ArrayT _ _) =>
+                     (case memory_array_element st r i of
+                        INL (_, _, _, v) => ValueOk v
+                      | INR c => ValueAbrupt c)
+                 | _ =>
+                     case byte_contents st r of
+                       INL bs => indexed_byte bs i
+                     | INR c => ValueAbrupt c)
+              | _ => ValueAbrupt (InvalidCompletion "bad indexed value"))
          | _ => ValueAbrupt (InvalidCompletion "bad array index operands"))
     | CalldataSliceOperation a start end_bound =>
         (case (eval_atom st.scopes a, eval_atom st.scopes start) of
