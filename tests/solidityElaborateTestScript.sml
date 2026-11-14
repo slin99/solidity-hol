@@ -520,6 +520,63 @@ Proof
   EVAL_TAC
 QED
 
+val success_n = “^supported_y with <| var_scope := 21; var_name := "n" |>”;
+val success_b = “^success_n with
+  <| var_info := ^(at 5); var_name := "";
+     var_type_name := SrcElementaryTypeName ^(at 8) "bool" NONE;
+     var_type_id := "t_bool" |>”;
+val success_call = “SrcExternalCall ^(at 30)
+  <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut;
+     ext_parameters := []; ext_returns := [^success_n; ^success_b] |>
+  [] [SrcIdentifier ^(at 31) "target" 40 "t_address"] []
+  "t_tuple$_t_uint256_$_t_bool_$"”;
+val success_body = “SrcBlock ^(at 22) []”;
+
+Theorem try_success_requires_all_types_and_scope:
+  try_call 11 ^success_call 21 [^success_n] ^success_body []
+    (BoundAtom (AstId 10)) = NONE ∧
+  try_call 11 ^success_call 21 [^success_n; ^success_n] ^success_body []
+    (BoundAtom (AstId 10)) = NONE ∧
+  try_call 11 ^success_call 21
+    [^success_n; ^success_b with var_scope := 0] ^success_body []
+    (BoundAtom (AstId 10)) = NONE
+Proof
+  EVAL_TAC
+QED
+
+Theorem try_success_omitted_keeps_full_result_positions:
+  try_call 11 ^success_call 21 [] ^success_body []
+    (BoundAtom (AstId 10)) =
+  SOME ([DefineStmt (AstId 11) (SingleType BoolT)
+           (TupleComponentOperation 0 (BoundAtom (AstId 10)));
+         DefineStmt (AstId 12) (SingleType (UintT 256))
+           (TupleComponentOperation 1 (BoundAtom (AstId 10)));
+         DefineStmt (AstId 13) (SingleType BoolT)
+           (TupleComponentOperation 2 (BoundAtom (AstId 10)));
+         DefineStmt (AstId 14) RevertDataType
+           (TupleComponentOperation 3 (BoundAtom (AstId 10)))],
+        BoundAtom (AstId 11), [], BoundAtom (AstId 14), 15)
+Proof
+  EVAL_TAC
+QED
+
+Theorem try_success_only_named_components_bound:
+  case elab_stmt
+         (^ctx0 with variables := [(40, AddressT NonpayableAddress)]) 10
+         (SrcTryStatement ^(at 19) ^success_call ^(at 21)
+            [^success_n; ^success_b] ^success_body
+            [SrcCatchClause ^(at 23) GenericCatch [] (SrcBlock ^(at 24) [])]) of
+    INL ((ss, _), _) =>
+      (case LAST ss of
+         IfStmt _ ds _ =>
+           ds = [DefineStmt (AstId 4) (SingleType (UintT 256))
+                   (ConvertOperation (UintT 256) (BoundAtom (AstId 12)))]
+       | _ => F)
+  | _ => F
+Proof
+  EVAL_TAC
+QED
+
 (* Two independently bad operands of each operand list are both reported,
  * each under its own id, beside the node's own blocker if it has one: string
  * literals that convert to no number, number literals that a packed encoding

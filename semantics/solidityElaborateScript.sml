@@ -2751,23 +2751,28 @@ Definition try_operation_def:
 End
 
 (* A caught call's success flag, results and raw revert data, projected from
- * its result r after its statements ss; the try's returns are the callee's. *)
+ * its result r after its statements ss. All callee returns are decoded even
+ * when the success clause binds none of them. *)
 Definition try_call_def:
   try_call n call ok ps body ss r =
     case (call, all_some (MAP (scoped_variable ok) ps)) of
       (SrcExternalCall _ callee _ _ _ _, SOME locals) =>
-        if ¬(all_some (MAP variable_type callee.ext_returns) = SOME (MAP SND locals) ∧
+        (case all_some (MAP call_variable_type callee.ext_returns) of
+         NONE => NONE
+       | SOME rets =>
+        if ¬((ps = [] ∨ rets = MAP SND locals) ∧
              ¬is_declaration body)
         then NONE else
-        let types = BoolT :: MAP SND locals in
+        let types = BoolT :: rets in
         let (xs, values, n1) = tuple_components n r 0 types in
         (case values of
            (condition, _) :: rest =>
              SOME (ss ++ xs ++
                [DefineStmt (AstId n1) RevertDataType
                   (TupleComponentOperation (LENGTH types) r)],
-               condition, rest, BoundAtom (AstId n1), n1 + 1)
-         | [] => NONE)
+               condition, (if ps = [] then [] else rest),
+               BoundAtom (AstId n1), n1 + 1)
+         | [] => NONE))
     | _ => NONE
 End
 
@@ -2853,7 +2858,8 @@ Definition elab_stmts_def:
              blockers (elab_stmt (bind_failed ctx (MAP SOME ps)) n body) ++
              blockers (elab_catches ctx n (ConstantAtom (BytesValue [])) handlers))
     | SOME (cs, condition, values, failure, n2) =>
-        (case declare_values ctx n2 info.node_id (MAP SOME ps) values of
+        (case declare_values ctx n2 info.node_id
+                (MAP (λv. if v.var_name = "" then NONE else SOME v) ps) values of
            INL (ds, ctx1, n3) =>
              (case elab_stmt ctx1 n3 body of
                 INL ((bs, _), n4) =>
