@@ -132,15 +132,20 @@ Datatype:
   src_builtin = RequireBuiltin | AssertBuiltin | RevertBuiltin
 End
 
-(* The declaration a high-level call refers to: an external or public
- * function of an interface or contract.
- *)
+(* An external signature comes from a function's parameters and returns,
+ * or from a public state variable's getter. *)
+Datatype:
+  src_external_signature
+  = FunctionSignature (src_variable list) (src_variable list)
+  | GetterSignature src_variable
+End
+
+(* The declaration a high-level call refers to. *)
 Datatype:
   src_external = <|
     ext_selector : byte list;
     ext_mutability : state_mutability;
-    ext_parameters : src_variable list;
-    ext_returns : src_variable list
+    ext_signature : src_external_signature
   |>
 End
 
@@ -1573,6 +1578,29 @@ Definition getter_shape_def:
     | _ => OPTION_MAP (λrs. ([], rs)) (getter_results structs ty)
 End
 
+(* A getter returns byte sequences in memory, just as mapping keys are
+ * passed at an ABI boundary. *)
+Definition getter_result_def:
+  getter_result ty = mapping_key_type ty
+End
+
+(* Both kinds of external declaration use the same normalized ABI types. *)
+Definition external_types_def:
+  external_types structs signature =
+    case signature of
+      FunctionSignature ps rs =>
+        (case (all_some (MAP call_variable_type ps),
+               all_some (MAP call_variable_type rs)) of
+           (SOME params, SOME rets) => SOME (params, rets)
+         | _ => NONE)
+    | GetterSignature v =>
+        case state_variable [v.var_scope] v of
+          NONE => NONE
+        | SOME (_, ty) =>
+            OPTION_MAP (λ(ps, rs). (ps, MAP (getter_result o SND) rs))
+              (getter_shape structs ty)
+End
+
 (* The variables the base constructor arguments a base gives see: the
  * parameters of its constructor. *)
 Definition constructor_parameters_def:
@@ -1919,6 +1947,8 @@ val () = cv_auto_trans immutable_table_def;
 val () = cv_auto_trans getter_member_def;
 val () = cv_auto_trans getter_results_def;
 val () = cv_auto_trans getter_shape_def;
+val () = cv_auto_trans getter_result_def;
+val () = cv_auto_trans external_types_def;
 val () = cv_auto_trans call_table_def;
 val () = cv_auto_trans function_table_def;
 val () = cv_auto_trans contract_constructor_def;

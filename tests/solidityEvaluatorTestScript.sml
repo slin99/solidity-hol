@@ -380,7 +380,7 @@ QED
  * null references retain the ordinary empty-array behavior. *)
 Theorem unassigned_fixed_memory_rejected:
   eval_operation test_env initial_state
-    (NullMemoryOperation (ArrayT u256 (SOME 1))) =
+    (DefaultReferenceOperation MemoryLoc (ArrayT u256 (SOME 1))) =
     ValueOk (ReferenceValue
       (MemoryReference (HeapId 0) 0 (ArrayT u256 (SOME 1)))) ∧
   memory_array_length initial_state
@@ -1932,6 +1932,32 @@ Theorem assembly_calldata_requires_complete_object_head:
     ¬assembly_calldata_ok calldata_head_env (REPLICATE 64 0w)
       (calldata_head_scopes ty 64) [("p", AssemblyCalldataOffset (AstId 1))])
     [StructT (AstId 950); ArrayT BytesT (SOME 2)]
+Proof
+  EVAL_TAC
+QED
+
+Theorem message_signature_is_padded_calldata_prefix:
+  environment_value initial_state.frame MsgSig =
+    ScalarValue (BytesValue [0w; 0w; 0w; 0w]) ∧
+  environment_value (initial_state.frame with call_data := [0x12w; 0x34w]) MsgSig =
+    ScalarValue (BytesValue [0x12w; 0x34w; 0w; 0w]) ∧
+  environment_value
+    (initial_state.frame with call_data := [1w; 2w; 3w; 4w; 5w]) MsgSig =
+    ScalarValue (BytesValue [1w; 2w; 3w; 4w])
+Proof
+  EVAL_TAC
+QED
+
+Theorem calldata_reference_defaults:
+  eval_operation test_env initial_state
+    (DefaultReferenceOperation CalldataLoc (ArrayT u256 (SOME 2))) =
+    ValueOk (ReferenceValue (CalldataReference 0 2 (ArrayT u256 (SOME 2)))) ∧
+  eval_operation test_env initial_state
+    (DefaultReferenceOperation CalldataLoc BytesT) =
+    ValueOk (ReferenceValue (CalldataReference 0 0 BytesT)) ∧
+  eval_operation test_env initial_state
+    (DefaultReferenceOperation CalldataLoc u256) =
+    ValueAbrupt (InvalidCompletion "bad reference default")
 Proof
   EVAL_TAC
 QED

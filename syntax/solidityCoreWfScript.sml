@@ -222,6 +222,20 @@ End
 
 (* Byte-sequence keys accept ABI byte operands in their original location,
  * including literals, without allocating a memory object. *)
+(* Packed ABI arrays contain one full ABI word per scalar element. Nested
+ * arrays and structs have no packed encoding. *)
+Definition packed_type_def:
+  packed_type ty ⇔
+    is_stored_scalar_type ty ∨
+    case ty of
+      LocatedT MemoryLoc element =>
+        byte_sequence_type element ∨
+        (case element of ArrayT item length =>
+           valid_array_length length ∧ is_stored_scalar_type item
+         | _ => F)
+    | _ => F
+End
+
 Definition mapping_key_type_def:
   mapping_key_type key =
     if byte_sequence_type key then LocatedT MemoryLoc key else key
@@ -742,6 +756,7 @@ Definition environment_type_def:
   environment_type f =
     case f of
       MsgData => LocatedT CalldataLoc BytesT
+    | MsgSig => FixedBytesT 4
     | MsgSender => AddressT NonpayableAddress
     | SelfAddress => AddressT NonpayableAddress
     | TxOrigin => AddressT NonpayableAddress
@@ -862,8 +877,8 @@ Definition wf_core_operation_def:
     | _ => F) ∧
   (wf_core_operation env ctx annotation (DefaultMemoryOperation ty) ⇔
     located_type_ok env MemoryLoc ty ∧ annotation = SingleType (LocatedT MemoryLoc ty)) ∧
-  (wf_core_operation env ctx annotation (NullMemoryOperation ty) ⇔
-    located_type_ok env MemoryLoc ty ∧ annotation = SingleType (LocatedT MemoryLoc ty)) ∧
+  (wf_core_operation env ctx annotation (DefaultReferenceOperation loc ty) ⇔
+    located_type_ok env loc ty ∧ annotation = SingleType (LocatedT loc ty)) ∧
   (wf_core_operation env ctx annotation (BytesLiteralOperation ty _) ⇔
     annotation = SingleType (LocatedT MemoryLoc ty) ∧ byte_sequence_type ty) ∧
   (wf_core_operation env ctx annotation (AllocateMemoryOperation ty length) ⇔
@@ -943,10 +958,7 @@ Definition wf_core_operation_def:
   (wf_core_operation env ctx annotation (AbiEncodePackedOperation tys args) ⇔
     (annotation = SingleType (LocatedT MemoryLoc BytesT) ∨
      annotation = SingleType (LocatedT MemoryLoc StringT)) ∧
-    EVERY (λty. is_stored_scalar_type ty ∨
-                case ty of
-                  LocatedT MemoryLoc element => byte_sequence_type element
-                | _ => F) tys ∧
+    EVERY packed_type tys ∧
     LIST_REL (wf_abi_atom env ctx) tys args) ∧
   (* Only call moves value. The data is packed where it is, so a bytes
      literal or calldata bytes needs no memory copy. *)
@@ -1920,6 +1932,7 @@ Proof
   first_x_assum irule >> simp[solidityASTTheory.sol_type_size_def]
 QED
 
+val () = cv_auto_trans packed_type_def;
 val () = cv_auto_trans environment_type_def;
 val () = cv_auto_trans wf_abi_atom_def;
 val () = cv_auto_trans catch_parameter_type_def;

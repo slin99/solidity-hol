@@ -1078,15 +1078,15 @@ Theorem join_memory_annotation_checked:
   wf_core_operation test_env
     <| bindings := []; targets := []; returns := []; in_loop := F |>
     (SingleType (LocatedT MemoryLoc (ArrayT (UintT 256) (SOME 1))))
-    (NullMemoryOperation (ArrayT (UintT 256) (SOME 1))) ∧
+    (DefaultReferenceOperation MemoryLoc (ArrayT (UintT 256) (SOME 1))) ∧
   ¬wf_core_operation test_env
     <| bindings := []; targets := []; returns := []; in_loop := F |>
     (SingleType (LocatedT MemoryLoc (UintT 256)))
-    (NullMemoryOperation (UintT 256)) ∧
+    (DefaultReferenceOperation MemoryLoc (UintT 256)) ∧
   ¬wf_core_operation test_env
     <| bindings := []; targets := []; returns := []; in_loop := F |>
     (SingleType (LocatedT MemoryLoc (ArrayT (UintT 8) (SOME 1))))
-    (NullMemoryOperation (ArrayT (UintT 256) (SOME 1)))
+    (DefaultReferenceOperation MemoryLoc (ArrayT (UintT 256) (SOME 1)))
 Proof
   CONV_TAC cv_eval
 QED
@@ -1386,6 +1386,18 @@ Theorem aggregate_capture_does_not_admit_scalar_assignment:
        targets := []; returns := []; in_loop := F |>
     [CaptureValueStmt (AstId 2) (BoundAtom (AstId 1));
      WriteScalarStmt (AstId 2) (ArrayT (UintT 8) NONE) (ConstantAtom (IntegerValue 0))])
+Proof
+  EVAL_TAC
+QED
+
+Theorem packed_array_shape_checked:
+  packed_type (LocatedT MemoryLoc (ArrayT (UintT 8) NONE)) ∧
+  packed_type (LocatedT MemoryLoc (ArrayT (IntT 16) (SOME 2))) ∧
+  packed_type (LocatedT MemoryLoc (ArrayT (FixedBytesT 2) NONE)) ∧
+  ¬packed_type (LocatedT MemoryLoc (ArrayT (UintT 8) (SOME 0))) ∧
+  ¬packed_type (LocatedT MemoryLoc (ArrayT (ArrayT (UintT 8) NONE) NONE)) ∧
+  ¬packed_type (LocatedT MemoryLoc (ArrayT BytesT NONE)) ∧
+  ¬packed_type (LocatedT MemoryLoc (StructT (AstId 1)))
 Proof
   EVAL_TAC
 QED

@@ -447,7 +447,14 @@ End
 Definition packed_value_def:
   packed_value env st ty v =
     case ty of
-      LocatedT _ _ =>
+      LocatedT _ (ArrayT element length) =>
+        if ¬is_stored_scalar_type element then
+          INR (InvalidCompletion "bad packed array")
+        else
+          (case runtime_abi_value env st ty v of
+             INL (_, bs) => INL (case length of NONE => DROP 32 bs | SOME _ => bs)
+           | INR c => INR c)
+    | LocatedT _ _ =>
         (case v of
            ReferenceValue r => byte_contents st r
          | ScalarValue (BytesValue bs) => INL bs
