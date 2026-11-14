@@ -373,17 +373,7 @@ fun prepare_unit imported =
  * the blockers outside its functions. *)
 fun import_unit_blockers artifact source =
   json_input (fn () =>
-    let
-      val output = field artifact "output"
-      val contracts = case JSONUtil.findField output "contracts" of
-        NONE => JSON.OBJECT []
-      | SOME all => (case JSONUtil.findField all source of
-                      NONE => JSON.OBJECT [] | SOME contracts => contracts)
-    in
-      solidityImportLib.import_source_unit_blockers
-        (map (fn (_, s) => field s "ast") (object (field output "sources")))
-        (JSONUtil.get (output, map JSONUtil.SEL ["sources", source, "ast"])) contracts
-    end)
+    solidityImportLib.import_artifact_unit_blockers artifact source)
   handle solidityImportLib.ImportError message => reject UnsupportedImport message
        | solidityImportLib.MalformedInput message => reject MalformedInput message
 

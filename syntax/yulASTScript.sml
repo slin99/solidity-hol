@@ -49,7 +49,7 @@ Datatype:
   | YGasLimit
     (* message calls, other accounts and the frame's gas *)
   | YCall | YStaticCall | YDelegateCall | YExtCodeSize | YReturnDataSize | YReturnDataCopy
-  | YGas
+  | YGas | YCreate | YCreate2
     (* events *)
   | YLog0 | YLog1 | YLog2 | YLog3 | YLog4
     (* discards a value *)

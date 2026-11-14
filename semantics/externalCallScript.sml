@@ -158,5 +158,89 @@ End
 val () = cv_auto_trans external_call_state_def;
 val () = cv_auto_trans external_call_result_def;
 val () = cv_auto_trans run_external_call_def;
+
+Datatype:
+  create_outcome = <|
+    create_address : address option;
+    create_return : byte list;
+    create_accounts : evm_accounts;
+    create_transient : transient_storage;
+    create_logs : event list
+  |>
+End
+
+(* The saved world retains the creator's nonce bump, before clearing the
+ * target or moving value. Transaction-original storage at the target is zero. *)
+Definition create_call_state_def:
+  create_call_state caller addr initcode value gas accounts transient tx_params =
+    let tx = <| from := caller; to := SOME addr; data := []; nonce := 0;
+                value := value; gasLimit := gas; gasPrice := 0; accessList := [];
+                blobVersionedHashes := []; maxFeePerBlobGas := NONE;
+                maxFeePerGas := NONE; authorizationList := [] |> in
+    let ctxt = initial_context addr initcode F (Code addr) tx in
+    let saved = <| accounts := accounts; tStorage := transient;
+                   accesses := <| addresses := fINSERT caller (fINSERT addr fEMPTY);
+                                  storageKeys := fEMPTY |>; toDelete := [] |> in
+    let post = (transfer_value caller addr value o increment_nonce addr o
+                clear_storage addr) accounts in
+    <| contexts := [(ctxt, saved)]; txParams := tx_params;
+       rollback := saved with accounts := post;
+       originalAccounts := update_account addr empty_account_state accounts;
+       msdomain := Collect empty_domain |>
+End
+
+(* run_call's handle_create has already checked and installed runtime code.
+ * Successful CREATE clears returndata; only constructor REVERT exposes bytes. *)
+Definition create_call_result_def:
+  create_call_result addr accounts transient
+    (result : unit + exception option, final : execution_state) =
+    case final.contexts of
+      [(ctxt, _)] =>
+        (case result of
+           INR NONE =>
+             if final.rollback.toDelete ≠ [] then NONE else
+             SOME <| create_address := SOME addr; create_return := [];
+                     create_accounts := final.rollback.accounts;
+                     create_transient := final.rollback.tStorage;
+                     create_logs := ctxt.logs |>
+         | INR e =>
+             if vfm_abort e then NONE else
+             SOME <| create_address := NONE;
+                     create_return := if e = SOME Reverted then ctxt.returnData else [];
+                     create_accounts := accounts; create_transient := transient;
+                     create_logs := [] |>
+         | INL _ => NONE)
+    | _ => NONE
+End
+
+(* CREATE/CREATE2's prelude, followed by one concrete initcode frame. Size
+ * and recipient overflow leave the model, as at the external-call boundary. *)
+Definition run_create_call_def:
+  run_create_call caller salt initcode value gas accounts transient tx_params =
+    let nonce = (lookup_account caller accounts).nonce in
+    let addr = case salt of
+                 NONE => address_for_create caller nonce
+               | SOME s => address_for_create2 caller s initcode in
+    if LENGTH initcode > 2 * max_code_size ∨
+       caller ≠ addr ∧ 2 ** 256 ≤ (lookup_account addr accounts).balance + value
+    then NONE else
+    if (lookup_account caller accounts).balance < value ∨ SUC nonce ≥ 2 ** 64
+    then SOME <| create_address := NONE; create_return := [];
+                 create_accounts := accounts; create_transient := transient;
+                 create_logs := [] |> else
+    let accounts1 = increment_nonce caller accounts in
+    if account_already_created (lookup_account addr accounts)
+    then SOME <| create_address := NONE; create_return := [];
+                 create_accounts := accounts1; create_transient := transient;
+                 create_logs := [] |> else
+    case run_call (create_call_state caller addr initcode value gas accounts1
+                    transient tx_params) of
+      SOME outcome => create_call_result addr accounts1 transient outcome
+    | NONE => NONE
+End
+
+val () = cv_auto_trans create_call_state_def;
+val () = cv_auto_trans create_call_result_def;
+val () = cv_auto_trans run_create_call_def;
 val () = cv_auto_trans delegate_call_state_def;
 val () = cv_auto_trans run_delegate_call_def;

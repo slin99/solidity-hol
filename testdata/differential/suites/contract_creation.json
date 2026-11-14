@@ -1,0 +1,208 @@
+{
+  "name": "contract_creation",
+  "source": "testdata/differential/contract_creation.sol",
+  "contract": "ContractCreation",
+  "artifact": "testdata/differential/expected/contract_creation.json",
+  "cases": [
+    {
+      "name": "plain_immutable",
+      "function": "plain",
+      "args": [
+        7
+      ],
+      "expect": {
+        "return": [
+          7
+        ]
+      }
+    },
+    {
+      "name": "named_constructor",
+      "function": "named",
+      "args": [
+        11
+      ],
+      "expect": {
+        "return": [
+          11
+        ]
+      }
+    },
+    {
+      "name": "paid_constructor_revert",
+      "function": "paid",
+      "args": [
+        13,
+        "0x000000000000000000000000000000000000000000000000000000000000002a"
+      ],
+      "expect": {
+        "revert": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014636f6e7374727563746f722072656a6563746564000000000000000000000000"
+      },
+      "value": 123
+    },
+    {
+      "name": "plain_zero",
+      "function": "plain",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "constructor_revert",
+      "function": "plain",
+      "args": [
+        13
+      ],
+      "expect": {
+        "revert": "0x08c379a000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000014636f6e7374727563746f722072656a6563746564000000000000000000000000"
+      }
+    },
+    {
+      "name": "zero_salt",
+      "function": "zeroSalt",
+      "args": [
+        23
+      ],
+      "expect": {
+        "return": [
+          23
+        ]
+      }
+    },
+    {
+      "name": "salted_immutable",
+      "function": "salted",
+      "args": [
+        19,
+        "0x000000000000000000000000000000000000000000000000000000000000002a"
+      ],
+      "expect": {
+        "return": [
+          19
+        ]
+      }
+    },
+    {
+      "name": "paid_immutable",
+      "function": "paid",
+      "args": [
+        29,
+        "0x000000000000000000000000000000000000000000000000000000000000002a"
+      ],
+      "expect": {
+        "return": [
+          29,
+          123
+        ]
+      },
+      "value": 123
+    },
+    {
+      "name": "implicit_constructor",
+      "function": "implicit",
+      "args": [],
+      "expect": {
+        "return": [
+          42
+        ]
+      }
+    },
+    {
+      "name": "constructor_struct",
+      "function": "structure",
+      "args": [
+        31
+      ],
+      "expect": {
+        "return": [
+          34
+        ]
+      }
+    },
+    {
+      "name": "source_collision_reverts",
+      "function": "collision",
+      "args": [
+        "0x000000000000000000000000000000000000000000000000000000000000002a"
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "yul_create",
+      "function": "raw",
+      "args": [
+        "0x600060005360016000f3",
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x9410c9031b8d168b22bb86acbd32b0af2c62a4a8",
+          0
+        ]
+      }
+    },
+    {
+      "name": "yul_create2",
+      "function": "rawSalt",
+      "args": [
+        "0x600060005360016000f3",
+        "0x000000000000000000000000000000000000000000000000000000000000002a"
+      ],
+      "expect": {
+        "return": [
+          "0x6bb99bcb3841f10876726f8cb35f81631478b0f0",
+          0
+        ]
+      }
+    },
+    {
+      "name": "yul_revert_data",
+      "function": "raw",
+      "args": [
+        "0x60ab60005360016000fd",
+        0
+      ],
+      "expect": {
+        "return": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "name": "yul_soft_failure",
+      "function": "raw",
+      "args": [
+        "0x600060005360016000f3",
+        1
+      ],
+      "expect": {
+        "return": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "yul_collision",
+      "function": "rawCollision",
+      "args": [
+        "0x600060005360016000f3",
+        "0x000000000000000000000000000000000000000000000000000000000000002a"
+      ],
+      "expect": {
+        "return": [
+          true,
+          0
+        ]
+      }
+    }
+  ]
+}
