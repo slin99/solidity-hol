@@ -38,6 +38,7 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/transient_values.json",
   "../testdata/differential/expected/byte_mapping_keys.json",
   "../testdata/differential/expected/virtual_modifiers.json",
+  "../testdata/differential/expected/modifiers.json",
   "../testdata/differential/expected/literals.json",
   "../testdata/differential/expected/contract_creation.json"
 ]
@@ -1107,6 +1108,28 @@ val () =
       if String.isSubstring "modifier without a body" reason then ()
       else raise Fail reason
   | _ => raise Fail "unresolved bodyless modifier not rejected"
+
+(* Only a modifier's returns may lack functionReturnParameters (the compiler
+ * gives them none); a function's must have it. *)
+val modifiers_fixture = "../testdata/differential/expected/modifiers.json"
+val modifiers_source = "testdata/differential/modifiers.sol"
+val modifiers_ast = artifact_part modifiers_fixture ["sources", modifiers_source, "ast"]
+val modifiers_contracts = artifact_part modifiers_fixture ["contracts", modifiers_source]
+
+val () = ignore (import_source_unit [] modifiers_ast modifiers_contracts)
+
+val () =
+  case import_rejection []
+    (edit_first_where
+       (fn v => is_node "FunctionDefinition" v andalso
+                JSONUtil.asString (JSONUtil.get (v, [JSONUtil.SEL "name"])) = "early")
+       "early"
+       (edit_first "Return" (drop_field "functionReturnParameters")) modifiers_ast)
+    modifiers_contracts of
+    SOME (UnsupportedFunction, reason) =>
+      if String.isSubstring "return without return parameters outside a modifier" reason
+      then () else raise Fail reason
+  | _ => raise Fail "return without return parameters outside a modifier imported"
 
 (* A modifier whose body fails import keeps its header, so the source check
  * still sees it (here a parameter's scope); the functions invoking it are
