@@ -145,6 +145,8 @@ Datatype:
   src_external = <|
     ext_selector : byte list;
     ext_mutability : state_mutability;
+    ext_kind : external_kind;
+    ext_bound : bool;
     ext_signature : src_external_signature
   |>
 End
@@ -1914,13 +1916,21 @@ val () = cv_auto_trans event_variable_type_def;
 val () = cv_auto_trans field_variable_type_def;
 val () = cv_auto_trans call_value_type_def;
 val () = cv_auto_trans decoded_type_def;
-val () = cv_auto_trans_rec expr_ids_def (
+val expr_ids_pre_def = cv_auto_trans_pre_rec
+  "expr_ids_pre component_ids_pre exprs_ids_pre" expr_ids_def (
   WF_REL_TAC ‘measure (λx. case x of
                  INL e => cv_size e
                | INR (INL cs) => cv_size cs
                | INR (INR es) => cv_size es)’ >>
   cv_termination_tac
 );
+
+Theorem expr_ids_pre[cv_pre,local]:
+  (∀v. expr_ids_pre v) ∧ (∀v. component_ids_pre v) ∧ (∀v. exprs_ids_pre v)
+Proof
+  ho_match_mp_tac expr_ids_ind >> rpt strip_tac >>
+  simp[Once expr_ids_pre_def] >> rw[AllCaseEqs()] >> fs[]
+QED
 
 val stmt_ids_pre_def = cv_auto_trans_pre_rec
   "stmt_ids_pre option_stmt_ids_pre stmts_ids_pre catch_ids_pre catches_ids_pre" stmt_ids_def (

@@ -47,7 +47,7 @@ val () = cv_trans_deep_embedding EVAL log_mutant_code_def;
 Definition named_call_def:
   named_call name args storage expect final =
     <| case_sender := 0x2000w; case_value := 0; case_input := NamedCall name args;
-       case_storage := storage; case_peer_code := []; case_peer_storage := [];
+       case_storage := storage; case_peer_code := []; case_peer_storage := []; case_libraries := [];
        case_expect := expect; case_final := final; case_gas := []; case_logs := [];
        case_immutables := []; case_immutable_refs := [] |>
 End
@@ -234,7 +234,7 @@ Definition mint_call_def:
   mint_call logs =
     <| case_sender := 0x2000w; case_value := 0;
        case_input := NamedCall "mint" [IntArg 0x3000; IntArg 5];
-       case_storage := []; case_peer_code := []; case_peer_storage := [];
+       case_storage := []; case_peer_code := []; case_peer_storage := []; case_libraries := [];
        case_expect := ExpectReturn [];
        case_final :=
          [(2, 5);

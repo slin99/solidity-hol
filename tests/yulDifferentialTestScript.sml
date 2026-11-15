@@ -57,7 +57,7 @@ end
 Definition code_reading_case_def:
   code_reading_case =
     <| case_sender := 0x2000w; case_value := 0; case_input := RawCall [];
-       case_storage := []; case_peer_code := []; case_peer_storage := [];
+       case_storage := []; case_peer_code := []; case_peer_storage := []; case_libraries := [];
        case_expect := ExpectReturn []; case_final := []; case_gas := []; case_logs := [];
        case_immutables := []; case_immutable_refs := [] |>
 End

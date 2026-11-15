@@ -332,6 +332,22 @@ class DriverTests(unittest.TestCase):
         failed = [f for f in report["failures"] if f["kind"] == "external-check"]
         self.assertEqual([f["check"] for f in failed], ["yul-artifact-is-the-same-program"])
 
+    def test_yul_compiles_use_the_corpus_library_links(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            artifact_path = fake.root / CORPUS_ARTIFACT
+            artifact = json.loads(artifact_path.read_text(encoding="utf-8"))
+            libraries = {SOURCE: {"Logic": "0x0000000000000000000000000000000000100001"}}
+            artifact["input"]["settings"] = {"libraries": libraries}
+            fake.write(CORPUS_ARTIFACT, json.dumps(artifact))
+            checks, written = driver.generate_artifacts(
+                fake.root, core.load_corpus(fake.root / core.CORPUS), fake.fake_solc())
+            self.assertTrue(all(check["status"] == "pass" for check in checks), checks)
+            self.assertEqual(len(written), len(driver.ARTIFACT_STAGES))
+            for name in written:
+                generated = json.loads((fake.root / name).read_text(encoding="utf-8"))
+                self.assertEqual(generated["input"]["settings"]["libraries"], libraries)
+
     def test_a_generated_artifact_that_is_not_staged_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fake = FakeRoot(Path(temporary))

@@ -767,6 +767,27 @@ fun is_attached v =
   String.isSubstring "_$attached_to$_"
     (string_field (field v "typeDescriptions") "typeIdentifier")
 
+fun library_name v =
+  if (node_type v = "Identifier" orelse node_type v = "MemberAccess") andalso
+     String.isPrefix "t_type$_t_contract$_" (raw_type_id v) then
+    case optional_field v "referencedDeclaration" of
+      SOME r =>
+        (case List.find (fn (id, _) => id = JSONUtil.asIntInf r)
+                         (!contract_declarations) of
+           SOME (id, c) =>
+             if string_field c "contractKind" = "library" then SOME id else NONE
+         | NONE => NONE)
+    | NONE => NONE
+  else NONE
+
+fun library_address v id =
+  con "SrcLiteral" [info v, con "NumberLiteral" [],
+    mk_str (IntInf.toString (solidityLinkLib.address id)), mk_str "t_address"]
+
+fun is_external_library_call callee =
+  is_library_member callee andalso
+  String.isPrefix "t_function_delegatecall_" (raw_type_id callee)
+
 (* Expressions *)
 
 (* The kinds of expression node, whose children an unknown one imports. *)
@@ -779,6 +800,9 @@ fun is_expression v =
   List.exists (fn k => k = node_type v) expression_kinds handle _ => false
 
 fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v (fn v =>
+  case library_name v of
+    SOME id => library_address v id
+  | NONE =>
   case node_type v of
     "Identifier" =>
       if builtin_identifier v this_id then
@@ -1036,6 +1060,8 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                (String.isPrefix "t_function_wrap_" (raw_type_id callee) orelse
                 String.isPrefix "t_function_unwrap_" (raw_type_id callee)) then
               (positional (); wrap_call v callee args)
+            else if is_external_library_call callee then
+              library_call v callee args
             else if is_external_call callee orelse
                node_type callee = "FunctionCallOptions" then
               external_call v callee args
@@ -1439,7 +1465,7 @@ and external_call v callee args =
   in
     con "SrcExternalCall"
       [info v,
-       external_function
+       external_function false false
          (case List.find (fn (i, _) => i = int_field member "referencedDeclaration")
                          (!selector_declarations) of
             SOME (_, d) => d
@@ -1450,26 +1476,51 @@ and external_call v callee args =
        type_id v]
   end
 
-(* The declaration a high-level call refers to. *)
-and external_function v = within v (fn v =>
+(* Library bodies execute as linked bytecode. A bound receiver is argument 0
+ * and is converted while the callee is formed, before the other arguments. *)
+and library_call v member args =
   let
-    val (call_signature, mutability) =
+    val d = function_declaration member (int_field member "referencedDeclaration")
+    val bound = not (isSome (library_name (field member "expression")))
+    val receiver = if bound then [expr (field member "expression")] else []
+    val scope = int_field d "scope"
+    val () = require member
+      (List.exists (fn (id, c) => id = scope andalso
+         string_field c "contractKind" = "library") (!contract_declarations) andalso
+       List.exists (fn x => x = string_field d "visibility") ["public", "external"])
+      "delegate call must name a public or external library function"
+  in
+    con "SrcExternalCall"
+      [info v, external_function true bound d, listSyntax.mk_nil call_option_ty,
+       listSyntax.mk_list (library_address member scope :: receiver @ args, expr_ty),
+       argument_order v (int_field d "id") (if bound then 1 else 0), type_id v]
+  end
+
+(* The declaration a high-level call refers to. *)
+and external_function delegate bound v = within v (fn v =>
+  let
+    val (call_signature, mutability_name) =
       case node_type v of
         "FunctionDefinition" =>
           (con "FunctionSignature"
              [#2 (parameter_list (field v "parameters")),
               #2 (parameter_list (field v "returnParameters"))],
-           decode v "state mutability" mutabilities (string_field v "stateMutability"))
+           string_field v "stateMutability")
       | "VariableDeclaration" =>
           (require v (bool_field v "stateVariable" andalso
                       string_field v "visibility" = "public")
              "external getter must name a public state variable";
-           (con "GetterSignature" [variable_record v], decode v "state mutability" mutabilities "view"))
+           (con "GetterSignature" [variable_record v], "view"))
       | _ => fail (describe v ^ ": unsupported external declaration")
   in
     record "src_external"
       [("ext_selector", mk_bytes v (string_field v "functionSelector")),
-       ("ext_mutability", mutability), ("ext_signature", call_signature)]
+       ("ext_mutability", decode v "state mutability" mutabilities mutability_name),
+       ("ext_kind", prim_mk_const {Thy = "solidityCore", Name =
+          (if delegate then "ExternalDelegateCall"
+           else if mutability_name = "view" orelse mutability_name = "pure"
+           then "ExternalStaticCall" else "ExternalCall")}),
+       ("ext_bound", mk_bool bound), ("ext_signature", call_signature)]
   end)
 
 fun optional_expr v k =

@@ -131,6 +131,25 @@ def json_text(value: Any) -> str:
     return json.dumps(value, indent=2, sort_keys=True) + "\n"
 
 
+def library_addresses(output: dict[str, Any]) -> dict[str, dict[str, str]]:
+    """The compilation-wide AST IDs give libraries distinct, reproducible links."""
+    return {
+        source: {node["name"]: f"0x{0x100000 + node['id']:040x}" for node in libraries}
+        for source, value in output.get("sources", {}).items()
+        if (libraries := [node for node in value["ast"]["nodes"]
+                          if node.get("nodeType") == "ContractDefinition"
+                          and node.get("contractKind") == "library"])
+    }
+
+
+def needs_linking(output: dict[str, Any]) -> bool:
+    return any("__$" in evm.get(kind, {}).get("object", "")
+               for contracts in output.get("contracts", {}).values()
+               for contract in contracts.values()
+               for evm in [contract.get("evm", {})]
+               for kind in ("bytecode", "deployedBytecode"))
+
+
 def write_json_atomic(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
@@ -201,6 +220,9 @@ def build_artifact_from_sources(
         compiler_input["settings"] = {
             **compiler_input["settings"], **profile["settings"],
         }
+        compiler_output = compile_standard_json(solc, compiler_input)
+    if needs_linking(compiler_output):
+        compiler_input["settings"]["libraries"] = library_addresses(compiler_output)
         compiler_output = compile_standard_json(solc, compiler_input)
     artifact = {
         "format": "solidity-hol-solc-artifact-v1",

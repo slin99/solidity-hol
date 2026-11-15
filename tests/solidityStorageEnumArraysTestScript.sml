@@ -24,7 +24,8 @@ fun rejected_case name =
     val c = valOf (List.find (fn c => string_field c "name" = name)
                     (array_field suite "cases"))
   in
-    case_term “[] : byte list” {names = [], refs = “[] : (num # num list) list”}
+    case_term {peer = “[] : byte list”, libraries = “[] : (address # byte list) list”}
+      {names = [], refs = “[] : (num # num list) list”}
       (call_input (fn () => “[] : byte list”) c) c
   end;
 
