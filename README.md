@@ -107,8 +107,10 @@ an `InvalidCompletion`. `return`/`stop`
 end the frame with a `HaltCompletion`. `call`, `staticcall` and
 `delegatecall` run the callee through the same `externalCall` adapter as
 high-level calls (`delegatecall` in this contract's account), with the
-same fixed gas budget: `gas()` may only be a call's gas argument, where it
-stands for that budget. The block sees the frame's return data as the
+same fixed gas budget. Bare `gas()` as a call's first argument stands
+for that budget and consumes no observation. Value-position `gas()` and
+source `gasleft()` each consume one explicit gas observation; missing or
+out-of-range evidence fails closed. The block sees the frame's return data as the
 source's calls left it; after an `ecrecover`, whose return data the source
 doesn't compute, `returndatasize`/`returndatacopy` must follow a call the
 block made itself, else the block fails closed. In a

@@ -258,9 +258,12 @@ Inline assembly's `call`, `staticcall` and `delegatecall` (`assembly_calls.sol`,
 `assembly_delegate.sol`) run the callee on Verifereum through `externalCall`,
 as high-level and low-level calls do; `delegatecall` runs the callee's code
 in this contract's account, with its caller and value. The source
-tracks no gas, so `gas()` is admitted only as a call's gas argument, where it
-means the fixed budget every call from the source gets, and a literal gas
-argument is capped at that budget. The source state keeps the frame's return
+tracks no gas charges. Bare `gas()` as a call's first argument means the
+fixed budget every call from the source gets and consumes no observation;
+a literal gas argument is capped at that budget. Value-position `gas()`
+and source `gasleft()` each consume one tagged gas observation, with missing
+or out-of-range evidence rejected. Differential cases check those values
+against the concrete top-frame EVM `GAS` readings. The source state keeps the frame's return
 data buffer: every high-level, try and low-level call sets it to the callee's
 return or revert bytes, and a block starts with it and leaves its own final
 buffer behind. `ecrecover` calls a precompile whose return data the source

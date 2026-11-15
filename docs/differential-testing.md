@@ -47,8 +47,8 @@ same Verifereum transaction. It records the actual values pushed by top-frame
 `GAS` steps, excluding words that a bounded scan carries through `PUSH`, `DUP`
 and `SWAP` directly into a call's gas operand. Duplicating the gas word itself
 counts as an observation. This conservative filter can reject a source read
-used directly as a call budget, such as `call{gas: gasleft()}`; it cannot turn
-that case into an agreement. The raw-Yul three-way report classifies cases
+used directly as a call budget when the compiled instructions match that
+scan. Classification depends on the bytecode layout, not the source spelling. The raw-Yul three-way report classifies cases
 with nonempty gas evidence as inconclusive because raw Yul does not model
 these observations.
 

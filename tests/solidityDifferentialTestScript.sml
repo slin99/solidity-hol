@@ -355,17 +355,23 @@ Proof
   CONV_TAC cv_eval
 QED
 
-(* GAS fed directly to CALL is conservatively classified as a budget even
- * when the source wrote call{gas: gasleft()}. It cannot establish agreement. *)
+(* The source reads gasleft() into a local, then passes it to assembly CALL.
+ * solc emits GAS; CALL, so the budget filter removes the concrete 9978304
+ * reading. The empty trace assertion detects removal of that filter. *)
 Definition explicit_gas_budget_case_def:
   explicit_gas_budget_case =
     (named_call "explicitBudget" [IntArg 0x5000] []
-       (ExpectReturn [BoolArg T]) []) with case_gas := [1]
+       (ExpectReturn [BoolArg T]) []) with case_gas := [9978304]
 End
 
 val () = cv_auto_trans explicit_gas_budget_case_def;
 
 Theorem source_gas_as_call_budget_is_inconclusive:
+  (case prepared_evm_input corpus_gas_invalid_code corpus_gas_invalid_unit
+      explicit_gas_budget_case of
+     INR input => bytecode_gas_observations input = SOME [] ∧
+       FST (bytecode_execution input) = returned [Bool] [NumV 1]
+   | INL _ => F) ∧
   evm_execution corpus_gas_invalid_code corpus_gas_invalid_unit
     explicit_gas_budget_case = (Diagnostic InvalidGasEvidence, NONE, []) ∧
   FST (source_execution corpus_gas_invalid_code corpus_gas_invalid_unit

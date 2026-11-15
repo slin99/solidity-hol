@@ -41,6 +41,9 @@ contract GasInvalid {
     }
 
     function explicitBudget(address target) external returns (bool success) {
-        (success,) = target.call{gas: gasleft()}("");
+        uint256 remaining = gasleft();
+        assembly {
+            success := call(remaining, target, 0, 0, 0, 0, 0)
+        }
     }
 }
