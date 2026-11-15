@@ -2014,3 +2014,25 @@ Theorem unused_observation_fails_on_halt:
 Proof
   CONV_TAC cv_eval
 QED
+
+Theorem creation_value_gas_is_an_observation:
+  yul_substitute_expr []
+    (YulBuiltin YCreate [YulBuiltin YGas []; YulLit (LitNumber 0w);
+                         YulLit (LitNumber 0w)]) =
+    YulCheckedBuiltin YCreate
+      [YulCheckedBuiltin YGas []; YulLit (LitNumber 0w);
+       YulLit (LitNumber 0w)] ∧
+  yul_substitute_expr []
+    (YulBuiltin YCreate2 [YulBuiltin YGas []; YulLit (LitNumber 0w);
+                          YulLit (LitNumber 0w); YulLit (LitNumber 0w)]) =
+    YulCheckedBuiltin YCreate2
+      [YulCheckedBuiltin YGas []; YulLit (LitNumber 0w);
+       YulLit (LitNumber 0w); YulLit (LitNumber 0w)] ∧
+  MAP (λb. yul_substitute_expr []
+        (YulBuiltin b [YulBuiltin YGas []]))
+      [YCall; YStaticCall; YDelegateCall] =
+  MAP (λb. YulCheckedBuiltin b [YulBuiltin YGas []])
+      [YCall; YStaticCall; YDelegateCall]
+Proof
+  EVAL_TAC
+QED
