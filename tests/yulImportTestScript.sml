@@ -281,3 +281,20 @@ val () =
        not (null (fst (listSyntax.dest_list code))) then ()
     else raise ERR "yulImportTest" "creation import did not retain distinct code"
   end
+
+(* These names must travel through the same dialect-derived table as every
+ * other compiler-emitted builtin. *)
+val () =
+  if aconv
+    (import (output_with
+      [runtime_object
+        [expression_statement (call "pop" [call "balance" [number "119"]]),
+         expression_statement (call "pop" [call "selfbalance" []]),
+         expression_statement (call "datacopy" [number "0", number "1", number "2"])]]
+      creation_code))
+    “[(YulExprStmt (YulBuiltin YPop
+         [YulBuiltin YBalance [YulLit (LitNumber 119w)]]));
+       YulExprStmt (YulBuiltin YPop [YulBuiltin YSelfBalance []]);
+       YulExprStmt (YulBuiltin YDataCopy
+         [YulLit (LitNumber 0w); YulLit (LitNumber 1w); YulLit (LitNumber 2w)])]”
+  then () else raise ERR "yulImportTest" "balance/selfbalance/datacopy import";

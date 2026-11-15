@@ -60,6 +60,7 @@ Definition builtin_name_def:
   builtin_name YLog1 = "log1" ∧
   builtin_name YLog3 = "log3" ∧
   builtin_name YAddress = "address" ∧
+  builtin_name YSelfBalance = "selfbalance" ∧
   builtin_name YOrigin = "origin" ∧
   builtin_name YChainId = "chainid" ∧
   builtin_name YNumber = "number" ∧
@@ -78,6 +79,7 @@ Definition builtin_name_def:
   builtin_name YCreate = "create" ∧
   builtin_name YCreate2 = "create2" ∧
   builtin_name YExtCodeSize = "extcodesize" ∧
+  builtin_name YBalance = "balance" ∧
   builtin_name YReturnDataSize = "returndatasize" ∧
   builtin_name YReturnDataCopy = "returndatacopy" ∧
   builtin_name YGas = "gas" ∧
@@ -86,6 +88,7 @@ Definition builtin_name_def:
   builtin_name YRevert = "revert" ∧
   builtin_name YCodeSize = "codesize" ∧
   builtin_name YCodeCopy = "codecopy" ∧
+  builtin_name YDataCopy = "datacopy" ∧
   builtin_name YDataSize = "datasize" ∧
   builtin_name YDataOffset = "dataoffset" ∧
   builtin_name YSetImmutable = "setimmutable" ∧
@@ -138,6 +141,7 @@ Definition builtin_of_name_def:
     else if name = "log1" then SOME YLog1
     else if name = "log3" then SOME YLog3
     else if name = "address" then SOME YAddress
+    else if name = "selfbalance" then SOME YSelfBalance
     else if name = "origin" then SOME YOrigin
     else if name = "chainid" then SOME YChainId
     else if name = "number" then SOME YNumber
@@ -156,6 +160,7 @@ Definition builtin_of_name_def:
     else if name = "create" then SOME YCreate
     else if name = "create2" then SOME YCreate2
     else if name = "extcodesize" then SOME YExtCodeSize
+    else if name = "balance" then SOME YBalance
     else if name = "returndatasize" then SOME YReturnDataSize
     else if name = "returndatacopy" then SOME YReturnDataCopy
     else if name = "gas" then SOME YGas
@@ -164,6 +169,7 @@ Definition builtin_of_name_def:
     else if name = "revert" then SOME YRevert
     else if name = "codesize" then SOME YCodeSize
     else if name = "codecopy" then SOME YCodeCopy
+    else if name = "datacopy" then SOME YDataCopy
     else if name = "datasize" then SOME YDataSize
     else if name = "dataoffset" then SOME YDataOffset
     else if name = "setimmutable" then SOME YSetImmutable
@@ -187,7 +193,7 @@ Datatype:
                        last call *)
   | EffectCall      (* reaches other accounts: a message call, which reads
                        its input from memory, writes its output there and
-                       changes the world, or another account's code size *)
+                       changes the world, or another account's balance or code size *)
   | EffectLog       (* appends a log entry, whose payload it reads from
                        memory: a touch like any other, so it can raise the
                        frame's memory size *)
@@ -242,6 +248,7 @@ Definition builtin_effect_def:
   builtin_effect YLog1 = EffectLog ∧
   builtin_effect YLog3 = EffectLog ∧
   builtin_effect YAddress = EffectFrame ∧
+  builtin_effect YSelfBalance = EffectFrame ∧
   builtin_effect YOrigin = EffectFrame ∧
   builtin_effect YChainId = EffectFrame ∧
   builtin_effect YNumber = EffectFrame ∧
@@ -260,6 +267,7 @@ Definition builtin_effect_def:
   builtin_effect YCreate = EffectCall ∧
   builtin_effect YCreate2 = EffectCall ∧
   builtin_effect YExtCodeSize = EffectCall ∧
+  builtin_effect YBalance = EffectCall ∧
   builtin_effect YReturnDataSize = EffectFrame ∧
   builtin_effect YReturnDataCopy = EffectMemory ∧
   builtin_effect YGas = EffectFrame ∧
@@ -268,6 +276,7 @@ Definition builtin_effect_def:
   builtin_effect YRevert = EffectHalt ∧
   builtin_effect YCodeSize = EffectObject ∧
   builtin_effect YCodeCopy = EffectObject ∧
+  builtin_effect YDataCopy = EffectObject ∧
   builtin_effect YDataSize = EffectObject ∧
   builtin_effect YDataOffset = EffectObject ∧
   builtin_effect YSetImmutable = EffectObject ∧
@@ -287,8 +296,8 @@ QED
  *)
 Theorem builtin_effect_object:
   ∀b. builtin_effect b = EffectObject ⇔
-      b = YCodeSize ∨ b = YCodeCopy ∨ b = YDataSize ∨ b = YDataOffset ∨
-      b = YSetImmutable ∨ b = YLinkerSymbol
+      b = YCodeSize ∨ b = YCodeCopy ∨ b = YDataCopy ∨ b = YDataSize ∨
+      b = YDataOffset ∨ b = YSetImmutable ∨ b = YLinkerSymbol
 Proof
   Cases_on ‘b’ >> EVAL_TAC
 QED
