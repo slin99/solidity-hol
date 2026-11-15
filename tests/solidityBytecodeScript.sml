@@ -97,14 +97,30 @@ Definition expected_storage_def:
       slots
 End
 
-Definition case_accounts_def:
-  case_accounts code storage sender peer_code peer_storage libraries =
+Definition seed_libraries_def:
+  (seed_libraries [] accounts = accounts) ∧
+  (seed_libraries ((addr, library_code) :: libraries) accounts =
+    seed_libraries libraries
+      (update_account addr (empty_account_state with code := library_code) accounts))
+End
+
+Theorem seed_libraries_foldl:
+  ∀libraries accounts.
+    seed_libraries libraries accounts =
     FOLDL (λaccounts (addr, library_code).
       update_account addr (empty_account_state with code := library_code) accounts)
-      (update_account peer_address
+      accounts libraries
+Proof
+  Induct >> simp[seed_libraries_def] >>
+  Cases_on ‘h’ >> simp[seed_libraries_def]
+QED
+
+Definition case_accounts_def:
+  case_accounts code storage sender peer_code peer_storage libraries =
+    seed_libraries libraries (update_account peer_address
       (empty_account_state with <| code := peer_code;
                                    storage := seed_storage peer_storage |>)
-      (differential_accounts code storage sender)) libraries
+      (differential_accounts code storage sender))
 End
 
 Datatype:
@@ -216,6 +232,18 @@ val () = cv_auto_trans differential_accounts_def;
 val () = cv_auto_trans storage_values_def;
 val () = cv_auto_trans project_observation_def;
 val () = cv_auto_trans expected_storage_def;
+val seed_libraries_pre_def = cv_auto_trans_pre_rec
+  "seed_libraries_pre" seed_libraries_def (
+  WF_REL_TAC ‘measure (cv_size o FST)’ >> cv_termination_tac
+);
+
+Theorem seed_libraries_pre[cv_pre,local]:
+  ∀libraries accounts. seed_libraries_pre libraries accounts
+Proof
+  Induct_on ‘libraries’ >- simp[Once seed_libraries_pre_def] >>
+  Cases_on ‘h’ >> simp[Once seed_libraries_pre_def]
+QED
+
 val () = cv_auto_trans case_accounts_def;
 val () = cv_auto_trans expected_logs_def;
 val () = cv_auto_trans differential_tx_def;
