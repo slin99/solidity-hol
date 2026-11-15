@@ -346,6 +346,20 @@ class DriverTests(unittest.TestCase):
         self.assertIn("`ir-optimized-on`: the `irOptimized` artifact, optimizer on, `runs: 200`",
                       report)
 
+    def test_a_source_without_contracts_has_no_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            solc = Path(temporary) / "solc"
+            solc.write_text(
+                f"#!{sys.executable}\nimport sys\nsys.stdin.read()\nprint('{{}}')\n",
+                encoding="utf-8",
+            )
+            solc.chmod(0o755)
+            artifacts = recon.compile_fixture(
+                solc, ROOT / "testdata" / "differential" / "udvt_types.sol",
+                recon.DEFAULT_PROFILE, False,
+            )
+        self.assertEqual(artifacts, {})
+
 
 class CliTests(unittest.TestCase):
     def test_help_mentions_the_required_arguments(self) -> None:
