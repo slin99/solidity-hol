@@ -38,4 +38,7 @@ sig
    * fails, it raises an error after all have run.
    *)
   val run_three_way : {root : string, corpus : string, yul_root : string} -> unit
+
+  (* Evaluate a Yul tree's cv encoding, including boolean literal cells. *)
+  val yul_encoding_conv : conv
 end

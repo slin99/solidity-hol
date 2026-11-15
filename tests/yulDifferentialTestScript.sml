@@ -1,7 +1,26 @@
 (* Code-reading builtins observe the current stage's runtime image. *)
 Theory yulDifferentialTest
 Ancestors yulDifferential solidityDifferential
-Libs cv_transLib wordsLib intLib
+Libs cv_transLib wordsLib intLib solidityDifferentialLib
+
+Definition boolean_literals_def:
+  boolean_literals = [LitBool T; LitBool F]
+End
+
+val () = cv_trans_deep_embedding solidityDifferentialLib.yul_encoding_conv
+           boolean_literals_def;
+
+Theorem boolean_literals_encoded:
+  LENGTH boolean_literals = 2
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem boolean_literals_values:
+  MAP yul_literal_value boolean_literals = [SOME (1w : bytes32); SOME 0w]
+Proof
+  EVAL_TAC
+QED
 
 Definition code_reading_case_def:
   code_reading_case =
