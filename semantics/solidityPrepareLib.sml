@@ -347,14 +347,47 @@ fun function_outcomes unit =
     (#1 (listSyntax.dest_list
       (cv_value (mk_comb (import_const "unit_functions", unit)))))
 
+(* Deep embedding avoids constructing a cv_rep_for proof for every cons of
+ * a large initcode literal. The abbreviations retain the exact byte lists. *)
+val creation_code_counter = ref 0
+fun creation_code_definitions unit =
+  let
+    val create = import_const "SrcCreate"
+    fun is_create tm =
+      let val (head, args) = strip_comb tm in
+        head ~~ create andalso length args = 6
+      end
+    fun code tm = record_field (List.nth (#2 (strip_comb tm), 1)) "create_bytecode"
+    val codes = List.foldl (fn (tm, seen) =>
+        if List.exists (aconv tm) seen then seen else tm :: seen)
+      [] (map code (find_terms is_create unit))
+    fun define_code tm =
+      let
+        val name = "embedded_creation_code_" ^ Int.toString (!creation_code_counter)
+        val () = creation_code_counter := !creation_code_counter + 1
+        val def = new_definition (name ^ "_def",
+          mk_eq (mk_var (name, type_of tm), tm))
+        val () = cv_trans_deep_embedding computeLib.EVAL_CONV def
+      in
+        def
+      end
+  in
+    map define_code codes
+  end
+
 fun prepare_unit imported =
   let
+    val imported = unit_record imported
+    val code_defs = creation_code_definitions imported
+    val imported = subst (map (fn def => rhs (concl def) |-> lhs (concl def)) code_defs)
+      imported
     val unit = mark_failures (add_elaboration_reasons imported)
     val source_valid = checked_predicate SourceRejected
       (rejection_message "valid_src_unit failed (source validation/subset restriction)" imported)
       (mk_comb (import_const "valid_src_unit", unit))
     val elaborates = (REWRITE_CONV [elaborate_unit_def, source_valid] THENC cv_eval)
       (mk_comb (elaborate_unit_tm, unit))
+    val elaborates = PURE_REWRITE_RULE (map SYM code_defs) elaborates
     val result = rhs (concl elaborates)
     val program = if optionSyntax.is_none result then
       reject UnsupportedLowering

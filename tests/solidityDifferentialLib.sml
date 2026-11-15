@@ -860,6 +860,11 @@ fun run_expectations {root, manifest} =
                    val bytecode_fields = bytecode ()
                    val entered = “^prior_world with accounts :=
                      transfer_value ^sender ^address ^value ^prior_world.accounts”
+                   val entered = if creating then
+                     “^entered with accounts := update_account ^address
+                       ((lookup_account ^address ^entered.accounts) with nonce := 1)
+                       ^entered.accounts”
+                     else entered
                    val invocation = if creating then
                      “deploy_contract 10000 ^program ^fr ^entered”
                      else “call_contract 10000 ^program ^(!imm) ^fr ^entered”

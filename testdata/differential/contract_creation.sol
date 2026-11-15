@@ -3,6 +3,19 @@ pragma solidity ^0.8.37;
 import "./contract_creation_child.sol";
 
 contract ContractCreation {
+    address public rawCreated;
+    address public sourceCreated;
+
+    constructor() {
+        bytes memory code = hex"60016000f3";
+        assembly {
+            sstore(rawCreated.slot, create(0, add(code, 32), mload(code)))
+        }
+        CreatedChild child = new CreatedChild(5);
+        sourceCreated = address(child);
+        require(child.read() == 5);
+    }
+
     function plain(uint256 n) external returns (uint256) {
         CreatedChild child = new CreatedChild(n);
         return child.read();
