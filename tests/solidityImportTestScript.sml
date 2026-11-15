@@ -1120,7 +1120,10 @@ val () = ignore (import_source_unit [] modifiers_ast modifiers_contracts)
 
 val () =
   case import_rejection []
-    (edit_first "FunctionDefinition"
+    (edit_first_where
+       (fn v => is_node "FunctionDefinition" v andalso
+                JSONUtil.asString (JSONUtil.get (v, [JSONUtil.SEL "name"])) = "early")
+       "early"
        (edit_first "Return" (drop_field "functionReturnParameters")) modifiers_ast)
     modifiers_contracts of
     SOME (UnsupportedFunction, reason) =>
