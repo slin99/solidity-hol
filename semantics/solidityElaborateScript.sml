@@ -2738,8 +2738,14 @@ Definition elab_assembly_reference_def:
         else
           (case ty of
              LocatedT MemoryLoc t =>
-               if assembly_memory_type t then INL (([], AssemblyMemory (AstId x) t), n)
-               else INR [(id, "assembly reference of this type")]
+               (case elab_type_declarations ctx.enums ctx.structs of
+                  SOME decls =>
+                    if assembly_memory_type
+                         <| procedures := []; state_variables := []; immutables := [];
+                            struct_layouts := []; type_declarations := decls |> t
+                    then INL (([], AssemblyMemory (AstId x) t), n)
+                    else INR [(id, "assembly reference of this type")]
+                | NONE => INR [(id, "assembly reference of this type")])
            | LocatedT CalldataLoc t =>
                if located_object_shape CalldataLoc t ∧ ¬calldata_slice_type t then
                  INL (([], AssemblyCalldataOffset (AstId x)), n)

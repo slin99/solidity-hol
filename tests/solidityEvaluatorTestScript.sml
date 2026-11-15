@@ -1936,6 +1936,53 @@ Proof
   EVAL_TAC
 QED
 
+Definition assembly_struct_state_def:
+  assembly_struct_state = initial_state with <|
+    heap := FEMPTY |++
+      [(1, <| object_type := StructT (AstId 950); object_length := 2;
+              object_cells := FEMPTY; object_address := 128; object_padded := T |>);
+       (2, <| object_type := BytesT; object_length := 0;
+              object_cells := FEMPTY; object_address := 192; object_padded := T |>)];
+    next_heap_id := 2; memory_allocated := 96 |>
+End
+
+val () = cv_auto_trans assembly_struct_state_def;
+
+Theorem assembly_empty_object_addresses:
+  assembly_cell_word FEMPTY BytesT
+    (ReferenceValue (MemoryReference (HeapId 0) 0 BytesT)) = SOME 96 ∧
+  assembly_cell_word FEMPTY (ArrayT (UintT 256) NONE)
+    (ReferenceValue (MemoryReference (HeapId 0) 0 (ArrayT (UintT 256) NONE))) = SOME 96 ∧
+  assembly_cell_word FEMPTY (StructT (AstId 950))
+    (ReferenceValue (MemoryReference (HeapId 0) 0 (StructT (AstId 950)))) = NONE ∧
+  assembly_cell_word FEMPTY (ArrayT (UintT 256) (SOME 2))
+    (ReferenceValue (MemoryReference (HeapId 0) 0 (ArrayT (UintT 256) (SOME 2)))) = NONE
+Proof
+  EVAL_TAC
+QED
+
+Theorem assembly_struct_reference_cells_fail_closed:
+  case assembly_machine calldata_head_env assembly_struct_state FEMPTY of
+    NONE => F
+  | SOME m =>
+      assembly_read_back calldata_head_env assembly_struct_state.heap 2 m =
+        SOME (assembly_struct_state.heap |+
+          (1, <| object_type := StructT (AstId 950); object_length := 2;
+                 object_cells := FEMPTY |+ (0, ScalarValue (IntegerValue 0));
+                 object_address := 128; object_padded := T |>)) ∧
+      (* A representable address of the right type still changes the alias. *)
+      assembly_read_back calldata_head_env assembly_struct_state.heap 2
+        (yul_mstore m 160 (192w : bytes32)) = NONE ∧
+      (* A dirty uint8 must not silently truncate on write-back. *)
+      assembly_read_back calldata_head_env assembly_struct_state.heap 2
+        (yul_mstore m 128 (256w : bytes32)) = NONE ∧
+      (* New pointer cells require a graph allocator and remain unsupported. *)
+      assembly_new_object calldata_head_env assembly_struct_state.heap
+        (StructT (AstId 950)) m 192 128 = NONE
+Proof
+  CONV_TAC cv_eval
+QED
+
 Theorem message_signature_is_padded_calldata_prefix:
   environment_value initial_state.frame MsgSig =
     ScalarValue (BytesValue [0w; 0w; 0w; 0w]) ∧

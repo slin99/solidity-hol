@@ -1216,6 +1216,29 @@ Definition assembly_value_def:
         | NONE => NONE
 End
 
+(* A scalar cell is a word; a reference cell is its object's address. Only
+ * byte sequences and dynamic arrays share the empty object at the zero slot.
+ * Bytes/string conversions may share the same byte-sequence object. *)
+Definition assembly_cell_word_def:
+  assembly_cell_word heap ty v =
+    case v of
+      ScalarValue scalar =>
+        if assembly_value_type ty then assembly_word ty scalar else NONE
+    | ReferenceValue (MemoryReference (HeapId id) 0 rty) =>
+        if rty ≠ ty then NONE else
+        if id = 0 then
+          if byte_sequence_type ty ∨ (case ty of ArrayT _ NONE => T | _ => F)
+          then SOME 0x60 else NONE
+        else
+          (case FLOOKUP heap id of
+             SOME obj =>
+               if obj.object_type = ty ∨
+                  byte_sequence_type ty ∧ byte_sequence_type obj.object_type
+               then SOME obj.object_address else NONE
+           | NONE => NONE)
+    | _ => NONE
+End
+
 Definition assembly_reference_word_def:
   assembly_reference_word env (st : source_state) r =
     case r of
@@ -1264,17 +1287,10 @@ Definition assembly_reference_word_def:
         (case eval_atom st.scopes a of
            SOME (ScalarValue s) => assembly_word ty s
          | _ => NONE)
-    (* the shared empty byte sequence or dynamic array is the compiler's
-     * zero slot, 0x60; a static array is never it *)
+    (* The zero slot belongs only to empty byte sequences and dynamic arrays. *)
     | AssemblyMemory x ty =>
         (case lookup_binding x st.scopes of
-           SOME b =>
-             (case b.binding_value of
-                ReferenceValue (MemoryReference (HeapId id) 0 _) =>
-                  if id = 0 then
-                    (case ty of ArrayT _ (SOME _) => NONE | _ => SOME 0x60)
-                  else OPTION_MAP (λobj. obj.object_address) (FLOOKUP st.heap id)
-              | _ => NONE)
+           SOME b => assembly_cell_word st.heap ty b.binding_value
          | NONE => NONE)
 End
 
@@ -1366,39 +1382,39 @@ Definition object_padding_def:
     (obj.object_address + 32 + obj.object_length)
 End
 
-(* The element type of a memory array a block sees, and whether the array is
- * dynamic, with a length word before its elements. *)
-Definition assembly_array_def:
-  assembly_array ty =
+(* Word-cell layout: a dynamic array has a length header; fixed arrays and
+ * structs have none. Both hold one word per scalar or reference cell. *)
+Definition assembly_layout_def:
+  assembly_layout env ty n =
+    if ¬assembly_memory_type env ty then NONE else
     case ty of
       ArrayT element length =>
-        if assembly_value_type element then SOME (element, length = NONE)
+        if (case length of NONE => T | SOME k => n = k) then
+          SOME (REPLICATE n element, if length = NONE then 32 else 0)
         else NONE
+    | StructT id =>
+        (case lookup_struct env id of
+           SOME fields =>
+             if LENGTH fields = n then SOME (MAP SND fields, 0) else NONE
+         | NONE => NONE)
     | _ => NONE
 End
 
-(* The words of elements i to i + n - 1 of a memory array, as the compiler
- * keeps them in memory, a word each. *)
+(* Serialize the cells using their declared types, including pointer words. *)
 Definition assembly_element_words_def:
-  (assembly_element_words element obj i 0 = SOME []) ∧
-  (assembly_element_words element obj i (SUC n) =
-    case memory_cell obj element i of
-      ScalarValue s =>
-        (case (assembly_word element s,
-               assembly_element_words element obj (i + 1) n) of
-           (SOME w, SOME bs) => SOME (word_to_bytes_be (n2w w : bytes32) ++ bs)
-         | _ => NONE)
+  (assembly_element_words heap [] obj i = SOME []) ∧
+  (assembly_element_words heap (ty :: tys) obj i =
+    case (assembly_cell_word heap ty (memory_cell obj ty i),
+           assembly_element_words heap tys obj (i + 1)) of
+      (SOME w, SOME bs) => SOME (word_to_bytes_be (n2w w : bytes32) ++ bs)
     | _ => NONE)
 End
 
-(* The memory of an object a block sees, from its address, as solc allocates
- * it: a byte sequence's length word and data, zero-padded to whole words
- * where the compiler's memory holds the zeros (object_padded), and an array's
- * length word if it is dynamic and then a word per element. Padding the
- * compiler leaves as it was stays unwritten, so a block reading it fails
- * closed. *)
+(* Project each allocation's own bytes. Reference cells point at the other
+ * allocations, which the same chronological heap walk projects separately.
+ * A byte sequence's uninitialized padding stays unreadable. *)
 Definition assembly_object_bytes_def:
-  assembly_object_bytes obj =
+  assembly_object_bytes env heap obj =
     let length_word = word_to_bytes_be (n2w obj.object_length : bytes32) in
     if byte_sequence_type obj.object_type then
       OPTION_MAP (λbs. length_word ++ bs ++
@@ -1407,10 +1423,10 @@ Definition assembly_object_bytes_def:
                      else []))
         (heap_bytes obj 0 obj.object_length)
     else
-      case assembly_array obj.object_type of
-        SOME (element, dynamic) =>
-          OPTION_MAP (λbs. (if dynamic then length_word else []) ++ bs)
-            (assembly_element_words element obj 0 obj.object_length)
+      case assembly_layout env obj.object_type obj.object_length of
+        SOME (tys, header) =>
+          OPTION_MAP (λbs. (if header = 32 then length_word else []) ++ bs)
+            (assembly_element_words heap tys obj 0)
       | NONE => NONE
 End
 
@@ -1418,15 +1434,15 @@ End
  * Returndata padding stays unwritten where the compiler does not zero it;
  * assembly reads there fail closed. *)
 Definition assembly_project_def:
-  (assembly_project heap 0 (m : yul_machine) = SOME m) ∧
-  (assembly_project heap (SUC i) m =
-    case assembly_project heap i m of
+  (assembly_project env heap 0 (m : yul_machine) = SOME m) ∧
+  (assembly_project env heap (SUC i) m =
+    case assembly_project env heap i m of
       NONE => NONE
     | SOME m1 =>
       case FLOOKUP heap (SUC i) of
         SOME obj =>
-          if assembly_memory_type obj.object_type then
-            case assembly_object_bytes obj of
+          if assembly_memory_type env obj.object_type then
+            case assembly_object_bytes env heap obj of
               SOME bs => SOME (yul_memory_write m1 obj.object_address bs)
             | NONE => NONE
           else SOME m1
@@ -1434,8 +1450,8 @@ Definition assembly_project_def:
 End
 
 Definition assembly_machine_def:
-  assembly_machine (st : source_state) scope =
-    assembly_project st.heap st.next_heap_id
+  assembly_machine env (st : source_state) scope =
+    assembly_project env st.heap st.next_heap_id
       (yul_memory_write
          <| accounts := st.world.accounts; transient := st.world.transient;
             logs := st.world.logs; self_address := st.frame.self_address;
@@ -1450,14 +1466,12 @@ Definition assembly_machine_def:
          0x40 (word_to_bytes_be (n2w (memory_free_pointer st) : bytes32)))
 End
 
-(* The data of an object a block sees, as (start, length): a byte sequence's
- * in whole words (a 32-byte mstore at its last byte is in bounds) and an
- * array's elements, not their length word. *)
+(* The mutable cells, excluding array/byte-sequence length headers. *)
 Definition assembly_data_def:
-  assembly_data obj =
-    case assembly_array obj.object_type of
-      SOME (element, dynamic) =>
-        (obj.object_address + (if dynamic then 32 else 0), 32 * obj.object_length)
+  assembly_data env obj =
+    case assembly_layout env obj.object_type obj.object_length of
+      SOME (tys, header) =>
+        (obj.object_address + header, 32 * LENGTH tys)
     | NONE =>
         (obj.object_address + 32, obj.object_length + object_padding obj)
 End
@@ -1466,14 +1480,14 @@ End
  * ranges: the scratch space, and the data of each object with id 1 to i the
  * block sees. *)
 Definition assembly_writable_def:
-  (assembly_writable heap 0 = [(0, 64)]) ∧
-  (assembly_writable heap (SUC i) =
+  (assembly_writable env heap 0 = [(0, 64)]) ∧
+  (assembly_writable env heap (SUC i) =
     case FLOOKUP heap (SUC i) of
       SOME obj =>
-        if assembly_memory_type obj.object_type then
-          assembly_data obj :: assembly_writable heap i
-        else assembly_writable heap i
-    | NONE => assembly_writable heap i)
+        if assembly_memory_type env obj.object_type then
+          assembly_data env obj :: assembly_writable env heap i
+        else assembly_writable env heap i
+    | NONE => assembly_writable env heap i)
 End
 
 (* Memory with the n bytes from a, and then the ranges rs, removed. *)
@@ -1494,32 +1508,41 @@ Definition memory_zeros_def:
      FLOOKUP mem a = SOME 0w ∧ memory_zeros mem (a + 1) n)
 End
 
-(* The cells of n array elements from the words at a in the block's final
- * memory, from element i; a word must be the one its value is kept as, as a
- * local's must, since the source keeps no dirty bits. *)
+(* Read scalar cells canonically. Reference cells keep their identity and
+ * pointer word; the pointed-to allocation is read back in its own turn. *)
 Definition assembly_read_elements_def:
-  (assembly_read_elements element (m : yul_machine) a i 0 cells = SOME cells) ∧
-  (assembly_read_elements element m a i (SUC n) cells =
+  (assembly_read_elements heap [] (m : yul_machine) a i cells = SOME cells) ∧
+  (assembly_read_elements heap (ty :: tys) m a i cells =
     let w = num_of_be_bytes (yul_memory_read m a 32) in
-    case assembly_value element w of
-      SOME s =>
-        if assembly_word element s = SOME w then
-          assembly_read_elements element m (a + 32) (i + 1) n
-            (cells |+ (i, ScalarValue s))
-        else NONE
-    | NONE => NONE)
+    if assembly_value_type ty then
+      (case assembly_value ty w of
+         SOME scalar =>
+           if assembly_word ty scalar = SOME w then
+             assembly_read_elements heap tys m (a + 32) (i + 1)
+               (cells |+ (i, ScalarValue scalar))
+           else NONE
+       | NONE => NONE)
+    else
+      case FLOOKUP cells i of
+        SOME v =>
+          if assembly_cell_word heap ty v = SOME w then
+            assembly_read_elements heap tys m (a + 32) (i + 1) cells
+          else NONE
+      | NONE =>
+          if assembly_cell_word heap ty
+               (ReferenceValue (MemoryReference (HeapId 0) 0 ty)) = SOME w then
+            assembly_read_elements heap tys m (a + 32) (i + 1) cells
+          else NONE)
 End
 
-(* The heap with each object with id 1 to i the block sees read back from its
- * final memory: a byte sequence's bytes, and whether its padding is zero, and
- * an array's elements. *)
+(* Read back each supported allocation, using the same layout as projection. *)
 Definition assembly_read_back_def:
-  (assembly_read_back heap 0 (m : yul_machine) = SOME heap) ∧
-  (assembly_read_back heap (SUC i) m =
+  (assembly_read_back env heap 0 (m : yul_machine) = SOME heap) ∧
+  (assembly_read_back env heap (SUC i) m =
     case FLOOKUP heap (SUC i) of
       SOME obj =>
         if byte_sequence_type obj.object_type then
-          assembly_read_back
+          assembly_read_back env
             (heap |+ (SUC i, obj with <|
                object_cells := byte_cells
                  (yul_memory_read m (obj.object_address + 32) obj.object_length);
@@ -1528,16 +1551,16 @@ Definition assembly_read_back_def:
                  (object_padding obj) |>))
             i m
         else
-          (case assembly_array obj.object_type of
-             SOME (element, _) =>
-               (case assembly_read_elements element m (FST (assembly_data obj)) 0
-                       obj.object_length FEMPTY of
+          (case assembly_layout env obj.object_type obj.object_length of
+             SOME (tys, header) =>
+               (case assembly_read_elements heap tys m (obj.object_address + header) 0
+                       obj.object_cells of
                   SOME cells =>
-                    assembly_read_back
+                    assembly_read_back env
                       (heap |+ (SUC i, obj with object_cells := cells)) i m
                 | NONE => NONE)
-           | NONE => assembly_read_back heap i m)
-    | NONE => assembly_read_back heap i m)
+           | NONE => assembly_read_back env heap i m)
+    | NONE => assembly_read_back env heap i m)
 End
 
 (* The n bytes from a are all written. *)
@@ -1547,17 +1570,18 @@ Definition memory_written_def:
      IS_SOME (FLOOKUP mem a) ∧ memory_written mem (a + 1) n)
 End
 
-(* An object of type ty a block allocated at p, read from its final memory as
- * solc lays it out, with the bytes it takes, which must end by f1: a byte
- * sequence's or dynamic array's length word, then its data, all written. An
- * array's elements must round-trip, as in read-back, and a byte sequence's
- * padding runs to the word its data ends in, as object_padding rounds it, and
- * is padded if the block wrote it as zeros. *)
+(* Decode an assembly allocation with the same layout as projected objects.
+ * Every byte must be written and every word canonical. New reference-valued
+ * cells need a graph allocator, so they remain outside this bridge. *)
 Definition assembly_new_object_def:
-  assembly_new_object ty (m : yul_machine) f1 p =
+  assembly_new_object env heap ty (m : yul_machine) f1 p =
     let (n, header) =
       case ty of
         ArrayT _ (SOME k) => (k, 0)
+      | StructT id =>
+          (case lookup_struct env id of
+             SOME fields => (LENGTH fields, 0)
+           | NONE => (0, 0))
       | _ => (num_of_be_bytes (yul_memory_read m p 32), 32) in
     let data = if byte_sequence_type ty
                then 32 * ((p + 32 + n + 31) DIV 32) - (p + 32)
@@ -1572,13 +1596,13 @@ Definition assembly_new_object_def:
               header + data)
       else NONE
     else
-      case assembly_array ty of
-        SOME (element, _) =>
-          if memory_written m.memory (p + header) data then
+      case assembly_layout env ty n of
+        SOME (tys, _) =>
+          if EVERY assembly_value_type tys ∧ memory_written m.memory (p + header) data then
             OPTION_MAP (λcells. (<| object_type := ty; object_length := n;
                                     object_cells := cells; object_address := p;
                                     object_padded := T |>, header + data))
-              (assembly_read_elements element m (p + header) 0 n FEMPTY)
+              (assembly_read_elements heap tys m (p + header) 0 FEMPTY)
           else NONE
       | NONE => NONE
 End
@@ -1598,14 +1622,14 @@ End
  * reference left where it was keeps its object, and any other address fails,
  * an existing object retyped or aliased included. *)
 Definition assembly_allocate_def:
-  (assembly_allocate f0 f1 (m0 : yul_machine) (m : yul_machine) []
+  (assembly_allocate env f0 f1 (m0 : yul_machine) (m : yul_machine) []
      (st : source_state) news = SOME st) ∧
-  (assembly_allocate f0 f1 m0 m ((name, r) :: refs) st news =
+  (assembly_allocate env f0 f1 m0 m ((name, r) :: refs) st news =
     case r of
       AssemblyMemory x ty =>
         (case (yul_lookup name m0.scopes, yul_lookup name m.scopes) of
            (SOME w0, SOME w) =>
-             if w = w0 then assembly_allocate f0 f1 m0 m refs st news else
+             if w = w0 then assembly_allocate env f0 f1 m0 m refs st news else
              let p = w2n w in
              if p < f0 then NONE else
              (case ALOOKUP news p of
@@ -1617,13 +1641,13 @@ Definition assembly_allocate_def:
                                  (ReferenceValue (MemoryReference (HeapId id) 0 ty))
                                  st.scopes of
                             SOME scopes =>
-                              assembly_allocate f0 f1 m0 m refs
+                              assembly_allocate env f0 f1 m0 m refs
                                 (st with scopes := scopes) news
                           | NONE => NONE)
                        else NONE
                    | NONE => NONE)
               | NONE =>
-                  (case assembly_new_object ty m f1 p of
+                  (case assembly_new_object env st.heap ty m f1 p of
                      SOME (obj, extent) =>
                        if assembly_overlaps p extent news then NONE else
                        let id = st.next_heap_id + 1 in
@@ -1631,7 +1655,7 @@ Definition assembly_allocate_def:
                                (ReferenceValue (MemoryReference (HeapId id) 0 ty))
                                st.scopes of
                           SOME scopes =>
-                            assembly_allocate f0 f1 m0 m refs
+                            assembly_allocate env f0 f1 m0 m refs
                               (st with <| scopes := scopes;
                                           heap := st.heap |+ (id, obj);
                                           next_heap_id := id |>)
@@ -1639,7 +1663,7 @@ Definition assembly_allocate_def:
                         | NONE => NONE)
                    | NONE => NONE))
          | _ => NONE)
-    | _ => assembly_allocate f0 f1 m0 m refs st news)
+    | _ => assembly_allocate env f0 f1 m0 m refs st news)
 End
 
 Definition assembly_world_def:
@@ -1763,7 +1787,7 @@ Definition assembly_result_def:
         let f0 = memory_free_pointer st in
         let f1 = num_of_be_bytes (yul_memory_read r.machine 0x40 32) in
         let writable = (0x40, 32) :: (f0, r.machine.memory_size - f0) ::
-                       assembly_writable st.heap st.next_heap_id in
+                       assembly_writable env st.heap st.next_heap_id in
         if without_ranges writable r.machine.memory ≠
            without_ranges writable m0.memory then
           abrupt_result
@@ -1781,14 +1805,14 @@ Definition assembly_result_def:
         else
           (case (assembly_write_back st.frame.self_address refs st.scopes
                    r.machine.scopes,
-                 assembly_read_back st.heap st.next_heap_id r.machine) of
+                 assembly_read_back env st.heap st.next_heap_id r.machine) of
              (SOME scopes, SOME heap) =>
                if ¬assembly_calldata_ok env st.frame.call_data scopes refs then
                  abrupt_result
                    (InvalidCompletion "assembly left a calldata reference outside the calldata")
                    st gas
                else
-               (case assembly_allocate f0 f1 m0 r.machine refs
+               (case assembly_allocate env f0 f1 m0 r.machine refs
                        (st with <| scopes := scopes; heap := heap |>) [] of
                   SOME st1 =>
                     normal_result (st1 with <| world := world;
@@ -1823,7 +1847,7 @@ Definition eval_assembly_def:
     case assembly_inputs env st refs of
       NONE => abrupt_result (InvalidCompletion "bad assembly reference") st gas
     | SOME (scope, literals) =>
-        case assembly_machine st scope of
+        case assembly_machine env st scope of
           NONE => abrupt_result (InvalidCompletion "bad memory object") st gas
         | SOME m0 =>
             assembly_result env refs st m0
@@ -1984,13 +2008,14 @@ val () = cv_auto_trans reset_target_def;
 val () = cv_auto_trans simple_stmt_def;
 val () = cv_auto_trans assembly_word_def;
 val () = cv_auto_trans assembly_value_def;
+val () = cv_auto_trans assembly_cell_word_def;
 val () = cv_auto_trans assembly_reference_word_def;
 val () = cv_auto_trans assembly_inputs_def;
 val () = cv_auto_trans yul_substitute_expr_def;
 val () = cv_auto_trans yul_unbind_def;
 val () = cv_auto_trans yul_substitute_stmt_def;
 val () = cv_auto_trans object_padding_def;
-val () = cv_auto_trans assembly_array_def;
+val () = cv_auto_trans assembly_layout_def;
 val () = cv_auto_trans assembly_element_words_def;
 val () = cv_auto_trans assembly_object_bytes_def;
 val () = cv_auto_trans assembly_project_def;
@@ -2009,7 +2034,7 @@ val assembly_allocate_pre_def =
   cv_auto_trans_pre "assembly_allocate_pre" assembly_allocate_def;
 
 Theorem assembly_allocate_pre[cv_pre]:
-  ∀f0 f1 m0 m refs st news. assembly_allocate_pre f0 f1 m0 m refs st news
+  ∀env f0 f1 m0 m refs st news. assembly_allocate_pre env f0 f1 m0 m refs st news
 Proof
   ho_match_mp_tac assembly_allocate_ind >> rpt strip_tac >>
   simp[Once assembly_allocate_pre_def] >> rw[] >> gvs[] >>
