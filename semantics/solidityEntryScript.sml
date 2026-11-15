@@ -128,8 +128,10 @@ End
  * is empty. A creation sent value reverts unless the constructor is payable,
  * and arguments the decoder rejects revert. The immutables start at zero, and
  * a successful creation yields their values. Memory above the scratch space
- * holds a word for each immutable, then the copied arguments, so both the
- * decoder and the constructor allocate above them.
+ * holds a word for each immutable, then, for a constructor with parameters,
+ * the copied arguments, so both the decoder and the constructor allocate
+ * above them. A constructor without parameters gets no argument copy, as
+ * in solc, and ignores any bytes after its initcode.
  *)
 Definition deploy_contract_def:
   deploy_contract fuel (prog : core_program) (fr : source_frame)
