@@ -1,7 +1,7 @@
 (* Code-reading builtins observe the current stage's runtime image. *)
 Theory yulDifferentialTest
 Ancestors yulDifferential solidityDifferential
-Libs cv_transLib wordsLib intLib
+Libs cv_transLib wordsLib intLib solidityDifferentialLib
 
 Definition code_reading_case_def:
   code_reading_case =
@@ -99,3 +99,51 @@ Theorem creation_rejects_wrong_returned_code:
 Proof
   CONV_TAC cv_eval
 QED
+
+fun holbuild_extra_deps (_ : string list) = ()
+val () = holbuild_extra_deps [
+  "../SOLIDITY_PIN",
+  "../profiles/solc-0.8.37-via-ir-osaka.json",
+  "../testdata/differential/shadowed_builtins.sol",
+  "../testdata/differential/expected/shadowed_builtins.json",
+  "../testdata/yul/expected/shadowed_builtins.json",
+  "../testdata/yul/expected/shadowed_builtins-optimized.json"
+]
+
+(* This case would fail if evaluated. Gas evidence leaves it inconclusive
+ * before either interpreter runs, with no agreement theorem to reuse. *)
+val () = let
+  val dir = "yul-gas-guard-test"
+  fun read path = let val f = TextIO.openIn path
+                 in TextIO.inputAll f before TextIO.closeIn f end
+  fun write path text = let val f = TextIO.openOut path
+                        in TextIO.output (f, text) before TextIO.closeOut f end
+  val () = OS.FileSys.mkDir dir
+  val () = write (dir ^ "/gas_guard.ir.json")
+    (read "../testdata/yul/expected/shadowed_builtins.json")
+  val () = write (dir ^ "/gas_guard.optimized.json")
+    (read "../testdata/yul/expected/shadowed_builtins-optimized.json")
+  val () = write (dir ^ "/suite.json")
+    "{\"name\":\"gas_guard\",\"source\":\"testdata/differential/shadowed_builtins.sol\",\"contract\":\"ShadowedBuiltins\",\"artifact\":\"testdata/differential/expected/shadowed_builtins.json\",\"cases\":[{\"name\":\"probe\",\"calldata\":\"0x\",\"gas\":[1],\"expect\":{\"returned\":\"0xdead\"}}]}"
+  val () = solidityDifferentialLib.with_results (dir ^ "/results.jsonl") (fn () =>
+    solidityDifferentialLib.run_yul_suite_file
+      {root = "..", suite_file = "tests/" ^ dir ^ "/suite.json", yul_root = dir})
+  val prefix = "yul-differential-result: "
+  val rows = map (JSONParser.parse o JSONParser.openString o
+                 (fn line => String.extract (line, size prefix, NONE)))
+    (String.tokens (fn c => c = #"\n") (read (dir ^ "/results.jsonl")))
+  open solidityBytecodeLib
+  val cases = List.filter (fn r => string_field r "kind" = "case") rows
+  val () = if length cases = 3 andalso List.all (fn r =>
+      string_field r "status" = "inconclusive" andalso
+      string_field r "message" = "gas observations not modelled in raw Yul" andalso
+      not (Option.isSome (JSONUtil.findField r "theorem"))) cases then ()
+    else raise Fail "raw Yul gas evidence was not reported as inconclusive"
+  val () = List.app (fn stage =>
+    if can (DB.fetch (current_theory ())) ("yul_gas_guard_probe_" ^ stage) then
+      raise Fail "raw Yul gas evidence saved an agreement theorem"
+    else ()) ["ir", "ir_optimized", "optimized"]
+  val () = List.app (fn file => OS.FileSys.remove (dir ^ "/" ^ file))
+    ["gas_guard.ir.json", "gas_guard.optimized.json", "suite.json", "results.jsonl"]
+  val () = OS.FileSys.rmDir dir
+in () end
