@@ -168,9 +168,18 @@ Datatype:
            | AbiStringConcat
 End
 
-(* A call option, {value: v} or {gas: g}, in a call's source order. *)
+(* A creation target's compiler bytecode and constructor signature. *)
 Datatype:
-  call_option = ValueOption | GasOption
+  src_create = <|
+    create_bytecode : byte list;
+    create_mutability : state_mutability;
+    create_parameters : src_variable list
+  |>
+End
+
+(* A call option in source order. Salt is restricted to creation. *)
+Datatype:
+  call_option = ValueOption | GasOption | SaltOption
 End
 
 (* a.call, a.staticcall and a.delegatecall of an address. *)
@@ -209,6 +218,8 @@ Datatype:
       (num list) string
   | SrcTypeMember node_info string src_type_name string
   | SrcNew node_info src_type_name src_expr string
+  | SrcCreate node_info src_create (call_option list) (src_expr list)
+      (num list) string
   (* S(args), the struct S's constructor: the arguments in the call's order,
    * then for each member the index of its argument when they are named *)
   | SrcStructConstructor node_info num (src_expr list) (num list) string
@@ -1169,6 +1180,8 @@ Definition expr_ids_def:
     info.node_id :: exprs_ids operands) ∧
   (expr_ids (SrcNew info tn e _) =
     info.node_id :: type_name_ids tn ++ expr_ids e) ∧
+  (expr_ids (SrcCreate info _ _ operands _ _) =
+    info.node_id :: exprs_ids operands) ∧
   (expr_ids (SrcStructConstructor info _ args _ _) = info.node_id :: exprs_ids args) ∧
   (expr_ids (SrcUnsupportedExpr info _ es) = info.node_id :: exprs_ids es) ∧
   (component_ids [] = []) ∧

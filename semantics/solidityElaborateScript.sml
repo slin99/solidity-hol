@@ -162,6 +162,7 @@ Definition expr_id_def:
   (expr_id (SrcExternalCall info _ _ _ _ _) = info.node_id) ∧
   (expr_id (SrcTypeMember info _ _ _) = info.node_id) ∧
   (expr_id (SrcNew info _ _ _) = info.node_id) ∧
+  (expr_id (SrcCreate info _ _ _ _ _) = info.node_id) ∧
   (expr_id (SrcStructConstructor info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcEnumValue info _ _ _) = info.node_id) ∧
   (expr_id (SrcKeccak256 info _ _ _) = info.node_id) ∧
@@ -533,6 +534,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcTypeConversion _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcExternalCall _ _ _ operands _ _) ⇔ exprs_assign operands) ∧
   (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcCreate _ _ _ operands _ _) ⇔ exprs_assign operands) ∧
   (expr_assigns (SrcStructConstructor _ _ args _ _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcKeccak256 _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcModular _ _ _ args _) ⇔ exprs_assign args) ∧
@@ -1342,7 +1344,8 @@ Definition external_call_def:
     let shape =
       (case external_types ctx.structs callee.ext_signature of
          SOME (params, rets) =>
-           if (MEM ValueOption opts ⇒ callee.ext_mutability = PayableMut) ∧
+           if ¬MEM SaltOption opts ∧
+              (MEM ValueOption opts ⇒ callee.ext_mutability = PayableMut) ∧
               LENGTH operands = LENGTH params + 1 + LENGTH opts ∧
               argument_order_ok order (LENGTH params) ∧
               decode_type_identifier tid = SOME (call_value_type rets) ∧
@@ -1365,6 +1368,40 @@ Definition external_call_def:
               | INL _ => INR [(info.node_id, "unsupported external call")]
               | INR bs => INR bs)
          | _ => INR [(info.node_id, "unsupported external call")])
+End
+
+(* Creation shares external-call argument conversion and ABI admission. *)
+Definition create_contract_def:
+  create_contract ctx (info : node_info) callee opts operands order tid r =
+    let shape =
+      case all_some (MAP call_variable_type callee.create_parameters) of
+        NONE => NONE
+      | SOME params =>
+          if ¬MEM GasOption opts ∧ ALL_DISTINCT opts ∧
+             (MEM ValueOption opts ⇒ callee.create_mutability = PayableMut) ∧
+             LENGTH operands = LENGTH opts + LENGTH params ∧
+             argument_order_ok order (LENGTH params) ∧
+             source_type_matches (AddressT NonpayableAddress) tid ∧
+             EVERY (abi_binding_ok ctx.enums ctx.structs) params
+          then SOME params else NONE in
+    case (shape, r) of
+      (NONE, _) => reject (info.node_id, "unsupported contract creation") r
+    | (_, INR bs) => INR bs
+    | (SOME params, INL ((ss, vs0), next)) =>
+        (case (arrange order vs0, arrange order (expr_ids operands)) of
+           (SOME vs, SOME ids) =>
+             (case convert_operands next info.node_id ids
+                (encoded_as ((MAP (λk. if k = SaltOption then FixedBytesT 32
+                                      else UintT 256) opts) ++ params)) vs of
+                INL (cs, _, atoms, n1) =>
+                  let options = TAKE (LENGTH opts) atoms in
+                  let (rs, a) = bind_value n1 (AddressT NonpayableAddress)
+                    (CreateContractOperation callee.create_bytecode params
+                      (option_value opts options) (option_atom SaltOption opts options)
+                      (DROP (LENGTH opts) atoms)) in
+                  INL ((ss ++ cs ++ rs, a, ElabType (AddressT NonpayableAddress)), n1 + 1)
+              | INR bs => INR bs)
+         | _ => INR [(info.node_id, "argument order")])
 End
 
 Definition elab_expr_def:
@@ -1865,6 +1902,9 @@ Definition elab_expr_def:
     | SrcExternalCall info callee opts operands order tid =>
         external_call F ctx info callee opts operands order tid
           (elab_arg_values ctx n operands)
+    | SrcCreate info callee opts operands order tid =>
+        create_contract ctx info callee opts operands order tid
+          (elab_arg_values ctx n operands)
     (* S(args): the arguments in the call's order, then the struct is
        allocated, and each field converted and written in declaration order *)
     | SrcStructConstructor info id args order tid =>
@@ -2088,6 +2128,7 @@ Definition elab_expr_def:
         if ¬(decode_type_identifier tid =
                SOME (call_value_type [BoolT; LocatedT MemoryLoc BytesT]) ∧
              LENGTH operands = LENGTH opts + 2 ∧
+             ¬MEM SaltOption opts ∧
              (kind ≠ LowLevelCall ⇒ ¬MEM ValueOption opts))
         then reject (info.node_id, "unsupported low-level call")
                (elab_arg_values ctx n operands) else
@@ -4001,6 +4042,7 @@ QED
 val () = cv_auto_trans early_call_arguments_def;
 val () = cv_auto_trans bind_call_def;
 val () = cv_auto_trans call_location_def;
+val () = cv_auto_trans create_contract_def;
 
 val () = cv_auto_trans finish_delete_def;
 val () = cv_auto_trans finish_transfer_def;
