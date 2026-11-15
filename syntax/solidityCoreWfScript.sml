@@ -1112,14 +1112,33 @@ Definition assembly_value_type_def[simp]:
   (assembly_value_type _ ⇔ F)
 End
 
-(* The memory objects an inline assembly block sees: byte sequences, and
- * arrays of value types, whose elements it sees as words. *)
+(* Memory cells contain either a scalar word or a pointer to another object.
+ * Struct declarations are unfolded with fuel, as in memory_type_ok. *)
+Definition assembly_cell_type_def:
+  (assembly_cell_type env (n : num) (ArrayT element length) ⇔
+    valid_array_length length ∧ assembly_cell_type env n element) ∧
+  (assembly_cell_type env n (StructT id) ⇔
+    if n = 0 then F else
+    case lookup_struct env id of
+      SOME fields => assembly_cell_types env (n - 1) (MAP SND fields)
+    | NONE => F) ∧
+  (assembly_cell_type env n ty ⇔
+    assembly_value_type ty ∨ byte_sequence_type ty) ∧
+  (assembly_cell_types env n [] ⇔ T) ∧
+  (assembly_cell_types env n (ty :: tys) ⇔
+    assembly_cell_type env n ty ∧ assembly_cell_types env n tys)
+Termination
+  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
+    INL (env, n, ty) => (n, sol_type_size ty)
+  | INR (env, n, tys) => (n, list_size sol_type_size tys))’ >>
+  rw[list_size_def]
+End
+
+(* Only object types, not standalone scalar cells, have memory addresses. *)
 Definition assembly_memory_type_def:
-  assembly_memory_type ty ⇔
-    byte_sequence_type ty ∨
-    case ty of
-      ArrayT element _ => assembly_value_type element
-    | _ => F
+  assembly_memory_type env ty ⇔
+    located_object_shape MemoryLoc ty ∧
+    assembly_cell_type env (LENGTH env.type_declarations) ty
 End
 
 (* The builtins an inline assembly block may not use. The source state keeps
@@ -1552,7 +1571,7 @@ Definition assembly_reference_ok_def:
         wf_core_atom env ctx (SingleType ty) a ∧ assembly_value_type ty
     | AssemblyMemory x ty =>
         ALOOKUP ctx.bindings x = SOME (SingleType (LocatedT MemoryLoc ty)) ∧
-        assembly_memory_type ty
+        assembly_memory_type env ty
 End
 
 Definition check_core_stmts_def:
@@ -1980,6 +1999,12 @@ val () = cv_auto_trans call_stmt_ok_def;
 val () = cv_auto_trans assembly_calls_ok_def;
 val () = cv_auto_trans assembly_gas_ok_def;
 val () = cv_auto_trans assembly_value_type_def;
+val () = cv_auto_trans_rec assembly_cell_type_def (
+  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
+    INL (env, n, ty) => (cv$c2n n, cv_size ty)
+  | INR (env, n, tys) => (cv$c2n n, cv_size tys))’ >>
+  cv_termination_tac
+);
 val () = cv_auto_trans assembly_memory_type_def;
 val () = cv_auto_trans calldata_slice_type_def;
 val () = cv_auto_trans calldata_binding_def;

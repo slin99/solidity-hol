@@ -171,6 +171,11 @@ fun builtin_of name =
 fun import_literal v = within v (fn v =>
   case string_field v "kind" of
     "number" => yul "LitNumber" [word_term (string_field v "value")]
+  | "bool" =>
+      (case string_field v "value" of
+         "true" => yul "LitBool" [T]
+       | "false" => yul "LitBool" [F]
+       | value => fail (describe v ^ ": invalid boolean literal " ^ value))
   | "string" =>
       (* Both the decoded text (`value`) and the bytes (`hexValue`) are there;
        * the bytes are what the literal holds, and a literal written in hex has

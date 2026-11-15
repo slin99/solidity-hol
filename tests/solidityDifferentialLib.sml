@@ -389,6 +389,9 @@ fun yul_stages yul_root suite =
  *)
 val yul_fuel = 1000000;
 
+val yul_encoding_conv =
+  EVAL THENC PURE_REWRITE_CONV [cv_primTheory.cv_rep_T, cv_primTheory.cv_rep_F];
+
 (* The backend can append creation data after the runtime object. *)
 fun deployed_code_offset artifact source contract =
   let
@@ -421,7 +424,7 @@ fun yul_code_constant name path source contract stage unit deploy =
     val output = field artifact "output"
     val runtime_def = define (name ^ "_runtime")
                 (yulImportLib.import_runtime output source contract stage)
-    val () = cv_trans_deep_embedding EVAL runtime_def
+    val () = cv_trans_deep_embedding yul_encoding_conv runtime_def
     val runtime = lhs (concl runtime_def)
     val deployed = code_constant (name ^ "_deployed") "deployedBytecode"
                      artifact source contract
@@ -433,7 +436,7 @@ fun yul_code_constant name path source contract stage unit deploy =
           val (obj_name, deployed_name, body) =
             yulImportLib.import_creation output source contract stage
           val body_def = define (name ^ "_creation") body
-          val () = cv_trans_deep_embedding EVAL body_def
+          val () = cv_trans_deep_embedding yul_encoding_conv body_def
           val initcode = code_constant (name ^ "_initcode") "bytecode"
                            artifact source contract
           val program =

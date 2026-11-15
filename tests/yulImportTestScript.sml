@@ -252,12 +252,12 @@ val () = expect_lines "refused case literal"
               ("cases", arr
                  [obj [("nodeType", str "YulCase"),
                        ("value", obj [("nodeType", str "YulLiteral"), ("kind", str "bool"),
-                                      ("value", str "true"), ("type", str "")]),
+                                      ("value", str "maybe"), ("type", str "")]),
                        ("body", block [])],
                   obj [("nodeType", str "YulCase"), ("value", str "default"),
                        ("body", block [expression_statement (call "case_unknown" [])])]])]]]
      creation_code)
-  ["unsupported literal kind bool", "call to case_unknown"]
+  ["invalid boolean literal maybe", "call to case_unknown"]
 
 (* An object nested in the runtime object does not hide the blockers of
  * its code. *)
