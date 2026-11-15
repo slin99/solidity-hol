@@ -543,9 +543,9 @@ Proof
   CONV_TAC cv_eval
 QED
 
-(* Scratch space round-trips; a write between it and the free memory
- * pointer (0x80 here) fails closed, and one from the free memory pointer up
- * is dropped. *)
+(* Scratch space round-trips; the zero slot may be used as scratch too but
+ * must be zero again at the normal exit, and a write from the free memory
+ * pointer (0x80 here) up is dropped. *)
 Theorem asm_memory_outside_scratch_invalid:
   run_asm [YulExprStmt (YulBuiltin YMStore [ylit 0x20w; YulName "x"]);
            YulAssign ["x"] (YulBuiltin YMLoad [ylit 0x20w])]
@@ -553,7 +553,15 @@ Theorem asm_memory_outside_scratch_invalid:
     ReturnCompletion [ScalarValue (IntegerValue 7)] ∧
   run_asm [YulExprStmt (YulBuiltin YMStore [ylit 0x60w; YulName "x"])]
     initial_state (AstId 110) [ScalarValue (IntegerValue 7)] =
-    InvalidCompletion "assembly wrote memory outside the scratch space and byte sequence data" ∧
+    InvalidCompletion "assembly left the zero slot non-zero" ∧
+  run_asm [YulExprStmt (YulBuiltin YMStore8 [ylit 0x7fw; YulName "x"])]
+    initial_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    InvalidCompletion "assembly left the zero slot non-zero" ∧
+  run_asm [YulExprStmt (YulBuiltin YMStore [ylit 0x60w; YulName "x"]);
+           YulAssign ["x"] (yadd (YulBuiltin YMLoad [ylit 0x60w]) (ylit 1w));
+           YulExprStmt (YulBuiltin YMStore [ylit 0x60w; ylit 0w])]
+    initial_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    ReturnCompletion [ScalarValue (IntegerValue 8)] ∧
   run_asm [YulExprStmt (YulBuiltin YMStore [ylit 0x80w; YulName "x"])]
     initial_state (AstId 110) [ScalarValue (IntegerValue 7)] =
     ReturnCompletion [ScalarValue (IntegerValue 7)]
@@ -1145,8 +1153,8 @@ Proof
 QED
 
 (* What assembly_memory_ok admits: scratch written then read, the free
- * memory pointer read and written as a word, and other writes above the
- * scratch space only in a block that halts. *)
+ * memory pointer and the zero slot read and written, and other writes at or
+ * above 0x80 only in a block that halts. *)
 Theorem asm_memory_rule:
   assembly_memory_ok
     [YulExprStmt (YulBuiltin YMStore [ylit 0w; YulName "x"]);
@@ -1154,13 +1162,20 @@ Theorem asm_memory_rule:
      YulAssign ["x"] (YulBuiltin YKeccak256 [ylit 0w; ylit 64w])] ∧
   ¬assembly_memory_ok [YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])] ∧
   assembly_memory_ok [YulAssign ["x"] (YulBuiltin YMLoad [ylit 64w])] ∧
-  ¬assembly_memory_ok [YulAssign ["x"] (YulBuiltin YMLoad [ylit 65w])] ∧
+  assembly_memory_ok [YulAssign ["x"] (YulBuiltin YMLoad [ylit 96w])] ∧
+  ¬assembly_memory_ok [YulAssign ["x"] (YulBuiltin YMLoad [ylit 97w])] ∧
   ¬assembly_memory_ok
     [YulExprStmt (YulBuiltin YMStore [ylit 1w; YulName "x"]);
      YulExprStmt (YulBuiltin YLog0 [ylit 0w; ylit 64w])] ∧
   assembly_memory_ok [YulExprStmt (YulBuiltin YMStore [ylit 64w; YulName "x"])] ∧
-  ¬assembly_memory_ok [YulExprStmt (YulBuiltin YMStore [ylit 65w; YulName "x"])] ∧
-  ¬assembly_memory_ok [YulExprStmt (YulBuiltin YMStore8 [ylit 64w; YulName "x"])] ∧
+  assembly_memory_ok [YulExprStmt (YulBuiltin YMStore [ylit 96w; YulName "x"])] ∧
+  ¬assembly_memory_ok [YulExprStmt (YulBuiltin YMStore [ylit 97w; YulName "x"])] ∧
+  assembly_memory_ok [YulExprStmt (YulBuiltin YMStore8 [ylit 127w; YulName "x"])] ∧
+  ¬assembly_memory_ok [YulExprStmt (YulBuiltin YMStore8 [ylit 128w; YulName "x"])] ∧
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMCopy [ylit 0x60w; ylit 0x40w; ylit 32w])] ∧
+  ¬assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMCopy [ylit 0x61w; ylit 0x40w; ylit 32w])] ∧
   assembly_memory_ok
     [YulExprStmt (YulBuiltin YMStore [ylit 128w; YulName "x"]);
      YulExprStmt (YulBuiltin YReturn [ylit 128w; ylit 32w])] ∧
@@ -1274,8 +1289,11 @@ Theorem asm_argument_order_rule:
   assembly_memory_ok
     [YulExprStmt (YulBuiltin YReturnDataCopy [ylit 0w; ylit 0w; YulBuiltin YReturnDataSize []]);
      YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])] ∧
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YReturnDataCopy [ylit 64w; ylit 0w; YulBuiltin YReturnDataSize []]);
+     YulAssign ["x"] (YulBuiltin YMLoad [ylit 96w])] ∧
   ¬assembly_memory_ok
-    [YulExprStmt (YulBuiltin YReturnDataCopy [ylit 64w; ylit 0w; YulBuiltin YReturnDataSize []])]
+    [YulExprStmt (YulBuiltin YReturnDataCopy [ylit 128w; ylit 0w; YulBuiltin YReturnDataSize []])]
 Proof
   EVAL_TAC
 QED
@@ -1323,6 +1341,129 @@ Theorem asm_halting_bodies_rule:
        [(LitNumber 0w, [YulExprStmt (YulBuiltin YRevert [ylit 0w; ylit 0w])])] []]
 Proof
   EVAL_TAC
+QED
+
+(* Writes inside blocks, branches and loops cover later reads, as do
+ * mstore8's, calldatacopy's and mcopy's, and a write at a computed address
+ * may cover any byte below 0x80 (the evaluator checks the read). A for's
+ * condition sees its prelude's writes, its body the condition's, and its
+ * post the body's. A Yul function's body sees what its statement list wrote
+ * before it. *)
+Theorem asm_structural_stores_rule:
+  assembly_memory_ok
+    [YulBlock [YulExprStmt (YulBuiltin YMStore [ylit 0w; YulName "x"])];
+     YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])] ∧
+  assembly_memory_ok
+    [YulIf (YulName "c") [YulExprStmt (YulBuiltin YMStore [ylit 0w; YulName "x"])];
+     YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])] ∧
+  assembly_memory_ok
+    [YulSwitch (YulName "c")
+       [(LitNumber 0w, [YulExprStmt (YulBuiltin YMStore [ylit 0w; ylit 1w])])]
+       [YulExprStmt (YulBuiltin YMStore [ylit 0x20w; ylit 1w])];
+     YulAssign ["x"] (YulBuiltin YKeccak256 [ylit 0w; ylit 64w])] ∧
+  assembly_memory_ok
+    [YulFor [YulExprStmt (YulBuiltin YMStore [ylit 0w; ylit 1w])]
+       (YulBuiltin YMLoad [ylit 0w])
+       [YulAssign ["x"] (YulBuiltin YMLoad [ylit 0x20w])]
+       [YulExprStmt (YulBuiltin YMStore [ylit 0x20w; ylit 1w])];
+     YulAssign ["x"] (YulBuiltin YKeccak256 [ylit 0w; ylit 64w])] ∧
+  ¬assembly_memory_ok
+    [YulFor [] (YulBuiltin YMLoad [ylit 0w]) []
+       [YulExprStmt (YulBuiltin YMStore [ylit 0w; ylit 1w])]] ∧
+  ¬assembly_memory_ok
+    [YulFor [] (ylit 1w) [YulExprStmt (YulBuiltin YMStore [ylit 0w; ylit 1w])]
+       [YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])]] ∧
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMStore8 [ylit 0w; ylit 1w]);
+     YulAssign ["x"] (YulBuiltin YKeccak256 [ylit 0w; ylit 1w])] ∧
+  ¬assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMStore8 [ylit 0w; ylit 1w]);
+     YulAssign ["x"] (YulBuiltin YKeccak256 [ylit 0w; ylit 2w])] ∧
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YCallDataCopy [ylit 0w; ylit 4w; ylit 64w]);
+     YulAssign ["x"] (YulBuiltin YKeccak256 [ylit 0w; ylit 64w])] ∧
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMStore [ylit 0w; ylit 1w]);
+     YulExprStmt (YulBuiltin YMCopy [ylit 0x20w; ylit 0w; ylit 32w]);
+     YulAssign ["x"] (YulBuiltin YMLoad [ylit 0x20w])] ∧
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMStore [YulName "p"; ylit 1w]);
+     YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])] ∧
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMStore [ylit 0w; ylit 1w]);
+     YulFunction "f" [] ["r"] [YulAssign ["r"] (YulBuiltin YMLoad [ylit 0w])]] ∧
+  ¬assembly_memory_ok
+    [YulFunction "f" [] ["r"] [YulAssign ["r"] (YulBuiltin YMLoad [ylit 0w])];
+     YulExprStmt (YulBuiltin YMStore [ylit 0w; ylit 1w])]
+Proof
+  EVAL_TAC
+QED
+
+(* A Yul function's body may read return data where the block may at its
+ * start: always when the source knows the return data (assembly_gas_ok),
+ * and otherwise only after a call of the body's own, since the function may
+ * be called before any of the block's calls. *)
+Theorem asm_function_return_data_rule:
+  assembly_gas_ok
+    [YulFunction "f" [] ["r"] [YulAssign ["r"] (YulBuiltin YReturnDataSize [])]] ∧
+  ¬assembly_calls_ok
+    [YulFunction "f" [] ["r"] [YulAssign ["r"] (YulBuiltin YReturnDataSize [])]] ∧
+  ¬assembly_calls_ok
+    [YulLet ["x"] (SOME (YulApply "f" []));
+     YulLet ["s"] (SOME (ycall (YulName "t") 0w 0w 0w 0w));
+     YulFunction "f" [] ["r"] [YulAssign ["r"] (YulBuiltin YReturnDataSize [])]] ∧
+  assembly_calls_ok
+    [YulFunction "f" [] ["r"]
+       [YulLet ["s"] (SOME (ycall (YulName "t") 0w 0w 0w 0w));
+        YulAssign ["r"] (YulBuiltin YReturnDataSize [])]]
+Proof
+  EVAL_TAC
+QED
+
+(* Enum and user-defined value type locals. asm_typed ty code v runs code on
+ * a local of type ty holding v, bound to the block's "x", and returns it. The
+ * enum 900 has three members; the user-defined value type 901 is a bytes4,
+ * kept left-aligned like one. *)
+Definition asm_typed_def:
+  asm_typed ty code v =
+    let p = <| procedure_id := AstId 110;
+               parameters := [(AstId 111, ty)];
+               return_bindings := [(AstId 112, ty)];
+               body := [AssemblyStmt code [("x", AssemblyLocal (AstId 111) ty)];
+                        ReturnStmt [BoundAtom (AstId 111)]] |> in
+    let env = core_program_environment <|
+      unsupported_procedures := []; procedures := [p];
+      struct_layouts := [];
+      type_declarations := [(AstId 900, EnumDeclaration 3);
+                            (AstId 901, UserValueDeclaration (FixedBytesT 4))];
+      state_variables := []; immutables := [];
+      entry_procedure := AstId 110;
+      external_functions := []; receive_procedure := NONE;
+      fallback_procedure := NONE; creation_procedure := NONE |> in
+    (invoke_source 20 env (AstId 110) [ScalarValue v] initial_state []).completion
+End
+
+val () = cv_auto_trans asm_typed_def;
+
+(* An enum word reads as its member's index; a word written back past the
+ * last member fails closed. A user-defined value type's word is its
+ * underlying type's, and a non-canonical one fails closed. *)
+Theorem asm_enum_udvt_locals:
+  asm_typed (EnumT (AstId 900)) [YulAssign ["x"] (yadd (YulName "x") (ylit 1w))]
+    (IntegerValue 1) =
+    ReturnCompletion [ScalarValue (IntegerValue 2)] ∧
+  asm_typed (EnumT (AstId 900)) [YulAssign ["x"] (ylit 3w)] (IntegerValue 1) =
+    InvalidCompletion "assembly write-back failed" ∧
+  asm_typed (UserValueT (AstId 901))
+    [YulAssign ["x"] (YulBuiltin YShr [ylit 224w; YulName "x"])]
+    (BytesValue [0w; 0w; 0w; 7w]) =
+    InvalidCompletion "assembly write-back failed" ∧
+  asm_typed (UserValueT (AstId 901))
+    [YulAssign ["x"] (YulBuiltin YShl [ylit 8w; YulName "x"])]
+    (BytesValue [1w; 2w; 3w; 4w]) =
+    ReturnCompletion [ScalarValue (BytesValue [2w; 3w; 4w; 0w])]
+Proof
+  CONV_TAC cv_eval
 QED
 
 (* Callees at 0x5000 (returns the word 0x2a), 0x5001 (reverts with the word
@@ -2050,13 +2191,13 @@ End
 val () = cv_auto_trans assembly_struct_state_def;
 
 Theorem assembly_empty_object_addresses:
-  assembly_cell_word FEMPTY BytesT
+  assembly_cell_word env FEMPTY BytesT
     (ReferenceValue (MemoryReference (HeapId 0) 0 BytesT)) = SOME 96 ∧
-  assembly_cell_word FEMPTY (ArrayT (UintT 256) NONE)
+  assembly_cell_word env FEMPTY (ArrayT (UintT 256) NONE)
     (ReferenceValue (MemoryReference (HeapId 0) 0 (ArrayT (UintT 256) NONE))) = SOME 96 ∧
-  assembly_cell_word FEMPTY (StructT (AstId 950))
+  assembly_cell_word env FEMPTY (StructT (AstId 950))
     (ReferenceValue (MemoryReference (HeapId 0) 0 (StructT (AstId 950)))) = NONE ∧
-  assembly_cell_word FEMPTY (ArrayT (UintT 256) (SOME 2))
+  assembly_cell_word env FEMPTY (ArrayT (UintT 256) (SOME 2))
     (ReferenceValue (MemoryReference (HeapId 0) 0 (ArrayT (UintT 256) (SOME 2)))) = NONE
 Proof
   EVAL_TAC
