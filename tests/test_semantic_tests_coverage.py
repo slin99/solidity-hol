@@ -94,7 +94,7 @@ class ReadTestTests(unittest.TestCase):
     def test_reads_sources_that_are_not_utf8(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "t.sol"
-            path.write_bytes(b'contract C { string s = hex"c0"; }\n// ----\n// SyntaxError 8452: (1-2): X.\n')
+            path.write_bytes(b'contract C { string s = "\xc0"; }\n// ----\n// SyntaxError 8452: (1-2): X.\n')
             test = coverage.read_test(Path(temporary), path)
         self.assertEqual(coverage.skip_reason(test, PROFILE, "syntaxTests"),
                          "expected compile error (SyntaxError)")
