@@ -1150,7 +1150,7 @@ End
  * calls and return data are limited by assembly_gas_ok instead. *)
 Definition assembly_unsupported_def:
   assembly_unsupported =
-    [YCodeSize; YCodeCopy; YDataSize; YDataOffset; YSetImmutable;
+    [YCodeSize; YCodeCopy; YDataCopy; YDataSize; YDataOffset; YSetImmutable;
      YLinkerSymbol]
 End
 
