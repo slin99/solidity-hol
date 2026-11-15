@@ -394,10 +394,10 @@ QED
 
 Theorem only_invalid_opcode_is_aborted:
   FST (bytecode_execution
-    (case_accounts [0xfew] [] 0x2000w [] [],
+    (case_accounts [0xfew] [] 0x2000w [] [] [],
      differential_tx 0x2000w 0 [], [])) = Aborted ∧
   FST (bytecode_execution
-    (case_accounts [0x5fw; 0x56w] [] 0x2000w [] [],
+    (case_accounts [0x5fw; 0x56w] [] 0x2000w [] [] [],
      differential_tx 0x2000w 0 [], [])) = Diagnostic ExceptionalHalt
 Proof
   CONV_TAC cv_eval
