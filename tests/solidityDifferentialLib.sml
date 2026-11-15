@@ -137,10 +137,21 @@ fun run_case {suite, code, initcode, fixture, immutables, unit, program, fuel, b
                       String.concatWith ", " (map #1 different))
               end
             val bridge = EQT_ELIM bridge_result
-            val evm = (REWRITE_CONV [evm_execution_def, bridge, sumTheory.sum_case_def]
-                       THENC DEPTH_CONV BETA_CONV THENC REWRITE_CONV [cached])
-              “evm_execution ^code ^unit ^case_tm”
-            val () = if rhs (concl evm) ~~ rhs (concl cached) then () else
+            val unfolded =
+              (REWRITE_CONV [evm_execution_def, bridge, sumTheory.sum_case_def]
+               THENC DEPTH_CONV BETA_CONV)
+                “evm_execution ^code ^unit ^case_tm”
+            val (gas_bad, invalid_gas, _) = boolSyntax.dest_cond (rhs (concl unfolded))
+            val gas_check = cv_eval gas_bad
+            val expected =
+              if rhs (concl gas_check) ~~ T then invalid_gas
+              else if rhs (concl gas_check) ~~ F then rhs (concl cached)
+              else fail "gas evidence check did not reduce to a boolean"
+            val evm = CONV_RULE
+              (RAND_CONV
+                (RATOR_CONV (RATOR_CONV (RAND_CONV (K gas_check)))
+                 THENC REWRITE_CONV [cached])) unfolded
+            val () = if rhs (concl evm) ~~ expected then () else
               fail "cached bytecode result was not substituted completely"
           in
             (PURE_REWRITE_CONV [differential_verdict_def, evm] THENC cv_eval) verdict_tm
@@ -591,8 +602,18 @@ fun run_case_three_way suite_name env c =
        expect = expectation (field c "expect"),
        unit = #unit env, code = #code env, program = #program env}
   in
-    List.foldl (fn (stage, ok) => run_yul_stage case_env stage andalso ok)
-      true (#stages env)
+    if null (fst (listSyntax.dest_list (record_field "case_gas" (#case_tm case_env)))) then
+      List.foldl (fn (stage, ok) => run_yul_stage case_env stage andalso ok)
+        true (#stages env)
+    else
+      (List.app (fn (_, json_tag, _) =>
+         emit_yul [("kind", json_string "case"), ("suite", json_string suite_name),
+                   ("case", json_string (#case_name case_env)),
+                   ("stage", json_string json_tag),
+                   ("status", json_string "inconclusive"),
+                   ("message", json_string "gas observations not modelled in raw Yul")])
+         (#stages env);
+       true)
   end
   handle e =>
     (emit_yul [("kind", json_string "case"), ("suite", json_string suite_name),

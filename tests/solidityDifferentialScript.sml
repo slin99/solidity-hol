@@ -275,6 +275,8 @@ Definition contract_observation_def:
          SOME (lookup_account a w.accounts).storage, w.logs)
     | ContractReverted data w =>
         (Reverted data, SOME (lookup_account a w.accounts).storage, w.logs)
+    | ContractAborted w =>
+        (Aborted, SOME (lookup_account a w.accounts).storage, w.logs)
     | ContractInvalid _ => (Diagnostic InvalidCompletion, NONE, [])
     | ContractOutOfFuel => (Diagnostic OutOfFuel, NONE, [])
 End
@@ -295,11 +297,13 @@ Definition source_execution_def:
                         c.case_peer_code c.case_peer_storage c.case_libraries)) in
         contract_observation u c.case_immutable_refs a
           (case c.case_input of
-             Deploy _ _ => deploy_contract fuel prog fr
+             Deploy _ _ => deploy_contract_with_gas fuel prog fr
                (w with accounts := update_account a
                  ((lookup_account a w.accounts) with nonce := 1) w.accounts)
-           | _ => call_contract fuel prog
-                    (FEMPTY |++ MAP (λ(x, s, _). (x, s)) imm) fr w)
+               (MAP GasLeftObservation c.case_gas)
+           | _ => call_contract_with_gas fuel prog
+                    (FEMPTY |++ MAP (λ(x, s, _). (x, s)) imm) fr w
+                    (MAP GasLeftObservation c.case_gas))
 End
 
 Definition source_observation_def:
@@ -324,7 +328,10 @@ Definition evm_execution_def:
   evm_execution code u c =
     case prepared_evm_input code u c of
       INL d => (Diagnostic d, NONE, [])
-    | INR input => bytecode_execution input
+    | INR input =>
+        if c.case_gas ≠ [] ∧ bytecode_gas_observations input ≠ SOME c.case_gas then
+          (Diagnostic InvalidGasEvidence, NONE, [])
+        else bytecode_execution input
 End
 
 Definition evm_observation_def:
@@ -350,6 +357,7 @@ Definition expected_outcome_def:
     | ExpectRawReturn bs => Returned bs
     | ExpectPanic n => Reverted (panic_data n)
     | ExpectRevert bs => Reverted bs
+    | ExpectAbort => Aborted
 End
 
 (* Comparison *)

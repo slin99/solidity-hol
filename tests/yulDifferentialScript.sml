@@ -105,7 +105,7 @@ Definition yul_differential_machine_def:
                       imm;
        memory := (FEMPTY : num |-> word8);
        memory_size := 0;
-       gas_limit := (differential_tx c.case_sender c.case_value data).gasLimit;
+       gas_limit := (differential_tx c.case_sender c.case_value data).gasLimit; gas_observations := [];
        scopes := ([] : (string |-> bytes32) list);
        transaction_parameters :=
          initial_tx_params differential_chain_id [] differential_block
@@ -124,6 +124,8 @@ Definition yul_frame_observation_def:
     | YulFrameRevert data w =>
         (Reverted data,
          SOME (lookup_account contract_address w.accounts).storage, w.logs)
+    | YulFrameAbort w =>
+        (Aborted, SOME (lookup_account contract_address w.accounts).storage, w.logs)
     | YulFrameInvalid _ => (Diagnostic InvalidCompletion, NONE, [])
     | YulFrameResourceLimit => (Diagnostic OutOfFuel, NONE, [])
 End
@@ -174,6 +176,8 @@ Definition yul_creation_execution_def:
       | YulFrameRevert out w =>
           (Reverted out,
            SOME (lookup_account (case_address c) w.accounts).storage, w.logs)
+      | YulFrameAbort w =>
+          (Aborted, SOME (lookup_account (case_address c) w.accounts).storage, w.logs)
       | YulFrameInvalid _ => (Diagnostic InvalidCompletion, NONE, [])
       | YulFrameResourceLimit => (Diagnostic OutOfFuel, NONE, [])
 End

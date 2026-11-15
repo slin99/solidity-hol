@@ -30,10 +30,27 @@ through the elaborated program's dispatcher (`solidityEntry`), so selector
 lookup, payability, argument decoding, `receive` and `fallback` are compared
 too. An expectation is `{"return": [...]}` for typed results,
 `{"returned": "0x..."}` for exact return bytes, `{"panic": code}`, or
-`{"revert": "0x..."}`. Raw calldata declares no return types; use `returned`
+`{"revert": "0x..."}`, or `{"abort": true}` for an invalid-opcode abort. Raw calldata declares no return types; use `returned`
 to check its successful return payload, or `{"return": []}` for empty data.
 Dynamic bytes and strings are supplied as `0x` byte strings, preserving UTF-8,
 NUL bytes and arbitrary binary contents.
+
+A case may supply `"gas": [g0, g1, ...]` for source `gasleft()` and value-position
+inline assembly `gas()` reads, in evaluation order. Each value must fit a
+256-bit word, and execution must consume the entire list. Missing, mistagged,
+out-of-range or leftover evidence is diagnostic. A direct first-operand
+`gas()` in assembly `call`, `staticcall` or `delegatecall` uses the frame's
+call budget and consumes no evidence.
+
+For a nonempty list, the kernel checks the readings against a replay of the
+same Verifereum transaction. It records the actual values pushed by top-frame
+`GAS` steps, excluding words that a bounded scan carries through `PUSH`, `DUP`
+and `SWAP` directly into a call's gas operand. Duplicating the gas word itself
+counts as an observation. This conservative filter can reject a source read
+used directly as a call budget when the compiled instructions match that
+scan. Classification depends on the bytecode layout, not the source spelling. The raw-Yul three-way report classifies cases
+with nonempty gas evidence as inconclusive because raw Yul does not model
+these observations.
 
 Library calls run the library's linked bytecode as `DELEGATECALL`, sharing the
 calling contract's storage, sender and value. The exporter records the
@@ -125,8 +142,9 @@ Verifereum executes the recorded bytecode. This comparison does not certify
 the compiler or its artifact producer.
 
 Both runs return an outcome, the complete committed storage of the tested
-contract and the logs. Source frame completion rolls back writes on panic or revert before
-comparison. The verdict compares total word-to-word storage functions by HOL
+contract and the logs. Source frame completion rolls back writes on panic, revert or invalid-opcode abort before
+comparison. Only Verifereum’s `InvalidOpcode` exception matches an abort; other
+EVM exceptions remain diagnostic. The verdict compares total word-to-word storage functions by HOL
 equality, so agreement includes every slot, including unlisted mapping keys and
 cleared slots. The existing Verifereum from/to theorem and HOL's generic cv
 equality rule evaluate this equality using the canonical sparse encoding,

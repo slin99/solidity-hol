@@ -1233,8 +1233,8 @@ Theorem asm_calls_rule:
     [YulIf (YulBuiltin YIsZero [ycall (YulName "t") 0w 0w 0w 0w]) [];
      YulAssign ["x"] (YulBuiltin YReturnDataSize [])] ∧
   ¬assembly_calls_ok [YulAssign ["x"] (YulBuiltin YReturnDataSize [])] ∧
-  ¬assembly_calls_ok [YulAssign ["x"] (YulBuiltin YGas [])] ∧
-  ¬assembly_calls_ok
+  assembly_calls_ok [YulAssign ["x"] (YulBuiltin YGas [])] ∧
+  assembly_calls_ok
     [YulLet ["s"] (SOME (YulBuiltin YCall
        [ylit 0w; YulBuiltin YGas []; ylit 0w; ylit 0w; ylit 0w; ylit 0w; ylit 0w]))] ∧
   ¬assembly_calls_ok
@@ -1741,13 +1741,13 @@ Proof
 QED
 
 (* The static rule admits return data reads before a call of the block's own,
- * but not in a Yul function's body, and gas() only as a call's gas argument. *)
+ * but not in a Yul function's body. Value gas() uses explicit observations. *)
 Theorem asm_gas_rule:
   assembly_gas_ok rd_size ∧
   assembly_gas_ok rd_bubble ∧
   ¬assembly_gas_ok [YulFunction "f" [] ["r"]
                       [YulAssign ["r"] (YulBuiltin YReturnDataSize [])]] ∧
-  ¬assembly_gas_ok [YulAssign ["x"] (YulBuiltin YGas [])]
+  assembly_gas_ok [YulAssign ["x"] (YulBuiltin YGas [])]
 Proof
   EVAL_TAC
 QED
@@ -1936,6 +1936,107 @@ Proof
   EVAL_TAC
 QED
 
+Definition gas_reads_def:
+  gas_reads gas =
+    eval_block 20 test_env
+      [DefineStmt (AstId 900) (SingleType u256) (EnvironmentOperation GasLeft);
+       DefineStmt (AstId 901) (SingleType u256) (EnvironmentOperation GasLeft);
+       ReturnStmt [BoundAtom (AstId 900); BoundAtom (AstId 901)]]
+      (initial_state with scopes := [FEMPTY]) gas
+End
+
+val () = cv_auto_trans gas_reads_def;
+
+Theorem gas_reads_in_order:
+  (gas_reads [GasLeftObservation 100; GasLeftObservation 80]).completion =
+    ReturnCompletion [ScalarValue (IntegerValue 100); ScalarValue (IntegerValue 80)] ∧
+  (gas_reads [GasLeftObservation 100; GasLeftObservation 80]).unused_gas_evidence = []
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem gas_reads_fail_closed:
+  (gas_reads []).completion = InvalidCompletion "missing gasleft observation" ∧
+  (gas_reads [GasLeftObservation 100]).completion =
+    InvalidCompletion "missing gasleft observation" ∧
+  (gas_reads [GasLeftObservation (2 ** 256)]).completion =
+    InvalidCompletion "missing gasleft observation" ∧
+  (gas_reads [CallGasObservation 100]).completion =
+    InvalidCompletion "missing gasleft observation"
+Proof
+  CONV_TAC cv_eval
+QED
+
+Definition assembly_gas_read_def:
+  assembly_gas_read gas =
+    invoke_source 20 (asm_env [YulAssign ["x"] (YulBuiltin YGas [])])
+      (AstId 110) [ScalarValue (IntegerValue 7)] initial_state gas
+End
+
+val () = cv_auto_trans assembly_gas_read_def;
+
+Theorem assembly_gas_consumes_one:
+  (assembly_gas_read [GasLeftObservation 123; GasLeftObservation 99]).completion =
+    ReturnCompletion [ScalarValue (IntegerValue 123)] ∧
+  (assembly_gas_read [GasLeftObservation 123; GasLeftObservation 99]).unused_gas_evidence =
+    [GasLeftObservation 99] ∧
+  (assembly_gas_read []).completion = InvalidCompletion "missing gas observation" ∧
+  (assembly_gas_read [GasLeftObservation (2 ** 256)]).completion =
+    InvalidCompletion "missing gas observation" ∧
+  (assembly_gas_read [CreateGasObservation 123]).completion =
+    InvalidCompletion "missing gas observation"
+Proof
+  CONV_TAC cv_eval
+QED
+
+Definition abort_code_def:
+  abort_code =
+    [store_x;
+     YulExprStmt (YulBuiltin YTStore [ylit 1w; ylit 99w]);
+     YulExprStmt (YulBuiltin YLog0 [ylit 0w; ylit 0w]);
+     YulExprStmt (YulBuiltin YInvalid [])]
+End
+
+val () = cv_auto_trans abort_code_def;
+
+Theorem invalid_restores_complete_world:
+  run_entry 20 (asm_env abort_code) (asm_proc abort_code)
+    [ScalarValue (IntegerValue 7)] initial_state.frame initial_state.world FEMPTY 0 F =
+    ContractAborted initial_state.world
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem unused_observation_fails_on_halt:
+  run_entry_with_gas 20 (asm_env []) halt_proc [] initial_state.frame
+    initial_state.world FEMPTY 0 F [GasLeftObservation 1] =
+    ContractInvalid "unconsumed gas observation"
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem creation_value_gas_is_an_observation:
+  yul_substitute_expr []
+    (YulBuiltin YCreate [YulBuiltin YGas []; YulLit (LitNumber 0w);
+                         YulLit (LitNumber 0w)]) =
+    YulCheckedBuiltin YCreate
+      [YulCheckedBuiltin YGas []; YulLit (LitNumber 0w);
+       YulLit (LitNumber 0w)] ∧
+  yul_substitute_expr []
+    (YulBuiltin YCreate2 [YulBuiltin YGas []; YulLit (LitNumber 0w);
+                          YulLit (LitNumber 0w); YulLit (LitNumber 0w)]) =
+    YulCheckedBuiltin YCreate2
+      [YulCheckedBuiltin YGas []; YulLit (LitNumber 0w);
+       YulLit (LitNumber 0w); YulLit (LitNumber 0w)] ∧
+  MAP (λb. yul_substitute_expr []
+        (YulBuiltin b [YulBuiltin YGas []]))
+      [YCall; YStaticCall; YDelegateCall] =
+  MAP (λb. YulCheckedBuiltin b [YulBuiltin YGas []])
+      [YCall; YStaticCall; YDelegateCall]
+Proof
+  EVAL_TAC
+QED
+
 Definition assembly_struct_state_def:
   assembly_struct_state = initial_state with <|
     heap := FEMPTY |++
@@ -1985,12 +2086,12 @@ QED
 
 Theorem message_signature_is_padded_calldata_prefix:
   environment_value initial_state.frame MsgSig =
-    ScalarValue (BytesValue [0w; 0w; 0w; 0w]) ∧
+    ValueOk (ScalarValue (BytesValue [0w; 0w; 0w; 0w])) ∧
   environment_value (initial_state.frame with call_data := [0x12w; 0x34w]) MsgSig =
-    ScalarValue (BytesValue [0x12w; 0x34w; 0w; 0w]) ∧
+    ValueOk (ScalarValue (BytesValue [0x12w; 0x34w; 0w; 0w])) ∧
   environment_value
     (initial_state.frame with call_data := [1w; 2w; 3w; 4w; 5w]) MsgSig =
-    ScalarValue (BytesValue [1w; 2w; 3w; 4w])
+    ValueOk (ScalarValue (BytesValue [1w; 2w; 3w; 4w]))
 Proof
   EVAL_TAC
 QED

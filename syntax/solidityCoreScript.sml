@@ -112,7 +112,7 @@ Datatype:
   environment_field
   = MsgSender | MsgValue | MsgData | MsgSig | SelfAddress | TxOrigin | TxGasPrice
   | BlockNumber | BlockTimestamp | BlockChainId | BlockCoinbase
-  | BlockBaseFee | BlockGasLimit
+  | BlockBaseFee | BlockGasLimit | GasLeft
 End
 
 (* DefaultReferenceOperation loc ty: a placeholder reference that a source
@@ -341,6 +341,7 @@ Datatype:
   | BreakCompletion
   | ContinueCompletion
   | RevertCompletion (byte list)
+  | AbortCompletion
   (* an inline assembly return(p, s) or stop(): the frame ends with these
    * bytes as its return data *)
   | HaltCompletion (byte list)

@@ -55,7 +55,7 @@
  *)
 Theory yulState
 Ancestors
-  vfmContext
+  vfmContext solidityState
 
 Datatype:
   yul_world = <|
@@ -81,6 +81,7 @@ Datatype:
     memory : num |-> word8;
     memory_size : num;
     gas_limit : num;
+    gas_observations : gas_observation list;
     scopes : (string |-> bytes32) list;
     transaction_parameters : transaction_parameters
   |>
@@ -95,6 +96,7 @@ Datatype:
   = YulNormal
   | YulReturn (byte list)
   | YulRevert (byte list)
+  | YulAbort
   | YulInvalid string
   | YulOutOfFuel
   | YulBreak
@@ -110,6 +112,7 @@ Datatype:
   yul_frame_observation
   = YulFrameSuccess (byte list) yul_world
   | YulFrameRevert (byte list) yul_world
+  | YulFrameAbort yul_world
   | YulFrameInvalid string
   | YulFrameResourceLimit
 End
@@ -128,6 +131,7 @@ Definition finish_yul_frame_def:
       YulNormal => YulFrameSuccess [] (yul_machine_world final)
     | YulReturn data => YulFrameSuccess data (yul_machine_world final)
     | YulRevert data => YulFrameRevert data (yul_machine_world initial)
+    | YulAbort => YulFrameAbort (yul_machine_world initial)
     | YulInvalid reason => YulFrameInvalid reason
     | YulOutOfFuel => YulFrameResourceLimit
     | YulBreak => YulFrameInvalid "break escaped frame"

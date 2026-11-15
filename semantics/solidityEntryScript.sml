@@ -27,6 +27,7 @@ Datatype:
   = ContractReturned (byte list) source_world
   | ContractCreated (num |-> scalar) source_world
   | ContractReverted (byte list) source_world
+  | ContractAborted source_world
   | ContractInvalid string
   | ContractOutOfFuel
 End
@@ -82,16 +83,18 @@ End
  * source does not model, so a halt there fails closed. A creation frame
  * yields the immutables' final values.
  *)
-Definition run_entry_def:
-  run_entry fuel env p args (fr : source_frame) (w : source_world) imm reserved
-            creating =
+Definition run_entry_with_gas_def:
+  run_entry_with_gas fuel env p args (fr : source_frame) (w : source_world) imm reserved
+            creating gas =
     let st = <| world := w; frame := fr; immutables := imm; scopes := [];
                 heap := FEMPTY; next_heap_id := 0; memory_allocated := reserved;
                 targets := FEMPTY; return_data := SOME [] |> in
     let r = case materialize_arguments env (MAP SND p.parameters) args st of
-      SOME (values, st1) => invoke_source fuel env p.procedure_id values st1 []
-    | NONE => abrupt_result (InvalidCompletion "bad entry arguments") st [] in
-    case finish_source_frame w r.state.world r.completion of
+      SOME (values, st1) => invoke_source fuel env p.procedure_id values st1 gas
+    | NONE => abrupt_result (InvalidCompletion "bad entry arguments") st gas in
+    if r.unused_gas_evidence ≠ [] then
+      ContractInvalid "unconsumed gas observation"
+    else case finish_source_frame w r.state.world r.completion of
       FrameSuccess vs w' =>
         (case encoded_runtime_values env r.state (MAP SND p.return_bindings) vs of
            INL data =>
@@ -101,6 +104,7 @@ Definition run_entry_def:
          | INR (RevertCompletion data) => ContractReverted data w
          | INR _ => ContractInvalid "unencodable return values")
     | FrameRevert data w' => ContractReverted data w'
+    | FrameAbort w' => ContractAborted w'
     | FrameHalt data w' =>
         if creating then ContractInvalid "assembly halt in a creation frame"
         else ContractReturned data w'
@@ -109,16 +113,33 @@ Definition run_entry_def:
     | FrameResourceLimit => ContractOutOfFuel
 End
 
+Definition run_entry_def:
+  run_entry fuel env p args fr w imm reserved creating =
+    run_entry_with_gas fuel env p args fr w imm reserved creating []
+End
+
+(* Dispatch can end a frame before its body reads any evidence. *)
+Definition unconsumed_gas_result_def:
+  unconsumed_gas_result gas r =
+    if gas = ([] : gas_observation list) then r
+    else ContractInvalid "unconsumed gas observation"
+End
+
 (* A call of the deployed contract, whose immutables have the values imm. *)
-Definition call_contract_def:
-  call_contract fuel (prog : core_program) imm (fr : source_frame)
-                (w : source_world) =
+Definition call_contract_with_gas_def:
+  call_contract_with_gas fuel (prog : core_program) imm (fr : source_frame)
+                (w : source_world) gas =
     let env = core_program_environment prog in
     case dispatch env prog fr of
-      DispatchRevert => ContractReverted [] w
-    | DispatchPanic n => ContractReverted (panic_data n) w
-    | DispatchInvalid reason => ContractInvalid reason
-    | DispatchCall p args => run_entry fuel env p args fr w imm 0 F
+      DispatchRevert => unconsumed_gas_result gas (ContractReverted [] w)
+    | DispatchPanic n => unconsumed_gas_result gas (ContractReverted (panic_data n) w)
+    | DispatchInvalid reason => unconsumed_gas_result gas (ContractInvalid reason)
+    | DispatchCall p args => run_entry_with_gas fuel env p args fr w imm 0 F gas
+End
+
+Definition call_contract_def:
+  call_contract fuel prog imm fr w =
+    call_contract_with_gas fuel prog imm fr w []
 End
 
 (* The creation transaction's frame of a contract, from a world in which its
@@ -133,26 +154,30 @@ End
  * above them. A constructor without parameters gets no argument copy, as
  * in solc, and ignores any bytes after its initcode.
  *)
-Definition deploy_contract_def:
-  deploy_contract fuel (prog : core_program) (fr : source_frame)
-                  (w : source_world) =
+Definition deploy_contract_with_gas_def:
+  deploy_contract_with_gas fuel (prog : core_program) (fr : source_frame)
+                  (w : source_world) gas =
     let env = core_program_environment prog in
     case prog.creation_procedure of
-      NONE => ContractInvalid "no creation procedure"
+      NONE => unconsumed_gas_result gas (ContractInvalid "no creation procedure")
     | SOME (f, payable) =>
-        if ¬payable ∧ fr.call_value ≠ 0 then ContractReverted [] w else
+        if ¬payable ∧ fr.call_value ≠ 0 then unconsumed_gas_result gas (ContractReverted [] w) else
         case lookup_procedure env f of
-          NONE => ContractInvalid "unknown procedure"
+          NONE => unconsumed_gas_result gas (ContractInvalid "unknown procedure")
         | SOME p =>
             let reserved = 32 * LENGTH prog.immutables +
                            (if p.parameters = [] then 0
                             else 32 * ((LENGTH fr.call_data + 31) DIV 32)) in
             case decode_arguments env (MAP SND p.parameters) fr.call_data 0
               (128 + reserved) of
-              INR (PanicCompletion n) => ContractReverted (panic_data n) w
-            | INR _ => ContractReverted [] w
-            | INL args => run_entry fuel env p args (fr with call_data := []) w
-                FEMPTY reserved T
+              INR (PanicCompletion n) => unconsumed_gas_result gas (ContractReverted (panic_data n) w)
+            | INR _ => unconsumed_gas_result gas (ContractReverted [] w)
+            | INL args => run_entry_with_gas fuel env p args (fr with call_data := []) w
+                FEMPTY reserved T gas
+End
+
+Definition deploy_contract_def:
+  deploy_contract fuel prog fr w = deploy_contract_with_gas fuel prog fr w []
 End
 
 (* A constructor without parameters decodes nothing, and solc copies no
@@ -165,7 +190,8 @@ Theorem deploy_contract_parameterless_ignores_arguments:
   deploy_contract fuel prog fr w =
   deploy_contract fuel prog (fr with call_data := []) w
 Proof
-  rw[deploy_contract_def, solidityABITheory.decode_arguments_def,
+  rw[deploy_contract_def, deploy_contract_with_gas_def,
+     solidityABITheory.decode_arguments_def,
      solidityABITheory.decode_abi_arguments_def, solidityABITheory.abi_type_def,
      contractABITheory.head_lengths_def]
 QED
@@ -173,7 +199,8 @@ QED
 Theorem call_contract_revert_restores_world:
   call_contract fuel prog imm fr w = ContractReverted data w' ⇒ w' = w
 Proof
-  rw[call_contract_def, run_entry_def,
+  rw[call_contract_def, call_contract_with_gas_def, run_entry_with_gas_def,
+     unconsumed_gas_result_def,
      solidityStateTheory.finish_source_frame_def, AllCaseEqs()] >> simp[]
 QED
 
@@ -188,12 +215,16 @@ Theorem call_contract_unsupported:
   call_contract fuel prog imm fr w = ContractInvalid "unknown procedure"
 Proof
   rw[solidityCoreWfTheory.wf_core_program_def, listTheory.EVERY_MEM] >> first_x_assum drule >>
-  rw[call_contract_def, dispatch_def]
+  rw[call_contract_def, call_contract_with_gas_def, unconsumed_gas_result_def, dispatch_def]
 QED
 
 val () = cv_auto_trans lookup_external_def;
 val () = cv_auto_trans dispatch_procedure_def;
 val () = cv_auto_trans dispatch_def;
+val () = cv_auto_trans run_entry_with_gas_def;
 val () = cv_auto_trans run_entry_def;
+val () = cv_auto_trans unconsumed_gas_result_def;
+val () = cv_auto_trans call_contract_with_gas_def;
+val () = cv_auto_trans deploy_contract_with_gas_def;
 val () = cv_auto_trans call_contract_def;
 val () = cv_auto_trans deploy_contract_def;

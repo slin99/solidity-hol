@@ -546,6 +546,7 @@ Definition eval_yul_builtin_def:
     | (YCreate, [v; p; n]) => yul_create m NONE v p n
     | (YCreate2, [v; p; n; salt]) => yul_create m (SOME salt) v p n
     | (YStop, []) => EvalAbrupt (YulReturn []) m
+    | (YInvalid, []) => EvalAbrupt YulAbort m
     | (YReturn, [p; s]) =>
         let (m', bs) = yul_memory_region m (w2n p) (w2n s) in
           EvalAbrupt (YulReturn bs) m'
@@ -788,7 +789,14 @@ Definition eval_yul_block_def:
      case eval_yul_args n fns (yul_builtin_value_args op args) m of
        EvalAbrupt c m' => EvalAbrupt c m'
      | EvalValues vs m' =>
-         if yul_regions_readable m'.memory (yul_read_regions op vs) then
+         if op = YGas ∧ args = [] then
+           (case m'.gas_observations of
+              GasLeftObservation g :: rest =>
+                if g < 2 ** 256 then
+                  EvalValues [n2w g] (m' with gas_observations := rest)
+                else EvalAbrupt (YulInvalid "missing gas observation") m'
+            | _ => EvalAbrupt (YulInvalid "missing gas observation") m')
+         else if yul_regions_readable m'.memory (yul_read_regions op vs) then
            eval_yul_builtin_call op args vs m'
          else EvalAbrupt (YulInvalid "assembly read memory it was not given") m') ∧
   (eval_yul_expr n fns (YulApply f args) m =

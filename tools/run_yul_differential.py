@@ -190,6 +190,12 @@ def build_report(corpus_path: Path, corpus: dict[str, Any], solc: Path,
                 admissions.append(admission)
             for case in suite["cases"]:
                 for stage in STAGES:
+                    if case.get("gas"):
+                        failures.append({"kind": "case", "suite": suite["name"],
+                                         "case": case["name"], "stage": stage,
+                                         "status": "inconclusive",
+                                         "message": "gas observations not modelled in raw Yul"})
+                        continue
                     if stage not in admitted:
                         continue
                     theorem = f"yul_{suite['name']}_{case['name']}_{stage.replace('-', '_')}"

@@ -72,6 +72,7 @@ Definition builtin_name_def:
   builtin_name YBaseFee = "basefee" ∧
   builtin_name YGasLimit = "gaslimit" ∧
   builtin_name YStop = "stop" ∧
+  builtin_name YInvalid = "invalid" ∧
   builtin_name YCall = "call" ∧
   builtin_name YStaticCall = "staticcall" ∧
   builtin_name YDelegateCall = "delegatecall" ∧
@@ -150,6 +151,7 @@ Definition builtin_of_name_def:
     else if name = "basefee" then SOME YBaseFee
     else if name = "gaslimit" then SOME YGasLimit
     else if name = "stop" then SOME YStop
+    else if name = "invalid" then SOME YInvalid
     else if name = "call" then SOME YCall
     else if name = "staticcall" then SOME YStaticCall
     else if name = "delegatecall" then SOME YDelegateCall
@@ -254,6 +256,7 @@ Definition builtin_effect_def:
   builtin_effect YBaseFee = EffectFrame ∧
   builtin_effect YGasLimit = EffectFrame ∧
   builtin_effect YStop = EffectHalt ∧
+  builtin_effect YInvalid = EffectHalt ∧
   builtin_effect YCall = EffectCall ∧
   builtin_effect YStaticCall = EffectCall ∧
   builtin_effect YDelegateCall = EffectCall ∧
