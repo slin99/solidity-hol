@@ -1394,7 +1394,7 @@ and external_call v callee args =
 (* The declaration a high-level call refers to. *)
 and external_function v = within v (fn v =>
   let
-    val (signature, mutability) =
+    val (call_signature, mutability) =
       case node_type v of
         "FunctionDefinition" =>
           (con "FunctionSignature"
@@ -1410,7 +1410,7 @@ and external_function v = within v (fn v =>
   in
     record "src_external"
       [("ext_selector", mk_bytes v (string_field v "functionSelector")),
-       ("ext_mutability", mutability), ("ext_signature", signature)]
+       ("ext_mutability", mutability), ("ext_signature", call_signature)]
   end)
 
 fun optional_expr v k =
