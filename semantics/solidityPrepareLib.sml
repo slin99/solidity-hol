@@ -131,8 +131,15 @@ fun read_artifact {root, path} = json_input (fn () =>
     val settings = object (field profile "settings")
     val input = field artifact "input"
     val () = require (string_field input "language" = "Solidity") "input language must be Solidity"
+    val (libraries, ordinary_settings) = List.partition
+      (fn (key, _) => key = "libraries") (object (field input "settings"))
+    val () = require (case libraries of
+        [] => true
+      | [(_, links)] => json_equal (links, solidityLinkLib.settings (field artifact "output"))
+      | _ => false)
+      "input libraries differ from the deterministic link assignment"
     val (remappings, input_settings) = List.partition
-      (fn (key, _) => key = "remappings") (object (field input "settings"))
+      (fn (key, _) => key = "remappings") ordinary_settings
     val () = require (case remappings of
         [] => true
       | [(_, JSON.ARRAY entries)] => List.all

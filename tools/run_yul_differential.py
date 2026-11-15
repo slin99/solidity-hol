@@ -95,11 +95,14 @@ def generate_artifacts(root: Path, corpus: dict[str, Any], solc: Path,
         # The suite's source with the files it imports, as the corpus compiled it.
         names = sorted(corpus_artifact["input"]["sources"]) if corpus_artifact else [source]
         sources = {name: (root / name).read_text(encoding="utf-8") for name in names}
+        libraries = (corpus_artifact.get("input", {}).get("settings", {}).get("libraries")
+                     if corpus_artifact else None)
         for tag, profile in ARTIFACT_STAGES:
             path = YUL_ROOT / f"{suite['name']}.{tag}.json"
             written.append(path.as_posix())
             try:
-                artifact = yul_exporter.build_yul_artifact(solc, sources, profile)
+                artifact = yul_exporter.build_yul_artifact(
+                    solc, sources, profile, libraries=libraries)
             except SystemExit as error:
                 checks.append(core.check("yul-artifact-generated", path.as_posix(), str(error)))
                 continue

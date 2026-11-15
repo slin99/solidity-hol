@@ -82,5 +82,14 @@ or output forms must fail closed rather than being attributed to this profile.
 The compiler input may additionally specify `settings.remappings` to resolve
 import prefixes to source names without editing the source contents. This field
 must occur at most once and contain an array of strings, each containing `=`;
-it is retained in the artifact. All other input settings must still match the
-pinned profile and output selection exactly.
+it is retained in the artifact.
+
+External library calls need linked addresses in the compiler's bytecode. When
+unlinked placeholders occur, the exporter compiles again with `settings.libraries`:
+each library's address is `0x100000` plus its compilation-wide AST declaration ID.
+Source calls and `address(L)` use that same assignment. Artifact preparation
+accepts a library table only when it exactly matches the libraries in the
+recorded AST, including their source filenames. The differential harness installs
+their deployed bytecode at those addresses. Arbitrary link assignments are
+outside this profile. All remaining settings match the pinned profile and output
+selection exactly.

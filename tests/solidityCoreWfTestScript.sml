@@ -396,10 +396,13 @@ Proof
   EVAL_TAC
 QED
 
-Theorem external_delegate_call_rejected:
+Theorem external_delegate_call_accepted:
+  wf_core_procedure test_env
+     (with_body (external_call_body ExternalDelegateCall
+                   (ConstantAtom (IntegerValue 0)))) ∧
   ¬wf_core_procedure test_env
      (with_body (external_call_body ExternalDelegateCall
-                   (ConstantAtom (IntegerValue 0))))
+                   (ConstantAtom (IntegerValue 1))))
 Proof
   EVAL_TAC
 QED

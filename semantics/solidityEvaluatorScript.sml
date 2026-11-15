@@ -268,6 +268,13 @@ Definition eval_operation_def:
         if IS_SOME (ALOOKUP env.immutables x)
         then ValueOk (ReferenceValue (ImmutableReference x))
         else ValueAbrupt (InvalidCompletion "bad immutable reference")
+    | StorageSlotOperation ty a =>
+        (case eval_atom st.scopes a of
+           SOME (ReferenceValue (StorageReference PersistentStorage owner slot 0 actual _)) =>
+             if owner = st.frame.self_address ∧ actual = ty then
+               ValueOk (ScalarValue (IntegerValue (&(w2n slot))))
+             else ValueAbrupt (InvalidCompletion "bad storage slot reference")
+         | _ => ValueAbrupt (InvalidCompletion "bad storage slot reference"))
     | ReadOperation ty a =>
         (case eval_atom st.scopes a of
            SOME (ReferenceValue (MemoryReference h i rty)) =>
@@ -720,9 +727,14 @@ Definition call_external_mode_def:
            if static ∧ v ≠ 0 then
              abrupt_result (InvalidCompletion "value in static frame") st gas
            else
-             case run_external_call st.frame.self_address callee
-                    (selector ++ data) (Num v) static limit
-                    st.world.accounts st.world.transient st.frame.tx_params of
+             case (if kind = ExternalDelegateCall then
+                     run_delegate_call st.frame.self_address st.frame.sender_address
+                       st.frame.call_value callee (selector ++ data) static limit
+                       st.world.accounts st.world.transient st.frame.tx_params
+                   else
+                     run_external_call st.frame.self_address callee
+                       (selector ++ data) (Num v) static limit
+                       st.world.accounts st.world.transient st.frame.tx_params) of
                NONE =>
                  abrupt_result (InvalidCompletion "call outside the model") st gas
              | SOME r =>

@@ -360,7 +360,10 @@ def check_artifacts(root: Path, corpus: dict[str, Any]) -> list[dict[str, str]]:
             settings_match = (
                 isinstance(remappings, list)
                 and all(isinstance(entry, str) and "=" in entry for entry in remappings)
-                and {key: value for key, value in input_settings.items() if key != "remappings"}
+                and ("libraries" not in input_settings or
+                     input_settings["libraries"] == exporter.library_addresses(artifact["output"]))
+                and {key: value for key, value in input_settings.items()
+                     if key not in {"remappings", "libraries"}}
                 == expected_settings
             )
             checks.append(check(

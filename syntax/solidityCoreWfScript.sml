@@ -835,6 +835,9 @@ Definition wf_core_operation_def:
          annotation = SingleType ty ∧ core_scalar_type env ty ∧
          IS_SOME (storage_bytes ty) ∧
          wf_core_atom env ctx (ReferenceType ty) a)) ∧
+  (wf_core_operation env ctx annotation (StorageSlotOperation ty a) ⇔
+    annotation = SingleType (UintT 256) ∧ located_type_ok env StorageLoc ty ∧
+    wf_core_atom env ctx (SingleType (LocatedT StorageLoc ty)) a) ∧
   (* A field of a storage struct, or of a memory or calldata struct as its
    * element type there. *)
   (wf_core_operation env ctx annotation
@@ -1036,11 +1039,11 @@ Definition wf_core_operation_def:
      memory. *)
   (wf_core_operation env ctx annotation
      (ExternalCallOperation kind selector params rets target value gas args) ⇔
-    kind ≠ ExternalDelegateCall ∧ LENGTH selector = 4 ∧
+    LENGTH selector = 4 ∧
     EVERY (abi_type_ok env) params ∧ EVERY (decoded_type_ok env) rets ∧
     wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) target ∧
     wf_core_atom env ctx (SingleType (UintT 256)) value ∧
-    (kind = ExternalStaticCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
+    (kind ≠ ExternalCall ⇒ value = ConstantAtom (IntegerValue 0)) ∧
     wf_gas_atom env ctx gas ∧
     LIST_REL (wf_abi_atom env ctx) params args ∧
     annotation = call_result_type rets) ∧

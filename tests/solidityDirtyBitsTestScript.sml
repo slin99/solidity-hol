@@ -45,7 +45,8 @@ fun rejected_case group name =
       | SOME _ => prim_mk_const {Thy = "solidityDirtyBitsBytecodeTest",
           Name = "bytecode_rejected_" ^ group ^ "_peer_code"}
   in
-    case_term peer {names = [], refs = “[] : (num # num list) list”}
+    case_term {peer = peer, libraries = “[] : (address # byte list) list”}
+      {names = [], refs = “[] : (num # num list) list”}
       (call_input (fn () => “[] : byte list”) c) c
   end;
 

@@ -88,7 +88,7 @@ Definition yul_differential_machine_def:
          transfer_value c.case_sender contract_address c.case_value
            (case_accounts (patch_immutables c.case_immutable_refs imm code)
               c.case_storage c.case_sender c.case_peer_code
-              c.case_peer_storage);
+              c.case_peer_storage c.case_libraries);
        transient := empty_transient_storage;
        logs := [];
        self_address := contract_address;
@@ -134,7 +134,7 @@ Definition yul_creation_machine_def:
     (yul_differential_machine [] ([] : (num # scalar # byte list) list) c []) with
       <| accounts := transfer_value c.case_sender (case_address c) c.case_value
            (case_accounts [] c.case_storage c.case_sender
-              c.case_peer_code c.case_peer_storage);
+              c.case_peer_code c.case_peer_storage c.case_libraries);
          self_address := case_address c;
          code := p.creation_bytes ++ data;
          objects := FEMPTY |+ (p.creation_name, (0, LENGTH p.creation_bytes))
