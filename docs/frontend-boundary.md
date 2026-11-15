@@ -579,8 +579,12 @@ the other arguments; ordinary calls evaluate all arguments before converting
 them. This matters when later arguments mutate the copied object or rebind the
 receiver variable. A calldata struct's fields are read in place, each
 scalar validated as it is read and a dynamic field reached through its
-offset, and copying it to memory decodes it as an ABI argument. Public and external library functions, which a
-contract calls with `DELEGATECALL`, are rejected. Referenced library events
+offset, and copying it to memory decodes it as an ABI argument. Public and
+external library functions use `DELEGATECALL` to a deterministic linked address,
+also used by `address(L)` and fixture deployment. Storage reference arguments
+are encoded as offset-zero slot words; other arguments and results use the
+shared ABI codec. Bound calls convert their receiver before evaluating the
+remaining arguments. Storage-reference returns remain unsupported. Referenced library events
 are imported with the contracts that emit them. Function-list
 `using` directives are accepted: attached free and library functions use the
 same internal-call path. In the Yul the compiler emits, `linkersymbol`, a linked

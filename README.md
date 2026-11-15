@@ -32,10 +32,11 @@ contains supported-subset restrictions. Invalid generated core is an
 implementation failure. Unexpected HOL evaluation failures propagate.
 
 Internal and private library functions are imported with each contract that
-reaches them. Public and external library calls require linked-library
-execution, which is unsupported: their callers, including transitive callers,
-are marked unsupported while unrelated functions remain available. Their
-library bodies and declarations reached only through those bodies are omitted.
+reaches them. Public and external library calls use `DELEGATECALL` to linked
+library addresses, with storage references encoded as slot words. Direct and
+bound calls share the linked address used by `address(L)` and fixture deployment.
+Their library bodies and declarations reached only through those bodies are
+omitted from the calling contract's source program.
 
 The raw importer and `elaborate_unit` remain available for reasoning and
 frontend inspection. Their callers own the compiler/profile contract, source
