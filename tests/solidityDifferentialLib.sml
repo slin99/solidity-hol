@@ -137,10 +137,21 @@ fun run_case {suite, code, initcode, peer, immutables, unit, program, fuel, byte
                       String.concatWith ", " (map #1 different))
               end
             val bridge = EQT_ELIM bridge_result
-            val evm = (REWRITE_CONV [evm_execution_def, bridge, sumTheory.sum_case_def]
-                       THENC DEPTH_CONV BETA_CONV THENC REWRITE_CONV [cached])
-              “evm_execution ^code ^unit ^case_tm”
-            val () = if rhs (concl evm) ~~ rhs (concl cached) then () else
+            val unfolded =
+              (REWRITE_CONV [evm_execution_def, bridge, sumTheory.sum_case_def]
+               THENC DEPTH_CONV BETA_CONV)
+                “evm_execution ^code ^unit ^case_tm”
+            val (gas_bad, invalid_gas, _) = boolSyntax.dest_cond (rhs (concl unfolded))
+            val gas_check = cv_eval gas_bad
+            val expected =
+              if rhs (concl gas_check) ~~ T then invalid_gas
+              else if rhs (concl gas_check) ~~ F then rhs (concl cached)
+              else fail "gas evidence check did not reduce to a boolean"
+            val evm = CONV_RULE
+              (RAND_CONV
+                (RATOR_CONV (RATOR_CONV (RAND_CONV (K gas_check)))
+                 THENC REWRITE_CONV [cached])) unfolded
+            val () = if rhs (concl evm) ~~ expected then () else
               fail "cached bytecode result was not substituted completely"
           in
             (PURE_REWRITE_CONV [differential_verdict_def, evm] THENC cv_eval) verdict_tm

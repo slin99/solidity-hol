@@ -72,7 +72,7 @@ def check_argument(value: Any, what: str) -> None:
 
 def check_expectation(value: Any, what: str) -> None:
     if not isinstance(value, dict) or len(value) != 1:
-        raise CorpusError(f"{what} must have exactly one of return, returned, panic and revert")
+        raise CorpusError(f"{what} must have exactly one of return, returned, panic, revert and abort")
     (kind, payload), = value.items()
     if kind == "return":
         if not isinstance(payload, list):
@@ -85,6 +85,9 @@ def check_expectation(value: Any, what: str) -> None:
             or (isinstance(payload, str) and HEX.fullmatch(payload) and payload != "0x")
         ):
             raise CorpusError(f"{what}.panic must be a natural number or 0x-prefixed hex")
+    elif kind == "abort":
+        if payload is not True:
+            raise CorpusError(f"{what}.abort must be true")
     elif kind in {"revert", "returned"}:
         if not isinstance(payload, str) or HEX.fullmatch(payload) is None:
             raise CorpusError(f"{what}.{kind} must be 0x-prefixed hex")
@@ -237,6 +240,11 @@ def load_corpus(path: Path) -> dict[str, Any]:
             if "logs" in case:
                 check_logs(case["logs"], f"{what}.logs")
             check_expectation(case.get("expect"), f"{what}.expect")
+            if "gas" in case:
+                if not isinstance(case["gas"], list):
+                    raise CorpusError(f"{what}.gas must be a list")
+                for index, gas in enumerate(case["gas"]):
+                    check_word(gas, 256, f"{what}.gas[{index}]")
             if "fuel" in case:
                 check_fuel(case["fuel"], f"{what}.fuel")
             for key in ("storage", "final_storage", "peer_storage"):
@@ -255,7 +263,7 @@ def load_corpus(path: Path) -> dict[str, Any]:
                     check_argument(value, f"{what}.immutables.{key}")
             unknown = set(case) - {"name", "function", "deploy", "args", "calldata", "sender",
                                    "value", "storage", "peer_storage", "expect",
-                                   "final_storage", "logs", "fuel", "immutables"}
+                                   "final_storage", "logs", "fuel", "immutables", "gas"}
             if unknown:
                 raise CorpusError(f"{what}: unknown fields {sorted(unknown)}")
     return corpus

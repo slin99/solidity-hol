@@ -86,7 +86,7 @@ Definition yul_conv_machine_def:
        caller_address := 0w; call_value := 0w; call_data := []; return_data := [];
        code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
-       memory_size := 0; gas_limit := 0; scopes := [];
+       memory_size := 0; gas_limit := 0; gas_observations := []; scopes := [];
        transaction_parameters := yul_conv_tx_params |>
 End
 

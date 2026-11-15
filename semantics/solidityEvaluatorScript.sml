@@ -179,25 +179,26 @@ End
 Definition environment_value_def:
   environment_value (fr : source_frame) f =
     case f of
-      MsgData => ReferenceValue (CalldataReference 0 (LENGTH fr.call_data) BytesT)
-    | MsgSender => ScalarValue (AddressValue fr.sender_address)
+      MsgData => ValueOk (ReferenceValue (CalldataReference 0 (LENGTH fr.call_data) BytesT))
+    | MsgSender => ValueOk (ScalarValue (AddressValue fr.sender_address))
     | MsgValue =>
-        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.call_value)))
-    | SelfAddress => ScalarValue (AddressValue fr.self_address)
-    | TxOrigin => ScalarValue (AddressValue fr.tx_params.origin)
+        ValueOk (ScalarValue (IntegerValue (wrap_integer F 256 (&fr.call_value))))
+    | SelfAddress => ValueOk (ScalarValue (AddressValue fr.self_address))
+    | TxOrigin => ValueOk (ScalarValue (AddressValue fr.tx_params.origin))
     | TxGasPrice =>
-        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.gasPrice)))
+        ValueOk (ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.gasPrice))))
     | BlockNumber =>
-        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockNumber)))
+        ValueOk (ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockNumber))))
     | BlockTimestamp =>
-        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockTimeStamp)))
+        ValueOk (ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockTimeStamp))))
     | BlockChainId =>
-        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.chainId)))
-    | BlockCoinbase => ScalarValue (AddressValue fr.tx_params.blockCoinBase)
+        ValueOk (ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.chainId))))
+    | BlockCoinbase => ValueOk (ScalarValue (AddressValue fr.tx_params.blockCoinBase))
     | BlockBaseFee =>
-        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.baseFeePerGas)))
+        ValueOk (ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.baseFeePerGas))))
     | BlockGasLimit =>
-        ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockGasLimit)))
+        ValueOk (ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockGasLimit))))
+    | GasLeft => ValueAbrupt (InvalidCompletion "missing gasleft observation")
 End
 
 (* A call's value, following call_result_type: nothing, one value, or a tuple. *)
@@ -384,7 +385,7 @@ Definition eval_operation_def:
               | INR c => ValueAbrupt c)
          | _ => ValueAbrupt (InvalidCompletion "bad index operands"))
     | EnvironmentOperation f =>
-        ValueOk (environment_value st.frame f)
+        environment_value st.frame f
     | _ => eval_pure_operation env st.scopes op
 End
 
@@ -903,7 +904,14 @@ End
 Definition simple_stmt_def:
   simple_stmt n env s st gas =
     case s of
-      DefineStmt x ty (BytesLiteralOperation element bs) =>
+      DefineStmt x ty (EnvironmentOperation GasLeft) =>
+        (case gas of
+           GasLeftObservation g :: rest =>
+             if g < 2 ** 256 then
+               normal_result (define_binding x ty (ScalarValue (IntegerValue (&g))) st) rest
+             else abrupt_result (InvalidCompletion "missing gasleft observation") st gas
+         | _ => abrupt_result (InvalidCompletion "missing gasleft observation") st gas)
+    | DefineStmt x ty (BytesLiteralOperation element bs) =>
         if 2 ** 64 ≤ 128 + st.memory_allocated + 32 + 32 * ((LENGTH bs + 31) DIV 32)
         then abrupt_result (PanicCompletion 65) st gas else
         let (v, st') = allocate_bytes T element bs st in
@@ -1274,9 +1282,21 @@ Definition yul_substitute_expr_def:
       SOME w => YulLit (LitNumber w)
     | NONE => YulName x) ∧
   (yul_substitute_expr sub (YulBuiltin b es) =
-    YulCheckedBuiltin b (yul_substitute_exprs sub es)) ∧
+    YulCheckedBuiltin b
+      (case es of
+         YulBuiltin YGas [] :: rest =>
+           if MEM b [YCall; YStaticCall; YDelegateCall] then
+             YulBuiltin YGas [] :: yul_substitute_exprs sub rest
+           else yul_substitute_exprs sub es
+       | _ => yul_substitute_exprs sub es)) ∧
   (yul_substitute_expr sub (YulCheckedBuiltin b es) =
-    YulCheckedBuiltin b (yul_substitute_exprs sub es)) ∧
+    YulCheckedBuiltin b
+      (case es of
+         YulBuiltin YGas [] :: rest =>
+           if MEM b [YCall; YStaticCall; YDelegateCall] then
+             YulBuiltin YGas [] :: yul_substitute_exprs sub rest
+           else yul_substitute_exprs sub es
+       | _ => yul_substitute_exprs sub es)) ∧
   (yul_substitute_expr sub (YulApply f es) =
     YulApply f (yul_substitute_exprs sub es)) ∧
   (yul_substitute_exprs sub [] = []) ∧
@@ -1408,7 +1428,7 @@ Definition assembly_machine_def:
             return_data := (case st.return_data of NONE => [] | SOME bs => bs);
             code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
             immutables := FEMPTY; memory := FEMPTY; memory_size := 0;
-            gas_limit := external_call_gas; scopes := [scope];
+            gas_limit := external_call_gas; gas_observations := []; scopes := [scope];
             transaction_parameters := st.frame.tx_params |>
          0x40 (word_to_bytes_be (n2w (memory_free_pointer st) : bytes32)))
 End
@@ -1720,6 +1740,7 @@ End
 
 Definition assembly_result_def:
   assembly_result env refs (st : source_state) m0 (r : yul_result) gas =
+    let gas = r.machine.gas_observations in
     let world = assembly_world r.machine in
     case r.completion of
       YulNormal =>
@@ -1766,6 +1787,7 @@ Definition assembly_result_def:
     | YulReturn data =>
         abrupt_result (HaltCompletion data) (st with world := world) gas
     | YulRevert data => abrupt_result (RevertCompletion data) st gas
+    | YulAbort => abrupt_result AbortCompletion st gas
     | YulInvalid reason => abrupt_result (InvalidCompletion reason) st gas
     | YulOutOfFuel => abrupt_result FuelExhausted st gas
     | _ =>
@@ -1788,7 +1810,8 @@ Definition eval_assembly_def:
     | SOME (scope, literals) =>
         case assembly_machine st scope of
           NONE => abrupt_result (InvalidCompletion "bad memory object") st gas
-        | SOME m0 =>
+        | SOME m =>
+            let m0 = m with gas_observations := gas in
             assembly_result env refs st m0
               (run_yul n (yul_substitute_stmts literals code) m0) gas
 End

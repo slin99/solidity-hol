@@ -55,7 +55,7 @@ Datatype:
     (* discards a value *)
   | YPop
     (* halting *)
-  | YStop | YReturn | YRevert
+  | YStop | YReturn | YRevert | YInvalid
     (* object level: the creation object only *)
   | YCodeSize | YCodeCopy | YDataSize | YDataOffset | YSetImmutable
     (* linking *)

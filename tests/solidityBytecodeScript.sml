@@ -18,10 +18,11 @@ Datatype:
   | InvalidCompletion
   | ExceptionalHalt
   | InvalidTransaction
+  | InvalidGasEvidence
 End
 
 Datatype:
-  call_outcome = Returned (byte list) | Reverted (byte list) | Diagnostic diagnostic
+  call_outcome = Returned (byte list) | Reverted (byte list) | Aborted | Diagnostic diagnostic
 End
 
 Definition is_diagnostic_def:
@@ -115,13 +116,14 @@ End
 Datatype:
   expectation =
     ExpectReturn (argument list) | ExpectRawReturn (byte list)
-  | ExpectPanic num | ExpectRevert (byte list)
+  | ExpectPanic num | ExpectRevert (byte list) | ExpectAbort
 End
 
 Datatype:
   differential_case = <|
     case_sender : address;
     case_value : num;
+    case_gas : num list;
     case_input : call_input;
     case_immutables : (num # argument) list;
     case_immutable_refs : (num # num list) list;
@@ -198,10 +200,80 @@ Definition bytecode_execution_def:
                 NONE => (Returned (code_immutable_words refs account.code), st, r.logs)
               | SOME _ => (Returned r.output, st, r.logs))
          | SOME Reverted => (Reverted r.output, st, r.logs)
+         | SOME InvalidOpcode => (Aborted, st, r.logs)
          | SOME _ => (Diagnostic ExceptionalHalt, NONE, []))
     | NONE => (Diagnostic InvalidTransaction, NONE, [])
 End
 
+(* Track a GAS word through stack shuffles to a call's budget operand.
+ * Dup of that word also exposes it as a value, so it is an observation. *)
+Definition is_call_budget_gas_def:
+  (is_call_budget_gas 0 parsed pc depth ⇔ F) ∧
+  (is_call_budget_gas (SUC fuel) parsed pc depth ⇔
+    case FLOOKUP parsed pc of
+      NONE => F
+    | SOME op =>
+        let next_pc = pc + LENGTH (opcode op) in
+        case op of
+          Call => depth = 0
+        | StaticCall => depth = 0
+        | DelegateCall => depth = 0
+        | CallCode => depth = 0
+        | Push _ _ => is_call_budget_gas fuel parsed next_pc (depth + 1)
+        | Dup n =>
+            if depth = n then F
+            else is_call_budget_gas fuel parsed next_pc (depth + 1)
+        | Swap n =>
+            let depth' = if depth = 0 then n + 1
+                         else if depth = n + 1 then 0 else depth in
+            is_call_budget_gas fuel parsed next_pc depth'
+        | _ => F)
+End
+
+Definition observes_gas_def:
+  observes_gas (s : execution_state) ⇔
+    case s.contexts of
+      [(ctxt, _)] =>
+        FLOOKUP ctxt.msgParams.parsed ctxt.pc = SOME Gas ∧
+        ¬is_call_budget_gas 16 ctxt.msgParams.parsed (ctxt.pc + 1) 0
+    | _ => F
+End
+
+(* Read the value actually pushed by Verifereum's GAS step. The bound only
+ * limits this diagnostic replay; exhaustion cannot establish agreement. *)
+Definition trace_top_gas_def:
+  (trace_top_gas 0 s = NONE) ∧
+  (trace_top_gas (SUC fuel) s =
+    let (result, next) = step s in
+    case result of
+      INR e => if vfm_abort e then NONE else SOME []
+    | INL () =>
+        if observes_gas s then
+          (case next.contexts of
+             [(ctxt, _)] =>
+               (case ctxt.stack of
+                  w :: _ => OPTION_MAP (CONS (w2n w)) (trace_top_gas fuel next)
+                | [] => NONE)
+           | _ => NONE)
+        else trace_top_gas fuel next)
+End
+
+Definition bytecode_gas_observations_def:
+  bytecode_gas_observations (accounts, tx, refs : (num # num list) list) =
+    case run_create (Collect empty_domain) F differential_chain_id []
+           differential_block accounts tx of
+      SOME (INL _) => SOME []
+    | SOME (INR (_, s, precomp)) =>
+        (case precomp of
+           SOME _ => SOME []
+         | NONE => trace_top_gas (SUC tx.gasLimit) s)
+    | NONE => NONE
+End
+
+val () = cv_auto_trans is_call_budget_gas_def;
+val () = cv_auto_trans observes_gas_def;
+val () = cv_auto_trans trace_top_gas_def;
+val () = cv_auto_trans bytecode_gas_observations_def;
 val () = cv_auto_trans is_diagnostic_def;
 val () = cv_auto_trans returned_def;
 val () = cv_auto_trans patch_word_def;

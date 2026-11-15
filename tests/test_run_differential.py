@@ -177,6 +177,22 @@ class CorpusTests(unittest.TestCase):
             with self.assertRaisesRegex(driver.CorpusError, "duplicate case"):
                 driver.load_corpus(path)
 
+    def test_gas_observations_and_abort(self) -> None:
+        data = corpus([{"name": "abort", "function": "f", "args": [],
+                        "gas": [123, "0xff"], "expect": {"abort": True}}])
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            fake.write_corpus(data)
+            self.assertEqual(driver.load_corpus(fake.root / driver.CORPUS)["suites"][0]["cases"],
+                             data["suites"][0]["cases"])
+            for gas in ([True], [-1], [2**256], "bad"):
+                data["suites"][0]["cases"][0]["gas"] = gas
+                fake.write_corpus(data)
+                with self.assertRaises(driver.CorpusError):
+                    driver.load_corpus(fake.root / driver.CORPUS)
+        with self.assertRaises(driver.CorpusError):
+            driver.check_expectation({"abort": False}, "expect")
+
     def test_rejects_malformed_expectation(self) -> None:
         case = {"name": "f", "function": "f", "args": [], "expect": {"return": [1], "panic": 1}}
         with tempfile.TemporaryDirectory() as temporary:

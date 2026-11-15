@@ -7,7 +7,7 @@ Ancestors
   solidityDifferential solidityBytecode
   solidityDifferentialCorpus_pure_core solidityDifferentialCorpus_storage
   solidityDifferentialCorpus_mappings solidityDifferentialCorpus_token
-  solidityDifferentialCorpus_transient_values
+  solidityDifferentialCorpus_transient_values solidityDifferentialCorpus_gas_invalid
 Libs
   solidityImportLib solidityDifferentialLib cv_transLib wordsLib intLib
 
@@ -48,7 +48,7 @@ Definition named_call_def:
   named_call name args storage expect final =
     <| case_sender := 0x2000w; case_value := 0; case_input := NamedCall name args;
        case_storage := storage; case_peer_code := []; case_peer_storage := [];
-       case_expect := expect; case_final := final; case_logs := [];
+       case_expect := expect; case_final := final; case_gas := []; case_logs := [];
        case_immutables := []; case_immutable_refs := [] |>
 End
 
@@ -240,7 +240,7 @@ Definition mint_call_def:
          [(2, 5);
           (68113724183316182233052564790125915752421945217496801851705428207216635038832,
            5)];
-       case_logs := logs; case_immutables := []; case_immutable_refs := [] |>
+       case_gas := []; case_logs := logs; case_immutables := []; case_immutable_refs := [] |>
 End
 
 val () = cv_auto_trans mint_call_def;
@@ -331,6 +331,68 @@ Theorem transient_guard_lives_for_one_transaction:
       (case enter_transient_guard (differential_world world.accounts) of
          ContractReturned next _ => next = data | _ => F)
   | _ => F
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* A gas observation is independent evidence: the bytecode trace checks it,
+ * and the source must consume it completely. *)
+Theorem missing_gas_evidence_is_diagnostic:
+  source_execution corpus_gas_invalid_code corpus_gas_invalid_unit
+    corpus_gas_invalid_program 1000
+    (named_call "difference" [] [] (ExpectReturn [IntArg 0]) []) =
+    (Diagnostic InvalidCompletion, NONE, [])
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem invented_gas_evidence_is_diagnostic:
+  evm_execution corpus_gas_invalid_code corpus_gas_invalid_unit
+    ((named_call "difference" [] [] (ExpectReturn [IntArg 0]) []) with
+       case_gas := [1; 0]) =
+    (Diagnostic InvalidGasEvidence, NONE, [])
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* GAS fed directly to CALL is conservatively classified as a budget even
+ * when the source wrote call{gas: gasleft()}. It cannot establish agreement. *)
+Definition explicit_gas_budget_case_def:
+  explicit_gas_budget_case =
+    (named_call "explicitBudget" [IntArg 0x5000] []
+       (ExpectReturn [BoolArg T]) []) with case_gas := [1]
+End
+
+val () = cv_auto_trans explicit_gas_budget_case_def;
+
+Theorem source_gas_as_call_budget_is_inconclusive:
+  evm_execution corpus_gas_invalid_code corpus_gas_invalid_unit
+    explicit_gas_budget_case = (Diagnostic InvalidGasEvidence, NONE, []) ∧
+  FST (source_execution corpus_gas_invalid_code corpus_gas_invalid_unit
+    corpus_gas_invalid_program 1000 explicit_gas_budget_case) =
+    returned [Bool] [NumV 1] ∧
+  ¬differential_agrees corpus_gas_invalid_code corpus_gas_invalid_unit
+    corpus_gas_invalid_program 1000 explicit_gas_budget_case
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem budget_gas_scan_handles_push0_and_dup:
+  is_call_budget_gas 16
+    (FEMPTY |+ (1, Push 0 []) |+ (2, Swap 0) |+ (3, Call)) 1 0 ∧
+  ¬is_call_budget_gas 16 (FEMPTY |+ (1, Dup 0) |+ (2, Call)) 1 0 ∧
+  ¬is_call_budget_gas 16 (FEMPTY |+ (1, Create)) 1 0
+Proof
+  EVAL_TAC
+QED
+
+Theorem only_invalid_opcode_is_aborted:
+  FST (bytecode_execution
+    (case_accounts [0xfew] [] 0x2000w [] [],
+     differential_tx 0x2000w 0 [], [])) = Aborted ∧
+  FST (bytecode_execution
+    (case_accounts [0x5fw; 0x56w] [] 0x2000w [] [],
+     differential_tx 0x2000w 0 [], [])) = Diagnostic ExceptionalHalt
 Proof
   CONV_TAC cv_eval
 QED

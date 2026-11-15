@@ -117,7 +117,8 @@ fun arguments vs = listSyntax.mk_list (map argument vs, argument_ty)
 
 fun expectation v =
   case v of
-    JSON.OBJECT [("return", JSON.ARRAY vs)] => con "ExpectReturn" [arguments vs]
+    JSON.OBJECT [("abort", JSON.BOOL true)] => con "ExpectAbort" []
+  | JSON.OBJECT [("return", JSON.ARRAY vs)] => con "ExpectReturn" [arguments vs]
   | JSON.OBJECT [("returned", JSON.STRING s)] =>
       con "ExpectRawReturn" [bytes_term (hex_bytes s)]
   | JSON.OBJECT [("panic", code)] => con "ExpectPanic" [num_term (integer code)]
@@ -202,6 +203,7 @@ fun outcome_json tm =
   let val (f, args) = strip_comb tm in
     case (fst (dest_const f), args) of
       ("Returned", [bs]) => json_object [("returned", json_string (hex_of_bytes bs))]
+    | ("Aborted", []) => json_object [("aborted", "true")]
     | ("Reverted", [bs]) => json_object [("reverted", json_string (hex_of_bytes bs))]
     | ("Diagnostic", [d]) =>
         json_object [("diagnostic", json_string (fst (dest_const d)))]
@@ -326,6 +328,11 @@ fun case_term peer (immutables : {names : (string * IntInf.int) list,
                    SOME v => integer v
                  | NONE => 0)),
       ("case_input", input),
+      ("case_gas", listSyntax.mk_list
+        (case JSONUtil.findField c "gas" of
+           NONE => []
+         | SOME (JSON.ARRAY vs) => map (num_term o integer) vs
+         | SOME _ => fail "gas must be a list", numSyntax.num)),
       ("case_immutables", case_immutables (#names immutables) c),
       ("case_immutable_refs", #refs immutables),
       ("case_storage", storage (JSONUtil.findField c "storage")),
@@ -477,7 +484,8 @@ fun immutable_words declarations c =
 
 fun raw_expectation outputs c =
   case field c "expect" of
-    JSON.OBJECT [("return", JSON.ARRAY values)] =>
+    JSON.OBJECT [("abort", JSON.BOOL true)] => con "Aborted" []
+  | JSON.OBJECT [("return", JSON.ARRAY values)] =>
       con "Returned" [encode outputs values]
   | JSON.OBJECT [("returned", JSON.STRING value)] =>
       con "Returned" [bytes_term (hex_bytes value)]

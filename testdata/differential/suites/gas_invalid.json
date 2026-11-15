@@ -1,0 +1,77 @@
+{
+  "name": "gas_invalid",
+  "source": "testdata/differential/gas_invalid.sol",
+  "contract": "GasInvalid",
+  "artifact": "testdata/differential/expected/gas_invalid.json",
+  "cases": [
+    {
+      "name": "difference",
+      "function": "difference",
+      "args": [],
+      "gas": [
+        9978588,
+        9978586
+      ],
+      "expect": {
+        "return": [
+          2
+        ]
+      }
+    },
+    {
+      "name": "assembly_difference",
+      "function": "assemblyDifference",
+      "args": [],
+      "gas": [
+        9978679,
+        9978677
+      ],
+      "expect": {
+        "return": [
+          2
+        ]
+      }
+    },
+    {
+      "name": "call_budget",
+      "function": "budget",
+      "args": [
+        "0x0000000000000000000000000000000000005000"
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "mixed",
+      "function": "mixed",
+      "args": [
+        "0x0000000000000000000000000000000000005000"
+      ],
+      "gas": [
+        9978342,
+        9975732
+      ],
+      "expect": {
+        "return": [
+          2610,
+          true
+        ]
+      }
+    },
+    {
+      "name": "abort_rollback",
+      "function": "abortNow",
+      "args": [],
+      "storage": {
+        "0": 7,
+        "1": 8
+      },
+      "expect": {
+        "abort": true
+      }
+    }
+  ]
+}

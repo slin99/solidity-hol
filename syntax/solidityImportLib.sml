@@ -1064,6 +1064,13 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
             else if abi_member then
               (positional (); abi_encode v callee args)
             else if node_type callee = "Identifier" andalso
+               int_field callee "referencedDeclaration" = ~7 then
+              (positional ();
+               require v (null args) "gasleft takes no arguments";
+               con "SrcEnvironment"
+                 [info v, prim_mk_const {Thy = "solidityCore", Name = "GasLeft"},
+                  type_id v])
+            else if node_type callee = "Identifier" andalso
                int_field callee "referencedDeclaration" < 0 then
               let
                 val () = positional ()

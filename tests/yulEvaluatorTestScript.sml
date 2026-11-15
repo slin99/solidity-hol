@@ -29,7 +29,7 @@ Definition yul_test_machine_def:
        caller_address := 0w; call_value := 0w; call_data := []; return_data := [];
        code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
-       memory_size := 0; gas_limit := 0; scopes := [];
+       memory_size := 0; gas_limit := 0; gas_observations := []; scopes := [];
        transaction_parameters := yul_test_tx_params |>
 End
 
@@ -50,7 +50,7 @@ Definition yul_frame_machine_def:
        caller_address := 0x5678w; call_value := 0w; call_data := []; return_data := [];
        code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32) |+ ("3", 42w);
-       memory := FEMPTY; memory_size := 0; gas_limit := 0; scopes := [];
+       memory := FEMPTY; memory_size := 0; gas_limit := 0; gas_observations := []; scopes := [];
        transaction_parameters := yul_test_tx_params |>
 End
 
@@ -885,7 +885,7 @@ Definition yul_call_machine_def:
        call_value := 0w; call_data := []; return_data := [0xaaw; 0xbbw; 0xccw];
        code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
-       memory_size := 0; gas_limit := 100000; scopes := [];
+       memory_size := 0; gas_limit := 100000; gas_observations := []; scopes := [];
        transaction_parameters := yul_test_tx_params |>
 End
 

@@ -170,6 +170,17 @@ class DriverTests(unittest.TestCase):
                          ["yul_a_f_returns_ir", "yul_a_f_returns_ir_optimized",
                           "yul_a_f_returns_optimized"])
 
+    def test_gas_observations_are_inconclusive_even_with_cached_agreements(self) -> None:
+        data = corpus()
+        data["suites"][0]["cases"][0]["gas"] = [100]
+        report = driver.build_report(core.CORPUS, data, Path("solc"), [],
+                                     {"results": all_agree(), "status": 0, "ran": False})
+        self.assertEqual(report["totals"]["agreements"], 0)
+        self.assertEqual(report["totals"]["case_statuses"], {"inconclusive": 3})
+        self.assertEqual(report["kernel_checked"], [])
+        self.assertTrue(all(f["message"] == "gas observations not modelled in raw Yul"
+                            for f in report["failures"]))
+
     def test_cached_verdicts_keep_outcomes_and_stage_admissions_without_logs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             status, report = FakeRoot(Path(temporary)).run(all_agree(), cached=True)

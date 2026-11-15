@@ -1339,7 +1339,7 @@ Definition ends_in_halt_def:
   (ends_in_halt [] ⇔ F) ∧
   (ends_in_halt [s] ⇔ halting_stmt s) ∧
   (ends_in_halt (_ :: s :: ss) ⇔ ends_in_halt (s :: ss)) ∧
-  (halting_stmt (YulExprStmt (YulBuiltin b _)) ⇔ MEM b [YReturn; YRevert; YStop]) ∧
+  (halting_stmt (YulExprStmt (YulBuiltin b _)) ⇔ MEM b [YReturn; YRevert; YStop; YInvalid]) ∧
   (halting_stmt (YulBlock ss) ⇔ ends_in_halt ss) ∧
   (halting_stmt (YulSwitch _ cases default) ⇔
     ends_in_halt default ∧ cases_end_in_halt cases) ∧
@@ -1437,7 +1437,6 @@ End
 (* called: a call has been made; gas: the first argument may be gas(). *)
 Definition call_expr_ok_def:
   (call_expr_ok called (YulBuiltin b es) ⇔
-    b ≠ YGas ∧
     (called ∨ exprs_calls es ∨ b ≠ YReturnDataSize ∧ b ≠ YReturnDataCopy) ∧
     call_args_ok called (is_call_builtin b) es) ∧
   (call_expr_ok called (YulApply _ es) ⇔ call_args_ok called F es) ∧

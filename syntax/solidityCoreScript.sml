@@ -112,7 +112,7 @@ Datatype:
   environment_field
   = MsgSender | MsgValue | MsgData | SelfAddress | TxOrigin | TxGasPrice
   | BlockNumber | BlockTimestamp | BlockChainId | BlockCoinbase
-  | BlockBaseFee | BlockGasLimit
+  | BlockBaseFee | BlockGasLimit | GasLeft
 End
 
 (* DefaultMemoryOperation ty: the default value of a memory variable of type
@@ -335,6 +335,7 @@ Datatype:
   | BreakCompletion
   | ContinueCompletion
   | RevertCompletion (byte list)
+  | AbortCompletion
   (* an inline assembly return(p, s) or stop(): the frame ends with these
    * bytes as its return data *)
   | HaltCompletion (byte list)
