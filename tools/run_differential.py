@@ -482,7 +482,9 @@ def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
     targets = list(suite_targets) if suite_targets is not None else [theory]
     if force and force_targets:
         targets += force_targets
-    command = [holbuild]
+    # Verbose output names every target holbuild finished, including those
+    # already up to date, which it otherwise leaves out.
+    command = [holbuild, "--verbose"]
     if jobs is not None:
         command += ["-j", str(jobs)]
     command += ["build"] + (["--force=theory"] if force else []) + build_args + targets
@@ -507,12 +509,13 @@ def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
             target_logs = logs
         log = target_logs[-1] if target_logs else (
             root / ".holbuild" / "logs" / "current" / "solidity-hol" / target / "build.log")
-        name = re.escape(target)
-        built = re.search(rf"^{name} built$", output, re.M) is not None
+        outcome = re.search(rf"^{re.escape(target)} (built|restored from cache|is up to date)"
+                            r"(?: in [0-9.]+s)?$", output, re.M)
+        built = outcome is not None and outcome[1] == "built"
         # A failed multi-target build still finishes the targets holbuild
-        # reports as built or restored; their verdict files are this run's.
-        finished = status == 0 or built or \
-            re.search(rf"^{name} restored from cache$", output, re.M) is not None
+        # reports as built, restored or up to date; their verdict files are
+        # this run's.
+        finished = status == 0 or outcome is not None
         ran = bool(target_logs) or built
         result_file = root / theories.results_path(target)
         results = []
