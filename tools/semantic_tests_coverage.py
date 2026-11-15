@@ -2,7 +2,7 @@
 """Report how much of solc's semantic test corpus the semantics admits.
 
 Every test under test/libsolidity/semanticTests of a solidity checkout at
-SOLIDITY_PIN is compiled with the pinned compiler and profile, then prepared
+SOLIDITY_PIN (or, with --suite, syntaxTests or smtCheckerTests) is compiled with the pinned compiler and profile, then prepared
 (solidityPrepareLib: import, source validation, elaboration, core checking)
 in HOL by tools/semantic_tests_coverage.sml. Each test is classified as
 skipped by its own settings, a compile failure, an importer rejection, a
@@ -10,7 +10,8 @@ source rejection, an elaborator rejection, partially admitted (the unit is
 admitted with some of its functions unsupported) or admitted (every function
 supported). Admitted and partially admitted tests also count their functions
 and the reasons of the unsupported ones. The tests' call expectations are not
-run.
+run. In syntaxTests and smtCheckerTests only valid programs count: a test
+whose expectations list a compile error is skipped.
 
 Preparation reports every blocker it finds, one line each, so features are
 ranked by how many rejected tests they block, and by how many they alone
@@ -40,12 +41,18 @@ import export_solc_artifacts as exporter
 
 ROOT = Path(__file__).resolve().parents[1]
 TESTS_DIR = Path("test/libsolidity/semanticTests")
+SUITES = ["semanticTests", "syntaxTests", "smtCheckerTests"]
 HOL_SCRIPT = ROOT / "tools" / "semantic_tests_coverage.sml"
 REPORT_FORMAT = "solidity-hol-semantic-tests-coverage-v1"
 RESULT_PREFIX = "coverage-result: "
 
 SOURCE_MARKER = re.compile(r"^==== (Source|ExternalSource): (.*) ====\s*$")
-SETTING = re.compile(r"^//\s*([A-Za-z][A-Za-z0-9]*)\s*:\s*(.*?)\s*$")
+SETTING = re.compile(r"^//\s*([A-Za-z][A-Za-z0-9-]*)\s*:\s*(.*?)\s*$")
+# An expectation line of syntaxTests and smtCheckerTests starts with the
+# diagnostic's type; every type but these is an error (liblangutil's
+# Error::errorSeverity).
+EXPECTATION_TYPE = re.compile(r"^//\s*([A-Za-z]+)")
+NON_ERROR_TYPES = {"Warning", "Info"}
 EVM_VERSIONS = [
     "homestead", "tangerineWhistle", "spuriousDragon", "byzantium", "constantinople",
     "petersburg", "istanbul", "berlin", "london", "paris", "shanghai", "cancun",
@@ -75,23 +82,28 @@ class TestFormatError(Exception):
 
 @dataclass
 class SemanticTest:
-    """A test file: its sources, by Standard JSON name, and its settings."""
+    """A test file: its sources, by Standard JSON name, its settings and
+    the lines after `// ----`."""
 
     name: str
     sources: dict[str, str]
     settings: dict[str, str]
+    expectations: list[str] = field(default_factory=list)
 
 
 def read_test(tests_root: Path, path: Path) -> SemanticTest:
     """Parse a test as solc's TestCaseReader does: `==== Source: name ====` and
     `==== ExternalSource: [name=]path ====` markers split the sources, and the
-    `// key: value` lines between `// ====` and `// ----` are its settings."""
+    `// key: value` lines between `// ====` and `// ----` are its settings,
+    and the lines after `// ----` its expectations."""
     name = path.relative_to(tests_root).as_posix()
     sources: dict[str, list[str]] = {}
     current = name
     settings: dict[str, str] = {}
     in_settings = False
-    for line in path.read_text(encoding="utf-8").splitlines(keepends=True):
+    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    expectations: list[str] = []
+    for number, line in enumerate(lines):
         stripped = line.rstrip("\r\n")
         marker = SOURCE_MARKER.match(stripped)
         if marker is not None:
@@ -106,6 +118,7 @@ def read_test(tests_root: Path, path: Path) -> SemanticTest:
                 sources[source_name] = [external_path.read_text(encoding="utf-8")]
             continue
         if stripped.startswith("// ----"):
+            expectations = [line.rstrip("\r\n") for line in lines[number + 1:]]
             break
         if stripped.startswith("// ===="):
             in_settings = True
@@ -116,7 +129,12 @@ def read_test(tests_root: Path, path: Path) -> SemanticTest:
             settings[setting.group(1)] = setting.group(2)
         else:
             sources.setdefault(current, []).append(line)
-    return SemanticTest(name, {k: "".join(v) for k, v in sources.items()}, settings)
+    return SemanticTest(name, {k: "".join(v) for k, v in sources.items()}, settings,
+                        expectations)
+
+
+def tests_dir(suite: str) -> Path:
+    return TESTS_DIR.parent / suite
 
 
 def find_tests(tests_root: Path) -> list[Path]:
@@ -144,12 +162,33 @@ def evm_version_admits(requirement: str, version: str) -> bool:
     return comparisons[comparator]
 
 
-def skip_reason(test: SemanticTest, profile: dict[str, Any]) -> str | None:
+def expected_errors(test: SemanticTest) -> list[str]:
+    """The error types a syntaxTests or smtCheckerTests test expects, in
+    order; an expectations block stops at a second `// ----`, below which
+    solc's test runners keep their own expectations."""
+    errors = []
+    for line in test.expectations:
+        if line.startswith("// ----"):
+            break
+        match = EXPECTATION_TYPE.match(line)
+        if match is not None and match.group(1) not in NON_ERROR_TYPES:
+            errors.append(match.group(1))
+    return errors
+
+
+def skip_reason(test: SemanticTest, profile: dict[str, Any],
+                suite: str = "semanticTests") -> str | None:
     """Why the test's own settings exclude it from the via-IR profile, if
-    they do."""
+    they do. In syntaxTests and smtCheckerTests, an expected error excludes
+    it too, and `compileViaYul` only picks the pipeline solc's runner checks."""
     settings = test.settings
-    if settings.get("compileViaYul", "also") == "false":
-        return "legacy pipeline only (compileViaYul: false)"
+    if suite == "semanticTests":
+        if settings.get("compileViaYul", "also") == "false":
+            return "legacy pipeline only (compileViaYul: false)"
+    else:
+        errors = expected_errors(test)
+        if errors:
+            return f"expected compile error ({errors[0]})"
     evm = settings.get("EVMVersion", "any")
     if not evm_version_admits(evm, profile["settings"]["evmVersion"]):
         return f"EVM version (EVMVersion: {evm})"
@@ -371,6 +410,7 @@ class Report:
     pin: str
     profile: str
     results: list[Classification]
+    suite: str = "semanticTests"
 
     def counts(self) -> Counter[str]:
         return Counter(r.category for r in self.results)
@@ -418,6 +458,7 @@ class Report:
         return {
             "format": REPORT_FORMAT,
             "solidity_pin": self.pin,
+            "suite": self.suite,
             "profile": self.profile,
             "counts": {c: self.counts()[c] for c in CATEGORIES},
             "functions": {"total": sum(r.functions for r in self.results),
@@ -436,11 +477,11 @@ class Report:
         counts = self.counts()
         total = len(self.results)
         lines = [
-            "# Coverage of solc's semantic tests",
+            f"# Coverage of solc's {self.suite}",
             "",
             "Generated by `tools/semantic_tests_coverage.py`; do not edit by hand.",
             "",
-            f"Every test under `{TESTS_DIR.as_posix()}` of argotorg/solidity at "
+            f"Every test under `{tests_dir(self.suite).as_posix()}` of argotorg/solidity at "
             f"`{self.pin}` was compiled with profile `{self.profile}`, imported by "
             "`solidityPrepareLib`, including source validation, elaboration and full core checking. Call expectations "
             "(the `// ----` sections) are not run, so an admitted test is one the "
@@ -449,16 +490,29 @@ class Report:
             "when the unit is admitted with some of them unsupported: those have no "
             "procedure and a call of them is refused.",
             "",
+        ]
+        if self.suite != "semanticTests":
+            valid = total - counts[SKIPPED] - counts[COMPILE_FAILURE]
+            lines += [
+                "Only valid programs count: tests whose expectations list a compile "
+                "error are skipped, and so are compile failures. Of the "
+                f"{valid} valid tests, {counts[ADMITTED]} are admitted and "
+                f"{counts[PARTIALLY_ADMITTED]} partially admitted.",
+                "",
+            ]
+        lines += [
             "To regenerate it from the repository root, with the pinned solc and the "
             "tests checked out outside the repository:",
             "",
             "```sh",
             "git init ../solidity-tests && cd ../solidity-tests",
             "git remote add origin https://github.com/argotorg/solidity.git",
-            f"git sparse-checkout set --no-cone {TESTS_DIR.as_posix()}",
+            f"git sparse-checkout set --no-cone {tests_dir(self.suite).as_posix()}",
             f"git fetch --depth 1 --filter=blob:none origin {self.pin}",
             "git checkout FETCH_HEAD && cd -",
-            "tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc",
+            "tools/semantic_tests_coverage.py ../solidity-tests --solc /path/to/solc"
+            + ("" if self.suite == "semanticTests"
+               else f" --suite {self.suite} --output <report path>"),
             "```",
             "",
             "| outcome | tests |",
@@ -526,9 +580,16 @@ def parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--solc", required=True, type=Path)
     parser.add_argument("--holbuild", default="holbuild")
     parser.add_argument("-j", "--jobs", type=int, default=os.cpu_count())
-    parser.add_argument("--output", type=Path, default=ROOT / "docs" / "semantic-tests-coverage",
-                        help="report path without extension; .md and .json are written")
-    return parser.parse_args(argv)
+    parser.add_argument("--suite", choices=SUITES, default="semanticTests")
+    parser.add_argument("--output", type=Path,
+                        help="report path without extension; .md and .json are written "
+                        "(default for semanticTests: docs/semantic-tests-coverage)")
+    args = parser.parse_args(argv)
+    if args.output is None:
+        if args.suite != "semanticTests":
+            parser.error(f"--suite {args.suite} needs --output")
+        args.output = ROOT / "docs" / "semantic-tests-coverage"
+    return args
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -537,13 +598,13 @@ def main(argv: list[str] | None = None) -> int:
     profile = exporter.read_json(exporter.DEFAULT_PROFILE)
     # Checked once here, so that every failure below is the test's own.
     exporter.compiler_identity(args.solc, profile["compilerVersion"], pin)
-    tests_root = args.solidity / TESTS_DIR
+    tests_root = args.solidity / tests_dir(args.suite)
     tests = [read_test(tests_root, path) for path in find_tests(tests_root)]
 
     results: dict[str, Classification] = {}
     to_compile = []
     for test in tests:
-        reason = skip_reason(test, profile)
+        reason = skip_reason(test, profile, args.suite)
         if reason is not None:
             results[test.name] = Classification(test.name, SKIPPED, reason)
         else:
@@ -571,7 +632,8 @@ def main(argv: list[str] | None = None) -> int:
     for name, _ in units:
         results[name] = classify(name, hol[name])
 
-    report = Report(pin, exporter.DEFAULT_PROFILE.stem, [results[t.name] for t in tests])
+    report = Report(pin, exporter.DEFAULT_PROFILE.stem, [results[t.name] for t in tests],
+                    args.suite)
     exporter.write_json_atomic(args.output.with_suffix(".json"), report.json())
     args.output.with_suffix(".md").write_text(report.markdown(), encoding="utf-8")
     counts = report.counts()
