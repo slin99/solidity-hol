@@ -149,8 +149,10 @@ End
  * is empty. A creation sent value reverts unless the constructor is payable,
  * and arguments the decoder rejects revert. The immutables start at zero, and
  * a successful creation yields their values. Memory above the scratch space
- * holds a word for each immutable, then the copied arguments, so both the
- * decoder and the constructor allocate above them.
+ * holds a word for each immutable, then, for a constructor with parameters,
+ * the copied arguments, so both the decoder and the constructor allocate
+ * above them. A constructor without parameters gets no argument copy, as
+ * in solc, and ignores any bytes after its initcode.
  *)
 Definition deploy_contract_with_gas_def:
   deploy_contract_with_gas fuel (prog : core_program) (fr : source_frame)
@@ -164,7 +166,8 @@ Definition deploy_contract_with_gas_def:
           NONE => unconsumed_gas_result gas (ContractInvalid "unknown procedure")
         | SOME p =>
             let reserved = 32 * LENGTH prog.immutables +
-                           32 * ((LENGTH fr.call_data + 31) DIV 32) in
+                           (if p.parameters = [] then 0
+                            else 32 * ((LENGTH fr.call_data + 31) DIV 32)) in
             case decode_arguments env (MAP SND p.parameters) fr.call_data 0
               (128 + reserved) of
               INR (PanicCompletion n) => unconsumed_gas_result gas (ContractReverted (panic_data n) w)
@@ -176,6 +179,21 @@ End
 Definition deploy_contract_def:
   deploy_contract fuel prog fr w = deploy_contract_with_gas fuel prog fr w []
 End
+
+(* A constructor without parameters decodes nothing, and solc copies no
+ * argument buffer for it: bytes after the initcode change nothing, in
+ * particular not where the free memory pointer starts. *)
+Theorem deploy_contract_parameterless_ignores_arguments:
+  prog.creation_procedure = SOME (f, payable) ∧
+  lookup_procedure (core_program_environment prog) f = SOME p ∧
+  p.parameters = [] ⇒
+  deploy_contract fuel prog fr w =
+  deploy_contract fuel prog (fr with call_data := []) w
+Proof
+  rw[deploy_contract_def, solidityABITheory.decode_arguments_def,
+     solidityABITheory.decode_abi_arguments_def, solidityABITheory.abi_type_def,
+     contractABITheory.head_lengths_def]
+QED
 
 Theorem call_contract_revert_restores_world:
   call_contract fuel prog imm fr w = ContractReverted data w' ⇒ w' = w
