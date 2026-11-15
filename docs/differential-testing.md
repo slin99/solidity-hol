@@ -111,8 +111,11 @@ trigger when that branch is merged into `main`.
 Source and Yul suite theories declare a `.results.jsonl` extra output beside
 their scripts. holbuild caches and restores it with the theory, so reports
 retain outcomes and stage admissions without an old build log. Missing suite
-or case records fail the report, including on cache hits. Failed builds use
-their diagnostic logs and ignore possibly stale result files.
+or case records fail the report, including on cache hits. A suite theory
+that failed or was never reached uses its diagnostic log and ignores any
+possibly stale result file. When a multi-target build fails, the suites it
+reports as `built` or `restored from cache` still finished, so their result
+files are read and reported.
 
 `solidityDifferentialCorpus` remains a compatibility roll-up, refreshed with
 integration reports. It owns no case definitions: ML consumers enumerating
