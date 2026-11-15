@@ -186,6 +186,8 @@ Datatype:
       (sol_type list) core_atom core_atom (core_atom option) (core_atom list)
   | LowLevelCallOperation external_kind core_atom core_atom (core_atom option)
       core_atom
+  | CreateContractOperation (byte list) (sol_type list) core_atom
+      (core_atom option) (core_atom list)
   (* target.transfer(value): exact stipend, failure bytes forwarded, no
    * return-data allocation. *)
   | TransferOperation core_atom core_atom

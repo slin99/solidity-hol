@@ -42,6 +42,7 @@ Datatype:
     deployed_name : string;
     creation_bytes : byte list;
     deployed_bytes : byte list;
+    deployed_offset : num;
     creation_refs : (num # num list) list
   |>
 End
@@ -140,8 +141,7 @@ Definition yul_creation_machine_def:
          code := p.creation_bytes ++ data;
          objects := FEMPTY |+ (p.creation_name, (0, LENGTH p.creation_bytes))
            |+ (p.deployed_name,
-                (LENGTH p.creation_bytes - LENGTH p.deployed_bytes,
-                 LENGTH p.deployed_bytes));
+                (p.deployed_offset, LENGTH p.deployed_bytes));
          immutables := FEMPTY;
          immutable_offsets := FEMPTY |++
            MAP (λ(x, offsets). (toString x, offsets)) p.creation_refs;
@@ -160,9 +160,9 @@ End
 
 Definition yul_creation_execution_def:
   yul_creation_execution p c data fuel =
-    if LENGTH p.deployed_bytes > LENGTH p.creation_bytes ∨
-       DROP (LENGTH p.creation_bytes - LENGTH p.deployed_bytes)
-         p.creation_bytes ≠ p.deployed_bytes then
+    if p.deployed_offset + LENGTH p.deployed_bytes > LENGTH p.creation_bytes ∨
+       TAKE (LENGTH p.deployed_bytes) (DROP p.deployed_offset p.creation_bytes)
+         ≠ p.deployed_bytes then
       (Diagnostic InvalidCompletion, NONE, [])
     else
       let m = yul_creation_machine p c data in

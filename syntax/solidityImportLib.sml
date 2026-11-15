@@ -552,6 +552,7 @@ val selector_declarations : (IntInf.int * JSON.value) list ref = ref []
 
 (* The contracts of the compilation, by id, for type(I).interfaceId. *)
 val contract_declarations : (IntInf.int * JSON.value) list ref = ref []
+val creation_outputs : (IntInf.int * JSON.value) list ref = ref []
 
 (* type(I).interfaceId: the XOR of the selectors of the functions the interface
  * declares itself, not those it inherits, nor its fallback or receive. *)
@@ -1014,6 +1015,9 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
               end
             else if isSome (low_level_kind (options_target callee)) then
               (positional (); low_level_call v callee args)
+            else if node_type (options_target callee) = "NewExpression" andalso
+                    node_type (field (options_target callee) "typeName") = "UserDefinedTypeName" then
+              creation_call v callee args
             else if node_type callee = "MemberAccess" andalso
                (String.isPrefix "t_function_wrap_" (raw_type_id callee) orelse
                 String.isPrefix "t_function_unwrap_" (raw_type_id callee)) then
@@ -1326,7 +1330,7 @@ and abi_encode_call v callee =
 (* A callee's call options {value: v, gas: g}, in source order. Their
  * expressions are imported before their names are checked, so an unsupported
  * option does not hide the blockers of its value. *)
-and call_options callee =
+and call_options creation callee =
   if node_type callee = "FunctionCallOptions" then
     within callee (fn opts =>
       let
@@ -1339,11 +1343,55 @@ and call_options callee =
         ListPair.zipEq
           (map (fn "value" => con "ValueOption" []
                  | "gas" => con "GasOption" []
+                 | "salt" => if creation then con "SaltOption" []
+                             else fail (describe opts ^ ": unsupported call options")
                  | _ => fail (describe opts ^ ": unsupported call options"))
              names,
            values)
       end)
   else []
+
+(* A contract declaration selects bytecode by id, including imported sources. *)
+and creation_call v callee args =
+  let
+    val target = options_target callee
+    val id = int_field (field target "typeName") "referencedDeclaration"
+    val c = case List.find (fn (i, _) => i = id) (!contract_declarations) of
+              SOME (_, c) => c
+            | NONE => fail (describe target ^ ": unknown creation contract")
+    val output = case List.find (fn (i, _) => i = id) (!creation_outputs) of
+                   SOME (_, c) => c
+                 | NONE => fail (describe target ^ ": no creation bytecode")
+    val bytecode = field (field output "evm") "bytecode"
+    val () = require target
+      (case optional_field bytecode "linkReferences" of
+         NONE => true | SOME refs => null (object refs))
+      "creation bytecode has unresolved links"
+    val code = mk_bytes target (string_field bytecode "object")
+    val () = require target (string_field bytecode "object" <> "")
+               "empty creation bytecode"
+    val ctor = List.find (fn m => node_type m = "FunctionDefinition" andalso
+                           string_field m "kind" = "constructor")
+                 (JSONUtil.arrayMap I (field c "nodes"))
+    val options = call_options true callee
+    val metadata = record "src_create"
+      [("create_bytecode", code),
+       ("create_mutability", case ctor of NONE =>
+            decode c "constructor mutability" mutabilities "nonpayable"
+          | SOME f => decode f "constructor mutability" mutabilities
+                        (string_field f "stateMutability")),
+       ("create_parameters", case ctor of
+          NONE => listSyntax.mk_nil variable_ty
+        | SOME f => #2 (parameter_list (field f "parameters")))]
+    val order = case ctor of
+                  NONE => (require v (null args) "implicit constructor arguments";
+                           listSyntax.mk_nil numSyntax.num)
+                | SOME f => argument_order v (int_field f "id") 0
+  in
+    con "SrcCreate" [info v, metadata,
+      listSyntax.mk_list (map #1 options, call_option_ty),
+      listSyntax.mk_list (map #2 options @ args, expr_ty), order, type_id v]
+  end
 
 (* a.call{value: v, gas: g}(data), a.staticcall{gas: g}(data) or
  * a.delegatecall{gas: g}(data), with a of an address type. *)
@@ -1351,7 +1399,7 @@ and low_level_call v callee args =
   let
     val member = options_target callee
     val target = expr (field member "expression")
-    val options = call_options callee
+    val options = call_options false callee
     val () = require v (length args = 1)
                (string_field member "memberName" ^ " takes one argument")
   in
@@ -1367,7 +1415,7 @@ and external_call v callee args =
   let
     val member = options_target callee
     val target = Option.map expr (optional_field member "expression")
-    val options = call_options callee
+    val options = call_options false callee
     val () = require member (is_external_call member)
                "unsupported call options"
     val () =
@@ -2145,7 +2193,15 @@ fun contract external_structs contracts declared v = within v (fn v =>
      * that the code names: a struct may appear only in a call's parameter
      * or return types. *)
     val named = List.concat (map references (bases @ used_members))
-    val signature_ids =
+    val constructor_ids =
+      List.concat (List.mapPartial (fn (id, c) =>
+        if List.exists (fn i => i = id) named then
+          SOME (List.concat (List.mapPartial (fn f =>
+            if node_type f = "FunctionDefinition" andalso
+               string_field f "kind" = "constructor"
+            then SOME (references (field f "parameters")) else NONE) (nodes c)))
+        else NONE) declared)
+    val signature_ids = constructor_ids @
       List.concat (List.mapPartial
         (fn (id, d) =>
            if List.exists (fn i => i = id) named andalso
@@ -2487,10 +2543,40 @@ fun import_unit units v contracts = within v (fn v =>
 
 (* The unit, and the blockers outside its functions and modifiers, which
  * reject it. *)
-fun import_source_unit_blockers units v contracts =
+fun import_with_creation units v contracts outputs =
   (blockers := [];
    children := [];
+   creation_outputs := outputs;
    (import_unit units v contracts, !blockers))
+
+fun import_source_unit_blockers units v contracts =
+  import_with_creation units v contracts
+    (List.mapPartial (fn c =>
+       if node_type c = "ContractDefinition" then
+         Option.map (fn out => (int_field c "id", out))
+           (optional_field contracts (string_field c "name"))
+       else NONE) (JSONUtil.arrayMap I (field v "nodes")))
+
+(* All compilation outputs are needed when new names an imported contract. *)
+fun import_artifact_unit_blockers artifact source =
+  let
+    val output = field artifact "output"
+    val sources = object (field output "sources")
+    val all = case optional_field output "contracts" of
+                NONE => JSON.OBJECT [] | SOME cs => cs
+    fun contracts path = case optional_field all path of
+                          NONE => JSON.OBJECT [] | SOME cs => cs
+    val outputs = List.concat (map (fn (path, s) =>
+      List.mapPartial (fn c =>
+        if node_type c = "ContractDefinition" then
+          Option.map (fn out => (int_field c "id", out))
+            (optional_field (contracts path) (string_field c "name"))
+        else NONE) (JSONUtil.arrayMap I (field (field s "ast") "nodes"))) sources)
+  in
+    import_with_creation (map (fn (_, s) => field s "ast") sources)
+      (JSONUtil.get (output, map JSONUtil.SEL ["sources", source, "ast"]))
+      (contracts source) outputs
+  end
 
 fun import_source_unit units v contracts =
   case import_source_unit_blockers units v contracts of
@@ -2520,17 +2606,8 @@ fun artifact_deployed_bytecode path source contract =
                     JSONUtil.exnMessage e)
 
 fun import_artifact path source =
-  let
-    val artifact = read_artifact path
-    fun get keys what =
-      JSONUtil.get (artifact, map JSONUtil.SEL keys)
-      handle e => fail (path ^ ": no " ^ what ^ " for " ^ source ^ ": " ^
-                        JSONUtil.exnMessage e)
-  in
-    import_source_unit
-      (map (fn (_, s) => field s "ast") (object (get ["output", "sources"] "sources")))
-      (get ["output", "sources", source, "ast"] "AST")
-      (get ["output", "contracts", source] "contracts")
-  end
+  case import_artifact_unit_blockers (read_artifact path) source of
+    (unit, []) => unit
+  | (_, lines) => fail (String.concatWith "\n" lines)
 
 end

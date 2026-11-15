@@ -195,9 +195,11 @@ high-level calls use; `docs/yul-call-design.md` says how.
 
 A deployment executes the top-level creation code at the created address, with
 empty calldata and the encoded constructor arguments appended to the stage's
-actual initcode. Named object sizes and offsets come from the initcode and its
-runtime suffix; layouts without that suffix are rejected. `codecopy` reads those
-bytes, and `setimmutable` patches the copied runtime at its emitted offsets.
+actual initcode. The runtime offset comes from an exact runtime suffix when
+present, otherwise from a unique byte match within the initcode. Missing or
+ambiguous matches are rejected. `yul_creation_execution` checks the recorded
+span's bounds and bytes. `codecopy` reads those bytes, and `setimmutable`
+patches the copied runtime at its emitted offsets.
 The returned bytes must match that runtime with its immutable patches. The
 comparison then observes the immutable words, complete storage and logs, just
 as the source/bytecode deployment comparison does. Unsupported object names and

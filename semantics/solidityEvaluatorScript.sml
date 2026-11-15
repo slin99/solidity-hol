@@ -670,6 +670,38 @@ Definition default_call_results_def:
     | _ => NONE)
 End
 
+(* Constructor arguments use the same live-location ABI codec as calls. *)
+Definition call_create_def:
+  call_create env x ty code params value salt args (st : source_state) gas =
+    if st.frame.static_context then
+      abrupt_result (InvalidCompletion "creation in static frame") st gas else
+    case (eval_atom st.scopes value, eval_atoms st.scopes args,
+          case salt of NONE => SOME NONE | SOME a =>
+            case eval_atom st.scopes a of
+              SOME (ScalarValue (BytesValue bs)) =>
+                if LENGTH bs = 32 then SOME (SOME (word_of_bytes_be bs)) else NONE
+            | _ => NONE) of
+      (SOME (ScalarValue (IntegerValue v)), SOME vs, SOME salt) =>
+        (case encoded_runtime_values env st params vs of
+           INR c => abrupt_result c st gas
+         | INL data =>
+             case run_create_call st.frame.self_address salt (code ++ data)
+                    (Num v) external_call_gas st.world.accounts st.world.transient
+                    st.frame.tx_params of
+               NONE => abrupt_result (InvalidCompletion "creation outside the model") st gas
+             | SOME r =>
+                 let st1 = st with <|
+                   return_data := SOME r.create_return;
+                   world := <| accounts := r.create_accounts;
+                               transient := r.create_transient;
+                               logs := st.world.logs ++ r.create_logs |> |> in
+                 case r.create_address of
+                   NONE => abrupt_result (RevertCompletion r.create_return) st1 gas
+                 | SOME addr => normal_result
+                     (define_binding x ty (ScalarValue (AddressValue addr)) st1) gas)
+    | _ => abrupt_result (InvalidCompletion "bad creation operands") st gas
+End
+
 Definition call_external_mode_def:
   call_external_mode catching env x ty kind selector params rets target value
                 g args (st : source_state) gas =
@@ -999,6 +1031,8 @@ Definition simple_stmt_def:
         call_external env x ty kind selector params rets target value g args st gas
     | DefineStmt x ty (LowLevelCallOperation kind target value g data) =>
         call_low_level x ty kind target value g data st gas
+    | DefineStmt x ty (CreateContractOperation code params value salt args) =>
+        call_create env x ty code params value salt args st gas
     | DefineStmt x ty (TryDecodeErrorOperation kind a) =>
         (case eval_atom st.scopes a of
            SOME (ScalarValue (BytesValue data)) =>
