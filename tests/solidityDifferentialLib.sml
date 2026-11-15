@@ -573,8 +573,18 @@ fun run_case_three_way suite_name env c =
        expect = expectation (field c "expect"),
        unit = #unit env, code = #code env, program = #program env}
   in
-    List.foldl (fn (stage, ok) => run_yul_stage case_env stage andalso ok)
-      true (#stages env)
+    if null (fst (listSyntax.dest_list (record_field "case_gas" (#case_tm case_env)))) then
+      List.foldl (fn (stage, ok) => run_yul_stage case_env stage andalso ok)
+        true (#stages env)
+    else
+      (List.app (fn (_, json_tag, _) =>
+         emit_yul [("kind", json_string "case"), ("suite", json_string suite_name),
+                   ("case", json_string (#case_name case_env)),
+                   ("stage", json_string json_tag),
+                   ("status", json_string "inconclusive"),
+                   ("message", json_string "gas observations not modelled in raw Yul")])
+         (#stages env);
+       true)
   end
   handle e =>
     (emit_yul [("kind", json_string "case"), ("suite", json_string suite_name),
