@@ -110,12 +110,14 @@ End
  *)
 Datatype:
   environment_field
-  = MsgSender | MsgValue | MsgData | SelfAddress | TxOrigin | TxGasPrice
+  = MsgSender | MsgValue | MsgData | MsgSig | SelfAddress | TxOrigin | TxGasPrice
   | BlockNumber | BlockTimestamp | BlockChainId | BlockCoinbase
   | BlockBaseFee | BlockGasLimit | GasLeft
 End
 
-(* DefaultMemoryOperation ty: the default value of a memory variable of type
+(* DefaultReferenceOperation loc ty: a placeholder reference that a source
+ * variable must be assigned before reading, or a compiler join overwrites.
+ * DefaultMemoryOperation ty: the default value of a memory variable of type
  * ty. AllocateMemoryOperation ty n: new ty(n), a zeroed byte sequence or
  * dynamic array of length n; for a struct type, a new memory struct of n
  * fields, a word per field, as a constructor allocates it before converting
@@ -155,7 +157,7 @@ Datatype:
   | ImmutableReferenceOperation ast_id
   | NavigateOperation sol_type core_atom navigation
   | DefaultMemoryOperation sol_type
-  | NullMemoryOperation sol_type
+  | DefaultReferenceOperation data_location sol_type
   | BytesLiteralOperation sol_type (byte list)
   | AllocateMemoryOperation sol_type core_atom
   | BytesToFixedOperation num core_atom

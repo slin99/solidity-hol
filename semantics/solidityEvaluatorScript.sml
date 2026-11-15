@@ -172,6 +172,41 @@ Definition eval_pure_operation_def:
     | _ => ValueAbrupt (InvalidCompletion "unsupported operation")
 End
 
+Definition default_scalar_def:
+  default_scalar env ty =
+    case ty of
+      EnumT _ => SOME (IntegerValue 0)
+    | UserValueT id =>
+        (case lookup_user_value env id of
+           SOME u => default_elementary u
+         | NONE => NONE)
+    | _ => default_elementary ty
+End
+
+(* A static memory array return binding starts at object zero too; the
+ * elaborated body allocates its zero value before running. The compiler
+ * rejects reading a calldata return binding before it is assigned, so its
+ * default is never observed. *)
+Definition default_runtime_value_def:
+  default_runtime_value env ty =
+    case ty of
+      LocatedT MemoryLoc element =>
+        if located_type_ok env MemoryLoc element then
+          SOME (ReferenceValue (MemoryReference (HeapId 0) 0 element))
+        else NONE
+    | LocatedT CalldataLoc element =>
+        if located_type_ok env CalldataLoc element then
+          SOME (ReferenceValue (CalldataReference 0
+            (case element of ArrayT _ (SOME n) => n | _ => 0) element))
+        else NONE
+    | LocatedT StorageLoc element =>
+        if located_type_ok env StorageLoc element then
+          SOME (ReferenceValue
+            (StorageReference PersistentStorage 0w 0w 0 element (LayoutId 0)))
+        else NONE
+    | _ => OPTION_MAP ScalarValue (default_scalar env ty)
+End
+
 (* msg, this, tx and block reads, from the frame. *)
 (* The numeric fields are unbounded in the frame; the EVM reads each as a
  * word, so as a uint256 it wraps.
@@ -180,6 +215,7 @@ Definition environment_value_def:
   environment_value (fr : source_frame) f =
     case f of
       MsgData => ValueOk (ReferenceValue (CalldataReference 0 (LENGTH fr.call_data) BytesT))
+    | MsgSig => ValueOk (ScalarValue (BytesValue (TAKE 4 (fr.call_data ++ REPLICATE 4 0w))))
     | MsgSender => ValueOk (ScalarValue (AddressValue fr.sender_address))
     | MsgValue =>
         ValueOk (ScalarValue (IntegerValue (wrap_integer F 256 (&fr.call_value))))
@@ -221,8 +257,10 @@ End
 Definition eval_operation_def:
   eval_operation env (st : source_state) op =
     case op of
-      NullMemoryOperation ty =>
-        ValueOk (ReferenceValue (MemoryReference (HeapId 0) 0 ty))
+      DefaultReferenceOperation loc ty =>
+        (case default_runtime_value env (LocatedT loc ty) of
+           SOME v => ValueOk v
+         | NONE => ValueAbrupt (InvalidCompletion "bad reference default"))
     | StateReferenceOperation x =>
         (case state_reference env st.frame.self_address x of
            SOME r => ValueOk (ReferenceValue r)
@@ -391,17 +429,6 @@ End
 
 (* Procedures *)
 
-Definition default_scalar_def:
-  default_scalar env ty =
-    case ty of
-      EnumT _ => SOME (IntegerValue 0)
-    | UserValueT id =>
-        (case lookup_user_value env id of
-           SOME u => default_elementary u
-         | NONE => NONE)
-    | _ => default_elementary ty
-End
-
 Definition single_binding_def:
   single_binding ty v = <| binding_type := SingleType ty; binding_value := v |>
 End
@@ -413,30 +440,6 @@ Definition bind_parameters_def:
       SOME scope => SOME (scope |+ (ast_key x, single_binding ty v))
     | NONE => NONE) ∧
   (bind_parameters _ _ = NONE)
-End
-
-(* A static memory array return binding starts at object zero too; the
- * elaborated body allocates its zero value before running. The compiler
- * rejects reading a calldata return binding before it is assigned, so its
- * default is never observed. *)
-Definition default_runtime_value_def:
-  default_runtime_value env ty =
-    case ty of
-      LocatedT MemoryLoc element =>
-        if located_type_ok env MemoryLoc element then
-          SOME (ReferenceValue (MemoryReference (HeapId 0) 0 element))
-        else NONE
-    | LocatedT CalldataLoc element =>
-        if located_type_ok env CalldataLoc element then
-          SOME (ReferenceValue (CalldataReference 0
-            (case element of ArrayT _ (SOME n) => n | _ => 0) element))
-        else NONE
-    | LocatedT StorageLoc element =>
-        if located_type_ok env StorageLoc element then
-          SOME (ReferenceValue
-            (StorageReference PersistentStorage 0w 0w 0 element (LayoutId 0)))
-        else NONE
-    | _ => OPTION_MAP ScalarValue (default_scalar env ty)
 End
 
 Definition bind_defaults_def:
