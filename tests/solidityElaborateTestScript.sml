@@ -527,17 +527,17 @@ val success_b = “^success_n with
      var_type_id := "t_bool" |>”;
 val success_call = “SrcExternalCall ^(at 30)
   <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut;
-     ext_parameters := []; ext_returns := [^success_n; ^success_b] |>
+     ext_signature := FunctionSignature [] [^success_n; ^success_b] |>
   [] [SrcIdentifier ^(at 31) "target" 40 "t_address"] []
   "t_tuple$_t_uint256_$_t_bool_$"”;
 val success_body = “SrcBlock ^(at 22) []”;
 
 Theorem try_success_requires_all_types_and_scope:
-  try_call 11 ^success_call 21 [^success_n] ^success_body []
+  try_call [] 11 ^success_call 21 [^success_n] ^success_body []
     (BoundAtom (AstId 10)) = NONE ∧
-  try_call 11 ^success_call 21 [^success_n; ^success_n] ^success_body []
+  try_call [] 11 ^success_call 21 [^success_n; ^success_n] ^success_body []
     (BoundAtom (AstId 10)) = NONE ∧
-  try_call 11 ^success_call 21
+  try_call [] 11 ^success_call 21
     [^success_n; ^success_b with var_scope := 0] ^success_body []
     (BoundAtom (AstId 10)) = NONE
 Proof
@@ -545,7 +545,7 @@ Proof
 QED
 
 Theorem try_success_omitted_keeps_full_result_positions:
-  try_call 11 ^success_call 21 [] ^success_body []
+  try_call [] 11 ^success_call 21 [] ^success_body []
     (BoundAtom (AstId 10)) =
   SOME ([DefineStmt (AstId 11) (SingleType BoolT)
            (TupleComponentOperation 0 (BoundAtom (AstId 10)));
@@ -660,7 +660,7 @@ Theorem external_call_operands_all_report:
   ^(reports “elab_expr ^ctx0 10
                (SrcExternalCall ^(at 30)
                   <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut;
-                     ext_parameters := []; ext_returns := [] |>
+                     ext_signature := FunctionSignature [] [] |>
                   [] [^(bad_at 32); ^(bad_at 33)] [] "t_tuple$__$")”
      (“(30, "unsupported external call")” :: bad_32_33))
 Proof

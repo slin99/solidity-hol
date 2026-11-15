@@ -227,6 +227,7 @@ Definition default_operation_def:
   default_operation ty =
     case ty of
       LocatedT MemoryLoc element => SOME (DefaultMemoryOperation element)
+    | LocatedT CalldataLoc element => SOME (DefaultReferenceOperation CalldataLoc element)
     | _ => if located_value_type ty then NONE
            else case default_elementary ty of
                   SOME d => SOME (ConvertOperation ty (ConstantAtom d))
@@ -237,7 +238,7 @@ End
 Definition join_operation_def:
   join_operation ty =
     case ty of
-      LocatedT MemoryLoc element => SOME (NullMemoryOperation element)
+      LocatedT MemoryLoc element => SOME (DefaultReferenceOperation MemoryLoc element)
     | _ => default_operation ty
 End
 
@@ -752,8 +753,8 @@ Definition abi_argument_def:
         if is_stored_scalar_type ty then INL (ty, a) else
         (case ty of
            LocatedT _ element =>
-             if byte_sequence_type element ∨
-                (¬packed ∧ located_object_shape MemoryLoc element)
+             if (if packed then packed_type (LocatedT MemoryLoc element)
+                 else located_object_shape MemoryLoc element)
              then INL (LocatedT MemoryLoc element, a)
              else INR "abi encoding of this type"
          | _ => INR "abi encoding of this type")
@@ -1341,9 +1342,8 @@ End
 Definition external_call_def:
   external_call catching ctx (info : node_info) callee opts operands order tid r =
     let shape =
-      (case (all_some (MAP call_variable_type callee.ext_parameters),
-             all_some (MAP call_variable_type callee.ext_returns)) of
-         (SOME params, SOME rets) =>
+      (case external_types ctx.structs callee.ext_signature of
+         SOME (params, rets) =>
            if ¬MEM SaltOption opts ∧
               (MEM ValueOption opts ⇒ callee.ext_mutability = PayableMut) ∧
               LENGTH operands = LENGTH params + 1 + LENGTH opts ∧
@@ -2801,12 +2801,12 @@ End
  * its result r after its statements ss. All callee returns are decoded even
  * when the success clause binds none of them. *)
 Definition try_call_def:
-  try_call n call ok ps body ss r =
+  try_call structs n call ok ps body ss r =
     case (call, all_some (MAP (scoped_variable ok) ps)) of
       (SrcExternalCall _ callee _ _ _ _, SOME locals) =>
-        (case all_some (MAP call_variable_type callee.ext_returns) of
+        (case external_types structs callee.ext_signature of
          NONE => NONE
-       | SOME rets =>
+       | SOME (_, rets) =>
         if ¬((ps = [] ∨ rets = MAP SND locals) ∧
              ¬is_declaration body)
         then NONE else
@@ -2897,7 +2897,7 @@ Definition elab_stmts_def:
         INR (bs ++ blockers (elab_stmt (bind_failed ctx (MAP SOME ps)) n body) ++
              blockers (elab_catches ctx n (ConstantAtom (BytesValue [])) handlers))
     | INL ((ss, r, _), n1) =>
-    case try_call n1 call ok.node_id ps body ss r of
+    case try_call ctx.structs n1 call ok.node_id ps body ss r of
       NONE =>
         INR ((case variables_blockers (MAP SOME ps) of
                 [] => [(info.node_id, "unsupported try statement")]
@@ -3426,11 +3426,6 @@ End
 Definition getter_parameters_def:
   (getter_parameters (n : num) [] = []) ∧
   (getter_parameters n (k :: ks) = (n, k) :: getter_parameters (n + 1) ks)
-End
-
-(* What a getter returns: a byte sequence is returned in memory. *)
-Definition getter_result_def:
-  getter_result ty = if byte_sequence_type ty then LocatedT MemoryLoc ty else ty
 End
 
 (* A getter's read of one result from ref, the location it reached: the
@@ -4316,7 +4311,6 @@ val () = cv_auto_trans elab_function_def;
 val () = cv_auto_trans contract_ctx_def;
 val () = cv_auto_trans elab_functions_def;
 val () = cv_auto_trans getter_location_def;
-val () = cv_auto_trans getter_result_def;
 val () = cv_auto_trans getter_parameters_def;
 val () = cv_auto_trans getter_read_def;
 val () = cv_auto_trans getter_reads_def;
