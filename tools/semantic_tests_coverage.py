@@ -101,7 +101,9 @@ def read_test(tests_root: Path, path: Path) -> SemanticTest:
     current = name
     settings: dict[str, str] = {}
     in_settings = False
-    lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+    # solc's runner reads bytes: syntaxTests/string/invalid_utf8_sequence.sol
+    # is not UTF-8 (and expects an error).
+    lines = path.read_text(encoding="utf-8", errors="surrogateescape").splitlines(keepends=True)
     expectations: list[str] = []
     for number, line in enumerate(lines):
         stripped = line.rstrip("\r\n")

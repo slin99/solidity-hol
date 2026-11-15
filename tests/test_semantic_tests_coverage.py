@@ -91,6 +91,14 @@ class ReadTestTests(unittest.TestCase):
         self.assertIn("EVMVersion: <osaka",
                       reason("contract C {}\n// ====\n// EVMVersion: <osaka\n// ----\n"))
 
+    def test_reads_sources_that_are_not_utf8(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "t.sol"
+            path.write_bytes(b'contract C { string s = hex"c0"; }\n// ----\n// SyntaxError 8452: (1-2): X.\n')
+            test = coverage.read_test(Path(temporary), path)
+        self.assertEqual(coverage.skip_reason(test, PROFILE, "syntaxTests"),
+                         "expected compile error (SyntaxError)")
+
 
 class CompileTests(unittest.TestCase):
     def test_compilation_retains_artifact_contract_for_preparation(self) -> None:
