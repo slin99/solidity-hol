@@ -144,16 +144,17 @@ def build_report(corpus_path: Path, corpus: dict[str, Any], solc: Path,
     kernel_checked: list[dict[str, Any]] = []
     cases_run = 0
     if hol is not None:
-        results = hol["results"]
-        suite_results = {r.get("suite"): r for r in results if r.get("kind") == "suite"}
-        stage_results = {(r.get("suite"), r.get("stage")): r
-                         for r in results if r.get("kind") == "stage"}
-        case_results = {(r.get("suite"), r.get("case"), r.get("stage")): r
-                        for r in results if r.get("kind") == "case" and "stage" in r}
         stage_counts = {stage: {"cases_run": 0, "agreements": 0} for stage in STAGES}
-        built = hol["status"] == 0
         expected = sum(len(suite["cases"]) for suite in corpus["suites"]) * len(STAGES)
         for suite in corpus["suites"]:
+            run = hol.get("suite_runs", {}).get(suite["name"], hol)
+            results = run["results"]
+            suite_results = {r.get("suite"): r for r in results if r.get("kind") == "suite"}
+            stage_results = {(r.get("suite"), r.get("stage")): r
+                             for r in results if r.get("kind") == "stage"}
+            case_results = {(r.get("suite"), r.get("case"), r.get("stage")): r
+                            for r in results if r.get("kind") == "case" and "stage" in r}
+            built = run["status"] == 0
             suite_result = suite_results.get(suite["name"])
             if suite_result is None and built:
                 suite_result = {"kind": "suite", "suite": suite["name"], "status": "missing",
@@ -197,7 +198,7 @@ def build_report(corpus_path: Path, corpus: dict[str, Any], solc: Path,
                         stage_counts[stage]["agreements"] += 1
                         kernel_checked.append({"theorem": theorem, "suite": suite["name"],
                                                "case": case["name"], "stage": stage,
-                                               "status": "proved" if hol["ran"]
+                                               "status": "proved" if run["ran"]
                                                          else "proved (cached)",
                                                "outcome": result.get("outcome")})
                     elif result is not None:
