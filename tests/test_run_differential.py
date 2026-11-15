@@ -634,6 +634,52 @@ class DriverTests(unittest.TestCase):
         self.assertEqual([row["case"] for row in result["results"]],
                          ["source_failure", "bytecode_failure"])
 
+    def test_failed_multi_target_build_reports_the_suites_that_finished(self) -> None:
+        # Verbose holbuild prints an up-to-date target, and times each outcome.
+        for outcome in ("built", "restored from cache", "is up to date in 0.002s"):
+            for a_ran in (False, True):
+                with self.subTest(outcome=outcome, a_ran=a_ran), \
+                        tempfile.TemporaryDirectory() as temporary:
+                    fake = FakeRoot(Path(temporary))
+                    data = corpus()
+                    data["suites"].append({**data["suites"][0], "name": "b"})
+                    fake.write_corpus(data)
+                    fake.wrappers()
+                    a, b = (driver.theories.theory_name(name, "source") + "Theory"
+                            for name in ("a", "b"))
+                    agree = {"kind": "case", "case": "f_returns", "status": "agree",
+                             "outcome": RETURNED}
+
+                    def lines(rows):
+                        return "".join(driver.RESULT_PREFIX + json.dumps(row) + "\n"
+                                       for row in rows)
+
+                    # a's verdict file is left over from an earlier, successful build.
+                    fake.write(driver.theories.results_path(a).as_posix(),
+                               lines([SUITE_OK, {**agree, "suite": "a"}]))
+                    script = [f"open({driver.theories.results_path(b).as_posix()!r}, 'w')"
+                              f".write({lines([{**SUITE_OK, 'suite': 'b'}, {**agree, 'suite': 'b'}])!r})",
+                              f"print({b + ' ' + outcome!r})"]
+                    if a_ran:
+                        log = f".holbuild/logs/current/solidity-hol/{a}/build.log"
+                        fake.write(log, lines([{"kind": "case", "suite": "a", "case": "f_returns",
+                                                "status": "error", "message": "boom"}]))
+                        script.append(f"print({'child log: ' + str(fake.root / log)!r})")
+                    fake.write("holbuild", f"#!{sys.executable}\nimport sys\n" +
+                               "\n".join(script) + "\nsys.exit(1)\n")
+                    (fake.root / "holbuild").chmod(0o755)
+                    status, report = fake.run(fake.root / "holbuild")
+                self.assertEqual(report["hol"]["command"][1], "--verbose")
+                self.assertEqual(status, 1)
+                self.assertEqual({w["suite"] for w in report["kernel_checked"]}, {"b"})
+                self.assertEqual(len(report["kernel_checked"]), 3)
+                self.assertTrue(all(w["status"] == ("proved" if outcome.startswith("built")
+                                                    else "proved (cached)")
+                                    for w in report["kernel_checked"]))
+                self.assertEqual([(f["kind"], f.get("suite"), f["status"])
+                                  for f in report["failures"]],
+                                 [("case", "a", "error")] if a_ran else [("hol-build", None, 1)])
+
     def test_build_failure_without_results_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             fake = FakeRoot(Path(temporary))

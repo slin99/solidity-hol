@@ -295,7 +295,9 @@ Definition source_execution_def:
                         c.case_peer_code c.case_peer_storage c.case_libraries)) in
         contract_observation u c.case_immutable_refs a
           (case c.case_input of
-             Deploy _ _ => deploy_contract fuel prog fr w
+             Deploy _ _ => deploy_contract fuel prog fr
+               (w with accounts := update_account a
+                 ((lookup_account a w.accounts) with nonce := 1) w.accounts)
            | _ => call_contract fuel prog
                     (FEMPTY |++ MAP (λ(x, s, _). (x, s)) imm) fr w)
 End

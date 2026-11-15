@@ -38,7 +38,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/transient_values.json",
   "../testdata/differential/expected/byte_mapping_keys.json",
   "../testdata/differential/expected/virtual_modifiers.json",
-  "../testdata/differential/expected/literals.json"
+  "../testdata/differential/expected/literals.json",
+  "../testdata/differential/expected/contract_creation.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -1490,3 +1491,37 @@ val () = literal_error "short address literal" "addressValue"
 
 val () = literal_error "nonhex address literal" "addressValue"
   (set_field "value" (JSON.STRING "0xgg175474E89094C44Da98b954EedeAC495271d0F"))
+
+(* Unlinked constructor bytecode rejects the affected functions at the new
+ * expression, including artifacts whose output selection omits linkReferences. *)
+val () =
+  let
+    val artifact = JSONParser.parseFile
+      "../testdata/differential/expected/contract_creation.json"
+    val source = "testdata/differential/contract_creation.sol"
+    val path = ["output", "contracts",
+      "testdata/differential/contract_creation_child.sol", "CreatedChild", "evm", "bytecode"]
+    fun edit [] f v = f v
+      | edit (k :: ks) f v =
+          set_field k (edit ks f (JSONUtil.get (v, [JSONUtil.SEL k]))) v
+    fun check what change expected =
+      let
+        val (unit, blockers) = import_artifact_unit_blockers (edit path change artifact) source
+        val reasons = function_reasons unit
+      in
+        if null blockers andalso not (null reasons) andalso
+           List.exists (fn r => String.isSubstring "NewExpression " r andalso
+                                String.isSubstring expected r) reasons
+        then () else raise Fail (what ^ ": expected a creation-node blocker")
+      end
+    val () = check "creation placeholder"
+      (set_field "object" (JSON.STRING "__$0123456789012345678901234567890123$__"))
+      "invalid hex string"
+    val () = check "creation nonempty link references"
+      (fn JSON.OBJECT fields => JSON.OBJECT (("linkReferences",
+         JSON.OBJECT [("library.sol", JSON.OBJECT [])]) :: fields)
+        | v => v) "creation bytecode has unresolved links"
+    val (unit, blockers) = import_artifact_unit_blockers artifact source
+    val () = if null blockers andalso null (function_reasons unit) then ()
+             else raise Fail "hex creation bytecode with omitted links rejected"
+  in () end

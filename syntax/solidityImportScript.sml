@@ -165,9 +165,18 @@ Datatype:
            | AbiStringConcat
 End
 
-(* A call option, {value: v} or {gas: g}, in a call's source order. *)
+(* A creation target's compiler bytecode and constructor signature. *)
 Datatype:
-  call_option = ValueOption | GasOption
+  src_create = <|
+    create_bytecode : byte list;
+    create_mutability : state_mutability;
+    create_parameters : src_variable list
+  |>
+End
+
+(* A call option in source order. Salt is restricted to creation. *)
+Datatype:
+  call_option = ValueOption | GasOption | SaltOption
 End
 
 (* a.call, a.staticcall and a.delegatecall of an address. *)
@@ -206,6 +215,8 @@ Datatype:
       (num list) string
   | SrcTypeMember node_info string src_type_name string
   | SrcNew node_info src_type_name src_expr string
+  | SrcCreate node_info src_create (call_option list) (src_expr list)
+      (num list) string
   (* S(args), the struct S's constructor: the arguments in the call's order,
    * then for each member the index of its argument when they are named *)
   | SrcStructConstructor node_info num (src_expr list) (num list) string
@@ -1166,6 +1177,8 @@ Definition expr_ids_def:
     info.node_id :: exprs_ids operands) ∧
   (expr_ids (SrcNew info tn e _) =
     info.node_id :: type_name_ids tn ++ expr_ids e) ∧
+  (expr_ids (SrcCreate info _ _ operands _ _) =
+    info.node_id :: exprs_ids operands) ∧
   (expr_ids (SrcStructConstructor info _ args _ _) = info.node_id :: exprs_ids args) ∧
   (expr_ids (SrcUnsupportedExpr info _ es) = info.node_id :: exprs_ids es) ∧
   (component_ids [] = []) ∧
@@ -1875,13 +1888,21 @@ val () = cv_auto_trans event_variable_type_def;
 val () = cv_auto_trans field_variable_type_def;
 val () = cv_auto_trans call_value_type_def;
 val () = cv_auto_trans decoded_type_def;
-val () = cv_auto_trans_rec expr_ids_def (
+val expr_ids_pre_def = cv_auto_trans_pre_rec
+  "expr_ids_pre component_ids_pre exprs_ids_pre" expr_ids_def (
   WF_REL_TAC ‘measure (λx. case x of
                  INL e => cv_size e
                | INR (INL cs) => cv_size cs
                | INR (INR es) => cv_size es)’ >>
   cv_termination_tac
 );
+
+Theorem expr_ids_pre[cv_pre,local]:
+  (∀v. expr_ids_pre v) ∧ (∀v. component_ids_pre v) ∧ (∀v. exprs_ids_pre v)
+Proof
+  ho_match_mp_tac expr_ids_ind >> rpt strip_tac >>
+  simp[Once expr_ids_pre_def] >> rw[AllCaseEqs()] >> fs[]
+QED
 
 val stmt_ids_pre_def = cv_auto_trans_pre_rec
   "stmt_ids_pre option_stmt_ids_pre stmts_ids_pre catch_ids_pre catches_ids_pre" stmt_ids_def (

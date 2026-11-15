@@ -485,7 +485,9 @@ def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
     targets = list(suite_targets) if suite_targets is not None else [theory]
     if force and force_targets:
         targets += force_targets
-    command = [holbuild]
+    # Verbose output names every target holbuild finished, including those
+    # already up to date, which it otherwise leaves out.
+    command = [holbuild, "--verbose"]
     if jobs is not None:
         command += ["-j", str(jobs)]
     command += ["build"] + (["--force=theory"] if force else []) + build_args + targets
@@ -510,18 +512,24 @@ def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
             target_logs = logs
         log = target_logs[-1] if target_logs else (
             root / ".holbuild" / "logs" / "current" / "solidity-hol" / target / "build.log")
-        ran = bool(target_logs) or re.search(rf"^{re.escape(target)} built$", output, re.M) is not None
+        outcome = re.search(rf"^{re.escape(target)} (built|restored from cache|is up to date)"
+                            r"(?: in [0-9.]+s)?$", output, re.M)
+        built = outcome is not None and outcome[1] == "built"
+        # A failed multi-target build still finishes the targets holbuild
+        # reports as built, restored or up to date; their verdict files are
+        # this run's.
+        finished = status == 0 or outcome is not None
+        ran = bool(target_logs) or built
+        result_file = root / theories.results_path(target)
         results = []
-        if status == 0:
-            result_file = root / theories.results_path(target)
-            if result_file.is_file():
-                results = parse_results(result_file.read_text(encoding="utf-8"), prefix)
+        if finished and result_file.is_file():
+            results = parse_results(result_file.read_text(encoding="utf-8"), prefix)
         elif ran:
             try:
                 results = parse_results(log.read_text(encoding="utf-8", errors="replace"), prefix)
             except OSError:
                 results = parse_results(output, prefix)
-        runs[target] = {"status": status, "ran": ran, "results": results,
+        runs[target] = {"status": 0 if finished else status, "ran": ran, "results": results,
                         "log": str(log) if ran else None}
     if status != 0 and suite_targets is not None:
         for log in logs:
@@ -532,6 +540,8 @@ def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
             except OSError:
                 continue
             for target, suite in suite_targets.items():
+                if runs[target]["status"] == 0:
+                    continue
                 failures = [row for row in rows if row.get("suite") == suite]
                 if failures:
                     runs[target]["results"].extend(failures)

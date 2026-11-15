@@ -102,8 +102,12 @@ trigger when that branch is merged into `main`.
 Source and Yul suite theories declare a `.results.jsonl` extra output beside
 their scripts. holbuild caches and restores it with the theory, so reports
 retain outcomes and stage admissions without an old build log. Missing suite
-or case records fail the report, including on cache hits. Failed builds use
-their diagnostic logs and ignore possibly stale result files.
+or case records fail the report, including on cache hits. A suite theory
+that failed or was never reached uses its diagnostic log and ignores any
+possibly stale result file. When a multi-target build fails, the suites it
+reports as built, restored from cache or up to date still finished, so their
+result files are read and reported. The runners pass `--verbose` so holbuild
+names up-to-date targets too.
 
 `solidityDifferentialCorpus` remains a compatibility roll-up, refreshed with
 integration reports. It owns no case definitions: ML consumers enumerating
@@ -182,9 +186,11 @@ high-level calls use; `docs/yul-call-design.md` says how.
 
 A deployment executes the top-level creation code at the created address, with
 empty calldata and the encoded constructor arguments appended to the stage's
-actual initcode. Named object sizes and offsets come from the initcode and its
-runtime suffix; layouts without that suffix are rejected. `codecopy` reads those
-bytes, and `setimmutable` patches the copied runtime at its emitted offsets.
+actual initcode. The runtime offset comes from an exact runtime suffix when
+present, otherwise from a unique byte match within the initcode. Missing or
+ambiguous matches are rejected. `yul_creation_execution` checks the recorded
+span's bounds and bytes. `codecopy` reads those bytes, and `setimmutable`
+patches the copied runtime at its emitted offsets.
 The returned bytes must match that runtime with its immutable patches. The
 comparison then observes the immutable words, complete storage and logs, just
 as the source/bytecode deployment comparison does. Unsupported object names and
