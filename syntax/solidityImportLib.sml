@@ -539,6 +539,10 @@ fun is_super_member callee =
 val super_calls = ref ([] : IntInf.int list)
 val in_function = ref false
 
+(* Whether a modifier's body is being imported: its returns name no return
+ * parameters, so only there may a return lack functionReturnParameters. *)
+val in_modifier = ref false
+
 (* The enums of the compilation, wherever declared: their ids and member
  * counts, and each member's id with its enum's id and its index. *)
 val enum_declarations : (IntInf.int * int) list ref = ref []
@@ -1673,7 +1677,9 @@ fun stmt v = guarded (fn st => [StmtChild st]) unsupported_stmt (fn v => within 
         [info v,
          mk_num (case optional_field v "functionReturnParameters" of
                    SOME x => JSONUtil.asIntInf x
-                 | NONE => 0),
+                 | NONE =>
+                     if !in_modifier then 0
+                     else fail (describe v ^ ": return without return parameters outside a modifier")),
          optional_expr v "expression"]
   | "PlaceholderStatement" => con "SrcPlaceholder" [info v]
   | "EmitStatement" =>
@@ -1825,9 +1831,12 @@ fun modifier v = within v (fn v =>
     val (params_id, params) = parameter_list (field v "parameters")
     val () = expect v "ModifierDefinition"
     val (body, lines) = with_blockers (fn () =>
-      case optional_field v "body" of
-        SOME b => stmt b
-      | NONE => unsupported_stmt v (note v "modifier without a body") [])
+      (in_modifier := true;
+       (case optional_field v "body" of
+          SOME b => stmt b
+        | NONE => unsupported_stmt v (note v "modifier without a body") [])
+       before in_modifier := false)
+      handle e => (in_modifier := false; raise e))
     val () =
       if null lines then ()
       else failed_modifiers := !failed_modifiers @ [(int_field v "id", lines)]
