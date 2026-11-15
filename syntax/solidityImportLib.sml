@@ -199,7 +199,7 @@ fun environment_field v base member =
   let
     val fields =
       [((msg_id, "sender"), "MsgSender"), ((msg_id, "value"), "MsgValue"),
-       ((msg_id, "data"), "MsgData"), ((tx_id, "origin"), "TxOrigin"),
+       ((msg_id, "data"), "MsgData"), ((msg_id, "sig"), "MsgSig"), ((tx_id, "origin"), "TxOrigin"),
        ((tx_id, "gasprice"), "TxGasPrice"), ((block_id, "number"), "BlockNumber"),
        ((block_id, "timestamp"), "BlockTimestamp"), ((block_id, "chainid"), "BlockChainId"),
        ((block_id, "coinbase"), "BlockCoinbase"), ((block_id, "basefee"), "BlockBaseFee"),
@@ -539,6 +539,10 @@ fun is_super_member callee =
 val super_calls = ref ([] : IntInf.int list)
 val in_function = ref false
 
+(* Whether a modifier's body is being imported: its returns name no return
+ * parameters, so only there may a return lack functionReturnParameters. *)
+val in_modifier = ref false
+
 (* The enums of the compilation, wherever declared: their ids and member
  * counts, and each member's id with its enum's id and its index. *)
 val enum_declarations : (IntInf.int * int) list ref = ref []
@@ -579,6 +583,14 @@ fun interface_id v id =
        wordsSyntax.mk_int_word_type 8)
   end
 
+(* Getter keys retain the names solc records on mapping type names; array
+ * indices are unnamed. Only names are read here: getter_shape owns types. *)
+fun getter_parameter_names ty =
+  case node_type ty of
+    "Mapping" => string_field ty "keyName" :: getter_parameter_names (field ty "valueType")
+  | "ArrayTypeName" => "" :: getter_parameter_names (field ty "baseType")
+  | _ => []
+
 (* A call's parameter order: for each parameter of the declaration id, the
  * index of the argument the call names for it; [] for a call without names.
  * The first skip parameters (a bound call's receiver) are passed
@@ -595,7 +607,9 @@ fun argument_order call id skip =
                                 ": named arguments of a declaration outside the compilation")
         val params =
           List.drop
-            (JSONUtil.arrayMap (fn p => string_field p "name")
+            (if node_type d = "VariableDeclaration" then
+               getter_parameter_names (field d "typeName")
+             else JSONUtil.arrayMap (fn p => string_field p "name")
                (if node_type d = "StructDefinition" then field d "members"
                 else field (field d "parameters") "parameters"), skip)
         val indexed = ListPair.zip (List.tabulate (length names, fn i => i), names)
@@ -1419,7 +1433,10 @@ and external_call v callee args =
     con "SrcExternalCall"
       [info v,
        external_function
-         (function_declaration member (int_field member "referencedDeclaration")),
+         (case List.find (fn (i, _) => i = int_field member "referencedDeclaration")
+                         (!selector_declarations) of
+            SOME (_, d) => d
+          | NONE => fail (describe member ^ ": calls only declarations in the compilation")),
        listSyntax.mk_list (map #1 options, call_option_ty),
        listSyntax.mk_list (valOf target :: map #2 options @ args, expr_ty),
        argument_order v (int_field member "referencedDeclaration") 0,
@@ -1428,12 +1445,25 @@ and external_call v callee args =
 
 (* The declaration a high-level call refers to. *)
 and external_function v = within v (fn v =>
-  (expect v "FunctionDefinition";
-   record "src_external"
-     [("ext_selector", mk_bytes v (string_field v "functionSelector")),
-      ("ext_mutability", decode v "state mutability" mutabilities (string_field v "stateMutability")),
-      ("ext_parameters", #2 (parameter_list (field v "parameters"))),
-      ("ext_returns", #2 (parameter_list (field v "returnParameters")))]))
+  let
+    val (call_signature, mutability) =
+      case node_type v of
+        "FunctionDefinition" =>
+          (con "FunctionSignature"
+             [#2 (parameter_list (field v "parameters")),
+              #2 (parameter_list (field v "returnParameters"))],
+           decode v "state mutability" mutabilities (string_field v "stateMutability"))
+      | "VariableDeclaration" =>
+          (require v (bool_field v "stateVariable" andalso
+                      string_field v "visibility" = "public")
+             "external getter must name a public state variable";
+           (con "GetterSignature" [variable_record v], decode v "state mutability" mutabilities "view"))
+      | _ => fail (describe v ^ ": unsupported external declaration")
+  in
+    record "src_external"
+      [("ext_selector", mk_bytes v (string_field v "functionSelector")),
+       ("ext_mutability", mutability), ("ext_signature", call_signature)]
+  end)
 
 fun optional_expr v k =
   mk_opt expr_ty (Option.map expr (optional_field v k))
@@ -1640,7 +1670,9 @@ fun stmt v = guarded (fn st => [StmtChild st]) unsupported_stmt (fn v => within 
         [info v,
          mk_num (case optional_field v "functionReturnParameters" of
                    SOME x => JSONUtil.asIntInf x
-                 | NONE => 0),
+                 | NONE =>
+                     if !in_modifier then 0
+                     else fail (describe v ^ ": return without return parameters outside a modifier")),
          optional_expr v "expression"]
   | "PlaceholderStatement" => con "SrcPlaceholder" [info v]
   | "EmitStatement" =>
@@ -1792,9 +1824,12 @@ fun modifier v = within v (fn v =>
     val (params_id, params) = parameter_list (field v "parameters")
     val () = expect v "ModifierDefinition"
     val (body, lines) = with_blockers (fn () =>
-      case optional_field v "body" of
-        SOME b => stmt b
-      | NONE => unsupported_stmt v (note v "modifier without a body") [])
+      (in_modifier := true;
+       (case optional_field v "body" of
+          SOME b => stmt b
+        | NONE => unsupported_stmt v (note v "modifier without a body") [])
+       before in_modifier := false)
+      handle e => (in_modifier := false; raise e))
     val () =
       if null lines then ()
       else failed_modifiers := !failed_modifiers @ [(int_field v "id", lines)]
@@ -2199,8 +2234,9 @@ fun contract external_structs contracts declared v = within v (fn v =>
         (fn (id, d) =>
            if List.exists (fn i => i = id) named andalso
               List.exists (fn k => k = node_type d)
-                ["FunctionDefinition", "EventDefinition", "ErrorDefinition"]
-           then SOME (references (field d "parameters") @
+                ["FunctionDefinition", "EventDefinition", "ErrorDefinition", "VariableDeclaration"]
+           then SOME (if node_type d = "VariableDeclaration" then references (field d "typeName")
+                      else references (field d "parameters") @
                       (case optional_field d "returnParameters" of
                          SOME r => references r
                        | NONE => []))

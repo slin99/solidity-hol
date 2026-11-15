@@ -5,7 +5,9 @@ pragma solidity 0.8.37;
 // arguments evaluated when their modifier is reached and each converted and
 // bound before the next is evaluated, placeholders run zero, one or two times
 // with fresh return variables each time, returns in the modifier and in the
-// body, an inherited modifier, and a constructor modifier.
+// body, an inherited modifier, constructor modifiers (on the contract's and on
+// its base's constructor), and checked arithmetic that overflows in a modifier
+// body before and after the placeholder.
 
 contract ModifierBase {
     uint256 internal trace;
@@ -21,6 +23,11 @@ contract ModifierBase {
         trace = trace * 10 + k;
         _;
         trace = trace * 10 + k;
+    }
+
+    // a modifier on a base constructor, which runs before the derived one
+    constructor() mark(9) {
+        trace = trace * 10 + 8;
     }
 }
 
@@ -80,6 +87,12 @@ contract Modifiers is ModifierBase {
         total += 1;
     }
 
+    // checked arithmetic before the placeholder
+    modifier scaled(uint256 f) {
+        total = total * f;
+        _;
+    }
+
     function ordered(uint256 x) public mark(1) mark(2) returns (uint256) {
         trace = trace * 10 + x;
         return trace;
@@ -124,6 +137,10 @@ contract Modifiers is ModifierBase {
         if (v > 5) return v;
         total = v;
         return 0;
+    }
+
+    function scale(uint256 f) public scaled(f) returns (uint256) {
+        return total;
     }
 
     function echo(bytes memory b) public mark(3) returns (bytes memory) {

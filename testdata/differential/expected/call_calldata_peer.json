@@ -1,0 +1,1499 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/call_calldata_peer.sol": {
+        "content": "// SPDX-License-Identifier: CC0-1.0\npragma solidity 0.8.37;\nimport \"./call_calldata_types.sol\";\n\ncontract CallCalldataPeer is GetterView {}\n"
+      },
+      "testdata/differential/call_calldata_types.sol": {
+        "content": "// SPDX-License-Identifier: CC0-1.0\npragma solidity 0.8.37;\n\nabstract contract GetterDeclarations {\n    uint256 public scalar;\n    mapping(address owner => uint256) public balanceOf;\n    uint16[] public values;\n    struct Item { uint256 x; bytes data; uint256[] ignored; }\n    Item public item;\n    mapping(address owner => mapping(uint256 index => uint256)) public nested;\n    bytes public blob;\n    uint256 public constant constantValue = 12;\n}\n\nabstract contract GetterView is GetterDeclarations {}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/call_calldata_peer.sol": {
+        "CallCalldataPeer": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                }
+              ],
+              "name": "balanceOf",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "blob",
+              "outputs": [
+                {
+                  "internalType": "bytes",
+                  "name": "",
+                  "type": "bytes"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "constantValue",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "item",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "x",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "bytes",
+                  "name": "data",
+                  "type": "bytes"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "index",
+                  "type": "uint256"
+                }
+              ],
+              "name": "nested",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "scalar",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "name": "values",
+              "outputs": [
+                {
+                  "internalType": "uint16",
+                  "name": "",
+                  "type": "uint16"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "608060405234601c57600e6020565b61077c61002b823961077c90f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b610778565b61001d5f3561008c565b806314bd0a7b146100875780635e383d211461008257806370a082311461007d578063dc7e927014610078578063f2a4a82e14610073578063f45e65d81461006e5763fde0e7a80361000e57610743565b6106bc565b610678565b61043f565b6103c4565b610342565b61021c565b60e01c90565b60405190565b5f80fd5b5f80fd5b60018060a01b031690565b6100b4906100a0565b90565b6100c0816100ab565b036100c757565b5f80fd5b905035906100d8826100b7565b565b90565b6100e6816100da565b036100ed57565b5f80fd5b905035906100fe826100dd565b565b9190604083820312610128578061011c610125925f86016100cb565b936020016100f1565b90565b61009c565b90565b61014461013f610149926100a0565b61012d565b6100a0565b90565b61015590610130565b90565b6101619061014c565b90565b9061016e90610158565b5f5260205260405f2090565b61018e610189610193926100da565b61012d565b6100da565b90565b906101a09061017a565b5f5260205260405f2090565b1c90565b90565b6101c39060086101c893026101ac565b6101b0565b90565b906101d691546101b3565b90565b6101f26101f7926101ed6006935f94610164565b610196565b6101cb565b90565b610203906100da565b9052565b919061021a905f602085019401906101fa565b565b3461024d57610249610238610232366004610100565b906101d9565b610240610092565b91829182610207565b0390f35b610098565b9060208282031261026b57610268915f016100f1565b90565b61009c565b634e487b7160e01b5f52603260045260245ffd5b5490565b5f5260205f2090565b91909161029d81610284565b8310156102bb5760106102b1600292610288565b8185040193060290565b610270565b61ffff1690565b6102d79060086102dc93026101ac565b6102c0565b90565b906102ea91546102c7565b90565b60026102f881610284565b821015610315576103129161030c91610291565b906102df565b90565b5f80fd5b61ffff1690565b61032990610319565b9052565b9190610340905f60208501940190610320565b565b346103725761036e61035d610358366004610252565b6102ed565b610365610092565b9182918261032d565b0390f35b610098565b906020828203126103905761038d915f016100cb565b90565b61009c565b9061039f90610158565b5f5260205260405f2090565b6103c1906103bc6001915f92610395565b6101cb565b90565b346103f4576103f06103df6103da366004610377565b6103ab565b6103e7610092565b91829182610207565b0390f35b610098565b5f91031261040357565b61009c565b90565b61041f61041a61042492610408565b61012d565b6100da565b90565b610431600c61040b565b90565b61043c610427565b90565b3461046f5761044f3660046103f9565b61046b61045a610434565b610462610092565b91829182610207565b0390f35b610098565b5f1c90565b61048561048a91610474565b6101b0565b90565b6104979054610479565b90565b634e487b7160e01b5f52602260045260245ffd5b90600160028304921680156104ce575b60208310146104c957565b61049a565b91607f16916104be565b60209181520190565b5f5260205f2090565b905f92918054906105046104fd836104ae565b80946104d8565b916001811690815f1461055b575060011461051f575b505050565b61052c91929394506104e1565b915f925b81841061054357505001905f808061051a565b60018160209295939554848601520191019290610530565b92949550505060ff19168252151560200201905f808061051a565b90610580916104ea565b90565b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b906105ab90610583565b810190811067ffffffffffffffff8211176105c557604052565b61058d565b906105ea6105e3926105da610092565b93848092610576565b03836105a1565b565b60039061060660016105ff5f850161048d565b93016105ca565b90565b5190565b60209181520190565b90825f9392825e0152565b61064061064960209361064e9361063781610609565b9384809361060d565b95869101610616565b610583565b0190565b916106759261066860408201935f8301906101fa565b6020818403910152610621565b90565b346106a9576106883660046103f9565b6106906105ec565b906106a561069c610092565b92839283610652565b0390f35b610098565b6106b95f5f906101cb565b90565b346106ec576106cc3660046103f9565b6106e86106d76106ae565b6106df610092565b91829182610207565b0390f35b610098565b634e487b7160e01b5f525f60045260245ffd5b905f1061071757610714906105ca565b90565b6106f1565b61072860075f90610704565b90565b6107409160208201915f818403910152610621565b90565b34610773576107533660046103f9565b61076f61075e61071c565b610766610092565b9182918261072b565b0390f35b610098565b5f80fd"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": "60806040526004361015610013575b610778565b61001d5f3561008c565b806314bd0a7b146100875780635e383d211461008257806370a082311461007d578063dc7e927014610078578063f2a4a82e14610073578063f45e65d81461006e5763fde0e7a80361000e57610743565b6106bc565b610678565b61043f565b6103c4565b610342565b61021c565b60e01c90565b60405190565b5f80fd5b5f80fd5b60018060a01b031690565b6100b4906100a0565b90565b6100c0816100ab565b036100c757565b5f80fd5b905035906100d8826100b7565b565b90565b6100e6816100da565b036100ed57565b5f80fd5b905035906100fe826100dd565b565b9190604083820312610128578061011c610125925f86016100cb565b936020016100f1565b90565b61009c565b90565b61014461013f610149926100a0565b61012d565b6100a0565b90565b61015590610130565b90565b6101619061014c565b90565b9061016e90610158565b5f5260205260405f2090565b61018e610189610193926100da565b61012d565b6100da565b90565b906101a09061017a565b5f5260205260405f2090565b1c90565b90565b6101c39060086101c893026101ac565b6101b0565b90565b906101d691546101b3565b90565b6101f26101f7926101ed6006935f94610164565b610196565b6101cb565b90565b610203906100da565b9052565b919061021a905f602085019401906101fa565b565b3461024d57610249610238610232366004610100565b906101d9565b610240610092565b91829182610207565b0390f35b610098565b9060208282031261026b57610268915f016100f1565b90565b61009c565b634e487b7160e01b5f52603260045260245ffd5b5490565b5f5260205f2090565b91909161029d81610284565b8310156102bb5760106102b1600292610288565b8185040193060290565b610270565b61ffff1690565b6102d79060086102dc93026101ac565b6102c0565b90565b906102ea91546102c7565b90565b60026102f881610284565b821015610315576103129161030c91610291565b906102df565b90565b5f80fd5b61ffff1690565b61032990610319565b9052565b9190610340905f60208501940190610320565b565b346103725761036e61035d610358366004610252565b6102ed565b610365610092565b9182918261032d565b0390f35b610098565b906020828203126103905761038d915f016100cb565b90565b61009c565b9061039f90610158565b5f5260205260405f2090565b6103c1906103bc6001915f92610395565b6101cb565b90565b346103f4576103f06103df6103da366004610377565b6103ab565b6103e7610092565b91829182610207565b0390f35b610098565b5f91031261040357565b61009c565b90565b61041f61041a61042492610408565b61012d565b6100da565b90565b610431600c61040b565b90565b61043c610427565b90565b3461046f5761044f3660046103f9565b61046b61045a610434565b610462610092565b91829182610207565b0390f35b610098565b5f1c90565b61048561048a91610474565b6101b0565b90565b6104979054610479565b90565b634e487b7160e01b5f52602260045260245ffd5b90600160028304921680156104ce575b60208310146104c957565b61049a565b91607f16916104be565b60209181520190565b5f5260205f2090565b905f92918054906105046104fd836104ae565b80946104d8565b916001811690815f1461055b575060011461051f575b505050565b61052c91929394506104e1565b915f925b81841061054357505001905f808061051a565b60018160209295939554848601520191019290610530565b92949550505060ff19168252151560200201905f808061051a565b90610580916104ea565b90565b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b906105ab90610583565b810190811067ffffffffffffffff8211176105c557604052565b61058d565b906105ea6105e3926105da610092565b93848092610576565b03836105a1565b565b60039061060660016105ff5f850161048d565b93016105ca565b90565b5190565b60209181520190565b90825f9392825e0152565b61064061064960209361064e9361063781610609565b9384809361060d565b95869101610616565b610583565b0190565b916106759261066860408201935f8301906101fa565b6020818403910152610621565b90565b346106a9576106883660046103f9565b6106906105ec565b906106a561069c610092565b92839283610652565b0390f35b610098565b6106b95f5f906101cb565b90565b346106ec576106cc3660046103f9565b6106e86106d76106ae565b6106df610092565b91829182610207565b0390f35b610098565b634e487b7160e01b5f525f60045260245ffd5b905f1061071757610714906105ca565b90565b6106f1565b61072860075f90610704565b90565b6107409160208201915f818403910152610621565b90565b34610773576107533660046103f9565b61076f61075e61071c565b610766610092565b9182918261072b565b0390f35b610098565b5f80fd"
+            },
+            "methodIdentifiers": {
+              "balanceOf(address)": "70a08231",
+              "blob()": "fde0e7a8",
+              "constantValue()": "dc7e9270",
+              "item()": "f2a4a82e",
+              "nested(address,uint256)": "14bd0a7b",
+              "scalar()": "f45e65d8",
+              "values(uint256)": "5e383d21"
+            }
+          },
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 9,
+                "contract": "testdata/differential/call_calldata_peer.sol:CallCalldataPeer",
+                "label": "scalar",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_uint256"
+              },
+              {
+                "astId": 13,
+                "contract": "testdata/differential/call_calldata_peer.sol:CallCalldataPeer",
+                "label": "balanceOf",
+                "offset": 0,
+                "slot": "1",
+                "type": "t_mapping(t_address,t_uint256)"
+              },
+              {
+                "astId": 16,
+                "contract": "testdata/differential/call_calldata_peer.sol:CallCalldataPeer",
+                "label": "values",
+                "offset": 0,
+                "slot": "2",
+                "type": "t_array(t_uint16)dyn_storage"
+              },
+              {
+                "astId": 27,
+                "contract": "testdata/differential/call_calldata_peer.sol:CallCalldataPeer",
+                "label": "item",
+                "offset": 0,
+                "slot": "3",
+                "type": "t_struct(Item)24_storage"
+              },
+              {
+                "astId": 33,
+                "contract": "testdata/differential/call_calldata_peer.sol:CallCalldataPeer",
+                "label": "nested",
+                "offset": 0,
+                "slot": "6",
+                "type": "t_mapping(t_address,t_mapping(t_uint256,t_uint256))"
+              },
+              {
+                "astId": 35,
+                "contract": "testdata/differential/call_calldata_peer.sol:CallCalldataPeer",
+                "label": "blob",
+                "offset": 0,
+                "slot": "7",
+                "type": "t_bytes_storage"
+              }
+            ],
+            "types": {
+              "t_address": {
+                "encoding": "inplace",
+                "label": "address",
+                "numberOfBytes": "20"
+              },
+              "t_array(t_uint16)dyn_storage": {
+                "base": "t_uint16",
+                "encoding": "dynamic_array",
+                "label": "uint16[]",
+                "numberOfBytes": "32"
+              },
+              "t_array(t_uint256)dyn_storage": {
+                "base": "t_uint256",
+                "encoding": "dynamic_array",
+                "label": "uint256[]",
+                "numberOfBytes": "32"
+              },
+              "t_bytes_storage": {
+                "encoding": "bytes",
+                "label": "bytes",
+                "numberOfBytes": "32"
+              },
+              "t_mapping(t_address,t_mapping(t_uint256,t_uint256))": {
+                "encoding": "mapping",
+                "key": "t_address",
+                "label": "mapping(address => mapping(uint256 => uint256))",
+                "numberOfBytes": "32",
+                "value": "t_mapping(t_uint256,t_uint256)"
+              },
+              "t_mapping(t_address,t_uint256)": {
+                "encoding": "mapping",
+                "key": "t_address",
+                "label": "mapping(address => uint256)",
+                "numberOfBytes": "32",
+                "value": "t_uint256"
+              },
+              "t_mapping(t_uint256,t_uint256)": {
+                "encoding": "mapping",
+                "key": "t_uint256",
+                "label": "mapping(uint256 => uint256)",
+                "numberOfBytes": "32",
+                "value": "t_uint256"
+              },
+              "t_struct(Item)24_storage": {
+                "encoding": "inplace",
+                "label": "struct GetterDeclarations.Item",
+                "members": [
+                  {
+                    "astId": 18,
+                    "contract": "testdata/differential/call_calldata_peer.sol:CallCalldataPeer",
+                    "label": "x",
+                    "offset": 0,
+                    "slot": "0",
+                    "type": "t_uint256"
+                  },
+                  {
+                    "astId": 20,
+                    "contract": "testdata/differential/call_calldata_peer.sol:CallCalldataPeer",
+                    "label": "data",
+                    "offset": 0,
+                    "slot": "1",
+                    "type": "t_bytes_storage"
+                  },
+                  {
+                    "astId": 23,
+                    "contract": "testdata/differential/call_calldata_peer.sol:CallCalldataPeer",
+                    "label": "ignored",
+                    "offset": 0,
+                    "slot": "2",
+                    "type": "t_array(t_uint256)dyn_storage"
+                  }
+                ],
+                "numberOfBytes": "96"
+              },
+              "t_uint16": {
+                "encoding": "inplace",
+                "label": "uint16",
+                "numberOfBytes": "2"
+              },
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      },
+      "testdata/differential/call_calldata_types.sol": {
+        "GetterDeclarations": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                }
+              ],
+              "name": "balanceOf",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "blob",
+              "outputs": [
+                {
+                  "internalType": "bytes",
+                  "name": "",
+                  "type": "bytes"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "constantValue",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "item",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "x",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "bytes",
+                  "name": "data",
+                  "type": "bytes"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "index",
+                  "type": "uint256"
+                }
+              ],
+              "name": "nested",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "scalar",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "name": "values",
+              "outputs": [
+                {
+                  "internalType": "uint16",
+                  "name": "",
+                  "type": "uint16"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": ""
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": ""
+            },
+            "methodIdentifiers": {
+              "balanceOf(address)": "70a08231",
+              "blob()": "fde0e7a8",
+              "constantValue()": "dc7e9270",
+              "item()": "f2a4a82e",
+              "nested(address,uint256)": "14bd0a7b",
+              "scalar()": "f45e65d8",
+              "values(uint256)": "5e383d21"
+            }
+          },
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 9,
+                "contract": "testdata/differential/call_calldata_types.sol:GetterDeclarations",
+                "label": "scalar",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_uint256"
+              },
+              {
+                "astId": 13,
+                "contract": "testdata/differential/call_calldata_types.sol:GetterDeclarations",
+                "label": "balanceOf",
+                "offset": 0,
+                "slot": "1",
+                "type": "t_mapping(t_address,t_uint256)"
+              },
+              {
+                "astId": 16,
+                "contract": "testdata/differential/call_calldata_types.sol:GetterDeclarations",
+                "label": "values",
+                "offset": 0,
+                "slot": "2",
+                "type": "t_array(t_uint16)dyn_storage"
+              },
+              {
+                "astId": 27,
+                "contract": "testdata/differential/call_calldata_types.sol:GetterDeclarations",
+                "label": "item",
+                "offset": 0,
+                "slot": "3",
+                "type": "t_struct(Item)24_storage"
+              },
+              {
+                "astId": 33,
+                "contract": "testdata/differential/call_calldata_types.sol:GetterDeclarations",
+                "label": "nested",
+                "offset": 0,
+                "slot": "6",
+                "type": "t_mapping(t_address,t_mapping(t_uint256,t_uint256))"
+              },
+              {
+                "astId": 35,
+                "contract": "testdata/differential/call_calldata_types.sol:GetterDeclarations",
+                "label": "blob",
+                "offset": 0,
+                "slot": "7",
+                "type": "t_bytes_storage"
+              }
+            ],
+            "types": {
+              "t_address": {
+                "encoding": "inplace",
+                "label": "address",
+                "numberOfBytes": "20"
+              },
+              "t_array(t_uint16)dyn_storage": {
+                "base": "t_uint16",
+                "encoding": "dynamic_array",
+                "label": "uint16[]",
+                "numberOfBytes": "32"
+              },
+              "t_array(t_uint256)dyn_storage": {
+                "base": "t_uint256",
+                "encoding": "dynamic_array",
+                "label": "uint256[]",
+                "numberOfBytes": "32"
+              },
+              "t_bytes_storage": {
+                "encoding": "bytes",
+                "label": "bytes",
+                "numberOfBytes": "32"
+              },
+              "t_mapping(t_address,t_mapping(t_uint256,t_uint256))": {
+                "encoding": "mapping",
+                "key": "t_address",
+                "label": "mapping(address => mapping(uint256 => uint256))",
+                "numberOfBytes": "32",
+                "value": "t_mapping(t_uint256,t_uint256)"
+              },
+              "t_mapping(t_address,t_uint256)": {
+                "encoding": "mapping",
+                "key": "t_address",
+                "label": "mapping(address => uint256)",
+                "numberOfBytes": "32",
+                "value": "t_uint256"
+              },
+              "t_mapping(t_uint256,t_uint256)": {
+                "encoding": "mapping",
+                "key": "t_uint256",
+                "label": "mapping(uint256 => uint256)",
+                "numberOfBytes": "32",
+                "value": "t_uint256"
+              },
+              "t_struct(Item)24_storage": {
+                "encoding": "inplace",
+                "label": "struct GetterDeclarations.Item",
+                "members": [
+                  {
+                    "astId": 18,
+                    "contract": "testdata/differential/call_calldata_types.sol:GetterDeclarations",
+                    "label": "x",
+                    "offset": 0,
+                    "slot": "0",
+                    "type": "t_uint256"
+                  },
+                  {
+                    "astId": 20,
+                    "contract": "testdata/differential/call_calldata_types.sol:GetterDeclarations",
+                    "label": "data",
+                    "offset": 0,
+                    "slot": "1",
+                    "type": "t_bytes_storage"
+                  },
+                  {
+                    "astId": 23,
+                    "contract": "testdata/differential/call_calldata_types.sol:GetterDeclarations",
+                    "label": "ignored",
+                    "offset": 0,
+                    "slot": "2",
+                    "type": "t_array(t_uint256)dyn_storage"
+                  }
+                ],
+                "numberOfBytes": "96"
+              },
+              "t_uint16": {
+                "encoding": "inplace",
+                "label": "uint16",
+                "numberOfBytes": "2"
+              },
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        },
+        "GetterView": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                }
+              ],
+              "name": "balanceOf",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "blob",
+              "outputs": [
+                {
+                  "internalType": "bytes",
+                  "name": "",
+                  "type": "bytes"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "constantValue",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "item",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "x",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "bytes",
+                  "name": "data",
+                  "type": "bytes"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "address",
+                  "name": "owner",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "index",
+                  "type": "uint256"
+                }
+              ],
+              "name": "nested",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "scalar",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "name": "values",
+              "outputs": [
+                {
+                  "internalType": "uint16",
+                  "name": "",
+                  "type": "uint16"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": ""
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": ""
+            },
+            "methodIdentifiers": {
+              "balanceOf(address)": "70a08231",
+              "blob()": "fde0e7a8",
+              "constantValue()": "dc7e9270",
+              "item()": "f2a4a82e",
+              "nested(address,uint256)": "14bd0a7b",
+              "scalar()": "f45e65d8",
+              "values(uint256)": "5e383d21"
+            }
+          },
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 9,
+                "contract": "testdata/differential/call_calldata_types.sol:GetterView",
+                "label": "scalar",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_uint256"
+              },
+              {
+                "astId": 13,
+                "contract": "testdata/differential/call_calldata_types.sol:GetterView",
+                "label": "balanceOf",
+                "offset": 0,
+                "slot": "1",
+                "type": "t_mapping(t_address,t_uint256)"
+              },
+              {
+                "astId": 16,
+                "contract": "testdata/differential/call_calldata_types.sol:GetterView",
+                "label": "values",
+                "offset": 0,
+                "slot": "2",
+                "type": "t_array(t_uint16)dyn_storage"
+              },
+              {
+                "astId": 27,
+                "contract": "testdata/differential/call_calldata_types.sol:GetterView",
+                "label": "item",
+                "offset": 0,
+                "slot": "3",
+                "type": "t_struct(Item)24_storage"
+              },
+              {
+                "astId": 33,
+                "contract": "testdata/differential/call_calldata_types.sol:GetterView",
+                "label": "nested",
+                "offset": 0,
+                "slot": "6",
+                "type": "t_mapping(t_address,t_mapping(t_uint256,t_uint256))"
+              },
+              {
+                "astId": 35,
+                "contract": "testdata/differential/call_calldata_types.sol:GetterView",
+                "label": "blob",
+                "offset": 0,
+                "slot": "7",
+                "type": "t_bytes_storage"
+              }
+            ],
+            "types": {
+              "t_address": {
+                "encoding": "inplace",
+                "label": "address",
+                "numberOfBytes": "20"
+              },
+              "t_array(t_uint16)dyn_storage": {
+                "base": "t_uint16",
+                "encoding": "dynamic_array",
+                "label": "uint16[]",
+                "numberOfBytes": "32"
+              },
+              "t_array(t_uint256)dyn_storage": {
+                "base": "t_uint256",
+                "encoding": "dynamic_array",
+                "label": "uint256[]",
+                "numberOfBytes": "32"
+              },
+              "t_bytes_storage": {
+                "encoding": "bytes",
+                "label": "bytes",
+                "numberOfBytes": "32"
+              },
+              "t_mapping(t_address,t_mapping(t_uint256,t_uint256))": {
+                "encoding": "mapping",
+                "key": "t_address",
+                "label": "mapping(address => mapping(uint256 => uint256))",
+                "numberOfBytes": "32",
+                "value": "t_mapping(t_uint256,t_uint256)"
+              },
+              "t_mapping(t_address,t_uint256)": {
+                "encoding": "mapping",
+                "key": "t_address",
+                "label": "mapping(address => uint256)",
+                "numberOfBytes": "32",
+                "value": "t_uint256"
+              },
+              "t_mapping(t_uint256,t_uint256)": {
+                "encoding": "mapping",
+                "key": "t_uint256",
+                "label": "mapping(uint256 => uint256)",
+                "numberOfBytes": "32",
+                "value": "t_uint256"
+              },
+              "t_struct(Item)24_storage": {
+                "encoding": "inplace",
+                "label": "struct GetterDeclarations.Item",
+                "members": [
+                  {
+                    "astId": 18,
+                    "contract": "testdata/differential/call_calldata_types.sol:GetterView",
+                    "label": "x",
+                    "offset": 0,
+                    "slot": "0",
+                    "type": "t_uint256"
+                  },
+                  {
+                    "astId": 20,
+                    "contract": "testdata/differential/call_calldata_types.sol:GetterView",
+                    "label": "data",
+                    "offset": 0,
+                    "slot": "1",
+                    "type": "t_bytes_storage"
+                  },
+                  {
+                    "astId": 23,
+                    "contract": "testdata/differential/call_calldata_types.sol:GetterView",
+                    "label": "ignored",
+                    "offset": 0,
+                    "slot": "2",
+                    "type": "t_array(t_uint256)dyn_storage"
+                  }
+                ],
+                "numberOfBytes": "96"
+              },
+              "t_uint16": {
+                "encoding": "inplace",
+                "label": "uint16",
+                "numberOfBytes": "2"
+              },
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/call_calldata_peer.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/call_calldata_peer.sol",
+          "exportedSymbols": {
+            "CallCalldataPeer": [
+              5
+            ],
+            "GetterDeclarations": [
+              39
+            ],
+            "GetterView": [
+              42
+            ]
+          },
+          "id": 6,
+          "license": "CC0-1.0",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "36:23:0"
+            },
+            {
+              "absolutePath": "testdata/differential/call_calldata_types.sol",
+              "file": "./call_calldata_types.sol",
+              "id": 2,
+              "nameLocation": "-1:-1:-1",
+              "nodeType": "ImportDirective",
+              "scope": 6,
+              "sourceUnit": 43,
+              "src": "60:35:0",
+              "symbolAliases": [],
+              "unitAlias": ""
+            },
+            {
+              "abstract": false,
+              "baseContracts": [
+                {
+                  "baseName": {
+                    "id": 3,
+                    "name": "GetterView",
+                    "nameLocations": [
+                      "126:10:0"
+                    ],
+                    "nodeType": "IdentifierPath",
+                    "referencedDeclaration": 42,
+                    "src": "126:10:0"
+                  },
+                  "id": 4,
+                  "nodeType": "InheritanceSpecifier",
+                  "src": "126:10:0"
+                }
+              ],
+              "canonicalName": "CallCalldataPeer",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 5,
+              "linearizedBaseContracts": [
+                5,
+                42,
+                39
+              ],
+              "name": "CallCalldataPeer",
+              "nameLocation": "106:16:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [],
+              "scope": 6,
+              "src": "97:42:0",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "36:104:0"
+        },
+        "id": 0
+      },
+      "testdata/differential/call_calldata_types.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/call_calldata_types.sol",
+          "exportedSymbols": {
+            "GetterDeclarations": [
+              39
+            ],
+            "GetterView": [
+              42
+            ]
+          },
+          "id": 43,
+          "license": "CC0-1.0",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 7,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "36:23:1"
+            },
+            {
+              "abstract": true,
+              "baseContracts": [],
+              "canonicalName": "GetterDeclarations",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 39,
+              "linearizedBaseContracts": [
+                39
+              ],
+              "name": "GetterDeclarations",
+              "nameLocation": "79:18:1",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": false,
+                  "functionSelector": "f45e65d8",
+                  "id": 9,
+                  "mutability": "mutable",
+                  "name": "scalar",
+                  "nameLocation": "119:6:1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 39,
+                  "src": "104:21:1",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 8,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "104:7:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "constant": false,
+                  "functionSelector": "70a08231",
+                  "id": 13,
+                  "mutability": "mutable",
+                  "name": "balanceOf",
+                  "nameLocation": "172:9:1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 39,
+                  "src": "131:50:1",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_mapping$_t_address_$_t_uint256_$",
+                    "typeString": "mapping(address => uint256)"
+                  },
+                  "typeName": {
+                    "id": 12,
+                    "keyName": "owner",
+                    "keyNameLocation": "147:5:1",
+                    "keyType": {
+                      "id": 10,
+                      "name": "address",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "139:7:1",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_address",
+                        "typeString": "address"
+                      }
+                    },
+                    "nodeType": "Mapping",
+                    "src": "131:33:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_mapping$_t_address_$_t_uint256_$",
+                      "typeString": "mapping(address => uint256)"
+                    },
+                    "valueName": "",
+                    "valueNameLocation": "-1:-1:-1",
+                    "valueType": {
+                      "id": 11,
+                      "name": "uint256",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "156:7:1",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "constant": false,
+                  "functionSelector": "5e383d21",
+                  "id": 16,
+                  "mutability": "mutable",
+                  "name": "values",
+                  "nameLocation": "203:6:1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 39,
+                  "src": "187:22:1",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_uint16_$dyn_storage",
+                    "typeString": "uint16[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 14,
+                      "name": "uint16",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "187:6:1",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint16",
+                        "typeString": "uint16"
+                      }
+                    },
+                    "id": 15,
+                    "nodeType": "ArrayTypeName",
+                    "src": "187:8:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_uint16_$dyn_storage_ptr",
+                      "typeString": "uint16[]"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "canonicalName": "GetterDeclarations.Item",
+                  "id": 24,
+                  "members": [
+                    {
+                      "constant": false,
+                      "id": 18,
+                      "mutability": "mutable",
+                      "name": "x",
+                      "nameLocation": "237:1:1",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 24,
+                      "src": "229:9:1",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      },
+                      "typeName": {
+                        "id": 17,
+                        "name": "uint256",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "229:7:1",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        }
+                      },
+                      "visibility": "internal"
+                    },
+                    {
+                      "constant": false,
+                      "id": 20,
+                      "mutability": "mutable",
+                      "name": "data",
+                      "nameLocation": "246:4:1",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 24,
+                      "src": "240:10:1",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bytes_storage_ptr",
+                        "typeString": "bytes"
+                      },
+                      "typeName": {
+                        "id": 19,
+                        "name": "bytes",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "240:5:1",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bytes_storage_ptr",
+                          "typeString": "bytes"
+                        }
+                      },
+                      "visibility": "internal"
+                    },
+                    {
+                      "constant": false,
+                      "id": 23,
+                      "mutability": "mutable",
+                      "name": "ignored",
+                      "nameLocation": "262:7:1",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 24,
+                      "src": "252:17:1",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_array$_t_uint256_$dyn_storage_ptr",
+                        "typeString": "uint256[]"
+                      },
+                      "typeName": {
+                        "baseType": {
+                          "id": 21,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "252:7:1",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 22,
+                        "nodeType": "ArrayTypeName",
+                        "src": "252:9:1",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_array$_t_uint256_$dyn_storage_ptr",
+                          "typeString": "uint256[]"
+                        }
+                      },
+                      "visibility": "internal"
+                    }
+                  ],
+                  "name": "Item",
+                  "nameLocation": "222:4:1",
+                  "nodeType": "StructDefinition",
+                  "scope": 39,
+                  "src": "215:57:1",
+                  "visibility": "public"
+                },
+                {
+                  "constant": false,
+                  "functionSelector": "f2a4a82e",
+                  "id": 27,
+                  "mutability": "mutable",
+                  "name": "item",
+                  "nameLocation": "289:4:1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 39,
+                  "src": "277:16:1",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_Item_$24_storage",
+                    "typeString": "struct GetterDeclarations.Item"
+                  },
+                  "typeName": {
+                    "id": 26,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 25,
+                      "name": "Item",
+                      "nameLocations": [
+                        "277:4:1"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 24,
+                      "src": "277:4:1"
+                    },
+                    "referencedDeclaration": 24,
+                    "src": "277:4:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_Item_$24_storage_ptr",
+                      "typeString": "struct GetterDeclarations.Item"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "constant": false,
+                  "functionSelector": "14bd0a7b",
+                  "id": 33,
+                  "mutability": "mutable",
+                  "name": "nested",
+                  "nameLocation": "366:6:1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 39,
+                  "src": "299:73:1",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_mapping$_t_address_$_t_mapping$_t_uint256_$_t_uint256_$_$",
+                    "typeString": "mapping(address => mapping(uint256 => uint256))"
+                  },
+                  "typeName": {
+                    "id": 32,
+                    "keyName": "owner",
+                    "keyNameLocation": "315:5:1",
+                    "keyType": {
+                      "id": 28,
+                      "name": "address",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "307:7:1",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_address",
+                        "typeString": "address"
+                      }
+                    },
+                    "nodeType": "Mapping",
+                    "src": "299:59:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_mapping$_t_address_$_t_mapping$_t_uint256_$_t_uint256_$_$",
+                      "typeString": "mapping(address => mapping(uint256 => uint256))"
+                    },
+                    "valueName": "",
+                    "valueNameLocation": "-1:-1:-1",
+                    "valueType": {
+                      "id": 31,
+                      "keyName": "index",
+                      "keyNameLocation": "340:5:1",
+                      "keyType": {
+                        "id": 29,
+                        "name": "uint256",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "332:7:1",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        }
+                      },
+                      "nodeType": "Mapping",
+                      "src": "324:33:1",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_mapping$_t_uint256_$_t_uint256_$",
+                        "typeString": "mapping(uint256 => uint256)"
+                      },
+                      "valueName": "",
+                      "valueNameLocation": "-1:-1:-1",
+                      "valueType": {
+                        "id": 30,
+                        "name": "uint256",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "349:7:1",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        }
+                      }
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "constant": false,
+                  "functionSelector": "fde0e7a8",
+                  "id": 35,
+                  "mutability": "mutable",
+                  "name": "blob",
+                  "nameLocation": "391:4:1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 39,
+                  "src": "378:17:1",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_bytes_storage",
+                    "typeString": "bytes"
+                  },
+                  "typeName": {
+                    "id": 34,
+                    "name": "bytes",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "378:5:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_bytes_storage_ptr",
+                      "typeString": "bytes"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "constant": true,
+                  "functionSelector": "dc7e9270",
+                  "id": 38,
+                  "mutability": "constant",
+                  "name": "constantValue",
+                  "nameLocation": "425:13:1",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 39,
+                  "src": "401:42:1",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 36,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "401:7:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": {
+                    "hexValue": "3132",
+                    "id": 37,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": true,
+                    "kind": "number",
+                    "lValueRequested": false,
+                    "nodeType": "Literal",
+                    "src": "441:2:1",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_rational_12_by_1",
+                      "typeString": "int_const 12"
+                    },
+                    "value": "12"
+                  },
+                  "visibility": "public"
+                }
+              ],
+              "scope": 43,
+              "src": "61:385:1",
+              "usedErrors": [],
+              "usedEvents": []
+            },
+            {
+              "abstract": true,
+              "baseContracts": [
+                {
+                  "baseName": {
+                    "id": 40,
+                    "name": "GetterDeclarations",
+                    "nameLocations": [
+                      "480:18:1"
+                    ],
+                    "nodeType": "IdentifierPath",
+                    "referencedDeclaration": 39,
+                    "src": "480:18:1"
+                  },
+                  "id": 41,
+                  "nodeType": "InheritanceSpecifier",
+                  "src": "480:18:1"
+                }
+              ],
+              "canonicalName": "GetterView",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 42,
+              "linearizedBaseContracts": [
+                42,
+                39
+              ],
+              "name": "GetterView",
+              "nameLocation": "466:10:1",
+              "nodeType": "ContractDefinition",
+              "nodes": [],
+              "scope": 43,
+              "src": "448:53:1",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "36:466:1"
+        },
+        "id": 1
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}
