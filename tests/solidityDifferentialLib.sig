@@ -5,6 +5,9 @@ sig
   (* Also write result lines to this file, closing it even if the run fails. *)
   val with_results : string -> (unit -> unit) -> unit
 
+  (* Locate the runtime image in an artifact's initcode, rejecting ambiguity. *)
+  val deployed_code_offset : JSON.value -> string -> string -> int
+
   (* Runs the corpus file at the given path, a
    * solidity-hol-differential-corpus-v1 file whose paths are relative to the
    * repository root; root is the path of that root from the current
