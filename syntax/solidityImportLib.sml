@@ -1369,7 +1369,8 @@ and creation_call v callee args =
     val options = call_options true callee
     val metadata = record "src_create"
       [("create_bytecode", code),
-       ("create_mutability", case ctor of NONE => con "NonpayableMut" []
+       ("create_mutability", case ctor of NONE =>
+            decode c "constructor mutability" mutabilities "nonpayable"
           | SOME f => decode f "constructor mutability" mutabilities
                         (string_field f "stateMutability")),
        ("create_parameters", case ctor of
