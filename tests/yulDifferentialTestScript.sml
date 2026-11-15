@@ -1,7 +1,39 @@
 (* Code-reading builtins observe the current stage's runtime image. *)
 Theory yulDifferentialTest
 Ancestors yulDifferential solidityDifferential
-Libs cv_transLib wordsLib intLib
+Libs cv_transLib wordsLib intLib solidityDifferentialLib
+
+(* Exercise offset discovery on artifact bytes, before HOL checks the span. *)
+local
+  fun obj fields = JSON.OBJECT fields
+  fun image bytes = obj [("object", JSON.STRING bytes)]
+  fun offset creation runtime =
+    solidityDifferentialLib.deployed_code_offset
+      (obj [("output", obj [("contracts", obj [("s.sol", obj [("C", obj
+        [("evm", obj [("bytecode", image creation),
+                      ("deployedBytecode", image runtime)])])])])])])
+      "s.sol" "C"
+  fun expect_offset creation runtime expected =
+    if offset creation runtime = expected then ()
+    else raise ERR "yulDifferentialTest" "wrong runtime offset"
+  fun expect_rejection creation runtime expected =
+    (ignore (offset creation runtime);
+     raise ERR "yulDifferentialTest" "accepted invalid runtime layout")
+    handle solidityBytecodeLib.CorpusError msg =>
+      if msg = expected then ()
+      else raise ERR "yulDifferentialTest" ("wrong layout rejection: " ^ msg)
+in
+  val () = expect_offset "ff1122aa" "1122" 1
+  val () = expect_offset "11221122" "1122" 2
+  val () = expect_rejection "ff11aa" "1122"
+    "runtime bytecode is not present in initcode"
+  val () = expect_rejection "1122aa1122ff" "1122"
+    "runtime bytecode has ambiguous locations in initcode"
+  val () = expect_rejection "111111ff" "1111"
+    "runtime bytecode has ambiguous locations in initcode"
+  val () = expect_rejection "f1122f" "1122"
+    "runtime bytecode is not present in initcode"
+end
 
 Definition code_reading_case_def:
   code_reading_case =
