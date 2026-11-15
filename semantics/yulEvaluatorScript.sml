@@ -373,6 +373,22 @@ Definition yul_call_def:
                  (w2n output) (TAKE (w2n output_size) outcome.call_return))
 End
 
+(* Creation reads initcode from memory and installs the resulting world. *)
+Definition yul_create_def:
+  yul_create (m : yul_machine) salt (value : bytes32)
+             (input : bytes32) (size : bytes32) =
+    let (m1, initcode) = yul_memory_region m (w2n input) (w2n size) in
+    case run_create_call m1.self_address salt initcode (w2n value) m1.gas_limit
+           m1.accounts m1.transient m1.transaction_parameters of
+      NONE => EvalAbrupt (YulInvalid "creation outside the model") m1
+    | SOME r =>
+        EvalValues [case r.create_address of NONE => 0w | SOME a => w2w a]
+          (m1 with <| accounts := r.create_accounts;
+                      transient := r.create_transient;
+                      logs := m1.logs ++ r.create_logs;
+                      return_data := r.create_return |>)
+End
+
 (* returndatacopy: the bytes it reads come from return_data, not from memory,
  * so it is not yul_memory_region.  Reading past the end of the buffer is the
  * EVM's OutOfBoundsRead, an exceptional halt rather than a short copy.
@@ -527,6 +543,8 @@ Definition eval_yul_builtin_def:
     (* delegatecall(gas, address, args, argsSize, ret, retSize) *)
     | (YDelegateCall, [gl; ad; inp; insz; outp; outsz]) =>
         yul_call m F T gl ad 0w inp insz outp outsz
+    | (YCreate, [v; p; n]) => yul_create m NONE v p n
+    | (YCreate2, [v; p; n; salt]) => yul_create m (SOME salt) v p n
     | (YStop, []) => EvalAbrupt (YulReturn []) m
     | (YReturn, [p; s]) =>
         let (m', bs) = yul_memory_region m (w2n p) (w2n s) in
@@ -617,6 +635,8 @@ Definition yul_read_regions_def:
     | (YCall, [_; _; _; i; isz; _; _]) => [(w2n i, w2n isz)]
     | (YStaticCall, [_; _; i; isz; _; _]) => [(w2n i, w2n isz)]
     | (YDelegateCall, [_; _; i; isz; _; _]) => [(w2n i, w2n isz)]
+    | (YCreate, [_; i; n]) => [(w2n i, w2n n)]
+    | (YCreate2, [_; i; n; _]) => [(w2n i, w2n n)]
     | _ => []
 End
 
@@ -930,6 +950,7 @@ Proof
 QED
 
 val () = cv_auto_trans yul_call_def;
+val () = cv_auto_trans yul_create_def;
 val () = cv_auto_trans yul_return_data_copy_def;
 (* Bound left shifts before computing powers, as in the EVM translation. *)
 val () = cv_auto_trans

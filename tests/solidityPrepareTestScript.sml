@@ -13,6 +13,7 @@ val () = holbuild_extra_deps [
   "../testdata/frontend/expected/pure_core.json",
   "../testdata/frontend/expected/qualified_struct_event.json",
   "../testdata/frontend/expected/external_library.json",
+  "../testdata/differential/expected/contract_creation.json",
   "../profiles/solc-0.8.37-via-ir-osaka-optimized.json",
   "../testdata/frontend/expected/stack_depth.json"
 ]
@@ -228,3 +229,51 @@ val () = List.app (fn text => with_artifact_text text
   [Substring.string without_failure ^ "\n}\n",
    replace_text "\"type\": \"YulException\"" "\"type\": \"ParserError\"" fallback_text,
    replace_text "too deep in the stack" "unrelated compilation error" fallback_text];
+
+(* A factory with a realistically sized child initcode must pass the same
+ * preparation checks, with every byte retained in the resulting program. *)
+val large_creation_artifact = JSONParser.parseFile
+  "../testdata/differential/expected/contract_creation.json";
+fun set_json_field key value (JSON.OBJECT fields) =
+      JSON.OBJECT (map (fn (k, v) => (k, if k = key then value else v)) fields)
+  | set_json_field _ _ _ = raise Fail "expected artifact object";
+fun set_json_path [] value object = value
+  | set_json_path (key :: keys) value object =
+      set_json_field key
+        (set_json_path keys value (JSONUtil.lookupField object key)) object;
+val large_creation_artifact = set_json_path
+  ["output", "contracts", "testdata/differential/contract_creation_child.sol",
+   "CreatedChild", "evm", "bytecode", "object"]
+  (JSON.STRING (String.concat (List.tabulate (3000, fn _ => "00ff017e"))))
+  large_creation_artifact;
+val large_creation_unit = solidityPrepareLib.import_unit large_creation_artifact
+  "testdata/differential/contract_creation.sol";
+
+Definition large_creation_unit_def:
+  large_creation_unit = ^large_creation_unit
+End
+
+val large_creation = solidityPrepareLib.prepare_unit “large_creation_unit”;
+val () = if List.all (fn {reason, ...} => not (isSome reason))
+    (#functions large_creation) then ()
+  else raise Fail "large child initcode rejected a factory function";
+val _ = save_thm ("large_creation_source_valid", #source_valid large_creation);
+val _ = save_thm ("large_creation_elaborates", #elaborates large_creation);
+val _ = save_thm ("large_creation_core_wf", #core_wf large_creation);
+val create_operation = prim_mk_const
+  {Thy = "solidityCore", Name = "CreateContractOperation"};
+fun is_create_operation tm =
+  let val (head, args) = strip_comb tm in
+    head ~~ create_operation andalso length args = 5
+  end;
+val prepared_codes = map (hd o #2 o strip_comb)
+  (find_terms is_create_operation (#program large_creation));
+val expected_code = listSyntax.mk_list
+  (List.concat (List.tabulate (3000, fn _ =>
+     map (fn n => wordsSyntax.mk_wordii (n, 8)) [0, 255, 1, 126])), “:word8”);
+fun unfold_code code =
+  let val {Thy, Name, ...} = dest_thy_const code in
+    rhs (concl (DB.fetch Thy (Name ^ "_def")))
+  end;
+val () = if List.exists (fn code => unfold_code code ~~ expected_code) prepared_codes
+  then () else raise Fail "large child initcode changed during preparation";
