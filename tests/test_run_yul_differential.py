@@ -260,6 +260,56 @@ class DriverTests(unittest.TestCase):
                          [("suite", "prepare-failed")])
         self.assertEqual(report["totals"]["stages_admitted"], 0)
 
+    def test_a_failed_multi_target_build_reports_the_suites_that_finished(self) -> None:
+        def lines(rows):
+            return "".join(driver.RESULT_PREFIX + json.dumps(row) + "\n" for row in rows)
+
+        def agreeing(name):
+            return [suite_result(name, list(driver.STAGES))] + \
+                [case(name, "f_returns", stage, outcome=RETURNED) for stage in driver.STAGES]
+
+        for outcome in ("built", "restored from cache"):
+            for a_ran in (False, True):
+                with self.subTest(outcome=outcome, a_ran=a_ran), \
+                        tempfile.TemporaryDirectory() as temporary:
+                    fake = FakeRoot(Path(temporary))
+                    fake.write("testdata/differential/suites/b.json",
+                               json.dumps({**corpus()["suites"][0], "name": "b"}))
+                    a, b = (core.theories.theory_name(name, "yul") + "Theory" for name in "ab")
+                    # a's verdict file is left over from an earlier, successful build.
+                    fake.write(core.theories.results_path(a).as_posix(), lines(agreeing("a")))
+                    script = [f"open({core.theories.results_path(b).as_posix()!r}, 'w')"
+                              f".write({lines(agreeing('b'))!r})",
+                              f"print({b + ' ' + outcome!r})"]
+                    if a_ran:
+                        log = f".holbuild/logs/current/solidity-hol/{a}/build.log"
+                        fake.write(log, lines([rejection("a", "ir")]))
+                        script.append(f"print({'child log: ' + str(fake.root / log)!r})")
+                    fake.write("holbuild", f"#!{sys.executable}\nimport sys\n" +
+                               "\n".join(script) + "\nsys.exit(1)\n")
+                    (fake.root / "holbuild").chmod(0o755)
+                    report_dir = fake.root / "report"
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        status = driver.main(
+                            ["--solc", str(fake.fake_solc()), "--holbuild",
+                             str(fake.root / "holbuild"), "--report-dir", str(report_dir)],
+                            root=fake.root)
+                    report = json.loads((report_dir / "yul-differential.json")
+                                        .read_text(encoding="utf-8"))
+                self.assertEqual(status, 1)
+                self.assertEqual(report["totals"]["agreements"], 3)
+                self.assertEqual(report["totals"]["stages_admitted"], 3)
+                self.assertEqual([a["suite"] for a in report["admissions"] if a["admitted"]],
+                                 ["b"] * 3)
+                self.assertEqual({w["suite"] for w in report["kernel_checked"]}, {"b"})
+                self.assertTrue(all(w["status"] == ("proved" if outcome == "built"
+                                                    else "proved (cached)")
+                                    for w in report["kernel_checked"]))
+                self.assertEqual([(f["kind"], f.get("suite"), f["status"])
+                                  for f in report["failures"]],
+                                 [("admission", "a", "import-rejected")] * a_ran +
+                                 [("hol-build", None, 1)])
+
     def test_the_yul_must_be_the_same_program_as_the_bytecode(self) -> None:
         """The optimizer-off compile's bytecode is what the corpus validates,
         so a different one means the Yul is not that program."""
