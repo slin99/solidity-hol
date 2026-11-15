@@ -114,8 +114,9 @@ retain outcomes and stage admissions without an old build log. Missing suite
 or case records fail the report, including on cache hits. A suite theory
 that failed or was never reached uses its diagnostic log and ignores any
 possibly stale result file. When a multi-target build fails, the suites it
-reports as `built` or `restored from cache` still finished, so their result
-files are read and reported.
+reports as built, restored from cache or up to date still finished, so their
+result files are read and reported. The runners pass `--verbose` so holbuild
+names up-to-date targets too.
 
 `solidityDifferentialCorpus` remains a compatibility roll-up, refreshed with
 integration reports. It owns no case definitions: ML consumers enumerating

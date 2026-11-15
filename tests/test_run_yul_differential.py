@@ -279,7 +279,8 @@ class DriverTests(unittest.TestCase):
             return [suite_result(name, list(driver.STAGES))] + \
                 [case(name, "f_returns", stage, outcome=RETURNED) for stage in driver.STAGES]
 
-        for outcome in ("built", "restored from cache"):
+        # Verbose holbuild prints an up-to-date target, and times each outcome.
+        for outcome in ("built", "restored from cache", "is up to date in 0.002s"):
             for a_ran in (False, True):
                 with self.subTest(outcome=outcome, a_ran=a_ran), \
                         tempfile.TemporaryDirectory() as temporary:
@@ -307,13 +308,14 @@ class DriverTests(unittest.TestCase):
                             root=fake.root)
                     report = json.loads((report_dir / "yul-differential.json")
                                         .read_text(encoding="utf-8"))
+                self.assertEqual(report["hol"]["command"][1], "--verbose")
                 self.assertEqual(status, 1)
                 self.assertEqual(report["totals"]["agreements"], 3)
                 self.assertEqual(report["totals"]["stages_admitted"], 3)
                 self.assertEqual([a["suite"] for a in report["admissions"] if a["admitted"]],
                                  ["b"] * 3)
                 self.assertEqual({w["suite"] for w in report["kernel_checked"]}, {"b"})
-                self.assertTrue(all(w["status"] == ("proved" if outcome == "built"
+                self.assertTrue(all(w["status"] == ("proved" if outcome.startswith("built")
                                                     else "proved (cached)")
                                     for w in report["kernel_checked"]))
                 self.assertEqual([(f["kind"], f.get("suite"), f["status"])

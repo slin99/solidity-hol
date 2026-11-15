@@ -651,7 +651,8 @@ class DriverTests(unittest.TestCase):
                          ["source_failure", "bytecode_failure"])
 
     def test_failed_multi_target_build_reports_the_suites_that_finished(self) -> None:
-        for outcome in ("built", "restored from cache"):
+        # Verbose holbuild prints an up-to-date target, and times each outcome.
+        for outcome in ("built", "restored from cache", "is up to date in 0.002s"):
             for a_ran in (False, True):
                 with self.subTest(outcome=outcome, a_ran=a_ran), \
                         tempfile.TemporaryDirectory() as temporary:
@@ -684,10 +685,11 @@ class DriverTests(unittest.TestCase):
                                "\n".join(script) + "\nsys.exit(1)\n")
                     (fake.root / "holbuild").chmod(0o755)
                     status, report = fake.run(fake.root / "holbuild")
+                self.assertEqual(report["hol"]["command"][1], "--verbose")
                 self.assertEqual(status, 1)
                 self.assertEqual({w["suite"] for w in report["kernel_checked"]}, {"b"})
                 self.assertEqual(len(report["kernel_checked"]), 3)
-                self.assertTrue(all(w["status"] == ("proved" if outcome == "built"
+                self.assertTrue(all(w["status"] == ("proved" if outcome.startswith("built")
                                                     else "proved (cached)")
                                     for w in report["kernel_checked"]))
                 self.assertEqual([(f["kind"], f.get("suite"), f["status"])
