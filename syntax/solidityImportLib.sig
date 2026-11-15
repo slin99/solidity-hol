@@ -27,6 +27,10 @@ sig
   val import_source_unit_blockers :
     JSON.value list -> JSON.value -> JSON.value -> term * string list
 
+  (* One source of an already-read artifact, retaining creation code from
+   * every compilation source. Profile validation remains the caller's. *)
+  val import_artifact_unit_blockers : JSON.value -> string -> term * string list
+
   (* Raw artifact import, checking only the artifact format. Callers own the
    * compiler/profile/settings contract and source/core validation; normal
    * artifact consumers use solidityPrepareLib.prepare_artifact.
