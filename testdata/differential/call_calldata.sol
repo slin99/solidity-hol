@@ -36,7 +36,10 @@ contract CallCalldata {
     function signature() external pure returns (bytes4) { return msg.sig; }
     function internalSignature() external pure returns (bytes4) { return readSignature(); }
     function readSignature() internal pure returns (bytes4) { return msg.sig; }
-    fallback(bytes calldata) external returns (bytes memory) { return abi.encode(msg.sig); }
+    fallback() external {
+        bytes4 selector = msg.sig;
+        assembly { mstore(0, selector) return(0, 32) }
+    }
 
     function structLocal(bool first, Data calldata a, Data calldata b)
         external pure returns (uint256, uint256)
