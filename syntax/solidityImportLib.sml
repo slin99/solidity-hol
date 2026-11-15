@@ -337,6 +337,14 @@ fun normalize_type_id s =
 
 fun type_id v = mk_str (normalize_type_id (raw_type_id v))
 
+(* The builtin call or member v, named by the node callee if it has one, on
+   the imported operands. *)
+fun builtin_operation v callee name operands =
+  con "SrcBuiltinOperation"
+    [info v, mk_opt (import_type "node_info") (Option.map info callee),
+     prim_mk_const {Thy = "solidityCore", Name = name},
+     listSyntax.mk_list (operands, expr_ty), type_id v]
+
 fun address_type_name v =
   con "SrcElementaryTypeName"
     [info v, mk_str "address",
@@ -897,16 +905,14 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
             else case string_field v "memberName" of
               "length" =>
                 if is_address_code base then
-                  con "SrcAddressMember"
-                    [info v, info base, con "AddressCodeLength" [],
-                     expr (field base "expression"), type_id v]
+                  builtin_operation v (SOME base) "CodeLengthBuiltin"
+                    [expr (field base "expression")]
                 else con "SrcArrayLength" [info v, expr base, type_id v]
             | "balance" =>
                 (require v (List.exists (fn t => t = raw_type_id base)
                               ["t_address", "t_address_payable"])
                    "balance of a non-address";
-                 con "SrcAddressMember"
-                   [info v, info v, con "AddressBalance" [], expr base, type_id v])
+                 builtin_operation v NONE "BalanceBuiltin" [expr base])
             | member =>
                 let val receiver = expr (field v "expression") in
                   require v (member = "push" orelse member = "pop")
@@ -1069,13 +1075,12 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                int_field callee "referencedDeclaration" = keccak256_id then
               (positional ();
                require v (length args = 1) "keccak256 takes one argument";
-               con "SrcKeccak256" [info v, info callee, hd args, type_id v])
+               builtin_operation v (SOME callee) "Keccak256Builtin" args)
             else if node_type callee = "Identifier" andalso
                int_field callee "referencedDeclaration" = ecrecover_id then
               (positional ();
                require v (length args = 4) "ecrecover takes four arguments";
-               con "SrcEcrecover"
-                 [info v, info callee, listSyntax.mk_list (args, expr_ty), type_id v])
+               builtin_operation v (SOME callee) "EcrecoverBuiltin" args)
             else if node_type callee = "MemberAccess" andalso
                     string_field callee "memberName" = "transfer" andalso
                     not (isSome (optional_field callee "referencedDeclaration")) andalso

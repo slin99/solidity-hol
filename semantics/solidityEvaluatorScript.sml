@@ -254,6 +254,34 @@ Definition indexed_byte_def:
 End
 
 (* Pure operations; calls and array mutations are handled by statements. *)
+(* A builtin's value on its operands' values. ecrecover is the precompile at
+ * address 1, as the compiler calls it: an invalid signature returns nothing,
+ * which reads as address(0). *)
+Definition eval_builtin_def:
+  eval_builtin st op vs =
+    case (op, vs) of
+      (Keccak256Builtin, [ReferenceValue r]) =>
+        (case byte_contents st r of
+           INL bs => ValueOk (ScalarValue (BytesValue (num_to_bytes 32
+                       (w2n (word_of_bytes_be (Keccak_256_w64 bs) : bytes32)))))
+         | INR c => ValueAbrupt c)
+    | (EcrecoverBuiltin,
+       [ScalarValue (BytesValue hb); ScalarValue (IntegerValue vi);
+        ScalarValue (BytesValue rb); ScalarValue (BytesValue sb)]) =>
+        ValueOk (ScalarValue (AddressValue
+          (case ecrecover (word_of_bytes_be hb) (Num vi)
+                  (num_of_be_bytes rb) (num_of_be_bytes sb) of
+             SOME a => a
+           | NONE => 0w)))
+    | (CodeLengthBuiltin, [ScalarValue (AddressValue address)]) =>
+        ValueOk (ScalarValue (IntegerValue
+          (&(LENGTH (lookup_account address st.world.accounts).code))))
+    | (BalanceBuiltin, [ScalarValue (AddressValue address)]) =>
+        ValueOk (ScalarValue (IntegerValue
+          (&(lookup_account address st.world.accounts).balance)))
+    | _ => ValueAbrupt (InvalidCompletion "bad builtin operands")
+End
+
 Definition eval_operation_def:
   eval_operation env (st : source_state) op =
     case op of
@@ -363,26 +391,10 @@ Definition eval_operation_def:
                     (offset + Num first * stride) (Num (stop - first)) ty))
               | _ => ValueAbrupt (InvalidCompletion "bad calldata slice end"))
          | _ => ValueAbrupt (InvalidCompletion "bad calldata slice operands"))
-    | CodeLengthOperation a =>
-        (case eval_atom st.scopes a of
-           SOME (ScalarValue (AddressValue address)) =>
-             ValueOk (ScalarValue (IntegerValue
-               (&(LENGTH (lookup_account address st.world.accounts).code))))
-         | _ => ValueAbrupt (InvalidCompletion "bad code length operand"))
-    | BalanceOperation a =>
-        (case eval_atom st.scopes a of
-           SOME (ScalarValue (AddressValue address)) =>
-             ValueOk (ScalarValue (IntegerValue
-               (&(lookup_account address st.world.accounts).balance)))
-         | _ => ValueAbrupt (InvalidCompletion "bad balance operand"))
-    | Keccak256Operation a =>
-        (case eval_atom st.scopes a of
-           SOME (ReferenceValue r) =>
-             (case byte_contents st r of
-                INL bs => ValueOk (ScalarValue (BytesValue (num_to_bytes 32
-                            (w2n (word_of_bytes_be (Keccak_256_w64 bs) : bytes32)))))
-              | INR c => ValueAbrupt c)
-         | _ => ValueAbrupt (InvalidCompletion "bad keccak256 operand"))
+    | BuiltinOperation op args =>
+        (case eval_atoms st.scopes args of
+           SOME vs => eval_builtin st op vs
+         | NONE => ValueAbrupt (InvalidCompletion "bad builtin operands"))
     (* The compiler's decoder from memory: short data, or a value outside its
      * type, reverts with no data; data after the encoding is ignored. *)
     | ArrayLengthOperation a =>
@@ -1068,20 +1080,13 @@ Definition simple_stmt_def:
                          value g args) =>
         call_external_mode T env x ty kind selector params rets target value g
           args st gas
-    (* The precompile at address 1, as the compiler calls it: an invalid
-     * signature returns nothing, which reads as address(0). The call leaves
-     * return data the source computes no bytes for. *)
-    | DefineStmt x ty (EcrecoverOperation h v r s) =>
-        (case (eval_atom st.scopes h, eval_atom st.scopes v,
-               eval_atom st.scopes r, eval_atom st.scopes s) of
-           (SOME (ScalarValue (BytesValue hb)), SOME (ScalarValue (IntegerValue vi)),
-            SOME (ScalarValue (BytesValue rb)), SOME (ScalarValue (BytesValue sb))) =>
-             normal_result (define_binding x ty (ScalarValue (AddressValue
-               (case ecrecover (word_of_bytes_be hb) (Num vi)
-                       (num_of_be_bytes rb) (num_of_be_bytes sb) of
-                  SOME a => a
-                | NONE => 0w))) (st with return_data := NONE)) gas
-         | _ => abrupt_result (InvalidCompletion "bad ecrecover operands") st gas)
+    (* ecrecover calls the precompile at address 1, which leaves return data
+     * the source computes no bytes for. *)
+    | DefineStmt x ty (BuiltinOperation EcrecoverBuiltin args) =>
+        (case eval_operation env st (BuiltinOperation EcrecoverBuiltin args) of
+           ValueOk v =>
+             normal_result (define_binding x ty v (st with return_data := NONE)) gas
+         | ValueAbrupt c => abrupt_result c st gas)
     | DefineStmt x ty op =>
         (case eval_operation env st op of
            ValueOk v => normal_result (define_binding x ty v st) gas

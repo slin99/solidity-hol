@@ -190,10 +190,6 @@ Datatype:
 End
 
 Datatype:
-  address_member = AddressCodeLength | AddressBalance
-End
-
-Datatype:
   src_expr
   = SrcIdentifier node_info string num string
   | SrcArrayLength node_info src_expr string
@@ -226,11 +222,12 @@ Datatype:
    * then for each member the index of its argument when they are named *)
   | SrcStructConstructor node_info num (src_expr list) (num list) string
   | SrcEnumValue node_info src_type_name num string
-  | SrcKeccak256 node_info node_info src_expr string
+  (* keccak256(a), ecrecover(h, v, r, s), a.code.length, a.balance: the
+   * builtin's own node (the callee, or the code member), if it has one *)
+  | SrcBuiltinOperation node_info (node_info option) builtin_op (src_expr list)
+      string
   | SrcModular node_info node_info core_operator (src_expr list) string
-  | SrcAddressMember node_info node_info address_member src_expr string
   | SrcSelector node_info (byte list) (src_expr option) string
-  | SrcEcrecover node_info node_info (src_expr list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
   | SrcAbiDecode node_info node_info src_expr (src_type_name list) string
   | SrcLowLevelCall node_info node_info low_level_kind (call_option list)
@@ -1158,18 +1155,13 @@ Definition expr_ids_def:
   (expr_ids (SrcEnvironment info _ _) = [info.node_id]) ∧
   (expr_ids (SrcTypeMember info _ tn _) = info.node_id :: type_name_ids tn) ∧
   (expr_ids (SrcEnumValue info tn _ _) = info.node_id :: type_name_ids tn) ∧
-  (expr_ids (SrcKeccak256 info callee e _) =
-    info.node_id :: callee.node_id :: expr_ids e) ∧
+  (expr_ids (SrcBuiltinOperation info callee _ args _) =
+    info.node_id :: (case callee of NONE => [] | SOME c => [c.node_id]) ++
+    exprs_ids args) ∧
   (expr_ids (SrcModular info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
-  (expr_ids (SrcAddressMember info member kind e _) =
-    info.node_id ::
-    (case kind of AddressCodeLength => [member.node_id] | AddressBalance => []) ++
-    expr_ids e) ∧
   (expr_ids (SrcSelector info _ receiver _) =
     info.node_id :: (case receiver of NONE => [] | SOME e => expr_ids e)) ∧
-  (expr_ids (SrcEcrecover info callee args _) =
-    info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcAbiEncode info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcLowLevelCall info callee _ _ operands _) =
