@@ -376,27 +376,51 @@ def completed_tests(work: Path) -> set[str]:
             if result.get("kind") in ("complete", "preparation")}
 
 
-def run_fleet_batch(holbuild: str, batch: Path, tests: list[dict[str, Any]]) -> bool:
+@dataclass(frozen=True)
+class BatchScript:
+    """A HOL script run once per batch of manifest entries. Each entry names an
+    `artifact`, and optionally a `peer` with its own, relative to the root."""
+    path: Path
+    key: str  # the manifest field listing the entries
+    manifest_env: str  # names the manifest to a local `holbuild run`
+
+
+EXPECTATIONS = BatchScript(HOL_SCRIPT, "tests", "SEMANTIC_EXPECTATIONS_MANIFEST")
+
+
+def stage_entry(batch: Path, index: int, entry: dict[str, Any]) -> tuple[dict[str, Any], list[Path]]:
+    """Copy an entry's artifacts into the batch; the copy names them there."""
+    artifact = batch / f"{index}.json"
+    shutil.copyfile(ROOT / entry["artifact"], artifact)
+    staged = {**entry, "artifact": artifact.name}
+    if "peer" not in entry:
+        return staged, [artifact]
+    peer = batch / f"{index}.peer.json"
+    shutil.copyfile(ROOT / entry["peer"]["artifact"], peer)
+    return {**staged, "peer": {**entry["peer"], "artifact": peer.name}}, [artifact, peer]
+
+
+def run_fleet_batch(holbuild: str, batch: Path, entries: list[dict[str, Any]],
+                    script: BatchScript = EXPECTATIONS) -> bool:
     """Run one batch as a cached action; False means no coordinator was configured."""
     staged = []
     supports = []
-    for index, test in enumerate(tests):
-        artifact = batch / f"{index}.json"
-        shutil.copyfile(test["artifact"], artifact)
-        staged.append({**test, "artifact": artifact.name})
-        supports.append(artifact)
+    for index, entry in enumerate(entries):
+        staged_entry, files = stage_entry(batch, index, entry)
+        staged.append(staged_entry)
+        supports.extend(files)
     manifest = batch / "batch.json"
-    exporter.write_json_atomic(manifest, {"tests": staged})
+    exporter.write_json_atomic(manifest, {script.key: staged})
     supports.append(manifest)
     for source in (exporter.PIN_FILE, exporter.DEFAULT_PROFILE, exporter.OPTIMIZED_PROFILE):
         target = batch / source.relative_to(ROOT)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
         supports.append(target)
-    script = batch / HOL_SCRIPT.name
-    shutil.copyfile(HOL_SCRIPT, script)
+    staged_script = batch / script.path.name
+    shutil.copyfile(script.path, staged_script)
     command = [holbuild, "-j1", "run-action", "--remote-only", "--skip-checkpoints",
-               "--skip-proof-steps", "--script", str(script),
+               "--skip-proof-steps", "--script", str(staged_script),
                "--load", "solidityDifferentialLib", "--output", "results.jsonl",
                "--outputs-dir", str(batch / "outputs")]
     for support in supports:
@@ -419,19 +443,21 @@ def run_fleet_batch(holbuild: str, batch: Path, tests: list[dict[str, Any]]) -> 
     return True
 
 
-def run_local_batch(holbuild: str, batch: Path, tests: list[dict[str, Any]]) -> None:
+def run_local_batch(holbuild: str, batch: Path, entries: list[dict[str, Any]],
+                    script: BatchScript = EXPECTATIONS) -> None:
     manifest = batch / "batch.json"
-    exporter.write_json_atomic(manifest, {"tests": tests})
-    # Results stream to the batch's results file, so a resume keeps finished tests.
+    exporter.write_json_atomic(manifest, {script.key: entries})
+    # Results stream to the batch's results file, so a resume keeps finished entries.
     with (batch / "results.jsonl").open("w") as stream:
-        status = subprocess.run([holbuild, "-j1", "run", str(HOL_SCRIPT)],
+        status = subprocess.run([holbuild, "-j1", "run", str(script.path)],
                                 cwd=ROOT, stdin=subprocess.DEVNULL, stdout=stream, stderr=subprocess.STDOUT,
-                                env={**os.environ, "SEMANTIC_EXPECTATIONS_MANIFEST": str(manifest)}).returncode
+                                env={**os.environ, script.manifest_env: str(manifest)}).returncode
     if status:
         raise SystemExit(f"HOL run failed: status {status}; see {batch / 'results.jsonl'}")
 
 
-def run_batches(holbuild: str, work: Path, pending: list[dict[str, Any]]) -> None:
+def run_batches(holbuild: str, work: Path, pending: list[dict[str, Any]],
+                script: BatchScript = EXPECTATIONS) -> None:
     """Run bounded batches on the fleet, or locally without remote configuration."""
     subprocess.run([holbuild, "-j4", "build", "solidityDifferentialLib"], cwd=ROOT, check=True)
     help_text = subprocess.run([holbuild, "--help"], cwd=ROOT, check=True,
@@ -444,10 +470,10 @@ def run_batches(holbuild: str, work: Path, pending: list[dict[str, Any]]) -> Non
     first = 1 + max((int(path.name.split("-")[1]) for path in work.glob("batch-*")), default=-1)
     # Batches run one after another: each startup/export mutates the same holbuild project.
     for index, offset in enumerate(range(0, len(pending), BATCH_SIZE), first):
-        tests = pending[offset:offset + BATCH_SIZE]
+        entries = pending[offset:offset + BATCH_SIZE]
         batch = work / f"batch-{index:04d}"
         batch.mkdir()
-        if not (fleet and run_fleet_batch(holbuild, batch, tests)):
+        if not (fleet and run_fleet_batch(holbuild, batch, entries, script)):
             if configured:
                 raise SystemExit("the HOL fleet action failed: remote configuration exists but "
                                  "no coordinator was selected")
@@ -455,8 +481,9 @@ def run_batches(holbuild: str, work: Path, pending: list[dict[str, Any]]) -> Non
                 raise SystemExit("the HOL fleet action failed: coordinator disappeared "
                                  "after the first batch")
             fleet = False
-            run_local_batch(holbuild, batch, tests)
-        print(f"Executed {offset + len(tests)}/{len(pending)} pending tests", file=sys.stderr, flush=True)
+            run_local_batch(holbuild, batch, entries, script)
+        print(f"Executed {offset + len(entries)}/{len(pending)} pending {script.key}",
+              file=sys.stderr, flush=True)
 
 
 def main(argv: list[str] | None = None) -> int:

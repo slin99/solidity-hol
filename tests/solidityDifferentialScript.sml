@@ -426,6 +426,39 @@ Definition differential_agrees_def:
     is_agreement (differential_verdict code u prog fuel c)
 End
 
+(* Fuzzing *)
+
+(* What a fuzz case's expectation records: the outcome, complete storage and
+ * logs the screening EVM observed. *)
+Definition recorded_execution_def:
+  recorded_execution u c =
+    (expected_outcome u c.case_input c.case_expect,
+     SOME (seed_storage (c.case_final ++ c.case_storage)),
+     expected_logs c.case_logs)
+End
+
+(* The source run against the recorded observation alone, with no bytecode
+ * run: the recording stands where evm_execution stands in
+ * differential_verdict. The fuzzer confirms every difference, and a sample
+ * of agreements, with differential_verdict, so no verdict rests on the
+ * recording alone. *)
+Definition fuzz_verdict_def:
+  fuzz_verdict code u prog fuel c =
+    let slots = observed_slots prog c.case_storage c.case_final in
+    let recorded = recorded_execution u c in
+    let src_run = source_execution code u prog fuel c in
+    if is_diagnostic (FST recorded) ∨ is_diagnostic (FST src_run) then
+      Inconclusive (FST recorded) (FST src_run)
+    else if FST recorded ≠ FST src_run then
+      Mismatch (FST recorded) (FST src_run)
+    else if FST (SND recorded) ≠ FST (SND src_run) then
+      StorageMismatch (SND (project_observation slots recorded))
+                      (SND (project_observation slots src_run))
+    else if SND (SND recorded) ≠ SND (SND src_run) then
+      LogMismatch (SND (SND recorded)) (SND (SND src_run))
+    else Agree (FST src_run)
+End
+
 Theorem compare_observations_agree:
   is_agreement (compare_observations x y z) ⇒
   ¬is_diagnostic (FST x) ∧ y = x ∧ z = x
@@ -523,3 +556,5 @@ val () = cv_auto_trans compare_observations_def;
 val () = cv_auto_trans differential_verdict_def;
 val () = cv_auto_trans is_agreement_def;
 val () = cv_auto_trans differential_agrees_def;
+val () = cv_auto_trans recorded_execution_def;
+val () = cv_auto_trans fuzz_verdict_def;
