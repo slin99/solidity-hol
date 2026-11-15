@@ -59,6 +59,7 @@ Definition creation_copy_program_def:
        creation_name := "c"; deployed_name := "r";
        creation_bytes := [0xFFw; 0x11w] ++ REPLICATE 32 0w ++ [0x22w];
        deployed_bytes := [0x11w] ++ REPLICATE 32 0w ++ [0x22w];
+       deployed_offset := 1;
        creation_refs := [(3, [1])] |>
 End
 
@@ -83,6 +84,36 @@ QED
 Theorem creation_rejects_wrong_suffix:
   yul_creation_execution
     (creation_copy_program with creation_bytes := REPLICATE 35 0w)
+    creation_copy_case (word_to_bytes_be (42w : bytes32)) 40 =
+    (Diagnostic InvalidCompletion, NONE, [])
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem creation_copies_runtime_before_trailing_data:
+  FST (yul_case_execution []
+    (code_reading_program with creation_program := SOME
+      (creation_copy_program with creation_bytes :=
+        creation_copy_program.creation_bytes ++ [0xAAw; 0xBBw]))
+    u creation_copy_case 40) = Returned (word_to_bytes_be (42w : bytes32))
+Proof
+  simp[yul_case_execution_def, creation_copy_case_def, code_reading_case_def,
+       input_call_def, case_immutable_values_def] >>
+  CONV_TAC cv_eval
+QED
+
+Theorem creation_rejects_wrong_runtime_offset:
+  yul_creation_execution
+    (creation_copy_program with deployed_offset := 0)
+    creation_copy_case (word_to_bytes_be (42w : bytes32)) 40 =
+    (Diagnostic InvalidCompletion, NONE, [])
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem creation_rejects_runtime_out_of_bounds:
+  yul_creation_execution
+    (creation_copy_program with deployed_offset := 2)
     creation_copy_case (word_to_bytes_be (42w : bytes32)) 40 =
     (Diagnostic InvalidCompletion, NONE, [])
 Proof
