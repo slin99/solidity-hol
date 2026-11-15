@@ -381,6 +381,30 @@ val yul_fuel = 1000000;
 val yul_encoding_conv =
   EVAL THENC PURE_REWRITE_CONV [cv_primTheory.cv_rep_T, cv_primTheory.cv_rep_F];
 
+(* The backend can append creation data after the runtime object. *)
+fun deployed_code_offset artifact source contract =
+  let
+    fun bytes kind = String.implode (map chr (hex_bytes ("0x" ^
+      JSONUtil.asString (JSONUtil.get (artifact,
+        map JSONUtil.SEL ["output", "contracts", source, contract, "evm",
+                          kind, "object"])))))
+    val creation = bytes "bytecode"
+    val deployed = bytes "deployedBytecode"
+  in
+    if String.isSuffix deployed creation then size creation - size deployed
+    else
+      let
+        val (prefix, suffix) = Substring.position deployed (Substring.full creation)
+      in
+        if Substring.isEmpty suffix then
+          fail "runtime bytecode is not present in initcode"
+        else if String.isSubstring deployed
+                  (Substring.string (Substring.triml 1 suffix)) then
+          fail "runtime bytecode has ambiguous locations in initcode"
+        else Substring.size prefix
+      end
+  end
+
 fun yul_code_constant name path source contract stage unit deploy =
   let
     val artifact = JSONParser.parseFile path
@@ -409,6 +433,8 @@ fun yul_code_constant name path source contract stage unit deploy =
                 creation_name := ^(stringSyntax.fromMLstring obj_name);
                 deployed_name := ^(stringSyntax.fromMLstring deployed_name);
                 creation_bytes := ^initcode; deployed_bytes := ^deployed;
+                deployed_offset := ^(num_term (IntInf.fromInt
+                  (deployed_code_offset artifact source contract)));
                 creation_refs := ^refs |>”
         in optionSyntax.mk_some program end
     val def = define name
@@ -863,6 +889,11 @@ fun run_expectations {root, manifest} =
                    val bytecode_fields = bytecode ()
                    val entered = “^prior_world with accounts :=
                      transfer_value ^sender ^address ^value ^prior_world.accounts”
+                   val entered = if creating then
+                     “^entered with accounts := update_account ^address
+                       ((lookup_account ^address ^entered.accounts) with nonce := 1)
+                       ^entered.accounts”
+                     else entered
                    val invocation = if creating then
                      “deploy_contract 10000 ^program ^fr ^entered”
                      else “call_contract 10000 ^program ^(!imm) ^fr ^entered”

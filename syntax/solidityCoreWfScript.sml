@@ -1047,6 +1047,14 @@ Definition wf_core_operation_def:
     annotation = ProductType [] ∧
     wf_core_atom env ctx (SingleType (AddressT PayableAddress)) target ∧
     wf_core_atom env ctx (SingleType (UintT 256)) value) ∧
+  (wf_core_operation env ctx annotation
+     (CreateContractOperation code params value salt args) ⇔
+    annotation = SingleType (AddressT NonpayableAddress) ∧
+    EVERY (abi_type_ok env) params ∧
+    wf_core_atom env ctx (SingleType (UintT 256)) value ∧
+    (case salt of NONE => T | SOME a =>
+       wf_core_atom env ctx (SingleType (FixedBytesT 32)) a) ∧
+    LIST_REL (wf_abi_atom env ctx) params args) ∧
   (wf_core_operation env ctx annotation _ ⇔ F)
 End
 
@@ -1137,7 +1145,8 @@ End
  * frame's call. *)
 Definition assembly_state_writes_def:
   assembly_state_writes =
-    [YSStore; YTStore; YLog0; YLog1; YLog2; YLog3; YLog4; YCall; YDelegateCall]
+    [YSStore; YTStore; YLog0; YLog1; YLog2; YLog3; YLog4; YCall; YDelegateCall;
+     YCreate; YCreate2]
 End
 
 (* Whether a block's code calls none of the builtins in bad. *)
@@ -1262,6 +1271,8 @@ Definition builtin_memory_ok_def:
         memory_read_ok ws p l ∧ memory_write_ok halts d (yul_lit dl)
     | (YDelegateCall, [_; _; p; l; d; dl]) =>
         memory_read_ok ws p l ∧ memory_write_ok halts d (yul_lit dl)
+    | (YCreate, [_; p; l]) => memory_read_ok ws p l
+    | (YCreate2, [_; p; l; _]) => memory_read_ok ws p l
     | (YKeccak256, [p; l]) => memory_read_ok ws p l
     | (YReturn, [p; l]) => memory_read_ok ws p l
     | (YRevert, [p; l]) => memory_read_ok ws p l
@@ -1279,6 +1290,8 @@ Definition builtin_memory_ok_def:
     | (YCall, _) => F
     | (YStaticCall, _) => F
     | (YDelegateCall, _) => F
+    | (YCreate, _) => F
+    | (YCreate2, _) => F
     | (YKeccak256, _) => F
     | (YReturn, _) => F
     | (YRevert, _) => F
@@ -1434,7 +1447,8 @@ End
  * assembly_gas_ok, which admits return data reads before the block's own
  * calls, except in a Yul function's body. *)
 Definition is_call_builtin_def:
-  is_call_builtin b ⇔ b = YCall ∨ b = YStaticCall ∨ b = YDelegateCall
+  is_call_builtin b ⇔ b = YCall ∨ b = YStaticCall ∨ b = YDelegateCall ∨
+                       b = YCreate ∨ b = YCreate2
 End
 
 Definition expr_calls_def:
@@ -1458,7 +1472,7 @@ Definition call_expr_ok_def:
   (call_expr_ok called (YulBuiltin b es) ⇔
     b ≠ YGas ∧
     (called ∨ exprs_calls es ∨ b ≠ YReturnDataSize ∧ b ≠ YReturnDataCopy) ∧
-    call_args_ok called (is_call_builtin b) es) ∧
+    call_args_ok called (b = YCall ∨ b = YStaticCall ∨ b = YDelegateCall) es) ∧
   (call_expr_ok called (YulApply _ es) ⇔ call_args_ok called F es) ∧
   (call_expr_ok called (YulCheckedBuiltin _ _) ⇔ F) ∧
   (call_expr_ok called _ ⇔ T) ∧
