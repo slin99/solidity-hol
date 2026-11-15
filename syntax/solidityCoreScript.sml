@@ -151,6 +151,8 @@ Datatype:
   | TupleOperation (core_atom list)
   | TupleComponentOperation num core_atom
   | ReadOperation sol_type core_atom
+  (* The ABI word of a persistent, offset-zero storage reference. *)
+  | StorageSlotOperation sol_type core_atom
   | StateReferenceOperation ast_id
   | ImmutableReferenceOperation ast_id
   | NavigateOperation sol_type core_atom navigation

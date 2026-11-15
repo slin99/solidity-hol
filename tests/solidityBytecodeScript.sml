@@ -98,11 +98,13 @@ Definition expected_storage_def:
 End
 
 Definition case_accounts_def:
-  case_accounts code storage sender peer_code peer_storage =
-    update_account peer_address
+  case_accounts code storage sender peer_code peer_storage libraries =
+    FOLDL (λaccounts (addr, library_code).
+      update_account addr (empty_account_state with code := library_code) accounts)
+      (update_account peer_address
       (empty_account_state with <| code := peer_code;
                                    storage := seed_storage peer_storage |>)
-      (differential_accounts code storage sender)
+      (differential_accounts code storage sender)) libraries
 End
 
 Datatype:
@@ -128,6 +130,7 @@ Datatype:
     case_storage : (num # num) list;
     case_peer_code : byte list;
     case_peer_storage : (num # num) list;
+    case_libraries : (address # byte list) list;
     case_expect : expectation;
     case_final : (num # num) list;
     case_logs : (address # bytes32 list # byte list) list

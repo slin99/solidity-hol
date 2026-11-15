@@ -97,7 +97,7 @@ fun unit_immutables unit artifact source contract =
 fun case_fuel c fuel =
   case JSONUtil.findField c "fuel" of SOME v => integer v | NONE => fuel
 
-fun run_case {suite, code, initcode, peer, immutables, unit, program, fuel, bytecode} c =
+fun run_case {suite, code, initcode, fixture, immutables, unit, program, fuel, bytecode} c =
   let
     val case_name = name_field c "name"
     val theorem = suite ^ "_" ^ case_name
@@ -105,7 +105,7 @@ fun run_case {suite, code, initcode, peer, immutables, unit, program, fuel, byte
     val input = call_input initcode c
 
     val expect = expectation (field c "expect")
-    val case_tm = case_term peer immutables input c
+    val case_tm = case_term fixture immutables input c
     val verdict_tm =
       list_mk_comb (prim_mk_const {Thy = "solidityDifferential",
                                    Name = "differential_verdict"},
@@ -285,7 +285,7 @@ fun run_suite_with_bytecode bytecode root fuel s =
             let val tm = code_constant (prefix ^ "_initcode") "bytecode"
                            (#artifact checked) source contract
             in initcode_constant := SOME tm; tm end
-      val peer = peer_code root prefix s
+      val fixture = fixture_code root prefix s
       val () = emit [("kind", json_string "suite"),
                      ("suite", json_string suite),
                      ("status", json_string "ok"),
@@ -293,7 +293,7 @@ fun run_suite_with_bytecode bytecode root fuel s =
                        [prefix ^ "_elaborates", prefix ^ "_program_wf"]))]
       val immutables = unit_immutables (#unit (#prepared checked))
                          (#artifact checked) source contract
-      val env = {suite = suite, code = code, initcode = initcode, peer = peer,
+      val env = {suite = suite, code = code, initcode = initcode, fixture = fixture,
                  immutables = immutables, unit = unit, program = program,
                  fuel = fuel, bytecode = bytecode}
     in
@@ -558,7 +558,7 @@ fun run_case_three_way suite_name env c =
     val input = call_input (#initcode env) c
     val case_env =
       {suite = suite_name, case_name = name_field c "name",
-       case_tm = case_term (#peer env) (#immutables env) input c, input = input,
+       case_tm = case_term (#fixture env) (#immutables env) input c, input = input,
        expect = expectation (field c "expect"),
        unit = #unit env, code = #code env, program = #program env}
   in
@@ -587,7 +587,7 @@ fun run_suite_three_way root yul_root s =
     val (unit, program) = prepared_constants prefix (#prepared checked)
     val code = code_constant (prefix ^ "_code") "deployedBytecode"
                  (#artifact checked) source contract
-    val peer = peer_code root prefix s
+    val fixture = fixture_code root prefix s
     val deploy = List.exists (fn c =>
       case JSONUtil.findField c "deploy" of SOME (JSON.BOOL true) => true
                                            | _ => false) cases
@@ -602,7 +602,7 @@ fun run_suite_three_way root yul_root s =
         in initcode_tm := SOME tm; tm end
     val immutables = unit_immutables (#unit (#prepared checked))
                        (#artifact checked) source contract
-    val env = {unit = unit, code = code, peer = peer, immutables = immutables,
+    val env = {unit = unit, code = code, fixture = fixture, immutables = immutables,
                program = program, stages = stages, initcode = initcode}
   in
     emit_yul [("kind", json_string "suite"), ("suite", json_string suite),

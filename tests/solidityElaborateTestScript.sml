@@ -526,7 +526,7 @@ val success_b = “^success_n with
      var_type_name := SrcElementaryTypeName ^(at 8) "bool" NONE;
      var_type_id := "t_bool" |>”;
 val success_call = “SrcExternalCall ^(at 30)
-  <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut;
+  <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut; ext_kind := ExternalCall; ext_bound := F;
      ext_parameters := []; ext_returns := [^success_n; ^success_b] |>
   [] [SrcIdentifier ^(at 31) "target" 40 "t_address"] []
   "t_tuple$_t_uint256_$_t_bool_$"”;
@@ -659,7 +659,7 @@ QED
 Theorem external_call_operands_all_report:
   ^(reports “elab_expr ^ctx0 10
                (SrcExternalCall ^(at 30)
-                  <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut;
+                  <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut; ext_kind := ExternalCall; ext_bound := F;
                      ext_parameters := []; ext_returns := [] |>
                   [] [^(bad_at 32); ^(bad_at 33)] [] "t_tuple$__$")”
      (“(30, "unsupported external call")” :: bad_32_33))

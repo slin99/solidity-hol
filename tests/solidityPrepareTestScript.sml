@@ -93,23 +93,16 @@ val () =
 fun edited_unit name =
   rhs (concl (DB.fetch "solidityImportTest" (name ^ "_def")));
 
-val public_library = solidityPrepareLib.prepare_unit
-  (edited_unit "public_library_unit");
-val () =
-  case List.find (fn {name, ...} => name = "bound") (#functions public_library) of
-    SOME {reason = SOME _, ...} => ()
-  | _ => raise Fail "bound: public library call not marked unsupported";
-
 val external_library = #prepared (solidityPrepareLib.prepare_artifact
   {root = "..", path = "../testdata/frontend/expected/external_library.json",
    source = "testdata/frontend/external_library.sol"});
 val () =
   if map (fn {name, reason, ...} => (name, isSome reason))
        (#functions external_library) =
-     [("supported", false), ("callsPublic", true), ("callsExternal", true),
+     [("supported", false), ("callsPublic", false), ("callsExternal", false),
       ("callsIndirect", true), ("callsCaller", true),
       ("safePrivate", false), ("safeInternal", false), ("indirect", true)]
-  then () else raise Fail "external library calls were not isolated per caller";
+  then () else raise Fail "external library admission or internal call isolation differs";
 val () = rejects solidityPrepareLib.SourceRejected
   (fn () => ignore (solidityPrepareLib.prepare_unit (edited_unit "wrong_scope")));
 val () = rejects solidityPrepareLib.SourceRejected
@@ -176,6 +169,8 @@ val () = List.app (fn extra => with_extra_settings extra
    "\"remappings\": [1],",
    "\"remappings\": [\"a/b/\"],",
    "\"remappings\": [], \"remappings\": [],",
+   "\"libraries\": {\"fake.sol\": {\"L\": \"0x0000000000000000000000000000000000005000\"}},",
+   "\"libraries\": {}, \"libraries\": {},",
    "\"remappings\": [\"a/=b/\"], \"unknownSetting\": true,",
    "\"remappings\": [\"a/=b/\"], \"viaIR\": false,"];
 

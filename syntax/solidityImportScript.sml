@@ -139,6 +139,8 @@ Datatype:
   src_external = <|
     ext_selector : byte list;
     ext_mutability : state_mutability;
+    ext_kind : external_kind;
+    ext_bound : bool;
     ext_parameters : src_variable list;
     ext_returns : src_variable list
   |>

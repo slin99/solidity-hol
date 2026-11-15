@@ -292,7 +292,7 @@ Definition source_execution_def:
                   (transfer_value c.case_sender a c.case_value
                      (case_accounts (patch_immutables c.case_immutable_refs imm code)
                         c.case_storage c.case_sender
-                        c.case_peer_code c.case_peer_storage)) in
+                        c.case_peer_code c.case_peer_storage c.case_libraries)) in
         contract_observation u c.case_immutable_refs a
           (case c.case_input of
              Deploy _ _ => deploy_contract fuel prog fr w
@@ -314,7 +314,7 @@ Definition prepared_evm_input_def:
     | (_, NONE) => INL UnencodableArguments
     | (INR (data, _), SOME imm) =>
         INR (case_accounts (patch_immutables c.case_immutable_refs imm code)
-               c.case_storage c.case_sender c.case_peer_code c.case_peer_storage,
+               c.case_storage c.case_sender c.case_peer_code c.case_peer_storage c.case_libraries,
              case_tx c data, c.case_immutable_refs)
 End
 

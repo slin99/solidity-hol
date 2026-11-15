@@ -35,6 +35,14 @@ to check its successful return payload, or `{"return": []}` for empty data.
 Dynamic bytes and strings are supplied as `0x` byte strings, preserving UTF-8,
 NUL bytes and arbitrary binary contents.
 
+Library calls run the library's linked bytecode as `DELEGATECALL`, sharing the
+calling contract's storage, sender and value. The exporter records the
+deterministic addresses in `settings.libraries` (see [profiles.md](profiles.md));
+both executions install every linked library from that artifact in their initial
+accounts. No extra suite field is needed. The library's source body is not
+executed by the source evaluator. Storage-reference arguments cross the ABI as
+slot words, while ordinary arguments and results use the shared ABI codec.
+
 A case with `"deploy": true` and the constructor's `args` (or, as
 `calldata`, their raw encoding) is a creation instead: Verifereum runs a creation transaction whose data is the artifact's
 initcode followed by the encoded arguments, and the evaluator runs the

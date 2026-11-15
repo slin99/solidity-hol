@@ -19,6 +19,27 @@ import export_solc_artifacts as exporter  # noqa: E402
 
 
 class ExporterTests(unittest.TestCase):
+    def test_links_distinct_libraries_before_recording_bytecode(self) -> None:
+        output = {"sources": {
+            source: {"ast": {"nodes": [{"nodeType": "ContractDefinition",
+              "contractKind": "library", "name": "L", "id": node_id}]}}
+            for source, node_id in [("a.sol", 12), ("b.sol", 35)]
+        }, "contracts": {"a.sol": {"C": {"evm": {
+            "deployedBytecode": {"object": "__$unlinked$__"}}}}}}
+        linked = copy.deepcopy(output)
+        linked["contracts"]["a.sol"]["C"]["evm"]["deployedBytecode"]["object"] = "00"
+        with patch.object(exporter, "compiler_identity", return_value="test"), \
+             patch.object(exporter, "compile_standard_json", side_effect=[output, linked]) as compile_json:
+            artifact = exporter.build_artifact_from_sources(
+                Path("solc"), {}, exporter.DEFAULT_PROFILE)
+        self.assertEqual(compile_json.call_count, 2)
+        self.assertEqual(artifact["input"]["settings"]["libraries"], {
+            "a.sol": {"L": "0x000000000000000000000000000000000010000c"},
+            "b.sol": {"L": "0x0000000000000000000000000000000000100023"},
+        })
+        self.assertEqual(artifact["output"], linked)
+        self.assertNotIn("libraries", artifact["profile"]["settings"])
+
     def test_remappings_reach_compiler_and_artifact(self) -> None:
         remappings = ("a/=b/", "c/=b/")
         with patch.object(exporter, "compiler_identity", return_value="test"), \

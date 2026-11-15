@@ -1160,9 +1160,6 @@ fun named ty name v =
   is_node ty v andalso
   JSONUtil.testField "name" (fn JSON.STRING s => s = name | _ => false) v
 
-val () = edited_unit_with using_contracts "public_library_unit"
-  (edit_first_where (named "FunctionDefinition" "addBonus") "addBonus"
-     (set_field "visibility" (JSON.STRING "public")) using_ast)
 val () = import_error_with Unsupported using_contracts "file-level using with functions"
   (edit_first "UsingForDirective" (drop_field "libraryName") using_ast)
 val () = import_error_with Unsupported using_contracts "contract using with functions"

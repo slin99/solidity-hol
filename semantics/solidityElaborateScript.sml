@@ -590,10 +590,8 @@ End
 (* A caught call binds its success flag, its results and its raw revert
  * data. *)
 Definition external_call_value_def:
-  external_call_value catching n mutability selector params rets ss target opts
+  external_call_value catching n kind selector params rets ss target opts
                       atoms args =
-    let kind = if mutability = ViewMut ∨ mutability = PureMut
-               then ExternalStaticCall else ExternalCall in
     let value = option_value opts atoms in
     let gas = option_atom GasOption opts atoms in
     ((ss ++ [if catching then
@@ -776,7 +774,13 @@ Definition convert_operand_def:
          | INR why => INR why)
     | EncodedAs ty =>
         (case (ty, vt) of
-           (LocatedT _ element, ElabType (LocatedT _ actual)) =>
+           (LocatedT StorageLoc element, ElabType (LocatedT StorageLoc actual)) =>
+             if element = actual then
+               let (ss, slot) = bind_value n (UintT 256) (StorageSlotOperation element a) in
+               INL ((ss, UintT 256, slot), n + 1)
+             else INR "type conversion between these types"
+         | (LocatedT StorageLoc _, _) => INR "type conversion between these types"
+         | (LocatedT _ element, ElabType (LocatedT _ actual)) =>
              if element = actual then INL (([], ty, a), n)
              else INR "type conversion between these types"
          | (LocatedT _ element, ElabBytesLiteral) =>
@@ -1336,6 +1340,26 @@ End
 (* An external call, caught or not, from its elaborated operands r: the
  * target, the call options in source order and the arguments. Value only for
  * a payable callee, as the compiler requires. *)
+Definition external_abi_type_def:
+  (external_abi_type (LocatedT StorageLoc _) = UintT 256) ∧
+  (external_abi_type ty = ty)
+End
+
+Definition external_operand_targets_def:
+  external_operand_targets callee opts =
+    case all_some (MAP call_variable_type callee.ext_parameters) of
+      SOME ps => encoded_as (AddressT NonpayableAddress ::
+                     REPLICATE (LENGTH opts) (UintT 256) ++ ps)
+    | NONE => []
+End
+
+Definition external_operand_order_def:
+  external_operand_order opts order =
+    if order = [] then [] else
+    let prefix = 1 + LENGTH opts in
+    GENLIST I prefix ++ MAP (λi. prefix + i) order
+End
+
 Definition external_call_def:
   external_call catching ctx (info : node_info) callee opts operands order tid r =
     let shape =
@@ -1343,28 +1367,26 @@ Definition external_call_def:
              all_some (MAP call_variable_type callee.ext_returns)) of
          (SOME params, SOME rets) =>
            if (MEM ValueOption opts ⇒ callee.ext_mutability = PayableMut) ∧
+              (callee.ext_kind = ExternalDelegateCall ⇒ ¬catching ∧ opts = []) ∧
+              (callee.ext_bound ⇒ callee.ext_kind = ExternalDelegateCall ∧ params ≠ []) ∧
               LENGTH operands = LENGTH params + 1 + LENGTH opts ∧
               argument_order_ok order (LENGTH params) ∧
               decode_type_identifier tid = SOME (call_value_type rets) ∧
-              EVERY (abi_binding_ok ctx.enums ctx.structs) (params ++ rets)
-           then INL (params, rets) else INR (info.node_id, "unsupported external call")
+              EVERY (λty. external_abi_type ty = ty ∨
+                          callee.ext_kind = ExternalDelegateCall) params ∧
+              EVERY (abi_binding_ok ctx.enums ctx.structs)
+                (MAP external_abi_type params ++ rets)
+           then INL (MAP external_abi_type params, rets)
+           else INR (info.node_id, "unsupported external call")
        | _ => INR (info.node_id, "unsupported external call")) in
     case (shape, r) of
       (INR b, r) => reject b r
     | (INL _, INR bs) => INR bs
-    | (INL (params, rets), INL ((ss, vs0), next)) =>
-        (case (arrange order vs0, arrange order (expr_ids operands)) of
-           (SOME vs, SOME ids) =>
-             (case convert_operands next info.node_id ids
-                     (encoded_as (AddressT NonpayableAddress ::
-                        REPLICATE (LENGTH opts) (UintT 256) ++ params)) vs of
-                INL (cs, _, t :: atoms, n1) =>
-                  INL (external_call_value catching n1 callee.ext_mutability
-                         callee.ext_selector params rets (ss ++ cs) t opts
-                         (TAKE (LENGTH opts) atoms) (DROP (LENGTH opts) atoms))
-              | INL _ => INR [(info.node_id, "unsupported external call")]
-              | INR bs => INR bs)
-         | _ => INR [(info.node_id, "unsupported external call")])
+    | (INL (params, rets), INL ((ss, t :: atoms), next)) =>
+        INL (external_call_value catching next callee.ext_kind
+               callee.ext_selector params rets ss t opts
+               (TAKE (LENGTH opts) atoms) (DROP (LENGTH opts) atoms))
+    | _ => INR [(info.node_id, "unsupported external call")]
 End
 
 Definition elab_expr_def:
@@ -1771,7 +1793,7 @@ Definition elab_expr_def:
                 SOME _ =>
                   (case call_target ctx expression of
                      INL (callee, params, rets) =>
-                       bind_call callee rets (elab_args ctx n info.node_id (early_call_arguments expression) order params args)
+                       bind_call callee rets (elab_args ctx n info.node_id (early_call_arguments expression) order (values_of params) args)
                    | INR b => reject b (elab_arg_values ctx n args))
               | NONE =>
                   (* a call through an internal function value: the callee,
@@ -1786,7 +1808,7 @@ Definition elab_expr_def:
                            then reject (info.node_id, "call does not match the function type")
                                   (elab_arg_values ctx n args) else
                            let (gs, g') = bind_value n1 gty (ConvertOperation gty g) in
-                           (case elab_args ctx (n1 + 1) info.node_id 0 [] ps args of
+                           (case elab_args ctx (n1 + 1) info.node_id 0 [] (values_of ps) args of
                               INL ((sa, atoms), n2) =>
                                 INL ((cs ++ gs ++ sa ++
                                         [DefineStmt (AstId n2) (call_result_type rs)
@@ -1802,12 +1824,12 @@ Definition elab_expr_def:
     | SrcSuperCall info r args order tid =>
         (case call_target ctx expression of
            INL (callee, params, rets) =>
-             bind_call callee rets (elab_args ctx n info.node_id 0 order params args)
+             bind_call callee rets (elab_args ctx n info.node_id 0 order (values_of params) args)
          | INR b => reject b (elab_arg_values ctx n args))
     | SrcBaseCall info _ args order _ =>
         (case call_target ctx expression of
            INL (callee, params, rets) =>
-             bind_call callee rets (elab_args ctx n info.node_id 0 order params args)
+             bind_call callee rets (elab_args ctx n info.node_id 0 order (values_of params) args)
          | INR b => reject b (elab_arg_values ctx n args))
     | SrcBuiltinCall info _ builtin condition message tid =>
         if ¬(builtin_shape builtin condition message ∧ tid = "t_tuple$__$") then
@@ -1864,7 +1886,9 @@ Definition elab_expr_def:
                 | INR bs => INR bs))
     | SrcExternalCall info callee opts operands order tid =>
         external_call F ctx info callee opts operands order tid
-          (elab_arg_values ctx n operands)
+          (elab_args ctx n info.node_id (if callee.ext_bound then 2 else 0)
+             (external_operand_order opts order)
+             (external_operand_targets callee opts) operands)
     (* S(args): the arguments in the call's order, then the struct is
        allocated, and each field converted and written in declaration order *)
     | SrcStructConstructor info id args order tid =>
@@ -2243,7 +2267,7 @@ Definition elab_expr_def:
         INL ((ss, vs), n1) =>
           (case (arrange order vs, arrange order (expr_ids es)) of
              (SOME vs', SOME ids) =>
-               (case convert_operands n1 id ids (values_of tys) vs' of
+               (case convert_operands n1 id ids tys vs' of
                   INL (cs, _, as, n2) => INL ((ss ++ cs, as), n2)
                 | INR bs => INR bs)
            | _ => INR [(id, "argument order")])
@@ -2264,10 +2288,19 @@ Definition elab_expr_def:
           | SOME remaining =>
           (case elab_expr ctx n e of
              INL ((ss, a, vt), n1) =>
-               (case coerce n1 ty a vt of
-                  INL ((cs, a'), n2) =>
+               (case (case ty of
+                       EncodedAs expected =>
+                         (case coerce n1 expected a vt of
+                            INL ((cs, a'), next) =>
+                              (case convert_operand next ty a' (ElabType expected) of
+                                 INL ((ds, actual, value), stop) =>
+                                   INL ((cs ++ ds, actual, value), stop)
+                               | INR why => INR why)
+                          | INR why => INR why)
+                     | _ => convert_operand n1 ty a vt) of
+                  INL ((cs, actual, a'), n2) =>
                     let (captured, next) =
-                      if exprs_assign rest then snapshot n2 a' (ElabType ty)
+                      if exprs_assign rest then snapshot n2 a' (ElabType actual)
                       else (([], a'), n2) in
                     let (saved, value) = captured in
                     (case elab_args ctx next id (early - 1)
@@ -2427,19 +2460,19 @@ Definition elab_expr_def:
            INL (callee, params, rets) =>
              call_location info.node_id
                (bind_call callee rets
-                 (elab_args ctx n info.node_id (early_call_arguments e) order params args))
+                 (elab_args ctx n info.node_id (early_call_arguments e) order (values_of params) args))
          | INR b => reject b (elab_arg_values ctx n args))
     | SrcSuperCall info _ args order _ =>
         (case call_target ctx e of
            INL (callee, params, rets) =>
              call_location info.node_id
-               (bind_call callee rets (elab_args ctx n info.node_id 0 order params args))
+               (bind_call callee rets (elab_args ctx n info.node_id 0 order (values_of params) args))
          | INR b => reject b (elab_arg_values ctx n args))
     | SrcBaseCall info _ args order _ =>
         (case call_target ctx e of
            INL (callee, params, rets) =>
              call_location info.node_id
-               (bind_call callee rets (elab_args ctx n info.node_id 0 order params args))
+               (bind_call callee rets (elab_args ctx n info.node_id 0 order (values_of params) args))
          | INR b => reject b (elab_arg_values ctx n args))
     | SrcUnsupportedExpr info msg es =>
         INR ((info.node_id, msg) :: blockers (elab_arg_values ctx n es))
@@ -2746,7 +2779,8 @@ Definition try_operation_def:
     case call of
       SrcExternalCall info callee opts operands order tid =>
         external_call T ctx info callee opts operands order tid
-          (elab_arg_values ctx n operands)
+          (elab_args ctx n info.node_id 0 (external_operand_order opts order)
+             (external_operand_targets callee opts) operands)
     | _ => INR [(id, "unsupported try statement")]
 End
 
@@ -3134,7 +3168,7 @@ End
 Definition elab_modifier_args_def:
   (elab_modifier_args ctx n (id : num) [] [] = INL ([], n)) ∧
   (elab_modifier_args ctx n id ((x, ty) :: ps) (e :: es) =
-    case elab_args ctx n (expr_id e) 0 [] [ty] [e] of
+    case elab_args ctx n (expr_id e) 0 [] (values_of [ty]) [e] of
       INL ((ss, as), n1) =>
         (case elab_modifier_args ctx n1 id ps es of
            INL (ss', n2) =>
@@ -3536,7 +3570,7 @@ Definition elab_base_arguments_def:
   (elab_base_arguments ctx fs n ((x, b, args) :: rest) =
     case (constructor_parameters x fs, constructor_parameters b fs) of
       (SOME xps, SOME bps) =>
-        (case elab_args (ctx with variables := xps) n b 0 [] (MAP SND bps) args of
+        (case elab_args (ctx with variables := xps) n b 0 [] (values_of (MAP SND bps)) args of
            INL ((ss, atoms), n1) =>
              (case elab_base_arguments ctx fs n1 rest of
                 INL (ss', n2) => INL (ss ++ define_parameters bps atoms ++ ss', n2)
@@ -3992,6 +4026,9 @@ val () = cv_auto_trans revert_shape_def;
 val () = cv_auto_trans revert_arguments_def;
 val () = cv_auto_trans checked_callee_def;
 val () = cv_auto_trans call_target_def;
+val () = cv_auto_trans external_abi_type_def;
+val () = cv_auto_trans external_operand_targets_def;
+val () = cv_auto_trans external_operand_order_def;
 
 val sublist_pre_def = cv_auto_trans_pre_rec "sublist_pre"
   (INST_TYPE [alpha |-> “:char”] rich_listTheory.IS_SUBLIST)
