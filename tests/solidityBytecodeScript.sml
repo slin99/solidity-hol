@@ -205,14 +205,14 @@ End
 val () = cv_auto_trans is_diagnostic_def;
 val () = cv_auto_trans returned_def;
 val () = cv_auto_trans patch_word_def;
-val () = cv_auto_trans patch_immutables_def;
+val () = cv_auto_trans (INST_TYPE [beta |-> “:num”] patch_immutables_def);
 val () = cv_auto_trans code_immutable_words_def;
 val () = cv_auto_trans seed_storage_def;
 val () = cv_auto_trans contract_accounts_def;
 val () = cv_auto_trans differential_accounts_def;
 val () = cv_auto_trans storage_values_def;
 val () = cv_auto_trans project_observation_def;
-val () = cv_auto_trans expected_storage_def;
+val () = cv_auto_trans (INST_TYPE [alpha |-> “:num”] expected_storage_def);
 val () = cv_auto_trans case_accounts_def;
 val () = cv_auto_trans expected_logs_def;
 val () = cv_auto_trans differential_tx_def;
