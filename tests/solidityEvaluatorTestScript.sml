@@ -380,7 +380,7 @@ QED
  * null references retain the ordinary empty-array behavior. *)
 Theorem unassigned_fixed_memory_rejected:
   eval_operation test_env initial_state
-    (NullMemoryOperation (ArrayT u256 (SOME 1))) =
+    (DefaultReferenceOperation MemoryLoc (ArrayT u256 (SOME 1))) =
     ValueOk (ReferenceValue
       (MemoryReference (HeapId 0) 0 (ArrayT u256 (SOME 1)))) ∧
   memory_array_length initial_state
