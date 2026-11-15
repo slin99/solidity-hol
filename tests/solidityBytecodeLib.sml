@@ -271,6 +271,9 @@ fun read_bytecode_artifact path =
     else fail (path ^ ": expected solidity-hol-solc-artifact-v1, got " ^ format)
   end
 
+fun artifact_contract artifact source contract =
+  JSONUtil.get (artifact, map JSONUtil.SEL ["output", "contracts", source, contract])
+
 (* Peer code and every library linked by the suite's compiler artifact. *)
 fun fixture_code root prefix s =
   let
@@ -399,9 +402,6 @@ fun encode types values =
   in
     rhs (concl (cv_eval “enc (Tuple ^tys) (ListV ^vs)”))
   end
-
-fun artifact_contract artifact source contract =
-  JSONUtil.get (artifact, map JSONUtil.SEL ["output", "contracts", source, contract])
 
 fun named_abi artifact name =
   case List.filter
