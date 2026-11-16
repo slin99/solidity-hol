@@ -5,7 +5,7 @@ import sys
 import tempfile
 from typing import Any, Callable
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -14,6 +14,25 @@ import run_semantic_expectations as runner
 
 CONFIGURED = {"HOLBUILD_REMOTE_CACHE_URL": "https://cache.invalid"}
 DONE = f"solidity-hol:{runner.CONTEXT} " + "a" * 64 + " done\n"
+
+
+class Action:
+    """A run-action process that a run-style fake carried out when it started."""
+
+    def __init__(self, run: Callable[..., Any], command: list[str], **kwargs: Any) -> None:
+        self.returncode = run(command, **kwargs).returncode
+
+    def poll(self) -> int:
+        return self.returncode
+
+    def wait(self) -> int:
+        return self.returncode
+
+
+def holbuild(run: Callable[..., Any]) -> Any:
+    """Patches subprocess so that run fakes every holbuild call, run-action's included."""
+    return patch.multiple(runner.subprocess, run=MagicMock(side_effect=run),
+                          Popen=MagicMock(side_effect=lambda c, **k: Action(run, c, **k)))
 
 
 def record(test: str, **fields: Any) -> str:
@@ -58,7 +77,7 @@ class FleetExpectationTests(unittest.TestCase):
     def run_batches(self, run: Callable[..., Any], tests: list[dict[str, Any]],
                     environment: dict[str, str] | None = None) -> None:
         with patch.dict(runner.os.environ, environment or {}, clear=True), \
-                patch.object(runner.subprocess, "run", side_effect=run):
+                holbuild(run):
             runner.run_batches("holbuild", self.work, tests)
 
     def complete(self, outputs: Path, batch: dict[str, Any]) -> str:
@@ -137,6 +156,26 @@ class FleetExpectationTests(unittest.TestCase):
                                      {"failed": "script", "missing": "status 0",
                                       "status": "status 1"}[name])
                 self.assertEqual(runner.completed_tests(self.work), set())
+
+    def test_a_running_action_past_its_cap_is_stopped_but_a_queued_one_is_not(self) -> None:
+        log = self.work / "hol.log"
+        running = f"holbuild: remote solidity-hol:{runner.CONTEXT}: running\n"
+        for name, text, sleep, expected in (("running", running, "30", None),
+                                            ("queued", "", "0.5", 0)):
+            with self.subTest(name):
+                log.write_text(text)
+                process = subprocess.Popen(["sleep", sleep])
+                self.addCleanup(process.kill)
+                self.assertEqual(runner.wait_capped(process, log, 0.2, poll=0.05), expected)
+                self.assertIsNotNone(process.poll())
+
+    def test_an_action_past_its_cap_fails_as_timed_out(self) -> None:
+        script = runner.BatchScript(runner.HOL_SCRIPT, "tests", "M", seconds=lambda b: 7.0)
+        with patch.object(runner, "wait_capped", return_value=None) as wait, \
+                self.assertRaises(runner.ActionTimedOut) as failure, holbuild(self.fleet()):
+            runner.run_fleet_batch("holbuild", self.work, self.make_tests(1), script)
+        self.assertEqual(wait.call_args.args[2], 7.0)
+        self.assertEqual(failure.exception.reason, "timeout")
 
     def no_coordinator(self, outputs: Path, batch: dict[str, Any]) -> str:
         return runner.NO_COORDINATOR + "\n"
