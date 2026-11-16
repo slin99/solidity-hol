@@ -56,6 +56,40 @@ contract AssemblyLibraryForms {
         }
     }
 
+    // Each read below covers memory written only inside the loop, branch or
+    // switch before it.
+    function loopByte(uint256 n) external pure returns (bytes32 h) {
+        assembly {
+            for { let i := 0 } lt(i, add(n, 1)) { i := add(i, 1) } {
+                mstore8(0x00, add(i, 0x41))
+            }
+            h := keccak256(0x00, 0x01)
+        }
+    }
+
+    function branchCopy(bool b, uint256) external pure returns (bytes32 h) {
+        assembly {
+            // The second argument, copied from calldata.
+            if b { calldatacopy(0x00, 0x24, 0x20) }
+            h := keccak256(0x00, 0x20)
+        }
+    }
+
+    function switchCopy(uint256 k, uint256 v) external pure returns (bytes32 h) {
+        assembly {
+            switch k
+            case 0 {
+                mstore(0x20, v)
+                mcopy(0x00, 0x20, 0x20)
+            }
+            default {
+                mstore(0x20, k)
+                mcopy(0x00, 0x20, 0x20)
+            }
+            h := keccak256(0x00, 0x40)
+        }
+    }
+
     // The zero slot as scratch; v left there must be zero at the end.
     function zeroSlot(uint256 v) external pure returns (uint256 r) {
         assembly {

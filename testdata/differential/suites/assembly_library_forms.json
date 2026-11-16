@@ -78,6 +78,69 @@
       }
     },
     {
+      "name": "loop_byte_once",
+      "function": "loopByte",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x03783fac2efed8fbc9ad443e592ee30e61d65f471140c10ca155e937b435b760"
+        ]
+      }
+    },
+    {
+      "name": "loop_byte_last",
+      "function": "loopByte",
+      "args": [
+        2
+      ],
+      "expect": {
+        "return": [
+          "0x017e667f4b8c174291d1543c466717566e206df1bfd6f30271055ddafdb18f72"
+        ]
+      }
+    },
+    {
+      "name": "branch_calldatacopy",
+      "function": "branchCopy",
+      "args": [
+        true,
+        7
+      ],
+      "expect": {
+        "return": [
+          "0xa66cc928b5edb82af9bd49922954155ab7b0942694bea4ce44661d9a8736c688"
+        ]
+      }
+    },
+    {
+      "name": "switch_case_mcopy",
+      "function": "switchCopy",
+      "args": [
+        0,
+        9
+      ],
+      "expect": {
+        "return": [
+          "0x87e8a52529e8ece4ef759037313542a6429ff494a9fab9027fb79db90124eba6"
+        ]
+      }
+    },
+    {
+      "name": "switch_default_mcopy",
+      "function": "switchCopy",
+      "args": [
+        3,
+        9
+      ],
+      "expect": {
+        "return": [
+          "0xcbc4e5fb02c3d1de23a9f1e014b4d2ee5aeaea9505df5e855c9210bf472495af"
+        ]
+      }
+    },
+    {
       "name": "zero_slot_restored",
       "function": "zeroSlot",
       "args": [
