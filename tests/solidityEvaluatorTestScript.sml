@@ -514,9 +514,9 @@ Definition store_x_def:
 End
 
 Definition run_halt_def:
-  run_halt creating =
+  run_halt kind =
     run_entry 20 (asm_env []) halt_proc [] initial_state.frame
-      initial_state.world FEMPTY 0 creating
+      initial_state.world FEMPTY 0 kind
 End
 
 val () = cv_auto_trans asm_env_def;
@@ -1206,8 +1206,8 @@ QED
 (* A halt returns its bytes from a call frame and fails closed in a creation
  * frame. *)
 Theorem asm_halt_in_creation_invalid:
-  run_halt F = ContractReturned [] initial_state.world ∧
-  run_halt T = ContractInvalid "assembly halt in a creation frame"
+  run_halt CallEntry = ContractReturned [] initial_state.world ∧
+  run_halt CreationEntry = ContractInvalid "assembly halt in a creation frame"
 Proof
   CONV_TAC cv_eval
 QED
@@ -2098,7 +2098,7 @@ val () = cv_auto_trans abort_code_def;
 
 Theorem invalid_restores_complete_world:
   run_entry 20 (asm_env abort_code) (asm_proc abort_code)
-    [ScalarValue (IntegerValue 7)] initial_state.frame initial_state.world FEMPTY 0 F =
+    [ScalarValue (IntegerValue 7)] initial_state.frame initial_state.world FEMPTY 0 CallEntry =
     ContractAborted initial_state.world
 Proof
   CONV_TAC cv_eval
@@ -2106,7 +2106,7 @@ QED
 
 Theorem unused_observation_fails_on_halt:
   run_entry_with_gas 20 (asm_env []) halt_proc [] initial_state.frame
-    initial_state.world FEMPTY 0 F [GasLeftObservation 1] =
+    initial_state.world FEMPTY 0 CallEntry [GasLeftObservation 1] =
     ContractInvalid "unconsumed gas observation"
 Proof
   CONV_TAC cv_eval
@@ -2189,6 +2189,19 @@ Theorem message_signature_is_padded_calldata_prefix:
   environment_value
     (initial_state.frame with call_data := [1w; 2w; 3w; 4w; 5w]) MsgSig =
     ValueOk (ScalarValue (BytesValue [1w; 2w; 3w; 4w]))
+Proof
+  EVAL_TAC
+QED
+
+(* block.prevrandao and block.difficulty read the transaction's prevRandao,
+   all 256 bits of it. *)
+Theorem block_prevrandao_reads_prev_randao:
+  environment_value
+    (initial_state.frame with tx_params :=
+       initial_state.frame.tx_params with
+         prevRandao := 0x8000000000000000000000000000000000000000000000000000000000000001w)
+    BlockPrevRandao =
+    ValueOk (ScalarValue (IntegerValue (2 ** 255 + 1)))
 Proof
   EVAL_TAC
 QED

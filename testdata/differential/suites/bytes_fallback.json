@@ -1,0 +1,77 @@
+{
+  "name": "bytes_fallback",
+  "source": "testdata/differential/bytes_fallback.sol",
+  "contract": "BytesFallback",
+  "artifact": "testdata/differential/expected/bytes_fallback.json",
+  "cases": [
+    {
+      "name": "empty_calldata",
+      "calldata": "0x",
+      "expect": {
+        "returned": "0x00"
+      },
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "short_calldata",
+      "calldata": "0x010203",
+      "storage": {
+        "0": 4
+      },
+      "expect": {
+        "returned": "0x03020103"
+      },
+      "final_storage": {
+        "0": 5
+      }
+    },
+    {
+      "name": "unknown_selector",
+      "calldata": "0xdeadbeef01",
+      "expect": {
+        "returned": "0x01efbeadde05"
+      },
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "echo",
+      "calldata": "0xee0102",
+      "expect": {
+        "returned": "0xee0102"
+      },
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "long_echo",
+      "calldata": "0xee0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445",
+      "expect": {
+        "returned": "0xee0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445"
+      },
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "ping",
+      "function": "ping",
+      "args": [],
+      "expect": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000007"
+      }
+    },
+    {
+      "name": "value_reverts",
+      "calldata": "0x01",
+      "value": 1,
+      "expect": {
+        "revert": "0x"
+      }
+    }
+  ]
+}
