@@ -456,8 +456,8 @@ Theorem reference_locals_default_to_placeholders:
     SOME (DefaultReferenceOperation StorageLoc (ArrayT (UintT 256) NONE)) ∧
   default_operation (LocatedT StorageLoc (MappingT (UintT 256) (UintT 256))) =
     SOME (DefaultReferenceOperation StorageLoc (MappingT (UintT 256) (UintT 256))) ∧
-  default_operation (LocatedT StorageLoc (StructT "S")) =
-    SOME (DefaultReferenceOperation StorageLoc (StructT "S")) ∧
+  default_operation (LocatedT StorageLoc (StructT (AstId 7))) =
+    SOME (DefaultReferenceOperation StorageLoc (StructT (AstId 7))) ∧
   default_operation (LocatedT CalldataLoc BytesT) =
     SOME (DefaultReferenceOperation CalldataLoc BytesT) ∧
   default_operation (LocatedT StorageLoc (UintT 256)) = NONE
