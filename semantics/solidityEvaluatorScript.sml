@@ -2132,7 +2132,17 @@ val () = cv_auto_trans assembly_value_def;
 val () = cv_auto_trans assembly_cell_word_def;
 val () = cv_auto_trans assembly_reference_word_def;
 val () = cv_auto_trans assembly_inputs_def;
-val () = cv_auto_trans yul_substitute_expr_def;
+val yul_substitute_expr_pre_def = cv_auto_trans_pre
+  "yul_substitute_expr_pre yul_substitute_exprs_pre" yul_substitute_expr_def;
+
+Theorem yul_substitute_expr_pre[cv_pre,local]:
+  (∀sub e. yul_substitute_expr_pre sub e) ∧
+  (∀sub es. yul_substitute_exprs_pre sub es)
+Proof
+  ho_match_mp_tac yul_substitute_expr_ind >> rpt strip_tac >>
+  simp[Once yul_substitute_expr_pre_def] >> rw[] >> gvs[]
+QED
+
 val () = cv_auto_trans yul_unbind_def;
 val () = cv_auto_trans yul_substitute_stmt_def;
 val () = cv_auto_trans object_padding_def;
