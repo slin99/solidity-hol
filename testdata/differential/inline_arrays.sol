@@ -108,4 +108,16 @@ contract InlineArrays {
             free := mload(0x40)
         }
     }
+
+    function peek(uint256 p) internal pure returns (uint256 v) {
+        assembly { v := mload(p) }
+    }
+
+    // Each element is written before the next is evaluated: the second
+    // element reads the first one's cell through the free memory pointer.
+    function writeOrder() public pure returns (uint256[2] memory) {
+        uint256 p;
+        assembly { p := mload(0x40) }
+        return [uint256(7), peek(p)];
+    }
 }

@@ -1982,8 +1982,8 @@ Definition elab_expr_def:
                       | INR bs => INR bs)
                  | _ => INR [(info.node_id, "argument order")])
             | INR bs => INR bs))
-    (* [e0, ..., ek-1]: the array is allocated, then each element evaluated
-       and converted in order, and the elements written *)
+    (* [e0, ..., ek-1]: the array is allocated, then each element in
+       order is evaluated, converted and written *)
     | SrcInlineArray info es tid =>
         (case decode_elementary_identifier tid of
            SOME (LocatedT MemoryLoc (ArrayT element (SOME k))) =>
@@ -1993,11 +1993,8 @@ Definition elab_expr_def:
              (let (cs, a) = bind_value n ty
                     (AllocateMemoryOperation (ArrayT element (SOME k))
                        (ConstantAtom (IntegerValue (&k)))) in
-              case elab_args ctx (n + 1) info.node_id k []
-                     (REPLICATE k (ValueOf (element_type MemoryLoc element))) es of
-                INL ((ss, as), n1) =>
-                  let (ws, n2) = element_writes n1 a element 0 as in
-                  INL ((cs ++ ss ++ ws, a, ElabType ty), n2)
+              case elab_inline_elements ctx (n + 1) a element 0 es of
+                INL (ss, n1) => INL ((cs ++ ss, a, ElabType ty), n1)
               | INR bs => INR bs)
          | _ => INR ((info.node_id, "type annotation mismatch") ::
                      blockers (elab_arg_values ctx n es)))
@@ -2618,7 +2615,18 @@ Definition elab_expr_def:
            INL ((ss', targets), n2) =>
              INL ((ss ++ saved ++ ss', SOME (n1, target') :: targets), n2)
          | INR bs => INR bs)
-    | INR bs => INR (bs ++ blockers (elab_destinations ctx n cs)))
+    | INR bs => INR (bs ++ blockers (elab_destinations ctx n cs))) ∧
+  (* Each element of an inline array evaluated, converted to the element
+   * type and written to element i of the memory array a before the next. *)
+  (elab_inline_elements ctx n a element (i : num) [] = INL ([], n)) ∧
+  (elab_inline_elements ctx n a element i (e :: es) =
+    case elab_args ctx n (expr_id e) 1 [] [ValueOf (element_type MemoryLoc element)] [e] of
+      INL ((ss, as), n1) =>
+        let (ws, n2) = element_writes n1 a element i as in
+        (case elab_inline_elements ctx n2 a element (i + 1) es of
+           INL (ss', n3) => INL (ss ++ ws ++ ss', n3)
+         | INR bs => INR bs)
+    | INR bs => INR (bs ++ blockers (elab_inline_elements ctx n a element (i + 1) es)))
 Termination
   qexists_tac ‘measure (λx. case x of
      INL (ctx, n, e) => 4 * src_expr_size e + 2
@@ -2629,8 +2637,10 @@ Termination
    | INR (INR (INR (INR (INL (ctx, n, e))))) => 4 * src_expr_size e + 1
    | INR (INR (INR (INR (INR (INL (ctx, n, e)))))) => 4 * src_expr_size e + 2
    | INR (INR (INR (INR (INR (INR (INL (ctx, n, es))))))) => 4 * list_size src_expr_size es
-   | INR (INR (INR (INR (INR (INR (INR (ctx, n, cs))))))) =>
-       4 * list_size (option_size src_expr_size) cs + 3)’ >>
+   | INR (INR (INR (INR (INR (INR (INR (INL (ctx, n, cs)))))))) =>
+       4 * list_size (option_size src_expr_size) cs + 3
+   | INR (INR (INR (INR (INR (INR (INR (INR (ctx, n, a, element, i, es)))))))) =>
+       4 * list_size src_expr_size es + 2)’ >>
   conj_tac >- simp[prim_recTheory.WF_measure] >>
   (* only the equations naming the node matter: the case hypotheses about
      the children's results are large, so they are dropped, not simplified.
@@ -4108,7 +4118,7 @@ val () = cv_auto_trans finish_array_location_length_def;
 val () = cv_auto_trans finish_selector_def;
 
 val elab_expr_pre_def = cv_auto_trans_pre_rec
-  "elab_expr_pre elab_args_pre elab_values_pre elab_components_pre elab_location_pre elab_destination_pre elab_arg_values_pre elab_destinations_pre"
+  "elab_expr_pre elab_args_pre elab_values_pre elab_components_pre elab_location_pre elab_destination_pre elab_arg_values_pre elab_destinations_pre elab_inline_elements_pre"
   elab_expr_def (
   WF_REL_TAC ‘measure (λx. case x of
      INL (ctx, n, e) => 4 * cv_size e + 2
@@ -4118,7 +4128,9 @@ val elab_expr_pre_def = cv_auto_trans_pre_rec
    | INR (INR (INR (INR (INL (ctx, n, e))))) => 4 * cv_size e + 1
    | INR (INR (INR (INR (INR (INL (ctx, n, e)))))) => 4 * cv_size e + 2
    | INR (INR (INR (INR (INR (INR (INL (ctx, n, es))))))) => 4 * cv_size es
-   | INR (INR (INR (INR (INR (INR (INR (ctx, n, cs))))))) => 4 * cv_size cs + 3)’ >>
+   | INR (INR (INR (INR (INR (INR (INR (INL (ctx, n, cs)))))))) => 4 * cv_size cs + 3
+   | INR (INR (INR (INR (INR (INR (INR (INR (ctx, n, a, element, i, es)))))))) =>
+       4 * cv_size es + 2)’ >>
   cv_termination_tac >>
   rpt IF_CASES_TAC >> gvs[] >>
   simp[cvTheory.cv_size_def] >>
@@ -4143,7 +4155,9 @@ Theorem elab_pre_bounded[local]:
   (!ctx n e. 4 * src_expr_size e + 2 < b ==> elab_destination_pre ctx n e) /\
   (!ctx n es. 4 * list_size src_expr_size es < b ==> elab_arg_values_pre ctx n es) /\
   (!ctx n cs. 4 * list_size (option_size src_expr_size) cs + 3 < b ==>
-     elab_destinations_pre ctx n cs)
+     elab_destinations_pre ctx n cs) /\
+  (!ctx n a element i es. 4 * list_size src_expr_size es + 2 < b ==>
+     elab_inline_elements_pre ctx n a element i es)
 Proof
   completeInduct_on ‘b’ >> rpt conj_tac >> rpt gen_tac >> disch_tac >>
   qpat_x_assum ‘!m. m < b ==> _’ (drule_then strip_assume_tac)
@@ -4170,6 +4184,9 @@ Proof
   >~ [‘elab_destinations_pre ctx n cs’] >-
     (Cases_on ‘cs’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
      simp[listTheory.list_size_def, basicSizeTheory.option_size_def])
+  >~ [‘elab_inline_elements_pre ctx n a element i es’] >-
+    (Cases_on ‘es’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
+     simp[listTheory.list_size_def])
   >~ [‘elab_components_pre ctx n cs’] >-
     (Cases_on ‘cs’ >> simp_tac std_ss [Once elab_expr_pre_def] >>
      simp[listTheory.list_size_def, basicSizeTheory.option_size_def]) >>
