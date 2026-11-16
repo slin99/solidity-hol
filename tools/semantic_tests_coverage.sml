@@ -71,7 +71,7 @@ local
              * did prepare block the test too. *)
             val reasons = List.concat (map (fn Prepared p =>
                 List.concat (map (String.fields (fn c => c = #"\n"))
-                  (List.mapPartial #reason (#functions p)))
+                  (List.mapPartial #reason (#functions p))) @ #creation p
               | Rejected _ => []) outcomes)
           in
             emit test (status_name kind)
@@ -81,7 +81,10 @@ local
           let
             val functions = List.concat
               (map (fn Prepared p => #functions p | Rejected _ => []) outcomes)
-            val reasons = List.mapPartial #reason functions
+            (* A creation without a procedure leaves the unit partially
+             * admitted, like an unsupported function. *)
+            val reasons = List.mapPartial #reason functions @
+              List.concat (map (fn Prepared p => #creation p | Rejected _ => []) outcomes)
           in
             emit test (if null reasons then "admitted" else "partially-admitted")
               [("functions", Int.toString (length functions)),

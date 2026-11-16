@@ -828,6 +828,19 @@ fun is_base_member v =
   unevaluated_receiver (field v "expression") andalso
   not (is_library_member v)
 
+(* C.v names the variable v through a contract name: it is v itself, as
+ * variables are not virtual, and its receiver has no runtime evaluation. *)
+fun is_contract_variable_member v =
+  node_type v = "MemberAccess" andalso
+  String.isPrefix "t_type$_t_contract$_" (raw_type_id (field v "expression")) andalso
+  unevaluated_receiver (field v "expression") andalso
+  (case optional_field v "referencedDeclaration" of
+     SOME d =>
+       (case List.find (fn (i, _) => i = JSONUtil.asIntInf d) (!selector_declarations) of
+          SOME (_, n) => node_type n = "VariableDeclaration"
+        | NONE => false)
+   | NONE => false)
+
 fun is_attached v =
   String.isSubstring "_$attached_to$_"
     (string_field (field v "typeDescriptions") "typeIdentifier")
@@ -920,7 +933,7 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                   [info v, con "SrcEnumTypeName" [info (field v "expression"), mk_num enum],
                    mk_num (IntInf.fromInt index), type_id v]
             | NONE =>
-           if is_library_member v then
+           if is_library_member v orelse is_contract_variable_member v then
              (if is_attached v then
                 (ignore (expr (field v "expression"));
                  fail (describe v ^ ": an attached function is supported only as a callee"))

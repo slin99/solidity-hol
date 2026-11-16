@@ -485,6 +485,38 @@ fun once f =
              | NONE => let val x = f () in result := SOME x; x end
   end
 
+(* Why the program has no procedure for the creation (elaborate_contract
+ * lists it unsupported) when every constructor is supported, whose reasons
+ * would say why: the contracts' own blockers in loose, which include the
+ * creation's. A creation that fails only strictly, by calling an unsupported
+ * function, has none there and gets its contract's id alone. *)
+fun creation_blockers unit program loose =
+  let
+    val creation = record_field program "creation_procedure"
+    val unsupported =
+      #1 (listSyntax.dest_list (record_field program "unsupported_procedures"))
+    val contracts =
+      #1 (listSyntax.dest_list (record_field (unit_record unit) "unit_contracts"))
+    val ids = map (fn c =>
+        numSyntax.int_of_term (record_field (record_field c "contract_info") "node_id"))
+      contracts
+    val constructor_unsupported = List.exists (fn f =>
+        optionSyntax.is_some (record_field f "fn_unsupported") andalso
+        term_eq (record_field f "fn_kind")
+          (import_const "ConstructorKind"))
+      (unit_function_terms unit)
+  in
+    if optionSyntax.is_none creation orelse constructor_unsupported orelse
+       not (List.exists (term_eq (#1 (pairSyntax.dest_pair
+                                       (optionSyntax.dest_some creation))))
+              unsupported)
+    then []
+    else
+      case List.concat (map #2 (List.filter (fn (x, _) => mem x ids) (loose ()))) of
+        [] => map (fn x => Int.toString x ^ ": creation calls an unsupported function") ids
+      | lines => dedup lines
+  end
+
 fun prepare_unit imported =
   let
     val (imported, literal_defs, code_defs) = abbreviate_literals (unit_record imported)
@@ -526,7 +558,8 @@ fun prepare_unit imported =
      elaborates = unembed (LAND_CONV o RAND_CONV) unit_def elaborates,
      core_wf = unembed (fn c => RAND_CONV c THENC LAND_CONV (RAND_CONV c))
                  program_def core_wf,
-     functions = function_outcomes constant}
+     functions = function_outcomes constant,
+     creation = creation_blockers unit program loose}
   end
 
 (* A source of an artifact already checked by read_artifact, imported, with
