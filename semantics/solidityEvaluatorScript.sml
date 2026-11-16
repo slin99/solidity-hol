@@ -1817,10 +1817,11 @@ Definition assembly_write_one_def:
            NONE => NONE
          | SOME NONE =>
              (case assembly_word_type env ty of
-                SOME (UintT 256) => update_binding x UnwrittenValue scopes
-              | SOME (IntT 256) => update_binding x UnwrittenValue scopes
-              | SOME (FixedBytesT 32) => update_binding x UnwrittenValue scopes
-              | _ => NONE)
+                SOME t =>
+                  if t = UintT 256 ∨ t = IntT 256 ∨ t = FixedBytesT 32 then
+                    update_binding x UnwrittenValue scopes
+                  else NONE
+              | NONE => NONE)
          | SOME (SOME w) =>
              case assembly_value env ty (w2n w) of
                NONE => NONE
