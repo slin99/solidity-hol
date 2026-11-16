@@ -1257,6 +1257,51 @@ Proof
   EVAL_TAC
 QED
 
+(* A sub-word load reads only the bytes that survive it: shr(96, mload(0x0c))
+ * after mstore(0x00, x) keeps [0x0c, 0x20), all written, but shr(88, ...)
+ * keeps byte 0x20 too, and a plain mload reads [0x20, 0x2c). *)
+Theorem asm_prefix_load_rule:
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMStore [ylit 0w; YulName "x"]);
+     YulAssign ["x"] (YulBuiltin YShr [ylit 96w; YulBuiltin YMLoad [ylit 12w]])] ∧
+  ¬assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMStore [ylit 0w; YulName "x"]);
+     YulAssign ["x"] (YulBuiltin YShr [ylit 88w; YulBuiltin YMLoad [ylit 12w]])] ∧
+  ¬assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMStore [ylit 0w; YulName "x"]);
+     YulAssign ["x"] (YulBuiltin YMLoad [ylit 12w])] ∧
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMStore [ylit 16w; YulName "x"]);
+     YulAssign ["x"] (YulBuiltin YShr [ylit 128w; YulBuiltin YMLoad [ylit 32w]])] ∧
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMStore8 [ylit 32w; YulName "x"]);
+     YulAssign ["x"] (YulBuiltin YByte [ylit 0w; YulBuiltin YMLoad [ylit 32w]])] ∧
+  ¬assembly_memory_ok
+    [YulExprStmt (YulBuiltin YMStore8 [ylit 32w; YulName "x"]);
+     YulAssign ["x"] (YulBuiltin YByte [ylit 1w; YulBuiltin YMLoad [ylit 32w]])]
+Proof
+  EVAL_TAC
+QED
+
+(* As the block runs, the mload of a sub-word load is checked over the
+ * surviving bytes only; a shift by a name is a plain mload. *)
+Theorem asm_prefix_load_lowering:
+  yul_substitute_expr [("s", 5w)]
+    (YulBuiltin YShr [ylit 96w; YulBuiltin YMLoad [YulName "s"]]) =
+    YulCheckedBuiltin YShr
+      [ylit 96w; YulCheckedBuiltin YMLoad [ylit 5w; ylit 20w]] ∧
+  yul_substitute_expr []
+    (YulBuiltin YByte [ylit 0w; YulBuiltin YMLoad [YulName "p"]]) =
+    YulCheckedBuiltin YByte
+      [ylit 0w; YulCheckedBuiltin YMLoad [YulName "p"; ylit 1w]] ∧
+  yul_substitute_expr []
+    (YulBuiltin YShr [YulName "k"; YulBuiltin YMLoad [YulName "p"]]) =
+    YulCheckedBuiltin YShr
+      [YulName "k"; YulCheckedBuiltin YMLoad [YulName "p"]]
+Proof
+  EVAL_TAC
+QED
+
 (* call(gas(), a, 0, i, isz, o, osz) with literal arguments. *)
 Definition ycall_def:
   ycall a i isz out osz =

@@ -493,6 +493,9 @@ Definition eval_yul_builtin_def:
     | (YMLoad, [p]) =>
         let (m', bs) = yul_mload m (w2n p) in
           EvalValues [word_of_bytes_be bs] m'
+    | (YMLoad, [p; _]) =>
+        let (m', bs) = yul_mload m (w2n p) in
+          EvalValues [word_of_bytes_be bs] m'
     | (YMStore, [p; v]) => EvalValues [] (yul_mstore m (w2n p) v)
     | (YMStore8, [p; v]) =>
         EvalValues [] (yul_memory_write (yul_memory_touch m (w2n p) 1)
@@ -674,12 +677,15 @@ End
  * bytes the Solidity side laid out for it, and the bytes it has written
  * since; the rest of solc's memory (other objects, leftover scratch) is not
  * modelled.  yul_read_regions gives the (offset, size) regions a builtin
- * reads from memory, on its evaluated arguments.
+ * reads from memory, on its evaluated arguments.  An mload given a length n
+ * (a sub-word load, as inline assembly lowers it) reads only its first n
+ * bytes; it still loads the whole word.
  *)
 Definition yul_read_regions_def:
   yul_read_regions op (vs : bytes32 list) : (num # num) list =
     case (op, vs) of
       (YMLoad, [p]) => [(w2n p, 32)]
+    | (YMLoad, [p; n]) => [(w2n p, w2n n)]
     | (YKeccak256, [p; s]) => [(w2n p, w2n s)]
     | (YMCopy, [_; s; l]) => [(w2n s, w2n l)]
     | (YReturn, [p; s]) => [(w2n p, w2n s)]

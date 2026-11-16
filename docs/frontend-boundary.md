@@ -255,6 +255,11 @@ bytes copied from return data, a low-level call's or a `catch`'s, whose
 padding solc leaves as it was), and bytes it has written itself; any other read,
 another kind of memory object, the scratch space before the block writes it,
 or past an object's last word, ends the block with an `InvalidCompletion`.
+Both checks count only the bytes a sub-word load keeps: `shr(k, mload(p))`
+with a literal `k` reads `[p, p + 32 - k / 8)` (rounding `k / 8` down), and
+`byte(0, mload(p))` reads only byte `p`, so the bytes either shifts out may
+be unwritten, as when Solady reads an address from the low 20 bytes of a
+scratch word (`assembly_prefix_loads.sol`).
 This projection describes logical bytes, rather than physical ABI tail padding.
 In particular, `try_decode_error_message` can leave copied dirty padding or,
 for an unpadded string, bytes from the outbound call's temporary ABI buffer
