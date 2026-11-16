@@ -1058,38 +1058,59 @@ fun fuzz_status screened confirmed =
       else if is_con "Agree" recording then ("agree", source, ("bytecode", "source"))
       else ("pyrevm-mismatch", recording, ("recorded", "bytecode"))
 
-(* owed counts the "confirm" marks on cases that screened inconclusive: each
- * passes to the next case that doesn't, so a contract's sample isn't lost to
- * diagnostics. *)
+(* A case whose evaluation runs past this many seconds is inconclusive, with
+ * reason "Timeout": cases take seconds, and one that keeps going sits at the
+ * heap cap until it takes its contract's whole action down with it. A
+ * difference whose confirmation runs past it is an error instead, so a
+ * disagreement is never filed as inconclusive. *)
+val fuzz_case_seconds = 120.0
+
+(* owed counts the "confirm" marks on cases that screened inconclusive or ran
+ * out of time: each passes to the next case that doesn't, so a contract's
+ * sample isn't lost to diagnostics. *)
 fun run_fuzz_case {contract, code, unit, program, fuel, fixture, immutables} owed c =
   let
     val case_name = name_field c "name"
-    val no_initcode = fn () => fail "fuzz cases are calls, not creations"
-    val case_tm = case_term fixture immutables (call_input no_initcode c) c
-    fun evaluate name =
-      rhs (concl (cv_eval (list_mk_comb
-        (prim_mk_const {Thy = "solidityDifferential", Name = name},
-         [code, unit, program, num_term fuel, case_tm]))))
-    val screened = evaluate "fuzz_verdict"
+    fun emit fields =
+      emit_fuzz ([("kind", json_string "case"), ("contract", json_string contract),
+                  ("case", json_string case_name)] @ fields)
     val marked = case JSONUtil.findField c "confirm" of
                    SOME (JSON.BOOL b) => b | _ => false
-    val inconclusive = is_con "Inconclusive" screened
-    val confirm = not inconclusive andalso
-                  (marked orelse !owed > 0 orelse not (is_con "Agree" screened))
-    val () = if marked andalso inconclusive then owed := !owed + 1
-             else if confirm andalso not marked andalso !owed > 0 then owed := !owed - 1
-             else ()
-    val confirmed = if confirm then SOME (pairSyntax.dest_pair (evaluate "confirm_verdict"))
-                    else NONE
-    val (status, verdict, runs) = fuzz_status screened confirmed
   in
-    emit_fuzz ([("kind", json_string "case"), ("contract", json_string contract),
-                ("case", json_string case_name), ("status", json_string status),
-                ("screen", json_string (verdict_name screened)),
-                ("confirmed", if confirm then "true" else "false")] @
-               (if status = "inconclusive"
-                then [("reason", json_string (diagnostic_reason verdict))] else []) @
-               (if status = "agree" then [] else verdict_fields runs verdict))
+    let
+      val no_initcode = fn () => fail "fuzz cases are calls, not creations"
+      val case_tm = case_term fixture immutables (call_input no_initcode c) c
+      fun evaluate name =
+        Timeout.apply (Time.fromReal fuzz_case_seconds) (fn () =>
+          rhs (concl (cv_eval (list_mk_comb
+            (prim_mk_const {Thy = "solidityDifferential", Name = name},
+             [code, unit, program, num_term fuel, case_tm]))))) ()
+      val screened = evaluate "fuzz_verdict"
+      val inconclusive = is_con "Inconclusive" screened
+      val confirm = not inconclusive andalso
+                    (marked orelse !owed > 0 orelse not (is_con "Agree" screened))
+      val confirmed =
+        if not confirm then NONE
+        else SOME (pairSyntax.dest_pair (evaluate "confirm_verdict"))
+             handle Timeout.TIMEOUT _ =>
+               if is_con "Agree" screened then raise Timeout.TIMEOUT Time.zeroTime
+               else raise ERR "run_fuzz_case"
+                 ("confirming a difference ran past " ^ Real.toString fuzz_case_seconds ^ "s")
+      val () = if marked andalso inconclusive then owed := !owed + 1
+               else if confirm andalso not marked andalso !owed > 0 then owed := !owed - 1
+               else ()
+      val (status, verdict, runs) = fuzz_status screened confirmed
+    in
+      emit ([("status", json_string status), ("screen", json_string (verdict_name screened)),
+             ("confirmed", if confirm then "true" else "false")] @
+            (if status = "inconclusive"
+             then [("reason", json_string (diagnostic_reason verdict))] else []) @
+            (if status = "agree" then [] else verdict_fields runs verdict))
+    end
+    handle Timeout.TIMEOUT _ =>
+      (if marked then owed := !owed + 1 else ();
+       emit [("status", json_string "inconclusive"), ("screen", json_string "Timeout"),
+             ("confirmed", "false"), ("reason", json_string "Timeout")])
   end
   handle e =>
     emit_fuzz [("kind", json_string "case"), ("contract", json_string contract),

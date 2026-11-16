@@ -264,7 +264,9 @@ diagnostic passes to the contract's next case. A case's status is:
 - `disagree`: the source and Verifereum's run of the bytecode differ in
   outcome, complete storage or logs;
 - `pyrevm-mismatch`: they agree with each other but not with pyrevm;
-- `inconclusive`: either run ended in a diagnostic, reported by reason;
+- `inconclusive`: either run ended in a diagnostic, reported by reason, or the
+  case's evaluation ran past 120 seconds (`Timeout`; a confirmation of a
+  difference that does is an `error`);
 - `error`: the case could not be built or evaluated.
 
 Disagreements are shrunk (storage, immutables, value, sender and calldata
