@@ -122,14 +122,15 @@ End
  * bytes a; ecrecover(h, v, r, s), the address the signature (v, r, s) of the
  * hash h recovers, or address(0) if it is invalid; a.code.length, the
  * account's code size, without a memory bytes allocation; a.balance;
- * sha256(a), the SHA-256 hash of the memory bytes a; blockhash(n), the
- * hash of block n if it is one of the 256 before the current one, else 0;
- * and a.code, the account's code as new memory bytes.
+ * a.codehash, the account's code hash as EXTCODEHASH reads it, 0 for an
+ * empty account; sha256(a), the SHA-256 hash of the memory bytes a;
+ * blockhash(n), the hash of block n if it is one of the 256 before the
+ * current one, else 0; and a.code, the account's code as new memory bytes.
  *)
 Datatype:
   builtin_op
   = Keccak256Builtin | EcrecoverBuiltin | CodeLengthBuiltin | BalanceBuiltin
-  | Sha256Builtin | BlockhashBuiltin | CodeBuiltin
+  | CodeHashBuiltin | Sha256Builtin | BlockhashBuiltin | CodeBuiltin
 End
 
 (* DefaultReferenceOperation loc ty: a placeholder reference that a source
