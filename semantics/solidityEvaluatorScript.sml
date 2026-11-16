@@ -1397,7 +1397,8 @@ End
  * Nested function definitions aren't imported, so a body's narrowed sub never
  * reaches an inner function, where the compiler would see the block's names.
  * Each builtin call becomes a checked one, whose memory reads the evaluator
- * holds to the memory the block was given. *)
+ * holds to the memory the block was given; a sub-word load's mload carries
+ * the length of the prefix it keeps (mload_prefix) as a second argument. *)
 Definition yul_substitute_expr_def:
   (yul_substitute_expr sub (YulLit l) = YulLit l) ∧
   (yul_substitute_expr sub (YulName x) =
@@ -1411,6 +1412,13 @@ Definition yul_substitute_expr_def:
            if MEM b [YCall; YStaticCall; YDelegateCall] then
              YulBuiltin YGas [] :: yul_substitute_exprs sub rest
            else yul_substitute_exprs sub es
+       | [YulLit (LitNumber k); YulBuiltin m [p]] =>
+           (case mload_prefix b k m of
+              SOME n =>
+                [YulLit (LitNumber k);
+                 YulCheckedBuiltin YMLoad
+                   [yul_substitute_expr sub p; YulLit (LitNumber (n2w n))]]
+            | NONE => yul_substitute_exprs sub es)
        | _ => yul_substitute_exprs sub es)) ∧
   (yul_substitute_expr sub (YulCheckedBuiltin b es) =
     YulCheckedBuiltin b
@@ -1419,6 +1427,13 @@ Definition yul_substitute_expr_def:
            if MEM b [YCall; YStaticCall; YDelegateCall] then
              YulBuiltin YGas [] :: yul_substitute_exprs sub rest
            else yul_substitute_exprs sub es
+       | [YulLit (LitNumber k); YulBuiltin m [p]] =>
+           (case mload_prefix b k m of
+              SOME n =>
+                [YulLit (LitNumber k);
+                 YulCheckedBuiltin YMLoad
+                   [yul_substitute_expr sub p; YulLit (LitNumber (n2w n))]]
+            | NONE => yul_substitute_exprs sub es)
        | _ => yul_substitute_exprs sub es)) ∧
   (yul_substitute_expr sub (YulApply f es) =
     YulApply f (yul_substitute_exprs sub es)) ∧
