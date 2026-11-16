@@ -1347,8 +1347,9 @@ QED
  * mstore8's, calldatacopy's and mcopy's, and a write at a computed address
  * may cover any byte below 0x80 (the evaluator checks the read). A for's
  * condition sees its prelude's writes, its body the condition's, and its
- * post the body's. A Yul function's body sees what its statement list wrote
- * before it. *)
+ * post the body's. A Yul function's body sees what its statement list writes
+ * before and after it, since it may be called anywhere in that list, but not
+ * what other functions' bodies write. *)
 Theorem asm_structural_stores_rule:
   assembly_memory_ok
     [YulBlock [YulExprStmt (YulBuiltin YMStore [ylit 0w; YulName "x"])];
@@ -1392,8 +1393,16 @@ Theorem asm_structural_stores_rule:
   assembly_memory_ok
     [YulExprStmt (YulBuiltin YMStore [ylit 0w; ylit 1w]);
      YulFunction "f" [] ["r"] [YulAssign ["r"] (YulBuiltin YMLoad [ylit 0w])]] ∧
+  assembly_memory_ok
+    [YulFunction "f" [] ["r"] [YulAssign ["r"] (YulBuiltin YMLoad [ylit 0w])];
+     YulExprStmt (YulBuiltin YMStore [ylit 0w; ylit 1w])] ∧
   ¬assembly_memory_ok
     [YulFunction "f" [] ["r"] [YulAssign ["r"] (YulBuiltin YMLoad [ylit 0w])];
+     YulFunction "g" [] []
+       [YulExprStmt (YulBuiltin YMStore [ylit 0w; ylit 1w])]] ∧
+  ¬assembly_memory_ok
+    [YulBlock
+       [YulFunction "f" [] ["r"] [YulAssign ["r"] (YulBuiltin YMLoad [ylit 0w])]];
      YulExprStmt (YulBuiltin YMStore [ylit 0w; ylit 1w])]
 Proof
   EVAL_TAC

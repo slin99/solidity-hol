@@ -246,8 +246,9 @@ other address fail closed. A literal address with a literal length is
 read only at the free memory pointer, the zero slot or where the block may
 have written it before (any memory write, also inside an earlier block,
 branch or loop, in an argument to the right, since arguments run right to
-left, and, in a Yul function's body, before the function in its statement
-list), as the elaborator checks; the run-time check below has the last word. At a computed address a block may read only the free memory pointer,
+left, and, in a Yul function's body, anywhere in the function's statement
+list outside other functions' bodies, since a function may be called from
+anywhere in it), as the elaborator checks; the run-time check below has the last word. At a computed address a block may read only the free memory pointer,
 the zero slot `[0x60, 0x80)`, each array's words, each byte sequence's length word and data
 (zero-padded to whole words where solc's memory holds the zeros: not for
 bytes copied from return data, a low-level call's or a `catch`'s, whose

@@ -1231,7 +1231,8 @@ End
  * it: by earlier statements of its statement list or an enclosing one,
  * including inside their blocks, branches and loops, by the arguments to its
  * right, which run first, and, in a Yul function's body, by what its
- * enclosing statement list wrote before the function. A range is what a
+ * enclosing statement list writes before or after the function, which may
+ * be called anywhere in it (not by other functions' bodies). A range is what a
  * builtin writes (store_range), of which less may be written: these rules
  * only reject early what the evaluator's read check (yul_region_readable)
  * would fail closed. A statement list that halts (block_halts), as a whole
@@ -1477,7 +1478,8 @@ Definition memory_stmt_ok_def:
   (memory_stmt_ok h ws (YulExprStmt e) ⇔ memory_expr_ok h ws e) ∧
   (memory_stmts_ok h ws [] ⇔ T) ∧
   (memory_stmts_ok h ws (s :: ss) ⇔
-    memory_stmt_ok h ws s ∧
+    memory_stmt_ok h
+      (case s of YulFunction _ _ _ _ => stmts_stores ss ++ ws | _ => ws) s ∧
     memory_stmts_ok h (stmt_stores s ++ ws) ss) ∧
   (memory_cases_ok h ws [] ⇔ T) ∧
   (memory_cases_ok h ws ((_, body) :: cases) ⇔
