@@ -344,6 +344,19 @@ class TargetTests(unittest.TestCase):
         self.assertEqual((t.name, t.entry["fuel"], t.entry["peer"]), ("outside", 7, fuzz.ECHO_PEER))
         self.assertEqual(t.selectors, target().selectors)
 
+    def test_target_artifact_paths_are_kept_relative_to_the_root(self) -> None:
+        suite = json.loads((fuzz.SUITES / f"{SUITE}.json").read_text())
+        peer = fuzz.ECHO_PEER
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = Path(temporary) / "targets.json"
+            manifest.write_text(json.dumps({"targets": [
+                {**{k: suite[k] for k in ("name", "source", "contract")},
+                 "artifact": str(ROOT / suite["artifact"]),
+                 "peer": {**peer, "artifact": str(ROOT / peer["artifact"])}}]}))
+            [t] = fuzz.manifest_targets(manifest)
+        self.assertEqual(t.entry["artifact"], suite["artifact"])
+        self.assertEqual(t.entry["peer"], peer)
+
 
 class FleetTests(unittest.TestCase):
     def test_each_contract_gets_an_action_and_a_failed_one_fails_only_itself(self) -> None:

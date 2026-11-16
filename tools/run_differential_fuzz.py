@@ -30,6 +30,7 @@ from functools import lru_cache
 import hashlib
 import itertools
 import json
+import os
 from pathlib import Path
 import random
 import re
@@ -842,9 +843,17 @@ def suite_targets(names: list[str]) -> list[Target]:
 def manifest_targets(path: Path) -> list[Target]:
     """Targets from a JSON object {"targets": [...]}, each entry shaped like a
     suite (name, source, contract, artifact, optional peer and fuel); relative
-    artifact paths are from the repository root."""
+    artifact paths are from the repository root. Paths are kept relative to it,
+    as HOL reads them from there."""
+    def from_root(artifact: str) -> str:
+        return os.path.relpath(ROOT / artifact, ROOT)
+
     fuel = json.loads(CORPUS.read_text())["fuel"]
-    return [Target(entry, fuel) for entry in json.loads(path.read_text())["targets"]]
+    entries = json.loads(path.read_text())["targets"]
+    return [Target({**e, "artifact": from_root(e["artifact"]),
+                    **({"peer": {**e["peer"], "artifact": from_root(e["peer"]["artifact"])}}
+                       if "peer" in e else {})}, fuel)
+            for e in entries]
 
 
 def run_inputs(targets: list[Target], seed: int, candidates: int, k: int) -> dict[str, Any]:
