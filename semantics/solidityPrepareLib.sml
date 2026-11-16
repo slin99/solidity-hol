@@ -165,7 +165,7 @@ fun read_artifact {root, path} = json_input (fn () =>
 type function_outcome = {id : int, name : string, reason : string option}
 type prepared = {unit : term, program : term, source_valid : thm,
                  elaborates : thm, core_wf : thm,
-                 functions : function_outcome list}
+                 functions : function_outcome list, creation : string list}
 
 (* A predicate evaluated to T, or a rejection with the message rejection
  * computes. *)
