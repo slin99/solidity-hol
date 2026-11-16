@@ -494,12 +494,11 @@ fun creation_blockers unit program loose =
   let
     (* The elaborated program is a constructor application, which
      * TypeBase.dest_record does not take: its accessors read it. *)
-    fun program_field name =
-      rhs (concl (PURE_REWRITE_CONV (TypeBase.accessors_of (type_of program))
-        (mk_comb (prim_mk_const {Thy = "solidityCore", Name = "core_program_" ^ name},
-                  program))))
-    val creation = program_field "creation_procedure"
-    val unsupported = #1 (listSyntax.dest_list (program_field "unsupported_procedures"))
+    fun program_field tm =
+      rhs (concl (PURE_REWRITE_CONV (TypeBase.accessors_of (type_of program)) tm))
+    val creation = program_field “(^program).creation_procedure”
+    val unsupported =
+      #1 (listSyntax.dest_list (program_field “(^program).unsupported_procedures”))
     val contracts =
       #1 (listSyntax.dest_list (record_field (unit_record unit) "unit_contracts"))
     val ids = map (fn c =>
