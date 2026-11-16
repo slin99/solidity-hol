@@ -23,7 +23,7 @@ val prepared = #prepared (solidityPrepareLib.prepare_artifact
   {root = "..", path = "../testdata/frontend/expected/partial.json",
    source = "testdata/frontend/partial.sol"});
 
-(* add is supported; digest and the fallback use sha256, as does Mid.twice,
+(* add is supported; digest and the fallback use ripemd160, as does Mid.twice,
  * which Partial.twice reaches by super, so Partial.twice, digestTwice and
  * callsTwice call unsupported functions; the constructor's halting assembly
  * does not elaborate. Once Partial.twice is unsupported its super calls

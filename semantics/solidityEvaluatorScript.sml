@@ -279,7 +279,21 @@ Definition eval_builtin_def:
     | (BalanceBuiltin, [ScalarValue (AddressValue address)]) =>
         ValueOk (ScalarValue (IntegerValue
           (&(lookup_account address st.world.accounts).balance)))
+    | (Sha256Builtin, [ReferenceValue r]) =>
+        (case byte_contents st r of
+           INL bs => ValueOk (ScalarValue (BytesValue (num_to_bytes 32
+                       (w2n (SHA_256_bytes bs)))))
+         | INR c => ValueAbrupt c)
+    | (BlockhashBuiltin, [ScalarValue (IntegerValue n)]) =>
+        ValueOk (ScalarValue (BytesValue (num_to_bytes 32
+          (w2n (block_hash_word st.frame.tx_params (Num n))))))
     | _ => ValueAbrupt (InvalidCompletion "bad builtin operands")
+End
+
+(* The builtins the compiler computes by calling a precompile: ecrecover at
+ * address 1 and sha256 at address 2. *)
+Definition builtin_calls_precompile_def:
+  builtin_calls_precompile b ⇔ b = EcrecoverBuiltin ∨ b = Sha256Builtin
 End
 
 Definition eval_operation_def:
@@ -1080,12 +1094,14 @@ Definition simple_stmt_def:
                          value g args) =>
         call_external_mode T env x ty kind selector params rets target value g
           args st gas
-    (* ecrecover calls the precompile at address 1, which leaves return data
-     * the source computes no bytes for. *)
-    | DefineStmt x ty (BuiltinOperation EcrecoverBuiltin args) =>
-        (case eval_operation env st (BuiltinOperation EcrecoverBuiltin args) of
+    (* A builtin computed by a precompile call leaves return data the source
+     * computes no bytes for. *)
+    | DefineStmt x ty (BuiltinOperation b args) =>
+        (case eval_operation env st (BuiltinOperation b args) of
            ValueOk v =>
-             normal_result (define_binding x ty v (st with return_data := NONE)) gas
+             normal_result (define_binding x ty v
+               (if builtin_calls_precompile b then st with return_data := NONE
+                else st)) gas
          | ValueAbrupt c => abrupt_result c st gas)
     | DefineStmt x ty op =>
         (case eval_operation env st op of
@@ -1496,7 +1512,8 @@ Definition assembly_machine_def:
             call_value := n2w st.frame.call_value;
             call_data := st.frame.call_data;
             return_data := (case st.return_data of NONE => [] | SOME bs => bs);
-            code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
+            code := (lookup_account st.frame.code_address st.world.accounts).code;
+            objects := FEMPTY; immutable_offsets := FEMPTY;
             immutables := FEMPTY; memory := FEMPTY; memory_size := 0;
             gas_limit := external_call_gas; gas_observations := []; scopes := [scope];
             transaction_parameters := st.frame.tx_params |>
@@ -1875,9 +1892,12 @@ End
 
 Definition eval_assembly_def:
   eval_assembly n env code refs (st : source_state) gas =
-    let bad = if st.frame.static_context
-              then assembly_unsupported ++ assembly_state_writes
-              else assembly_unsupported in
+    let code_bad =
+          if (lookup_account st.frame.code_address st.world.accounts).code = []
+          then [YCodeSize; YCodeCopy] else [];
+        bad = if st.frame.static_context
+              then assembly_unsupported ++ assembly_state_writes ++ code_bad
+              else assembly_unsupported ++ code_bad in
     if ¬assembly_stmts_ok bad code then
       abrupt_result (InvalidCompletion "unsupported assembly builtin") st gas
     else if st.return_data = NONE ∧ ¬assembly_calls_ok code then

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8.0;
 
-// A contract of supported and unsupported functions (sha256 is not
+// A contract of supported and unsupported functions (ripemd160 is not
 // modelled, nor are halting assembly in a constructor or fixed-byte indexing
 // in a constant): the unsupported ones, and those calling them, have no
 // procedure, and calls of them are refused.
@@ -13,7 +13,7 @@ contract Base {
 
 contract Mid is Base {
     function twice(uint256 x) public pure virtual override returns (uint256) {
-        return uint256(sha256(abi.encodePacked(x)));
+        return uint256(uint160(ripemd160(abi.encodePacked(x))));
     }
 }
 
@@ -81,7 +81,7 @@ contract Partial is Mid {
     }
 
     function digest(bytes memory b) public pure returns (bytes32) {
-        return sha256(b);
+        return ripemd160(b);
     }
 
     function digestTwice(bytes memory b) public pure returns (bytes32) {
@@ -158,6 +158,6 @@ contract Partial is Mid {
     }
 
     fallback() external {
-        total = uint256(sha256(msg.data));
+        total = uint256(uint160(ripemd160(msg.data)));
     }
 }

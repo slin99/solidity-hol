@@ -823,6 +823,7 @@ fun run_expectations {root, manifest} =
                         tx_params := (differential_frame ^sender ^value ^data).tx_params with
                           <| origin := 0x9292929292929292929292929292929292929292w;
                              gasPrice := 3000000000; blockNumber := ^bn;
+                             prevHashes := test_block_hashes ^bn;
                              blockTimeStamp := 15 * ^bn; chainId := 1;
                              blockCoinBase := 0x7878787878787878787878787878787878787878w;
                              blockGasLimit := 20000000;

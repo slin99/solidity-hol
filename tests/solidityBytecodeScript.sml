@@ -178,6 +178,21 @@ Definition differential_block_def:
   |>
 End
 
+(* The hashes solc's test host (its EVMHost::get_block_hash) gives the blocks
+ * before block n, most recent first, as many as BLOCKHASH reaches: block k
+ * hashes to 0x3737...37 + k.
+ *)
+Definition host_block_hashes_def:
+  (host_block_hashes 0 (k : num) = ([] : bytes32 list)) ∧
+  (host_block_hashes (SUC c) k =
+    n2w (0x3737373737373737373737373737373737373737373737373737373737373737 + k)
+    :: host_block_hashes c (k - 1))
+End
+
+Definition test_block_hashes_def:
+  test_block_hashes n = host_block_hashes (MIN n 256) (n - 1)
+End
+
 Definition differential_tx_def:
   differential_tx sender value data = <|
     from := sender; to := SOME contract_address; data := data; nonce := 0;
@@ -205,7 +220,8 @@ End
 (* Observe the called account, or the newly created account's immutable words. *)
 Definition bytecode_execution_def:
   bytecode_execution (accounts, tx, refs) =
-    case run_transaction (Collect empty_domain) F differential_chain_id []
+    case run_transaction (Collect empty_domain) F differential_chain_id
+           (test_block_hashes differential_block.number)
            differential_block accounts tx of
       SOME (r, accounts) =>
         (let a = case tx.to of
@@ -279,7 +295,8 @@ End
 
 Definition bytecode_gas_observations_def:
   bytecode_gas_observations (accounts, tx, refs : (num # num list) list) =
-    case run_create (Collect empty_domain) F differential_chain_id []
+    case run_create (Collect empty_domain) F differential_chain_id
+           (test_block_hashes differential_block.number)
            differential_block accounts tx of
       SOME (INL _) => SOME []
     | SOME (INR (_, s, precomp)) =>
@@ -289,6 +306,8 @@ Definition bytecode_gas_observations_def:
     | NONE => NONE
 End
 
+val () = cv_auto_trans host_block_hashes_def;
+val () = cv_auto_trans test_block_hashes_def;
 val () = cv_auto_trans is_call_budget_gas_def;
 val () = cv_auto_trans observes_gas_def;
 val () = cv_auto_trans trace_top_gas_def;
