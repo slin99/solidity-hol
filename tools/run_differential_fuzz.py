@@ -7,7 +7,9 @@ calldata (10%), with initial storage seeded from the storage layout and
 immutables by name. pyrevm runs every candidate on the contract's runtime code
 in the differential transaction's world and records the outcome, the written
 storage and the logs; a stratified K per contract become cases in the
-differential suite format, with that recording as their expectation.
+differential suite format, with that recording as their expectation. With
+--sequences a candidate is 2 to 4 calls on one deployment, each screened from
+the storage the call before it left and each a case of its own.
 
 HOL batches on the fleet prepare each contract once and evaluate the source
 on its cases (solidityDifferentialLib.run_fuzz_cases). Every difference from
@@ -528,6 +530,8 @@ class Case:
     call: Call
     recording: Recording
     confirm: bool = False
+    # (sequence, step) for a call of a sequence, numbered from 0.
+    position: tuple[int, int] | None = None
 
     def suite_case(self, *, metadata: bool = True) -> dict[str, Any]:
         """The case in differential suite format; metadata keeps the fuzzer's
@@ -547,6 +551,8 @@ class Case:
         result["logs"] = self.recording.logs
         if metadata:
             result["fuzz"] = {"function": self.call.function, "mode": self.call.mode}
+            if self.position is not None:
+                result["fuzz"]["sequence"], result["fuzz"]["step"] = self.position
             if self.confirm:
                 result["confirm"] = True
         return result
@@ -561,30 +567,56 @@ def call_from_case(case: dict[str, Any]) -> Call:
                             for k, v in case.get("immutables", {}).items()})
 
 
+def draw_call(rng: random.Random, target: Target, f: dict[str, Any] | None,
+              states: list[dict[int, int]]) -> Call:
+    """A call to f: ABI-typed (70%), mutated (20%) or raw (10%) calldata; raw
+    always when f is None."""
+    payable = f is None or f["stateMutability"] == "payable"
+    roll = rng.random()
+    if f is None or roll >= 0.9:
+        function, mode, data = RAW, "raw", raw_calldata(rng, list(target.selectors.values()))
+    else:
+        typed = target.selectors[signature(f)] + encode_tuple(
+            f["inputs"], [random_value(rng, t) for t in f["inputs"]])
+        function = signature(f)
+        mode, data = ("typed", typed) if roll < 0.7 else ("mutated", mutate(rng, typed))
+    value = rng.choice([1, 10 ** 18]) if rng.random() < (0.5 if payable else 0.1) else 0
+    return Call(function=function, mode=mode, calldata=data,
+                sender=SENDER if rng.random() < 0.9 else rng.choice(SENDERS),
+                value=value, storage=rng.choice(states),
+                immutables=immutable_values(rng, target))
+
+
+def initial_states(rng: random.Random, target: Target) -> list[dict[int, int]]:
+    return [{}] + [initial_storage(rng, target) for _ in range(STORAGE_STATES)]
+
+
 def generate_calls(seed: int, target: Target, per_function: int) -> list[Call]:
     """per_function candidates for each function: 70% typed, 20% mutated and
     10% raw. A contract without functions gets per_function raw ones."""
     rng = random.Random(f"{seed}:{target.name}")
-    states = [{}] + [initial_storage(rng, target) for _ in range(STORAGE_STATES)]
-    selectors = list(target.selectors.values())
-    calls = []
-    for f in target.functions or [None]:
-        payable = f is None or f["stateMutability"] == "payable"
+    states = initial_states(rng, target)
+    return [draw_call(rng, target, f, states)
+            for f in target.functions or [None] for _ in range(per_function)]
+
+
+def generate_sequences(seed: int, target: Target, per_function: int) -> list[list[Call]]:
+    """per_function sequences of 2 to 4 calls starting with each function, the
+    later calls to any function. The calls of a sequence share its first
+    call's immutables, as one deployment; screening gives each later call the
+    storage the one before it left."""
+    rng = random.Random(f"{seed}:{target.name}:sequences")
+    states = initial_states(rng, target)
+    functions = target.functions or [None]
+    sequences = []
+    for f in functions:
         for _ in range(per_function):
-            roll = rng.random()
-            if f is None or roll >= 0.9:
-                function, mode, data = RAW, "raw", raw_calldata(rng, selectors)
-            else:
-                typed = target.selectors[signature(f)] + encode_tuple(
-                    f["inputs"], [random_value(rng, t) for t in f["inputs"]])
-                function = signature(f)
-                mode, data = ("typed", typed) if roll < 0.7 else ("mutated", mutate(rng, typed))
-            value = rng.choice([1, 10 ** 18]) if rng.random() < (0.5 if payable else 0.1) else 0
-            calls.append(Call(function=function, mode=mode, calldata=data,
-                              sender=SENDER if rng.random() < 0.9 else rng.choice(SENDERS),
-                              value=value, storage=rng.choice(states),
-                              immutables=immutable_values(rng, target)))
-    return calls
+            first = draw_call(rng, target, f, states)
+            rest = [draw_call(rng, target, rng.choice(functions), states)
+                    for _ in range(rng.randint(1, 3))]
+            sequences.append([first] + [replace(c, storage={}, immutables=first.immutables)
+                                        for c in rest])
+    return sequences
 
 
 # Screening with pyrevm
@@ -644,14 +676,24 @@ def screen(pyrevm: Any, target: Target, call: Call) -> Recording:
     return Recording(expect, final, logs)
 
 
-def stratify(seed: int, name: str, screened: list[tuple[Call, Recording]],
-             k: int) -> list[tuple[Call, Recording]]:
-    """K calls, taking functions in turn and, within a function, its distinct
-    outcome shapes in turn, so rare outcomes come before repeats."""
+Step = tuple[Call, Recording]
+
+
+def carried_storage(call: Call, recording: Recording) -> dict[int, int]:
+    """The contract's complete storage after a call, zero slots left out."""
+    return {k: v for k, v in {**call.storage, **recording.final_storage}.items() if v}
+
+
+def stratify(seed: int, name: str, screened: list[list[Step]], k: int) -> list[list[Step]]:
+    """Sequences (a single call is one of one) up to K calls, taking their
+    functions in turn and, within the same functions, their distinct outcome
+    shapes in turn, so rare outcomes come before repeats."""
     rng = random.Random(f"{seed}:{name}:stratify")
-    by_function: dict[str, dict[tuple[Any, ...], list[tuple[Call, Recording]]]] = defaultdict(dict)
-    for call, recording in screened:
-        by_function[call.function].setdefault(recording.shape(), []).append((call, recording))
+    by_function: dict[tuple[str, ...], dict[tuple[Any, ...], list[list[Step]]]] = defaultdict(dict)
+    for sequence in screened:
+        functions = tuple(call.function for call, _ in sequence)
+        shapes = tuple(recording.shape() for _, recording in sequence)
+        by_function[functions].setdefault(shapes, []).append(sequence)
     queues = []
     for function in sorted(by_function):
         groups = [by_function[function][s] for s in sorted(by_function[function], key=repr)]
@@ -660,17 +702,32 @@ def stratify(seed: int, name: str, screened: list[tuple[Call, Recording]],
         queues.append(deque(x for row in itertools.zip_longest(*groups) for x in row if x))
     # With more functions than k, a seed decides which are left out.
     rng.shuffle(queues)
-    chosen: list[tuple[Call, Recording]] = []
-    while len(chosen) < k and any(queues):
+    chosen: list[list[Step]] = []
+    calls = 0
+    while calls < k and any(queues):
         for queue in queues:
-            if queue and len(chosen) < k:
+            # A sequence longer than the calls left is skipped, so K bounds the calls.
+            if queue and len(queue[0]) <= k - calls:
                 chosen.append(queue.popleft())
+                calls += len(chosen[-1])
+            elif queue:
+                queue.popleft()
     return chosen
 
 
-def make_cases(selected: list[tuple[Call, Recording]]) -> list[Case]:
-    return [Case(f"fuzz_{i:04d}", call, recording, confirm=i % CONFIRM_EVERY == 0)
-            for i, (call, recording) in enumerate(selected)]
+def make_cases(selected: list[list[Step]]) -> list[Case]:
+    """A case per call: fuzz_NNNN for a single call, seq_NNNN_S for step S of
+    a longer sequence; every CONFIRM_EVERY-th call is confirmed."""
+    cases = []
+    for n, sequence in enumerate(selected):
+        for step, (call, recording) in enumerate(sequence):
+            i = len(cases)
+            if len(sequence) == 1:
+                cases.append(Case(f"fuzz_{n:04d}", call, recording, confirm=i % CONFIRM_EVERY == 0))
+            else:
+                cases.append(Case(f"seq_{n:04d}_{step}", call, recording,
+                                  confirm=i % CONFIRM_EVERY == 0, position=(n, step)))
+    return cases
 
 
 # Results
@@ -721,6 +778,11 @@ def report(manifests: dict[str, dict[str, Any]], results: list[dict[str, Any]]) 
         if fuzz["mode"] == "typed":
             typed[(key[0], fuzz["function"])].append(r.get("reason", r["status"]))
     failed = {n for n, r in contracts.items() if r["status"] != "ok"}
+    # A sequence agrees only if every step in its manifest has an agree result.
+    sequences: dict[tuple[str, int], list[str | None]] = defaultdict(list)
+    for key, fuzz in metadata.items():
+        if "sequence" in fuzz and key[0] not in failed:
+            sequences[(key[0], fuzz["sequence"])].append(cases[key]["status"] if key in cases else None)
 
     def listed(status: str) -> list[dict[str, Any]]:
         return [{**r, **metadata[k]} for k, r in sorted(cases.items()) if r["status"] == status]
@@ -731,6 +793,9 @@ def report(manifests: dict[str, dict[str, Any]], results: list[dict[str, Any]]) 
         "missing": sorted(f"{c}/{n}" for c, n in metadata.keys() - cases.keys() if c not in failed),
         "totals": dict(sorted(Counter(r["status"] for r in cases.values()).items())),
         "confirmed": sum(1 for r in cases.values() if r.get("confirmed")),
+        "sequences": {"evaluated": sum(any(sequence) for sequence in sequences.values()),
+                      "every_call_agrees": sum(all(s == "agree" for s in statuses)
+                                               for statuses in sequences.values())},
         "contract_failures": {n: contracts[n] for n in sorted(failed)},
         "unsupported": {n: r["unsupported"] for n, r in sorted(contracts.items())
                         if r.get("unsupported")},
@@ -750,6 +815,9 @@ def markdown(summary: dict[str, Any]) -> str:
     lines = ["# Differential fuzzing", "",
              f"{summary['cases']} cases over {summary['contracts']} contracts; "
              f"{summary['confirmed']} confirmed against the bytecode in Verifereum.", "",
+             *([f"{summary['sequences']['evaluated']} call sequences, "
+                f"{summary['sequences']['every_call_agrees']} agreeing after every call.", ""]
+               if summary["sequences"]["evaluated"] else []),
              "| Status | Cases |", "| --- | ---: |"]
     lines += [f"| {status} | {n} |" for status, n in summary["totals"].items()]
     for title, key in (("Disagreements", "disagree"), ("pyrevm mismatches", "pyrevm_mismatch"),
@@ -877,7 +945,39 @@ def manifest_targets(path: Path) -> list[Target]:
             for e in entries]
 
 
-def run_inputs(targets: list[Target], seed: int, candidates: int, k: int) -> dict[str, Any]:
+def semantic_targets(solidity: Path, coverage_path: Path, solc: Path, work: Path,
+                     shard: tuple[int, int]) -> list[Target]:
+    """The contracts of a coverage report's admitted semanticTests (those of
+    this shard), each compiled into work and named st_<test path>."""
+    fuel = json.loads(CORPUS.read_text())["fuel"]
+    index, count = shard
+    # A partially admitted contract is fuzzed too: calls to its unsupported
+    # functions end inconclusive, and its report lists them.
+    tests = fleet.admitted_tests(solidity, solc, coverage_path,
+                                 (fleet.coverage.ADMITTED, fleet.coverage.PARTIALLY_ADMITTED))[index::count]
+    tests_root = solidity / fleet.coverage.TESTS_DIR
+    work.mkdir(parents=True, exist_ok=True)
+    targets = []
+    for name in tests:
+        entry, _ = fleet.compile_admitted(solc, tests_root, name, work)
+        targets.append(Target({**entry, "artifact": os.path.relpath(entry["artifact"], ROOT),
+                               "name": "st_" + re.sub(r"\W", "_", name.removesuffix(".sol"))},
+                              fuel))
+    names = [t.name for t in targets]
+    if duplicates := sorted({n for n in names if names.count(n) > 1}):
+        raise SystemExit(f"semanticTests with the same target name: {', '.join(duplicates)}")
+    return targets
+
+
+def parse_shard(text: str) -> tuple[int, int]:
+    m = re.fullmatch(r"(\d+)/(\d+)", text)
+    if m is None or not int(m[1]) < int(m[2]):
+        raise argparse.ArgumentTypeError(f"expected I/N with 0 <= I < N, got {text!r}")
+    return int(m[1]), int(m[2])
+
+
+def run_inputs(targets: list[Target], seed: int, candidates: int, k: int, *,
+               sequences: bool) -> dict[str, Any]:
     """What a run's results depend on: its generation settings, the targets
     with their artifacts, and the runner's and the evaluator's sources."""
     fingerprint = hashlib.sha256()
@@ -890,16 +990,13 @@ def run_inputs(targets: list[Target], seed: int, candidates: int, k: int) -> dic
         fingerprint.update((ROOT / t.entry["artifact"]).read_bytes())
         fingerprint.update((ROOT / t.entry["peer"]["artifact"]).read_bytes())
     return {"source_hash": fingerprint.hexdigest(), "seed": seed, "candidates": candidates,
-            "k": k, "targets": [t.entry for t in targets]}
+            "k": k, "sequences": sequences, "targets": [t.entry for t in targets]}
 
 
 def check_inputs(output: Path, inputs: dict[str, Any], *, resume: bool) -> None:
-    """Start a run in an empty output directory, or resume one whose inputs
-    are unchanged."""
+    """Record a new run's inputs, or resume one whose inputs are unchanged."""
     path = output / "inputs.json"
     if not resume:
-        if output.exists() and any(output.iterdir()):
-            raise SystemExit(f"{output} is not empty; pass --resume to continue its run")
         fleet.exporter.write_json_atomic(path, inputs)
     elif not path.is_file() or json.loads(path.read_text()) != inputs:
         raise SystemExit("cannot resume: the generation settings, targets, artifacts or "
@@ -936,11 +1033,13 @@ class Fuzzer:
 
     def __init__(self, output: Path, *, seed: int, candidates: int, k: int,
                  evaluate: Callable[[Path, list[dict[str, Any]]], list[dict[str, Any]]],
-                 screen: Callable[[Target, Call], Recording] | None = None):
+                 screen: Callable[[Target, Call], Recording] | None = None,
+                 sequences: bool = False):
         self.output = output
         self.seed = seed
         self.candidates = candidates
         self.k = k
+        self.sequences = sequences
         self.evaluate = evaluate
         self._screen = screen
 
@@ -949,6 +1048,21 @@ class Fuzzer:
             pyrevm = import_pyrevm()
             self._screen = lambda t, c: screen(pyrevm, t, c)
         return self._screen(target, call)
+
+    def screen_sequence(self, target: Target, calls: list[Call]) -> tuple[list[Step], str | None]:
+        """Each call screened from the storage the one before it left; a call
+        that halts ends the sequence, and its reason is returned."""
+        steps: list[Step] = []
+        storage = calls[0].storage
+        for call in calls:
+            call = replace(call, storage=storage)
+            try:
+                recording = self.screen(target, call)
+            except Halt as halt:
+                return steps, str(halt)
+            steps.append((call, recording))
+            storage = carried_storage(call, recording)
+        return steps, None
 
     def manifest(self, target: Target) -> dict[str, Any]:
         """The target's manifest entry: its cases and screening counts, made
@@ -959,18 +1073,22 @@ class Fuzzer:
         halts: Counter[str] = Counter()
         seen = set()
         screened = []
-        calls = generate_calls(self.seed, target, self.candidates)
-        for call in calls:
-            if call.key() in seen:
+        candidates = (generate_sequences(self.seed, target, self.candidates) if self.sequences
+                      else [[c] for c in generate_calls(self.seed, target, self.candidates)])
+        for calls in candidates:
+            key = tuple(c.key() for c in calls)
+            if key in seen:
                 continue
-            seen.add(call.key())
-            try:
-                screened.append((call, self.screen(target, call)))
-            except Halt as halt:
-                halts[str(halt)] += 1
+            seen.add(key)
+            steps, halt = self.screen_sequence(target, calls)
+            if halt is not None:
+                halts[halt] += 1
+            if steps:
+                screened.append(steps)
         cases = make_cases(stratify(self.seed, target.name, screened, self.k))
-        stats = {"candidates": len(calls), "distinct": len(seen), "halted": dict(halts),
-                 "shapes": len({(c.function, r.shape()) for c, r in screened}),
+        stats = {"candidates": len(candidates), "distinct": len(seen), "halted": dict(halts),
+                 "shapes": len({tuple((c.function, r.shape()) for c, r in steps)
+                                for steps in screened}),
                  "selected": len(cases)}
         entry = {**target.entry, "screening": stats, "cases": [c.suite_case() for c in cases]}
         fleet.exporter.write_json_atomic(path, entry)
@@ -1079,6 +1197,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--targets", type=Path,
                         help='fuzz the contracts of a JSON {"targets": [suite-shaped entries]} '
                              "instead of the suites")
+    parser.add_argument("--semantic-tests", type=Path, metavar="SOLIDITY",
+                        help="fuzz the admitted semanticTests of --coverage, from this checkout "
+                             "of the Solidity repository at SOLIDITY_PIN")
+    parser.add_argument("--coverage", type=Path, help="semanticTests coverage report (JSON)")
+    parser.add_argument("--solc", type=Path, help="the pinned solc, for --semantic-tests")
+    parser.add_argument("--shard", type=parse_shard, default=(0, 1), metavar="I/N",
+                        help="fuzz only every Nth target from the Ith (counting from 0)")
+    parser.add_argument("--sequences", action="store_true",
+                        help="candidates are sequences of 2 to 4 calls instead of single calls")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--candidates", type=int, default=200,
                         help="candidates screened per function")
@@ -1093,12 +1220,23 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     # HOL runs from the repository root, so paths under the output must be absolute.
     args.output = args.output.resolve()
+    if not args.resume and args.output.exists() and any(args.output.iterdir()):
+        raise SystemExit(f"{args.output} is not empty; pass --resume to continue its run")
     fuzzer = Fuzzer(args.output, seed=args.seed, candidates=args.candidates, k=args.k,
-                    evaluate=lambda work, entries: run_fleet(args.holbuild, work, entries))
-    if args.targets and args.suite:
-        raise SystemExit("--targets and --suite are exclusive")
-    targets = manifest_targets(args.targets) if args.targets else suite_targets(args.suite)
-    check_inputs(args.output, run_inputs(targets, args.seed, args.candidates, args.k),
+                    evaluate=lambda work, entries: run_fleet(args.holbuild, work, entries),
+                    sequences=args.sequences)
+    if sum(map(bool, (args.targets, args.suite, args.semantic_tests))) > 1:
+        raise SystemExit("--targets, --suite and --semantic-tests are exclusive")
+    if args.semantic_tests:
+        if not (args.coverage and args.solc):
+            raise SystemExit("--semantic-tests needs --coverage and --solc")
+        targets = semantic_targets(args.semantic_tests, args.coverage, args.solc,
+                                   args.output / "artifacts", args.shard)
+    else:
+        targets = manifest_targets(args.targets) if args.targets else suite_targets(args.suite)
+        targets = targets[args.shard[0]::args.shard[1]]
+    check_inputs(args.output, run_inputs(targets, args.seed, args.candidates, args.k,
+                                         sequences=args.sequences),
                  resume=args.resume)
     summary = fuzzer.run(targets, max_batches=args.max_batches,
                          shrink_rounds=args.shrink_rounds)

@@ -209,7 +209,9 @@ fun environment_field v base member =
        ((tx_id, "gasprice"), "TxGasPrice"), ((block_id, "number"), "BlockNumber"),
        ((block_id, "timestamp"), "BlockTimestamp"), ((block_id, "chainid"), "BlockChainId"),
        ((block_id, "coinbase"), "BlockCoinbase"), ((block_id, "basefee"), "BlockBaseFee"),
-       ((block_id, "gaslimit"), "BlockGasLimit")]
+       ((block_id, "gaslimit"), "BlockGasLimit"),
+       ((block_id, "prevrandao"), "BlockPrevRandao"),
+       ((block_id, "difficulty"), "BlockPrevRandao")]
   in
     case List.find (fn (k, _) => k = (base, member)) fields of
       SOME (_, name) => prim_mk_const {Thy = "solidityCore", Name = name}
@@ -1007,6 +1009,10 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                               ["t_address", "t_address_payable"])
                    "balance of a non-address";
                  builtin_operation v NONE "BalanceBuiltin" [expr base])
+            | "code" =>
+                if is_address_code v then
+                  builtin_operation v NONE "CodeBuiltin" [expr base]
+                else fail (describe v ^ ": unsupported built-in member code")
             | member =>
                 let val receiver = expr (field v "expression") in
                   require v (member = "push" orelse member = "pop")
@@ -1089,6 +1095,11 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
          mk_opt expr_ty (Option.map expr (optional_field v "startExpression")),
          mk_opt expr_ty (Option.map expr (optional_field v "endExpression")), type_id v]
   | "TupleExpression" =>
+      if bool_field v "isInlineArray" then
+        con "SrcInlineArray"
+          [info v, listSyntax.mk_list (JSONUtil.arrayMap expr (field v "components"), expr_ty),
+           type_id v]
+      else
       let
         val components =
           JSONUtil.arrayMap
@@ -1096,8 +1107,6 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
               | c => optionSyntax.mk_some (expr c))
             (field v "components")
       in
-        require v (not (bool_field v "isInlineArray"))
-          "inline arrays are not supported";
         con "SrcTupleExpression"
           [info v, listSyntax.mk_list (components, optionSyntax.mk_option expr_ty),
            type_id v]
@@ -1920,11 +1929,7 @@ fun function modifier_target function_statics v = within v (fn v =>
        before in_function := false)
       handle e => (in_function := false; raise e))
     val () = blockers := !blockers @ header
-    val fallback =
-      if string_field v "kind" = "fallback" andalso
-         not (listSyntax.is_nil params andalso listSyntax.is_nil returns)
-      then [describe v ^ ": fallback with parameters or returns"] else []
-    val reasons = header @ lines @ fallback
+    val reasons = header @ lines
     val supers = !super_calls
   in
     (expect v "FunctionDefinition";

@@ -662,7 +662,9 @@ Definition builtin_signature_def:
     ([AddressT NonpayableAddress], UintT 256)) ∧
   (builtin_signature Sha256Builtin =
     ([LocatedT MemoryLoc BytesT], FixedBytesT 32)) ∧
-  (builtin_signature BlockhashBuiltin = ([UintT 256], FixedBytesT 32))
+  (builtin_signature BlockhashBuiltin = ([UintT 256], FixedBytesT 32)) ∧
+  (builtin_signature CodeBuiltin =
+    ([AddressT NonpayableAddress], LocatedT MemoryLoc BytesT))
 End
 
 (* An internal function converts implicitly to one with the same parameters
@@ -917,6 +919,7 @@ Definition wf_core_operation_def:
     located_type_ok env MemoryLoc ty ∧
     (case ty of
        ArrayT _ NONE => T
+     | ArrayT _ (SOME k) => length = ConstantAtom (IntegerValue (&k))
      | StructT s =>
          (case lookup_struct env s of
             SOME fields => length = ConstantAtom (IntegerValue (&LENGTH fields))
@@ -1122,17 +1125,31 @@ End
  * and temporaries included. Break/continue are only legal in a loop body (a
  * prelude is not one), and in_loop does not cross procedure boundaries.
  *)
-(* The value types an inline assembly block reads and writes back as one
- * word. Enums and user-defined value types are left out: solc does not clean
- * a word written to one, so an out-of-range value would have no source
- * value. *)
-Definition assembly_value_type_def[simp]:
-  (assembly_value_type BoolT ⇔ T) ∧
-  (assembly_value_type (UintT _) ⇔ T) ∧
-  (assembly_value_type (IntT _) ⇔ T) ∧
-  (assembly_value_type (AddressT _) ⇔ T) ∧
-  (assembly_value_type (FixedBytesT _) ⇔ T) ∧
-  (assembly_value_type _ ⇔ F)
+(* The elementary value types an inline assembly block reads and writes
+ * back as one word. *)
+Definition assembly_elementary_type_def[simp]:
+  (assembly_elementary_type BoolT ⇔ T) ∧
+  (assembly_elementary_type (UintT _) ⇔ T) ∧
+  (assembly_elementary_type (IntT _) ⇔ T) ∧
+  (assembly_elementary_type (AddressT _) ⇔ T) ∧
+  (assembly_elementary_type (FixedBytesT _) ⇔ T) ∧
+  (assembly_elementary_type _ ⇔ F)
+End
+
+(* The value types a block reads and writes back as one word: the elementary
+ * ones, a declared enum, and a user-defined value type of an elementary one.
+ * solc does not clean a word written to an enum, so the evaluator fails an
+ * out-of-range one closed (assembly_value). Function types stay out: their
+ * word is a code location the source does not have. *)
+Definition assembly_value_type_def:
+  assembly_value_type env ty ⇔
+    case ty of
+      EnumT id => IS_SOME (lookup_enum env id)
+    | UserValueT id =>
+        (case lookup_user_value env id of
+           SOME u => assembly_elementary_type u
+         | NONE => F)
+    | _ => assembly_elementary_type ty
 End
 
 (* Memory cells contain either a scalar word or a pointer to another object.
@@ -1146,7 +1163,7 @@ Definition assembly_cell_type_def:
       SOME fields => assembly_cell_types env (n - 1) (MAP SND fields)
     | NONE => F) ∧
   (assembly_cell_type env n ty ⇔
-    assembly_value_type ty ∨ byte_sequence_type ty) ∧
+    assembly_value_type env ty ∨ byte_sequence_type ty) ∧
   (assembly_cell_types env n [] ⇔ T) ∧
   (assembly_cell_types env n (ty :: tys) ⇔
     assembly_cell_type env n ty ∧ assembly_cell_types env n tys)
@@ -1225,21 +1242,24 @@ Definition assembly_stmt_ok_def:
 End
 
 (* The memory a block may touch, where its addresses are literals. A block
- * starts from a memory holding the free memory pointer and the memory byte
- * sequences (bytes and string) and nothing else, so at a literal address it
- * may read only the free memory pointer and what it wrote itself earlier on
- * the same path; and code that can reach the block's normal exit may write at
- * a literal address only in the scratch space [0, 0x40), and mstore a new
- * free memory pointer at 0x40, which assembly_result checks. A read is
- * covered by the (start, length) ranges written at literal addresses before
- * it: by earlier statements of its statement list or an enclosing one, and by
- * the arguments to its right, which run first. A range is an mstore's word, a
- * call's output region or a returndatacopy's, of which less may be written
- * (the runtime check then fails the read closed). A statement list that
- * halts (block_halts), as a whole block, an if or switch body or a Yul
- * function's body, may write anywhere. An address or length the block
- * computes (from a memory reference, say) is checked as the block runs
- * instead (assembly_result), and a read of length zero touches nothing.
+ * starts from a memory holding the free memory pointer, the zero slot and the
+ * memory objects it names, so at a literal address it may read only those
+ * and what it wrote itself before. Code that can reach the block's normal
+ * exit may write at a literal address only below 0x80: the scratch space, the
+ * free memory pointer and the zero slot, which assembly_result checks are
+ * left valid. A read is covered by the (start, length) ranges written before
+ * it: by earlier statements of its statement list or an enclosing one,
+ * including inside their blocks, branches and loops, by the arguments to its
+ * right, which run first, and, in a Yul function's body, by what its
+ * enclosing statement list writes before or after the function, which may
+ * be called anywhere in it (not by other functions' bodies). A range is what a
+ * builtin writes (store_range), of which less may be written: these rules
+ * only reject early what the evaluator's read check (yul_region_readable)
+ * would fail closed. A statement list that halts (block_halts), as a whole
+ * block, an if or switch body or a Yul function's body, may write anywhere.
+ * An address or length the block computes (from a memory reference, say) is
+ * checked as the block runs instead (assembly_result), and a read of length
+ * zero touches nothing.
  *)
 Definition yul_lit_def:
   (yul_lit (YulLit (LitNumber w)) = SOME (w2n (w : bytes32))) ∧
@@ -1274,18 +1294,16 @@ Definition memory_read_ok_def:
     | _ => T
 End
 
-(* A write at a literal offset of a computed length must start in the scratch
- * space; the writes the block leaves at its normal exit are checked as it
- * runs. *)
+(* A write at a literal offset must lie below 0x80, or start there when its
+ * length is computed; the writes the block leaves at its normal exit are
+ * checked as it runs. *)
 Definition memory_write_ok_def:
   memory_write_ok halts p l ⇔
     halts ∨
-    case yul_lit p of
-      NONE => T
-    | SOME a =>
-        case l of
-          SOME n => a + n ≤ 64n
-        | NONE => a < 64
+    case (yul_lit p, l) of
+      (SOME a, SOME n) => n = 0 ∨ a + n ≤ 128n
+    | (SOME a, NONE) => a < 128
+    | (NONE, _) => T
 End
 
 Definition builtin_memory_ok_def:
@@ -1293,8 +1311,7 @@ Definition builtin_memory_ok_def:
     case (b, es) of
       (YMLoad, [p]) =>
         memory_read_ok ws p (YulLit (LitNumber 32w))
-    | (YMStore, [p; _]) =>
-        memory_write_ok halts p (SOME 32) ∨ yul_lit p = SOME 0x40
+    | (YMStore, [p; _]) => memory_write_ok halts p (SOME 32)
     | (YMStore8, [p; _]) => memory_write_ok halts p (SOME 1)
     | (YMCopy, [d; p; l]) =>
         memory_write_ok halts d (yul_lit l) ∧ memory_read_ok ws p l
@@ -1342,29 +1359,32 @@ Definition builtin_memory_ok_def:
     | _ => T
 End
 
-Definition literal_range_def:
-  literal_range p l =
+(* The range a write of length l at p may cover: itself where both are
+ * literals; up to 0x80 from a literal offset below it of computed length,
+ * where code reaching the normal exit may write; and anywhere below 0x80 at a
+ * computed offset. *)
+Definition store_range_def:
+  store_range p l =
     case (yul_lit p, yul_lit l) of
       (SOME a, SOME n) => [(a, n)]
-    | _ => []
+    | (SOME a, NONE) => if a < 128 then [(a, 128 - a)] else []
+    | (NONE, _) => [(0, 128)]
 End
 
-(* The ranges a builtin writes at literal addresses: an mstore's word, a
- * call's output region, and a returndatacopy's region, or the scratch space
- * from its address when its length is computed. *)
+(* The ranges a builtin's memory writes may cover. *)
 Definition builtin_store_def:
   builtin_store b es =
     case (b, es) of
-      (YMStore, [p; _]) => literal_range p (YulLit (LitNumber 32w))
-    | (YCall, [_; _; _; _; _; d; dl]) => literal_range d dl
-    | (YStaticCall, [_; _; _; _; d; dl]) => literal_range d dl
-    | (YDelegateCall, [_; _; _; _; d; dl]) => literal_range d dl
-    | (YReturnDataCopy, [d; _; l]) =>
-        (case (yul_lit d, yul_lit l) of
-           (SOME a, NONE) => if a < 64 then [(a, 64 - a)] else []
-         | _ => literal_range d l)
-    | (YCodeCopy, [d; _; l]) => literal_range d l
-    | (YExtCodeCopy, [_; d; _; l]) => literal_range d l
+      (YMStore, [p; _]) => store_range p (YulLit (LitNumber 32w))
+    | (YMStore8, [p; _]) => store_range p (YulLit (LitNumber 1w))
+    | (YCallDataCopy, [d; _; l]) => store_range d l
+    | (YReturnDataCopy, [d; _; l]) => store_range d l
+    | (YMCopy, [d; _; l]) => store_range d l
+    | (YCodeCopy, [d; _; l]) => store_range d l
+    | (YExtCodeCopy, [_; d; _; l]) => store_range d l
+    | (YCall, [_; _; _; _; _; d; dl]) => store_range d dl
+    | (YStaticCall, [_; _; _; _; d; dl]) => store_range d dl
+    | (YDelegateCall, [_; _; _; _; d; dl]) => store_range d dl
     | _ => []
 End
 
@@ -1377,11 +1397,25 @@ Definition expr_stores_def:
   (exprs_stores (e :: es) = expr_stores e ++ exprs_stores es)
 End
 
+(* The ranges a statement's builtins write, in its blocks, branches and loop
+ * included; a Yul function's body runs only when called. *)
 Definition stmt_stores_def:
   (stmt_stores (YulLet _ (SOME e)) = expr_stores e) ∧
   (stmt_stores (YulAssign _ e) = expr_stores e) ∧
   (stmt_stores (YulExprStmt e) = expr_stores e) ∧
-  (stmt_stores _ = [])
+  (stmt_stores (YulBlock ss) = stmts_stores ss) ∧
+  (stmt_stores (YulIf e body) = stmts_stores body ++ expr_stores e) ∧
+  (stmt_stores (YulSwitch e cases default) =
+    stmts_stores default ++ cases_stores cases ++ expr_stores e) ∧
+  (stmt_stores (YulFor pre c post body) =
+    stmts_stores post ++ stmts_stores body ++ expr_stores c ++
+    stmts_stores pre) ∧
+  (stmt_stores _ = []) ∧
+  (stmts_stores [] = []) ∧
+  (stmts_stores (s :: ss) = stmts_stores ss ++ stmt_stores s) ∧
+  (cases_stores [] = []) ∧
+  (cases_stores ((_, body) :: cases) =
+    stmts_stores body ++ cases_stores cases)
 End
 
 (* Whether a statement list may leave by leave, or by break or continue
@@ -1445,7 +1479,7 @@ End
 Definition memory_stmt_ok_def:
   (memory_stmt_ok h ws (YulBlock ss) ⇔ memory_stmts_ok h ws ss) ∧
   (memory_stmt_ok h ws (YulFunction _ _ _ body) ⇔
-    memory_stmts_ok (h ∨ block_halts body) [(0x40, 32)] body) ∧
+    memory_stmts_ok (h ∨ block_halts body) ws body) ∧
   (memory_stmt_ok h ws (YulLet _ NONE) ⇔ T) ∧
   (memory_stmt_ok h ws (YulLet _ (SOME e)) ⇔ memory_expr_ok h ws e) ∧
   (memory_stmt_ok h ws (YulAssign _ e) ⇔ memory_expr_ok h ws e) ∧
@@ -1456,15 +1490,19 @@ Definition memory_stmt_ok_def:
     memory_expr_ok h ws e ∧ memory_cases_ok h (expr_stores e ++ ws) cases ∧
     memory_stmts_ok (h ∨ block_halts default) (expr_stores e ++ ws) default) ∧
   (memory_stmt_ok h ws (YulFor pre c post body) ⇔
-    memory_stmts_ok h ws pre ∧ memory_expr_ok h ws c ∧
-    memory_stmts_ok h ws post ∧ memory_stmts_ok h ws body) ∧
+    let ws1 = stmts_stores pre ++ ws in
+    let ws2 = expr_stores c ++ ws1 in
+    let ws3 = stmts_stores body ++ ws2 in
+    memory_stmts_ok h ws pre ∧ memory_expr_ok h ws1 c ∧
+    memory_stmts_ok h ws2 body ∧ memory_stmts_ok h ws3 post) ∧
   (memory_stmt_ok h ws YulBreak ⇔ T) ∧
   (memory_stmt_ok h ws YulContinue ⇔ T) ∧
   (memory_stmt_ok h ws YulLeave ⇔ T) ∧
   (memory_stmt_ok h ws (YulExprStmt e) ⇔ memory_expr_ok h ws e) ∧
   (memory_stmts_ok h ws [] ⇔ T) ∧
   (memory_stmts_ok h ws (s :: ss) ⇔
-    memory_stmt_ok h ws s ∧
+    memory_stmt_ok h
+      (case s of YulFunction _ _ _ _ => stmts_stores ss ++ ws | _ => ws) s ∧
     memory_stmts_ok h (stmt_stores s ++ ws) ss) ∧
   (memory_cases_ok h ws [] ⇔ T) ∧
   (memory_cases_ok h ws ((_, body) :: cases) ⇔
@@ -1472,21 +1510,21 @@ Definition memory_stmt_ok_def:
 End
 
 Definition assembly_memory_ok_def:
-  assembly_memory_ok code ⇔ memory_stmts_ok (block_halts code) [(0x40, 32)] code
+  assembly_memory_ok code ⇔ memory_stmts_ok (block_halts code) [(0x40, 64)] code
 End
 
 (* Gas and return data. The source keeps no gas, so gas() may only be a call's
  * gas argument, where it stands for the budget every call from the source
- * gets. call_stmts_ok F also has returndatasize and returndatacopy come only
+ * gets. call_stmts_ok F F also has returndatasize and returndatacopy come only
  * after a statement of the block that calls (a let, assignment or expression
  * statement whose expression has a call, staticcall or delegatecall in it),
  * earlier in their statement list or an enclosing one, or inside an if,
  * switch or for whose condition calls, or in an argument left of one that
- * calls, since arguments run right to left. A Yul function's body starts with
- * no call made. The evaluator asks for that order only where the source does
- * not know the return data (assembly_calls_ok); the static rule is
- * assembly_gas_ok, which admits return data reads before the block's own
- * calls, except in a Yul function's body. *)
+ * calls, since arguments run right to left. A Yul function's body starts as
+ * the block does, since it may be called before the block's calls. The
+ * evaluator asks for that order only where the source does not know the
+ * return data (assembly_calls_ok); the static rule is assembly_gas_ok, which
+ * admits return data reads before the block's own calls. *)
 Definition is_call_builtin_def:
   is_call_builtin b ⇔ b = YCall ∨ b = YStaticCall ∨ b = YDelegateCall ∨
                        b = YCreate ∨ b = YCreate2
@@ -1522,39 +1560,42 @@ Definition call_expr_ok_def:
     (gas ∧ e = YulBuiltin YGas [] ∨ call_expr_ok (called ∨ exprs_calls es) e))
 End
 
+(* k: whether return data may be read at the block's start, where a Yul
+ * function's body starts too: the function is visible in its whole
+ * statement list, so it may be called before any of the block's calls. *)
 Definition call_stmt_ok_def:
-  (call_stmt_ok c (YulBlock ss) ⇔ call_stmts_ok c ss) ∧
-  (call_stmt_ok c (YulFunction _ _ _ body) ⇔ call_stmts_ok F body) ∧
-  (call_stmt_ok c (YulLet _ NONE) ⇔ T) ∧
-  (call_stmt_ok c (YulLet _ (SOME e)) ⇔ call_expr_ok c e) ∧
-  (call_stmt_ok c (YulAssign _ e) ⇔ call_expr_ok c e) ∧
-  (call_stmt_ok c (YulIf e body) ⇔
-    call_expr_ok c e ∧ call_stmts_ok (c ∨ expr_calls e) body) ∧
-  (call_stmt_ok c (YulSwitch e cases default) ⇔
-    call_expr_ok c e ∧ call_cases_ok (c ∨ expr_calls e) cases ∧
-    call_stmts_ok (c ∨ expr_calls e) default) ∧
-  (call_stmt_ok c (YulFor pre e post body) ⇔
-    call_stmts_ok c pre ∧ call_expr_ok c e ∧
-    call_stmts_ok (c ∨ expr_calls e) post ∧
-    call_stmts_ok (c ∨ expr_calls e) body) ∧
-  (call_stmt_ok c YulBreak ⇔ T) ∧
-  (call_stmt_ok c YulContinue ⇔ T) ∧
-  (call_stmt_ok c YulLeave ⇔ T) ∧
-  (call_stmt_ok c (YulExprStmt e) ⇔ call_expr_ok c e) ∧
-  (call_stmts_ok c [] ⇔ T) ∧
-  (call_stmts_ok c (s :: ss) ⇔
-    call_stmt_ok c s ∧ call_stmts_ok (c ∨ stmt_calls s) ss) ∧
-  (call_cases_ok c [] ⇔ T) ∧
-  (call_cases_ok c ((_, body) :: cases) ⇔
-    call_stmts_ok c body ∧ call_cases_ok c cases)
+  (call_stmt_ok k c (YulBlock ss) ⇔ call_stmts_ok k c ss) ∧
+  (call_stmt_ok k c (YulFunction _ _ _ body) ⇔ call_stmts_ok k k body) ∧
+  (call_stmt_ok k c (YulLet _ NONE) ⇔ T) ∧
+  (call_stmt_ok k c (YulLet _ (SOME e)) ⇔ call_expr_ok c e) ∧
+  (call_stmt_ok k c (YulAssign _ e) ⇔ call_expr_ok c e) ∧
+  (call_stmt_ok k c (YulIf e body) ⇔
+    call_expr_ok c e ∧ call_stmts_ok k (c ∨ expr_calls e) body) ∧
+  (call_stmt_ok k c (YulSwitch e cases default) ⇔
+    call_expr_ok c e ∧ call_cases_ok k (c ∨ expr_calls e) cases ∧
+    call_stmts_ok k (c ∨ expr_calls e) default) ∧
+  (call_stmt_ok k c (YulFor pre e post body) ⇔
+    call_stmts_ok k c pre ∧ call_expr_ok c e ∧
+    call_stmts_ok k (c ∨ expr_calls e) post ∧
+    call_stmts_ok k (c ∨ expr_calls e) body) ∧
+  (call_stmt_ok k c YulBreak ⇔ T) ∧
+  (call_stmt_ok k c YulContinue ⇔ T) ∧
+  (call_stmt_ok k c YulLeave ⇔ T) ∧
+  (call_stmt_ok k c (YulExprStmt e) ⇔ call_expr_ok c e) ∧
+  (call_stmts_ok k c [] ⇔ T) ∧
+  (call_stmts_ok k c (s :: ss) ⇔
+    call_stmt_ok k c s ∧ call_stmts_ok k (c ∨ stmt_calls s) ss) ∧
+  (call_cases_ok k c [] ⇔ T) ∧
+  (call_cases_ok k c ((_, body) :: cases) ⇔
+    call_stmts_ok k c body ∧ call_cases_ok k c cases)
 End
 
 Definition assembly_calls_ok_def:
-  assembly_calls_ok code ⇔ call_stmts_ok F code
+  assembly_calls_ok code ⇔ call_stmts_ok F F code
 End
 
 Definition assembly_gas_ok_def:
-  assembly_gas_ok code ⇔ call_stmts_ok T code
+  assembly_gas_ok code ⇔ call_stmts_ok T T code
 End
 
 (* A calldata reference type whose offset and length a block may read and
@@ -1586,7 +1627,7 @@ Definition assembly_reference_ok_def:
   assembly_reference_ok env ctx r ⇔
     case r of
       AssemblyLocal x ty =>
-        ALOOKUP ctx.bindings x = SOME (SingleType ty) ∧ assembly_value_type ty
+        ALOOKUP ctx.bindings x = SOME (SingleType ty) ∧ assembly_value_type env ty
     | AssemblySlot x => IS_SOME (lookup_state_variable env x)
     | AssemblyOffset x => IS_SOME (lookup_state_variable env x)
     | AssemblyPointerSlot x => storage_pointer_binding ctx x
@@ -1597,7 +1638,7 @@ Definition assembly_reference_ok_def:
            SOME ty => calldata_slice_type ty
          | NONE => F)
     | AssemblyConstant a ty =>
-        wf_core_atom env ctx (SingleType ty) a ∧ assembly_value_type ty
+        wf_core_atom env ctx (SingleType ty) a ∧ assembly_value_type env ty
     | AssemblyMemory x ty =>
         ALOOKUP ctx.bindings x = SOME (SingleType (LocatedT MemoryLoc ty)) ∧
         assembly_memory_type env ty
@@ -1862,6 +1903,14 @@ Definition plain_procedure_def:
     | NONE => F
 End
 
+(* The fallback's parameters and returns: none, or the whole calldata as
+ * bytes, returning the return data as bytes. *)
+Definition fallback_signature_ok_def:
+  fallback_signature_ok ps rs ⇔
+    (ps = [] ∧ rs = []) ∨
+    (ps = [LocatedT CalldataLoc BytesT] ∧ rs = [LocatedT MemoryLoc BytesT])
+End
+
 Definition wf_core_dispatch_def:
   wf_core_dispatch env (prog : core_program) ⇔
     ALL_DISTINCT (MAP (λe. e.selector) prog.external_functions) ∧
@@ -1873,7 +1922,12 @@ Definition wf_core_dispatch_def:
        SOME f => plain_procedure env f ∨ MEM f prog.unsupported_procedures
      | NONE => T) ∧
     (case prog.fallback_procedure of
-       SOME (f, _) => plain_procedure env f ∨ MEM f prog.unsupported_procedures
+       SOME (f, _) =>
+         MEM f prog.unsupported_procedures ∨
+         (case lookup_procedure env f of
+            SOME p =>
+              fallback_signature_ok (MAP SND p.parameters) (MAP SND p.return_bindings)
+          | NONE => F)
      | NONE => T) ∧
     (case prog.creation_procedure of
        SOME (f, _) =>
@@ -2010,7 +2064,7 @@ val () = cv_auto_trans memory_covered_def;
 val () = cv_auto_trans memory_read_ok_def;
 val () = cv_auto_trans memory_write_ok_def;
 val () = cv_auto_trans builtin_memory_ok_def;
-val () = cv_auto_trans literal_range_def;
+val () = cv_auto_trans store_range_def;
 val () = cv_auto_trans builtin_store_def;
 val () = cv_auto_trans expr_stores_def;
 val () = cv_auto_trans stmt_stores_def;
@@ -2027,6 +2081,7 @@ val () = cv_auto_trans call_expr_ok_def;
 val () = cv_auto_trans call_stmt_ok_def;
 val () = cv_auto_trans assembly_calls_ok_def;
 val () = cv_auto_trans assembly_gas_ok_def;
+val () = cv_auto_trans assembly_elementary_type_def;
 val () = cv_auto_trans assembly_value_type_def;
 val () = cv_auto_trans_rec assembly_cell_type_def (
   WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
@@ -2062,5 +2117,6 @@ QED
 
 val () = cv_auto_trans abi_procedure_def;
 val () = cv_auto_trans plain_procedure_def;
+val () = cv_auto_trans fallback_signature_ok_def;
 val () = cv_auto_trans wf_core_dispatch_def;
 val () = cv_auto_trans wf_core_program_def;

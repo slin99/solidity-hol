@@ -4,7 +4,7 @@
  * an InvalidCompletion is never counted as differential agreement. *)
 Theory solidityDirtyBitsTest
 Ancestors solidityDifferential solidityDirtyBitsBytecodeTest
-  solidityStorageEnumArraysTest
+  solidityStorageEnumArraysTest solidityAssemblyLibraryFormsTest
   solidityStorageMemoryPaddingTest
   solidityDifferentialCorpus_inline_assembly
   solidityDifferentialCorpus_storage
