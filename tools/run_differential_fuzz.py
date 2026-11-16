@@ -749,6 +749,9 @@ def markdown(summary: dict[str, Any]) -> str:
         lines += [f"- `{n}`: {r['status']}" for n, r in summary["contract_failures"].items()]
     if summary["missing"]:
         lines += ["", f"## Cases without a result: {len(summary['missing'])}"]
+    if summary.get("no_cases"):
+        lines += ["", "## Contracts with no case (every candidate halted or ran over the gas budget)", ""]
+        lines += [f"- `{n}`: {summary['screening'][n]['halted']}" for n in summary["no_cases"]]
     if summary["inconclusive"]:
         lines += ["", "## Inconclusive", "", "| Contract | Function | Reason | Cases |",
                   "| --- | --- | --- | ---: |"]
@@ -978,7 +981,7 @@ class Fuzzer:
             fleet.exporter.write_json_atomic(path, {
                 "name": f"fuzz_{contract}",
                 **{k: entry[k] for k in ("source", "contract", "artifact")},
-                "peer": entry["peer"],
+                "peer": entry["peer"], "fuel": entry["fuel"],
                 "cases": [c.suite_case(metadata=False) for c in cases]})
             written.append(path)
         return written
@@ -997,6 +1000,9 @@ class Fuzzer:
         evaluated = {r["contract"] for r in results}
         summary = report({n: m for n, m in manifests.items() if n in evaluated}, results)
         summary["unevaluated"] = sorted(manifests.keys() - evaluated)
+        summary["screening"] = {n: m["screening"] for n, m in sorted(manifests.items())}
+        # Every candidate halted or ran over the gas budget: nothing was compared.
+        summary["no_cases"] = sorted(n for n, m in manifests.items() if not m["cases"])
         if summary["disagree"]:
             summary["minimized"] = [str(p) for p in self.minimize(
                 by_name, manifests, summary["disagree"], shrink_rounds)]
@@ -1006,9 +1012,10 @@ class Fuzzer:
 
 
 def failed(summary: dict[str, Any]) -> bool:
-    """A disagreement, an error, a case without a result or a contract that
-    couldn't be prepared fails the run."""
-    return any(summary[k] for k in ("disagree", "error", "missing", "contract_failures"))
+    """A disagreement, an error, a case without a result, a contract that
+    couldn't be prepared, or one with no case to compare fails the run."""
+    return any(summary.get(k) for k in ("disagree", "error", "missing", "contract_failures",
+                                        "no_cases"))
 
 
 def main(argv: list[str] | None = None) -> int:

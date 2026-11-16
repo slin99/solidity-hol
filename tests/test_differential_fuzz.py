@@ -210,6 +210,7 @@ class FuzzerTests(unittest.TestCase):
         self.assertEqual(case["storage"], {})
         self.assertEqual(minimized["name"], f"fuzz_{SUITE}")
         self.assertEqual(minimized["peer"], fuzz.ECHO_PEER)  # what the recording ran with
+        self.assertEqual(minimized["fuel"], targets[0].entry["fuel"])
         self.assertTrue(fuzz.failed(summary))
 
         screened, evaluated = self.screened, len(self.evaluated)
@@ -226,6 +227,18 @@ class FuzzerTests(unittest.TestCase):
         summary = fuzz.report(manifests, results)
         self.assertEqual(summary["missing"], [])
         self.assertTrue(fuzz.failed(summary))
+
+    def test_a_contract_whose_candidates_all_halt_fails_the_run(self) -> None:
+        def halting(t: fuzz.Target, c: fuzz.Call) -> fuzz.Recording:
+            raise fuzz.Halt("OutOfGas")
+
+        fuzzer = fuzz.Fuzzer(self.output, seed=0, candidates=5, k=4,
+                             evaluate=self.evaluate, screen=halting)
+        summary = fuzzer.run(fuzz.suite_targets([SUITE]), max_batches=None, shrink_rounds=0)
+        self.assertEqual(summary["no_cases"], [SUITE])
+        self.assertGreater(summary["screening"][SUITE]["halted"]["OutOfGas"], 0)
+        self.assertTrue(fuzz.failed(summary))
+        self.assertIn(SUITE, fuzz.markdown(summary))
 
     def test_a_case_error_is_reported_and_fails_the_run(self) -> None:
         manifests = {"c": {"screening": {}, "cases": [
