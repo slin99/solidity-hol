@@ -221,16 +221,19 @@ Definition bind_value_def:
     ([DefineStmt (AstId n) (SingleType ty) op], BoundAtom (AstId n))
 End
 
-(* The value a local of type ty starts with when declared without one. *)
+(* The value a local of type ty starts with when declared without one. A
+ * storage or calldata reference local gets a placeholder: solc rejects
+ * reading one before it is assigned. *)
 Definition default_operation_def:
   default_operation ty =
     case ty of
       LocatedT MemoryLoc element => SOME (DefaultMemoryOperation element)
-    | LocatedT CalldataLoc element => SOME (DefaultReferenceOperation CalldataLoc element)
-    | _ => if located_value_type ty then NONE
-           else case default_elementary ty of
-                  SOME d => SOME (ConvertOperation ty (ConstantAtom d))
-                | NONE => NONE
+    | LocatedT loc element =>
+        if located_value_type ty then SOME (DefaultReferenceOperation loc element)
+        else NONE
+    | _ => case default_elementary ty of
+             SOME d => SOME (ConvertOperation ty (ConstantAtom d))
+           | NONE => NONE
 End
 
 (* Compiler join temporaries are assigned on each arm before being read. *)

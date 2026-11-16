@@ -2369,3 +2369,19 @@ Theorem calldata_reference_defaults:
 Proof
   EVAL_TAC
 QED
+
+Theorem storage_reference_defaults:
+  eval_operation test_env initial_state
+    (DefaultReferenceOperation StorageLoc (ArrayT u256 NONE)) =
+    ValueOk (ReferenceValue
+      (StorageReference PersistentStorage 0w 0w 0 (ArrayT u256 NONE) (LayoutId 0))) ∧
+  eval_operation test_env initial_state
+    (DefaultReferenceOperation StorageLoc (MappingT u256 u256)) =
+    ValueOk (ReferenceValue
+      (StorageReference PersistentStorage 0w 0w 0 (MappingT u256 u256) (LayoutId 0))) ∧
+  eval_operation test_env initial_state
+    (DefaultReferenceOperation StorageLoc u256) =
+    ValueAbrupt (InvalidCompletion "bad reference default")
+Proof
+  EVAL_TAC
+QED
