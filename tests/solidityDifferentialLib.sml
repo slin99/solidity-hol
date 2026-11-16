@@ -1063,9 +1063,10 @@ fun fuzz_status screened confirmed =
 
 (* A case whose evaluation runs past this many seconds is inconclusive, with
  * reason "Timeout": cases take seconds, and one that keeps going sits at the
- * heap cap until it takes its contract's whole action down with it. A
- * difference whose confirmation runs past it is an error instead, so a
- * disagreement is never filed as inconclusive. *)
+ * heap cap until it takes its contract's whole action down with it. An
+ * evaluation interrupted before then (Poly/ML interrupts a thread when the
+ * heap runs out) counts the same. A difference whose confirmation runs past
+ * it is an error instead, so a disagreement is never filed as inconclusive. *)
 val fuzz_case_seconds = 120.0
 
 (* owed counts the "confirm" marks on cases that screened inconclusive or ran
@@ -1088,6 +1089,7 @@ fun run_fuzz_case {contract, code, unit, program, fuel, fixture, immutables} owe
           rhs (concl (cv_eval (list_mk_comb
             (prim_mk_const {Thy = "solidityDifferential", Name = name},
              [code, unit, program, num_term fuel, case_tm]))))) ()
+        handle Interrupt => raise Timeout.TIMEOUT Time.zeroTime
       val screened = evaluate "fuzz_verdict"
       val inconclusive = is_con "Inconclusive" screened
       val confirm = not inconclusive andalso
