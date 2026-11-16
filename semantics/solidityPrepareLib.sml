@@ -226,15 +226,20 @@ fun literals_conv tm =
     SOME eq => (REWR_CONV eq THENC SUB_CONV literals_conv) tm
   | NONE => SUB_CONV literals_conv tm
 
-(* from_<ty> v = its cv form, by the translation cv_eval itself uses, with
- * v's record literals taken apart first so it has no updates to remove. *)
-fun cv_form_conv tm =
+(* from_<ty> v = its cv form, when v is built from constructors and the
+ * constants with the given cv equations (from_<ty> c = c_cv (Num 0)): EVAL
+ * with integers' rules, then those equations and b2c's on literals, which
+ * EVAL leaves in place. v's record literals are taken apart first. This is
+ * much cheaper than cv_eval's own translation, which proves a cv_rep theorem
+ * per node. *)
+fun cv_form_conv cv_thms =
   let
-    val rep = cv_repLib.cv_rep_for [] (rand tm)
+    val compset =
+      intReduce.add_int_compset (computeLib.copy (computeLib.the_compset ()))
   in
-    MP (CONV_RULE (REWR_CONV cv_repTheory.cv_rep_def) rep) TRUTH
+    RAND_CONV literals_conv THENC computeLib.CBV_CONV compset THENC
+    PURE_REWRITE_CONV (cv_primTheory.cv_rep_T :: cv_primTheory.cv_rep_F :: cv_thms)
   end
-val cv_form_conv = RAND_CONV literals_conv THENC cv_form_conv
 
 (* A fresh constant defined as tm, deep-embedded with conv computing its cv
  * form, so that cv_eval reads that form from one equation instead of
@@ -252,6 +257,11 @@ fun embed name conv tm =
   in
     def
   end
+
+(* The cv equation (from_<ty> c = c_cv (Num 0)) of the constant embed
+ * defined by def. *)
+fun cv_thm def =
+  DB.fetch "-" (#1 (dest_const (lhs (concl def))) ^ "_cv_thm")
 
 (* th with the embedded constant of def, at the position conv selects,
  * replaced by its definition. *)
@@ -459,6 +469,7 @@ fun prepare_unit imported =
     val code_defs = creation_code_definitions imported
     val imported = subst (map (fn def => rhs (concl def) |-> lhs (concl def)) code_defs)
       imported
+    val cv_form_conv = cv_form_conv (map cv_thm code_defs)
     val embed_unit = embed "embedded_unit" cv_form_conv
     val imported_def = once (fn () => embed_unit imported)
     val imported_constant = lhs o concl o imported_def
@@ -517,7 +528,7 @@ fun prepare_source artifact source =
   case import_unit_blockers artifact source of
     (unit, []) => prepare_unit unit
   | (unit, blockers) =>
-      let val constant = lhs (concl (embed "embedded_unit" cv_form_conv unit)) in
+      let val constant = lhs (concl (embed "embedded_unit" (cv_form_conv []) unit)) in
         reject UnsupportedImport (String.concatWith "\n" (dedup (blockers @
           rejection_lines (unit, constant, elaboration_failures false constant))))
       end
