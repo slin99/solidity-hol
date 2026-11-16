@@ -373,8 +373,8 @@ bytes, here and wherever a value is converted. String, hex and Unicode
 literals also convert to `bytesN` when their byte length is at most N,
 right-padded with zeros; longer literals are rejected.
 
-Immutables of elementary value types, declared in the contract or a base, are
-implemented, with getters for public ones. The source state holds a table of
+Immutables of elementary value, enum and internal function types, declared
+in the contract or a base, are implemented, with getters for public ones. The source state holds a table of
 their values, which a missing entry reads as zero. During creation an
 immutable behaves like a zero-initialized variable: its inline initializer
 runs in declaration order with the state variables' initializers, and the
@@ -384,8 +384,9 @@ the compiler's creation code does, and `deploy_contract` returns the final
 table; `call_contract` takes the table, which with the program stands for the
 deployed code. The differential harness compares a creation's table with the
 words the compiler's created code holds at its `immutableReferences` offsets,
-and patches a call case's immutables into the runtime bytecode there.
-Other immutables are rejected.
+and patches a call case's immutables into the runtime bytecode there (an
+internal function immutable has no such word, so it is checked only through
+its uses during creation). Other immutables are rejected.
 
 A contract or interface type is read as `address`, which is its value at
 run time, stored and ABI encoded as one: in type names, in the type
@@ -460,8 +461,8 @@ view one to nonpayable. A call through a value evaluates the callee
 expression first and copies its value, then the arguments in order; the zero
 value, held by a local or named return never assigned, panics with 0x51
 after the arguments, as the compiler's internal dispatch does. Parameters
-and returns of a function type must be value types other than function
-types. External function values, function values in storage, arrays,
+and returns of a function type are value types other than function types, or
+storage, memory or calldata references. External function values, function values in storage, arrays,
 structs, events, the ABI or inline assembly, and comparisons of function
 values are rejected; a function-typed state variable, or an external
 function type in a function's header, rejects the whole unit.
@@ -479,9 +480,9 @@ gives each scalar in its own width, a `bytesN` as its N bytes, and a byte
 sequence as its contents. Unpacked encoding also accepts arrays and structs
 of any nesting in memory, calldata or storage, retaining the reference until
 all arguments have been evaluated.
-Packed arrays and structs, a selector that
-is not a `bytes4` value (a literal selector included), and a signature that is
-not a plain string literal are rejected.
+A selector converts implicitly to `bytes4`, as a hex literal such as
+`0xa9059cbb` does. Packed arrays and structs, a selector that does not, and a
+signature that is not a plain string literal are rejected.
 
 `abi.encodeCall(f, (a, b))` gives `f`'s selector followed by the standard ABI
 encoding of the arguments, each converted to its parameter's type as an
@@ -493,7 +494,8 @@ same ABI types as unpacked encoding, including nested arrays and structs.
 Other receivers (a constant, whose initializer the compiler evaluates and
 which may fail, included) are rejected.
 
-`abi.decode(data, (T1, ..., Tk))` decodes memory or calldata `bytes` into values of
+`abi.decode(data, (T1, ..., Tk))` decodes memory or calldata `bytes`, or
+storage `bytes` copied to memory first as the compiler does, into values of
 any ABI type (scalars, enums, byte sequences, arrays and structs, nested), as
 the compiler's decoder from memory does: arrays, structs and byte sequences
 are allocated in memory in the compiler's order, an enum out of range reverts
@@ -622,9 +624,11 @@ for static ones) and checks: panic `0x41` for a length >= `2^64` or an
 allocation past the memory limit, `0x32` for an index out of range, and the
 decoder's order of revert and panic checks. A dynamic memory array's default
 value is the shared empty array; a static one is allocated zeroed, with its
-static rows allocated eagerly. Functions with modifiers and a static memory
-array return are rejected: the compiler allocates that array once and passes it
-through the modifiers, which the per-level procedures do not model.
+static rows allocated eagerly. In a function with modifiers, the outermost
+procedure allocates a static memory array or memory struct return once and
+passes the incoming return values to each placeholder, as the compiler's IR
+does: every run of the body (`_; _;`) shares that object, while a scalar
+return restarts from its incoming value.
 
 Calldata arrays of the same element types, except fixed-size dimensions of
 dynamic elements (`string[2]`, `uint256[][2]`), which import rejects, are
