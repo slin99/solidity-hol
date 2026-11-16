@@ -108,7 +108,8 @@ Definition yul_differential_machine_def:
        gas_limit := (differential_tx c.case_sender c.case_value data).gasLimit; gas_observations := [];
        scopes := ([] : (string |-> bytes32) list);
        transaction_parameters :=
-         initial_tx_params differential_chain_id [] differential_block
+         initial_tx_params differential_chain_id
+           (test_block_hashes differential_block.number) differential_block
            (differential_tx c.case_sender c.case_value data) 0 |>
 End
 
@@ -145,7 +146,8 @@ Definition yul_creation_machine_def:
          immutables := FEMPTY;
          immutable_offsets := FEMPTY |++
            MAP (λ(x, offsets). (toString x, offsets)) p.creation_refs;
-         transaction_parameters := initial_tx_params differential_chain_id []
+         transaction_parameters := initial_tx_params differential_chain_id
+           (test_block_hashes differential_block.number)
            differential_block (case_tx c data) 0 |>
 End
 

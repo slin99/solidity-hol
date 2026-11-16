@@ -650,7 +650,10 @@ Definition builtin_signature_def:
   (builtin_signature CodeLengthBuiltin =
     ([AddressT NonpayableAddress], UintT 256)) ∧
   (builtin_signature BalanceBuiltin =
-    ([AddressT NonpayableAddress], UintT 256))
+    ([AddressT NonpayableAddress], UintT 256)) ∧
+  (builtin_signature Sha256Builtin =
+    ([LocatedT MemoryLoc BytesT], FixedBytesT 32)) ∧
+  (builtin_signature BlockhashBuiltin = ([UintT 256], FixedBytesT 32))
 End
 
 (* An internal function converts implicitly to one with the same parameters
@@ -1161,14 +1164,14 @@ Definition assembly_memory_type_def:
     assembly_cell_type env (LENGTH env.type_declarations) ty
 End
 
-(* The builtins an inline assembly block may not use. The source state keeps
- * no code, so the code and data builtins are left out, and so are
- * setimmutable and linkersymbol, which only the compiler's code uses. Gas,
+(* The builtins an inline assembly block may not use: the object's data
+ * builtins, and setimmutable and linkersymbol, which only the compiler's code
+ * uses. codesize and codecopy read the running account's code, which a
+ * creation frame doesn't have yet, so eval_assembly refuses them there. Gas,
  * calls and return data are limited by assembly_gas_ok instead. *)
 Definition assembly_unsupported_def:
   assembly_unsupported =
-    [YCodeSize; YCodeCopy; YDataCopy; YDataSize; YDataOffset; YSetImmutable;
-     YLinkerSymbol]
+    [YDataCopy; YDataSize; YDataOffset; YSetImmutable; YLinkerSymbol]
 End
 
 (* The builtins that change the world, which a static frame forbids. A call
@@ -1298,6 +1301,7 @@ Definition builtin_memory_ok_def:
     | (YCallDataCopy, [d; _; l]) => memory_write_ok halts d (yul_lit l)
     | (YReturnDataCopy, [d; _; l]) => memory_write_ok halts d (yul_lit l)
     | (YCodeCopy, [d; _; l]) => memory_write_ok halts d (yul_lit l)
+    | (YExtCodeCopy, [_; d; _; l]) => memory_write_ok halts d (yul_lit l)
     | (YCall, [_; _; _; p; l; d; dl]) =>
         memory_read_ok ws p l ∧ memory_write_ok halts d (yul_lit dl)
     | (YStaticCall, [_; _; p; l; d; dl]) =>
@@ -1321,6 +1325,7 @@ Definition builtin_memory_ok_def:
     | (YCallDataCopy, _) => F
     | (YReturnDataCopy, _) => F
     | (YCodeCopy, _) => F
+    | (YExtCodeCopy, _) => F
     | (YCall, _) => F
     | (YStaticCall, _) => F
     | (YDelegateCall, _) => F
@@ -1359,6 +1364,7 @@ Definition builtin_store_def:
     | (YReturnDataCopy, [d; _; l]) => store_range d l
     | (YMCopy, [d; _; l]) => store_range d l
     | (YCodeCopy, [d; _; l]) => store_range d l
+    | (YExtCodeCopy, [_; d; _; l]) => store_range d l
     | (YCall, [_; _; _; _; _; d; dl]) => store_range d dl
     | (YStaticCall, [_; _; _; _; d; dl]) => store_range d dl
     | (YDelegateCall, [_; _; _; _; d; dl]) => store_range d dl

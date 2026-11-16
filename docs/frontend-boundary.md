@@ -458,7 +458,9 @@ its effects and failures; the selector still comes from the declaration.
 the interface `I` declares itself, not those it inherits, nor its `fallback`
 or `receive`; `I` must name an interface directly, not through a module, and
 an abstract contract's `interfaceId` is rejected. A selector of any other
-function-typed value is rejected, and so are `sha256` and `ripemd160`.
+function-typed value is rejected, and so is `ripemd160`. `sha256(b)` hashes
+bytes in memory, as the precompile at address 2 does, and `blockhash(n)` is
+the hash of one of the 256 blocks before the current one, or 0.
 
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
 type the compiler gives the whole expression, which must be a value type,
@@ -641,11 +643,12 @@ static rows allocated eagerly. Functions with modifiers and a static memory
 array return are rejected: the compiler allocates that array once and passes it
 through the modifiers, which the per-level procedures do not model.
 
-Calldata arrays of the same element types, except fixed-size dimensions of
-dynamic elements (`string[2]`, `uint256[][2]`), which import rejects, are
+Calldata arrays of the same element types, fixed-size dimensions of dynamic
+elements included (`string[2]`, `uint256[][2]`, `string[2][]`), are
 implemented as references into the frame's calldata: parameters, `T[] calldata` locals, indexing, `.length`,
-copies to memory, and ABI encoding as return values and external call
-arguments. Static arrays are read in place; dynamic elements are reached
+copies to memory and storage, and ABI encoding as return values and external call
+arguments. Static arrays are read in place; dynamic elements, and fixed-size
+arrays of them, which have no length word, are reached
 through their offsets with the pinned compiler's checks, which revert, and an
 index out of range panics with `0x32`. Elementary elements are validated when
 read, so a dirty element reverts when it is indexed, copied or re-encoded.

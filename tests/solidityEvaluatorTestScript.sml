@@ -569,6 +569,74 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* codesize and codecopy read the code at the frame's code address: a
+ * library frame reached by DELEGATECALL runs the library's code for the
+ * caller's account. extcodecopy reads any account's code, zero past its end.
+ * A creation frame's account has no code yet (the EVM would read the
+ * initcode), so a block naming either fails closed there, even on a path
+ * not taken. *)
+Definition code_state_def:
+  code_state = initial_state with <|
+    frame := initial_state.frame with
+      <| self_address := 0x10w; code_address := 0x20w |>;
+    world := initial_state.world with accounts :=
+      update_account 0x20w (empty_account_state with code := [1w; 2w; 3w])
+        (update_account 0x10w (empty_account_state with code := [9w])
+           empty_accounts) |>
+End
+
+Definition load_x_def:
+  load_x = YulAssign ["x"] (YulBuiltin YMLoad [ylit 0w])
+End
+
+val () = List.app cv_auto_trans [code_state_def, load_x_def];
+
+Theorem asm_code_reads_code_address:
+  run_asm [YulAssign ["x"] (YulBuiltin YCodeSize [])] code_state (AstId 110)
+    [ScalarValue (IntegerValue 7)] =
+    ReturnCompletion [ScalarValue (IntegerValue 3)] ∧
+  run_asm [YulExprStmt (YulBuiltin YCodeCopy [ylit 0w; ylit 1w; ylit 32w]);
+           load_x] code_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    ReturnCompletion [ScalarValue (IntegerValue (&(0x203 * 2 ** 240)))] ∧
+  run_asm [YulExprStmt (YulBuiltin YExtCodeCopy
+             [ylit 0x10w; ylit 0w; ylit 0w; ylit 32w]); load_x]
+    code_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    ReturnCompletion [ScalarValue (IntegerValue (&(9 * 2 ** 248)))]
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem asm_code_in_creation_frame_invalid:
+  run_asm [YulAssign ["x"] (YulBuiltin YCodeSize [])] initial_state (AstId 110)
+    [ScalarValue (IntegerValue 7)] =
+    InvalidCompletion "unsupported assembly builtin" ∧
+  run_asm [YulIf (ylit 0w)
+             [YulExprStmt (YulBuiltin YCodeCopy [ylit 0w; ylit 0w; ylit 32w])]]
+    initial_state (AstId 110) [ScalarValue (IntegerValue 7)] =
+    InvalidCompletion "unsupported assembly builtin"
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* blockhash reads one of the 256 blocks before the current one, most recent
+ * first, as verifereum's step_block_hash does, and 0 past the hashes given. *)
+Definition hash_tx_def:
+  hash_tx = initial_state.frame.tx_params with
+    <| blockNumber := 300; prevHashes := GENLIST (λi. n2w (i + 1)) 256 |>
+End
+
+Theorem block_hash_word_window:
+  block_hash_word hash_tx 299 = 1w ∧
+  block_hash_word hash_tx 44 = 256w ∧
+  block_hash_word hash_tx 43 = 0w ∧
+  block_hash_word hash_tx 300 = 0w ∧
+  block_hash_word hash_tx 301 = 0w ∧
+  block_hash_word (hash_tx with prevHashes := [5w]) 299 = 5w ∧
+  block_hash_word (hash_tx with prevHashes := [5w]) 298 = 0w
+Proof
+  EVAL_TAC
+QED
+
 (* Memory byte sequences. asm_bytes(b) runs blocks one after another with b's
  * address bound to each block's "b" and returns its "r"; run_asm_blocks gives
  * the completion and b's bytes afterwards, b allocated with or without its
@@ -1886,6 +1954,34 @@ Theorem asm_return_data_unknown:
   run_rd [rd_ecrecover] [rd_call 0x5000w ++ rd_size] =
     ReturnCompletion [ScalarValue (IntegerValue 32)] ∧
   run_rd [rd_ecrecover] [rd_call 0x5000w; rd_size] =
+    ReturnCompletion [ScalarValue (IntegerValue 32)]
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* sha256, which the compiler computes by calling the precompile at address
+ * 2, leaves return data unknown as ecrecover does; blockhash, an opcode,
+ * keeps what the last call left. *)
+Definition rd_sha256_def:
+  rd_sha256 =
+    [DefineStmt (AstId 137) (SingleType (LocatedT MemoryLoc BytesT))
+       (DefaultReferenceOperation MemoryLoc BytesT);
+     DefineStmt (AstId 138) (SingleType (FixedBytesT 32))
+       (BuiltinOperation Sha256Builtin [BoundAtom (AstId 137)])]
+End
+
+Definition rd_blockhash_def:
+  rd_blockhash =
+    DefineStmt (AstId 139) (SingleType (FixedBytesT 32))
+      (BuiltinOperation BlockhashBuiltin [k 0])
+End
+
+val () = List.app cv_auto_trans [rd_sha256_def, rd_blockhash_def];
+
+Theorem asm_return_data_precompile_builtins:
+  run_rd (rd_high :: rd_sha256) [rd_size] =
+    InvalidCompletion "assembly reads return data the source does not know" ∧
+  run_rd [rd_high; rd_blockhash] [rd_size] =
     ReturnCompletion [ScalarValue (IntegerValue 32)]
 Proof
   CONV_TAC cv_eval
