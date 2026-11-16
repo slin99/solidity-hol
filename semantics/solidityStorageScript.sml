@@ -91,13 +91,15 @@ Definition state_reference_def:
     | NONE => NONE
 End
 
-(* Solidity mapping keys occupy one 32-byte word: integers are extended to
- * 256 bits, addresses and booleans are zero padded, bytesN are right padded.
+(* Solidity mapping keys occupy one 32-byte word: integers and enums are
+ * extended to 256 bits, addresses and booleans are zero padded, bytesN are
+ * right padded.
  *)
 Definition mapping_key_bytes_def:
-  mapping_key_bytes key s =
+  mapping_key_bytes env key s =
     if byte_sequence_type key then (case s of BytesValue bs => SOME bs | _ => NONE)
-    else if ¬elementary_storage_type_ok key ∨ ¬elementary_scalar_has_type key s then NONE
+    else if ¬(is_stored_scalar_type key ∧ storage_type_ok env key ∧
+              scalar_has_type env key s) then NONE
     else case s of
       BytesValue bs => SOME (bs ++ REPLICATE (32 - LENGTH bs) 0w)
     | _ => OPTION_MAP (num_to_bytes 32) (stored_number 32 s)
@@ -616,7 +618,7 @@ Definition navigate_storage_def:
   navigate_storage env accounts r s =
     case r of
       StorageReference PersistentStorage addr slot 0 (MappingT key value) layout =>
-        (case mapping_key_bytes key s of
+        (case mapping_key_bytes env key s of
            SOME bs =>
              ValueOk (ReferenceValue
                (StorageReference PersistentStorage addr (mapping_slot bs slot)
