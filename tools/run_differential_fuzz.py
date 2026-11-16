@@ -42,8 +42,9 @@ import run_semantic_expectations as fleet
 
 ROOT = Path(__file__).resolve().parents[1]
 PREFIX = "fuzz-result: "
+# One contract per action: contracts sharing a HOL process ran out of memory.
 SCRIPT = fleet.BatchScript(ROOT / "tools" / "differential_fuzz.sml", "contracts",
-                           "DIFFERENTIAL_FUZZ_MANIFEST")
+                           "DIFFERENTIAL_FUZZ_MANIFEST", batch_size=1)
 CORPUS = ROOT / "testdata" / "differential" / "corpus.json"
 SUITES = ROOT / "testdata" / "differential" / "suites"
 ECHO_PEER = {"source": "testdata/differential/fuzz/echo_peer.sol", "contract": "EchoPeer",
@@ -654,6 +655,8 @@ def stratify(seed: int, name: str, screened: list[tuple[Call, Recording]],
         for group in groups:
             rng.shuffle(group)
         queues.append(deque(x for row in itertools.zip_longest(*groups) for x in row if x))
+    # With more functions than k, a seed decides which are left out.
+    rng.shuffle(queues)
     chosen: list[tuple[Call, Recording]] = []
     while len(chosen) < k and any(queues):
         for queue in queues:
@@ -897,17 +900,15 @@ def import_pyrevm() -> Any:
 
 
 def run_fleet(holbuild: str, work: Path, entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Evaluate manifest entries on the fleet under work, one contract per action:
-    contracts sharing a HOL process ran out of memory, and a failed action
-    (out of memory or time) then fails only its own contract."""
+    """Evaluate manifest entries on the fleet under work, one contract per
+    action; a failed action (out of memory or time) fails only its contract."""
+    def failed(failure: fleet.ActionFailed, batch: list[dict[str, Any]]) -> None:
+        (failure.batch / "results.jsonl").write_text("".join(PREFIX + json.dumps(
+            {"kind": "contract", "contract": entry["name"], "status": "action-failed",
+             "message": failure.reason}) + "\n" for entry in batch))
+
     work.mkdir(parents=True, exist_ok=True)
-    for entry in entries:
-        try:
-            fleet.run_batches(holbuild, work, [entry], SCRIPT)
-        except fleet.ActionFailed as e:
-            (e.batch / "results.jsonl").write_text(PREFIX + json.dumps(
-                {"kind": "contract", "contract": entry["name"], "status": "action-failed",
-                 "message": e.reason}) + "\n")
+    fleet.run_batches(holbuild, work, entries, SCRIPT, failed)
     return batch_records(work)
 
 
@@ -1020,7 +1021,7 @@ class Fuzzer:
         done = completed_contracts(batch_records(work), manifests)
         pending = [manifests[n] for n in manifests if n not in done]
         if max_batches is not None:
-            pending = pending[:max_batches]
+            pending = pending[:max_batches * SCRIPT.batch_size]
         results = self.evaluate(work, pending) if pending else batch_records(work)
         # A contract with any result is reported, its cases without one as missing.
         evaluated = {r["contract"] for r in results}

@@ -147,6 +147,15 @@ class StratifyTests(unittest.TestCase):
         self.assertEqual([c.name for c in cases if c.confirm], ["fuzz_0000", "fuzz_0020", "fuzz_0040"])
 
 
+class StratifySeedTests(unittest.TestCase):
+    def test_with_more_functions_than_k_the_seed_picks_which(self) -> None:
+        screened = [(call(function=f"f{i}"), fuzz.Recording({"returned": "0x"}, {}, []))
+                    for i in range(8)]
+        picked = {frozenset(c.function for c, _ in fuzz.stratify(seed, "c", list(screened), 2))
+                  for seed in range(10)}
+        self.assertGreater(len(picked), 1)
+
+
 class ShrinkTests(unittest.TestCase):
     def test_shrinking_keeps_only_what_the_failure_needs(self) -> None:
         # Fails while the first argument word is nonzero.
@@ -413,6 +422,37 @@ class FleetTests(unittest.TestCase):
                          [("first", "action-failed", "memory"), ("second", "ok", None)])
         summary = fuzz.report({e["name"]: e for e in entries}, results)
         self.assertEqual(list(summary["contract_failures"]), ["first"])
+
+    def test_a_coordinator_lost_after_the_first_contract_stops_the_run(self) -> None:
+        entries = [{**target().entry, "name": n, "cases": []} for n in ("first", "second")]
+        local = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            if "--help" in command:
+                return subprocess.CompletedProcess(command, 0, stdout="run-action")
+            if "build" in command:
+                return subprocess.CompletedProcess(command, 0)
+            if "run-action" not in command:
+                local.append(command)
+                return subprocess.CompletedProcess(command, 0)
+            script = Path(command[command.index("--script") + 1])
+            [staged] = json.loads((script.parent / "batch.json").read_text())["contracts"]
+            if staged["name"] == "second":
+                kwargs["stdout"].write(fuzz.fleet.NO_COORDINATOR + "\n")
+                return subprocess.CompletedProcess(command, 75)
+            outputs = Path(command[command.index("--outputs-dir") + 1]) / "solidity-hol" / \
+                fuzz.fleet.CONTEXT
+            outputs.mkdir(parents=True)
+            (outputs / "results.jsonl").write_text("")
+            kwargs["stdout"].write(f"solidity-hol:{fuzz.fleet.CONTEXT} {'a' * 64} done\n")
+            return subprocess.CompletedProcess(command, 0)
+
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch.dict(fuzz.fleet.os.environ, {}, clear=True), \
+                patch.object(fuzz.fleet.subprocess, "run", side_effect=run), \
+                self.assertRaisesRegex(SystemExit, "coordinator disappeared"):
+            fuzz.run_fleet("holbuild", Path(temporary) / "work", entries)
+        self.assertEqual(local, [])
 
     def test_contracts_run_through_the_fuzz_script_with_their_peer(self) -> None:
         entry = {**target().entry, "cases": []}

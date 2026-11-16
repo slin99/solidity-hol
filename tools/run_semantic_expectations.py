@@ -15,7 +15,7 @@ import re
 import shutil
 import subprocess
 import sys
-from typing import Any
+from typing import Any, Callable
 
 import export_solc_artifacts as exporter
 import semantic_tests_coverage as coverage
@@ -383,6 +383,7 @@ class BatchScript:
     path: Path
     key: str  # the manifest field listing the entries
     manifest_env: str  # names the manifest to a local `holbuild run`
+    batch_size: int = BATCH_SIZE
 
 
 EXPECTATIONS = BatchScript(HOL_SCRIPT, "tests", "SEMANTIC_EXPECTATIONS_MANIFEST")
@@ -468,8 +469,11 @@ def run_local_batch(holbuild: str, batch: Path, entries: list[dict[str, Any]],
 
 
 def run_batches(holbuild: str, work: Path, pending: list[dict[str, Any]],
-                script: BatchScript = EXPECTATIONS) -> None:
-    """Run bounded batches on the fleet, or locally without remote configuration."""
+                script: BatchScript = EXPECTATIONS,
+                failed: Callable[[ActionFailed, list[dict[str, Any]]], None] | None = None) -> None:
+    """Run bounded batches on the fleet, or locally without remote configuration.
+    A fleet action that fails stops the run, unless `failed` records it for its
+    entries and the run goes on."""
     subprocess.run([holbuild, "-j4", "build", "solidityDifferentialLib"], cwd=ROOT, check=True)
     help_text = subprocess.run([holbuild, "--help"], cwd=ROOT, check=True,
                                capture_output=True, text=True).stdout
@@ -480,11 +484,18 @@ def run_batches(holbuild: str, work: Path, pending: list[dict[str, Any]],
                          "configured remote execution/cache instead of running locally")
     first = 1 + max((int(path.name.split("-")[1]) for path in work.glob("batch-*")), default=-1)
     # Batches run one after another: each startup/export mutates the same holbuild project.
-    for index, offset in enumerate(range(0, len(pending), BATCH_SIZE), first):
-        entries = pending[offset:offset + BATCH_SIZE]
+    for index, offset in enumerate(range(0, len(pending), script.batch_size), first):
+        entries = pending[offset:offset + script.batch_size]
         batch = work / f"batch-{index:04d}"
         batch.mkdir()
-        if not (fleet and run_fleet_batch(holbuild, batch, entries, script)):
+        try:
+            ran = fleet and run_fleet_batch(holbuild, batch, entries, script)
+        except ActionFailed as failure:
+            if failed is None:
+                raise
+            failed(failure, entries)
+            ran = True
+        if not ran:
             if configured:
                 raise SystemExit("the HOL fleet action failed: remote configuration exists but "
                                  "no coordinator was selected")
