@@ -312,7 +312,7 @@ FEATURES = [
     (r"^UserDefinedValueTypeDefinition\b|^UserDefinedTypeName\b.*only struct", "user-defined value types"),
     (r"^InlineAssembly\b", "inline assembly"),
     (r"^FunctionDefinition\b.*unsupported source unit member", "free functions"),
-    (r"only internal library functions", "external library functions"),
+    (r"external library functions are called only", "external library functions"),
     (r"unsupported library member", "library structs and events"),
     (r"inline arrays", "inline arrays"),
     (r"structConstructorCall", "struct constructors"),
