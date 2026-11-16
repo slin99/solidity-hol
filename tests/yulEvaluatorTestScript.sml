@@ -30,7 +30,8 @@ Definition yul_test_machine_def:
        code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
        memory_size := 0; gas_limit := 0; gas_observations := []; scopes := [];
-       transaction_parameters := yul_test_tx_params |>
+       transaction_parameters := yul_test_tx_params;
+       original := empty_accounts; to_delete := [] |>
 End
 
 Definition run_def:
@@ -51,7 +52,8 @@ Definition yul_frame_machine_def:
        code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32) |+ ("3", 42w);
        memory := FEMPTY; memory_size := 0; gas_limit := 0; gas_observations := []; scopes := [];
-       transaction_parameters := yul_test_tx_params |>
+       transaction_parameters := yul_test_tx_params;
+       original := empty_accounts; to_delete := [] |>
 End
 
 Definition run_frame_def:
@@ -886,7 +888,8 @@ Definition yul_call_machine_def:
        code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
        memory_size := 0; gas_limit := 100000; gas_observations := []; scopes := [];
-       transaction_parameters := yul_test_tx_params |>
+       transaction_parameters := yul_test_tx_params;
+       original := empty_accounts; to_delete := [] |>
 End
 
 Definition run_call_frame_def:

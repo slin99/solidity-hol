@@ -5,11 +5,19 @@ Theory solidityState
 Ancestors
   solidityCore finite_map
 
+(* original and to_delete are the transaction's EVM bookkeeping that
+ * SELFDESTRUCT needs (EIP-6780): the original accounts are the world at the
+ * transaction's start, with the accounts created since marked empty, and
+ * to_delete lists the accounts the transaction's calls left pending deletion,
+ * deleted when it settles (settle_source_world). The source never reads them;
+ * it threads them through the message calls it hands to Verifereum. *)
 Datatype:
   source_world = <|
     accounts : evm_accounts;
     transient : transient_storage;
-    logs : event list
+    logs : event list;
+    original : evm_accounts;
+    to_delete : address list
   |>
 End
 

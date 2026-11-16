@@ -7,10 +7,13 @@ source/context relation remains aligned with the intended Vyper-HOL #98 design.
 
 The evaluator's high-level calls currently go through
 `semantics/externalCallScript.sml`, a provisional adapter that does not meet
-these obligations: it runs the callee in a fresh frame whose original accounts
-are the world after the value transfer, whose access set holds only caller and
-callee and whose depth is one, under a fixed gas budget. A call that leaves
-accounts pending deletion is reported as outside the model rather than dropped.
+these obligations: it runs the callee in a fresh frame whose access set holds
+only caller and callee and whose depth is one, under a fixed gas budget. The
+transaction-original accounts and pending deletions are the exception: the
+source world carries them (`original`, `to_delete`), each call or creation
+takes them in and hands back what it left, and a frame that succeeds deletes
+the pending accounts when the transaction settles (`settle_source_world`), so
+SELFDESTRUCT follows EIP-6780 across the transaction's calls.
 
 ## Ownership boundary
 

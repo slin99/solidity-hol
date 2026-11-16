@@ -15,7 +15,7 @@ Definition initial_state_def:
   initial_state = <|
     world := <| accounts := empty_accounts;
                 transient := empty_transient_storage;
-                logs := [] |>;
+                logs := []; original := empty_accounts; to_delete := [] |>;
     frame := <| self_address := 0w; code_address := 0w; sender_address := 0w;
                 call_value := 0; call_data := []; static_context := F;
                 tx_params := <| origin := 0w; gasPrice := 0; baseFeePerGas := 0;

@@ -84,7 +84,8 @@ Definition yul_contract_machine_def:
        code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32) |+ ("11", 1000000w);
        memory := FEMPTY; memory_size := 0; gas_limit := 10000000; gas_observations := []; scopes := [];
-       transaction_parameters := yul_contract_tx_params |>
+       transaction_parameters := yul_contract_tx_params;
+       original := empty_accounts; to_delete := [] |>
 End
 
 Definition run_contract_def:

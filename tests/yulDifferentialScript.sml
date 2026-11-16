@@ -77,6 +77,9 @@ End
  *)
 Definition yul_differential_machine_def:
   yul_differential_machine code imm c data =
+    let pre = case_accounts (patch_immutables c.case_immutable_refs imm code)
+                c.case_storage c.case_sender c.case_peer_code
+                c.case_peer_storage c.case_libraries in
     <| accounts :=
          (* the same world the source run starts from: the case's value has
           * already moved to the contract, so a call the frame makes with part
@@ -85,10 +88,10 @@ Definition yul_differential_machine_def:
           * back to its address -- Caller.bumpSelf's ISelf(address(this)) -- so
           * that such a call runs the bytecode the real transaction would.
           *)
-         transfer_value c.case_sender contract_address c.case_value
-           (case_accounts (patch_immutables c.case_immutable_refs imm code)
-              c.case_storage c.case_sender c.case_peer_code
-              c.case_peer_storage c.case_libraries);
+         transfer_value c.case_sender contract_address c.case_value pre;
+       (* the transaction's original accounts: the world before the value
+        * moved *)
+       original := pre; to_delete := [];
        transient := empty_transient_storage;
        logs := [];
        self_address := contract_address;
@@ -136,6 +139,11 @@ Definition yul_creation_machine_def:
   yul_creation_machine p c data =
     (yul_differential_machine [] ([] : (num # scalar # byte list) list) c []) with
       <| accounts := transfer_value c.case_sender (case_address c) c.case_value
+           (case_accounts [] c.case_storage c.case_sender
+              c.case_peer_code c.case_peer_storage c.case_libraries);
+         (* the created account is empty in the original accounts, as
+          * Verifereum's CREATE marks it *)
+         original := update_account (case_address c) empty_account_state
            (case_accounts [] c.case_storage c.case_sender
               c.case_peer_code c.case_peer_storage c.case_libraries);
          self_address := case_address c;

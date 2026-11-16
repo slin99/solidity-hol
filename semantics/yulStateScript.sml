@@ -52,6 +52,12 @@
  * and takes back what the callee left, as it does the accounts. It is not
  * part of the world a frame's caller sees: a fresh transaction starts with
  * none, and nothing that reads a frame's outcome looks at it.
+ *
+ * original and to_delete are the transaction's original accounts and the
+ * accounts its calls left pending deletion, as in the source world: a
+ * message call or creation passes them to Verifereum and takes back what it
+ * left, so a SELFDESTRUCT can tell an account created in this transaction
+ * (EIP-6780). Nothing in the frame reads them.
  *)
 Theory yulState
 Ancestors
@@ -83,7 +89,9 @@ Datatype:
     gas_limit : num;
     gas_observations : gas_observation list;
     scopes : (string |-> bytes32) list;
-    transaction_parameters : transaction_parameters
+    transaction_parameters : transaction_parameters;
+    original : evm_accounts;
+    to_delete : address list
   |>
 End
 

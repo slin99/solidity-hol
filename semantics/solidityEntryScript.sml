@@ -15,6 +15,12 @@
  * The frame starts from the world at frame entry: value transfer, nonces,
  * gas and the transaction around the call are Verifereum's. A revert or panic
  * restores that world, including its logs.
+ *
+ * The frame is the transaction's: the entry world's original accounts are the
+ * world at the transaction's start, and a creation marks its own account
+ * empty in them, as Verifereum's CREATE does. A frame that succeeds settles
+ * the transaction, deleting the accounts its calls left pending deletion
+ * (EIP-6780).
  *)
 Theory solidityEntry
 Ancestors
@@ -105,6 +111,13 @@ Definition fallback_output_def:
     | _ => INR (InvalidCompletion "bad fallback return")
 End
 
+(* The end of the transaction: its pending deletions happen. *)
+Definition settle_source_world_def:
+  settle_source_world (w : source_world) =
+    w with <| accounts := process_deletions w.to_delete w.accounts;
+              to_delete := [] |>
+End
+
 (* One frame running procedure p on its arguments, with the values imm of
  * the immutables. An inline assembly halt returns its bytes as the frame's
  * data; in a creation frame those bytes would be the deployed code, which the
@@ -114,7 +127,11 @@ End
 Definition run_entry_with_gas_def:
   run_entry_with_gas fuel env p args (fr : source_frame) (w : source_world) imm reserved
             kind gas =
-    let st = <| world := w; frame := fr; immutables := imm; scopes := [];
+    let w0 = if kind = CreationEntry then
+               w with original :=
+                 update_account fr.self_address empty_account_state w.original
+             else w in
+    let st = <| world := w0; frame := fr; immutables := imm; scopes := [];
                 heap := FEMPTY; next_heap_id := 0; memory_allocated := reserved;
                 targets := FEMPTY; return_data := SOME [] |> in
     let r = case materialize_arguments env (MAP SND p.parameters) args st of
@@ -127,8 +144,9 @@ Definition run_entry_with_gas_def:
         (case (if kind = FallbackEntry then fallback_output r.state vs
                else encoded_runtime_values env r.state (MAP SND p.return_bindings) vs) of
            INL data =>
-             if kind = CreationEntry then ContractCreated r.state.immutables w'
-             else ContractReturned data w'
+             if kind = CreationEntry then
+               ContractCreated r.state.immutables (settle_source_world w')
+             else ContractReturned data (settle_source_world w')
          | INR (PanicCompletion code) => ContractReverted (panic_data code) w
          | INR (RevertCompletion data) => ContractReverted data w
          | INR _ => ContractInvalid "unencodable return values")
@@ -136,7 +154,7 @@ Definition run_entry_with_gas_def:
     | FrameAbort w' => ContractAborted w'
     | FrameHalt data w' =>
         if kind = CreationEntry then ContractInvalid "assembly halt in a creation frame"
-        else ContractReturned data w'
+        else ContractReturned data (settle_source_world w')
     | FramePanic code w' => ContractReverted (panic_data code) w'
     | FrameInvalid reason => ContractInvalid reason
     | FrameResourceLimit => ContractOutOfFuel
@@ -252,6 +270,7 @@ val () = cv_auto_trans dispatch_procedure_def;
 val () = cv_auto_trans fallback_arguments_def;
 val () = cv_auto_trans dispatch_def;
 val () = cv_auto_trans fallback_output_def;
+val () = cv_auto_trans settle_source_world_def;
 val () = cv_auto_trans run_entry_with_gas_def;
 val () = cv_auto_trans run_entry_def;
 val () = cv_auto_trans unconsumed_gas_result_def;

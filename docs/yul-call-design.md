@@ -58,7 +58,7 @@ the call to `run_external_call`:
 
 ```
 run_external_call m.self_address callee calldata value static
-  (min gas m.gas_limit) m.accounts m.transient
+  (min gas m.gas_limit) m.accounts m.original m.transient
   m.transaction_parameters
 ```
 
@@ -66,12 +66,15 @@ with `callee` the builtin's address argument, `gas` its gas argument capped at
 the frame's budget, `calldata` the bytes the input
 region now holds, and `value` the call's value argument (zero for
 `staticcall`, which has none). Everything after that is Verifereum's: a fresh
-one-frame state whose original accounts are the world after the value
-transfer, whose access set holds caller and callee, and whose depth is one;
+one-frame state whose original accounts are the transaction's (`m.original`,
+which a successful call or creation hands back updated), whose access set
+holds caller and callee, and whose depth is one;
 the value moves before the callee runs; a caller that cannot pay fails the
 call without running it; a delegated account runs its delegate's code. The
-result is a `call_outcome`: a success flag, the callee's return data, and the
-world it left.
+result is a `call_outcome`: a success flag, the callee's return data, the
+world it left, and the original accounts and pending deletions it left, which
+the machine keeps (`original`, appending to `to_delete`) for the transaction
+to settle.
 
 The caller's world follows the same rule the EVM's does:
 
@@ -83,8 +86,7 @@ The caller's world follows the same rule the EVM's does:
 
 `run_external_call` answers `NONE` where the call leaves the model — a
 recipient-balance overflow, a run outside the domain (one that ends in no
-frame, in more than one, or in a `vfm_abort`), or a callee that ends with
-accounts pending deletion. The builtin then answers
+frame, in more than one, or in a `vfm_abort`). The builtin then answers
 `YulInvalid "call outside the model"`, which
 the corpus reports as a diagnostic. A call the model cannot make is never
 guessed at. A caller that cannot pay is not one of these: it is a failed call,

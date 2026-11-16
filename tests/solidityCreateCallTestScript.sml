@@ -10,7 +10,7 @@ Definition create_adapter_summary_def:
     let addr = case salt of NONE => address_for_create 0x1001w
                                      (lookup_account 0x1001w accounts).nonce
                          | SOME s => address_for_create2 0x1001w s code in
-    case run_create_call 0x1001w salt code value 200000 accounts
+    case run_create_call 0x1001w salt code value 200000 accounts accounts
            empty_transient_storage fixture_tx_params of
       NONE => NONE
     | SOME r => SOME
@@ -125,7 +125,57 @@ Theorem creation_adapter_overflow_outside_model:
   run_create_call 0x1001w NONE [] 7 200000
     (update_account (address_for_create 0x1001w 0)
       (empty_account_state with balance := 2 ** 256 - 1) create_adapter_accounts)
-    empty_transient_storage fixture_tx_params = NONE
+    create_adapter_accounts empty_transient_storage fixture_tx_params = NONE
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* EIP-6780 across adapter calls: a contract created by one call and
+ * destroyed by a later call of the same transaction is left pending deletion
+ * when the later call is given the original accounts the creation handed
+ * back; given a world in which it already existed (a later transaction's), it
+ * only sends its balance. The runtime code is CALLER SELFDESTRUCT. *)
+Definition selfdestruct_initcode_def:
+  selfdestruct_initcode : byte list =
+    [0x61w; 0x33w; 0xffw; 0x60w; 0w; 0x52w;
+     0x60w; 2w; 0x60w; 30w; 0xf3w]
+End
+
+Definition selfdestruct_after_create_def:
+  selfdestruct_after_create same_tx =
+    let accounts = create_adapter_accounts in
+    case run_create_call 0x1001w NONE selfdestruct_initcode 7 200000 accounts
+           accounts empty_transient_storage fixture_tx_params of
+      NONE => NONE
+    | SOME r =>
+        case r.create_address of
+          NONE => NONE
+        | SOME a =>
+            let original = if same_tx then r.create_original
+                           else r.create_accounts in
+            case run_external_call 0x1001w a [] 0 F 100000 r.create_accounts
+                   original r.create_transient fixture_tx_params of
+              NONE => NONE
+            | SOME c =>
+                SOME (c.call_success, c.call_to_delete = [a],
+                      c.call_to_delete,
+                      (lookup_account a c.call_accounts).code,
+                      (lookup_account a c.call_accounts).balance,
+                      (lookup_account 0x1001w c.call_accounts).balance)
+End
+
+val () = cv_auto_trans selfdestruct_initcode_def;
+val () = cv_auto_trans selfdestruct_after_create_def;
+
+Theorem selfdestruct_same_tx_pending_deletion:
+  selfdestruct_after_create T =
+    SOME (T, T, [address_for_create 0x1001w 0], [0x33w; 0xffw], 0, 1000)
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem selfdestruct_later_tx_only_moves_balance:
+  selfdestruct_after_create F = SOME (T, F, [], [0x33w; 0xffw], 0, 1000)
 Proof
   CONV_TAC cv_eval
 QED
