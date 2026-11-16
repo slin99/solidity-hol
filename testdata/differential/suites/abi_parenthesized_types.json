@@ -1,0 +1,137 @@
+{
+  "name": "abi_parenthesized_types",
+  "source": "testdata/differential/abi_parenthesized_types.sol",
+  "contract": "AbiParenthesizedTypes",
+  "artifact": "testdata/differential/expected/abi_parenthesized_types.json",
+  "cases": [
+    {
+      "name": "decode_uint",
+      "function": "decodeUint",
+      "args": [
+        "0x0000000000000000000000000000000000000000000000000000000000000007"
+      ],
+      "expect": {
+        "return": [
+          7
+        ]
+      }
+    },
+    {
+      "name": "decode_uint_short",
+      "function": "decodeUint",
+      "args": [
+        "0x00000000000000000000000000000000000000000000000000000000000000"
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "decode_struct",
+      "function": "decodeStruct",
+      "args": [
+        "0x00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000004"
+      ],
+      "expect": {
+        "return": [
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "name": "decode_array",
+      "function": "decodeArray",
+      "args": [
+        "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000003"
+      ],
+      "expect": {
+        "return": [
+          3
+        ]
+      }
+    },
+    {
+      "name": "decode_pair",
+      "function": "decodePair",
+      "args": [
+        "0x00000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000002"
+      ],
+      "expect": {
+        "return": [
+          5,
+          2
+        ]
+      }
+    },
+    {
+      "name": "decode_pair_bad_enum",
+      "function": "decodePair",
+      "args": [
+        "0x00000000000000000000000000000000000000000000000000000000000000050000000000000000000000000000000000000000000000000000000000000003"
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    },
+    {
+      "name": "bounds",
+      "function": "bounds",
+      "args": [],
+      "expect": {
+        "return": [
+          2,
+          255
+        ]
+      }
+    },
+    {
+      "name": "convert_in_range",
+      "function": "convert",
+      "args": [
+        2
+      ],
+      "expect": {
+        "return": [
+          2,
+          2,
+          2
+        ]
+      }
+    },
+    {
+      "name": "convert_out_of_range",
+      "function": "convert",
+      "args": [
+        258
+      ],
+      "expect": {
+        "revert": "0x4e487b710000000000000000000000000000000000000000000000000000000000000021"
+      }
+    },
+    {
+      "name": "wrap",
+      "function": "wrap",
+      "args": [
+        9
+      ],
+      "expect": {
+        "return": [
+          9
+        ]
+      }
+    },
+    {
+      "name": "construct",
+      "function": "construct",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          8
+        ]
+      }
+    }
+  ]
+}

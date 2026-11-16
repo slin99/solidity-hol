@@ -527,6 +527,10 @@ data after the encoding is ignored. Memory and calldata bytes, including
 slices, decode in place; scalar results allocate no memory. Storage input is
 rejected.
 
+A type in parentheses, `(T)` or `((T))`, is the type it encloses, here and
+wherever a type is written as an expression: `type((T))`, conversions
+`(T)(x)`, struct constructors `(S)(a, b)` and `(U).wrap(x)`.
+
 `a.call(data)`, `a.staticcall(data)` and `a.delegatecall(data)`, with `a`
 an address and `data` a memory or calldata `bytes` or a bytes literal,
 evaluate `a`, then their call options `{value: v, gas: g}` in the order
