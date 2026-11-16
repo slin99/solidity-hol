@@ -64,7 +64,7 @@ Libs
  * function), and those inline assembly may name by slot and offset; the
  * immutables and constants (with the id of the constant's wrapping
  * procedure); the enclosing function's return variables and, in a modifier,
- * the procedure its placeholder calls with the function's parameters; the
+ * the procedure its placeholder calls and the variables it passes; the
  * arithmetic mode; whether in the creation; the innermost scope node, which
  * declares the locals of a declaration statement; the id of the return
  * parameter list a return names; whether in a loop body; the declarations
@@ -377,7 +377,8 @@ Definition read_location_def:
   read_location (id : num) result =
     case result of
       INL ((ss, ref, ty), n) =>
-        if is_stored_scalar_type ty ∨ located_object_shape StorageLoc ty then
+        if is_stored_scalar_type ty ∨ is_function_type ty ∨
+           located_object_shape StorageLoc ty then
           let (rs, a) = bind_value n (read_value_type ty) (ReadOperation ty ref) in
           INL ((ss ++ rs, a, ElabType (read_value_type ty)), n + 1)
         else INR [(id, "read of a value of this type")]
@@ -817,19 +818,21 @@ Definition convert_operands_def:
 End
 
 (* The operation of abi.encode* on the values of its arguments, after any
- * statements converting the arguments: a selector given as an argument is
- * a bytes4, and the other arguments are scalars, arrays without structs or
- * byte sequences (arrays and integer literals only unpacked, as the compiler
- * requires). *)
+ * statements converting the arguments: a selector given as an argument
+ * converts to a bytes4 (a hex literal binds its bytes), and the other
+ * arguments are scalars, arrays without structs or byte sequences (arrays and
+ * integer literals only unpacked, as the compiler requires). *)
 Definition selector_encoding_def:
   selector_encoding (i : num) s svt r =
-    let selector = (if svt = ElabType (FixedBytesT 4) then []
-                    else [(i, "selector not a bytes4")]) in
     case r of
       INL (css, tys, args, n1) =>
-        if selector = [] then INL ((css, AbiEncodeOperation (SOME s) tys args), n1)
-        else INR selector
-    | INR bs => INR (selector ++ bs)
+        (case coerce n1 (FixedBytesT 4) s svt of
+           INL ((ss, s'), n2) =>
+             INL ((css ++ ss, AbiEncodeOperation (SOME s') tys args), n2)
+         | INR _ => INR [(i, "selector not a bytes4")])
+    | INR bs =>
+        INR ((if ISL (coerce 0 (FixedBytesT 4) s svt) then []
+              else [(i, "selector not a bytes4")]) ++ bs)
 End
 
 Definition abi_encoding_def:
@@ -1063,8 +1066,8 @@ End
 (* Whether a binding of type ty is one the core accepts: a memory or calldata
  * type's structs are declared, not recursive and hold no mapping; a storage
  * type's structs have layouts. *)
-Definition memory_binding_ok_def:
-  memory_binding_ok enums structs ty ⇔
+Definition located_binding_ok_def:
+  located_binding_ok enums structs ty ⇔
     case ty of
       LocatedT StorageLoc element =>
         (case (elab_type_declarations enums structs, elab_struct_layouts structs) of
@@ -1081,6 +1084,15 @@ Definition memory_binding_ok_def:
                (LENGTH decls) element
          | NONE => F)
     | _ => T
+End
+
+(* located_binding_ok of a binding, or of each parameter and return of an
+ * internal function type. *)
+Definition memory_binding_ok_def:
+  memory_binding_ok enums structs ty ⇔
+    case ty of
+      FunctionT InternalFn _ ps rs => EVERY (located_binding_ok enums structs) (ps ++ rs)
+    | _ => located_binding_ok enums structs ty
 End
 
 (* Whether values of type ty cross an ABI boundary (abi_type_ok), against the
@@ -2179,10 +2191,16 @@ Definition elab_expr_def:
               | _ => INR [(info.node_id, "unsupported low-level call")])
          | INR bs => INR bs)
     | SrcAbiDecode info _ e tns tid =>
-        (case elab_expr ctx n e of
+        (* storage bytes are copied to memory first, as the compiler does *)
+        (case (case elab_expr ctx n e of
+                 INL ((ss, a, ElabType (LocatedT StorageLoc BytesT)), n0) =>
+                   (case coerce n0 (LocatedT MemoryLoc BytesT) a
+                           (ElabType (LocatedT StorageLoc BytesT)) of
+                      INL ((cs, a'), n1) =>
+                        INL ((ss ++ cs, a', ElabType (LocatedT MemoryLoc BytesT)), n1)
+                    | INR why => INR [(expr_id e, why)])
+               | r => r) of
            INL ((ss, a, ElabType (LocatedT loc BytesT)), n1) =>
-             if loc ≠ MemoryLoc ∧ loc ≠ CalldataLoc then
-               INR [(expr_id e, "abi decoding of data not in memory or calldata bytes")] else
              (case all_some (MAP normalize_type_name tns) of
                 SOME tys =>
                   let out_tys =
@@ -2200,7 +2218,7 @@ Definition elab_expr_def:
               | NONE =>
                   INR (FLAT (MAP (λtn. type_name_blockers
                                          (info.node_id, "unsupported type name") tn) tns)))
-         | INL _ => INR [(expr_id e, "abi decoding of data not in memory or calldata bytes")]
+         | INL _ => INR [(expr_id e, "abi decoding of data not of type bytes")]
          | INR bs => INR bs)
     | SrcTransfer info _ target value tid =>
         ensure (tid = "t_tuple$__$") (info.node_id, "type annotation mismatch")
@@ -2723,7 +2741,8 @@ Definition return_writes_def:
 End
 
 (* The placeholder of a modifier: a call of the procedure of the rest of the
- * function with its parameters, whose values become the return variables.
+ * function with the function's parameters and incoming return values, whose
+ * values become the return variables.
  *)
 Definition placeholder_call_def:
   placeholder_call n next ps rs =
@@ -3245,81 +3264,87 @@ Definition return_defaults_def:
     | NONE => return_defaults n rs)
 End
 
-(* The compiler allocates a static memory return array or a memory return
- * struct once and passes it through a function's modifiers, so a body run
- * twice by `_; _;` sees its first run's writes. Procedures here start from
- * fresh return values, so modified functions with such returns are
- * rejected. *)
-Definition static_memory_returns_def:
-  (static_memory_returns [] ⇔ F) ∧
-  (static_memory_returns ((x, ty) :: rs) ⇔
-    (case ty of LocatedT MemoryLoc (ArrayT _ (SOME _)) => T
-              | LocatedT MemoryLoc (StructT _) => T | _ => F) ∨
-    static_memory_returns rs)
+(* Bindings of fresh ids n, n + 1, ... of the types of bindings rs. *)
+Definition fresh_bindings_def:
+  (fresh_bindings (n : num) [] = []) ∧
+  (fresh_bindings n ((_, ty : sol_type) :: rs) = (n, ty) :: fresh_bindings (n + 1) rs)
 End
 
 (* The procedures of a function with modifiers: one per modifier invocation,
- * the first with the function's id, then one for the body. Each takes the
- * function's parameters and has its return variables; the invocation's
- * arguments define the modifier's parameters, and the modifier's
- * placeholder calls the next procedure (the compiler's IR does the same).
+ * the first with the function's id, then one for the body. The first takes
+ * the function's parameters ps, the others also the incoming return values
+ * rps, which they assign to their return variables rs on entry; the first
+ * runs entry instead. The invocation's arguments define the modifier's
+ * parameters, and the modifier's placeholder calls the next procedure with
+ * ps and rps (the compiler's IR does the same, so a static memory return
+ * array or memory return struct, allocated once, is shared by every run of
+ * the body, and a scalar return starts from its incoming value on each run).
  * Fresh ids name the procedures after the first.
  *
- * Modifier arguments see the parameters but not the return variables: the
- * compiler's IR passes each modifier its own copies of the return variables,
- * which are not modelled. A modifier body has no super calls and no return
- * values (return list id 0).
+ * Modifier arguments see the parameters but not the return variables. A
+ * modifier body has no super calls and no return values (return list id 0).
  *)
 Definition elab_levels_def:
-  (elab_levels ctx modifiers ps rs x n [] ss =
-    let (ds, n0) = return_defaults n rs in
-    case elab_stmts ctx n0 ss of
+  (elab_levels ctx modifiers ps rps qs entry rs x n [] ss =
+    case elab_stmts ctx n ss of
       INL ((code, _), n1) =>
-        INL ([<| procedure_id := AstId x; parameters := core_bindings ps;
-                 return_bindings := core_bindings rs; body := ds ++ code |>], n1)
+        INL ([<| procedure_id := AstId x; parameters := core_bindings (ps ++ qs);
+                 return_bindings := core_bindings rs; body := entry ++ code |>], n1)
     | INR bs => INR bs) ∧
-  (elab_levels ctx modifiers ps rs x n ((m, args) :: ms) ss =
+  (elab_levels ctx modifiers ps rps qs entry rs x n ((m, args) :: ms) ss =
+    let inner = return_writes (n + 1) rs
+                  (MAP (λ(r, ty). (BoundAtom (AstId r), ElabType ty)) rps) in
+    let n0 = n + 1 + LENGTH rs in
     case ALOOKUP modifiers m of
       NONE =>
         INR ((m, "unknown modifier") ::
-             blockers (elab_levels ctx modifiers ps rs n n ms ss))
+             blockers (elab_levels ctx modifiers ps rps rps inner rs n n0 ms ss))
     | SOME (md : src_modifier) =>
         case (all_some (MAP variable_binding md.modifier_parameters),
               md.modifier_body) of
           (SOME mps, SrcBlock minfo mss) =>
-            let own = (if static_memory_returns rs
-                       then [(m, "modifier of a function returning a static memory array")]
-                       else []) ++
-                      (if EVERY (λ(_, ty). memory_binding_ok ctx.enums ctx.structs ty) mps
-                       then [] else [(m, "unsupported modifier parameter type")]) in
+            let own = if EVERY (λ(_, ty). memory_binding_ok ctx.enums ctx.structs ty) mps
+                      then [] else [(m, "unsupported modifier parameter type")] in
             let mctx = ctx with <| supers := []; variables := mps;
-                                   placeholder := SOME (n, ps);
+                                   placeholder := SOME (n, ps ++ rps);
                                    scope := minfo.node_id;
                                    returns_id := 0 |> in
-            (case elab_modifier_args (ctx with variables := ps) (n + 1) m mps args of
+            (case elab_modifier_args (ctx with variables := ps) n0 m mps args of
                INL (sa, n1) =>
                  (case elab_stmts mctx n1 mss of
                     INL ((code, _), n2) =>
-                      (case elab_levels ctx modifiers ps rs n n2 ms ss of
+                      (case elab_levels ctx modifiers ps rps rps inner rs n n2 ms ss of
                          INL (levels, n3) =>
                            if own ≠ [] then INR own else
                            INL (<| procedure_id := AstId x;
-                                   parameters := core_bindings ps;
+                                   parameters := core_bindings (ps ++ qs);
                                    return_bindings := core_bindings rs;
-                                   body := sa ++ code |> :: levels, n3)
+                                   body := entry ++ sa ++ code |> :: levels, n3)
                        | INR bs => INR (own ++ bs))
                   | INR bs =>
                       INR (own ++ bs ++
-                           blockers (elab_levels ctx modifiers ps rs n n ms ss)))
+                           blockers (elab_levels ctx modifiers ps rps rps inner rs n n0 ms ss)))
              | INR bs =>
-                 INR (own ++ bs ++ blockers (elab_stmts mctx n mss) ++
-                      blockers (elab_levels ctx modifiers ps rs n n ms ss)))
+                 INR (own ++ bs ++ blockers (elab_stmts mctx n0 mss) ++
+                      blockers (elab_levels ctx modifiers ps rps rps inner rs n n0 ms ss)))
         | (NONE, _) =>
             INR (variables_blockers (MAP SOME md.modifier_parameters) ++
-                 blockers (elab_levels ctx modifiers ps rs n n ms ss))
+                 blockers (elab_levels ctx modifiers ps rps rps inner rs n n0 ms ss))
         | _ =>
             INR ((m, "unsupported modifier") ::
-                 blockers (elab_levels ctx modifiers ps rs n n ms ss)))
+                 blockers (elab_levels ctx modifiers ps rps rps inner rs n n0 ms ss)))
+End
+
+(* A function's procedures: the first allocates the return variables and,
+ * when modifiers follow, copies them as the incoming return values rps of
+ * the rest. *)
+Definition function_levels_def:
+  function_levels ctx modifiers ps rs x n ms ss =
+    let (ds, n0) = return_defaults n rs in
+    if NULL ms then elab_levels ctx modifiers ps [] [] ds rs x n0 ms ss else
+    let rps = fresh_bindings n0 rs in
+    elab_levels ctx modifiers ps rps [] (ds ++ define_parameters rps (return_atoms rs))
+      rs x (n0 + LENGTH rs) ms ss
 End
 
 (* A function's context, with the parameters and return variables vs. *)
@@ -3393,7 +3418,7 @@ Definition elab_function_def:
         (ensure (EVERY (λ(_, ty). memory_binding_ok c.contract_enums c.contract_structs ty)
                    (ps ++ rs))
            (f.fn_info.node_id, "unsupported memory struct type")
-        (elab_levels (function_ctx ctx library f supers (ps ++ rs) rs info.node_id)
+        (function_levels (function_ctx ctx library f supers (ps ++ rs) rs info.node_id)
           modifiers ps rs f.fn_info.node_id n f.fn_modifiers ss))))
     | (SOME _, SOME _, SrcBlock _ _, NONE) =>
         INR [(f.fn_info.node_id, "unresolved super call")]
@@ -3408,7 +3433,7 @@ Definition elab_function_def:
         INR (variables_blockers vs ++
              blockers (ensure (¬strict ∨ EVERY (λ(_, g). g.fn_unsupported = NONE) supers)
                (f.fn_info.node_id, "super call of an unsupported function")
-               (elab_levels (bind_failed fctx vs)
+               (function_levels (bind_failed fctx vs)
                   modifiers ps rs f.fn_info.node_id n f.fn_modifiers ss)))
     | _ => INR (variables_blockers (MAP SOME (f.fn_parameters ++ f.fn_returns)))
 End
@@ -4245,7 +4270,6 @@ Proof
   Induct >> simp[Once return_defaults_pre_def]
 QED
 
-val () = cv_auto_trans static_memory_returns_def;
 val () = cv_auto_trans flag_def;
 val () = cv_auto_trans set_flag_def;
 
@@ -4322,6 +4346,7 @@ QED
 
 val () = cv_auto_trans variable_binding_def;
 val () = cv_auto_trans core_bindings_def;
+val () = cv_auto_trans fresh_bindings_def;
 val () = cv_auto_trans define_parameters_def;
 val elab_modifier_args_pre_def =
   cv_auto_trans_pre "elab_modifier_args_pre" elab_modifier_args_def;
@@ -4335,13 +4360,15 @@ QED
 val elab_levels_pre_def = cv_auto_trans_pre "elab_levels_pre" elab_levels_def;
 
 Theorem elab_levels_pre[cv_pre,local]:
-  ∀ms ctx modifiers ps rs x n ss. elab_levels_pre ctx modifiers ps rs x n ms ss
+  ∀ms ctx modifiers ps rps qs entry rs x n ss.
+    elab_levels_pre ctx modifiers ps rps qs entry rs x n ms ss
 Proof
   Induct >- simp[Once elab_levels_pre_def, elab_stmts_pre] >>
   Cases >>
   simp[Once elab_levels_pre_def, elab_stmts_pre, elab_modifier_args_pre]
 QED
 
+val () = cv_auto_trans function_levels_def;
 val () = cv_auto_trans function_ctx_def;
 val () = cv_auto_trans bound_variables_def;
 val () = cv_auto_trans elab_function_def;

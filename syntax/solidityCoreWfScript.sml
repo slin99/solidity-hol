@@ -112,59 +112,6 @@ Termination
   rw[list_size_def]
 End
 
-(* Environment-aware type validation: declared ids resolve, and memory and
- * calldata types reach no mapping, including through struct fields.
- * valid_type_shape checks only the type's own structure.
- *)
-Definition declared_type_ok_def:
-  (declared_type_ok env (ArrayT ty _) ⇔ declared_type_ok env ty) ∧
-  (declared_type_ok env (MappingT key value) ⇔
-    declared_type_ok env key ∧ declared_type_ok env value) ∧
-  (declared_type_ok env (StructT id) ⇔ IS_SOME (lookup_struct env id)) ∧
-  (declared_type_ok env (EnumT id) ⇔ IS_SOME (lookup_enum env id)) ∧
-  (declared_type_ok env (UserValueT id) ⇔ IS_SOME (lookup_user_value env id)) ∧
-  (declared_type_ok env (ContractT _) ⇔ F) ∧
-  (declared_type_ok env (FunctionT _ _ parameters returns) ⇔
-    declared_types_ok env parameters ∧
-    declared_types_ok env returns) ∧
-  (declared_type_ok env (LocatedT loc ty) ⇔
-    declared_type_ok env ty ∧
-    (loc ≠ StorageLoc ⇒
-     ¬mapping_reachable env (LENGTH env.type_declarations) ty)) ∧
-  (declared_type_ok env _ ⇔ T) ∧
-  (declared_types_ok env [] ⇔ T) ∧
-  (declared_types_ok env (ty :: tys) ⇔
-    declared_type_ok env ty ∧ declared_types_ok env tys)
-Termination
-  WF_REL_TAC ‘measure (λx. case x of
-    INL (env, ty) => sol_type_size ty
-  | INR (env, tys) => list_size sol_type_size tys)’ >>
-  rw[solidityASTTheory.sol_type_size_def, list_size_def]
-End
-
-Definition is_function_type_def[simp]:
-  (is_function_type (FunctionT _ _ _ _) ⇔ T) ∧
-  (is_function_type _ ⇔ F)
-End
-
-(* A function type's admitted shape: an internal function, not payable,
- * whose parameters and returns are non-function value types. Other types pass.
- *)
-Definition function_type_ok_def:
-  (function_type_ok (FunctionT kind m ps rs) ⇔
-    kind = InternalFn ∧ m ≠ PayableMut ∧
-    EVERY (λty. is_value_type ty ∧ ¬is_function_type ty) (ps ++ rs)) ∧
-  (function_type_ok _ ⇔ T)
-End
-
-(* Stage 2 bindings, parameters and returns are value types: an internal
- * function type only as function_type_ok admits it. *)
-Definition core_scalar_type_def:
-  core_scalar_type env ty ⇔
-    is_value_type ty ∧ function_type_ok ty ∧ valid_type_shape ty ∧
-    declared_type_ok env ty
-End
-
 (* The bytes a value type occupies in a storage slot. An enum takes one byte;
  * user-defined value types are not stored yet.
  *)
@@ -336,6 +283,71 @@ Definition located_value_type_def:
   (located_value_type _ ⇔ F)
 End
 
+(* Environment-aware type validation: declared ids resolve, and memory and
+ * calldata types reach no mapping, including through struct fields.
+ * valid_type_shape checks only the type's own structure.
+ *)
+Definition declared_type_ok_def:
+  (declared_type_ok env (ArrayT ty _) ⇔ declared_type_ok env ty) ∧
+  (declared_type_ok env (MappingT key value) ⇔
+    declared_type_ok env key ∧ declared_type_ok env value) ∧
+  (declared_type_ok env (StructT id) ⇔ IS_SOME (lookup_struct env id)) ∧
+  (declared_type_ok env (EnumT id) ⇔ IS_SOME (lookup_enum env id)) ∧
+  (declared_type_ok env (UserValueT id) ⇔ IS_SOME (lookup_user_value env id)) ∧
+  (declared_type_ok env (ContractT _) ⇔ F) ∧
+  (declared_type_ok env (FunctionT _ _ parameters returns) ⇔
+    declared_types_ok env parameters ∧
+    declared_types_ok env returns ∧
+    EVERY (λty. case ty of
+                  LocatedT loc element => located_type_ok env loc element
+                | _ => T) (parameters ++ returns)) ∧
+  (declared_type_ok env (LocatedT loc ty) ⇔
+    declared_type_ok env ty ∧
+    (loc ≠ StorageLoc ⇒
+     ¬mapping_reachable env (LENGTH env.type_declarations) ty)) ∧
+  (declared_type_ok env _ ⇔ T) ∧
+  (declared_types_ok env [] ⇔ T) ∧
+  (declared_types_ok env (ty :: tys) ⇔
+    declared_type_ok env ty ∧ declared_types_ok env tys)
+Termination
+  WF_REL_TAC ‘measure (λx. case x of
+    INL (env, ty) => sol_type_size ty
+  | INR (env, tys) => list_size sol_type_size tys)’ >>
+  rw[solidityASTTheory.sol_type_size_def, list_size_def]
+End
+
+Definition is_function_type_def[simp]:
+  (is_function_type (FunctionT _ _ _ _) ⇔ T) ∧
+  (is_function_type _ ⇔ F)
+End
+
+(* A function type's admitted shape: an internal function, not payable,
+ * whose parameters and returns are non-function value types or located
+ * references. Other types pass.
+ *)
+Definition function_type_ok_def:
+  (function_type_ok (FunctionT kind m ps rs) ⇔
+    kind = InternalFn ∧ m ≠ PayableMut ∧
+    EVERY (λty. (is_value_type ty ∧ ¬is_function_type ty) ∨ located_value_type ty)
+      (ps ++ rs)) ∧
+  (function_type_ok _ ⇔ T)
+End
+
+(* Stage 2 bindings, parameters and returns are value types: an internal
+ * function type only as function_type_ok admits it. *)
+Definition core_scalar_type_def:
+  core_scalar_type env ty ⇔
+    is_value_type ty ∧ function_type_ok ty ∧ valid_type_shape ty ∧
+    declared_type_ok env ty
+End
+
+(* A scalar held behind a reference: a stored scalar, or an internal function,
+ * which only an immutable holds. *)
+Definition reference_scalar_type_def:
+  reference_scalar_type env ty ⇔
+    core_scalar_type env ty ∧ (IS_SOME (storage_bytes ty) ∨ is_function_type ty)
+End
+
 (* The type of an element of a memory or calldata array, or of a field of a
  * memory struct: a value, or a reference in the object's location. *)
 Definition element_type_def:
@@ -398,7 +410,7 @@ Definition wf_core_value_type_def:
     case ty of
       LocatedT MemoryLoc _ => core_binding_type env ty
     | LocatedT CalldataLoc _ => core_binding_type env ty
-    | _ => storage_type_ok env ty) ∧
+    | _ => storage_type_ok env ty ∨ reference_scalar_type env ty) ∧
   (wf_core_value_type env RevertDataType ⇔ T) ∧
   (wf_core_value_type env (ProductType tys) ⇔
     LENGTH tys ≠ 1 ∧ wf_core_value_types env tys) ∧
@@ -832,8 +844,7 @@ Definition wf_core_operation_def:
            BoundAtom x => storage_base (ALOOKUP ctx.bindings x) = SOME ty
          | _ => F
        else
-         annotation = SingleType ty ∧ core_scalar_type env ty ∧
-         IS_SOME (storage_bytes ty) ∧
+         annotation = SingleType ty ∧ reference_scalar_type env ty ∧
          wf_core_atom env ctx (ReferenceType ty) a)) ∧
   (wf_core_operation env ctx annotation (StorageSlotOperation ty a) ⇔
     annotation = SingleType (UintT 256) ∧ located_type_ok env StorageLoc ty ∧
@@ -1597,8 +1608,7 @@ Definition check_core_stmts_def:
         (case ALOOKUP ctx.bindings x of
            SOME (ReferenceType ty) =>
              if fresh_core_id ctx t ∧
-                ((core_scalar_type env ty ∧ IS_SOME (storage_bytes ty)) ∨
-                 located_type_ok env StorageLoc ty)
+                (reference_scalar_type env ty ∨ located_type_ok env StorageLoc ty)
              then check_core_stmts env (capture_core_target t ty ctx) ss
              else NONE
          | _ => NONE)
@@ -1805,8 +1815,7 @@ Definition wf_core_environment_def:
     EVERY (λ(x, v). v.state_id = x ∧ wf_core_state_variable env v)
       env.state_variables ∧
     ALL_DISTINCT (MAP FST env.immutables) ∧
-    EVERY (λ(_, ty). core_scalar_type env ty ∧ IS_SOME (storage_bytes ty))
-      env.immutables ∧
+    EVERY (λ(_, ty). reference_scalar_type env ty) env.immutables ∧
     ALL_DISTINCT (MAP FST env.struct_layouts) ∧
     EVERY (λ(id, s). s.struct_id = id ∧ wf_core_struct_layout env s)
       env.struct_layouts ∧
