@@ -30,7 +30,7 @@ class GeneratorTests(unittest.TestCase):
         for seed in SEEDS:
             seen.update(generator.Program(seed).features)
         for feature in ("evaluation-order", "aliasing", "copies", "dispatch", "try", "abi",
-                        "checked", "unchecked"):
+                        "checked", "unchecked", "decode"):
             # Each in a good share of the programs, not just once.
             self.assertGreater(seen[feature], len(SEEDS) // 4, feature)
 
@@ -41,7 +41,7 @@ class GeneratorTests(unittest.TestCase):
             declared = re.findall(r"function (f\d+)\(([^)]*)\) external returns \((\w+)\);", text)
             defined = re.findall(r"function (f\d+)\(([^)]*)\) public[^{]*returns \((\w+)\)", text)
             self.assertEqual(
-                declared, [(name, ", ".join(p.split()[0] for p in params.split(", ")), ret)
+                declared, [(name, ", ".join(p.rsplit(" ", 1)[0] for p in params.split(", ")), ret)
                            for name, params, ret in defined])
 
     def test_try_calls_only_reach_earlier_functions(self) -> None:

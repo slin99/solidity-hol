@@ -363,6 +363,8 @@ class Program:
                 options += ["unchecked"]
             if self.externals:
                 options += ["try"]
+            if any(v.type == "bytes" for v in scope.vars):
+                options += ["decode"]
         choice = rng.choice(options)
         if choice == "local" and sum(v.location == "" for v in scope.vars) < MAX_LOCALS:
             t = rng.choice(SCALARS)
@@ -412,6 +414,8 @@ class Program:
             return self.array(scope)
         if choice == "abi":
             return self.abi(scope)
+        if choice == "decode":
+            return self.decode(scope)
         if choice == "try":
             return self.try_call(scope, depth)
         raise AssertionError(choice)
@@ -505,12 +509,25 @@ class Program:
         scope.vars += [Var(n, t, "") for t, n in zip(types, names)]
         return lines
 
+    def decode(self, scope: Scope) -> list[str]:
+        """abi.decode of the bytes parameter, which the fuzzer fills with
+        well-formed, mutated and raw encodings."""
+        self.features.add("decode")
+        rng = self.rng
+        types = [rng.choice(SCALARS) for _ in range(rng.randint(1, 3))]
+        names = [self.fresh("d") for _ in types]
+        source = next(v.name for v in scope.vars if v.type == "bytes")
+        scope.vars += [Var(n, t, "") for t, n in zip(types, names)]
+        return [f"({', '.join(f'{t} {n}' for t, n in zip(types, names))}) = "
+                f"abi.decode({source}, ({', '.join(types)}));"]
+
     def try_call(self, scope: Scope, depth: int) -> list[str]:
         """A try on one of the earlier external functions, through the contract's address."""
         self.features.add("try")
         rng = self.rng
         f = rng.choice(self.externals)
-        args = ", ".join(self.expr(scope, t) for t in f.params)
+        args = ", ".join(self.encode(scope, MAX_DEPTH - 1) if t == "bytes" else self.expr(scope, t)
+                         for t in f.params)
         r = self.fresh("r")
         lines = [f"try IGen(address(this)).{f.name}({args}) returns ({f.returns} {r}) {{"]
         inner = scope.child(Var(r, f.returns, "", writable=False))
@@ -551,6 +568,8 @@ class Program:
         rng = self.rng
         name = self.fresh("f")
         params = [rng.choice(SCALARS) for _ in range(rng.randint(1, 3))]
+        if self.chance(0.3):
+            params.append("bytes")
         returns = rng.choice(SCALARS)
         scope = Scope([Var(f"a{i}", t, "") for i, t in enumerate(params)])
         mods = ""
@@ -564,7 +583,7 @@ class Program:
             hook = rng.choice(self.hooks)
             body.append(mix(3, f"{hook}({self.expr(scope, 'uint256')}) % 1000"))
         body.append(f"return {self.expr(scope, returns)};")
-        signature = ", ".join(f"{t} a{i}" for i, t in enumerate(params))
+        signature = ", ".join(f"{t}{' calldata' * (t == 'bytes')} a{i}" for i, t in enumerate(params))
         self.bodies.append(
             f"function {name}({signature}) public{mods} returns ({returns}) {{\n"
             + "\n".join(indent(body)) + "\n}")
@@ -622,7 +641,8 @@ class Program:
                f"struct P {{ {'; '.join(f'{t} {n}' for n, t in self.struct.members)}; }}",
                "",
                "interface IGen {"]
-        out += [f"    function {f.name}({', '.join(f.params)}) external returns ({f.returns});"
+        out += [f"    function {f.name}({', '.join(t + ' calldata' * (t == 'bytes') for t in f.params)})"
+                f" external returns ({f.returns});"
                 for f in self.externals]
         out += ["}", ""]
         for level, name in enumerate(names):
