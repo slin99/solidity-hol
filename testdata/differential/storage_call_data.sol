@@ -39,4 +39,9 @@ contract StorageCallData {
         (ok, r) = target.call(motion.data[motion.data.length - 1]);
         motion.data.pop();
     }
+
+    // Returns its whole argument, so a call to it observes every byte sent.
+    function echo(bytes calldata d) external pure returns (bytes memory) {
+        return d;
+    }
 }
