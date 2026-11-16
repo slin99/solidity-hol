@@ -282,15 +282,17 @@ Definition contract_observation_def:
     | ContractOutOfFuel => (Diagnostic OutOfFuel, NONE, [])
 End
 
-Definition source_execution_def:
-  source_execution code u prog fuel c =
+(* The source run of a transaction priced at gas_price. *)
+Definition source_execution_at_def:
+  source_execution_at gas_price code u prog fuel c =
     case (input_call u c.case_input, case_immutable_values u c.case_immutables) of
       (INL d, _) => (Diagnostic d, NONE, [])
     | (_, NONE) => (Diagnostic UnencodableArguments, NONE, [])
     | (INR (data, _), SOME imm) =>
         let a = case_address c in
-        let fr = differential_frame c.case_sender c.case_value data with
-                   <| self_address := a; code_address := a |> in
+        let fr0 = differential_frame c.case_sender c.case_value data in
+        let fr = fr0 with <| self_address := a; code_address := a;
+                             tx_params := fr0.tx_params with gasPrice := gas_price |> in
         let w = differential_world
                   (transfer_value c.case_sender a c.case_value
                      (case_accounts (patch_immutables c.case_immutable_refs imm code)
@@ -305,6 +307,13 @@ Definition source_execution_def:
            | _ => call_contract_with_gas fuel prog
                     (FEMPTY |++ MAP (λ(x, s, _). (x, s)) imm) fr w
                     (MAP GasLeftObservation c.case_gas))
+End
+
+(* The source run of the corpus's transaction, priced as differential_tx. *)
+Definition source_execution_def:
+  source_execution code u prog fuel c =
+    source_execution_at (differential_tx c.case_sender c.case_value []).gasPrice
+      code u prog fuel c
 End
 
 Definition source_observation_def:
@@ -453,13 +462,28 @@ Definition run_verdict_def:
     else Agree (FST run)
 End
 
+(* Fuzz runs price gas at 0, as pyrevm's screening does. A priced transaction
+ * debits gasLimit * gasPrice from the sender before it runs, which the source
+ * run, starting after the gas purchase, doesn't see: a contract reading the
+ * sender's balance would differ for that alone. *)
+Definition fuzz_source_execution_def:
+  fuzz_source_execution code u prog fuel c = source_execution_at 0 code u prog fuel c
+End
+
+Definition fuzz_evm_execution_def:
+  fuzz_evm_execution code u c =
+    case prepared_evm_input code u c of
+      INL d => (Diagnostic d, NONE, [])
+    | INR (accounts, tx, refs) => bytecode_execution (accounts, tx with gasPrice := 0, refs)
+End
+
 (* The source run against the recorded observation alone, with no bytecode
  * run. The fuzzer confirms every difference, and a sample of agreements,
  * with confirm_verdict, so no verdict rests on the recording alone. *)
 Definition fuzz_verdict_def:
   fuzz_verdict code u prog fuel c =
     run_verdict (observed_slots prog c.case_storage c.case_final)
-      (recorded_execution u c) (source_execution code u prog fuel c)
+      (recorded_execution u c) (fuzz_source_execution code u prog fuel c)
 End
 
 (* The source run against Verifereum's run of the bytecode, and that
@@ -468,8 +492,8 @@ End
 Definition confirm_verdict_def:
   confirm_verdict code u prog fuel c =
     let slots = observed_slots prog c.case_storage c.case_final in
-    let evm_run = evm_execution code u c in
-      (run_verdict slots evm_run (source_execution code u prog fuel c),
+    let evm_run = fuzz_evm_execution code u c in
+      (run_verdict slots evm_run (fuzz_source_execution code u prog fuel c),
        run_verdict slots (recorded_execution u c) evm_run)
 End
 
@@ -560,6 +584,7 @@ val () = cv_auto_trans input_call_def;
 val () = cv_auto_trans differential_frame_def;
 val () = cv_auto_trans differential_world_def;
 val () = cv_auto_trans contract_observation_def;
+val () = cv_auto_trans source_execution_at_def;
 val () = cv_auto_trans source_execution_def;
 val () = cv_auto_trans source_observation_def;
 val () = cv_auto_trans prepared_evm_input_def;
@@ -572,5 +597,7 @@ val () = cv_auto_trans is_agreement_def;
 val () = cv_auto_trans differential_agrees_def;
 val () = cv_auto_trans recorded_execution_def;
 val () = cv_auto_trans run_verdict_def;
+val () = cv_auto_trans fuzz_source_execution_def;
+val () = cv_auto_trans fuzz_evm_execution_def;
 val () = cv_auto_trans fuzz_verdict_def;
 val () = cv_auto_trans confirm_verdict_def;
