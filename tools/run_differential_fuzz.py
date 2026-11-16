@@ -62,6 +62,8 @@ BASE_FEE = 7
 BLOCK_GAS_LIMIT = 30000000
 TX_GAS = 10000000
 GAS_PRICE = 9
+# Calls that use more are dropped: HOL's runs of them take minutes each.
+GAS_BUDGET = 1000000
 
 WORD = 1 << 256
 # Shared by calldata, storage values and mapping keys, so calls find seeded state.
@@ -507,7 +509,8 @@ class Recording:
 
 class Halt(Exception):
     """pyrevm stopped the call in a way no case expectation can say (out of
-    gas, a stack error): the candidate is discarded."""
+    gas, a stack error), or it used more than GAS_BUDGET: the candidate is
+    discarded."""
 
 
 @dataclass(frozen=True)
@@ -578,7 +581,7 @@ def generate_calls(seed: int, target: Target, per_function: int) -> list[Call]:
 # Screening with pyrevm
 
 _WRITE = re.compile(r"StorageChange \{ address: (0x[0-9a-fA-F]{40}), key: (\d+)")
-_REVERT = re.compile(r"Revert \{ gas_used: \d+, output: 0x([0-9a-fA-F]*) \}")
+_REVERT = re.compile(r"Revert \{ gas_used: (\d+), output: 0x([0-9a-fA-F]*) \}")
 _HALT = re.compile(r"Halt \{ reason: (\w+)")
 
 
@@ -603,6 +606,7 @@ def screen(pyrevm: Any, target: Target, call: Call) -> Recording:
         output = evm.message_call(address(call.sender), address(CONTRACT), call.calldata,
                                   value=call.value, gas_price=GAS_PRICE)
         expect: dict[str, Any] = {"returned": "0x" + bytes(output).hex()}
+        gas = evm.result.gas_used
         logs = [{"logger": "0x" + log.address[2:].lower(),
                  "topics": ["0x" + bytes(t).hex() for t in log.data[0]],
                  "data": "0x" + bytes(log.data[1]).hex()} for log in evm.result.logs]
@@ -611,12 +615,16 @@ def screen(pyrevm: Any, target: Target, call: Call) -> Recording:
         revert = _REVERT.fullmatch(message)
         halt = _HALT.match(message)
         if revert:
-            expect = {"revert": "0x" + revert.group(1).lower()}
+            expect = {"revert": "0x" + revert.group(2).lower()}
+            gas = int(revert.group(1))
         elif halt and halt.group(1) == "InvalidFEOpcode":
             expect = {"abort": True}
+            gas = 0
         else:
             raise Halt(halt.group(1) if halt else message) from error
         logs = []
+    if gas > GAS_BUDGET:
+        raise Halt("OverGasBudget")
     written = {int(k) for a, k in _WRITE.findall(evm.journal_str) if int(a, 16) == CONTRACT}
     final = {}
     for slot in sorted(written):

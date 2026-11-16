@@ -243,8 +243,9 @@ arguments.
 
 pyrevm runs each candidate on the runtime code in the transaction's world
 (the addresses, block and gas of `solidityBytecode`) and records the outcome,
-the changed slots and the logs. Calls that halt any other way than `INVALID`
-are dropped. Of the rest, K per contract (`-k`, 32 by default) become cases in
+the changed slots and the logs. Calls that halt any other way than `INVALID`,
+or use more than a million gas (HOL's runs of those take minutes), are
+dropped. Of the rest, K per contract (`-k`, 32 by default) become cases in
 the suite format, picked by function and then by outcome shape, so rare
 outcomes come before repeats.
 

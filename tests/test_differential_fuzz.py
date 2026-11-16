@@ -291,6 +291,13 @@ class ScreeningTests(unittest.TestCase):
         self.assertGreater(kinds["revert"], 0)
         self.assertTrue(any(r.final_storage for r in recordings))
 
+    def test_calls_over_the_gas_budget_are_dropped(self) -> None:
+        t = target()
+        c = fuzz.generate_calls(0, t, 1)[0]
+        fuzz.screen(self.pyrevm, t, c)
+        with patch.object(fuzz, "GAS_BUDGET", 0), self.assertRaisesRegex(fuzz.Halt, "OverGasBudget"):
+            fuzz.screen(self.pyrevm, t, c)
+
     def test_logs_are_recorded(self) -> None:
         t = target("qualified_events")
         recordings = [fuzz.screen(self.pyrevm, t, c) for c in fuzz.generate_calls(0, t, 30)]
