@@ -595,14 +595,15 @@ _HALT = re.compile(r"Halt \{ reason: (\w+)")
 
 
 def screen(pyrevm: Any, target: Target, call: Call) -> Recording:
-    """pyrevm's run of a call in the differential transaction's world. pyrevm
-    zeroes the base fee and charges no gas fees; a call observing either may
-    differ, which confirmation reports as a pyrevm mismatch."""
+    """pyrevm's run of a call in the differential transaction's world. pyrevm's
+    message_call takes the block gas limit from the EVM's and zeroes the base
+    fee; a call reading the base fee differs, which confirmation reports as a
+    pyrevm mismatch."""
     env = pyrevm.Env(cfg=pyrevm.CfgEnv(chain_id=CHAIN_ID),
                      block=pyrevm.BlockEnv(number=BLOCK_NUMBER, timestamp=TIMESTAMP,
                                            coinbase=address(COINBASE), prevrandao=bytes(32),
                                            basefee=BASE_FEE, gas_limit=BLOCK_GAS_LIMIT))
-    evm = pyrevm.EVM(env=env, gas_limit=TX_GAS)
+    evm = pyrevm.EVM(env=env, gas_limit=BLOCK_GAS_LIMIT)
     evm.insert_account_info(address(CONTRACT),
                             pyrevm.AccountInfo(code=target.code_with(call.immutables)))
     for slot, value in call.storage.items():
@@ -613,7 +614,7 @@ def screen(pyrevm: Any, target: Target, call: Call) -> Recording:
     evm.set_balance(address(call.sender), SENDER_BALANCE)
     try:
         output = evm.message_call(address(call.sender), address(CONTRACT), call.calldata,
-                                  value=call.value, gas_price=GAS_PRICE)
+                                  value=call.value, gas=TX_GAS, gas_price=GAS_PRICE)
         expect: dict[str, Any] = {"returned": "0x" + bytes(output).hex()}
         gas = evm.result.gas_used
         logs = [{"logger": "0x" + log.address[2:].lower(),

@@ -576,6 +576,15 @@ class ScreeningTests(unittest.TestCase):
             self.skipTest("pyrevm is not installed")
         self.pyrevm = pyrevm
 
+    def test_the_block_gas_limit_and_gas_price_are_the_bytecode_runs(self) -> None:
+        t = target("context")
+        c = call(function="feeInfo()", calldata=t.selectors["feeInfo()"])
+        returned = bytes.fromhex(fuzz.screen(self.pyrevm, t, c).expect["returned"][2:])
+        gas_price, base_fee, gas_limit = (int.from_bytes(returned[i:i + 32], "big")
+                                          for i in range(0, 96, 32))
+        self.assertEqual((gas_price, gas_limit), (fuzz.GAS_PRICE, fuzz.BLOCK_GAS_LIMIT))
+        self.assertEqual(base_fee, 0)  # pyrevm's message_call zeroes it
+
     def test_recordings_cover_returns_reverts_and_storage_writes(self) -> None:
         t = target()
         recordings = [fuzz.screen(self.pyrevm, t, c) for c in fuzz.generate_calls(0, t, 30)]
