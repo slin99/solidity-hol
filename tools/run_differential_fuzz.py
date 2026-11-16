@@ -69,7 +69,9 @@ COINBASE = 0xC0FFEE
 BASE_FEE = 7
 BLOCK_GAS_LIMIT = 30000000
 TX_GAS = 10000000
-GAS_PRICE = 9
+# Unlike the corpus's 9: pyrevm's message_call doesn't debit the gas purchase
+# from the sender, so the fuzz runs in HOL price gas at 0 too (fuzz_verdict).
+GAS_PRICE = 0
 # Calls that use more are dropped: HOL's runs of them take minutes each.
 GAS_BUDGET = 1000000
 

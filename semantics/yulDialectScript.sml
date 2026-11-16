@@ -83,6 +83,7 @@ Definition builtin_name_def:
   builtin_name YExtCodeSize = "extcodesize" ∧
   builtin_name YBalance = "balance" ∧
   builtin_name YExtCodeCopy = "extcodecopy" ∧
+  builtin_name YExtCodeHash = "extcodehash" ∧
   builtin_name YReturnDataSize = "returndatasize" ∧
   builtin_name YReturnDataCopy = "returndatacopy" ∧
   builtin_name YGas = "gas" ∧
@@ -167,6 +168,7 @@ Definition builtin_of_name_def:
     else if name = "extcodesize" then SOME YExtCodeSize
     else if name = "balance" then SOME YBalance
     else if name = "extcodecopy" then SOME YExtCodeCopy
+    else if name = "extcodehash" then SOME YExtCodeHash
     else if name = "returndatasize" then SOME YReturnDataSize
     else if name = "returndatacopy" then SOME YReturnDataCopy
     else if name = "gas" then SOME YGas
@@ -278,6 +280,7 @@ Definition builtin_effect_def:
   builtin_effect YExtCodeSize = EffectCall ∧
   builtin_effect YBalance = EffectCall ∧
   builtin_effect YExtCodeCopy = EffectCall ∧
+  builtin_effect YExtCodeHash = EffectCall ∧
   builtin_effect YReturnDataSize = EffectFrame ∧
   builtin_effect YReturnDataCopy = EffectMemory ∧
   builtin_effect YGas = EffectFrame ∧

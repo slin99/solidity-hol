@@ -771,6 +771,16 @@ fun check_using d = within d (fn d =>
               | NONE => false))
     "using directive has no library or nonempty function list")
 
+(* A type-valued expression without its parentheses: (T) is a one-component
+ * tuple around T, and denotes T. *)
+fun unparenthesized_type v =
+  if node_type v = "TupleExpression" andalso not (bool_field v "isInlineArray") then
+    case JSONUtil.arrayMap I (field v "components") of
+      [JSON.NULL] => v
+    | [c] => unparenthesized_type c
+    | _ => v
+  else v
+
 (* A named UDVT used as a type-valued expression. *)
 fun value_type_expression v =
   let val tid = raw_type_id v in
@@ -961,7 +971,7 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                    string_field (field base "expression") "name" = "type" andalso
                    int_field (field base "expression") "referencedDeclaration" < 0
            then
-             (case JSONUtil.arrayMap I (field base "arguments") of
+             (case map unparenthesized_type (JSONUtil.arrayMap I (field base "arguments")) of
                 [arg] =>
                   if String.isPrefix "t_type$_t_contract$_" (raw_type_id arg) then
                     contract_type_member v base arg
@@ -998,27 +1008,34 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                  (selector_bytes v base
                   handle ImportError msg => (ignore (expr base); raise ImportError msg)),
                  mk_opt expr_ty (Option.map expr (selector_receiver base)), type_id v]
-            else case string_field v "memberName" of
-              "length" =>
-                if is_address_code base then
-                  builtin_operation v (SOME base) "CodeLengthBuiltin"
-                    [expr (field base "expression")]
-                else con "SrcArrayLength" [info v, expr base, type_id v]
-            | "balance" =>
+            else
+            let
+              (* a.balance or a.codehash: a builtin of the address a *)
+              fun address_builtin member name =
                 (require v (List.exists (fn t => t = raw_type_id base)
                               ["t_address", "t_address_payable"])
-                   "balance of a non-address";
-                 builtin_operation v NONE "BalanceBuiltin" [expr base])
-            | "code" =>
-                if is_address_code v then
-                  builtin_operation v NONE "CodeBuiltin" [expr base]
-                else fail (describe v ^ ": unsupported built-in member code")
-            | member =>
-                let val receiver = expr (field v "expression") in
-                  require v (member = "push" orelse member = "pop")
-                    "unsupported built-in member";
-                  con "SrcArrayMember" [info v, mk_str member, receiver, type_id v]
-                end
+                   (member ^ " of a non-address");
+                 builtin_operation v NONE name [expr base])
+            in
+              case string_field v "memberName" of
+                "length" =>
+                  if is_address_code base then
+                    builtin_operation v (SOME base) "CodeLengthBuiltin"
+                      [expr (field base "expression")]
+                  else con "SrcArrayLength" [info v, expr base, type_id v]
+              | "balance" => address_builtin "balance" "BalanceBuiltin"
+              | "codehash" => address_builtin "codehash" "CodeHashBuiltin"
+              | "code" =>
+                  if is_address_code v then
+                    builtin_operation v NONE "CodeBuiltin" [expr base]
+                  else fail (describe v ^ ": unsupported built-in member code")
+              | member =>
+                  let val receiver = expr (field v "expression") in
+                    require v (member = "push" orelse member = "pop")
+                      "unsupported built-in member";
+                    con "SrcArrayMember" [info v, mk_str member, receiver, type_id v]
+                  end
+            end
            end)
   | "Literal" =>
       let
@@ -1287,6 +1304,7 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                | NONE => (positional (); listSyntax.mk_nil numSyntax.num),
                type_id v]
         | "typeConversion" =>
+            let val callee = unparenthesized_type callee in
             (positional ();
              require v (length args = 1) "a conversion takes one argument";
              if String.isPrefix "t_type$_t_contract$_" (raw_type_id callee) then
@@ -1304,8 +1322,9 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                 con "SrcTypeConversion"
                   [info v, type_name (field callee "typeName"), hd args,
                    type_id v]))
+            end
         | "structConstructorCall" =>
-            let val s = int_field callee "referencedDeclaration" in
+            let val s = int_field (unparenthesized_type callee) "referencedDeclaration" in
               con "SrcStructConstructor"
                 [info v, mk_num s, listSyntax.mk_list (args, expr_ty),
                  argument_order v s 0, type_id v]
@@ -1320,7 +1339,7 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
 and wrap_call v callee args =
   let
     val (nominal, ty) =
-      case value_type_expression (field callee "expression") of
+      case value_type_expression (unparenthesized_type (field callee "expression")) of
         SOME pair => pair
       | NONE => fail (describe v ^ ": wrap/unwrap requires a user-defined value type")
     val member = string_field callee "memberName"
@@ -1386,6 +1405,7 @@ and abi_decode_call v callee args =
       case c of
         JSON.NULL => NONE
       | _ =>
+        let val c = unparenthesized_type c in
         case node_type c of
           "ElementaryTypeNameExpression" => SOME (type_name (field c "typeName"))
         | "IndexAccess" =>
@@ -1411,6 +1431,7 @@ and abi_decode_call v callee args =
                 SOME (address_type_name c)
               else NONE
             end
+        end
     val types = map decoded_type components
   in
     require v (List.all isSome types)

@@ -221,16 +221,19 @@ Definition bind_value_def:
     ([DefineStmt (AstId n) (SingleType ty) op], BoundAtom (AstId n))
 End
 
-(* The value a local of type ty starts with when declared without one. *)
+(* The value a local of type ty starts with when declared without one. A
+ * storage or calldata reference local gets a placeholder: solc rejects
+ * reading one before it is assigned. *)
 Definition default_operation_def:
   default_operation ty =
     case ty of
       LocatedT MemoryLoc element => SOME (DefaultMemoryOperation element)
-    | LocatedT CalldataLoc element => SOME (DefaultReferenceOperation CalldataLoc element)
-    | _ => if located_value_type ty then NONE
-           else case default_elementary ty of
-                  SOME d => SOME (ConvertOperation ty (ConstantAtom d))
-                | NONE => NONE
+    | LocatedT loc element =>
+        if located_value_type ty then SOME (DefaultReferenceOperation loc element)
+        else NONE
+    | _ => case default_elementary ty of
+             SOME d => SOME (ConvertOperation ty (ConstantAtom d))
+           | NONE => NONE
 End
 
 (* Compiler join temporaries are assigned on each arm before being read. *)
@@ -615,14 +618,15 @@ Definition low_level_external_kind_def:
   (low_level_external_kind LowLevelDelegateCall = ExternalDelegateCall)
 End
 
-(* The data of a low-level call is packed where it is: a memory or calldata
- * bytes or a bytes literal, never copied into allocated memory. *)
+(* The data of a low-level call is packed where it is: a memory, calldata
+ * or storage bytes or a bytes literal, never copied into allocated memory. *)
 Definition low_level_data_def:
   low_level_data a vt =
     case (a, vt) of
       (ConstantAtom (BytesValue _), ElabBytesLiteral) => SOME a
     | (_, ElabType (LocatedT MemoryLoc BytesT)) => SOME a
     | (_, ElabType (LocatedT CalldataLoc BytesT)) => SOME a
+    | (_, ElabType (LocatedT StorageLoc BytesT)) => SOME a
     | _ => NONE
 End
 
@@ -2194,7 +2198,7 @@ Definition elab_expr_def:
                                    (option_atom GasOption opts atoms) d')],
                              BoundAtom (AstId n2), call_value tys), n2 + 1)
                    | (INR bs, _) => INR bs
-                   | (_, NONE) => INR [(did, "low-level call data not memory or calldata bytes")]
+                   | (_, NONE) => INR [(did, "low-level call data not bytes")]
                    | _ => INR [(info.node_id, "unsupported low-level call")])
               | _ => INR [(info.node_id, "unsupported low-level call")])
          | INR bs => INR bs)
