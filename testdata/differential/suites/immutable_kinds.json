@@ -47,6 +47,9 @@
       "name": "enum_immutable_read",
       "function": "level",
       "args": [],
+      "immutables": {
+        "mode": 2
+      },
       "expect": {
         "returned": "0x0000000000000000000000000000000000000000000000000000000000000002"
       }
@@ -55,6 +58,9 @@
       "name": "enum_immutable_compared",
       "function": "isHigh",
       "args": [],
+      "immutables": {
+        "mode": 2
+      },
       "expect": {
         "returned": "0x0000000000000000000000000000000000000000000000000000000000000001"
       }
@@ -63,6 +69,9 @@
       "name": "enum_immutable_getter",
       "function": "mode",
       "args": [],
+      "immutables": {
+        "mode": 1
+      },
       "expect": {
         "returned": "0x0000000000000000000000000000000000000000000000000000000000000001"
       }

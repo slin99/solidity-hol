@@ -874,7 +874,8 @@ Proof
             EVERY valid_type_shape tys’
     by (Induct >> rw[all_some_def, AllCaseEqs()] >> gvs[] >> metis_tac[]) >>
   ‘∀fs tys. function_type_components fs = SOME tys ⇒ EVERY valid_type_shape tys’
-    by (rw[function_type_components_def, AllCaseEqs()] >> gvs[] >> metis_tac[]) >>
+    by (rw[function_type_components_def, AllCaseEqs()] >> gvs[] >>
+        qpat_x_assum ‘∀ps tys. all_some _ = _ ⇒ _’ (qspec_then ‘c::cs’ mp_tac) >> gvs[]) >>
   rw[function_type_identifier_def, AllCaseEqs()] >>
   simp[valid_type_shape_def, outer_location_free_def] >> metis_tac[]
 QED
