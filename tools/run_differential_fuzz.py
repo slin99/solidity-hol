@@ -34,6 +34,7 @@ import os
 from pathlib import Path
 import random
 import re
+import shutil
 import subprocess
 import sys
 from typing import Any, Callable, Iterator
@@ -969,7 +970,10 @@ class Fuzzer:
     def still_disagree(self, targets: dict[str, Target], round_dir: Path,
                        proposals: dict[str, list[Call]]) -> dict[str, list[bool]]:
         """Which variants still disagree: each is screened afresh for its
-        recording and confirmed in HOL."""
+        recording and confirmed in HOL. Variants are named by position, so
+        the round starts from an empty directory: an interrupted run's
+        records are about other calls."""
+        shutil.rmtree(round_dir, ignore_errors=True)
         entries: dict[str, dict[str, Any]] = {}
         names: dict[str, list[str | None]] = {}
         for key, calls in proposals.items():

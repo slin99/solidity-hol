@@ -322,6 +322,18 @@ class FuzzerTests(unittest.TestCase):
         self.assertEqual(self.evaluated[0], [targets[1].name])
         self.assertEqual(summary["contracts"], 2)
 
+    def test_a_shrink_round_ignores_an_interrupted_runs_records(self) -> None:
+        [t] = fuzz.suite_targets([SUITE])
+        round_dir = self.output / "shrink" / "round-00"
+        stale = round_dir / "batch-0000"
+        stale.mkdir(parents=True)
+        (stale / "results.jsonl").write_text(fuzz.PREFIX + json.dumps(
+            {"kind": "case", "contract": SUITE, "case": "fuzz_0001_v000", "status": "disagree",
+             "screen": "Mismatch", "confirmed": True}) + "\n")
+        verdicts = self.fuzzer().still_disagree({SUITE: t}, round_dir,
+                                                {f"{SUITE}/fuzz_0001": [call(function="g")]})
+        self.assertEqual(verdicts, {f"{SUITE}/fuzz_0001": [False]})
+
     def test_resume_runs_a_contract_whose_action_failed_again(self) -> None:
         targets = fuzz.suite_targets([])[:1]
         batch = self.output / "work" / "batch-0000"
