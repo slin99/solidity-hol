@@ -413,7 +413,8 @@ def wait_capped(process: subprocess.Popen[bytes], log: Path, seconds: float | No
     stops it: the wrapper then cancels the remote batch."""
     if seconds is None:
         return process.wait()
-    running = re.compile(rf"^holbuild: remote solidity-hol:{CONTEXT}: running$", re.M)
+    # A retried attempt's line carries its details: "running (unavailable: ...), attempts 2".
+    running = re.compile(rf"^holbuild: remote solidity-hol:{CONTEXT}: running(?:$| \(|,)", re.M)
     started = None
     while (status := process.poll()) is None:
         if started is None and running.search(log.read_text(encoding="utf-8", errors="replace")):

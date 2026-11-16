@@ -159,9 +159,11 @@ class FleetExpectationTests(unittest.TestCase):
 
     def test_a_running_action_past_its_cap_is_stopped_but_a_queued_one_is_not(self) -> None:
         log = self.work / "hol.log"
-        running = f"holbuild: remote solidity-hol:{runner.CONTEXT}: running\n"
-        for name, text, sleep, expected in (("running", running, "30", None),
-                                            ("queued", "", "0.5", 0)):
+        prefix = f"holbuild: remote solidity-hol:{runner.CONTEXT}: "
+        retried = prefix + "running (unavailable: lease lost), attempts 2, tier high\n"
+        for name, text, sleep, expected in (("running", prefix + "running\n", "30", None),
+                                            ("retried", retried, "30", None),
+                                            ("queued", prefix + "ready\n", "0.5", 0)):
             with self.subTest(name):
                 log.write_text(text)
                 process = subprocess.Popen(["sleep", sleep])
