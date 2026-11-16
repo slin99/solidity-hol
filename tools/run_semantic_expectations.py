@@ -388,6 +388,15 @@ class BatchScript:
 EXPECTATIONS = BatchScript(HOL_SCRIPT, "tests", "SEMANTIC_EXPECTATIONS_MANIFEST")
 
 
+class ActionFailed(SystemExit):
+    """A fleet action that ran and failed; `reason` is holbuild's (`memory`, say)."""
+
+    def __init__(self, batch: Path, reason: str, message: str) -> None:
+        super().__init__(message)
+        self.batch = batch
+        self.reason = reason
+
+
 def stage_entry(batch: Path, index: int, entry: dict[str, Any]) -> tuple[dict[str, Any], list[Path]]:
     """Copy an entry's artifacts into the batch; the copy names them there."""
     artifact = batch / f"{index}.json"
@@ -437,8 +446,10 @@ def run_fleet_batch(holbuild: str, batch: Path, entries: list[dict[str, Any]],
     completed = re.search(rf"^solidity-hol:{CONTEXT} [0-9a-f]{{64}} (?:done|cached)\b",
                           action_log, re.M)
     if status != 0 or completed is None or not (output / "results.jsonl").is_file():
-        raise SystemExit(f"the HOL fleet action failed (status {status}); see {log} "
-                         f"and {output / 'LOG'}:\n{action_log}")
+        reported = re.search(rf"^solidity-hol:{CONTEXT} [0-9a-f]{{64}} failed (\S+)", action_log, re.M)
+        raise ActionFailed(batch, reported[1] if reported else f"status {status}",
+                           f"the HOL fleet action failed (status {status}); see {log} "
+                           f"and {output / 'LOG'}:\n{action_log}")
     shutil.copyfile(output / "results.jsonl", batch / "results.jsonl")
     return True
 

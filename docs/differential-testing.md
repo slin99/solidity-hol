@@ -249,8 +249,10 @@ dropped. Of the rest, K per contract (`-k`, 32 by default) become cases in
 the suite format, picked by function and then by outcome shape, so rare
 outcomes come before repeats.
 
-HOL batches on the fleet run them through `solidityDifferentialLib.run_fuzz_cases`:
-each contract is prepared once, and each case's source run is compared with
+One fleet action per contract runs its cases through
+`solidityDifferentialLib.run_fuzz_cases` (several contracts in one HOL process
+ran out of memory, and an action that fails, out of memory or time, fails only
+its contract). The contract is prepared once, and each case's source run is compared with
 its recording by `fuzz_verdict`, evaluated with `cv_eval`, with no theorem
 saved. Every difference, and every twentieth case, is then confirmed by
 `confirm_verdict`: the source against Verifereum's run of the bytecode, and
@@ -278,6 +280,6 @@ uv run --python 3.11 --with pyrevm tools/run_differential_fuzz.py --output /tmp/
 
 `--suite` picks suites, `--targets` names other contracts in the same shape,
 `--seed` and `--candidates` change the calls, and `--max-batches` bounds the
-HOL work; `--resume` reuses the output's cases and finished batches. Like the
+HOL actions; `--resume` reuses the output's cases and finished contracts. Like the
 expectation runner, it runs only on the fleet
 when remote execution is configured.

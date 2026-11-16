@@ -291,11 +291,11 @@ class FuzzerTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "cannot resume"):
                 fuzz.check_inputs(self.output, changed, resume=True)
 
-    def test_max_batches_bounds_the_evaluation(self) -> None:
-        targets = fuzz.suite_targets([])[:fuzz.fleet.BATCH_SIZE + 1]
-        summary = self.fuzzer().run(targets, max_batches=1, shrink_rounds=0)
-        self.assertEqual(len(self.evaluated[0]), fuzz.fleet.BATCH_SIZE)
-        self.assertEqual(summary["contracts"], fuzz.fleet.BATCH_SIZE)
+    def test_max_batches_bounds_the_contracts_evaluated(self) -> None:
+        targets = fuzz.suite_targets([])[:3]
+        summary = self.fuzzer().run(targets, max_batches=2, shrink_rounds=0)
+        self.assertEqual(len(self.evaluated[0]), 2)
+        self.assertEqual(summary["contracts"], 2)
         self.assertEqual(summary["unevaluated"], [targets[-1].name])
 
     def test_inconclusives_are_grouped_and_invalid_completion_functions_flagged(self) -> None:
@@ -331,6 +331,40 @@ class TargetTests(unittest.TestCase):
 
 
 class FleetTests(unittest.TestCase):
+    def test_each_contract_gets_an_action_and_a_failed_one_fails_only_itself(self) -> None:
+        names = ["first", "second"]
+        entries = [{**target().entry, "name": n, "cases": [], "screening": {}} for n in names]
+        actions = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            if "--help" in command:
+                return subprocess.CompletedProcess(command, 0, stdout="run-action")
+            if "build" in command:
+                return subprocess.CompletedProcess(command, 0)
+            script = Path(command[command.index("--script") + 1])
+            [staged] = json.loads((script.parent / "batch.json").read_text())["contracts"]
+            actions.append(staged["name"])
+            outputs = Path(command[command.index("--outputs-dir") + 1]) / "solidity-hol" / \
+                fuzz.fleet.CONTEXT
+            outputs.mkdir(parents=True)
+            if staged["name"] == "first":
+                kwargs["stdout"].write(f"solidity-hol:{fuzz.fleet.CONTEXT} {'a' * 64} failed memory\n")
+                return subprocess.CompletedProcess(command, 1)
+            (outputs / "results.jsonl").write_text(fuzz.PREFIX + json.dumps(
+                {"kind": "contract", "contract": "second", "status": "ok", "unsupported": []}) + "\n")
+            kwargs["stdout"].write(f"solidity-hol:{fuzz.fleet.CONTEXT} {'a' * 64} done\n")
+            return subprocess.CompletedProcess(command, 0)
+
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch.dict(fuzz.fleet.os.environ, {}, clear=True), \
+                patch.object(fuzz.fleet.subprocess, "run", side_effect=run):
+            results = fuzz.run_fleet("holbuild", Path(temporary) / "work", entries)
+        self.assertEqual(actions, names)
+        self.assertEqual([(r["contract"], r["status"], r.get("message")) for r in results],
+                         [("first", "action-failed", "memory"), ("second", "ok", None)])
+        summary = fuzz.report({e["name"]: e for e in entries}, results)
+        self.assertEqual(list(summary["contract_failures"]), ["first"])
+
     def test_contracts_run_through_the_fuzz_script_with_their_peer(self) -> None:
         entry = {**target().entry, "cases": []}
         commands = []

@@ -748,8 +748,9 @@ def markdown(summary: dict[str, Any]) -> str:
             lines += [f"- `{r['contract']}` `{r['case']}` ({r['function']}, {r['mode']})"
                       for r in summary[key]]
     if summary["contract_failures"]:
-        lines += ["", "## Contracts that failed to prepare", ""]
-        lines += [f"- `{n}`: {r['status']}" for n, r in summary["contract_failures"].items()]
+        lines += ["", "## Contracts that failed (preparation or their HOL action)", ""]
+        lines += [f"- `{n}`: {r['status']}" + (f" ({r['message']})" if r.get("message") else "")
+                  for n, r in summary["contract_failures"].items()]
     if summary["missing"]:
         lines += ["", f"## Cases without a result: {len(summary['missing'])}"]
     if summary.get("no_cases"):
@@ -882,9 +883,17 @@ def import_pyrevm() -> Any:
 
 
 def run_fleet(holbuild: str, work: Path, entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Evaluate manifest entries on the fleet in new batches under work."""
+    """Evaluate manifest entries on the fleet under work, one contract per action:
+    contracts sharing a HOL process ran out of memory, and a failed action
+    (out of memory or time) then fails only its own contract."""
     work.mkdir(parents=True, exist_ok=True)
-    fleet.run_batches(holbuild, work, entries, SCRIPT)
+    for entry in entries:
+        try:
+            fleet.run_batches(holbuild, work, [entry], SCRIPT)
+        except fleet.ActionFailed as e:
+            (e.batch / "results.jsonl").write_text(PREFIX + json.dumps(
+                {"kind": "contract", "contract": entry["name"], "status": "action-failed",
+                 "message": e.reason}) + "\n")
     return batch_records(work)
 
 
@@ -997,7 +1006,7 @@ class Fuzzer:
         done = completed_contracts(batch_records(work), manifests)
         pending = [manifests[n] for n in manifests if n not in done]
         if max_batches is not None:
-            pending = pending[:max_batches * fleet.BATCH_SIZE]
+            pending = pending[:max_batches]
         results = self.evaluate(work, pending) if pending else batch_records(work)
         # A contract with any result is reported, its cases without one as missing.
         evaluated = {r["contract"] for r in results}
@@ -1035,9 +1044,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="candidates screened per function")
     parser.add_argument("-k", type=int, default=32, help="cases kept per contract")
     parser.add_argument("--max-batches", type=int,
-                        help="evaluate at most this many pending HOL batches")
+                        help="evaluate at most this many pending contracts (one HOL action each)")
     parser.add_argument("--resume", action="store_true",
-                        help="reuse the output's cases and finished batches; refused if the "
+                        help="reuse the output's cases and finished contracts; refused if the "
                              "settings, targets or sources changed")
     parser.add_argument("--shrink-rounds", type=int, default=8)
     parser.add_argument("--holbuild", default="holbuild")
