@@ -2,9 +2,9 @@
 pragma solidity 0.8.37;
 
 // A token-like peer for the assembly call suite: transfer returns true or
-// false, reverts, returns no data (as USDT's does) or 4 bytes by amount, and
-// data returns more than one word. transfer writes before it reverts, so a
-// revert has a write to roll back.
+// false, reverts with a reason or 4 bytes, returns no data (as USDT's does)
+// or 4 bytes by amount, and data returns more than one word. transfer writes
+// before it reverts, so a revert has a write to roll back.
 contract AsmPeer {
     uint256 private total;
 
@@ -16,6 +16,12 @@ contract AsmPeer {
         }
         if (amount == 4) {
             assembly { return(0, 4) }
+        }
+        if (amount == 6) {
+            assembly {
+                mstore(0, shl(224, 0xdeadbeef))
+                revert(0, 4)
+            }
         }
         return amount != 2;
     }

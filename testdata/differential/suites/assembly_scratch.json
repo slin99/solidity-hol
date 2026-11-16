@@ -106,6 +106,22 @@
    }
   },
   {
+   "name": "packed_short_revert",
+   "function": "packedResult",
+   "args": [
+    20480,
+    6
+   ],
+   "expect": {
+    "return": [
+     false
+    ]
+   },
+   "final_storage": {
+    "0": 1
+   }
+  },
+  {
    "name": "last_true",
    "function": "lastResult",
    "args": [

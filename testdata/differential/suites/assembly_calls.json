@@ -175,6 +175,17 @@
       }
     },
     {
+      "name": "optional_return_short_revert",
+      "function": "safeTransfer",
+      "args": [
+        20480,
+        6
+      ],
+      "expect": {
+        "revert": "0xdeadbeef"
+      }
+    },
+    {
       "name": "optional_return_bool_true",
       "function": "trySafeTransfer",
       "args": [
@@ -232,6 +243,19 @@
       "args": [
         4660,
         5
+      ],
+      "expect": {
+        "return": [
+          false
+        ]
+      }
+    },
+    {
+      "name": "optional_return_bool_short_revert",
+      "function": "trySafeTransfer",
+      "args": [
+        20480,
+        6
       ],
       "expect": {
         "return": [
