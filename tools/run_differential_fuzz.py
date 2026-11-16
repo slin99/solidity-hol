@@ -46,9 +46,20 @@ import run_semantic_expectations as fleet
 
 ROOT = Path(__file__).resolve().parents[1]
 PREFIX = "fuzz-result: "
+CASE_SECONDS = 120  # solidityDifferentialLib's fuzz_case_seconds
+PREPARE_SECONDS = 1800
+
+
+def action_seconds(entries: list[dict[str, Any]]) -> float:
+    """A contract's action cap: its preparation, then each case at most twice
+    the case cap (a confirmed case runs the bytecode too)."""
+    return PREPARE_SECONDS + sum(len(e["cases"]) for e in entries) * 2 * CASE_SECONDS
+
+
 # One contract per action: contracts sharing a HOL process ran out of memory.
+# The cap keeps one contract from holding a run; it ends as prepare-timeout.
 SCRIPT = fleet.BatchScript(ROOT / "tools" / "differential_fuzz.sml", "contracts",
-                           "DIFFERENTIAL_FUZZ_MANIFEST", batch_size=1)
+                           "DIFFERENTIAL_FUZZ_MANIFEST", batch_size=1, seconds=action_seconds)
 CORPUS = ROOT / "testdata" / "differential" / "corpus.json"
 SUITES = ROOT / "testdata" / "differential" / "suites"
 ECHO_PEER = {"source": "testdata/differential/fuzz/echo_peer.sol", "contract": "EchoPeer",
@@ -780,6 +791,7 @@ def report(manifests: dict[str, dict[str, Any]], results: list[dict[str, Any]]) 
         if fuzz["mode"] == "typed":
             typed[(key[0], fuzz["function"])].append(r.get("reason", r["status"]))
     failed = {n for n, r in contracts.items() if r["status"] != "ok"}
+    timed_out = {n for n in failed if contracts[n]["status"] == "prepare-timeout"}
     # A sequence agrees only if every step in its manifest has an agree result.
     sequences: dict[tuple[str, int], list[str | None]] = defaultdict(list)
     for key, fuzz in metadata.items():
@@ -798,7 +810,8 @@ def report(manifests: dict[str, dict[str, Any]], results: list[dict[str, Any]]) 
         "sequences": {"evaluated": sum(any(sequence) for sequence in sequences.values()),
                       "every_call_agrees": sum(all(s == "agree" for s in statuses)
                                                for statuses in sequences.values())},
-        "contract_failures": {n: contracts[n] for n in sorted(failed)},
+        "contract_failures": {n: contracts[n] for n in sorted(failed - timed_out)},
+        "prepare_timeout": sorted(timed_out),
         "unsupported": {n: r["unsupported"] for n, r in sorted(contracts.items())
                         if r.get("unsupported")},
         "inconclusive": [{"contract": c, "function": f, "reason": why, "cases": n}
@@ -831,6 +844,9 @@ def markdown(summary: dict[str, Any]) -> str:
     if summary.get("unminimized"):
         lines += ["", "## Disagreements not minimized (pyrevm's recording differs from the bytecode run)", ""]
         lines += [f"- `{r['contract']}` `{r['case']}`" for r in summary["unminimized"]]
+    if summary["prepare_timeout"]:
+        lines += ["", "## Inconclusive contracts (prepare-timeout: their HOL action ran past its cap)", ""]
+        lines += [f"- `{n}`" for n in summary["prepare_timeout"]]
     if summary["contract_failures"]:
         lines += ["", "## Contracts that failed (preparation or their HOL action)", ""]
         lines += [f"- `{n}`: {r['status']}" + (f" ({r['message']})" if r.get("message") else "")
@@ -1018,8 +1034,10 @@ def run_fleet(holbuild: str, work: Path, entries: list[dict[str, Any]]) -> list[
     """Evaluate manifest entries on the fleet under work, one contract per
     action; a failed action (out of memory or time) fails only its contract."""
     def failed(failure: fleet.ActionFailed, batch: list[dict[str, Any]]) -> None:
+        status = ("prepare-timeout" if isinstance(failure, fleet.ActionTimedOut)
+                  else "action-failed")
         (failure.batch / "results.jsonl").write_text("".join(PREFIX + json.dumps(
-            {"kind": "contract", "contract": entry["name"], "status": "action-failed",
+            {"kind": "contract", "contract": entry["name"], "status": status,
              "message": failure.reason}) + "\n" for entry in batch))
 
     work.mkdir(parents=True, exist_ok=True)

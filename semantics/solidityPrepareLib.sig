@@ -15,9 +15,13 @@ sig
    * theorems are about it, and the program has no procedure for them. When
    * the program has no procedure for the creation either while every
    * constructor is supported, creation lists why, one blocker per line;
-   * otherwise it is empty. *)
+   * otherwise it is empty. unit_def and program_def define constants equal to
+   * unit and program, already translated for cv_eval: a consumer that needs
+   * its own constant defines it as one of these instead of translating the
+   * whole term again. *)
   type prepared = {unit : term, program : term, source_valid : thm,
                    elaborates : thm, core_wf : thm,
+                   unit_def : thm, program_def : thm,
                    functions : function_outcome list, creation : string list}
 
   (* Check artifact format, compiler identity, pinned profile and exact settings.

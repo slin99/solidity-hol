@@ -15,6 +15,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 from typing import Any, Callable
 
 import export_solc_artifacts as exporter
@@ -384,6 +385,9 @@ class BatchScript:
     key: str  # the manifest field listing the entries
     manifest_env: str  # names the manifest to a local `holbuild run`
     batch_size: int = BATCH_SIZE
+    # A fleet action's wall-clock cap for a batch, counted once the action
+    # starts running (not while it queues); None runs it to the end.
+    seconds: Callable[[list[dict[str, Any]]], float] | None = None
 
 
 EXPECTATIONS = BatchScript(HOL_SCRIPT, "tests", "SEMANTIC_EXPECTATIONS_MANIFEST")
@@ -396,6 +400,31 @@ class ActionFailed(SystemExit):
         super().__init__(message)
         self.batch = batch
         self.reason = reason
+
+
+class ActionTimedOut(ActionFailed):
+    """A fleet action stopped at its batch script's wall-clock cap."""
+
+
+def wait_capped(process: subprocess.Popen[bytes], log: Path, seconds: float | None,
+                poll: float = 5.0) -> int | None:
+    """The holbuild call's exit status, or None once it has run `seconds`
+    past the log's line that its action is running. SIGTERM, not SIGKILL,
+    stops it: the wrapper then cancels the remote batch."""
+    if seconds is None:
+        return process.wait()
+    # A retried attempt's line carries its details: "running (unavailable: ...), attempts 2".
+    running = re.compile(rf"^holbuild: remote solidity-hol:{CONTEXT}: running(?:$| \(|,)", re.M)
+    started = None
+    while (status := process.poll()) is None:
+        if started is None and running.search(log.read_text(encoding="utf-8", errors="replace")):
+            started = time.monotonic()
+        if started is not None and time.monotonic() - started > seconds:
+            process.terminate()
+            process.wait()
+            return None
+        time.sleep(poll)
+    return status
 
 
 def stage_entry(batch: Path, index: int, entry: dict[str, Any]) -> tuple[dict[str, Any], list[Path]]:
@@ -437,10 +466,15 @@ def run_fleet_batch(holbuild: str, batch: Path, entries: list[dict[str, Any]],
         command.extend(["--support", str(support)])
     command.append(CONTEXT)
     log = batch / "hol.log"
+    seconds = script.seconds(entries) if script.seconds else None
     with log.open("w", encoding="utf-8") as stream:
-        status = subprocess.run(command, cwd=ROOT, stdin=subprocess.DEVNULL,
-                                stdout=stream, stderr=subprocess.STDOUT).returncode
+        process = subprocess.Popen(command, cwd=ROOT, stdin=subprocess.DEVNULL,
+                                   stdout=stream, stderr=subprocess.STDOUT)
+        status = wait_capped(process, log, seconds)
     action_log = log.read_text(encoding="utf-8", errors="replace")
+    if status is None:
+        raise ActionTimedOut(batch, "timeout",
+                             f"the HOL fleet action ran past its {seconds:.0f}s cap; see {log}")
     if status == 75 and NO_COORDINATOR in action_log:
         return False
     output = batch / "outputs/solidity-hol" / CONTEXT

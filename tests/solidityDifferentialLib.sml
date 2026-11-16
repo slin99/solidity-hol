@@ -31,10 +31,14 @@ fun emit fields = emit_result "differential-result: " fields
 
 fun prepared_constants prefix (prepared : solidityPrepareLib.prepared) =
   let
-    val unit_def = define (prefix ^ "_unit") (#unit prepared)
-    val () = cv_auto_trans unit_def
-    val program_def = define (prefix ^ "_program") (#program prepared)
-    val () = cv_auto_trans program_def
+    (* Each constant is defined as preparation's, which is translated already:
+     * translating a large unit's whole term again took hours. *)
+    fun constant name def =
+      let val th = define (prefix ^ name) (lhs (concl def)) in
+        cv_auto_trans th; TRANS th def
+      end
+    val unit_def = constant "_unit" (#unit_def prepared)
+    val program_def = constant "_program" (#program_def prepared)
     fun named name th = save_thm (prefix ^ name,
       REWRITE_RULE [SYM unit_def, SYM program_def] th)
     val _ = named "_source_valid" (#source_valid prepared)

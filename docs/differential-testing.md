@@ -255,7 +255,10 @@ outcomes come before repeats.
 One fleet action per contract runs its cases through
 `solidityDifferentialLib.run_fuzz_cases` (several contracts in one HOL process
 ran out of memory, and an action that fails, out of memory or time, fails only
-its contract). The contract is prepared once, and each case's source run is compared with
+its contract). An action that runs past 30 minutes plus 240 seconds per case
+(the case cap twice, for a confirmed case) is stopped, and its contract is
+reported as inconclusive with status `prepare-timeout`, so one contract never
+holds up a run. The contract is prepared once, and each case's source run is compared with
 its recording by `fuzz_verdict`, evaluated with `cv_eval`, with no theorem
 saved. Every difference, and every twentieth case, is then confirmed by
 `confirm_verdict`: the source against Verifereum's run of the bytecode, and

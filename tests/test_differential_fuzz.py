@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 
 import run_differential_fuzz as fuzz
+from test_semantic_expectations_fleet import holbuild
 
 SUITE = "storage_structs"
 
@@ -597,13 +598,51 @@ class FleetTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temporary, \
                 patch.dict(fuzz.fleet.os.environ, {}, clear=True), \
-                patch.object(fuzz.fleet.subprocess, "run", side_effect=run):
+                holbuild(run):
             results = fuzz.run_fleet("holbuild", Path(temporary) / "work", entries)
         self.assertEqual(actions, names)
         self.assertEqual([(r["contract"], r["status"], r.get("message")) for r in results],
                          [("first", "action-failed", "memory"), ("second", "ok", None)])
         summary = fuzz.report({e["name"]: e for e in entries}, results)
         self.assertEqual(list(summary["contract_failures"]), ["first"])
+
+    def test_a_contract_past_its_action_cap_is_inconclusive_as_prepare_timeout(self) -> None:
+        case = {"name": "c", "fuzz": {"function": "f", "mode": "typed"}}
+        entries = [{**target().entry, "name": n, "cases": [case] * cases, "screening": {}}
+                   for n, cases in (("slow", 3), ("fast", 0))]
+        caps = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            if "--help" in command:
+                return subprocess.CompletedProcess(command, 0, stdout="run-action")
+            if "build" in command:
+                return subprocess.CompletedProcess(command, 0)
+            outputs = Path(command[command.index("--outputs-dir") + 1]) / "solidity-hol" / \
+                fuzz.fleet.CONTEXT
+            outputs.mkdir(parents=True)
+            (outputs / "results.jsonl").write_text(fuzz.PREFIX + json.dumps(
+                {"kind": "contract", "contract": "fast", "status": "ok", "unsupported": []}) + "\n")
+            kwargs["stdout"].write(f"solidity-hol:{fuzz.fleet.CONTEXT} {'a' * 64} done\n")
+            return subprocess.CompletedProcess(command, 0)
+
+        def wait(process: Any, log: Path, seconds: float) -> int | None:
+            caps.append(seconds)
+            return None if len(caps) == 1 else process.wait()
+
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch.dict(fuzz.fleet.os.environ, {}, clear=True), holbuild(run), \
+                patch.object(fuzz.fleet, "wait_capped", side_effect=wait):
+            results = fuzz.run_fleet("holbuild", Path(temporary) / "work", entries)
+        self.assertEqual(caps, [fuzz.PREPARE_SECONDS + 3 * 2 * fuzz.CASE_SECONDS,
+                                fuzz.PREPARE_SECONDS])
+        self.assertEqual([(r["contract"], r["status"]) for r in results],
+                         [("slow", "prepare-timeout"), ("fast", "ok")])
+        summary = fuzz.report({e["name"]: e for e in entries}, results)
+        self.assertEqual(summary["prepare_timeout"], ["slow"])
+        self.assertEqual(summary["contract_failures"], {})
+        self.assertNotIn("slow/c", summary["missing"])
+        self.assertIn("prepare-timeout", fuzz.markdown(summary))
+        self.assertFalse(fuzz.failed(summary))
 
     def test_a_coordinator_lost_after_the_first_contract_stops_the_run(self) -> None:
         entries = [{**target().entry, "name": n, "cases": []} for n in ("first", "second")]
@@ -631,7 +670,7 @@ class FleetTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temporary, \
                 patch.dict(fuzz.fleet.os.environ, {}, clear=True), \
-                patch.object(fuzz.fleet.subprocess, "run", side_effect=run), \
+                holbuild(run), \
                 self.assertRaisesRegex(SystemExit, "coordinator disappeared"):
             fuzz.run_fleet("holbuild", Path(temporary) / "work", entries)
         self.assertEqual(local, [])
@@ -656,7 +695,7 @@ class FleetTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temporary, \
                 patch.dict(fuzz.fleet.os.environ, {}, clear=True), \
-                patch.object(fuzz.fleet.subprocess, "run", side_effect=run):
+                holbuild(run):
             results = fuzz.run_fleet("holbuild", Path(temporary) / "work", [entry])
             [action] = [c for c in commands if "run-action" in c]
             script = Path(action[action.index("--script") + 1])
