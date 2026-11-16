@@ -1813,9 +1813,10 @@ End
 Definition rd_ecrecover_def:
   rd_ecrecover =
     DefineStmt (AstId 136) (SingleType (AddressT NonpayableAddress))
-      (EcrecoverOperation (ConstantAtom (BytesValue (REPLICATE 32 0w))) (k 27)
-         (ConstantAtom (BytesValue (REPLICATE 32 0w)))
-         (ConstantAtom (BytesValue (REPLICATE 32 0w))))
+      (BuiltinOperation EcrecoverBuiltin
+         [ConstantAtom (BytesValue (REPLICATE 32 0w)); k 27;
+          ConstantAtom (BytesValue (REPLICATE 32 0w));
+          ConstantAtom (BytesValue (REPLICATE 32 0w))])
 End
 
 Definition rd_size_def:

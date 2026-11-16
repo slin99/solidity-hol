@@ -637,6 +637,22 @@ Definition scalar_operator_signature_def:
     | BoolNotOp => if ty = BoolT then SOME ([ty], ty) else NONE
 End
 
+(* Each builtin's operand types and result type. Elaboration converts each
+ * operand to its type, so a payable address reaches an address operand
+ * through a ConvertOperation.
+ *)
+Definition builtin_signature_def:
+  (builtin_signature Keccak256Builtin =
+    ([LocatedT MemoryLoc BytesT], FixedBytesT 32)) ∧
+  (builtin_signature EcrecoverBuiltin =
+    ([FixedBytesT 32; UintT 8; FixedBytesT 32; FixedBytesT 32],
+     AddressT NonpayableAddress)) ∧
+  (builtin_signature CodeLengthBuiltin =
+    ([AddressT NonpayableAddress], UintT 256)) ∧
+  (builtin_signature BalanceBuiltin =
+    ([AddressT NonpayableAddress], UintT 256))
+End
+
 (* An internal function converts implicitly to one with the same parameters
  * and returns that promises less: pure to view to non-payable. *)
 Definition function_mutability_convertible_def:
@@ -933,23 +949,10 @@ Definition wf_core_operation_def:
              copy_convertible (loc, src) (MemoryLoc, ty)
          | _ => F)
     | _ => F) ∧
-  (wf_core_operation env ctx annotation (Keccak256Operation a) ⇔
-    annotation = SingleType (FixedBytesT 32) ∧
-    wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) a) ∧
-  (wf_core_operation env ctx annotation (EcrecoverOperation h v r s) ⇔
-    annotation = SingleType (AddressT NonpayableAddress) ∧
-    wf_core_atom env ctx (SingleType (FixedBytesT 32)) h ∧
-    wf_core_atom env ctx (SingleType (UintT 8)) v ∧
-    wf_core_atom env ctx (SingleType (FixedBytesT 32)) r ∧
-    wf_core_atom env ctx (SingleType (FixedBytesT 32)) s) ∧
-  (wf_core_operation env ctx annotation (CodeLengthOperation a) ⇔
-    annotation = SingleType (UintT 256) ∧
-    (wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) a ∨
-     wf_core_atom env ctx (SingleType (AddressT PayableAddress)) a)) ∧
-  (wf_core_operation env ctx annotation (BalanceOperation a) ⇔
-    annotation = SingleType (UintT 256) ∧
-    (wf_core_atom env ctx (SingleType (AddressT NonpayableAddress)) a ∨
-     wf_core_atom env ctx (SingleType (AddressT PayableAddress)) a)) ∧
+  (wf_core_operation env ctx annotation (BuiltinOperation op args) ⇔
+    let (operand_tys, result) = builtin_signature op in
+    wf_core_atoms env ctx (MAP SingleType operand_tys) args ∧
+    annotation = SingleType result) ∧
   (wf_core_operation env ctx annotation (AbiEncodeOperation selector tys args) ⇔
     annotation = SingleType (LocatedT MemoryLoc BytesT) ∧
     (case selector of

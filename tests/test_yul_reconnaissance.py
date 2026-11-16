@@ -166,6 +166,32 @@ class AnalysisTests(unittest.TestCase):
         self.assertEqual(forms["data"]["creation"], 1)
         self.assertEqual(forms["datasize"]["fixtures"], ["testdata/x.sol"])
 
+    def test_subobjects_are_counted_at_every_depth(self) -> None:
+        # `new C` nests the child's creation object, with its own runtime
+        # object, inside the parent's runtime object.
+        text = textwrap.dedent(
+            """\
+            object "A_1" {
+                code { stop() }
+                object "A_1_deployed" {
+                    code { stop() }
+                    object "C_2" {
+                        code { stop() }
+                        object "C_2_deployed" { code { stop() } }
+                    }
+                }
+            }
+            """
+        )
+        fixture = {
+            "source": "testdata/x.sol",
+            "contracts": [{"contract": "A", "objects": recon.analyse_artifact(text)}],
+        }
+        forms = recon.object_level_forms([fixture])
+        self.assertEqual(forms["subobject"]["creation"], 1)
+        self.assertEqual(forms["subobject"]["runtime"], 1)
+        self.assertEqual(forms["subobject"]["subobject"], 1)
+
     def test_verbatim_is_recognised(self) -> None:
         text = 'object "A" { code { let x := verbatim_1i_1o(0x01, 1) } }'
         facts = recon.analyse_artifact(text)[0]
@@ -201,7 +227,7 @@ class GeneratedArtifactTests(unittest.TestCase):
                 for obj in contract["objects"]
                 if obj["stage"] == stage["id"]
             }
-            self.assertEqual(roles, {"creation", "runtime"})
+            self.assertEqual(roles, set(recon.ROLES))
             for entry in summary["builtins"].values():
                 self.assertTrue(entry["fixtures"])
             for entry in summary["nodeKinds"].values():

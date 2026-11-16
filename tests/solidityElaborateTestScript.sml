@@ -600,7 +600,7 @@ QED
 
 Theorem ecrecover_operands_all_report:
   ^(reports “elab_expr ^ctx0 10
-               (SrcEcrecover ^(at 30) ^(at 31)
+               (SrcBuiltinOperation ^(at 30) (SOME ^(at 31)) EcrecoverBuiltin
                   [SrcLiteral ^(at 32) StringLiteral
                      "0123456789abcdef0123456789abcdef0" "t_stringliteral_x";
                    ^(one_at 34);
