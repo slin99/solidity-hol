@@ -107,12 +107,29 @@ End
 (* The call and transaction context a body reads: msg.sender, msg.value,
  * address(this), tx.origin, tx.gasprice and the block's scalars. msg.data is
  * the complete read-only calldata bytes, including the selector.
+ * BlockPrevRandao is block.prevrandao, and block.difficulty, which the
+ * compiler reads with the same PREVRANDAO instruction.
  *)
 Datatype:
   environment_field
   = MsgSender | MsgValue | MsgData | MsgSig | SelfAddress | TxOrigin | TxGasPrice
   | BlockNumber | BlockTimestamp | BlockChainId | BlockCoinbase
-  | BlockBaseFee | BlockGasLimit | GasLeft
+  | BlockBaseFee | BlockGasLimit | BlockPrevRandao | GasLeft
+End
+
+(* The builtin functions that compute a value from their operands and the
+ * world without changing it: keccak256(a), the Keccak-256 hash of the memory
+ * bytes a; ecrecover(h, v, r, s), the address the signature (v, r, s) of the
+ * hash h recovers, or address(0) if it is invalid; a.code.length, the
+ * account's code size, without a memory bytes allocation; a.balance;
+ * sha256(a), the SHA-256 hash of the memory bytes a; blockhash(n), the
+ * hash of block n if it is one of the 256 before the current one, else 0;
+ * and a.code, the account's code as new memory bytes.
+ *)
+Datatype:
+  builtin_op
+  = Keccak256Builtin | EcrecoverBuiltin | CodeLengthBuiltin | BalanceBuiltin
+  | Sha256Builtin | BlockhashBuiltin | CodeBuiltin
 End
 
 (* DefaultReferenceOperation loc ty: a placeholder reference that a source
@@ -124,10 +141,8 @@ End
  * and writing each field. ArrayIndexOperation a i: element i of fixed bytes,
  * or a located byte sequence or array a. CopyToMemoryOperation a: a new memory
  * copy of the calldata or storage object a.
- * Keccak256Operation a: the Keccak-256 hash of the memory byte sequence a, as
- * bytes32. EcrecoverOperation h v r s: ecrecover(h, v, r,
- * s), the address the signature (v, r, s) of the bytes32 hash h recovers, or
- * address(0) if it is invalid; v is a uint8 and r and s are bytes32.
+ * BuiltinOperation op args: the builtin op on its operands, typed by
+ * builtin_signature (solidityCoreWf).
  * AbiDecodeOperation types a: abi.decode(a, (types)) of the memory bytes a
  * into values of those elementary types, one value or a tuple of them.
  * AbiEncodeOperation selector types arguments: abi.encode(arguments) of the
@@ -168,12 +183,7 @@ Datatype:
   | CalldataSliceOperation core_atom core_atom (core_atom option)
   | CopyToMemoryOperation core_atom
   | ArrayLengthOperation core_atom
-  | Keccak256Operation core_atom
-  | EcrecoverOperation core_atom core_atom core_atom core_atom
-  (* The addressed account's code size, without a memory bytes allocation. *)
-  | CodeLengthOperation core_atom
-  (* The addressed account's current balance. *)
-  | BalanceOperation core_atom
+  | BuiltinOperation builtin_op (core_atom list)
   | AbiEncodeOperation (core_atom option) (sol_type list) (core_atom list)
   | AbiEncodePackedOperation (sol_type list) (core_atom list)
   | AbiDecodeOperation (sol_type list) core_atom

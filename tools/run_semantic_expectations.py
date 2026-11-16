@@ -12,9 +12,10 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
-from typing import Any
+from typing import Any, Callable
 
 import export_solc_artifacts as exporter
 import semantic_tests_coverage as coverage
@@ -22,6 +23,11 @@ from isoltest_expectations import Parser, UnsupportedExpectation, decode_string
 
 ROOT = Path(__file__).resolve().parents[1]
 PREFIX = "expectation-result: "
+HOL_SCRIPT = ROOT / "tools" / "semantic_expectations.sml"
+CONTEXT = "solidityDifferentialTheory"
+# Each HOL process bounds the lifetime of preparation/evaluation theorem state.
+BATCH_SIZE = 16
+NO_COORDINATOR = "run-action --remote-only: no coordinator to run on; pass --remote-exec URL"
 ACCOUNT = 0x1212121212121212121212121212120000000012
 
 
@@ -310,14 +316,14 @@ def test_status(calls: list[dict[str, Any]]) -> str:
     return "agree"
 
 
-def result_records(text: str) -> list[dict[str, Any]]:
+def result_records(text: str, prefix: str = PREFIX) -> list[dict[str, Any]]:
     """Read flushed result lines; a truncated final record belongs to an unfinished test."""
     records: list[dict[str, Any]] = []
     for line in text.splitlines(keepends=True):
-        if not line.startswith(PREFIX):
+        if not line.startswith(prefix):
             continue
         try:
-            records.append(json.loads(line[len(PREFIX):]))
+            records.append(json.loads(line[len(prefix):]))
         except json.JSONDecodeError:
             if not line.endswith("\n"):
                 break
@@ -359,6 +365,184 @@ def markdown(report: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def result_files(work: Path) -> list[Path]:
+    """Every batch's results; a failed fleet batch leaves none."""
+    return sorted(work.glob("batch-*/results.jsonl"))
+
+
+def completed_tests(work: Path) -> set[str]:
+    return {result["test"] for path in result_files(work)
+            for result in result_records(path.read_text(errors="replace"))
+            if result.get("kind") in ("complete", "preparation")}
+
+
+@dataclass(frozen=True)
+class BatchScript:
+    """A HOL script run once per batch of manifest entries. Each entry names an
+    `artifact`, and optionally a `peer` with its own, relative to the root."""
+    path: Path
+    key: str  # the manifest field listing the entries
+    manifest_env: str  # names the manifest to a local `holbuild run`
+    batch_size: int = BATCH_SIZE
+
+
+EXPECTATIONS = BatchScript(HOL_SCRIPT, "tests", "SEMANTIC_EXPECTATIONS_MANIFEST")
+
+
+class ActionFailed(SystemExit):
+    """A fleet action that ran and failed; `reason` is holbuild's (`memory`, say)."""
+
+    def __init__(self, batch: Path, reason: str, message: str) -> None:
+        super().__init__(message)
+        self.batch = batch
+        self.reason = reason
+
+
+def stage_entry(batch: Path, index: int, entry: dict[str, Any]) -> tuple[dict[str, Any], list[Path]]:
+    """Copy an entry's artifacts into the batch; the copy names them there."""
+    artifact = batch / f"{index}.json"
+    shutil.copyfile(ROOT / entry["artifact"], artifact)
+    staged = {**entry, "artifact": artifact.name}
+    if "peer" not in entry:
+        return staged, [artifact]
+    peer = batch / f"{index}.peer.json"
+    shutil.copyfile(ROOT / entry["peer"]["artifact"], peer)
+    return {**staged, "peer": {**entry["peer"], "artifact": peer.name}}, [artifact, peer]
+
+
+def run_fleet_batch(holbuild: str, batch: Path, entries: list[dict[str, Any]],
+                    script: BatchScript = EXPECTATIONS) -> bool:
+    """Run one batch as a cached action; False means no coordinator was configured."""
+    staged = []
+    supports = []
+    for index, entry in enumerate(entries):
+        staged_entry, files = stage_entry(batch, index, entry)
+        staged.append(staged_entry)
+        supports.extend(files)
+    manifest = batch / "batch.json"
+    exporter.write_json_atomic(manifest, {script.key: staged})
+    supports.append(manifest)
+    for source in (exporter.PIN_FILE, exporter.DEFAULT_PROFILE, exporter.OPTIMIZED_PROFILE):
+        target = batch / source.relative_to(ROOT)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(source, target)
+        supports.append(target)
+    staged_script = batch / script.path.name
+    shutil.copyfile(script.path, staged_script)
+    command = [holbuild, "-j1", "run-action", "--remote-only", "--skip-checkpoints",
+               "--skip-proof-steps", "--script", str(staged_script),
+               "--load", "solidityDifferentialLib", "--output", "results.jsonl",
+               "--outputs-dir", str(batch / "outputs")]
+    for support in supports:
+        command.extend(["--support", str(support)])
+    command.append(CONTEXT)
+    log = batch / "hol.log"
+    with log.open("w", encoding="utf-8") as stream:
+        status = subprocess.run(command, cwd=ROOT, stdin=subprocess.DEVNULL,
+                                stdout=stream, stderr=subprocess.STDOUT).returncode
+    action_log = log.read_text(encoding="utf-8", errors="replace")
+    if status == 75 and NO_COORDINATOR in action_log:
+        return False
+    output = batch / "outputs/solidity-hol" / CONTEXT
+    completed = re.search(rf"^solidity-hol:{CONTEXT} [0-9a-f]{{64}} (?:done|cached)\b",
+                          action_log, re.M)
+    if status != 0 or completed is None or not (output / "results.jsonl").is_file():
+        reported = re.search(rf"^solidity-hol:{CONTEXT} [0-9a-f]{{64}} failed (\S+)", action_log, re.M)
+        raise ActionFailed(batch, reported[1] if reported else f"status {status}",
+                           f"the HOL fleet action failed (status {status}); see {log} "
+                           f"and {output / 'LOG'}:\n{action_log}")
+    shutil.copyfile(output / "results.jsonl", batch / "results.jsonl")
+    return True
+
+
+def run_local_batch(holbuild: str, batch: Path, entries: list[dict[str, Any]],
+                    script: BatchScript = EXPECTATIONS) -> None:
+    manifest = batch / "batch.json"
+    exporter.write_json_atomic(manifest, {script.key: entries})
+    # Results stream to the batch's results file, so a resume keeps finished entries.
+    with (batch / "results.jsonl").open("w") as stream:
+        status = subprocess.run([holbuild, "-j1", "run", str(script.path)],
+                                cwd=ROOT, stdin=subprocess.DEVNULL, stdout=stream, stderr=subprocess.STDOUT,
+                                env={**os.environ, script.manifest_env: str(manifest)}).returncode
+    if status:
+        raise SystemExit(f"HOL run failed: status {status}; see {batch / 'results.jsonl'}")
+
+
+def run_batches(holbuild: str, work: Path, pending: list[dict[str, Any]],
+                script: BatchScript = EXPECTATIONS,
+                failed: Callable[[ActionFailed, list[dict[str, Any]]], None] | None = None) -> None:
+    """Run bounded batches on the fleet, or locally without remote configuration.
+    A fleet action that fails stops the run, unless `failed` records it for its
+    entries and the run goes on."""
+    subprocess.run([holbuild, "-j4", "build", "solidityDifferentialLib"], cwd=ROOT, check=True)
+    help_text = subprocess.run([holbuild, "--help"], cwd=ROOT, check=True,
+                               capture_output=True, text=True).stdout
+    configured = coverage.remote_configured()
+    fleet = "run-action" in help_text
+    if configured and not fleet:
+        raise SystemExit("holbuild has no run-action support; upgrade holbuild to use the "
+                         "configured remote execution/cache instead of running locally")
+    first = 1 + max((int(path.name.split("-")[1]) for path in work.glob("batch-*")), default=-1)
+    # Batches run one after another: each startup/export mutates the same holbuild project.
+    for index, offset in enumerate(range(0, len(pending), script.batch_size), first):
+        entries = pending[offset:offset + script.batch_size]
+        batch = work / f"batch-{index:04d}"
+        batch.mkdir()
+        try:
+            ran = fleet and run_fleet_batch(holbuild, batch, entries, script)
+        except ActionFailed as failure:
+            if failed is None:
+                raise
+            failed(failure, entries)
+            ran = True
+        if not ran:
+            if configured:
+                raise SystemExit("the HOL fleet action failed: remote configuration exists but "
+                                 "no coordinator was selected")
+            if fleet and offset:
+                raise SystemExit("the HOL fleet action failed: coordinator disappeared "
+                                 "after the first batch")
+            fleet = False
+            run_local_batch(holbuild, batch, entries, script)
+        print(f"Executed {offset + len(entries)}/{len(pending)} pending {script.key}",
+              file=sys.stderr, flush=True)
+
+
+def admitted_tests(solidity: Path, solc: Path, coverage_path: Path,
+                   categories: tuple[str, ...] = (coverage.ADMITTED,)) -> list[str]:
+    """The tests of a coverage report in the given categories, after checking
+    that the compiler, the test corpus and the report match this checkout's pin."""
+    pin = exporter.PIN_FILE.read_text().strip()
+    profile = exporter.read_json(exporter.DEFAULT_PROFILE)
+    exporter.compiler_identity(solc, profile["compilerVersion"], pin)
+    report = exporter.read_json(coverage_path)
+    if report["solidity_pin"] != pin or report["profile"] != exporter.DEFAULT_PROFILE.stem:
+        raise SystemExit("coverage report compiler pin/profile differs from this checkout")
+    corpus_pin = subprocess.check_output(["git", "-C", str(solidity), "rev-parse", "HEAD"], text=True).strip()
+    if corpus_pin != pin:
+        raise SystemExit(f"test corpus revision {corpus_pin} differs from pin {pin}")
+    return [t["test"] for t in report["tests"] if t["category"] in categories]
+
+
+def compile_admitted(solc: Path, tests_root: Path, name: str, work: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Compile a test into work: its entry (test, artifact, source, contract),
+    the contract being the last one of its last source, and the artifact."""
+    test = coverage.read_test(tests_root, tests_root / name)
+    artifact = coverage.compile_test(solc, test, exporter.DEFAULT_PROFILE)
+    path = work / (hashlib.sha256(name.encode()).hexdigest()[:16] + ".json")
+    exporter.write_json_atomic(path, artifact)
+    sources = artifact["output"]["sources"]
+    source_names = [m[2] for line in (tests_root / name).read_text().splitlines()
+                    if (m := coverage.SOURCE_MARKER.match(line)) and m[1] == "Source"]
+    source = source_names[-1] if source_names else name
+    candidates = [(source, n["name"]) for n in sources[source]["ast"]["nodes"]
+                  if n["nodeType"] == "ContractDefinition"]
+    if not candidates:
+        raise SystemExit(f"{name}: no deployable contract")
+    source, contract = candidates[-1]
+    return {"test": name, "artifact": str(path), "source": source, "contract": contract}, artifact
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("solidity", type=Path)
@@ -373,37 +557,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("-j", type=int, default=4)
     args = parser.parse_args(argv)
     pin = exporter.PIN_FILE.read_text().strip()
-    profile = exporter.read_json(exporter.DEFAULT_PROFILE)
-    exporter.compiler_identity(args.solc, profile["compilerVersion"], pin)
-    report = exporter.read_json(args.coverage)
-    if report["solidity_pin"] != pin or report["profile"] != exporter.DEFAULT_PROFILE.stem:
-        raise SystemExit("coverage report compiler pin/profile differs from this checkout")
-    corpus_pin = subprocess.check_output(["git", "-C", str(args.solidity), "rev-parse", "HEAD"], text=True).strip()
-    if corpus_pin != pin:
-        raise SystemExit(f"test corpus revision {corpus_pin} differs from pin {pin}")
     work = args.work_dir.resolve()
     work.mkdir(parents=True, exist_ok=True)
     tests_root = args.solidity / coverage.TESTS_DIR
-    selected = [t["test"] for t in report["tests"] if t["category"] == coverage.ADMITTED and args.match in t["test"]]
+    selected = [t for t in admitted_tests(args.solidity, args.solc, args.coverage) if args.match in t]
 
     def compile_one(name: str) -> dict[str, Any]:
-        test = coverage.read_test(tests_root, tests_root / name)
-        artifact = coverage.compile_test(args.solc, test, exporter.DEFAULT_PROFILE)
-        path = work / (hashlib.sha256(name.encode()).hexdigest()[:16] + ".json")
-        exporter.write_json_atomic(path, artifact)
-        sources = artifact["output"]["sources"]
-        source_names = [m[2] for line in (tests_root / name).read_text().splitlines()
-                        if (m := coverage.SOURCE_MARKER.match(line)) and m[1] == "Source"]
-        source = source_names[-1] if source_names else name
-        candidates = [(source, n["name"]) for n in sources[source]["ast"]["nodes"]
-                      if n["nodeType"] == "ContractDefinition"]
-        if not candidates:
-            raise SystemExit(f"{name}: no deployable contract")
-        source, contract = candidates[-1]
-        methods = artifact["output"]["contracts"][source][contract]["evm"]["methodIdentifiers"]
+        entry, artifact = compile_admitted(args.solc, tests_root, name, work)
+        methods = artifact["output"]["contracts"][entry["source"]][entry["contract"]]["evm"]["methodIdentifiers"]
         calls = parse_calls((tests_root / name).read_text(), methods)
-        return {"test": name, "artifact": str(path), "source": source, "contract": contract,
-                "calls": [c.manifest() for c in calls], "verify_bytecode": args.verify_bytecode}
+        return {**entry, "calls": [c.manifest() for c in calls], "verify_bytecode": args.verify_bytecode}
 
     with ThreadPoolExecutor(max_workers=args.j) as pool:
         tests = list(pool.map(compile_one, selected))
@@ -418,40 +581,20 @@ def main(argv: list[str] | None = None) -> int:
         fingerprint.update(Path(test["artifact"]).read_bytes())
     inputs = {"source_hash": fingerprint.hexdigest(), "tests": tests}
     completed: set[str] = set()
-    logs: list[Path] = []
     if args.resume:
         if exporter.read_json(manifest) != inputs:
             raise SystemExit("cannot resume: test inputs or runner/evaluator sources changed")
-        logs = sorted(work.glob("batch-*.log"))
-        for log in logs:
-            for result in result_records(log.read_text(errors="replace")):
-                if result.get("kind") in ("complete", "preparation"):
-                    completed.add(result["test"])
+        completed = completed_tests(work)
     elif manifest.exists():
         raise SystemExit(f"work directory already contains a run: use --resume or a new directory: {work}")
     else:
         exporter.write_json_atomic(manifest, inputs)
-    subprocess.run([args.holbuild, "-j4", "build", "solidityDifferentialLib"], cwd=ROOT, check=True)
-    pending = [test for test in tests if test["test"] not in completed]
-    next_batch = 1 + max((int(log.stem.split("-")[1]) for log in logs), default=-1)
-    status = 0
-    # Each process bounds the lifetime of preparation/evaluation theorem state.
-    for batch_index, offset in enumerate(range(0, len(pending), 16), next_batch):
-        batch = work / f"batch-{batch_index:04d}.json"
-        exporter.write_json_atomic(batch, {"tests": pending[offset:offset + 16]})
-        log = batch.with_suffix(".log")
-        logs.append(log)
-        with log.open("w") as stream:
-            status = subprocess.run([args.holbuild, "-j1", "run", str(ROOT / "tools/semantic_expectations.sml")],
-                                    cwd=ROOT, stdin=subprocess.DEVNULL, stdout=stream, stderr=subprocess.STDOUT,
-                                    env={**os.environ, "SEMANTIC_EXPECTATIONS_MANIFEST": str(batch)}).returncode
-        if status:
-            raise SystemExit(f"HOL run failed: status {status}; see {log}")
-        print(f"Executed {len(completed) + min(offset + 16, len(pending))}/{len(tests)} tests", file=sys.stderr, flush=True)
+    run_batches(args.holbuild, work, [test for test in tests if test["test"] not in completed])
     executed: dict[str, dict[int, dict[str, Any]]] = {}
     preparations: dict[str, str] = {}
     complete = set()
-    for result in (result for log in logs for result in result_records(log.read_text(errors="replace"))):
+    for result in (result for path in result_files(work)
+                   for result in result_records(path.read_text(errors="replace"))):
         name = result.pop("test")
         if result.get("kind") == "complete":
             complete.add(name)
@@ -462,8 +605,8 @@ def main(argv: list[str] | None = None) -> int:
             index = result.pop("index")
             executed.setdefault(name, {})[index] = result
     missing = set(selected) - complete
-    if status or missing:
-        raise SystemExit(f"HOL run failed: status {status}; {len(missing)} tests missing; see {log}")
+    if missing:
+        raise SystemExit(f"HOL run failed: {len(missing)} tests missing; see {work}")
     results = []
     for test in tests:
         calls = classify([Call(**c) for c in test["calls"]], executed.get(test["test"], {}))

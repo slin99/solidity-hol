@@ -14,6 +14,7 @@ val () = holbuild_extra_deps [
   "../testdata/frontend/expected/qualified_struct_event.json",
   "../testdata/frontend/expected/external_library.json",
   "../testdata/differential/expected/contract_creation.json",
+  "../testdata/differential/expected/contract_qualified_variables.json",
   "../profiles/solc-0.8.37-via-ir-osaka-optimized.json",
   "../testdata/frontend/expected/stack_depth.json"
 ]
@@ -272,3 +273,39 @@ fun unfold_code code =
   end;
 val () = if List.exists (fn code => unfold_code code ~~ expected_code) prepared_codes
   then () else raise Fail "large child initcode changed during preparation";
+
+(* Variables named through their contract elaborate everywhere, the creation
+ * included (contract_qualified_variables.sol). With an initializer the
+ * elaborator rejects, the functions still elaborate but the creation has no
+ * procedure: preparation says why, so the unit is not taken as admitted. *)
+val qualified = #prepared (solidityPrepareLib.prepare_artifact
+  {root = "..", path = "../testdata/differential/expected/contract_qualified_variables.json",
+   source = "testdata/differential/contract_qualified_variables.sol"});
+val () =
+  if List.all (fn {reason, ...} => not (isSome reason)) (#functions qualified) andalso
+     null (#creation qualified)
+  then () else raise Fail "contract-qualified variables not supported";
+
+Definition qualified_unit_def:
+  qualified_unit = ^(#unit qualified)
+End
+
+val failed_initializer = rhs (concl (EVAL
+  “qualified_unit with unit_contracts :=
+     [HD qualified_unit.unit_contracts with contract_initializers :=
+        MAP (λ(x, e). (x, SrcUnsupportedExpr
+                            <| node_id := expr_id e;
+                               node_location := <| loc_start := 0; loc_length := 0;
+                                                   loc_source := 0 |> |>
+                            "edited initializer" []))
+          (HD qualified_unit.unit_contracts).contract_initializers]”));
+
+Definition failed_initializer_unit_def:
+  failed_initializer_unit = ^failed_initializer
+End
+
+val failed_creation = solidityPrepareLib.prepare_unit “failed_initializer_unit”;
+val () =
+  if List.all (fn {reason, ...} => not (isSome reason)) (#functions failed_creation) andalso
+     List.exists (String.isSubstring "edited initializer") (#creation failed_creation)
+  then () else raise Fail "a creation without a procedure was not reported";

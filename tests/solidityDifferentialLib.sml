@@ -261,12 +261,14 @@ fun check_unit_contracts prepared contract =
                "], not " ^ contract)
   end
 
-(* The corpus checks supported features, so each of its functions must be
- * supported: a function the frontend marks unsupported fails the suite. *)
+(* The corpus checks supported features, so each of its functions and its
+ * creation must be supported: a function the frontend marks unsupported, or
+ * a creation without a procedure, fails the suite. *)
 fun check_supported (prepared : solidityPrepareLib.prepared) =
-  case List.filter (isSome o #reason) (#functions prepared) of
-    [] => ()
-  | fs => fail ("unsupported functions: " ^
+  case (List.filter (isSome o #reason) (#functions prepared), #creation prepared) of
+    ([], []) => ()
+  | ([], lines) => fail ("unsupported creation: " ^ String.concatWith "; " lines)
+  | (fs, _) => fail ("unsupported functions: " ^
                 String.concatWith "; "
                   (map (fn {name, reason, ...} => name ^ ": " ^ valOf reason) fs))
 
@@ -280,8 +282,8 @@ fun run_suite_with_bytecode bytecode root fuel s =
     val cases = array_field s "cases"
   in
     let
-      val checked = solidityPrepareLib.prepare_artifact
-        {root = root, path = artifact, source = source}
+      val checked = solidityPrepareLib.prepare_contract_artifact
+        {root = root, path = artifact, source = source, contract = SOME contract}
       val () = check_unit_contracts (#prepared checked) contract
       val () = check_supported (#prepared checked)
       val (unit, program) = prepared_constants prefix (#prepared checked)
@@ -630,8 +632,8 @@ fun run_suite_three_way root yul_root s =
     val source = string_field s "source"
     val contract = string_field s "contract"
     val cases = array_field s "cases"
-    val checked = solidityPrepareLib.prepare_artifact
-      {root = root, path = artifact, source = source}
+    val checked = solidityPrepareLib.prepare_contract_artifact
+      {root = root, path = artifact, source = source, contract = SOME contract}
     val () = check_unit_contracts (#prepared checked) contract
     val () = check_supported (#prepared checked)
     val (unit, program) = prepared_constants prefix (#prepared checked)
@@ -823,6 +825,7 @@ fun run_expectations {root, manifest} =
                         tx_params := (differential_frame ^sender ^value ^data).tx_params with
                           <| origin := 0x9292929292929292929292929292929292929292w;
                              gasPrice := 3000000000; blockNumber := ^bn;
+                             prevHashes := test_block_hashes ^bn;
                              blockTimeStamp := 15 * ^bn; chainId := 1;
                              blockCoinBase := 0x7878787878787878787878787878787878787878w;
                              blockGasLimit := 20000000;
@@ -925,10 +928,16 @@ fun run_expectations {root, manifest} =
                      ContractCreated im _ => ContractCreated im (differential_world empty_accounts)
                    | ContractReturned bs _ => ContractReturned bs (differential_world empty_accounts)
                    | ContractReverted bs _ => ContractReverted bs (differential_world empty_accounts)
+                   | ContractAborted _ => ContractAborted (differential_world empty_accounts)
                    | other => other”
                    val result_world = “case ^result of
                      ContractCreated _ w => w | ContractReturned _ w => w
                      | ContractReverted _ w => w | _ => ^entered”
+                   (* A failed call keeps no state; a failed creation stops the test. *)
+                   fun rolled_back why bs =
+                     (world := prior_world;
+                      if creating then stopped := SOME why else ();
+                      (con "Reverted" [if creating then bytes_term [] else bs], bytes_term []))
                    val (constructor, args) = strip_comb r
                    val kind = fst (dest_const constructor)
                    val (outcome, logs) =
@@ -957,10 +966,10 @@ fun run_expectations {root, manifest} =
                      | ("ContractReturned", [bs, w]) =>
                          (world := result_world;
                           (con "Returned" [bs], eval “^result_world.logs”))
-                     | ("ContractReverted", [bs, _]) =>
-                         (world := prior_world;
-                          if creating then stopped := SOME "deployment reverted" else ();
-                          (con "Reverted" [if creating then bytes_term [] else bs], bytes_term []))
+                     | ("ContractReverted", [bs, _]) => rolled_back "deployment reverted" bs
+                     (* An abort fails with no return data, which the expectation
+                      * format, like the bytecode run, shows as an empty revert. *)
+                     | ("ContractAborted", [_]) => rolled_back "deployment aborted" (bytes_term [])
                      | ("ContractInvalid", [reason]) =>
                          (stopped := SOME (stringSyntax.fromHOLstring reason);
                           (con "Diagnostic" [“InvalidCompletion”], bytes_term []))
@@ -1013,5 +1022,157 @@ fun run_expectations {root, manifest} =
   in
     List.app run_test (ListPair.zip (List.tabulate (length tests, fn i => i), tests))
   end
+
+(* Fuzz cases: generated calls in the corpus case format whose expectation is
+ * what a screening EVM recorded. The source runs against that recording
+ * (fuzz_verdict); every difference, and every case marked "confirm", is
+ * then confirmed (confirm_verdict): the source against Verifereum's run of
+ * the bytecode, and that run against the recording. So a reported
+ * disagreement never rests on the recording. Results are "fuzz-result: "
+ * lines; nothing is saved per case. *)
+
+fun emit_fuzz fields = emit_result "fuzz-result: " fields
+
+fun verdict_name tm = fst (dest_const (fst (strip_comb tm)))
+
+(* A run_verdict's operands as JSON, named for the runs it compared. *)
+fun verdict_fields (reference, run) verdict =
+  case snd (strip_comb verdict) of
+    [a, b] =>
+      let
+        val name = verdict_name verdict
+        val json = if String.isPrefix "Storage" name then storage_json
+                   else if String.isPrefix "Log" name then logs_json
+                   else outcome_json
+      in [(reference, json a), (run, json b)] end
+  | [a] => [("outcome", outcome_json a)]
+  | _ => []
+
+fun diagnostic_reason verdict =
+  case List.find (is_con "Diagnostic") (snd (strip_comb verdict)) of
+    SOME d => fst (dest_const (rand d))
+  | NONE => raise ERR "diagnostic_reason" "no diagnostic in the verdict"
+
+(* A case's status, its verdict and the names of that verdict's runs. The
+ * bytecode and the source differing is a disagreement; both agreeing but
+ * the bytecode differing from the recording, the screening EVM was wrong. *)
+fun fuzz_status screened confirmed =
+  case confirmed of
+    NONE =>
+      if is_con "Agree" screened then ("agree", screened, ("recorded", "source"))
+      else ("inconclusive", screened, ("recorded", "source"))
+  | SOME (source, recording) =>
+      if is_con "Inconclusive" source then ("inconclusive", source, ("bytecode", "source"))
+      else if not (is_con "Agree" source) then ("disagree", source, ("bytecode", "source"))
+      else if is_con "Agree" recording then ("agree", source, ("bytecode", "source"))
+      else ("pyrevm-mismatch", recording, ("recorded", "bytecode"))
+
+(* A case whose evaluation runs past this many seconds is inconclusive, with
+ * reason "Timeout": cases take seconds, and one that keeps going sits at the
+ * heap cap until it takes its contract's whole action down with it. An
+ * evaluation interrupted before then (Poly/ML interrupts a thread when the
+ * heap runs out) counts the same. A difference whose confirmation runs past
+ * it is an error instead, so a disagreement is never filed as inconclusive. *)
+val fuzz_case_seconds = 120.0
+
+(* owed counts the "confirm" marks on cases that screened inconclusive or ran
+ * out of time: each passes to the next case that doesn't, so a contract's
+ * sample isn't lost to diagnostics. *)
+fun run_fuzz_case {contract, code, unit, program, fuel, fixture, immutables} owed c =
+  let
+    val case_name = name_field c "name"
+    fun emit fields =
+      emit_fuzz ([("kind", json_string "case"), ("contract", json_string contract),
+                  ("case", json_string case_name)] @ fields)
+    val marked = case JSONUtil.findField c "confirm" of
+                   SOME (JSON.BOOL b) => b | _ => false
+  in
+    let
+      val no_initcode = fn () => fail "fuzz cases are calls, not creations"
+      val case_tm = case_term fixture immutables (call_input no_initcode c) c
+      fun evaluate name =
+        Timeout.apply (Time.fromReal fuzz_case_seconds) (fn () =>
+          rhs (concl (cv_eval (list_mk_comb
+            (prim_mk_const {Thy = "solidityDifferential", Name = name},
+             [code, unit, program, num_term fuel, case_tm]))))) ()
+        handle Interrupt => raise Timeout.TIMEOUT Time.zeroTime
+      val screened = evaluate "fuzz_verdict"
+      val inconclusive = is_con "Inconclusive" screened
+      val confirm = not inconclusive andalso
+                    (marked orelse !owed > 0 orelse not (is_con "Agree" screened))
+      val confirmed =
+        if not confirm then NONE
+        else SOME (pairSyntax.dest_pair (evaluate "confirm_verdict"))
+             handle Timeout.TIMEOUT _ =>
+               if is_con "Agree" screened then raise Timeout.TIMEOUT Time.zeroTime
+               else raise ERR "run_fuzz_case"
+                 ("confirming a difference ran past " ^ Real.toString fuzz_case_seconds ^ "s")
+      val () = if marked andalso inconclusive then owed := !owed + 1
+               else if confirm andalso not marked andalso !owed > 0 then owed := !owed - 1
+               else ()
+      val (status, verdict, runs) = fuzz_status screened confirmed
+    in
+      emit ([("status", json_string status), ("screen", json_string (verdict_name screened)),
+             ("confirmed", if confirm then "true" else "false")] @
+            (case confirmed of
+               SOME (_, recording) =>
+                 [("recording_matches", if is_con "Agree" recording then "true" else "false")]
+             | NONE => []) @
+            (if status = "inconclusive"
+             then [("reason", json_string (diagnostic_reason verdict))] else []) @
+            (if status = "agree" then [] else verdict_fields runs verdict))
+    end
+    handle Timeout.TIMEOUT _ =>
+      (if marked then owed := !owed + 1 else ();
+       emit [("status", json_string "inconclusive"), ("screen", json_string "Timeout"),
+             ("confirmed", "false"), ("reason", json_string "Timeout")])
+  end
+  handle e =>
+    emit_fuzz [("kind", json_string "case"), ("contract", json_string contract),
+               ("case", json_string (string_field c "name" handle _ => "?")),
+               ("status", json_string "error"),
+               ("message", json_string (General.exnMessage e))]
+
+fun run_fuzz_contract root s =
+  let
+    val contract = name_field s "name"
+    val fuel = integer (field s "fuel")
+    val prefix = "fuzz_" ^ contract
+    val source = string_field s "source"
+    val contract_name = string_field s "contract"
+    val checked = solidityPrepareLib.prepare_contract_artifact
+      {root = root, path = root ^ "/" ^ string_field s "artifact", source = source,
+       contract = SOME contract_name}
+    val () = check_unit_contracts (#prepared checked) contract_name
+    val (unit, program) = prepared_constants prefix (#prepared checked)
+    val code = code_constant (prefix ^ "_code") "deployedBytecode"
+                 (#artifact checked) source contract_name
+    val env = {contract = contract, code = code, unit = unit, program = program,
+               fuel = fuel, fixture = fixture_code root prefix s,
+               immutables = unit_immutables (#unit (#prepared checked))
+                              (#artifact checked) source contract_name}
+    val unsupported =
+      List.mapPartial (fn {name, reason, ...} =>
+        Option.map (fn r => json_object [("function", json_string name),
+                                         ("reason", json_string r)]) reason)
+        (#functions (#prepared checked))
+  in
+    emit_fuzz [("kind", json_string "contract"), ("contract", json_string contract),
+               ("status", json_string "ok"), ("unsupported", json_array unsupported)];
+    List.app (run_fuzz_case env (ref 0)) (array_field s "cases")
+  end
+  handle solidityPrepareLib.PreparationError (kind, message) =>
+           emit_fuzz [("kind", json_string "contract"),
+                      ("contract", json_string (string_field s "name" handle _ => "?")),
+                      ("status", json_string (solidityPrepareLib.failure_name kind)),
+                      ("message", json_string message)]
+       | e =>
+           emit_fuzz [("kind", json_string "contract"),
+                      ("contract", json_string (string_field s "name" handle _ => "?")),
+                      ("status", json_string "error"),
+                      ("message", json_string (General.exnMessage e))]
+
+fun run_fuzz_cases {root, manifest} =
+  List.app (run_fuzz_contract root) (array_field (JSONParser.parseFile manifest) "contracts")
 
 end

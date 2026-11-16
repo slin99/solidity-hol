@@ -226,3 +226,89 @@ python3 tools/run_yul_differential.py --solc ~/.local/opt/solc-0.8.37/solc -j8
 `docs/yul-differential.md` is the last run's result: the stages admitted, the
 agreements, and every case that is not an agreement, with its status.
 `--no-hol` runs the compiler-side checks alone.
+
+## Fuzzing
+
+`tools/run_differential_fuzz.py` generates calls to the suites' contracts and
+checks the source against the bytecode on them, outside per-PR CI. For each
+function it screens seeded candidates: 70% ABI-encoded arguments, 20%
+encodings with a word, a length or an offset changed, dirty high bits, bytes
+cut or added, and 10% raw calldata. Initial storage is filled from the
+contract's storage layout with clean values of each variable's type; mappings
+get slots for keys from the same pool of addresses and small numbers the
+arguments use, and arrays and byte strings are short. Address, integer and
+bool immutables get values too. A suite without a peer gets
+`testdata/differential/fuzz/echo_peer.sol` at `0x5000`, which returns its
+arguments.
+
+pyrevm runs each candidate on the runtime code in the transaction's world
+(the addresses, block and gas of `solidityBytecode`) and records the outcome,
+the changed slots and the logs. Calls that halt any other way than `INVALID`,
+or use more than a million gas (HOL's runs of those take minutes), are
+dropped. Of the rest, K per contract (`-k`, 32 by default) become cases in
+the suite format, picked by function and then by outcome shape, so rare
+outcomes come before repeats.
+
+One fleet action per contract runs its cases through
+`solidityDifferentialLib.run_fuzz_cases` (several contracts in one HOL process
+ran out of memory, and an action that fails, out of memory or time, fails only
+its contract). The contract is prepared once, and each case's source run is compared with
+its recording by `fuzz_verdict`, evaluated with `cv_eval`, with no theorem
+saved. Every difference, and every twentieth case, is then confirmed by
+`confirm_verdict`: the source against Verifereum's run of the bytecode, and
+that run against the recording. A confirmation mark on a case that ends in a
+diagnostic passes to the contract's next case. A case's status is:
+
+- `agree`: the source matches the recording (and, when confirmed, the bytecode,
+  which matches the recording);
+- `disagree`: the source and Verifereum's run of the bytecode differ in
+  outcome, complete storage or logs;
+- `pyrevm-mismatch`: they agree with each other but not with pyrevm;
+- `inconclusive`: either run ended in a diagnostic, reported by reason, or the
+  case's evaluation ran past 120 seconds (`Timeout`; a confirmation of a
+  difference that does is an `error`);
+- `error`: the case could not be built or evaluated.
+
+With `--sequences`, a candidate is a sequence of 2 to 4 calls on one
+deployment instead: per function, sequences starting with it, the later calls
+to any function, all with the first call's immutables. pyrevm runs each call
+in a fresh world whose contract storage is the complete storage the call
+before it left, and each call becomes an ordinary case seeded with that
+storage (`seq_NNNN_S` for step `S` of sequence `NNNN`). The verdicts compare
+outcome, complete storage and logs, so a call that agrees leaves the source
+in exactly the next call's starting state: this compares the source with the
+bytecode after every call of the sequence, and a disagreement is already a
+single-call case. Only storage carries over; balances and the peer start
+afresh, as for single calls. A call that halts ends its sequence. Selection
+takes sequences by their functions and outcome shapes, and K bounds the calls
+(a sequence longer than the calls left is skipped); the report adds how many
+sequences agreed after every call, a sequence counting only if every one of
+its calls has an agreeing result.
+
+Disagreements are shrunk (storage, immutables, value, sender and calldata
+words dropped while HOL still confirms them) and written as suites under
+`<output>/minimized/`, ready to add to `testdata/differential/suites/`. A
+written case's expectation is pyrevm's recording, so only disagreements whose
+recording matches Verifereum's bytecode run (`recording_matches`) are shrunk
+and written, and every shrinking step keeps that; the others are listed as not
+minimized.
+The report (`report.md`, `report.json`) also lists inconclusives by contract,
+function and reason, and the functions whose every ABI-encoded case ended in
+`InvalidCompletion`. pyrevm needs Python 3.11:
+
+```sh
+uv run --python 3.11 --with pyrevm tools/run_differential_fuzz.py --output /tmp/fuzz
+```
+
+`--suite` picks suites, `--targets` names other contracts in the same shape,
+and `--semantic-tests <solidity checkout> --coverage <report> --solc <solc>`
+fuzzes the report's admitted and partially admitted semanticTests (calls to
+an unsupported function end inconclusive; each test is compiled as the expectation
+runner does, named `st_<test path>`). `--shard I/N` takes every Nth target
+from the Ith: run shards in parallel, each from its own checkout, since a
+fleet action updates the project it starts from.
+`--seed` and `--candidates` change the calls, and `--max-batches` bounds the
+HOL actions; `--resume` reuses the output's cases and finished contracts, and runs a
+contract whose action failed again. Like the
+expectation runner, it runs only on the fleet
+when remote execution is configured.

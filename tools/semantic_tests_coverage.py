@@ -381,8 +381,8 @@ def feature(line: str) -> str:
 @dataclass
 class Classification:
     """A test's category and, if HOL rejected it, every blocker it reported;
-    if HOL admitted it, the functions calls reach and the reasons of the
-    unsupported ones."""
+    if HOL admitted it, the functions calls reach, the reasons of the
+    unsupported ones, and why its creation has no procedure, if it has none."""
 
     test: str
     category: str
@@ -390,6 +390,7 @@ class Classification:
     blockers: list[str] = field(default_factory=list)
     functions: int = 0
     unsupported: list[str] = field(default_factory=list)
+    creation: list[str] = field(default_factory=list)
 
     def features(self) -> set[str]:
         return {feature(b) for b in self.blockers}
@@ -401,7 +402,8 @@ def classify(test: str, hol: dict[str, Any]) -> Classification:
         raise ValueError(f"{test}: unknown HOL status {status!r}")
     blockers = hol.get("blockers", [])
     return Classification(test, status, "\n".join(blockers) or None, blockers,
-                          hol.get("functions", 0), hol.get("unsupported", []))
+                          hol.get("functions", 0), hol.get("unsupported", []),
+                          hol.get("creation", []))
 
 
 # The report
@@ -470,7 +472,8 @@ class Report:
             "tests": [
                 {"test": r.test, "category": r.category, "reason": r.reason,
                  "blockers": r.blockers, "features": sorted(r.features()),
-                 "functions": r.functions, "unsupported": r.unsupported}
+                 "functions": r.functions, "unsupported": r.unsupported,
+                 "creation": r.creation}
                 for r in self.results
             ],
         }
@@ -489,8 +492,9 @@ class Report:
             "(the `// ----` sections) are not run, so an admitted test is one the "
             "semantics accepts, not one it is known to agree on. A test is admitted "
             "when every function calls reach is supported, and partially admitted "
-            "when the unit is admitted with some of them unsupported: those have no "
-            "procedure and a call of them is refused.",
+            "when the unit is admitted with some of them unsupported, or without a "
+            "procedure for its creation: those have no procedure and a call of them, "
+            "or a deployment, is refused.",
             "",
         ]
         if self.suite != "semanticTests":
@@ -570,7 +574,9 @@ class Report:
                                 ("Elaborator rejections", ELABORATION_REJECTED)):
             lines += ["", f"## {title}", ""]
             tests = [r for r in self.results if r.category == category]
-            lines += [f"- `{r.test}`" + "".join(f"\n  - {b}" for b in r.blockers) for r in tests] or ["None."]
+            lines += [f"- `{r.test}`" + "".join(f"\n  - {b}" for b in r.blockers) +
+                      "".join(f"\n  - creation: {b}" for b in r.creation)
+                      for r in tests] or ["None."]
         return "\n".join(lines) + "\n"
 
 

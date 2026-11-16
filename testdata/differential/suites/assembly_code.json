@@ -1,0 +1,188 @@
+{
+  "name": "assembly_code",
+  "source": "testdata/differential/assembly_code.sol",
+  "contract": "AssemblyCode",
+  "artifact": "testdata/differential/expected/assembly_code.json",
+  "peer": {
+    "source": "testdata/differential/token.sol",
+    "contract": "Token",
+    "artifact": "testdata/differential/expected/token.json"
+  },
+  "fuel": 500,
+  "cases": [
+    {
+      "name": "size",
+      "function": "size",
+      "args": [],
+      "expect": {
+        "return": [
+          1810
+        ]
+      }
+    },
+    {
+      "name": "word_start",
+      "function": "word",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x60806040526004361015610013575b6103c9565b61001d5f3561008c565b8063"
+        ]
+      }
+    },
+    {
+      "name": "word_tail_padded",
+      "function": "word",
+      "args": [
+        1794
+      ],
+      "expect": {
+        "return": [
+          "0x5190565b61070d6104c4565b5038905600000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "word_past_end",
+      "function": "word",
+      "args": [
+        1910
+      ],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "prefix_empty",
+      "function": "prefix",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "prefix_40",
+      "function": "prefix",
+      "args": [
+        40
+      ],
+      "expect": {
+        "return": [
+          "0x60806040526004361015610013575b6103c9565b61001d5f3561008c565b80633c8c014d14610087"
+        ]
+      }
+    },
+    {
+      "name": "library_sizes",
+      "function": "librarySizes",
+      "args": [],
+      "expect": {
+        "return": [
+          362,
+          1810
+        ]
+      }
+    },
+    {
+      "name": "library_word_start",
+      "function": "libraryWord",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x60806040526004361015610013575b61013c565b61001d5f3561003c565b8063"
+        ]
+      }
+    },
+    {
+      "name": "library_word_tail",
+      "function": "libraryWord",
+      "args": [
+        354
+      ],
+      "expect": {
+        "return": [
+          "0x4051918239519056000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "peer_word_start",
+      "function": "peerWord",
+      "args": [
+        20480,
+        0
+      ],
+      "expect": {
+        "return": [
+          2610,
+          "0x60806040526004361015610013575b610385565b61001d5f3561008c565b8063"
+        ]
+      }
+    },
+    {
+      "name": "peer_word_tail",
+      "function": "peerWord",
+      "args": [
+        20480,
+        2600
+      ],
+      "expect": {
+        "return": [
+          2610,
+          "0x826101a6565b0390a35600000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "peer_word_no_code",
+      "function": "peerWord",
+      "args": [
+        4660,
+        0
+      ],
+      "expect": {
+        "return": [
+          0,
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "peer_word_self",
+      "function": "peerWord",
+      "args": [
+        4096,
+        1
+      ],
+      "expect": {
+        "return": [
+          1810,
+          "0x806040526004361015610013575b6103c9565b61001d5f3561008c565b80633c"
+        ]
+      }
+    },
+    {
+      "name": "peer_prefix",
+      "function": "peerPrefix",
+      "args": [
+        20480,
+        33
+      ],
+      "expect": {
+        "return": [
+          "0x60806040526004361015610013575b610385565b61001d5f3561008c565b806309"
+        ]
+      }
+    }
+  ]
+}
