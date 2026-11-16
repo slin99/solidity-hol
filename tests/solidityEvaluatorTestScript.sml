@@ -2097,6 +2097,19 @@ Proof
   EVAL_TAC
 QED
 
+(* block.prevrandao and block.difficulty read the transaction's prevRandao,
+   all 256 bits of it. *)
+Theorem block_prevrandao_reads_prev_randao:
+  environment_value
+    (initial_state.frame with tx_params :=
+       initial_state.frame.tx_params with
+         prevRandao := 0x8000000000000000000000000000000000000000000000000000000000000001w)
+    BlockPrevRandao =
+    ValueOk (ScalarValue (IntegerValue (2 ** 255 + 1)))
+Proof
+  EVAL_TAC
+QED
+
 Theorem calldata_reference_defaults:
   eval_operation test_env initial_state
     (DefaultReferenceOperation CalldataLoc (ArrayT u256 (SOME 2))) =
