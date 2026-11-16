@@ -686,6 +686,16 @@ Definition conditional_targets_def:
   (conditional_targets n _ _ _ = NONE)
 End
 
+(* A tuple of destinations, as against a parenthesised destination `(e)`,
+ * which is the destination e itself. *)
+Definition tuple_destination_def:
+  tuple_destination e =
+    case e of
+      SrcTupleExpression _ [SOME _] _ => F
+    | SrcTupleExpression _ _ _ => T
+    | _ => F
+End
+
 (* Snapshots of the bound values of a tuple right-hand side. *)
 Definition snapshot_values_def:
   (snapshot_values n [] = ([], [], n)) ∧
@@ -1708,10 +1718,9 @@ Definition elab_expr_def:
                 | INR bs => INR bs)
          | _ => reject (info.node_id, "unsupported operator type") (elab_expr ctx n1 r))
     | SrcAssignment info op lhs rhs tid =>
+        if tuple_destination lhs then
         (case lhs of
-           (* a parenthesised destination is the destination itself *)
-           SrcTupleExpression _ [SOME e] _ => elab_expr ctx n (SrcAssignment info op e rhs tid)
-         | SrcTupleExpression linfo cs ltid =>
+           SrcTupleExpression linfo cs ltid =>
              ensure (IS_SOME (decode_type_identifier tid)) (info.node_id, "type annotation mismatch")
              (case elab_values ctx n rhs of
                 INL ((sr, vs), n1) =>
@@ -1733,7 +1742,8 @@ Definition elab_expr_def:
                         | INR bs => INR bs)
                    | INR bs => INR bs)
               | INR bs => INR bs)
-         | _ =>
+         | _ => INR [(info.node_id, "unsupported tuple assignment")])
+        else
              (case elab_expr ctx n rhs of
                 INL ((sr, ar, vr), n1) =>
                   let (copied, n2) = case lhs of
@@ -1769,7 +1779,7 @@ Definition elab_expr_def:
                                | INR why => INR [(expr_id rhs, why)])
                           | NONE => INR [(info.node_id, "unsupported compound assignment")])
                    | INR bs => INR bs)
-              | INR bs => INR (bs ++ blockers (elab_destination ctx n lhs))))
+              | INR bs => INR (bs ++ blockers (elab_destination ctx n lhs)))
     | SrcTupleExpression info [SOME e] tid =>
         (case elab_expr ctx n e of
            INL ((ss, a, vt), n1) =>
@@ -4012,6 +4022,7 @@ val () = cv_auto_trans tuple_components_def;
 val () = cv_auto_trans tuple_write_def;
 val () = cv_auto_trans tuple_writes_def;
 val () = cv_auto_trans conditional_targets_def;
+val () = cv_auto_trans tuple_destination_def;
 val snapshot_values_pre_def =
   cv_auto_trans_pre "snapshot_values_pre" snapshot_values_def;
 
