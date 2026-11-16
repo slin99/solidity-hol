@@ -753,6 +753,9 @@ def markdown(summary: dict[str, Any]) -> str:
                   for n, r in summary["contract_failures"].items()]
     if summary["missing"]:
         lines += ["", f"## Cases without a result: {len(summary['missing'])}"]
+    if summary.get("unreported"):
+        lines += ["", "## Contracts sent to HOL with no result", ""]
+        lines += [f"- `{n}`" for n in summary["unreported"]]
     if summary.get("no_cases"):
         lines += ["", "## Contracts with no case (every candidate halted or ran over the gas budget)", ""]
         lines += [f"- `{n}`: {summary['screening'][n]['halted']}" for n in summary["no_cases"]]
@@ -1012,6 +1015,8 @@ class Fuzzer:
         evaluated = {r["contract"] for r in results}
         summary = report({n: m for n, m in manifests.items() if n in evaluated}, results)
         summary["unevaluated"] = sorted(manifests.keys() - evaluated)
+        # Sent to HOL and nothing came back: unlike a deferred contract, a failure.
+        summary["unreported"] = sorted({m["name"] for m in pending} - evaluated)
         summary["screening"] = {n: m["screening"] for n, m in sorted(manifests.items())}
         # Every candidate halted or ran over the gas budget: nothing was compared.
         summary["no_cases"] = sorted(n for n, m in manifests.items() if not m["cases"])
@@ -1025,9 +1030,10 @@ class Fuzzer:
 
 def failed(summary: dict[str, Any]) -> bool:
     """A disagreement, an error, a case without a result, a contract that
-    couldn't be prepared, or one with no case to compare fails the run."""
+    couldn't be prepared, one sent to HOL with no result, or one with no case
+    to compare fails the run."""
     return any(summary.get(k) for k in ("disagree", "error", "missing", "contract_failures",
-                                        "no_cases"))
+                                        "unreported", "no_cases"))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1051,6 +1057,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--shrink-rounds", type=int, default=8)
     parser.add_argument("--holbuild", default="holbuild")
     args = parser.parse_args(argv)
+    # HOL runs from the repository root, so paths under the output must be absolute.
+    args.output = args.output.resolve()
     fuzzer = Fuzzer(args.output, seed=args.seed, candidates=args.candidates, k=args.k,
                     evaluate=lambda work, entries: run_fleet(args.holbuild, work, entries))
     if args.targets and args.suite:

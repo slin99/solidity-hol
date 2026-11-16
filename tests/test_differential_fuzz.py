@@ -291,6 +291,21 @@ class FuzzerTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "cannot resume"):
                 fuzz.check_inputs(self.output, changed, resume=True)
 
+    def test_a_contract_sent_to_hol_without_a_result_fails_the_run(self) -> None:
+        targets = fuzz.suite_targets([])[:2]
+        evaluate = self.evaluate
+        self.evaluate = lambda work, entries: evaluate(work, entries[:1])  # type: ignore[method-assign]
+        summary = self.fuzzer().run(targets, max_batches=None, shrink_rounds=0)
+        self.assertEqual(summary["unreported"], [targets[1].name])
+        self.assertTrue(fuzz.failed(summary))
+        self.assertIn(targets[1].name, (self.output / "report.md").read_text())
+
+    def test_a_relative_output_is_made_absolute(self) -> None:
+        with patch.object(fuzz, "check_inputs", side_effect=SystemExit("stop")) as check, \
+                self.assertRaises(SystemExit):
+            fuzz.main(["--output", "out", "--suite", SUITE])
+        self.assertEqual(check.call_args.args[0], Path.cwd() / "out")
+
     def test_max_batches_bounds_the_contracts_evaluated(self) -> None:
         targets = fuzz.suite_targets([])[:3]
         summary = self.fuzzer().run(targets, max_batches=2, shrink_rounds=0)
