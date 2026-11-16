@@ -221,6 +221,8 @@ class FuzzerTests(unittest.TestCase):
         self.output = Path(temporary.name)
         self.evaluated: list[list[str]] = []
         self.screened = 0
+        # Whether Verifereum's bytecode run matches pyrevm's recording.
+        self.recording_matches = True
 
     def screen(self, t: fuzz.Target, c: fuzz.Call) -> fuzz.Recording:
         self.screened += 1
@@ -236,7 +238,8 @@ class FuzzerTests(unittest.TestCase):
                 bad = case["name"].startswith("fuzz_0000")
                 lines.append({"kind": "case", "contract": entry["name"], "case": case["name"],
                               "status": "disagree" if bad else "agree", "screen": "Agree",
-                              "confirmed": bad or bool(case.get("confirm"))})
+                              "confirmed": bad or bool(case.get("confirm")),
+                              **({"recording_matches": self.recording_matches} if bad else {})})
         batch = work / f"batch-{len(list(work.glob('batch-*'))):04d}"
         batch.mkdir(parents=True)
         (batch / "results.jsonl").write_text(
@@ -271,6 +274,27 @@ class FuzzerTests(unittest.TestCase):
         self.assertEqual(len(self.evaluated), evaluated)  # nothing left to evaluate
         self.assertEqual(self.screened, screened + 2)  # only the minimized recordings
         self.assertTrue((self.output / "report.md").is_file())
+
+    def test_a_disagreement_the_bytecode_run_does_not_record_is_not_minimized(self) -> None:
+        self.recording_matches = False
+        summary = self.fuzzer().run(fuzz.suite_targets([SUITE]), max_batches=None, shrink_rounds=5)
+        self.assertEqual([r["case"] for r in summary["unminimized"]], ["fuzz_0000"])
+        self.assertNotIn("minimized", summary)
+        self.assertFalse((self.output / "minimized").exists())
+        self.assertEqual(len(self.evaluated), 1)  # no shrinking round
+        self.assertIn("not minimized", fuzz.markdown(summary))
+        self.assertTrue(fuzz.failed(summary))
+
+    def test_a_variant_counts_only_if_the_bytecode_run_matches_its_recording(self) -> None:
+        target = fuzz.suite_targets([SUITE])[0]
+        self.recording_matches = False
+        verdicts = self.fuzzer().still_disagree({SUITE: target}, self.output / "round",
+                                                {f"{SUITE}/fuzz_0000": [call()]})
+        self.assertEqual(verdicts, {f"{SUITE}/fuzz_0000": [False]})
+        self.recording_matches = True
+        verdicts = self.fuzzer().still_disagree({SUITE: target}, self.output / "round",
+                                                {f"{SUITE}/fuzz_0000": [call()]})
+        self.assertEqual(verdicts, {f"{SUITE}/fuzz_0000": [True]})
 
     def test_a_contract_that_fails_to_prepare_fails_the_run(self) -> None:
         manifests = {"c": {"screening": {}, "cases": [

@@ -13,8 +13,9 @@ HOL batches on the fleet prepare each contract once and evaluate the source
 on its cases (solidityDifferentialLib.run_fuzz_cases). Every difference from
 the recording, and every 20th case, is confirmed against Verifereum's run of
 the same bytecode: a disagreement is the bytecode and the source differing;
-both agreeing against the recording is a pyrevm mismatch. Disagreements are
-shrunk and written as suite JSON under <output>/minimized/.
+both agreeing against the recording is a pyrevm mismatch. Disagreements whose
+recording Verifereum's bytecode run matches are shrunk and written as suite
+JSON under <output>/minimized/.
 
 pyrevm needs Python 3.11:
 
@@ -756,6 +757,9 @@ def markdown(summary: dict[str, Any]) -> str:
             lines += ["", f"## {title}", ""]
             lines += [f"- `{r['contract']}` `{r['case']}` ({r['function']}, {r['mode']})"
                       for r in summary[key]]
+    if summary.get("unminimized"):
+        lines += ["", "## Disagreements not minimized (pyrevm's recording differs from the bytecode run)", ""]
+        lines += [f"- `{r['contract']}` `{r['case']}`" for r in summary["unminimized"]]
     if summary["contract_failures"]:
         lines += ["", "## Contracts that failed (preparation or their HOL action)", ""]
         lines += [f"- `{n}`: {r['status']}" + (f" ({r['message']})" if r.get("message") else "")
@@ -781,6 +785,12 @@ def markdown(summary: dict[str, Any]) -> str:
 
 
 # Shrinking
+
+def reproducible(r: dict[str, Any]) -> bool:
+    """A disagreement a suite case can reproduce: the recording, which becomes
+    its expectation, matches Verifereum's run of the bytecode."""
+    return r["status"] == "disagree" and r.get("recording_matches") is True
+
 
 def variants(call: Call) -> list[Call]:
     """Smaller calls: all storage dropped, a quarter of it (when there are
@@ -969,10 +979,10 @@ class Fuzzer:
 
     def still_disagree(self, targets: dict[str, Target], round_dir: Path,
                        proposals: dict[str, list[Call]]) -> dict[str, list[bool]]:
-        """Which variants still disagree: each is screened afresh for its
-        recording and confirmed in HOL. Variants are named by position, so
-        the round starts from an empty directory: an interrupted run's
-        records are about other calls."""
+        """Which variants still disagree, with a recording the bytecode run
+        matches: each is screened afresh and confirmed in HOL. Variants are
+        named by position, so the round starts from an empty directory: an
+        interrupted run's records are about other calls."""
         shutil.rmtree(round_dir, ignore_errors=True)
         entries: dict[str, dict[str, Any]] = {}
         names: dict[str, list[str | None]] = {}
@@ -991,7 +1001,7 @@ class Fuzzer:
                 names[key].append(name)
         results = self.evaluate(round_dir, list(entries.values()))
         disagree = {f"{r['contract']}/{r['case']}" for r in results
-                    if r["kind"] == "case" and r["status"] == "disagree"}
+                    if r["kind"] == "case" and reproducible(r)}
         return {key: [name is not None and f"{key.split('/')[0]}/{name}" in disagree
                       for name in names[key]] for key in proposals}
 
@@ -1040,9 +1050,12 @@ class Fuzzer:
         summary["screening"] = {n: m["screening"] for n, m in sorted(manifests.items())}
         # Every candidate halted or ran over the gas budget: nothing was compared.
         summary["no_cases"] = sorted(n for n, m in manifests.items() if not m["cases"])
-        if summary["disagree"]:
+        # The others' expectation would be pyrevm's mistake: report, don't write.
+        summary["unminimized"] = [r for r in summary["disagree"] if not reproducible(r)]
+        written = [r for r in summary["disagree"] if reproducible(r)]
+        if written:
             summary["minimized"] = [str(p) for p in self.minimize(
-                by_name, manifests, summary["disagree"], shrink_rounds)]
+                by_name, manifests, written, shrink_rounds)]
         fleet.exporter.write_json_atomic(self.output / "report.json", summary)
         (self.output / "report.md").write_text(markdown(summary))
         return summary

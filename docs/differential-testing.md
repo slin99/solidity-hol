@@ -271,7 +271,11 @@ diagnostic passes to the contract's next case. A case's status is:
 
 Disagreements are shrunk (storage, immutables, value, sender and calldata
 words dropped while HOL still confirms them) and written as suites under
-`<output>/minimized/`, ready to add to `testdata/differential/suites/`.
+`<output>/minimized/`, ready to add to `testdata/differential/suites/`. A
+written case's expectation is pyrevm's recording, so only disagreements whose
+recording matches Verifereum's bytecode run (`recording_matches`) are shrunk
+and written, and every shrinking step keeps that; the others are listed as not
+minimized.
 The report (`report.md`, `report.json`) also lists inconclusives by contract,
 function and reason, and the functions whose every ABI-encoded case ended in
 `InvalidCompletion`. pyrevm needs Python 3.11:

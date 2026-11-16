@@ -1103,6 +1103,10 @@ fun run_fuzz_case {contract, code, unit, program, fuel, fixture, immutables} owe
     in
       emit ([("status", json_string status), ("screen", json_string (verdict_name screened)),
              ("confirmed", if confirm then "true" else "false")] @
+            (case confirmed of
+               SOME (_, recording) =>
+                 [("recording_matches", if is_con "Agree" recording then "true" else "false")]
+             | NONE => []) @
             (if status = "inconclusive"
              then [("reason", json_string (diagnostic_reason verdict))] else []) @
             (if status = "agree" then [] else verdict_fields runs verdict))
