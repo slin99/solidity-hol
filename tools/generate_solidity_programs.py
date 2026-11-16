@@ -681,7 +681,10 @@ def generate(seed: int) -> str:
 def parse_seeds(text: str) -> range:
     """START:STOP, or one seed."""
     start, _, stop = text.partition(":")
-    return range(int(start), int(stop) if stop else int(start) + 1)
+    seeds = range(int(start), int(stop) if stop else int(start) + 1)
+    if not seeds:
+        raise argparse.ArgumentTypeError(f"empty seed range {text!r}: STOP must exceed START")
+    return seeds
 
 
 def main(argv: list[str] | None = None) -> int:

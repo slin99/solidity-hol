@@ -1,3 +1,4 @@
+import argparse
 from collections import Counter
 import json
 import os
@@ -63,6 +64,13 @@ class GeneratorTests(unittest.TestCase):
                 low, high = ((-(1 << (bits - 1)), (1 << (bits - 1)) - 1) if t.startswith("int")
                              else (0, (1 << bits) - 1))
                 self.assertTrue(low <= int(value) <= high, (seed, t, value))
+
+    def test_seed_ranges_are_parsed_and_empty_ones_refused(self) -> None:
+        self.assertEqual(generator.parse_seeds("3:7"), range(3, 7))
+        self.assertEqual(generator.parse_seeds("5"), range(5, 6))
+        for empty in ("10:10", "10:0"):
+            with self.assertRaises(argparse.ArgumentTypeError):
+                generator.parse_seeds(empty)
 
     @unittest.skipUnless(os.environ.get("SOLC"), "set SOLC to the pinned solc to compile")
     def test_generated_programs_compile(self) -> None:
