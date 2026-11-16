@@ -650,7 +650,9 @@ Definition builtin_signature_def:
   (builtin_signature CodeLengthBuiltin =
     ([AddressT NonpayableAddress], UintT 256)) ∧
   (builtin_signature BalanceBuiltin =
-    ([AddressT NonpayableAddress], UintT 256))
+    ([AddressT NonpayableAddress], UintT 256)) ∧
+  (builtin_signature CodeBuiltin =
+    ([AddressT NonpayableAddress], LocatedT MemoryLoc BytesT))
 End
 
 (* An internal function converts implicitly to one with the same parameters
@@ -905,6 +907,7 @@ Definition wf_core_operation_def:
     located_type_ok env MemoryLoc ty ∧
     (case ty of
        ArrayT _ NONE => T
+     | ArrayT _ (SOME k) => length = ConstantAtom (IntegerValue (&k))
      | StructT s =>
          (case lookup_struct env s of
             SOME fields => length = ConstantAtom (IntegerValue (&LENGTH fields))
@@ -1839,6 +1842,14 @@ Definition plain_procedure_def:
     | NONE => F
 End
 
+(* The fallback's parameters and returns: none, or the whole calldata as
+ * bytes, returning the return data as bytes. *)
+Definition fallback_signature_ok_def:
+  fallback_signature_ok ps rs ⇔
+    (ps = [] ∧ rs = []) ∨
+    (ps = [LocatedT CalldataLoc BytesT] ∧ rs = [LocatedT MemoryLoc BytesT])
+End
+
 Definition wf_core_dispatch_def:
   wf_core_dispatch env (prog : core_program) ⇔
     ALL_DISTINCT (MAP (λe. e.selector) prog.external_functions) ∧
@@ -1850,7 +1861,12 @@ Definition wf_core_dispatch_def:
        SOME f => plain_procedure env f ∨ MEM f prog.unsupported_procedures
      | NONE => T) ∧
     (case prog.fallback_procedure of
-       SOME (f, _) => plain_procedure env f ∨ MEM f prog.unsupported_procedures
+       SOME (f, _) =>
+         MEM f prog.unsupported_procedures ∨
+         (case lookup_procedure env f of
+            SOME p =>
+              fallback_signature_ok (MAP SND p.parameters) (MAP SND p.return_bindings)
+          | NONE => F)
      | NONE => T) ∧
     (case prog.creation_procedure of
        SOME (f, _) =>
@@ -2039,5 +2055,6 @@ QED
 
 val () = cv_auto_trans abi_procedure_def;
 val () = cv_auto_trans plain_procedure_def;
+val () = cv_auto_trans fallback_signature_ok_def;
 val () = cv_auto_trans wf_core_dispatch_def;
 val () = cv_auto_trans wf_core_program_def;

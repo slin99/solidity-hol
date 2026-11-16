@@ -234,6 +234,7 @@ Definition environment_value_def:
         ValueOk (ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.baseFeePerGas))))
     | BlockGasLimit =>
         ValueOk (ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockGasLimit))))
+    | BlockPrevRandao => ValueOk (ScalarValue (IntegerValue (&w2n fr.tx_params.prevRandao)))
     | GasLeft => ValueAbrupt (InvalidCompletion "missing gasleft observation")
 End
 
@@ -253,34 +254,43 @@ Definition indexed_byte_def:
     | NONE => ValueAbrupt (InvalidCompletion "bad byte index")
 End
 
-(* Pure operations; calls and array mutations are handled by statements. *)
-(* A builtin's value on its operands' values. ecrecover is the precompile at
- * address 1, as the compiler calls it: an invalid signature returns nothing,
- * which reads as address(0). *)
+(* A builtin's value on its operands' values, and the state after it.
+ * ecrecover is the precompile at address 1, as the compiler calls it: an
+ * invalid signature returns nothing, which reads as address(0), and the
+ * call leaves return data the source computes no bytes for. a.code
+ * allocates memory bytes as the compiler does: Panic(0x41) when the free
+ * memory pointer would pass 2^64. *)
 Definition eval_builtin_def:
   eval_builtin st op vs =
     case (op, vs) of
       (Keccak256Builtin, [ReferenceValue r]) =>
         (case byte_contents st r of
-           INL bs => ValueOk (ScalarValue (BytesValue (num_to_bytes 32
-                       (w2n (word_of_bytes_be (Keccak_256_w64 bs) : bytes32)))))
-         | INR c => ValueAbrupt c)
+           INL bs => INL (ScalarValue (BytesValue (num_to_bytes 32
+                       (w2n (word_of_bytes_be (Keccak_256_w64 bs) : bytes32)))), st)
+         | INR c => INR c)
     | (EcrecoverBuiltin,
        [ScalarValue (BytesValue hb); ScalarValue (IntegerValue vi);
         ScalarValue (BytesValue rb); ScalarValue (BytesValue sb)]) =>
-        ValueOk (ScalarValue (AddressValue
+        INL (ScalarValue (AddressValue
           (case ecrecover (word_of_bytes_be hb) (Num vi)
                   (num_of_be_bytes rb) (num_of_be_bytes sb) of
              SOME a => a
-           | NONE => 0w)))
+           | NONE => 0w)), st with return_data := NONE)
     | (CodeLengthBuiltin, [ScalarValue (AddressValue address)]) =>
-        ValueOk (ScalarValue (IntegerValue
-          (&(LENGTH (lookup_account address st.world.accounts).code))))
+        INL (ScalarValue (IntegerValue
+          (&(LENGTH (lookup_account address st.world.accounts).code))), st)
     | (BalanceBuiltin, [ScalarValue (AddressValue address)]) =>
-        ValueOk (ScalarValue (IntegerValue
-          (&(lookup_account address st.world.accounts).balance)))
-    | _ => ValueAbrupt (InvalidCompletion "bad builtin operands")
+        INL (ScalarValue (IntegerValue
+          (&(lookup_account address st.world.accounts).balance)), st)
+    | (CodeBuiltin, [ScalarValue (AddressValue address)]) =>
+        let code = (lookup_account address st.world.accounts).code in
+        if 2 ** 64 ≤ 128 + st.memory_allocated + 32 + 32 * ((LENGTH code + 31) DIV 32)
+        then INR (PanicCompletion 65)
+        else INL (allocate_bytes T BytesT code st)
+    | _ => INR (InvalidCompletion "bad builtin operands")
 End
+
+(* Pure operations; calls and array mutations are handled by statements. *)
 
 Definition eval_operation_def:
   eval_operation env (st : source_state) op =
@@ -391,10 +401,6 @@ Definition eval_operation_def:
                     (offset + Num first * stride) (Num (stop - first)) ty))
               | _ => ValueAbrupt (InvalidCompletion "bad calldata slice end"))
          | _ => ValueAbrupt (InvalidCompletion "bad calldata slice operands"))
-    | BuiltinOperation op args =>
-        (case eval_atoms st.scopes args of
-           SOME vs => eval_builtin st op vs
-         | NONE => ValueAbrupt (InvalidCompletion "bad builtin operands"))
     (* The compiler's decoder from memory: short data, or a value outside its
      * type, reverts with no data; data after the encoding is ignored. *)
     | ArrayLengthOperation a =>
@@ -991,7 +997,16 @@ Definition simple_stmt_def:
                normal_result (define_binding x ty v st') gas
              else
                (case element of
-                  StructT s =>
+                  ArrayT _ (SOME k) =>
+                    if Num n ≠ k then
+                      abrupt_result (InvalidCompletion "bad array allocation") st gas
+                    else
+                      (case allocate_object element k (32 * k) st of
+                         SOME (id, st1) =>
+                           normal_result (define_binding x ty
+                             (ReferenceValue (MemoryReference (HeapId id) 0 element)) st1) gas
+                       | NONE => abrupt_result (PanicCompletion 65) st gas)
+                | StructT s =>
                     (case lookup_struct env s of
                        SOME fields =>
                          if Num n ≠ LENGTH fields then
@@ -1080,13 +1095,13 @@ Definition simple_stmt_def:
                          value g args) =>
         call_external_mode T env x ty kind selector params rets target value g
           args st gas
-    (* ecrecover calls the precompile at address 1, which leaves return data
-     * the source computes no bytes for. *)
-    | DefineStmt x ty (BuiltinOperation EcrecoverBuiltin args) =>
-        (case eval_operation env st (BuiltinOperation EcrecoverBuiltin args) of
-           ValueOk v =>
-             normal_result (define_binding x ty v (st with return_data := NONE)) gas
-         | ValueAbrupt c => abrupt_result c st gas)
+    | DefineStmt x ty (BuiltinOperation op args) =>
+        (case eval_atoms st.scopes args of
+           SOME vs =>
+             (case eval_builtin st op vs of
+                INL (v, st') => normal_result (define_binding x ty v st') gas
+              | INR c => abrupt_result c st gas)
+         | NONE => abrupt_result (InvalidCompletion "bad builtin operands") st gas)
     | DefineStmt x ty op =>
         (case eval_operation env st op of
            ValueOk v => normal_result (define_binding x ty v st) gas

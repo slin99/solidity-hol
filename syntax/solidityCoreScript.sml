@@ -107,23 +107,27 @@ End
 (* The call and transaction context a body reads: msg.sender, msg.value,
  * address(this), tx.origin, tx.gasprice and the block's scalars. msg.data is
  * the complete read-only calldata bytes, including the selector.
+ * BlockPrevRandao is block.prevrandao, and block.difficulty, which the
+ * compiler reads with the same PREVRANDAO instruction.
  *)
 Datatype:
   environment_field
   = MsgSender | MsgValue | MsgData | MsgSig | SelfAddress | TxOrigin | TxGasPrice
   | BlockNumber | BlockTimestamp | BlockChainId | BlockCoinbase
-  | BlockBaseFee | BlockGasLimit | GasLeft
+  | BlockBaseFee | BlockGasLimit | BlockPrevRandao | GasLeft
 End
 
 (* The builtin functions that compute a value from their operands and the
  * world without changing it: keccak256(a), the Keccak-256 hash of the memory
  * bytes a; ecrecover(h, v, r, s), the address the signature (v, r, s) of the
  * hash h recovers, or address(0) if it is invalid; a.code.length, the
- * account's code size, without a memory bytes allocation; and a.balance.
+ * account's code size, without a memory bytes allocation; a.balance; and
+ * a.code, the account's code as new memory bytes.
  *)
 Datatype:
   builtin_op
   = Keccak256Builtin | EcrecoverBuiltin | CodeLengthBuiltin | BalanceBuiltin
+  | CodeBuiltin
 End
 
 (* DefaultReferenceOperation loc ty: a placeholder reference that a source

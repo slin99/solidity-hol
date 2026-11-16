@@ -5,7 +5,9 @@
  *    calls it: a nonpayable function given value reverts, then the arguments
  *    are ABI-decoded, reverting on data the decoder rejects;
  *  - otherwise empty calldata calls receive, if any, and any other calldata
- *    the fallback, which reverts on value unless payable;
+ *    the fallback, which reverts on value unless payable; a fallback taking
+ *    bytes is given the whole calldata, and the bytes it returns are the
+ *    return data;
  *  - with neither, the call reverts.
  * Compiler-generated reverts carry no data. A return is the ABI encoding of
  * the return values, and a panic the revert data Panic(uint256).
@@ -32,9 +34,16 @@ Datatype:
   | ContractOutOfFuel
 End
 
+(* A frame's entry: an external function or receive, whose returns are ABI
+ * encoded; the fallback, whose return bytes, if any, are the return data;
+ * or the creation. *)
+Datatype:
+  entry_kind = CallEntry | FallbackEntry | CreationEntry
+End
+
 Datatype:
   dispatch_result
-  = DispatchCall core_procedure (runtime_value list)
+  = DispatchCall core_procedure (runtime_value list) entry_kind
   | DispatchRevert
   | DispatchPanic num
   | DispatchInvalid string
@@ -47,10 +56,20 @@ Definition lookup_external_def:
 End
 
 Definition dispatch_procedure_def:
-  dispatch_procedure env f args =
+  dispatch_procedure env f args kind =
     case lookup_procedure env f of
-      SOME p => DispatchCall p args
+      SOME p => DispatchCall p args kind
     | NONE => DispatchInvalid "unknown procedure"
+End
+
+(* The fallback's arguments: none, or the calldata as bytes. *)
+Definition fallback_arguments_def:
+  fallback_arguments env f (fr : source_frame) =
+    case lookup_procedure env f of
+      SOME p =>
+        if p.parameters = [] then []
+        else [ReferenceValue (CalldataReference 0 (LENGTH fr.call_data) BytesT)]
+    | NONE => []
 End
 
 Definition dispatch_def:
@@ -65,16 +84,25 @@ Definition dispatch_def:
            NONE => DispatchInvalid "unknown procedure"
          | SOME p =>
              case decode_arguments env (MAP SND p.parameters) (DROP 4 data) 4 128 of
-               INL args => DispatchCall p args
+               INL args => DispatchCall p args CallEntry
              | INR (PanicCompletion n) => DispatchPanic n
              | INR _ => DispatchRevert)
     | NONE =>
         case (data, prog.receive_procedure, prog.fallback_procedure) of
-          ([], SOME f, _) => dispatch_procedure env f []
+          ([], SOME f, _) => dispatch_procedure env f [] CallEntry
         | (_, _, SOME (f, payable)) =>
             if ¬payable ∧ fr.call_value ≠ 0 then DispatchRevert
-            else dispatch_procedure env f []
+            else dispatch_procedure env f (fallback_arguments env f fr) FallbackEntry
         | _ => DispatchRevert
+End
+
+(* The return data of a fallback's values: nothing, or its bytes. *)
+Definition fallback_output_def:
+  fallback_output st vs =
+    case vs of
+      [] => INL []
+    | [ReferenceValue r] => byte_contents st r
+    | _ => INR (InvalidCompletion "bad fallback return")
 End
 
 (* One frame running procedure p on its arguments, with the values imm of
@@ -85,7 +113,7 @@ End
  *)
 Definition run_entry_with_gas_def:
   run_entry_with_gas fuel env p args (fr : source_frame) (w : source_world) imm reserved
-            creating gas =
+            kind gas =
     let st = <| world := w; frame := fr; immutables := imm; scopes := [];
                 heap := FEMPTY; next_heap_id := 0; memory_allocated := reserved;
                 targets := FEMPTY; return_data := SOME [] |> in
@@ -96,9 +124,10 @@ Definition run_entry_with_gas_def:
       ContractInvalid "unconsumed gas observation"
     else case finish_source_frame w r.state.world r.completion of
       FrameSuccess vs w' =>
-        (case encoded_runtime_values env r.state (MAP SND p.return_bindings) vs of
+        (case (if kind = FallbackEntry then fallback_output r.state vs
+               else encoded_runtime_values env r.state (MAP SND p.return_bindings) vs) of
            INL data =>
-             if creating then ContractCreated r.state.immutables w'
+             if kind = CreationEntry then ContractCreated r.state.immutables w'
              else ContractReturned data w'
          | INR (PanicCompletion code) => ContractReverted (panic_data code) w
          | INR (RevertCompletion data) => ContractReverted data w
@@ -106,7 +135,7 @@ Definition run_entry_with_gas_def:
     | FrameRevert data w' => ContractReverted data w'
     | FrameAbort w' => ContractAborted w'
     | FrameHalt data w' =>
-        if creating then ContractInvalid "assembly halt in a creation frame"
+        if kind = CreationEntry then ContractInvalid "assembly halt in a creation frame"
         else ContractReturned data w'
     | FramePanic code w' => ContractReverted (panic_data code) w'
     | FrameInvalid reason => ContractInvalid reason
@@ -114,8 +143,8 @@ Definition run_entry_with_gas_def:
 End
 
 Definition run_entry_def:
-  run_entry fuel env p args fr w imm reserved creating =
-    run_entry_with_gas fuel env p args fr w imm reserved creating []
+  run_entry fuel env p args fr w imm reserved kind =
+    run_entry_with_gas fuel env p args fr w imm reserved kind []
 End
 
 (* Dispatch can end a frame before its body reads any evidence. *)
@@ -134,7 +163,7 @@ Definition call_contract_with_gas_def:
       DispatchRevert => unconsumed_gas_result gas (ContractReverted [] w)
     | DispatchPanic n => unconsumed_gas_result gas (ContractReverted (panic_data n) w)
     | DispatchInvalid reason => unconsumed_gas_result gas (ContractInvalid reason)
-    | DispatchCall p args => run_entry_with_gas fuel env p args fr w imm 0 F gas
+    | DispatchCall p args kind => run_entry_with_gas fuel env p args fr w imm 0 kind gas
 End
 
 Definition call_contract_def:
@@ -173,7 +202,7 @@ Definition deploy_contract_with_gas_def:
               INR (PanicCompletion n) => unconsumed_gas_result gas (ContractReverted (panic_data n) w)
             | INR _ => unconsumed_gas_result gas (ContractReverted [] w)
             | INL args => run_entry_with_gas fuel env p args (fr with call_data := []) w
-                FEMPTY reserved T gas
+                FEMPTY reserved CreationEntry gas
 End
 
 Definition deploy_contract_def:
@@ -220,7 +249,9 @@ QED
 
 val () = cv_auto_trans lookup_external_def;
 val () = cv_auto_trans dispatch_procedure_def;
+val () = cv_auto_trans fallback_arguments_def;
 val () = cv_auto_trans dispatch_def;
+val () = cv_auto_trans fallback_output_def;
 val () = cv_auto_trans run_entry_with_gas_def;
 val () = cv_auto_trans run_entry_def;
 val () = cv_auto_trans unconsumed_gas_result_def;

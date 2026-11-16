@@ -514,9 +514,9 @@ Definition store_x_def:
 End
 
 Definition run_halt_def:
-  run_halt creating =
+  run_halt kind =
     run_entry 20 (asm_env []) halt_proc [] initial_state.frame
-      initial_state.world FEMPTY 0 creating
+      initial_state.world FEMPTY 0 kind
 End
 
 val () = cv_auto_trans asm_env_def;
@@ -1138,8 +1138,8 @@ QED
 (* A halt returns its bytes from a call frame and fails closed in a creation
  * frame. *)
 Theorem asm_halt_in_creation_invalid:
-  run_halt F = ContractReturned [] initial_state.world ∧
-  run_halt T = ContractInvalid "assembly halt in a creation frame"
+  run_halt CallEntry = ContractReturned [] initial_state.world ∧
+  run_halt CreationEntry = ContractInvalid "assembly halt in a creation frame"
 Proof
   CONV_TAC cv_eval
 QED
@@ -2002,7 +2002,7 @@ val () = cv_auto_trans abort_code_def;
 
 Theorem invalid_restores_complete_world:
   run_entry 20 (asm_env abort_code) (asm_proc abort_code)
-    [ScalarValue (IntegerValue 7)] initial_state.frame initial_state.world FEMPTY 0 F =
+    [ScalarValue (IntegerValue 7)] initial_state.frame initial_state.world FEMPTY 0 CallEntry =
     ContractAborted initial_state.world
 Proof
   CONV_TAC cv_eval
@@ -2010,7 +2010,7 @@ QED
 
 Theorem unused_observation_fails_on_halt:
   run_entry_with_gas 20 (asm_env []) halt_proc [] initial_state.frame
-    initial_state.world FEMPTY 0 F [GasLeftObservation 1] =
+    initial_state.world FEMPTY 0 CallEntry [GasLeftObservation 1] =
     ContractInvalid "unconsumed gas observation"
 Proof
   CONV_TAC cv_eval

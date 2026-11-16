@@ -152,6 +152,7 @@ Definition expr_id_def:
   (expr_id (SrcIndexAccess info _ _ _) = info.node_id) ∧
   (expr_id (SrcIndexRangeAccess info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcTupleExpression info _ _) = info.node_id) ∧
+  (expr_id (SrcInlineArray info _ _) = info.node_id) ∧
   (expr_id (SrcFunctionCall info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcSuperCall info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcBaseCall info _ _ _ _) = info.node_id) ∧
@@ -515,6 +516,7 @@ Definition expr_assigns_def:
   (expr_assigns (SrcBinaryOperation _ _ l r _ _) ⇔
     expr_assigns l ∨ expr_assigns r) ∧
   (expr_assigns (SrcTupleExpression _ cs _) ⇔ components_assign cs) ∧
+  (expr_assigns (SrcInlineArray _ es _) ⇔ exprs_assign es) ∧
   (expr_assigns (SrcFunctionCall _ callee args _ _) ⇔
     expr_assigns callee ∨ exprs_assign args) ∧
   (expr_assigns (SrcArrayMember _ _ root_expr _) ⇔ expr_assigns root_expr) ∧
@@ -1158,6 +1160,16 @@ Definition field_writes_def:
     ([CaptureReferenceFieldStmt (AstId n) s (FieldNavigation (AstId f));
       store_target n (element_type MemoryLoc ty) a] ++ ws, n1)) ∧
   (field_writes n s _ _ = ([], n))
+End
+
+(* Writes each value to its element of the memory array a, in order. *)
+Definition element_writes_def:
+  (element_writes n a element (i : num) (x :: xs) =
+    let (ws, n1) = element_writes (n + 1) a element (i + 1) xs in
+    ([CaptureReferenceFieldStmt (AstId n) a
+        (IndexNavigation (ConstantAtom (IntegerValue (&i))));
+      store_target n (element_type MemoryLoc element) x] ++ ws, n1)) ∧
+  (element_writes n a element i [] = ([], n))
 End
 
 (* A call's argument values, evaluated in the call's order, in its
@@ -1970,6 +1982,25 @@ Definition elab_expr_def:
                       | INR bs => INR bs)
                  | _ => INR [(info.node_id, "argument order")])
             | INR bs => INR bs))
+    (* [e0, ..., ek-1]: the array is allocated, then each element evaluated
+       and converted in order, and the elements written *)
+    | SrcInlineArray info es tid =>
+        (case decode_elementary_identifier tid of
+           SOME (LocatedT MemoryLoc (ArrayT element (SOME k))) =>
+             let ty = LocatedT MemoryLoc (ArrayT element (SOME k)) in
+             ensure (k = LENGTH es ∧ memory_binding_ok ctx.enums ctx.structs ty)
+               (info.node_id, "unsupported inline array")
+             (let (cs, a) = bind_value n ty
+                    (AllocateMemoryOperation (ArrayT element (SOME k))
+                       (ConstantAtom (IntegerValue (&k)))) in
+              case elab_args ctx (n + 1) info.node_id k []
+                     (REPLICATE k (ValueOf (element_type MemoryLoc element))) es of
+                INL ((ss, as), n1) =>
+                  let (ws, n2) = element_writes n1 a element 0 as in
+                  INL ((cs ++ ss ++ ws, a, ElabType ty), n2)
+              | INR bs => INR bs)
+         | _ => INR ((info.node_id, "type annotation mismatch") ::
+                     blockers (elab_arg_values ctx n es)))
     (* new T(n) of a byte sequence or dynamic memory array type *)
     | SrcNew info tn e tid =>
         (case elab_expr ctx n e of
@@ -3342,8 +3373,8 @@ End
 (* A function's procedures, checked arithmetic by default; parameters and
  * returns keep their declaration ids. A pure function reads no state
  * variable, and a library function has no state variables or immutables.
- * A fallback takes no parameters and returns nothing, as the core's does
- * (plain_procedure); the importer marks one that does unsupported.
+ * A fallback takes no parameters and returns nothing, or takes the calldata
+ * as bytes and returns bytes (fallback_signature_ok).
  * A function with a selector, or a constructor, takes and returns no struct
  * values other than storage pointers: their ABI forms are not modelled.
  * When strict, every super call must reach a supported function. A function
@@ -3362,7 +3393,8 @@ Definition elab_function_def:
       (SOME ps, SOME rs, SrcBlock info ss, SOME supers) =>
         ensure (¬strict ∨ EVERY (λ(_, g). g.fn_unsupported = NONE) supers)
           (f.fn_info.node_id, "super call of an unsupported function")
-        (ensure (f.fn_kind ≠ FallbackKind ∨ (f.fn_parameters = [] ∧ f.fn_returns = []))
+        (ensure (f.fn_kind ≠ FallbackKind ∨
+                 fallback_signature_ok (MAP SND ps) (MAP SND rs))
            (f.fn_info.node_id, "fallback with parameters or returns")
         (ensure ((f.fn_selector = NONE ∧ f.fn_kind ≠ ConstructorKind) ∨
                  EVERY (λ(_, ty). case ty of
@@ -4045,6 +4077,7 @@ val () = cv_auto_trans struct_root_def;
 val () = cv_auto_trans struct_field_types_def;
 val () = cv_auto_trans field_values_def;
 val () = cv_auto_trans field_writes_def;
+val () = cv_auto_trans element_writes_def;
 val () = cv_auto_trans revert_shape_def;
 val () = cv_auto_trans revert_arguments_def;
 val () = cv_auto_trans checked_callee_def;
