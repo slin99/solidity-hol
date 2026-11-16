@@ -1286,6 +1286,7 @@ Definition builtin_memory_ok_def:
         memory_write_ok halts d (yul_lit l) ∧ memory_read_ok ws p l
     | (YCallDataCopy, [d; _; l]) => memory_write_ok halts d (yul_lit l)
     | (YReturnDataCopy, [d; _; l]) => memory_write_ok halts d (yul_lit l)
+    | (YCodeCopy, [d; _; l]) => memory_write_ok halts d (yul_lit l)
     | (YExtCodeCopy, [_; d; _; l]) => memory_write_ok halts d (yul_lit l)
     | (YCall, [_; _; _; p; l; d; dl]) =>
         memory_read_ok ws p l ∧ memory_write_ok halts d (yul_lit dl)
@@ -1309,6 +1310,7 @@ Definition builtin_memory_ok_def:
     | (YMCopy, _) => F
     | (YCallDataCopy, _) => F
     | (YReturnDataCopy, _) => F
+    | (YCodeCopy, _) => F
     | (YExtCodeCopy, _) => F
     | (YCall, _) => F
     | (YStaticCall, _) => F
@@ -1347,6 +1349,7 @@ Definition builtin_store_def:
         (case (yul_lit d, yul_lit l) of
            (SOME a, NONE) => if a < 64 then [(a, 64 - a)] else []
          | _ => literal_range d l)
+    | (YCodeCopy, [d; _; l]) => literal_range d l
     | (YExtCodeCopy, [_; d; _; l]) => literal_range d l
     | _ => []
 End

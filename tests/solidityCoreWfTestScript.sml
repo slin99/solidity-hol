@@ -1423,7 +1423,17 @@ Theorem assembly_code_builtins_are_supported:
        [YulName "a"; YulLit (LitNumber 0x80w); YulLit (LitNumber 0w);
         YulLit (LitNumber 32w)])] ∧
   ¬assembly_memory_ok
-    [YulExprStmt (YulBuiltin YExtCodeCopy [YulName "a"; YulLit (LitNumber 0w)])]
+    [YulExprStmt (YulBuiltin YExtCodeCopy [YulName "a"; YulLit (LitNumber 0w)])] ∧
+  assembly_memory_ok
+    [YulExprStmt (YulBuiltin YCodeCopy
+       [YulLit (LitNumber 0w); YulLit (LitNumber 0w); YulLit (LitNumber 32w)]);
+     YulAssign ["x"] (YulBuiltin YMLoad [YulLit (LitNumber 0w)])] ∧
+  ¬assembly_memory_ok
+    [YulExprStmt (YulBuiltin YCodeCopy
+       [YulLit (LitNumber 0x80w); YulLit (LitNumber 0w);
+        YulLit (LitNumber 32w)])] ∧
+  ¬assembly_memory_ok
+    [YulExprStmt (YulBuiltin YCodeCopy [YulLit (LitNumber 0w)])]
 Proof
   EVAL_TAC
 QED
