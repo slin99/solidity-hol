@@ -203,6 +203,8 @@ Datatype:
   | SrcIndexAccess node_info src_expr src_expr string
   | SrcIndexRangeAccess node_info src_expr (src_expr option) (src_expr option) string
   | SrcTupleExpression node_info (src_expr option list) string
+  (* [e0, ..., ek-1], a fixed-size memory array *)
+  | SrcInlineArray node_info (src_expr list) string
   | SrcFunctionCall node_info src_expr (src_expr list) (num list) string
   | SrcSuperCall node_info num (src_expr list) (num list) string
   | SrcBaseCall node_info num (src_expr list) (num list) string
@@ -222,8 +224,8 @@ Datatype:
    * then for each member the index of its argument when they are named *)
   | SrcStructConstructor node_info num (src_expr list) (num list) string
   | SrcEnumValue node_info src_type_name num string
-  (* keccak256(a), ecrecover(h, v, r, s), a.code.length, a.balance: the
-   * builtin's own node (the callee, or the code member), if it has one *)
+  (* keccak256(a), ecrecover(h, v, r, s), a.code.length, a.balance, a.code:
+   * the builtin's own node (the callee, or the code member), if it has one *)
   | SrcBuiltinOperation node_info (node_info option) builtin_op (src_expr list)
       string
   | SrcModular node_info node_info core_operator (src_expr list) string
@@ -1140,6 +1142,7 @@ Definition expr_ids_def:
     info.node_id :: expr_ids l ++ expr_ids r) ∧
   (expr_ids (SrcTupleExpression info cs _) =
     info.node_id :: component_ids cs) ∧
+  (expr_ids (SrcInlineArray info es _) = info.node_id :: exprs_ids es) ∧
   (expr_ids (SrcFunctionCall info f args _ _) =
     info.node_id :: expr_ids f ++ exprs_ids args) ∧
   (expr_ids (SrcSuperCall info _ args _ _) = info.node_id :: exprs_ids args) ∧

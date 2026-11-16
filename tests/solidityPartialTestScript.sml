@@ -193,9 +193,9 @@ Proof
   CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
 QED
 
-(* A fallback with parameters and returns (testdata/frontend/fallback_params.sol)
- * is unsupported, since the core's fallback takes neither: add runs, and a
- * call reaching the fallback is refused. *)
+(* A fallback taking the calldata as bytes and returning bytes
+ * (testdata/frontend/fallback_params.sol) runs beside add: a call reaching
+ * it returns the calldata itself as the return data, not ABI encoded. *)
 val fallback_prepared = #prepared (solidityPrepareLib.prepare_artifact
   {root = "..", path = "../testdata/frontend/expected/fallback_params.json",
    source = "testdata/frontend/fallback_params.sol"});
@@ -204,8 +204,7 @@ val fallback_outcomes =
   map (fn {name, reason, ...} => (name, reason)) (#functions fallback_prepared);
 val () =
   if (case fallback_outcomes of
-        [("add", NONE), ("", SOME r)] =>
-          String.isSuffix ": fallback with parameters or returns" r
+        [("add", NONE), ("", NONE)] => true
       | _ => false)
   then ()
   else raise Fail ("unexpected fallback_params outcomes: " ^
@@ -237,38 +236,12 @@ Proof
   CONV_TAC (QUANT_CONV (LAND_CONV cv_eval)) >> simp[] >> EVAL_TAC
 QED
 
-Theorem fallback_params_fallback_refused:
-  fallback_params_call [1w; 2w; 3w; 4w] = ContractInvalid "unknown procedure"
+Theorem fallback_params_fallback_echoes:
+  (∃w. fallback_params_call [1w; 2w; 3w; 4w; 5w] =
+       ContractReturned [1w; 2w; 3w; 4w; 5w] w) ∧
+  (∃w. fallback_params_call [] = ContractReturned [] w)
 Proof
-  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
-QED
-
-(* The elaborator refuses such a fallback even when the importer has not
- * marked it: the fallback is the one part of the unit that fails
- * elaboration, with or without the mark (unit_elaboration_failures
- * elaborates marked functions too, for their reasons). *)
-Definition fallback_params_unit_def:
-  fallback_params_unit = ^(#unit fallback_prepared)
-End
-
-val () = cv_auto_trans fallback_params_unit_def;
-
-Definition fallback_params_unmarked_def:
-  fallback_params_unmarked =
-    fallback_params_unit with unit_contracts :=
-      MAP (λc. c with contract_functions :=
-             MAP (λf. if f.fn_kind = FallbackKind then f with fn_unsupported := NONE
-                      else f) c.contract_functions)
-        fallback_params_unit.unit_contracts
-End
-
-val () = cv_auto_trans fallback_params_unmarked_def;
-
-Theorem fallback_params_unmarked_fails_elaboration:
-  LENGTH (unit_elaboration_failures T fallback_params_unit) = 1 ∧
-  LENGTH (unit_elaboration_failures T fallback_params_unmarked) = 1
-Proof
-  CONV_TAC cv_eval
+  CONV_TAC (BINOP_CONV (QUANT_CONV (LAND_CONV cv_eval))) >> simp[]
 QED
 
 (* Both constructor bodies elaborate, and so does readString, which the

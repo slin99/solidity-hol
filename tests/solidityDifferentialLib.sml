@@ -928,10 +928,16 @@ fun run_expectations {root, manifest} =
                      ContractCreated im _ => ContractCreated im (differential_world empty_accounts)
                    | ContractReturned bs _ => ContractReturned bs (differential_world empty_accounts)
                    | ContractReverted bs _ => ContractReverted bs (differential_world empty_accounts)
+                   | ContractAborted _ => ContractAborted (differential_world empty_accounts)
                    | other => other”
                    val result_world = “case ^result of
                      ContractCreated _ w => w | ContractReturned _ w => w
                      | ContractReverted _ w => w | _ => ^entered”
+                   (* A failed call keeps no state; a failed creation stops the test. *)
+                   fun rolled_back why bs =
+                     (world := prior_world;
+                      if creating then stopped := SOME why else ();
+                      (con "Reverted" [if creating then bytes_term [] else bs], bytes_term []))
                    val (constructor, args) = strip_comb r
                    val kind = fst (dest_const constructor)
                    val (outcome, logs) =
@@ -960,10 +966,10 @@ fun run_expectations {root, manifest} =
                      | ("ContractReturned", [bs, w]) =>
                          (world := result_world;
                           (con "Returned" [bs], eval “^result_world.logs”))
-                     | ("ContractReverted", [bs, _]) =>
-                         (world := prior_world;
-                          if creating then stopped := SOME "deployment reverted" else ();
-                          (con "Reverted" [if creating then bytes_term [] else bs], bytes_term []))
+                     | ("ContractReverted", [bs, _]) => rolled_back "deployment reverted" bs
+                     (* An abort fails with no return data, which the expectation
+                      * format, like the bytecode run, shows as an empty revert. *)
+                     | ("ContractAborted", [_]) => rolled_back "deployment aborted" (bytes_term [])
                      | ("ContractInvalid", [reason]) =>
                          (stopped := SOME (stringSyntax.fromHOLstring reason);
                           (con "Diagnostic" [“InvalidCompletion”], bytes_term []))
