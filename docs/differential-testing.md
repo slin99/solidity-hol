@@ -242,7 +242,10 @@ bool immutables get values too. A suite without a peer gets
 arguments.
 
 pyrevm runs each candidate on the runtime code in the transaction's world
-(the addresses, block and gas of `solidityBytecode`) and records the outcome,
+(the addresses, block and gas limit of `solidityBytecode`, but gas price 0:
+pyrevm doesn't debit the gas purchase from the sender, so the fuzz runs in HOL
+price gas at 0 too, and a contract reading the sender's balance sees the same
+balance in all three runs) and records the outcome,
 the changed slots and the logs. Calls that halt any other way than `INVALID`,
 or use more than a million gas (HOL's runs of those take minutes), are
 dropped. Of the rest, K per contract (`-k`, 32 by default) become cases in
