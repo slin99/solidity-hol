@@ -462,91 +462,6 @@ Definition scalar_type_identifier_def:
     else NONE
 End
 
-(* The types of "_t1_" fields: types a slot holds. *)
-Definition scalar_components_def:
-  (scalar_components [] = SOME []) ∧
-  (scalar_components (f :: fs) =
-    if 2 < LENGTH f ∧ isPREFIX "_" f ∧ isPREFIX "_" (REVERSE f) then
-      case (scalar_type_identifier (TAKE (LENGTH f - 2) (DROP 1 f)),
-            scalar_components fs) of
-        (SOME ty, SOME tys) => SOME (ty :: tys)
-      | _ => NONE
-    else NONE)
-End
-
-(* A function type's parameter or return list, "$_t1_$_t2_$", from its fields
- * between the "$"s: "__" alone for the empty list. *)
-Definition function_type_components_def:
-  function_type_components fs =
-    if fs = ["__"] then SOME []
-    else if fs = [] then NONE
-    else scalar_components fs
-End
-
-(* The fields before the first "returns" field and those after it. *)
-Definition split_at_returns_def:
-  (split_at_returns acc [] = NONE) ∧
-  (split_at_returns acc (f :: fs) =
-    if f = "returns" then SOME (REVERSE acc, fs)
-    else split_at_returns (f :: acc) fs)
-End
-
-(* An internal function type's identifier,
- * "t_function_internal_" m "$_p1_$_p2_$returns$_r1_$", whose parameters and
- * returns are types a slot holds. An internal function is never payable. *)
-Definition function_type_identifier_def:
-  function_type_identifier s =
-    case separated_fields #"$" "" s of
-      head :: fs =>
-        let mutability =
-          if head = "t_function_internal_pure" then SOME PureMut
-          else if head = "t_function_internal_view" then SOME ViewMut
-          else if head = "t_function_internal_nonpayable" then SOME NonpayableMut
-          else NONE in
-        (case (mutability, split_at_returns [] fs) of
-           (SOME m, SOME (ps, rs)) =>
-             (case REVERSE rs of
-                [] :: rrs =>
-                  (case (function_type_components ps,
-                         function_type_components (REVERSE rrs)) of
-                     (SOME params, SOME rets) =>
-                       SOME (FunctionT InternalFn m params rets)
-                   | _ => NONE)
-              | _ => NONE)
-         | _ => NONE)
-    | [] => NONE
-End
-
-Definition normalize_type_name_def:
-  (normalize_type_name (SrcElementaryTypeName _ name mutability) =
-    case elementary_type name of
-      SOME (AddressT _) => OPTION_MAP AddressT mutability
-    | SOME ty => if mutability = NONE then SOME ty else NONE
-    | NONE => NONE) ∧
-  (normalize_type_name (SrcArrayTypeName _ element n) =
-    case normalize_type_name element of
-      SOME ty => if 0 < n ∧ n < 2 ** 256 ∧ ¬is_function_type ty
-                 then SOME (ArrayT ty (SOME n)) else NONE
-    | NONE => NONE) ∧
-  (normalize_type_name (SrcStructTypeName _ id tid) =
-    if isPREFIX "t_struct$_" tid ∧
-       isPREFIX (REVERSE ("_$" ++ toString id ++ "_storage_ptr")) (REVERSE tid)
-    then SOME (StructT (AstId id)) else NONE) ∧
-  (normalize_type_name (SrcEnumTypeName _ id) = SOME (EnumT (AstId id))) ∧
-  (normalize_type_name (SrcFunctionTypeName _ tid) = function_type_identifier tid) ∧
-  (normalize_type_name (SrcUnsupportedTypeName _ _) = NONE) ∧
-  (normalize_type_name (SrcDynamicArrayTypeName _ element) =
-    case normalize_type_name element of
-      SOME ty => if is_function_type ty then NONE else SOME (ArrayT ty NONE)
-    | NONE => NONE) ∧
-  (normalize_type_name (SrcMappingTypeName _ key value) =
-    case (normalize_type_name key, normalize_type_name value) of
-      (SOME k, SOME v) =>
-        if (is_elementary_type k ∨ byte_sequence_type k) ∧ ¬is_function_type v
-        then SOME (MappingT k v) else NONE
-    | _ => NONE)
-End
-
 (* Decoded typeIdentifiers: elementary types, rational literal types (a
  * reduced numerator and positive denominator) and tuples of elementary types.
  *)
@@ -752,6 +667,122 @@ Proof
   Cases_on ‘OPT_MMAP I xs’ >> simp[]
 QED
 
+(* The components of a tuple identifier from its `$`-separated fields,
+ * rejoining an array's or a struct's fields: "_t_array" or "_t_struct"
+ * opens one, and the field without a leading "_" (a dimension, or a struct's
+ * id and location) closes it. A function type's fields are rejoined
+ * likewise: "_t_function_internal_..." opens it, its "returns" field stays
+ * inside, and the field "_" (its closing "$" then "_") closes it. *)
+Definition tuple_identifier_components_def:
+  (tuple_identifier_components (depth : num) acc [] =
+    if depth = 0 ∧ acc = "" then SOME [] else NONE) ∧
+  (tuple_identifier_components depth acc (f :: fs) =
+    let component = if acc = "" then f else acc ++ "$" ++ f in
+    let depth' = if f = "_t_array" ∨ f = "_t_struct" ∨
+                    isPREFIX "_t_function_internal_" f
+                 then depth + 1
+                 else if f = "_" then depth - 1
+                 else if isPREFIX "_" f ∨ f = "returns" then depth
+                 else depth - 1 in
+    if depth' = 0 then
+      case tuple_identifier_components 0 "" fs of
+        SOME cs => SOME (component :: cs)
+      | NONE => NONE
+    else tuple_identifier_components depth' component fs)
+End
+
+(* A function type's parameter or return type, from its field "_tid_". A
+ * storage pointer "..._storage_ptr" is the type "..._storage" located in
+ * storage. *)
+Definition function_type_component_def:
+  function_type_component p =
+    if 2 < LENGTH p ∧ isPREFIX "_" p ∧ isPREFIX "_" (REVERSE p) then
+      let tid = TAKE (LENGTH p - 2) (DROP 1 p) in
+      if isPREFIX (REVERSE "_storage_ptr") (REVERSE tid) then
+        case decode_elementary_identifier (TAKE (LENGTH tid - 4) tid) of
+          SOME ty =>
+            if valid_type_shape (LocatedT StorageLoc ty)
+            then SOME (LocatedT StorageLoc ty) else NONE
+        | NONE => NONE
+      else decode_elementary_identifier tid
+    else NONE
+End
+
+(* A function type's parameter or return list, "$_t1_$_t2_$", from its fields
+ * between the "$"s, rejoined as a tuple's are: "__" alone for the empty
+ * list. *)
+Definition function_type_components_def:
+  function_type_components fs =
+    if fs = ["__"] then SOME [] else
+    case tuple_identifier_components 0 "" fs of
+      SOME (c :: cs) => all_some (MAP function_type_component (c :: cs))
+    | _ => NONE
+End
+
+(* The fields before the first "returns" field and those after it. *)
+Definition split_at_returns_def:
+  (split_at_returns acc [] = NONE) ∧
+  (split_at_returns acc (f :: fs) =
+    if f = "returns" then SOME (REVERSE acc, fs)
+    else split_at_returns (f :: acc) fs)
+End
+
+(* An internal function type's identifier,
+ * "t_function_internal_" m "$_p1_$_p2_$returns$_r1_$", whose parameters and
+ * returns are values or references. An internal function is never payable. *)
+Definition function_type_identifier_def:
+  function_type_identifier s =
+    case separated_fields #"$" "" s of
+      head :: fs =>
+        let mutability =
+          if head = "t_function_internal_pure" then SOME PureMut
+          else if head = "t_function_internal_view" then SOME ViewMut
+          else if head = "t_function_internal_nonpayable" then SOME NonpayableMut
+          else NONE in
+        (case (mutability, split_at_returns [] fs) of
+           (SOME m, SOME (ps, rs)) =>
+             (case REVERSE rs of
+                [] :: rrs =>
+                  (case (function_type_components ps,
+                         function_type_components (REVERSE rrs)) of
+                     (SOME params, SOME rets) =>
+                       SOME (FunctionT InternalFn m params rets)
+                   | _ => NONE)
+              | _ => NONE)
+         | _ => NONE)
+    | [] => NONE
+End
+
+Definition normalize_type_name_def:
+  (normalize_type_name (SrcElementaryTypeName _ name mutability) =
+    case elementary_type name of
+      SOME (AddressT _) => OPTION_MAP AddressT mutability
+    | SOME ty => if mutability = NONE then SOME ty else NONE
+    | NONE => NONE) ∧
+  (normalize_type_name (SrcArrayTypeName _ element n) =
+    case normalize_type_name element of
+      SOME ty => if 0 < n ∧ n < 2 ** 256 ∧ ¬is_function_type ty
+                 then SOME (ArrayT ty (SOME n)) else NONE
+    | NONE => NONE) ∧
+  (normalize_type_name (SrcStructTypeName _ id tid) =
+    if isPREFIX "t_struct$_" tid ∧
+       isPREFIX (REVERSE ("_$" ++ toString id ++ "_storage_ptr")) (REVERSE tid)
+    then SOME (StructT (AstId id)) else NONE) ∧
+  (normalize_type_name (SrcEnumTypeName _ id) = SOME (EnumT (AstId id))) ∧
+  (normalize_type_name (SrcFunctionTypeName _ tid) = function_type_identifier tid) ∧
+  (normalize_type_name (SrcUnsupportedTypeName _ _) = NONE) ∧
+  (normalize_type_name (SrcDynamicArrayTypeName _ element) =
+    case normalize_type_name element of
+      SOME ty => if is_function_type ty then NONE else SOME (ArrayT ty NONE)
+    | NONE => NONE) ∧
+  (normalize_type_name (SrcMappingTypeName _ key value) =
+    case (normalize_type_name key, normalize_type_name value) of
+      (SOME k, SOME v) =>
+        if (is_elementary_type k ∨ byte_sequence_type k) ∧ ¬is_function_type v
+        then SOME (MappingT k v) else NONE
+    | _ => NONE)
+End
+
 (* A tuple component "_c_", from "t_tuple$_c1_$_c2_$...$". Literal
  * byte sequences retain their source string kind here, and integer literals
  * stand as uint256 (int256 when negative); elaboration coerces the literal
@@ -769,31 +800,6 @@ Definition tuple_component_def:
       else if isPREFIX "t_function_internal_" tid then function_type_identifier tid
       else decode_elementary_identifier tid
     else NONE
-End
-
-(* The components of a tuple identifier from its `$`-separated fields,
- * rejoining an array's or a struct's fields: "_t_array" or "_t_struct"
- * opens one, and the field without a leading "_" (a dimension, or a struct's
- * id and location) closes it. A function type's fields are rejoined
- * likewise: "_t_function_internal_..." opens it, its "returns" field stays
- * inside, and the field "_" (its closing "$" then "_") closes it; its
- * parameters and returns are never arrays or functions. *)
-Definition tuple_identifier_components_def:
-  (tuple_identifier_components (depth : num) acc [] =
-    if depth = 0 ∧ acc = "" then SOME [] else NONE) ∧
-  (tuple_identifier_components depth acc (f :: fs) =
-    let component = if acc = "" then f else acc ++ "$" ++ f in
-    let depth' = if f = "_t_array" ∨ f = "_t_struct" ∨
-                    isPREFIX "_t_function_internal_" f
-                 then depth + 1
-                 else if f = "_" then depth - 1
-                 else if isPREFIX "_" f ∨ f = "returns" then depth
-                 else depth - 1 in
-    if depth' = 0 then
-      case tuple_identifier_components 0 "" fs of
-        SOME cs => SOME (component :: cs)
-      | NONE => NONE
-    else tuple_identifier_components depth' component fs)
 End
 
 Definition decode_type_identifier_def:
@@ -835,22 +841,40 @@ Proof
                        valid_mapping_key_def]
 QED
 
-Theorem scalar_type_identifier_valid[local]:
-  scalar_type_identifier s = SOME ty ⇒ valid_type_shape ty
+Theorem decode_struct_identifier_valid[local]:
+  decode_struct_identifier s = SOME ty ⇒ valid_type_shape ty
 Proof
-  rw[scalar_type_identifier_def, AllCaseEqs()] >>
-  simp[valid_type_shape_def] >> metis_tac[elementary_type_valid]
+  ‘∀sfx c ty. struct_with_suffix sfx c = SOME ty ⇒ ∃id. ty = StructT id’
+    by rw[struct_with_suffix_def, optionTheory.OPTION_MAP_EQ_SOME] >>
+  rw[decode_struct_identifier_def, AllCaseEqs()] >> res_tac >>
+  gvs[valid_type_shape_def, outer_location_free_def, location_shape_ok_def,
+      is_reference_type_def, contains_mapping_def]
+QED
+
+Theorem decode_elementary_identifier_valid:
+  decode_elementary_identifier s = SOME ty ⇒ valid_type_shape ty
+Proof
+  rw[decode_elementary_identifier_def, decode_base_identifier_def,
+     scalar_type_identifier_def, decode_located_array_def, AllCaseEqs()] >>
+  imp_res_tac elementary_type_valid >>
+  imp_res_tac decode_struct_identifier_valid >>
+  gvs[valid_type_shape_def, outer_location_free_def, location_shape_ok_def,
+      is_reference_type_def, contains_mapping_def]
 QED
 
 Theorem function_type_identifier_valid[local]:
   function_type_identifier s = SOME ty ⇒
   valid_type_shape ty ∧ outer_location_free ty
 Proof
-  ‘∀fs tys. scalar_components fs = SOME tys ⇒ EVERY valid_type_shape tys’
-    by (Induct >> rw[scalar_components_def, AllCaseEqs()] >>
-        gvs[] >> metis_tac[scalar_type_identifier_valid]) >>
+  ‘∀p ty. function_type_component p = SOME ty ⇒ valid_type_shape ty’
+    by (rw[function_type_component_def, LET_THM, AllCaseEqs()] >>
+        metis_tac[decode_elementary_identifier_valid]) >>
+  ‘∀ps tys. all_some (MAP function_type_component ps) = SOME tys ⇒
+            EVERY valid_type_shape tys’
+    by (Induct >> rw[all_some_def, AllCaseEqs()] >> gvs[] >> metis_tac[]) >>
   ‘∀fs tys. function_type_components fs = SOME tys ⇒ EVERY valid_type_shape tys’
-    by (rw[function_type_components_def] >> gvs[] >> metis_tac[]) >>
+    by (rw[function_type_components_def, AllCaseEqs()] >> gvs[] >>
+        qpat_x_assum ‘∀ps tys. all_some _ = _ ⇒ _’ (qspec_then ‘c::cs’ mp_tac) >> gvs[]) >>
   rw[function_type_identifier_def, AllCaseEqs()] >>
   simp[valid_type_shape_def, outer_location_free_def] >> metis_tac[]
 QED
@@ -871,27 +895,6 @@ Theorem normalize_type_name_valid:
   normalize_type_name tn = SOME ty ⇒ valid_type_shape ty
 Proof
   metis_tac[normalize_type_name_shape]
-QED
-
-Theorem decode_struct_identifier_valid[local]:
-  decode_struct_identifier s = SOME ty ⇒ valid_type_shape ty
-Proof
-  ‘∀sfx c ty. struct_with_suffix sfx c = SOME ty ⇒ ∃id. ty = StructT id’
-    by rw[struct_with_suffix_def, optionTheory.OPTION_MAP_EQ_SOME] >>
-  rw[decode_struct_identifier_def, AllCaseEqs()] >> res_tac >>
-  gvs[valid_type_shape_def, outer_location_free_def, location_shape_ok_def,
-      is_reference_type_def, contains_mapping_def]
-QED
-
-Theorem decode_elementary_identifier_valid:
-  decode_elementary_identifier s = SOME ty ⇒ valid_type_shape ty
-Proof
-  rw[decode_elementary_identifier_def, decode_base_identifier_def,
-     scalar_type_identifier_def, decode_located_array_def, AllCaseEqs()] >>
-  imp_res_tac elementary_type_valid >>
-  imp_res_tac decode_struct_identifier_valid >>
-  gvs[valid_type_shape_def, outer_location_free_def, location_shape_ok_def,
-      is_reference_type_def, contains_mapping_def]
 QED
 
 Theorem tuple_component_valid[local]:
@@ -1399,12 +1402,15 @@ Definition constant_table_def:
                 c.contract_constants)
 End
 
-(* An immutable, declared by one of the contract's bases, of elementary type. *)
+(* An immutable, declared by one of the contract's bases, of elementary, enum
+ * or internal function type. *)
 Definition immutable_variable_def:
   immutable_variable bases (v : src_variable) =
-    if v.var_transient then NONE else
-    case state_variable bases v of
-      SOME (x, ty) => if is_elementary_type ty then SOME (x, ty) else NONE
+    if v.var_transient ∨ ¬MEM v.var_scope bases then NONE else
+    case scoped_variable v.var_scope v of
+      SOME (x, ty) =>
+        if is_stored_scalar_type ty ∨ is_function_type ty then SOME (x, ty)
+        else NONE
     | NONE => NONE
 End
 

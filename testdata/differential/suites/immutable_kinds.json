@@ -1,0 +1,80 @@
+{
+  "name": "immutable_kinds",
+  "source": "testdata/differential/immutable_kinds.sol",
+  "contract": "ImmutableKinds",
+  "artifact": "testdata/differential/expected/immutable_kinds.json",
+  "cases": [
+    {
+      "name": "creation_picks_triple",
+      "deploy": true,
+      "args": [
+        2,
+        5
+      ],
+      "expect": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000002"
+      },
+      "final_storage": {
+        "0": 15
+      }
+    },
+    {
+      "name": "creation_picks_increment",
+      "deploy": true,
+      "args": [
+        1,
+        5
+      ],
+      "expect": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000001"
+      },
+      "final_storage": {
+        "0": 6
+      }
+    },
+    {
+      "name": "creation_enum_out_of_range_panics",
+      "deploy": true,
+      "args": [
+        3,
+        5
+      ],
+      "expect": {
+        "panic": "0x21"
+      }
+    },
+    {
+      "name": "enum_immutable_read",
+      "function": "level",
+      "args": [],
+      "immutables": {
+        "mode": 2
+      },
+      "expect": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000002"
+      }
+    },
+    {
+      "name": "enum_immutable_compared",
+      "function": "isHigh",
+      "args": [],
+      "immutables": {
+        "mode": 2
+      },
+      "expect": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000001"
+      }
+    },
+    {
+      "name": "enum_immutable_getter",
+      "function": "mode",
+      "args": [],
+      "immutables": {
+        "mode": 1
+      },
+      "expect": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000001"
+      }
+    }
+  ]
+}
