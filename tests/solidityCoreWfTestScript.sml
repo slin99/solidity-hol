@@ -1404,3 +1404,15 @@ Theorem packed_array_shape_checked:
 Proof
   EVAL_TAC
 QED
+
+Theorem assembly_balances_are_read_only_and_datacopy_is_unsupported:
+  assembly_expr_ok (assembly_unsupported ++ assembly_state_writes)
+    (YulBuiltin YBalance [YulLit (LitNumber 0w)]) ∧
+  assembly_expr_ok (assembly_unsupported ++ assembly_state_writes)
+    (YulBuiltin YSelfBalance []) ∧
+  ¬assembly_expr_ok assembly_unsupported
+    (YulBuiltin YDataCopy
+      [YulLit (LitNumber 0w); YulLit (LitNumber 0w); YulLit (LitNumber 0w)])
+Proof
+  EVAL_TAC
+QED
