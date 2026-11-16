@@ -36,6 +36,10 @@
  * parameters, read by origin(), gasprice(), chainid(), number(),
  * timestamp(), coinbase(), basefee() and gaslimit().
  *
+ * A scope's value is NONE for a word nobody wrote: inline assembly reading
+ * memory the source never gave it (yulEvaluator's YulCheckedBuiltin) gets one,
+ * and it stays unknown until something observes it, which fails.
+ *
  * Gas is not modelled, but a frame still has a budget: gas_limit is what the
  * frame's caller gave it, gas() reads it, and a message call hands the call's
  * own gas argument on to the callee, capped at this budget.  Nothing in the
@@ -82,7 +86,7 @@ Datatype:
     memory_size : num;
     gas_limit : num;
     gas_observations : gas_observation list;
-    scopes : (string |-> bytes32) list;
+    scopes : (string |-> bytes32 option) list;
     transaction_parameters : transaction_parameters
   |>
 End

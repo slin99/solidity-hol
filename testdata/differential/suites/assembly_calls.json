@@ -150,6 +150,31 @@
       }
     },
     {
+      "name": "optional_return_no_data",
+      "function": "safeTransfer",
+      "args": [
+        20480,
+        3
+      ],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 3
+      }
+    },
+    {
+      "name": "optional_return_no_code",
+      "function": "safeTransfer",
+      "args": [
+        4660,
+        5
+      ],
+      "expect": {
+        "revert": "0x5274afe70000000000000000000000000000000000000000000000000000000000001234"
+      }
+    },
+    {
       "name": "optional_return_bool_true",
       "function": "trySafeTransfer",
       "args": [
@@ -181,6 +206,32 @@
       "args": [
         20480,
         1
+      ],
+      "expect": {
+        "return": [
+          false
+        ]
+      }
+    },
+    {
+      "name": "optional_return_bool_no_data",
+      "function": "trySafeTransfer",
+      "args": [
+        20480,
+        3
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "optional_return_bool_no_code",
+      "function": "trySafeTransfer",
+      "args": [
+        4660,
+        5
       ],
       "expect": {
         "return": [

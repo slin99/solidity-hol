@@ -741,6 +741,49 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* A checked mload of memory nobody wrote gives a word nobody knows: checked
+ * pure builtins, as inline assembly's are, pass it on, and and with zero or
+ * or with all ones fixes it, while any other use of it fails. *)
+Definition unwritten_code_def:
+  unwritten_code mask =
+    [YulLet ["x"] (SOME (YulCheckedBuiltin YAnd
+       [YulCheckedBuiltin YEq [YulCheckedBuiltin YMLoad [YulLit (LitNumber 0w)];
+                        YulLit (LitNumber 1w)];
+        YulLit (LitNumber mask)]));
+     YulExprStmt (YulBuiltin YMStore [YulLit (LitNumber 0w); YulName "x"]);
+     YulExprStmt (YulBuiltin YReturn [YulLit (LitNumber 0w); YulLit (LitNumber 32w)])]
+End
+
+Definition unwritten_or_code_def:
+  unwritten_or_code =
+    [YulExprStmt (YulBuiltin YMStore [YulLit (LitNumber 0w);
+       YulCheckedBuiltin YOr [YulCheckedBuiltin YMLoad [YulLit (LitNumber 0w)];
+                       YulLit (LitNumber UINT_MAXw)]]);
+     YulExprStmt (YulBuiltin YReturn [YulLit (LitNumber 0w); YulLit (LitNumber 32w)])]
+End
+
+Definition unwritten_if_code_def:
+  unwritten_if_code =
+    [YulIf (YulCheckedBuiltin YMLoad [YulLit (LitNumber 0w)]) []]
+End
+
+val () = cv_auto_trans unwritten_code_def;
+val () = cv_auto_trans unwritten_or_code_def;
+val () = cv_auto_trans unwritten_if_code_def;
+
+Theorem an_unwritten_word_propagates_until_observed:
+  (run 20 (unwritten_code 0w)).completion =
+    YulReturn (word_to_bytes_be (0w : bytes32)) ∧
+  (run 20 unwritten_or_code).completion =
+    YulReturn (word_to_bytes_be (UINT_MAXw : bytes32)) ∧
+  (run 20 (unwritten_code 1w)).completion =
+    YulInvalid "assembly read memory it was not given" ∧
+  (run 20 unwritten_if_code).completion =
+    YulInvalid "assembly read memory it was not given"
+Proof
+  CONV_TAC cv_eval
+QED
+
 Theorem unbound_name_is_invalid:
   (run 20 unbound_code).completion = YulInvalid "unbound name"
 Proof
@@ -1321,7 +1364,7 @@ Theorem creation_long_object_name:
       [YulLit (LitBytes (MAP (n2w o ORD) "DynamicStorageArrays_739_deployed"))])
     (yul_test_machine with objects :=
        FEMPTY |+ ("DynamicStorageArrays_739_deployed", (11, 37))) =
-    EvalValues [37w] (yul_test_machine with objects :=
+    EvalValues [SOME 37w] (yul_test_machine with objects :=
        FEMPTY |+ ("DynamicStorageArrays_739_deployed", (11, 37)))
 Proof
   CONV_TAC cv_eval
