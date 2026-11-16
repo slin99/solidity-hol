@@ -481,10 +481,12 @@ fun artifact_immutables artifact source contract =
             SOME d => field d "underlyingType"
           | NONE => v
         val text = string_field (field type_node "typeDescriptions") "typeString"
-        val ty = if String.isPrefix "contract " text orelse text = "address payable"
-                 then contractABISyntax.parse_abi_type "address"
-                 else if String.isPrefix "enum " text then “Uint 8”
-                 else contractABISyntax.parse_abi_type text
+        (* an internal function immutable has no ABI word *)
+        val ty = if String.isPrefix "function " text then NONE
+                 else if String.isPrefix "contract " text orelse text = "address payable"
+                 then SOME (contractABISyntax.parse_abi_type "address")
+                 else if String.isPrefix "enum " text then SOME “Uint 8”
+                 else SOME (contractABISyntax.parse_abi_type text)
       in (name, integer (field v "id"), ty) end
     val target = artifact_contract artifact source contract
     val refs = case JSONUtil.findField (field (field target "evm") "deployedBytecode")
@@ -505,8 +507,9 @@ fun immutable_words declarations c =
     fun entry (name, value) =
       case List.find (fn (n, _, _) => n = name) declarations of
         NONE => fail ("no immutable named " ^ name)
-      | SOME (_, id, ty) =>
+      | SOME (_, id, SOME ty) =>
           pairSyntax.list_mk_pair [num_term id, F, encode [ty] [value]]
+      | SOME (_, _, NONE) => fail ("immutable " ^ name ^ " has no ABI word")
   in
     listSyntax.mk_list (map entry values,
       pairSyntax.list_mk_prod [numSyntax.num, bool, listSyntax.mk_list_type byte_ty])
