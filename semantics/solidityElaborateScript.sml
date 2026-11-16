@@ -2548,6 +2548,28 @@ Definition elab_expr_def:
              then INL ((ss, ref, ty), n1)
              else INR [(info.node_id, "type annotation mismatch")]
          | INR bs => INR bs)
+    | SrcConditional info c t f tid =>
+        (* a storage reference on each arm, joined as elab_expr joins one *)
+        (case elab_expr ctx n c of
+           INL ((sc, cond, ElabType BoolT), n1) =>
+             (case elab_expr ctx (n1 + 2) t of
+                INL ((st, at, ElabType (LocatedT StorageLoc ty)), n2) =>
+                  (case elab_expr ctx (n2 + 1) f of
+                     INL ((sf, af, vf), n3) =>
+                       let lty = LocatedT StorageLoc ty in
+                       if vf ≠ ElabType lty then INR [(expr_id f, "type mismatch")] else
+                       if ¬annotation_matches tid (ElabType lty)
+                       then INR [(info.node_id, "type annotation mismatch")] else
+                       let (rs, res) = bind_value n1 lty (DefaultReferenceOperation StorageLoc ty) in
+                       INL ((sc ++ rs ++
+                             [IfStmt cond (st ++ assign_local (n1 + 1) n1 lty at)
+                                          (sf ++ assign_local n2 n1 lty af)],
+                             res, ty), n3)
+                   | INR bs => INR bs)
+              | INL _ => INR [(expr_id t, "not a storage location")]
+              | INR bs => INR bs)
+         | INL _ => INR [(expr_id c, "condition not a bool")]
+         | INR bs => INR bs)
     | SrcUnsupportedExpr info msg es =>
         INR ((info.node_id, msg) :: blockers (elab_arg_values ctx n es))
     | _ => INR [(expr_id e, "not a storage location")]) ∧

@@ -30,6 +30,8 @@ contract ReferenceForms {
     Details other;
     bytes data;
     Part state;
+    uint256[3] xs;
+    uint256[3] ys;
 
     function setOperator(address owner, address operator, bool allowed) external {
         (operators[owner])[operator] = allowed;
@@ -63,6 +65,21 @@ contract ReferenceForms {
         (Details storage d, uint256 k) = first ? (stored, 1) : (other, 2);
         d.nonce = k;
         return (stored.nonce, other.nonce);
+    }
+
+    function pickedNonce(bool first) external view returns (uint256) {
+        return (first ? stored : other).nonce;
+    }
+
+    function setPicked(bool first, uint256 v) external returns (uint256, uint256, uint256) {
+        (first ? stored : other).count = v;
+        (first ? stored : other).nonce++;
+        return (stored.count, other.count, other.nonce);
+    }
+
+    function setPickedIndex(bool first, uint256 i, uint256 v) external returns (uint256, uint256) {
+        (first ? xs : ys)[i] = v;
+        return (xs[i], ys[i]);
     }
 
     function head(bool whole, bytes calldata b) external pure returns (bytes memory) {

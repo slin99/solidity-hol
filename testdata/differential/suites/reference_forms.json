@@ -382,6 +382,114 @@
       }
     },
     {
+      "name": "conditional_member_read_first",
+      "function": "pickedNonce",
+      "args": [
+        true
+      ],
+      "storage": {
+        "1": 5,
+        "3": 9
+      },
+      "expect": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000005"
+      }
+    },
+    {
+      "name": "conditional_member_read_second",
+      "function": "pickedNonce",
+      "args": [
+        false
+      ],
+      "storage": {
+        "1": 5,
+        "3": 9
+      },
+      "expect": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000009"
+      }
+    },
+    {
+      "name": "conditional_member_write_first",
+      "function": "setPicked",
+      "args": [
+        true,
+        7
+      ],
+      "storage": {
+        "1": 5,
+        "3": 9
+      },
+      "expect": {
+        "returned": "0x000000000000000000000000000000000000000000000000000000000000000700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000009"
+      },
+      "final_storage": {
+        "1": "6",
+        "2": "7"
+      }
+    },
+    {
+      "name": "conditional_member_write_second",
+      "function": "setPicked",
+      "args": [
+        false,
+        7
+      ],
+      "storage": {
+        "1": 5,
+        "3": 9
+      },
+      "expect": {
+        "returned": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007000000000000000000000000000000000000000000000000000000000000000a"
+      },
+      "final_storage": {
+        "3": "10",
+        "4": "7"
+      }
+    },
+    {
+      "name": "conditional_index_write_first",
+      "function": "setPickedIndex",
+      "args": [
+        true,
+        1,
+        42
+      ],
+      "expect": {
+        "returned": "0x000000000000000000000000000000000000000000000000000000000000002a0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "final_storage": {
+        "9": "42"
+      }
+    },
+    {
+      "name": "conditional_index_write_second",
+      "function": "setPickedIndex",
+      "args": [
+        false,
+        2,
+        42
+      ],
+      "expect": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002a"
+      },
+      "final_storage": {
+        "13": "42"
+      }
+    },
+    {
+      "name": "conditional_index_out_of_range_panics",
+      "function": "setPickedIndex",
+      "args": [
+        false,
+        3,
+        42
+      ],
+      "expect": {
+        "panic": 50
+      }
+    },
+    {
       "name": "library_public_called_internally",
       "function": "twice",
       "args": [
