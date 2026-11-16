@@ -1441,6 +1441,39 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* An externally owned account hashes its empty code, a contract its code,
+ * and an empty or absent account reads 0, as EXTCODEHASH does. *)
+Definition yul_code_hash_machine_def:
+  yul_code_hash_machine = yul_frame_machine with accounts :=
+    update_account 0x1234w (empty_account_state with balance := 17)
+      (update_account 0x77w (empty_account_state with code := [0w])
+        (update_account 0x78w (empty_account_state with nonce := 1)
+          empty_accounts))
+End
+
+val () = cv_auto_trans yul_code_hash_machine_def;
+
+Theorem extcodehash_reads_account_without_changing_machine:
+  eval_yul_builtin YExtCodeHash [0x1234w] yul_code_hash_machine =
+    EvalValues
+      [0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470w]
+      yul_code_hash_machine ∧
+  eval_yul_builtin YExtCodeHash [0x78w] yul_code_hash_machine =
+    EvalValues
+      [0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470w]
+      yul_code_hash_machine ∧
+  eval_yul_builtin YExtCodeHash [n2w (2 ** 160 + 0x77)] yul_code_hash_machine =
+    EvalValues
+      [0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98aw]
+      yul_code_hash_machine ∧
+  eval_yul_builtin YExtCodeHash [0x79w] yul_code_hash_machine =
+    EvalValues [0w] yul_code_hash_machine ∧
+  eval_yul_builtin YExtCodeHash [] yul_code_hash_machine =
+    EvalAbrupt (YulInvalid "bad builtin call") yul_code_hash_machine
+Proof
+  CONV_TAC cv_eval
+QED
+
 Theorem datacopy_zero_pads_and_expands_memory:
   case eval_yul_builtin YDataCopy [31w; 1w; 4w]
     (yul_frame_machine with <|

@@ -7,10 +7,38 @@ Ancestors
 Libs
   cv_transLib wordsLib intLib
 
+(* The cells of the bytes bs from index i, added to cells. *)
+Definition byte_cells_from_def:
+  (byte_cells_from (cells : num |-> runtime_value) i [] = cells) ∧
+  (byte_cells_from cells i (b :: bs) =
+     byte_cells_from (cells |+ (i, ScalarValue (BytesValue [b]))) (i + 1) bs)
+End
+
 Definition byte_cells_def:
+  byte_cells bs = byte_cells_from FEMPTY 0 bs
+End
+
+Theorem byte_cells_from_zip[local]:
+  ∀bs cells i.
+    byte_cells_from cells i bs =
+    cells |++ ZIP (GENLIST (λj. i + j) (LENGTH bs),
+                   MAP (λb. ScalarValue (BytesValue [b])) bs)
+Proof
+  Induct >- simp [byte_cells_from_def, finite_mapTheory.FUPDATE_LIST_THM] >>
+  rpt gen_tac >>
+  REWRITE_TAC [byte_cells_from_def, listTheory.LENGTH, listTheory.GENLIST_CONS,
+               listTheory.MAP, listTheory.ZIP, finite_mapTheory.FUPDATE_LIST_THM] >>
+  simp [combinTheory.o_DEF] >>
+  rpt AP_TERM_TAC >> simp [listTheory.GENLIST_FUN_EQ]
+QED
+
+Theorem byte_cells_zip:
   byte_cells bs =
     FEMPTY |++ ZIP (COUNT_LIST (LENGTH bs), MAP (λb. ScalarValue (BytesValue [b])) bs)
-End
+Proof
+  simp [byte_cells_def, byte_cells_from_zip, rich_listTheory.COUNT_LIST_GENLIST] >>
+  rpt AP_TERM_TAC >> simp [listTheory.GENLIST_FUN_EQ]
+QED
 
 Definition allocate_bytes_def:
   allocate_bytes padded ty bs (st : source_state) =
@@ -435,6 +463,7 @@ Definition convert_byte_reference_def:
     | _ => ValueAbrupt (InvalidCompletion "bad byte reference conversion")
 End
 
+val () = cv_auto_trans byte_cells_from_def;
 val () = cv_auto_trans byte_cells_def;
 val () = cv_auto_trans allocate_bytes_def;
 val () = cv_auto_trans memory_byte_def;

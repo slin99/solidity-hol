@@ -216,6 +216,22 @@ Definition yul_memory_write_def:
     yul_memory_write (m with memory := m.memory |+ (offset, b)) (offset + 1) bs
 End
 
+(* The same read and write on the byte map alone: a caller writing many bytes
+ * updates the machine once, not once a byte (yulEvaluatorProps relates them).
+ *)
+Definition yul_mem_read_def:
+  (yul_mem_read (mem : num |-> word8) offset 0 = []) ∧
+  (yul_mem_read mem offset (SUC k) =
+     (case FLOOKUP mem offset of NONE => 0w | SOME b => b) ::
+     yul_mem_read mem (offset + 1) k)
+End
+
+Definition yul_mem_write_def:
+  (yul_mem_write (mem : num |-> word8) offset [] = mem) ∧
+  (yul_mem_write mem offset (b :: bs) =
+     yul_mem_write (mem |+ (offset, b)) (offset + 1) bs)
+End
+
 
 Definition yul_memory_touch_def:
   yul_memory_touch m offset sz =
@@ -449,6 +465,16 @@ Definition block_hash_word_def:
       then EL index tx.prevHashes else 0w
 End
 
+(* An account's code hash, as EXTCODEHASH (verifereum's step_ext_code_hash)
+ * reads it: 0 for an empty account, which includes one that doesn't exist,
+ * else the Keccak-256 hash of its code. *)
+Definition ext_code_hash_def:
+  ext_code_hash accounts address : bytes32 =
+    let account = lookup_account address accounts in
+      if account_empty account then 0w
+      else word_of_bytes_be (Keccak_256_w64 account.code)
+End
+
 (* One builtin on evaluated values. Literal-name operands are dispatched by
  * eval_yul_builtin_call; unsupported builtins and wrong arities fail closed.
  *)
@@ -571,6 +597,7 @@ Definition eval_yul_builtin_def:
         EvalValues [n2w (lookup_account (w2w a) m.accounts).balance] m
     | (YExtCodeSize, [a]) =>
         EvalValues [n2w (LENGTH (lookup_account (w2w a) m.accounts).code)] m
+    | (YExtCodeHash, [a]) => EvalValues [ext_code_hash m.accounts (w2w a)] m
     | (YExtCodeCopy, [a; dst; src; sz]) =>
         EvalValues []
           (yul_memory_write (yul_memory_touch m (w2n dst) (w2n sz))
@@ -1085,6 +1112,8 @@ Proof
   gvs[]
 QED
 
+val () = cv_auto_trans yul_mem_read_def;
+val () = cv_auto_trans yul_mem_write_def;
 val () = cv_auto_trans yul_set_immutable_def;
 val () = cv_auto_trans eval_yul_builtin_call_def;
 val () = cv_auto_trans yul_read_regions_def;

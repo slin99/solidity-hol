@@ -48,7 +48,7 @@ Datatype:
   | YOrigin | YGasPrice | YChainId | YNumber | YTimestamp | YCoinbase | YBaseFee
   | YGasLimit | YBlockHash
     (* message calls, other accounts and the frame's gas *)
-  | YCall | YStaticCall | YDelegateCall | YBalance | YExtCodeSize | YExtCodeCopy
+  | YCall | YStaticCall | YDelegateCall | YBalance | YExtCodeSize | YExtCodeCopy | YExtCodeHash
   | YReturnDataSize | YReturnDataCopy
   | YGas | YCreate | YCreate2
     (* events *)

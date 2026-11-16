@@ -663,6 +663,8 @@ Definition builtin_signature_def:
     ([AddressT NonpayableAddress], UintT 256)) ∧
   (builtin_signature BalanceBuiltin =
     ([AddressT NonpayableAddress], UintT 256)) ∧
+  (builtin_signature CodeHashBuiltin =
+    ([AddressT NonpayableAddress], FixedBytesT 32)) ∧
   (builtin_signature Sha256Builtin =
     ([LocatedT MemoryLoc BytesT], FixedBytesT 32)) ∧
   (builtin_signature BlockhashBuiltin = ([UintT 256], FixedBytesT 32)) ∧
@@ -984,7 +986,7 @@ Definition wf_core_operation_def:
     EVERY packed_type tys ∧
     LIST_REL (wf_abi_atom env ctx) tys args) ∧
   (* Only call moves value. The data is packed where it is, so a bytes
-     literal or calldata bytes needs no memory copy. *)
+     literal, calldata or storage bytes needs no memory copy. *)
   (wf_core_operation env ctx annotation
      (LowLevelCallOperation kind target value gas data) ⇔
     annotation = call_result_type [BoolT; LocatedT MemoryLoc BytesT] ∧
@@ -995,7 +997,8 @@ Definition wf_core_operation_def:
     (case data of
        ConstantAtom (BytesValue _) => T
      | _ => wf_core_atom env ctx (SingleType (LocatedT MemoryLoc BytesT)) data ∨
-            wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) data)) ∧
+            wf_core_atom env ctx (SingleType (LocatedT CalldataLoc BytesT)) data ∨
+            wf_core_atom env ctx (SingleType (LocatedT StorageLoc BytesT)) data)) ∧
   (wf_core_operation env ctx annotation (AbiDecodeOperation tys a) ⇔
     tys ≠ [] ∧ EVERY (decoded_type_ok env) tys ∧
     annotation = call_result_type tys ∧
