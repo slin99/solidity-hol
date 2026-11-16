@@ -24,8 +24,9 @@ frame if that frame still exists. There is no arbitrary handler parameter and
 no recursive source interpretation of external targets.
 
 A source world is not a sufficient input to reconstruct an EVM invocation.
-`project_evm_world` deliberately omits transaction-original accounts, checkpoints,
-caller contexts, gas, refunds, access sets, domain tracking and pending deletions.
+`project_evm_world` deliberately omits checkpoints, caller contexts, gas,
+refunds, access sets and domain tracking; it keeps the transaction-original
+accounts and pending deletions, which the source world carries.
 The adapter must receive justified concrete boundary context separately. This is
 execution/simulation context, not artificial EVM registers stored in Solidity
 locals or heap state.

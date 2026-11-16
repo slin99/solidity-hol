@@ -120,7 +120,9 @@ Definition project_evm_world_def:
     | (ctxt, checkpoint)::rest => SOME <|
         accounts := es.rollback.accounts;
         transient := es.rollback.tStorage;
-        logs := ctxt.logs
+        logs := ctxt.logs;
+        original := es.originalAccounts;
+        to_delete := es.rollback.toDelete
       |>
 End
 
