@@ -110,7 +110,7 @@ def admission_inputs(programs: list[Program], failures: dict[str, str]) -> dict[
                            else p.artifact.read_bytes())
     return {"seeds": [p.seed for p in programs], "programs": fingerprint.hexdigest(),
             # The runner's fingerprint of the sources, with no targets.
-            "sources": fuzz.run_inputs([], 0, 0, 0)["source_hash"]}
+            "sources": fuzz.run_inputs([], 0, 0, 0, sequences=False)["source_hash"]}
 
 
 def admit(holbuild: str, output: Path, programs: list[Program],
@@ -198,7 +198,7 @@ def main(argv: list[str] | None = None) -> int:
         # A resumed run whose fuzzing hadn't started (an admission-only run, say)
         # starts it.
         fuzz.check_inputs(fuzz_output, fuzz.run_inputs(targets, args.fuzz_seed, args.candidates,
-                                                       args.k),
+                                                       args.k, sequences=False),
                           resume=args.resume and (fuzz_output / "inputs.json").is_file())
         fuzzer = fuzz.Fuzzer(fuzz_output, seed=args.fuzz_seed, candidates=args.candidates,
                              k=args.k, evaluate=lambda work, entries: fuzz.run_fleet(

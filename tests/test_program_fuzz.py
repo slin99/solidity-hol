@@ -205,9 +205,9 @@ class DriverTests(unittest.TestCase):
         def targets(path: Path) -> list[SimpleNamespace]:
             return [SimpleNamespace(entry=e) for e in json.loads(path.read_text())["targets"]]
 
-        def run_inputs(targets: list[Any], *settings: int) -> dict[str, Any]:
+        def run_inputs(targets: list[Any], *settings: int, sequences: bool) -> dict[str, Any]:
             # The fake targets have no artifacts to fingerprint.
-            return real_run_inputs([], *settings)
+            return real_run_inputs([], *settings, sequences=sequences)
 
         real_run_inputs = fuzz.run_inputs
 
