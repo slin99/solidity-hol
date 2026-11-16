@@ -78,4 +78,34 @@ contract InlineArrays {
     function bytesElements(bytes calldata b) public pure returns (bytes[3] memory) {
         return [bytes(b), bytes(""), bytes.concat(b, b)];
     }
+
+    // The shell is allocated before its elements: the addresses the elements
+    // land at and the free memory pointer around them show the schedule.
+    function stringLayout(uint256 x)
+        public pure
+        returns (uint256 before, uint256 shell, uint256 first, uint256 second, uint256 free)
+    {
+        assembly { before := mload(0x40) }
+        string[2] memory arr = ["a", string(abi.encode(x))];
+        assembly {
+            shell := arr
+            first := mload(arr)
+            second := mload(add(arr, 32))
+            free := mload(0x40)
+        }
+    }
+
+    function structLayout(uint256 x)
+        public pure
+        returns (uint256 shell, uint256 first, uint256 second, uint256 name, uint256 free)
+    {
+        Pair[2] memory arr = [Pair(x, "p"), Pair(x + 1, string(abi.encodePacked(uint8(x))))];
+        assembly {
+            shell := arr
+            first := mload(arr)
+            second := mload(add(arr, 32))
+            name := mload(add(second, 32))
+            free := mload(0x40)
+        }
+    }
 }
