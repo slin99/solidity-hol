@@ -12,10 +12,13 @@ sig
   type function_outcome = {id : int, name : string, reason : string option}
 
   (* The unit is the imported one with its unsupported functions marked: the
-   * theorems are about it, and the program has no procedure for them. *)
+   * theorems are about it, and the program has no procedure for them. When
+   * the program has no procedure for the creation either while every
+   * constructor is supported, creation lists why, one blocker per line;
+   * otherwise it is empty. *)
   type prepared = {unit : term, program : term, source_valid : thm,
                    elaborates : thm, core_wf : thm,
-                   functions : function_outcome list}
+                   functions : function_outcome list, creation : string list}
 
   (* Check artifact format, compiler identity, pinned profile and exact settings.
    * input.settings may also contain remappings: an array of strings with '='.
@@ -45,5 +48,10 @@ sig
 
   (* The normal consumer entry point; retain the checked artifact for bytecode. *)
   val prepare_artifact : {root : string, path : string, source : string} ->
+    {artifact : JSON.value, prepared : prepared}
+  (* The same with the unit's contract given by name, if one is
+   * (solidityImportLib.import_contract_artifact_unit_blockers). *)
+  val prepare_contract_artifact :
+    {root : string, path : string, source : string, contract : string option} ->
     {artifact : JSON.value, prepared : prepared}
 end

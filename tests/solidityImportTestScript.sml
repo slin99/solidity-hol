@@ -40,7 +40,10 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/virtual_modifiers.json",
   "../testdata/differential/expected/modifiers.json",
   "../testdata/differential/expected/literals.json",
-  "../testdata/differential/expected/contract_creation.json"
+  "../testdata/differential/expected/contract_creation.json",
+  "../testdata/differential/expected/abstract_child_unit.json",
+  "../testdata/differential/expected/contract_selection.json",
+  "../testdata/differential/expected/type_members.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -1548,3 +1551,32 @@ val () =
     val () = if null blockers andalso null (function_reasons unit) then ()
              else raise Fail "hex creation bytecode with omitted links rejected"
   in () end
+
+(* The unit's contracts: the one named, or else those no concrete contract of
+ * the source inherits and no other one creates with new. *)
+val () =
+  let
+    fun field name t = Lib.assoc name (snd (TypeBase.dest_record t))
+    fun check name contract expected =
+      let
+        val artifact = JSONParser.parseFile ("../testdata/differential/expected/" ^ name ^ ".json")
+        val (unit, _) = import_contract_artifact_unit_blockers artifact
+                          ("testdata/differential/" ^ name ^ ".sol") contract
+        val names = map (stringSyntax.fromHOLstring o field "contract_name")
+                      (fst (listSyntax.dest_list (field "unit_contracts" unit)))
+      in
+        if names = expected then ()
+        else raise Fail (name ^ ": unit contracts " ^ String.concatWith ", " names)
+      end
+  in
+    (* a concrete base before its abstract child *)
+    check "abstract_child_unit" NONE ["AbstractChildData"];
+    check "contract_selection" NONE ["SelectionStub", "SelectionProxy", "SelectionOther"];
+    check "contract_selection" (SOME "SelectionProxy") ["SelectionProxy"];
+    (* TypeMembersChild is created by TypeMembers *)
+    check "type_members" NONE ["TypeMembers"];
+    ((check "contract_selection" (SOME "Missing") [];
+      raise Fail "contract_selection: a missing contract selected")
+     handle ImportError _ => ())
+  end
+

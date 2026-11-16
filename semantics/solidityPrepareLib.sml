@@ -165,7 +165,7 @@ fun read_artifact {root, path} = json_input (fn () =>
 type function_outcome = {id : int, name : string, reason : string option}
 type prepared = {unit : term, program : term, source_valid : thm,
                  elaborates : thm, core_wf : thm,
-                 functions : function_outcome list}
+                 functions : function_outcome list, creation : string list}
 
 (* A predicate evaluated to T, or a rejection with the message rejection
  * computes. *)
@@ -438,21 +438,43 @@ fun function_outcomes unit =
     (#1 (listSyntax.dest_list
       (cv_value (mk_comb (import_const "unit_functions", unit)))))
 
-(* The creation code byte lists of a unit as constants, so that the
- * certificates keep them folded. *)
+(* The creation code byte lists of a unit and its byte-sequence literals of
+ * at least long_literal bytes (type(C).creationCode) as constants, so that
+ * the certificates keep them folded: input abbreviates the unit, whose
+ * elaboration has the literals' byte lists, which output folds back. *)
+val long_literal = 1024
 fun creation_code_definitions unit =
   let
-    val create = import_const "SrcCreate"
-    fun is_create tm =
+    fun applications name arity tm =
       let val (head, args) = strip_comb tm in
-        head ~~ create andalso length args = 6
+        head ~~ import_const name andalso length args = arity
       end
     fun code tm = record_field (List.nth (#2 (strip_comb tm), 1)) "create_bytecode"
-    val codes = List.foldl (fn (tm, seen) =>
-        if List.exists (aconv tm) seen then seen else tm :: seen)
-      [] (map code (find_terms is_create unit))
+    val literals = List.filter (fn s => size (stringSyntax.fromHOLstring s) >= long_literal)
+      (map (fn tm => List.nth (#2 (strip_comb tm), 2))
+         (find_terms (applications "SrcLiteral" 4) unit))
+    fun bytes s =
+      listSyntax.mk_list
+        (map (fn c => wordsSyntax.mk_wordii (Char.ord c, 8))
+           (String.explode (stringSyntax.fromHOLstring s)),
+         wordsSyntax.mk_int_word_type 8)
+    fun distinct tms = List.foldl (fn (tm, seen) =>
+        if List.exists (aconv tm) seen then seen else tm :: seen) [] tms
+    val byte_defs = map (embed "embedded_creation_code" computeLib.EVAL_CONV)
+      (distinct (map code (find_terms (applications "SrcCreate" 6) unit) @
+                 map bytes literals))
+    val literal_defs = map (embed "embedded_literal" computeLib.EVAL_CONV)
+      (distinct literals)
   in
-    map (embed "embedded_creation_code" computeLib.EVAL_CONV) codes
+    {input = byte_defs @ literal_defs, output = byte_defs}
+  end
+
+(* The unit with its large literals abbreviated, the definitions that do it
+ * and those that fold them back into its elaboration. *)
+fun abbreviate_literals imported =
+  let val {input, output} = creation_code_definitions imported in
+    (subst (map (fn def => rhs (concl def) |-> lhs (concl def)) input) imported,
+     input, output)
   end
 
 (* A computation done at most once, when first asked for. *)
@@ -463,13 +485,46 @@ fun once f =
              | NONE => let val x = f () in result := SOME x; x end
   end
 
+(* Why the program has no procedure for the creation (elaborate_contract
+ * lists it unsupported) when every constructor is supported, whose reasons
+ * would say why: the contracts' own blockers in loose, which include the
+ * creation's. A creation that fails only strictly, by calling an unsupported
+ * function, has none there and gets its contract's id alone. *)
+fun creation_blockers unit program loose =
+  let
+    (* The elaborated program is a constructor application, which
+     * TypeBase.dest_record does not take: its accessors read it. *)
+    fun program_field tm =
+      rhs (concl (PURE_REWRITE_CONV (TypeBase.accessors_of (type_of program)) tm))
+    val creation = program_field “(^program).creation_procedure”
+    val unsupported =
+      #1 (listSyntax.dest_list (program_field “(^program).unsupported_procedures”))
+    val contracts =
+      #1 (listSyntax.dest_list (record_field (unit_record unit) "unit_contracts"))
+    val ids = map (fn c =>
+        numSyntax.int_of_term (record_field (record_field c "contract_info") "node_id"))
+      contracts
+    val constructor_unsupported = List.exists (fn f =>
+        optionSyntax.is_some (record_field f "fn_unsupported") andalso
+        term_eq (record_field f "fn_kind")
+          (import_const "ConstructorKind"))
+      (unit_function_terms unit)
+  in
+    if optionSyntax.is_none creation orelse constructor_unsupported orelse
+       not (List.exists (term_eq (#1 (pairSyntax.dest_pair
+                                       (optionSyntax.dest_some creation))))
+              unsupported)
+    then []
+    else
+      case List.concat (map #2 (List.filter (fn (x, _) => mem x ids) (loose ()))) of
+        [] => map (fn x => Int.toString x ^ ": creation calls an unsupported function") ids
+      | lines => dedup lines
+  end
+
 fun prepare_unit imported =
   let
-    val imported = unit_record imported
-    val code_defs = creation_code_definitions imported
-    val imported = subst (map (fn def => rhs (concl def) |-> lhs (concl def)) code_defs)
-      imported
-    val cv_form_conv = cv_form_conv (map cv_thm code_defs)
+    val (imported, literal_defs, code_defs) = abbreviate_literals (unit_record imported)
+    val cv_form_conv = cv_form_conv (map cv_thm literal_defs)
     val embed_unit = embed "embedded_unit" cv_form_conv
     val imported_def = once (fn () => embed_unit imported)
     val imported_constant = lhs o concl o imported_def
@@ -507,39 +562,49 @@ fun prepare_unit imported =
      elaborates = unembed (LAND_CONV o RAND_CONV) unit_def elaborates,
      core_wf = unembed (fn c => RAND_CONV c THENC LAND_CONV (RAND_CONV c))
                  program_def core_wf,
-     functions = function_outcomes constant}
+     functions = function_outcomes constant,
+     creation = creation_blockers unit program loose}
   end
 
 (* A source of an artifact already checked by read_artifact, imported, with
  * the blockers outside its functions. *)
-fun import_unit_blockers artifact source =
+fun import_unit_blockers artifact source contract =
   json_input (fn () =>
-    solidityImportLib.import_artifact_unit_blockers artifact source)
+    solidityImportLib.import_contract_artifact_unit_blockers artifact source contract)
   handle solidityImportLib.ImportError message => reject UnsupportedImport message
        | solidityImportLib.MalformedInput message => reject MalformedInput message
 
 fun import_unit artifact source =
-  (case import_unit_blockers artifact source of
+  (case import_unit_blockers artifact source NONE of
      (unit, []) => unit
    | (_, blockers) => reject UnsupportedImport (String.concatWith "\n" blockers))
   handle PreparationError (kind, message) => reject kind (source ^ ": " ^ message)
 
-fun prepare_source artifact source =
-  case import_unit_blockers artifact source of
+fun prepare_contract_source artifact source contract =
+  case import_unit_blockers artifact source contract of
     (unit, []) => prepare_unit unit
   | (unit, blockers) =>
-      let val constant = lhs (concl (embed "embedded_unit" (cv_form_conv []) unit)) in
+      let
+        val (unit, literal_defs, _) = abbreviate_literals (unit_record unit)
+        val constant = lhs (concl (embed "embedded_unit"
+          (cv_form_conv (map cv_thm literal_defs)) unit))
+      in
         reject UnsupportedImport (String.concatWith "\n" (dedup (blockers @
           rejection_lines (unit, constant, elaboration_failures false constant))))
       end
 
-fun prepare_artifact {root, path, source} =
+fun prepare_source artifact source = prepare_contract_source artifact source NONE
+
+fun prepare_contract_artifact {root, path, source, contract} =
   let
     val artifact = read_artifact {root = root, path = path}
-    val prepared = prepare_source artifact source
+    val prepared = prepare_contract_source artifact source contract
       handle PreparationError (kind, message) => reject kind (source ^ ": " ^ message)
   in
     {artifact = artifact, prepared = prepared}
   end
+
+fun prepare_artifact {root, path, source} =
+  prepare_contract_artifact {root = root, path = path, source = source, contract = NONE}
 
 end

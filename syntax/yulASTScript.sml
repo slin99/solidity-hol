@@ -46,9 +46,10 @@ Datatype:
   | YLoadImmutable | YAddress | YSelfBalance
     (* the transaction and block *)
   | YOrigin | YGasPrice | YChainId | YNumber | YTimestamp | YCoinbase | YBaseFee
-  | YGasLimit
+  | YGasLimit | YBlockHash
     (* message calls, other accounts and the frame's gas *)
-  | YCall | YStaticCall | YDelegateCall | YBalance | YExtCodeSize | YReturnDataSize | YReturnDataCopy
+  | YCall | YStaticCall | YDelegateCall | YBalance | YExtCodeSize | YExtCodeCopy
+  | YReturnDataSize | YReturnDataCopy
   | YGas | YCreate | YCreate2
     (* events *)
   | YLog0 | YLog1 | YLog2 | YLog3 | YLog4

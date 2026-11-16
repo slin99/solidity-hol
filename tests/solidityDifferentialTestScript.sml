@@ -18,6 +18,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/negative/bridge.json",
   "../testdata/differential/expected/storage.json",
   "../testdata/differential/storage.sol", "../SOLIDITY_PIN",
+  "../testdata/differential/expected/gas_invalid.json",
+  "../testdata/differential/gas_invalid.sol",
   "../profiles/solc-0.8.37-via-ir-osaka.json"]
 
 (* testdata/differential/mutant.sol: PureCore.add, but wrapping. *)
@@ -274,33 +276,43 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* What run prints, with its result. *)
+fun printed run =
+  let
+    val path = OS.FileSys.tmpName ()
+    val output = TextIO.openOut path
+    val saved = TextIO.getOutstream TextIO.stdOut
+    fun restore () =
+      (TextIO.flushOut TextIO.stdOut;
+       TextIO.setOutstream (TextIO.stdOut, saved);
+       TextIO.closeOut output)
+    val () = TextIO.flushOut TextIO.stdOut
+    val () = TextIO.setOutstream (TextIO.stdOut, TextIO.getOutstream output)
+    val result = run ()
+      handle e => (restore (); OS.FileSys.remove path; raise e)
+    val () = restore ()
+    val input = TextIO.openIn path
+    val text = TextIO.inputAll input
+    val () = TextIO.closeIn input
+    val () = OS.FileSys.remove path
+  in (result, text) end
+
+(* The lines with prefix in text that contain all of fields. *)
+fun reported prefix text fields = List.exists
+  (fn line => String.isPrefix prefix line andalso
+     List.all (fn field => String.isSubstring field line) fields)
+  (String.tokens (fn c => c = #"\n") text)
+
 (* Exercise the runner, including its reported diagnostics, rather than only
  * differential_verdict: these paths previously hid an input mismatch or
  * replaced UnknownFunction with a generic bridge error. *)
 local
-  val path = OS.FileSys.tmpName ()
-  val output = TextIO.openOut path
-  val saved = TextIO.getOutstream TextIO.stdOut
-  val () = TextIO.flushOut TextIO.stdOut
-  val () = TextIO.setOutstream (TextIO.stdOut, TextIO.getOutstream output)
-  val rejected =
-    ((solidityDifferentialLib.run_suite_file
-        {root = "..", suite_file = "testdata/differential/negative/bridge.json",
-         fuel = 1000, bytecode_theory = "solidityBytecodeCorpus_storage"}; false)
-     handle HOL_ERR _ => true)
-    handle e => (TextIO.setOutstream (TextIO.stdOut, saved);
-                 TextIO.closeOut output; OS.FileSys.remove path; raise e)
-  val () = TextIO.flushOut TextIO.stdOut
-  val () = TextIO.setOutstream (TextIO.stdOut, saved)
-  val () = TextIO.closeOut output
-  val input = TextIO.openIn path
-  val report = TextIO.inputAll input
-  val () = TextIO.closeIn input
-  val () = OS.FileSys.remove path
-  val cases = List.filter (String.isPrefix "differential-result: " )
-                (String.tokens (fn c => c = #"\n") report)
-  fun reported fields = List.exists
-    (fn line => List.all (fn field => String.isSubstring field line) fields) cases
+  val (rejected, report) = printed (fn () =>
+    (solidityDifferentialLib.run_suite_file
+       {root = "..", suite_file = "testdata/differential/negative/bridge.json",
+        fuel = 1000, bytecode_theory = "solidityBytecodeCorpus_storage"}; false)
+    handle HOL_ERR _ => true)
+  val reported = reported "differential-result: " report
 in
   val () = if rejected andalso
       reported ["\"case\":\"set_total\"", "\"status\":\"error\"",
@@ -308,6 +320,40 @@ in
       reported ["\"case\":\"get_total_reads_storage\"",
                 "\"status\":\"inconclusive\"", "UnknownFunction"]
     then () else raise Fail ("bridge regression: " ^ report)
+end
+
+(* The expectations replay on a call that aborts (INVALID): it fails with no
+ * data, as the bytecode run does, and its storage writes are rolled back. *)
+local
+  val sender = "\"sender\":\"0x1212121212121212121212121212120000000012\""
+  fun call index function =
+    "{\"index\":" ^ Int.toString index ^ ",\"deploy\":false,\"value\":0," ^
+    sender ^ ",\"calldata\":\"0x\",\"signature\":\"" ^ function ^
+    "\",\"events\":[]}"
+  val manifest = OS.FileSys.tmpName ()
+  val out = TextIO.openOut manifest
+  val () = TextIO.output (out, String.concat
+    ["{\"tests\":[{\"test\":\"abort\",",
+     "\"artifact\":\"../testdata/differential/expected/gas_invalid.json\",",
+     "\"source\":\"testdata/differential/gas_invalid.sol\",",
+     "\"contract\":\"GasInvalid\",\"verify_bytecode\":true,\"calls\":[",
+     "{\"index\":0,\"deploy\":true,\"value\":0,", sender,
+     ",\"calldata\":\"0x\",\"events\":[]},",
+     call 1 "abortNow()", ",", call 2 "stored()", "]}]}"])
+  val () = TextIO.closeOut out
+  val ((), report) = printed (fn () =>
+    solidityDifferentialLib.run_expectations {root = "..", manifest = manifest})
+    handle e => (OS.FileSys.remove manifest; raise e)
+  val () = OS.FileSys.remove manifest
+  val reported = reported "expectation-result: " report
+in
+  val () = if
+      reported ["\"index\":1,", "\"bytecode\":{\"reverted\":\"0x\"}",
+                "\"status\":\"executed\"", "\"actual\":{\"reverted\":\"0x\"}"] andalso
+      reported ["\"index\":2,", "\"actual\":{\"returned\":\"0x" ^
+                StringCvt.padLeft #"0" 64 "" ^ "\"}"] andalso
+      reported ["\"kind\":\"complete\""]
+    then () else raise Fail ("aborted call replay: " ^ report)
 end
 
 (* call_contract is a frame entry. The transaction driver supplies a fresh

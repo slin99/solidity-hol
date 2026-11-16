@@ -1,0 +1,49 @@
+{
+  "name": "contract_qualified_variables",
+  "source": "testdata/differential/contract_qualified_variables.sol",
+  "contract": "Qualified",
+  "artifact": "testdata/differential/expected/contract_qualified_variables.json",
+  "cases": [
+    {
+      "name": "creation_assigns_qualified_immutable_in_base_arguments",
+      "deploy": true,
+      "args": [],
+      "expect": {
+        "returned": "0x000000000000000000000000000000000000000000000000000000000000000d"
+      },
+      "final_storage": {
+        "0": 19,
+        "1": 13
+      }
+    },
+    {
+      "name": "qualified_immutable_read_at_runtime",
+      "function": "get",
+      "args": [],
+      "immutables": {
+        "fixedValue": 13
+      },
+      "expect": {
+        "return": [
+          13
+        ]
+      }
+    },
+    {
+      "name": "qualified_state_variable_compound_assignment",
+      "function": "bump",
+      "args": [],
+      "storage": {
+        "0": 19
+      },
+      "expect": {
+        "return": [
+          21
+        ]
+      },
+      "final_storage": {
+        "0": 21
+      }
+    }
+  ]
+}

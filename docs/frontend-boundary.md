@@ -182,7 +182,12 @@ Inline assembly writes a scalar local back only if decoding its word and
 encoding the resulting value reproduces that exact word. Non-canonical
 `uintN`, `intN`, `bool`, address and `bytesN` words fail closed with
 `InvalidCompletion`; they are not silently cleaned. Canonical negative signed
-words are sign-extended and fixed-byte words are left-aligned.
+words are sign-extended and fixed-byte words are left-aligned. An enum local
+is its member's index, and a word past the last member fails closed where
+solc would panic or keep the dirty word; a user-defined value type local is
+its underlying type's word (`assembly_library_forms.sol`). Internal function
+type locals are rejected: their word is a code location the source does not
+have.
 
 Inline assembly reads a storage pointer local's `x.slot` and `x.offset` as
 its reference's slot and offset (`assembly_pointers.sol`). Assigning `x.slot`,
@@ -218,7 +223,12 @@ it cannot make the next object's length word writable. Under
 arithmetic relative to a pointer is modelled but returning, storing or
 comparing a raw pointer value is outside the boundary. The block's memory also
 holds the free memory pointer at `0x40`, `0x80` plus the memory allocated so
-far, under the same boundary. What a block wrote from it up is dropped (the
+far, under the same boundary. Below `0x80` a block may write anything, as
+Solady's hashing helpers do over the scratch space, the free memory pointer
+and the zero slot, but a block that exits normally must leave the zero slot
+`[0x60, 0x80)` zero, since the compiler's empty byte sequences and arrays read
+it, or it ends with an `InvalidCompletion`. What a block wrote from the free
+memory pointer up is dropped (the
 temporary memory the Solidity docs allow a memory-safe block), except the
 objects it allocates there (`assembly_alloc.sol`): a block that exits normally
 may raise the pointer from F0 to a word-aligned F1 < 2^64, never lower it, and leave a memory
@@ -233,9 +243,12 @@ F1. Locals left at one address share its object only if their declared types
 are equal; overlapping objects, a local moved to an existing object (a
 retyping alias such as `EnumerableSet.values`' `result := store`) or to any
 other address fail closed. A literal address with a literal length is
-read only at the free memory pointer or where the block wrote it before (an
-`mstore`, a call's output region or a `returndatacopy`, also in an argument to
-the right, since arguments run right to left), as the elaborator checks. At a computed address a block may read only the free memory pointer,
+read only at the free memory pointer, the zero slot or where the block may
+have written it before (any memory write, also inside an earlier block,
+branch or loop, in an argument to the right, since arguments run right to
+left, and, in a Yul function's body, anywhere in the function's statement
+list outside other functions' bodies, since a function may be called from
+anywhere in it), as the elaborator checks; the run-time check below has the last word. At a computed address a block may read only the free memory pointer,
 the zero slot `[0x60, 0x80)`, each array's words, each byte sequence's length word and data
 (zero-padded to whole words where solc's memory holds the zeros: not for
 bytes copied from return data, a low-level call's or a `catch`'s, whose
@@ -272,8 +285,10 @@ it before a call of its own (`returndatasize` or `returndatacopy` not after a
 statement of the block that calls, earlier in the same or an enclosing
 statement list, or in an argument left of a call, since arguments run right
 to left) then fails with an `InvalidCompletion`, and a block that leaves an
-empty buffer keeps it unknown. A Yul function's body may read return data only
-after a call of its own. A block in a static frame that names `call` or
+empty buffer keeps it unknown. A Yul function's body may read return data
+where the block may at its start (`assembly_library_forms.sol`): anywhere
+while the source knows the buffer, and otherwise only after a call of its
+own, since the function may be called before any of the block's calls. A block in a static frame that names `call` or
 `delegatecall` fails closed; `staticcall` runs. A block that leaves an
 object's padding (the bytes past its length, in its last word) unwritten or
 not zero leaves it out of later blocks' memory, where reading it fails closed.
@@ -443,7 +458,9 @@ its effects and failures; the selector still comes from the declaration.
 the interface `I` declares itself, not those it inherits, nor its `fallback`
 or `receive`; `I` must name an interface directly, not through a module, and
 an abstract contract's `interfaceId` is rejected. A selector of any other
-function-typed value is rejected, and so are `sha256` and `ripemd160`.
+function-typed value is rejected, and so is `ripemd160`. `sha256(b)` hashes
+bytes in memory, as the precompile at address 2 does, and `blockhash(n)` is
+the hash of one of the 256 blocks before the current one, or 0.
 
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
 type the compiler gives the whole expression, which must be a value type,
