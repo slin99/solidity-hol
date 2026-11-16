@@ -252,7 +252,8 @@ Definition differential_frame_def:
     self_address := contract_address; code_address := contract_address;
     sender_address := sender; call_value := value; call_data := data;
     static_context := F;
-    tx_params := initial_tx_params differential_chain_id [] differential_block
+    tx_params := initial_tx_params differential_chain_id
+           (test_block_hashes differential_block.number) differential_block
                    (differential_tx sender value data) 0
   |>
 End

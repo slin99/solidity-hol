@@ -165,14 +165,20 @@ val abi_id : IntInf.int = ~1
 val addmod_id : IntInf.int = ~2
 val assert_id : IntInf.int = ~3
 val block_id : IntInf.int = ~4
-val ecrecover_id : IntInf.int = ~6
-val keccak256_id : IntInf.int = ~8
 val msg_id : IntInf.int = ~15
 val mulmod_id : IntInf.int = ~16
 val require_id : IntInf.int = ~18
 val revert_id : IntInf.int = ~19
 val tx_id : IntInf.int = ~26
 val this_id : IntInf.int = ~28
+
+(* The global functions that are builtin_op rows: declaration id, the
+   constructor, the number of arguments and the message for another number. *)
+val builtin_functions : (IntInf.int * string * int * string) list =
+  [(~5, "BlockhashBuiltin", 1, "blockhash takes one argument"),
+   (~6, "EcrecoverBuiltin", 4, "ecrecover takes four arguments"),
+   (~8, "Keccak256Builtin", 1, "keccak256 takes one argument"),
+   (~22, "Sha256Builtin", 1, "sha256 takes one argument")]
 
 (* The bytes of a hex string without prefix. *)
 fun hex_bytes v hex =
@@ -341,6 +347,14 @@ fun type_id v = mk_str (normalize_type_id (raw_type_id v))
 
 (* The builtin call or member v, named by the node callee if it has one, on
    the imported operands. *)
+(* The builtin_functions row of the global function callee names, if any. *)
+fun builtin_function callee =
+  if node_type callee = "Identifier" then
+    let val id = int_field callee "referencedDeclaration" in
+      List.find (fn (i, _, _, _) => i = id) builtin_functions
+    end
+  else NONE
+
 fun builtin_operation v callee name operands =
   con "SrcBuiltinOperation"
     [info v, mk_opt (import_type "node_info") (Option.map info callee),
@@ -1080,16 +1094,12 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
             else if is_external_call callee orelse
                node_type callee = "FunctionCallOptions" then
               external_call v callee args
-            else if node_type callee = "Identifier" andalso
-               int_field callee "referencedDeclaration" = keccak256_id then
-              (positional ();
-               require v (length args = 1) "keccak256 takes one argument";
-               builtin_operation v (SOME callee) "Keccak256Builtin" args)
-            else if node_type callee = "Identifier" andalso
-               int_field callee "referencedDeclaration" = ecrecover_id then
-              (positional ();
-               require v (length args = 4) "ecrecover takes four arguments";
-               builtin_operation v (SOME callee) "EcrecoverBuiltin" args)
+            else if isSome (builtin_function callee) then
+              let val (_, name, arity, msg) = valOf (builtin_function callee) in
+                positional ();
+                require v (length args = arity) msg;
+                builtin_operation v (SOME callee) name args
+              end
             else if node_type callee = "MemberAccess" andalso
                     string_field callee "memberName" = "transfer" andalso
                     not (isSome (optional_field callee "referencedDeclaration")) andalso
