@@ -326,9 +326,9 @@ end
  * data, as the bytecode run does, and its storage writes are rolled back. *)
 local
   val sender = "\"sender\":\"0x1212121212121212121212121212120000000012\""
-  fun call index signature =
+  fun call index function =
     "{\"index\":" ^ Int.toString index ^ ",\"deploy\":false,\"value\":0," ^
-    sender ^ ",\"calldata\":\"0x\",\"signature\":\"" ^ signature ^
+    sender ^ ",\"calldata\":\"0x\",\"signature\":\"" ^ function ^
     "\",\"events\":[]}"
   val manifest = OS.FileSys.tmpName ()
   val out = TextIO.openOut manifest
