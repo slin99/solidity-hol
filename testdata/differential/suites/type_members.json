@@ -1,0 +1,117 @@
+{
+  "name": "type_members",
+  "source": "testdata/differential/type_members.sol",
+  "contract": "TypeMembers",
+  "artifact": "testdata/differential/expected/type_members.json",
+  "cases": [
+    {
+      "name": "child_name",
+      "function": "childName",
+      "args": [],
+      "expect": {
+        "returned": "0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010547970654d656d626572734368696c6400000000000000000000000000000000"
+      }
+    },
+    {
+      "name": "own_name_hash",
+      "function": "ownNameHash",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x060e7dfaa8253b1f72818b0f414a203d7f9ffb622e6736f49d31a4477b00efd9",
+          11
+        ]
+      }
+    },
+    {
+      "name": "creation_code_length",
+      "function": "codeLength",
+      "args": [],
+      "expect": {
+        "return": [
+          2216
+        ]
+      }
+    },
+    {
+      "name": "creation_code_hash",
+      "function": "codeHash",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x177b05fb7ed4b6137ed8e18247d0302d98e65db77c135d7eb2635de2aed5704d"
+        ]
+      }
+    },
+    {
+      "name": "creation_code_deployed",
+      "function": "deploy",
+      "args": [
+        9
+      ],
+      "expect": {
+        "return": [
+          9,
+          9,
+          true
+        ]
+      }
+    },
+    {
+      "name": "abstract_interface_id",
+      "function": "handlerId",
+      "args": [],
+      "expect": {
+        "return": [
+          "0xe1112330"
+        ]
+      }
+    },
+    {
+      "name": "interface_id",
+      "function": "isSupportedId",
+      "args": [],
+      "expect": {
+        "return": [
+          "0xb803e4c7"
+        ]
+      }
+    },
+    {
+      "name": "decode_contract",
+      "function": "decodeChild",
+      "args": [
+        "0x00000000000000000000000000000000deadbeef",
+        5
+      ],
+      "expect": {
+        "return": [
+          "0x00000000000000000000000000000000deadbeef",
+          5
+        ]
+      }
+    },
+    {
+      "name": "decode_interface",
+      "function": "decodeDirty",
+      "args": [
+        4660
+      ],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000001234"
+        ]
+      }
+    },
+    {
+      "name": "decode_dirty_address",
+      "function": "decodeDirty",
+      "args": [
+        1461501637330902918203684832716283019655932542976
+      ],
+      "expect": {
+        "revert": "0x"
+      }
+    }
+  ]
+}

@@ -1,0 +1,632 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/abstract_child_unit.sol": {
+        "content": "// SPDX-License-Identifier: UNLICENSED\npragma solidity ^0.8.37;\n\n// A concrete contract followed by an abstract one built on it, in one file:\n// the unit's contract is the concrete one.\ncontract AbstractChildData {\n    address public owner;\n    uint256 public count;\n\n    function bump() external returns (uint256) {\n        count += 1;\n        return count;\n    }\n}\n\nabstract contract AbstractChildLogic is AbstractChildData {\n    function claim() public {\n        owner = msg.sender;\n    }\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/abstract_child_unit.sol": {
+        "AbstractChildData": {
+          "abi": [
+            {
+              "inputs": [],
+              "name": "bump",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "count",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "owner",
+              "outputs": [
+                {
+                  "internalType": "address",
+                  "name": "",
+                  "type": "address"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "608060405234601c57600e6020565b61030661002b823961030690f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b6101e7565b61001d5f3561004c565b806306661abd1461004757806368110b2f1461004257638da5cb5b0361000e576101b2565b610105565b6100d0565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261006a57565b61005c565b1c90565b90565b61008690600861008b930261006f565b610073565b90565b906100999154610076565b90565b6100a860015f9061008e565b90565b90565b6100b7906100ab565b9052565b91906100ce905f602085019401906100ae565b565b34610100576100e0366004610060565b6100fc6100eb61009c565b6100f3610052565b918291826100bb565b0390f35b610058565b3461013557610115366004610060565b6101316101206102ca565b610128610052565b918291826100bb565b0390f35b610058565b60018060a01b031690565b61015590600861015a930261006f565b61013a565b90565b906101689154610145565b90565b6101765f5f9061015d565b90565b60018060a01b031690565b61018d90610179565b90565b61019990610184565b9052565b91906101b0905f60208501940190610190565b565b346101e2576101c2366004610060565b6101de6101cd61016b565b6101d5610052565b9182918261019d565b0390f35b610058565b5f80fd5b5f90565b90565b90565b61020961020461020e926101ef565b6101f2565b6100ab565b90565b5f1c90565b61022261022791610211565b610073565b90565b6102349054610216565b90565b634e487b7160e01b5f52601160045260245ffd5b61025a610260919392936100ab565b926100ab565b820180921161026b57565b610237565b5f1b90565b906102815f1991610270565b9181191691161790565b61029f61029a6102a4926100ab565b6101f2565b6100ab565b90565b90565b906102bf6102ba6102c69261028b565b6102a7565b8254610275565b9055565b6102d26101eb565b506102f96102f26102e360016101f5565b6102ed600161022a565b61024b565b60016102aa565b610303600161022a565b9056"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": "60806040526004361015610013575b6101e7565b61001d5f3561004c565b806306661abd1461004757806368110b2f1461004257638da5cb5b0361000e576101b2565b610105565b6100d0565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261006a57565b61005c565b1c90565b90565b61008690600861008b930261006f565b610073565b90565b906100999154610076565b90565b6100a860015f9061008e565b90565b90565b6100b7906100ab565b9052565b91906100ce905f602085019401906100ae565b565b34610100576100e0366004610060565b6100fc6100eb61009c565b6100f3610052565b918291826100bb565b0390f35b610058565b3461013557610115366004610060565b6101316101206102ca565b610128610052565b918291826100bb565b0390f35b610058565b60018060a01b031690565b61015590600861015a930261006f565b61013a565b90565b906101689154610145565b90565b6101765f5f9061015d565b90565b60018060a01b031690565b61018d90610179565b90565b61019990610184565b9052565b91906101b0905f60208501940190610190565b565b346101e2576101c2366004610060565b6101de6101cd61016b565b6101d5610052565b9182918261019d565b0390f35b610058565b5f80fd5b5f90565b90565b90565b61020961020461020e926101ef565b6101f2565b6100ab565b90565b5f1c90565b61022261022791610211565b610073565b90565b6102349054610216565b90565b634e487b7160e01b5f52601160045260245ffd5b61025a610260919392936100ab565b926100ab565b820180921161026b57565b610237565b5f1b90565b906102815f1991610270565b9181191691161790565b61029f61029a6102a4926100ab565b6101f2565b6100ab565b90565b90565b906102bf6102ba6102c69261028b565b6102a7565b8254610275565b9055565b6102d26101eb565b506102f96102f26102e360016101f5565b6102ed600161022a565b61024b565b60016102aa565b610303600161022a565b9056"
+            },
+            "methodIdentifiers": {
+              "bump()": "68110b2f",
+              "count()": "06661abd",
+              "owner()": "8da5cb5b"
+            }
+          },
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 3,
+                "contract": "testdata/differential/abstract_child_unit.sol:AbstractChildData",
+                "label": "owner",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_address"
+              },
+              {
+                "astId": 5,
+                "contract": "testdata/differential/abstract_child_unit.sol:AbstractChildData",
+                "label": "count",
+                "offset": 0,
+                "slot": "1",
+                "type": "t_uint256"
+              }
+            ],
+            "types": {
+              "t_address": {
+                "encoding": "inplace",
+                "label": "address",
+                "numberOfBytes": "20"
+              },
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        },
+        "AbstractChildLogic": {
+          "abi": [
+            {
+              "inputs": [],
+              "name": "bump",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "claim",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "count",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "owner",
+              "outputs": [
+                {
+                  "internalType": "address",
+                  "name": "",
+                  "type": "address"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": ""
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": ""
+            },
+            "methodIdentifiers": {
+              "bump()": "68110b2f",
+              "claim()": "4e71d92d",
+              "count()": "06661abd",
+              "owner()": "8da5cb5b"
+            }
+          },
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 3,
+                "contract": "testdata/differential/abstract_child_unit.sol:AbstractChildLogic",
+                "label": "owner",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_address"
+              },
+              {
+                "astId": 5,
+                "contract": "testdata/differential/abstract_child_unit.sol:AbstractChildLogic",
+                "label": "count",
+                "offset": 0,
+                "slot": "1",
+                "type": "t_uint256"
+              }
+            ],
+            "types": {
+              "t_address": {
+                "encoding": "inplace",
+                "label": "address",
+                "numberOfBytes": "20"
+              },
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/abstract_child_unit.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/abstract_child_unit.sol",
+          "exportedSymbols": {
+            "AbstractChildData": [
+              18
+            ],
+            "AbstractChildLogic": [
+              30
+            ]
+          },
+          "id": 31,
+          "license": "UNLICENSED",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "^",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "39:24:0"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "AbstractChildData",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 18,
+              "linearizedBaseContracts": [
+                18
+              ],
+              "name": "AbstractChildData",
+              "nameLocation": "195:17:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": false,
+                  "functionSelector": "8da5cb5b",
+                  "id": 3,
+                  "mutability": "mutable",
+                  "name": "owner",
+                  "nameLocation": "234:5:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 18,
+                  "src": "219:20:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_address",
+                    "typeString": "address"
+                  },
+                  "typeName": {
+                    "id": 2,
+                    "name": "address",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "219:7:0",
+                    "stateMutability": "nonpayable",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_address",
+                      "typeString": "address"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "constant": false,
+                  "functionSelector": "06661abd",
+                  "id": 5,
+                  "mutability": "mutable",
+                  "name": "count",
+                  "nameLocation": "260:5:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 18,
+                  "src": "245:20:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 4,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "245:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 16,
+                    "nodeType": "Block",
+                    "src": "315:49:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 12,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 10,
+                            "name": "count",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 5,
+                            "src": "325:5:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "+=",
+                          "rightHandSide": {
+                            "hexValue": "31",
+                            "id": 11,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "number",
+                            "lValueRequested": false,
+                            "nodeType": "Literal",
+                            "src": "334:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_rational_1_by_1",
+                              "typeString": "int_const 1"
+                            },
+                            "value": "1"
+                          },
+                          "src": "325:10:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 13,
+                        "nodeType": "ExpressionStatement",
+                        "src": "325:10:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 14,
+                          "name": "count",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 5,
+                          "src": "352:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 9,
+                        "id": 15,
+                        "nodeType": "Return",
+                        "src": "345:12:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "68110b2f",
+                  "id": 17,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "bump",
+                  "nameLocation": "281:4:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 6,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "285:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 9,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 8,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 17,
+                        "src": "306:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 7,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "306:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "305:9:0"
+                  },
+                  "scope": 18,
+                  "src": "272:92:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 31,
+              "src": "186:180:0",
+              "usedErrors": [],
+              "usedEvents": []
+            },
+            {
+              "abstract": true,
+              "baseContracts": [
+                {
+                  "baseName": {
+                    "id": 19,
+                    "name": "AbstractChildData",
+                    "nameLocations": [
+                      "408:17:0"
+                    ],
+                    "nodeType": "IdentifierPath",
+                    "referencedDeclaration": 18,
+                    "src": "408:17:0"
+                  },
+                  "id": 20,
+                  "nodeType": "InheritanceSpecifier",
+                  "src": "408:17:0"
+                }
+              ],
+              "canonicalName": "AbstractChildLogic",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 30,
+              "linearizedBaseContracts": [
+                30,
+                18
+              ],
+              "name": "AbstractChildLogic",
+              "nameLocation": "386:18:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "body": {
+                    "id": 28,
+                    "nodeType": "Block",
+                    "src": "456:35:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 26,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 23,
+                            "name": "owner",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 3,
+                            "src": "466:5:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_address",
+                              "typeString": "address"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "expression": {
+                              "id": 24,
+                              "name": "msg",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": -15,
+                              "src": "474:3:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_magic_message",
+                                "typeString": "msg"
+                              }
+                            },
+                            "id": 25,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "478:6:0",
+                            "memberName": "sender",
+                            "nodeType": "MemberAccess",
+                            "src": "474:10:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_address",
+                              "typeString": "address"
+                            }
+                          },
+                          "src": "466:18:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_address",
+                            "typeString": "address"
+                          }
+                        },
+                        "id": 27,
+                        "nodeType": "ExpressionStatement",
+                        "src": "466:18:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "4e71d92d",
+                  "id": 29,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "claim",
+                  "nameLocation": "441:5:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 21,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "446:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 22,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "456:0:0"
+                  },
+                  "scope": 30,
+                  "src": "432:59:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "public"
+                }
+              ],
+              "scope": 31,
+              "src": "368:125:0",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "39:455:0"
+        },
+        "id": 0
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}

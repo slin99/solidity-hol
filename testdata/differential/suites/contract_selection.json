@@ -1,0 +1,34 @@
+{
+  "name": "contract_selection",
+  "source": "testdata/differential/contract_selection.sol",
+  "contract": "SelectionProxy",
+  "artifact": "testdata/differential/expected/contract_selection.json",
+  "cases": [
+    {
+      "name": "selected_version",
+      "function": "version",
+      "args": [],
+      "expect": {
+        "return": [
+          2
+        ]
+      },
+      "final_storage": {
+        "0": "1"
+      }
+    },
+    {
+      "name": "selected_getter",
+      "function": "calls",
+      "args": [],
+      "expect": {
+        "return": [
+          3
+        ]
+      },
+      "storage": {
+        "0": "3"
+      }
+    }
+  ]
+}

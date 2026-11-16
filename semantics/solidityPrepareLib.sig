@@ -46,4 +46,9 @@ sig
   (* The normal consumer entry point; retain the checked artifact for bytecode. *)
   val prepare_artifact : {root : string, path : string, source : string} ->
     {artifact : JSON.value, prepared : prepared}
+  (* The same with the unit's contract given by name, if one is
+   * (solidityImportLib.import_contract_artifact_unit_blockers). *)
+  val prepare_contract_artifact :
+    {root : string, path : string, source : string, contract : string option} ->
+    {artifact : JSON.value, prepared : prepared}
 end

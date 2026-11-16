@@ -30,6 +30,11 @@ sig
   (* One source of an already-read artifact, retaining creation code from
    * every compilation source. Profile validation remains the caller's. *)
   val import_artifact_unit_blockers : JSON.value -> string -> term * string list
+  (* The same with the unit's contract given by name, if one is: the source's
+   * contract of that name alone. Otherwise its contracts are those that no
+   * concrete contract of the source inherits and no other one creates. *)
+  val import_contract_artifact_unit_blockers :
+    JSON.value -> string -> string option -> term * string list
 
   (* Raw artifact import, checking only the artifact format. Callers own the
    * compiler/profile/settings contract and source/core validation; normal
