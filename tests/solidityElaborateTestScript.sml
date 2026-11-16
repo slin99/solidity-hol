@@ -448,6 +448,37 @@ val supported_y = local_y “SrcElementaryTypeName ^(at 7) "uint256" NONE”;
 val unsupported_y = local_y “SrcUnsupportedTypeName ^(at 7) "function type"”;
 val read_y = “SrcExpressionStatement ^(at 5) (SrcIdentifier ^(at 6) "y" 4 "t_uint256")”;
 
+(* A storage or calldata reference local declared without a value starts as
+ * a placeholder reference, which solc rejects reading before an assignment;
+ * a storage location holding no object has no default. *)
+Theorem reference_locals_default_to_placeholders:
+  default_operation (LocatedT StorageLoc (ArrayT (UintT 256) NONE)) =
+    SOME (DefaultReferenceOperation StorageLoc (ArrayT (UintT 256) NONE)) ∧
+  default_operation (LocatedT StorageLoc (MappingT (UintT 256) (UintT 256))) =
+    SOME (DefaultReferenceOperation StorageLoc (MappingT (UintT 256) (UintT 256))) ∧
+  default_operation (LocatedT StorageLoc (StructT "S")) =
+    SOME (DefaultReferenceOperation StorageLoc (StructT "S")) ∧
+  default_operation (LocatedT CalldataLoc BytesT) =
+    SOME (DefaultReferenceOperation CalldataLoc BytesT) ∧
+  default_operation (LocatedT StorageLoc (UintT 256)) = NONE
+Proof
+  EVAL_TAC
+QED
+
+Theorem storage_pointer_declared_without_value:
+  let p = <| var_info := ^(at 4); var_name := "p"; var_scope := 0;
+             var_type_name := SrcElementaryTypeName ^(at 7) "bytes" NONE;
+             var_type_id := "t_bytes_storage_ptr"; var_transient := F;
+             var_location := SOME StorageLoc |> in
+    elab_stmt ^ctx0 10
+      (SrcVariableDeclarationStatement ^(at 3) [SOME 4] [SOME p] NONE) =
+    INL (([DefineStmt (AstId 4) (SingleType (LocatedT StorageLoc BytesT))
+             (DefaultReferenceOperation StorageLoc BytesT)],
+          ^ctx0 with variables := [(4, LocatedT StorageLoc BytesT)]), 10)
+Proof
+  EVAL_TAC
+QED
+
 Theorem independent_failures_all_report:
   elab_stmts ^ctx0 10 [SrcBreak ^(at 1); SrcContinue ^(at 2)] =
   INR [(1, "break outside a loop"); (2, "continue outside a loop")]
