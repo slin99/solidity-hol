@@ -27,11 +27,13 @@ import argparse
 from collections import Counter, defaultdict, deque
 from dataclasses import dataclass, replace
 from functools import lru_cache
+import hashlib
 import itertools
 import json
 from pathlib import Path
 import random
 import re
+import subprocess
 import sys
 from typing import Any, Callable, Iterator
 
@@ -835,6 +837,35 @@ def manifest_targets(path: Path) -> list[Target]:
     return [Target(entry, fuel) for entry in json.loads(path.read_text())["targets"]]
 
 
+def run_inputs(targets: list[Target], seed: int, candidates: int, k: int) -> dict[str, Any]:
+    """What a run's results depend on: its generation settings, the targets
+    with their artifacts, and the runner's and the evaluator's sources."""
+    fingerprint = hashlib.sha256()
+    for name in subprocess.check_output(["git", "ls-files"], cwd=ROOT, text=True).splitlines():
+        path = ROOT / name
+        if path.suffix in (".sml", ".sig", ".py", ".toml") or name == "SOLIDITY_PIN":
+            fingerprint.update(name.encode())
+            fingerprint.update(path.read_bytes())
+    for t in targets:
+        fingerprint.update((ROOT / t.entry["artifact"]).read_bytes())
+        fingerprint.update((ROOT / t.entry["peer"]["artifact"]).read_bytes())
+    return {"source_hash": fingerprint.hexdigest(), "seed": seed, "candidates": candidates,
+            "k": k, "targets": [t.entry for t in targets]}
+
+
+def check_inputs(output: Path, inputs: dict[str, Any], *, resume: bool) -> None:
+    """Start a run in an empty output directory, or resume one whose inputs
+    are unchanged."""
+    path = output / "inputs.json"
+    if not resume:
+        if output.exists() and any(output.iterdir()):
+            raise SystemExit(f"{output} is not empty; pass --resume to continue its run")
+        fleet.exporter.write_json_atomic(path, inputs)
+    elif not path.is_file() or json.loads(path.read_text()) != inputs:
+        raise SystemExit("cannot resume: the generation settings, targets, artifacts or "
+                         "runner/evaluator sources changed")
+
+
 def import_pyrevm() -> Any:
     try:
         import pyrevm  # type: ignore[import-not-found]
@@ -947,7 +978,7 @@ class Fuzzer:
             fleet.exporter.write_json_atomic(path, {
                 "name": f"fuzz_{contract}",
                 **{k: entry[k] for k in ("source", "contract", "artifact")},
-                **({"peer": entry["peer"]} if entry["peer"] != ECHO_PEER else {}),
+                "peer": entry["peer"],
                 "cases": [c.suite_case(metadata=False) for c in cases]})
             written.append(path)
         return written
@@ -973,6 +1004,12 @@ class Fuzzer:
         return summary
 
 
+def failed(summary: dict[str, Any]) -> bool:
+    """A disagreement, an error, a case without a result or a contract that
+    couldn't be prepared fails the run."""
+    return any(summary[k] for k in ("disagree", "error", "missing", "contract_failures"))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument("--output", type=Path, required=True,
@@ -989,23 +1026,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-batches", type=int,
                         help="evaluate at most this many pending HOL batches")
     parser.add_argument("--resume", action="store_true",
-                        help="reuse the output's cases and finished batches")
+                        help="reuse the output's cases and finished batches; refused if the "
+                             "settings, targets or sources changed")
     parser.add_argument("--shrink-rounds", type=int, default=8)
     parser.add_argument("--holbuild", default="holbuild")
     args = parser.parse_args(argv)
-    if args.output.exists() and any(args.output.iterdir()) and not args.resume:
-        raise SystemExit(f"{args.output} is not empty; pass --resume to continue its run")
     fuzzer = Fuzzer(args.output, seed=args.seed, candidates=args.candidates, k=args.k,
                     evaluate=lambda work, entries: run_fleet(args.holbuild, work, entries))
     if args.targets and args.suite:
         raise SystemExit("--targets and --suite are exclusive")
     targets = manifest_targets(args.targets) if args.targets else suite_targets(args.suite)
+    check_inputs(args.output, run_inputs(targets, args.seed, args.candidates, args.k),
+                 resume=args.resume)
     summary = fuzzer.run(targets, max_batches=args.max_batches,
                          shrink_rounds=args.shrink_rounds)
     print(markdown(summary))
     for path in summary.get("minimized", []):
         print(f"minimized disagreements: {path}", file=sys.stderr)
-    return 1 if summary["disagree"] or summary["error"] or summary["missing"] else 0
+    return 1 if failed(summary) else 0
 
 
 if __name__ == "__main__":

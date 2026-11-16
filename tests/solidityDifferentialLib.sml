@@ -1017,29 +1017,25 @@ fun run_expectations {root, manifest} =
 (* Fuzz cases: generated calls in the corpus case format whose expectation is
  * what a screening EVM recorded. The source runs against that recording
  * (fuzz_verdict); every difference, and every case marked "confirm", is
- * then run in full against the bytecode in Verifereum (differential_verdict),
- * so a reported disagreement never rests on the recording. Results are
- * "fuzz-result: " lines; nothing is saved per case. *)
+ * then confirmed (confirm_verdict): the source against Verifereum's run of
+ * the bytecode, and that run against the recording. So a reported
+ * disagreement never rests on the recording. Results are "fuzz-result: "
+ * lines; nothing is saved per case. *)
 
 fun emit_fuzz fields = emit_result "fuzz-result: " fields
 
 fun verdict_name tm = fst (dest_const (fst (strip_comb tm)))
 
-(* A verdict's operands as JSON, named as the verdict datatype names them;
- * first names the left run of a mismatch: the recording or the bytecode. *)
-fun verdict_fields first verdict =
+(* A run_verdict's operands as JSON, named for the runs it compared. *)
+fun verdict_fields (reference, run) verdict =
   case snd (strip_comb verdict) of
     [a, b] =>
       let
         val name = verdict_name verdict
-        val unexpected = String.isSuffix "Unexpected" name
         val json = if String.isPrefix "Storage" name then storage_json
                    else if String.isPrefix "Log" name then logs_json
                    else outcome_json
-      in
-        [(if unexpected then "agreed" else first, json a),
-         (if unexpected then "expected" else "source", json b)]
-      end
+      in [(reference, json a), (run, json b)] end
   | [a] => [("outcome", outcome_json a)]
   | _ => []
 
@@ -1048,45 +1044,52 @@ fun diagnostic_reason verdict =
     SOME d => fst (dest_const (rand d))
   | NONE => raise ERR "diagnostic_reason" "no diagnostic in the verdict"
 
-(* The bytecode and the source differ: a disagreement. Both agree but differ
- * from the recording: the screening EVM was wrong. *)
-fun confirmation_status verdict =
-  case verdict_name verdict of
-    "Agree" => "agree"
-  | "Inconclusive" => "inconclusive"
-  | "Mismatch" => "disagree"
-  | "StorageMismatch" => "disagree"
-  | "LogMismatch" => "disagree"
-  | _ => "pyrevm-mismatch"
+(* A case's status, its verdict and the names of that verdict's runs. The
+ * bytecode and the source differing is a disagreement; both agreeing but
+ * the bytecode differing from the recording, the screening EVM was wrong. *)
+fun fuzz_status screened confirmed =
+  case confirmed of
+    NONE =>
+      if is_con "Agree" screened then ("agree", screened, ("recorded", "source"))
+      else ("inconclusive", screened, ("recorded", "source"))
+  | SOME (source, recording) =>
+      if is_con "Inconclusive" source then ("inconclusive", source, ("bytecode", "source"))
+      else if not (is_con "Agree" source) then ("disagree", source, ("bytecode", "source"))
+      else if is_con "Agree" recording then ("agree", source, ("bytecode", "source"))
+      else ("pyrevm-mismatch", recording, ("recorded", "bytecode"))
 
-fun run_fuzz_case {contract, code, unit, program, fuel, fixture, immutables} c =
+(* owed counts the "confirm" marks on cases that screened inconclusive: each
+ * passes to the next case that doesn't, so a contract's sample isn't lost to
+ * diagnostics. *)
+fun run_fuzz_case {contract, code, unit, program, fuel, fixture, immutables} owed c =
   let
     val case_name = name_field c "name"
     val no_initcode = fn () => fail "fuzz cases are calls, not creations"
     val case_tm = case_term fixture immutables (call_input no_initcode c) c
-    fun verdict name =
+    fun evaluate name =
       rhs (concl (cv_eval (list_mk_comb
         (prim_mk_const {Thy = "solidityDifferential", Name = name},
          [code, unit, program, num_term fuel, case_tm]))))
-    val screened = verdict "fuzz_verdict"
+    val screened = evaluate "fuzz_verdict"
     val marked = case JSONUtil.findField c "confirm" of
                    SOME (JSON.BOOL b) => b | _ => false
-    val confirm = not (is_con "Inconclusive" screened) andalso
-                  (marked orelse not (is_con "Agree" screened))
-    val confirmed = if confirm then SOME (verdict "differential_verdict") else NONE
-    val final = case confirmed of SOME v => v | NONE => screened
-    val status = case confirmed of
-                   SOME v => confirmation_status v
-                 | NONE => if is_con "Agree" screened then "agree" else "inconclusive"
+    val inconclusive = is_con "Inconclusive" screened
+    val confirm = not inconclusive andalso
+                  (marked orelse !owed > 0 orelse not (is_con "Agree" screened))
+    val () = if marked andalso inconclusive then owed := !owed + 1
+             else if confirm andalso not marked andalso !owed > 0 then owed := !owed - 1
+             else ()
+    val confirmed = if confirm then SOME (pairSyntax.dest_pair (evaluate "confirm_verdict"))
+                    else NONE
+    val (status, verdict, runs) = fuzz_status screened confirmed
   in
     emit_fuzz ([("kind", json_string "case"), ("contract", json_string contract),
                 ("case", json_string case_name), ("status", json_string status),
                 ("screen", json_string (verdict_name screened)),
                 ("confirmed", if confirm then "true" else "false")] @
                (if status = "inconclusive"
-                then [("reason", json_string (diagnostic_reason final))] else []) @
-               (if status = "agree" then []
-                else verdict_fields (if confirm then "bytecode" else "recorded") final))
+                then [("reason", json_string (diagnostic_reason verdict))] else []) @
+               (if status = "agree" then [] else verdict_fields runs verdict))
   end
   handle e =>
     emit_fuzz [("kind", json_string "case"), ("contract", json_string contract),
@@ -1119,7 +1122,7 @@ fun run_fuzz_contract root s =
   in
     emit_fuzz [("kind", json_string "contract"), ("contract", json_string contract),
                ("status", json_string "ok"), ("unsupported", json_array unsupported)];
-    List.app (run_fuzz_case env) (array_field s "cases")
+    List.app (run_fuzz_case env (ref 0)) (array_field s "cases")
   end
   handle solidityPrepareLib.PreparationError (kind, message) =>
            emit_fuzz [("kind", json_string "contract"),

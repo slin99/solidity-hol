@@ -252,11 +252,15 @@ outcomes come before repeats.
 HOL batches on the fleet run them through `solidityDifferentialLib.run_fuzz_cases`:
 each contract is prepared once, and each case's source run is compared with
 its recording by `fuzz_verdict`, evaluated with `cv_eval`, with no theorem
-saved. Every difference, and every twentieth case, is then run against the
-bytecode in Verifereum with `differential_verdict`. A case's status is:
+saved. Every difference, and every twentieth case, is then confirmed by
+`confirm_verdict`: the source against Verifereum's run of the bytecode, and
+that run against the recording. A confirmation mark on a case that ends in a
+diagnostic passes to the contract's next case. A case's status is:
 
-- `agree`: the source matches the recording (and, when confirmed, the bytecode);
-- `disagree`: the source and Verifereum's run of the bytecode differ;
+- `agree`: the source matches the recording (and, when confirmed, the bytecode,
+  which matches the recording);
+- `disagree`: the source and Verifereum's run of the bytecode differ in
+  outcome, complete storage or logs;
 - `pyrevm-mismatch`: they agree with each other but not with pyrevm;
 - `inconclusive`: either run ended in a diagnostic, reported by reason;
 - `error`: the case could not be built or evaluated.

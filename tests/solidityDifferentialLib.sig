@@ -29,10 +29,11 @@ sig
    *)
   val run_expectations : {root : string, manifest : string} -> unit
   (* Fuzz cases: the manifest lists contracts, each a suite (name, artifact,
-   * source, contract, fuel, optional peer) whose cases are generated calls with a
-   * recorded expectation. Each contract is prepared once; each case's source
-   * run is compared with its recording (fuzz_verdict) and, on a difference
-   * or when marked "confirm", with the bytecode (differential_verdict).
+   * source, contract, fuel, optional peer) whose cases are generated calls
+   * with a recorded expectation. Each contract is prepared once; each case's
+   * source run is compared with its recording (fuzz_verdict) and, on a
+   * difference or when marked "confirm", with Verifereum's run of the
+   * bytecode, which is compared with the recording too (confirm_verdict).
    * Every result is a line "fuzz-result: " followed by JSON. *)
   val run_fuzz_cases : {root : string, manifest : string} -> unit
   (* The three-way run: for each suite it imports the Yul the pinned compiler

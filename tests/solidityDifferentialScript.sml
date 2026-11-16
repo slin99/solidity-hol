@@ -437,26 +437,39 @@ Definition recorded_execution_def:
      expected_logs c.case_logs)
 End
 
+(* Two runs' complete observations compared: run against the reference.
+ * slots selects the storage the verdict shows. *)
+Definition run_verdict_def:
+  run_verdict slots reference run =
+    if is_diagnostic (FST reference) ∨ is_diagnostic (FST run) then
+      Inconclusive (FST reference) (FST run)
+    else if FST reference ≠ FST run then Mismatch (FST reference) (FST run)
+    else if FST (SND reference) ≠ FST (SND run) then
+      StorageMismatch (SND (project_observation slots reference))
+                      (SND (project_observation slots run))
+    else if SND (SND reference) ≠ SND (SND run) then
+      LogMismatch (SND (SND reference)) (SND (SND run))
+    else Agree (FST run)
+End
+
 (* The source run against the recorded observation alone, with no bytecode
- * run: the recording stands where evm_execution stands in
- * differential_verdict. The fuzzer confirms every difference, and a sample
- * of agreements, with differential_verdict, so no verdict rests on the
- * recording alone. *)
+ * run. The fuzzer confirms every difference, and a sample of agreements,
+ * with confirm_verdict, so no verdict rests on the recording alone. *)
 Definition fuzz_verdict_def:
   fuzz_verdict code u prog fuel c =
+    run_verdict (observed_slots prog c.case_storage c.case_final)
+      (recorded_execution u c) (source_execution code u prog fuel c)
+End
+
+(* The source run against Verifereum's run of the bytecode, and that
+ * bytecode run against the recording: the first says whether the source
+ * and the bytecode agree, the second whether the recording was right. *)
+Definition confirm_verdict_def:
+  confirm_verdict code u prog fuel c =
     let slots = observed_slots prog c.case_storage c.case_final in
-    let recorded = recorded_execution u c in
-    let src_run = source_execution code u prog fuel c in
-    if is_diagnostic (FST recorded) ∨ is_diagnostic (FST src_run) then
-      Inconclusive (FST recorded) (FST src_run)
-    else if FST recorded ≠ FST src_run then
-      Mismatch (FST recorded) (FST src_run)
-    else if FST (SND recorded) ≠ FST (SND src_run) then
-      StorageMismatch (SND (project_observation slots recorded))
-                      (SND (project_observation slots src_run))
-    else if SND (SND recorded) ≠ SND (SND src_run) then
-      LogMismatch (SND (SND recorded)) (SND (SND src_run))
-    else Agree (FST src_run)
+    let evm_run = evm_execution code u c in
+      (run_verdict slots evm_run (source_execution code u prog fuel c),
+       run_verdict slots (recorded_execution u c) evm_run)
 End
 
 Theorem compare_observations_agree:
@@ -557,4 +570,6 @@ val () = cv_auto_trans differential_verdict_def;
 val () = cv_auto_trans is_agreement_def;
 val () = cv_auto_trans differential_agrees_def;
 val () = cv_auto_trans recorded_execution_def;
+val () = cv_auto_trans run_verdict_def;
 val () = cv_auto_trans fuzz_verdict_def;
+val () = cv_auto_trans confirm_verdict_def;

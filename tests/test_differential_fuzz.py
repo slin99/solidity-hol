@@ -209,6 +209,8 @@ class FuzzerTests(unittest.TestCase):
         self.assertNotIn("confirm", case)
         self.assertEqual(case["storage"], {})
         self.assertEqual(minimized["name"], f"fuzz_{SUITE}")
+        self.assertEqual(minimized["peer"], fuzz.ECHO_PEER)  # what the recording ran with
+        self.assertTrue(fuzz.failed(summary))
 
         screened, evaluated = self.screened, len(self.evaluated)
         again = self.fuzzer().run(targets, max_batches=None, shrink_rounds=0)
@@ -216,6 +218,25 @@ class FuzzerTests(unittest.TestCase):
         self.assertEqual(len(self.evaluated), evaluated)  # nothing left to evaluate
         self.assertEqual(self.screened, screened + 2)  # only the minimized recordings
         self.assertTrue((self.output / "report.md").is_file())
+
+    def test_a_contract_that_fails_to_prepare_fails_the_run(self) -> None:
+        manifests = {"c": {"screening": {}, "cases": [
+            {"name": "a", "fuzz": {"function": "f", "mode": "typed"}}]}}
+        results = [{"kind": "contract", "contract": "c", "status": "error", "message": "boom"}]
+        summary = fuzz.report(manifests, results)
+        self.assertEqual(summary["missing"], [])
+        self.assertTrue(fuzz.failed(summary))
+
+    def test_resume_is_refused_when_inputs_change(self) -> None:
+        inputs = fuzz.run_inputs([target()], 0, 5, 4)
+        fuzz.check_inputs(self.output, inputs, resume=False)
+        fuzz.check_inputs(self.output, inputs, resume=True)
+        with self.assertRaisesRegex(SystemExit, "not empty"):
+            fuzz.check_inputs(self.output, inputs, resume=False)
+        for changed in ({**inputs, "seed": 1}, fuzz.run_inputs([target()], 0, 5, 8),
+                        {**inputs, "source_hash": "0"}):
+            with self.assertRaisesRegex(SystemExit, "cannot resume"):
+                fuzz.check_inputs(self.output, changed, resume=True)
 
     def test_max_batches_bounds_the_evaluation(self) -> None:
         targets = fuzz.suite_targets([])[:fuzz.fleet.BATCH_SIZE + 1]
