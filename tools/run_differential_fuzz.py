@@ -678,16 +678,21 @@ def records(path: Path) -> list[dict[str, Any]]:
 
 
 def batch_records(work: Path) -> list[dict[str, Any]]:
-    return [r for path in fleet.result_files(work) for r in records(path)]
+    """Every batch's records, less the failed actions of contracts run again since."""
+    found = [r for path in fleet.result_files(work) for r in records(path)]
+    rerun = {r["contract"] for r in found if r["kind"] == "contract" and r["status"] != "action-failed"}
+    return [r for r in found if not (r["kind"] == "contract" and r["status"] == "action-failed"
+                                     and r["contract"] in rerun)]
 
 
 def completed_contracts(results: list[dict[str, Any]],
                         manifests: dict[str, dict[str, Any]]) -> set[str]:
-    """Contracts with a result for every case, or a failure of the whole contract."""
+    """Contracts with a result for every case, or a preparation failure; a
+    failed action (a worker or network failure among them) is run again."""
     seen: dict[str, set[str]] = defaultdict(set)
     failed = set()
     for r in results:
-        if r["kind"] == "contract" and r["status"] != "ok":
+        if r["kind"] == "contract" and r["status"] not in ("ok", "action-failed"):
             failed.add(r["contract"])
         elif r["kind"] == "case":
             seen[r["contract"]].add(r["case"])
@@ -777,16 +782,15 @@ def markdown(summary: dict[str, Any]) -> str:
 # Shrinking
 
 def variants(call: Call) -> list[Call]:
-    """Smaller calls: all storage dropped, or its entries singly (by quarters
-    when there are many), immutables dropped, value and sender reset,
+    """Smaller calls: all storage dropped, a quarter of it (when there are
+    many entries) or one entry, immutables dropped, value and sender reset,
     calldata words after the selector zeroed, or its last word dropped."""
     found: list[Call] = [replace(call, storage={})] if len(call.storage) > 1 else []
     slots = sorted(call.storage)
-    if len(slots) <= 8:
-        drops = [[s] for s in slots]
-    else:
+    drops = [[s] for s in slots]
+    if len(slots) > 8:
         quarter = (len(slots) + 3) // 4
-        drops = [slots[i:i + quarter] for i in range(0, len(slots), quarter)]
+        drops = [slots[i:i + quarter] for i in range(0, len(slots), quarter)] + drops
     found += [replace(call, storage={k: v for k, v in call.storage.items() if k not in drop})
               for drop in drops]
     found += [replace(call, immutables={k: v for k, v in call.immutables.items() if k != name})

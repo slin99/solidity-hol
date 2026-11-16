@@ -282,6 +282,7 @@ uv run --python 3.11 --with pyrevm tools/run_differential_fuzz.py --output /tmp/
 
 `--suite` picks suites, `--targets` names other contracts in the same shape,
 `--seed` and `--candidates` change the calls, and `--max-batches` bounds the
-HOL actions; `--resume` reuses the output's cases and finished contracts. Like the
+HOL actions; `--resume` reuses the output's cases and finished contracts, and runs a
+contract whose action failed again. Like the
 expectation runner, it runs only on the fleet
 when remote execution is configured.

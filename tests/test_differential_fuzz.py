@@ -169,6 +169,16 @@ class ShrinkTests(unittest.TestCase):
         self.assertEqual(key, "c/fuzz_0000")
         self.assertEqual(minimal, call(calldata=b"\xaa\xbb\xcc\xdd" + fuzz.word(5)))
 
+    def test_storage_spread_over_every_quarter_still_shrinks_to_what_is_needed(self) -> None:
+        needed = {0, 3, 6, 9}
+
+        def still_fails(proposals: dict[str, list[fuzz.Call]]) -> dict[str, list[bool]]:
+            return {k: [needed <= set(c.storage) for c in calls] for k, calls in proposals.items()}
+
+        failing = call(storage={slot: 1 for slot in range(12)})
+        [minimal] = fuzz.shrink({"c/x": failing}, still_fails, 20).values()
+        self.assertEqual(set(minimal.storage), needed)
+
     def test_a_case_no_variant_reproduces_is_left_alone(self) -> None:
         failing = call(storage={1: 2})
         never = lambda proposals: {k: [False] * len(v) for k, v in proposals.items()}
@@ -311,6 +321,17 @@ class FuzzerTests(unittest.TestCase):
         summary = self.fuzzer().run(targets, max_batches=None, shrink_rounds=0)
         self.assertEqual(self.evaluated[0], [targets[1].name])
         self.assertEqual(summary["contracts"], 2)
+
+    def test_resume_runs_a_contract_whose_action_failed_again(self) -> None:
+        targets = fuzz.suite_targets([])[:1]
+        batch = self.output / "work" / "batch-0000"
+        batch.mkdir(parents=True)
+        (batch / "results.jsonl").write_text(fuzz.PREFIX + json.dumps(
+            {"kind": "contract", "contract": targets[0].name, "status": "action-failed",
+             "message": "status 1"}) + "\n")
+        summary = self.fuzzer().run(targets, max_batches=None, shrink_rounds=0)
+        self.assertEqual(self.evaluated, [[targets[0].name]])
+        self.assertEqual(summary["contract_failures"], {})
 
     def test_a_contract_sent_to_hol_without_a_result_fails_the_run(self) -> None:
         targets = fuzz.suite_targets([])[:2]
