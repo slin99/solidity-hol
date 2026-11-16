@@ -576,7 +576,7 @@ def generate_calls(seed: int, target: Target, per_function: int) -> list[Call]:
             else:
                 typed = target.selectors[signature(f)] + encode_tuple(
                     f["inputs"], [random_value(rng, t) for t in f["inputs"]])
-                function = f["name"]
+                function = signature(f)
                 mode, data = ("typed", typed) if roll < 0.7 else ("mutated", mutate(rng, typed))
             value = rng.choice([1, 10 ** 18]) if rng.random() < (0.5 if payable else 0.1) else 0
             calls.append(Call(function=function, mode=mode, calldata=data,

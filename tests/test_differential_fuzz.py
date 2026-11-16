@@ -1,6 +1,7 @@
 from collections import Counter
 from dataclasses import replace
 from pathlib import Path
+import copy
 import json
 import subprocess
 import sys
@@ -82,6 +83,30 @@ class GenerationTests(unittest.TestCase):
             self.assertAlmostEqual(modes[mode] / len(calls), share, delta=0.02)
         selectors = set(target().selectors.values())
         self.assertTrue(all(c.calldata[:4] in selectors for c in calls if c.mode == "typed"))
+
+
+class OverloadTests(unittest.TestCase):
+    def overloaded(self) -> fuzz.Target:
+        t = copy.copy(target())
+        t.functions = [{"name": "f", "stateMutability": "nonpayable", "inputs": [{"type": ty}]}
+                       for ty in ("uint8", "uint256")]
+        t.selectors = {fuzz.signature(f): fuzz.keccak256(fuzz.signature(f).encode())[:4]
+                       for f in t.functions}
+        return t
+
+    def test_overloads_are_generated_stratified_and_reported_apart(self) -> None:
+        calls = [c for c in fuzz.generate_calls(0, self.overloaded(), 20) if c.mode != "raw"]
+        self.assertEqual({c.function for c in calls}, {"f(uint8)", "f(uint256)"})
+        screened = [(c, fuzz.Recording({"returned": "0x"}, {}, [])) for c in calls]
+        chosen = fuzz.stratify(0, "t", screened, 2)
+        self.assertEqual({c.function for c, _ in chosen}, {"f(uint8)", "f(uint256)"})
+        manifests = {"c": {"screening": {}, "cases": [
+            {"name": n, "fuzz": {"function": f, "mode": "typed"}}
+            for n, f in (("a", "f(uint8)"), ("b", "f(uint256)"))]}}
+        results = [{"kind": "case", "contract": "c", "case": n, "status": "inconclusive",
+                    "reason": "OutOfFuel", "confirmed": False} for n in ("a", "b")]
+        self.assertEqual([r["function"] for r in fuzz.report(manifests, results)["inconclusive"]],
+                         ["f(uint256)", "f(uint8)"])
 
 
 class StorageTests(unittest.TestCase):
