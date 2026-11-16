@@ -242,6 +242,20 @@ class FuzzerTests(unittest.TestCase):
         self.assertEqual(summary["invalid_completion_functions"], [{"contract": "c", "function": "f"}])
 
 
+class TargetTests(unittest.TestCase):
+    def test_a_targets_manifest_names_contracts_outside_the_suites(self) -> None:
+        suite = json.loads((fuzz.SUITES / f"{SUITE}.json").read_text())
+        entry = {k: suite[k] for k in ("source", "contract")}
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = Path(temporary) / "targets.json"
+            manifest.write_text(json.dumps({"targets": [
+                {**entry, "name": "outside", "artifact": str(ROOT / suite["artifact"]),
+                 "fuel": 7}]}))
+            [t] = fuzz.manifest_targets(manifest)
+        self.assertEqual((t.name, t.entry["fuel"], t.entry["peer"]), ("outside", 7, fuzz.ECHO_PEER))
+        self.assertEqual(t.selectors, target().selectors)
+
+
 class FleetTests(unittest.TestCase):
     def test_contracts_run_through_the_fuzz_script_with_their_peer(self) -> None:
         entry = {**target().entry, "cases": []}

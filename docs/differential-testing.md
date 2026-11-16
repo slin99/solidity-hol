@@ -272,7 +272,8 @@ function and reason, and the functions whose every ABI-encoded case ended in
 uv run --python 3.11 --with pyrevm tools/run_differential_fuzz.py --output /tmp/fuzz
 ```
 
-`--suite` picks suites, `--seed` and `--candidates` change the calls, and
-`--max-batches` bounds the HOL work; `--resume` reuses the output's cases and
-finished batches. Like the expectation runner, it runs only on the fleet
+`--suite` picks suites, `--targets` names other contracts in the same shape,
+`--seed` and `--candidates` change the calls, and `--max-batches` bounds the
+HOL work; `--resume` reuses the output's cases and finished batches. Like the
+expectation runner, it runs only on the fleet
 when remote execution is configured.

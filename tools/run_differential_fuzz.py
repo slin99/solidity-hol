@@ -827,6 +827,14 @@ def suite_targets(names: list[str]) -> list[Target]:
     return [Target(s, fuel) for s in suites]
 
 
+def manifest_targets(path: Path) -> list[Target]:
+    """Targets from a JSON object {"targets": [...]}, each entry shaped like a
+    suite (name, source, contract, artifact, optional peer and fuel); relative
+    artifact paths are from the repository root."""
+    fuel = json.loads(CORPUS.read_text())["fuel"]
+    return [Target(entry, fuel) for entry in json.loads(path.read_text())["targets"]]
+
+
 def import_pyrevm() -> Any:
     try:
         import pyrevm  # type: ignore[import-not-found]
@@ -971,6 +979,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="run directory: cases, HOL batches, report, minimized suites")
     parser.add_argument("--suite", action="append", default=[],
                         help="fuzz only this differential suite (repeatable)")
+    parser.add_argument("--targets", type=Path,
+                        help='fuzz the contracts of a JSON {"targets": [suite-shaped entries]} '
+                             "instead of the suites")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--candidates", type=int, default=200,
                         help="candidates screened per function")
@@ -986,7 +997,10 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit(f"{args.output} is not empty; pass --resume to continue its run")
     fuzzer = Fuzzer(args.output, seed=args.seed, candidates=args.candidates, k=args.k,
                     evaluate=lambda work, entries: run_fleet(args.holbuild, work, entries))
-    summary = fuzzer.run(suite_targets(args.suite), max_batches=args.max_batches,
+    if args.targets and args.suite:
+        raise SystemExit("--targets and --suite are exclusive")
+    targets = manifest_targets(args.targets) if args.targets else suite_targets(args.suite)
+    summary = fuzzer.run(targets, max_batches=args.max_batches,
                          shrink_rounds=args.shrink_rounds)
     print(markdown(summary))
     for path in summary.get("minimized", []):
