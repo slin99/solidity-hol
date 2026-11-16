@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 from collections import Counter
 from dataclasses import asdict, dataclass, field
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -31,6 +32,10 @@ import export_solc_artifacts as exporter
 from generate_solidity_programs import generate, parse_seeds
 import run_differential_fuzz as fuzz
 import semantic_tests_coverage as coverage
+
+# Preparation errors in solidity-hol itself, not in the generator: they fail
+# the run, as they fail the semantic tests' census.
+CORE_ERRORS = (coverage.INVALID_CORE, coverage.MALFORMED_INPUT)
 
 
 @dataclass(frozen=True)
@@ -70,15 +75,19 @@ class Admission:
         found[coverage.ADMITTED] = len(self.admitted)
         return dict(sorted(found.items()))
 
+    def core_errors(self) -> dict[str, dict[str, Any]]:
+        return {name: r for name, r in self.rejected.items() if r["category"] in CORE_ERRORS}
+
 
 def compile_programs(solc: Path, programs: list[Program]) -> dict[str, str]:
-    """Write each program's source and artifact, reusing artifacts already
-    written; the compile failures' messages, by name."""
+    """Write each program's source and artifact, reusing an artifact already
+    written for the same source; the compile failures' messages, by name."""
     failures = {}
     for program in programs:
-        if program.artifact.is_file():
-            continue
         text = generate(program.seed)
+        if (program.artifact.is_file() and program.source.is_file()
+                and program.source.read_text(encoding="utf-8") == text):
+            continue
         program.source.parent.mkdir(parents=True, exist_ok=True)
         program.source.write_text(text, encoding="utf-8")
         try:
@@ -91,12 +100,31 @@ def compile_programs(solc: Path, programs: list[Program]) -> dict[str, str]:
     return failures
 
 
+def admission_inputs(programs: list[Program], failures: dict[str, str]) -> dict[str, Any]:
+    """What the admission depends on: the seeds, each program's artifact or
+    compile failure, and the repository's sources (generator and evaluator)."""
+    fingerprint = hashlib.sha256()
+    for p in programs:
+        fingerprint.update(p.name.encode())
+        fingerprint.update(failures[p.name].encode() if p.name in failures
+                           else p.artifact.read_bytes())
+    return {"seeds": [p.seed for p in programs], "programs": fingerprint.hexdigest(),
+            # The runner's fingerprint of the sources, with no targets.
+            "sources": fuzz.run_inputs([], 0, 0, 0)["source_hash"]}
+
+
 def admit(holbuild: str, output: Path, programs: list[Program],
           failures: dict[str, str]) -> Admission:
-    """Prepare the compiled programs in HOL, once per run directory."""
+    """Prepare the compiled programs in HOL, once per run directory: a
+    resumed run reuses the admission only if its inputs are unchanged."""
     path = output / "admission.json"
+    inputs = admission_inputs(programs, failures)
     if path.is_file():
-        return Admission(**json.loads(path.read_text()))
+        saved = json.loads(path.read_text())
+        if saved.pop("inputs") != inputs:
+            raise SystemExit("cannot resume: the seeds, programs or sources changed "
+                             "since the admission")
+        return Admission(**saved)
     compiled = [p for p in programs if p.name not in failures]
     hol = coverage.run_hol(holbuild, output / "admission",
                            [(p.name, p.artifact) for p in compiled]) if compiled else {}
@@ -111,7 +139,7 @@ def admit(holbuild: str, output: Path, programs: list[Program],
             admission.rejected[p.name] = {
                 "category": result.category,
                 "blockers": result.blockers + result.unsupported + result.creation}
-    exporter.write_json_atomic(path, asdict(admission))
+    exporter.write_json_atomic(path, {"inputs": inputs, **asdict(admission)})
     return admission
 
 
@@ -122,11 +150,15 @@ def markdown(seeds: range, admission: Admission, summary: dict[str, Any] | None)
              f"programs admitted ({share:.1f}%).", "",
              "| Programs | Count |", "| --- | ---: |"]
     lines += [f"| {category} | {n} |" for category, n in admission.counts().items()]
-    if admission.rejected:
-        lines += ["", "## Generator bugs (programs dropped)", ""]
-        lines += [f"- `{name}` ({r['category']}): "
-                  + "; ".join(b.splitlines()[0] for b in r["blockers"][:3])
-                  for name, r in sorted(admission.rejected.items())]
+    errors = admission.core_errors()
+    for title, found in (("Core errors (the run fails)", errors),
+                         ("Generator bugs (programs dropped)",
+                          {n: r for n, r in admission.rejected.items() if n not in errors})):
+        if found:
+            lines += ["", f"## {title}", ""]
+            lines += [f"- `{name}` ({r['category']}): "
+                      + "; ".join(b.splitlines()[0] for b in r["blockers"][:3])
+                      for name, r in sorted(found.items())]
     if summary is not None:
         lines += ["", fuzz.markdown(summary).replace("# Differential fuzzing", "## Fuzzing", 1)]
     return "\n".join(lines) + "\n"
@@ -163,8 +195,11 @@ def main(argv: list[str] | None = None) -> int:
             "targets": [by_name[name].target() for name in admission.admitted]})
         targets = fuzz.manifest_targets(targets_file)
         fuzz_output = output / "fuzz"
+        # A resumed run whose fuzzing hadn't started (an admission-only run, say)
+        # starts it.
         fuzz.check_inputs(fuzz_output, fuzz.run_inputs(targets, args.fuzz_seed, args.candidates,
-                                                       args.k), resume=args.resume)
+                                                       args.k),
+                          resume=args.resume and (fuzz_output / "inputs.json").is_file())
         fuzzer = fuzz.Fuzzer(fuzz_output, seed=args.fuzz_seed, candidates=args.candidates,
                              k=args.k, evaluate=lambda work, entries: fuzz.run_fleet(
                                  args.holbuild, work, entries))
@@ -175,7 +210,7 @@ def main(argv: list[str] | None = None) -> int:
     text = markdown(args.seeds, admission, summary)
     (output / "report.md").write_text(text, encoding="utf-8")
     print(text)
-    return 1 if summary is not None and fuzz.failed(summary) else 0
+    return 1 if admission.core_errors() or (summary is not None and fuzz.failed(summary)) else 0
 
 
 if __name__ == "__main__":

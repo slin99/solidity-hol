@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 import sys
 import tempfile
+from types import SimpleNamespace
 from typing import Any
 import unittest
 from unittest.mock import patch
@@ -84,7 +85,8 @@ class DriverTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.tmp.cleanup()
 
-    def compile_all(self, failing: set[int] = frozenset()) -> dict[str, str]:
+    def compile_all(self, failing: set[int] = frozenset(),
+                    more: list[programs.Program] | None = None) -> dict[str, str]:
         def build(solc: Path, sources: dict[str, str], profile: Path) -> dict[str, Any]:
             [name] = sources
             if any(name == f"gen_{seed:06d}.sol" for seed in failing):
@@ -92,7 +94,7 @@ class DriverTests(unittest.TestCase):
             return {"sources": sources}
 
         with patch.object(exporter, "build_artifact_from_sources", side_effect=build):
-            return programs.compile_programs(Path("solc"), self.programs)
+            return programs.compile_programs(Path("solc"), more or self.programs)
 
     def test_compile_failures_are_reported_and_the_others_written(self) -> None:
         failures = self.compile_all(failing={1})
@@ -122,6 +124,31 @@ class DriverTests(unittest.TestCase):
             self.assertEqual(programs.admit("holbuild", self.output, self.programs, failures),
                              admission)
 
+    def test_a_resume_with_changed_inputs_is_refused(self) -> None:
+        failures = self.compile_all()
+        hol = {p.name: hol_result("admitted") for p in self.programs}
+        with patch.object(programs.coverage, "run_hol", return_value=hol):
+            programs.admit("holbuild", self.output, self.programs, failures)
+        more = self.programs + [programs.Program(3, self.output / "programs")]
+        self.compile_all(more=more)
+        changed_artifact = list(self.programs)
+        for case, changed in (("wider", more), ("narrower", self.programs[:2]),
+                              ("new artifact", changed_artifact)):
+            if case == "new artifact":
+                self.programs[1].artifact.write_text("{}")
+            with self.subTest(case), \
+                    patch.object(programs.coverage, "run_hol", side_effect=AssertionError), \
+                    self.assertRaisesRegex(SystemExit, "cannot resume"):
+                programs.admit("holbuild", self.output, changed, failures)
+
+    def test_a_program_is_recompiled_when_its_source_changed(self) -> None:
+        self.compile_all()
+        self.programs[0].source.write_text("// another generator")
+        self.programs[0].artifact.write_text("{}")
+        self.compile_all()
+        self.assertEqual(self.programs[0].source.read_text(), generator.generate(0))
+        self.assertNotEqual(self.programs[0].artifact.read_text(), "{}")
+
     def test_targets_name_the_artifact_from_the_root(self) -> None:
         target = self.programs[0].target()
         self.assertEqual(target["contract"], "Gen")
@@ -136,6 +163,57 @@ class DriverTests(unittest.TestCase):
         self.assertIn("1 of 2 programs admitted (50.0%)", text)
         self.assertIn("- `gen_000001` (elaboration-rejected): 12: unsupported", text)
         self.assertNotIn("more", text)
+
+    def test_core_errors_fail_the_run_apart_from_generator_bugs(self) -> None:
+        hol = {"gen_000000": hol_result("admitted"),
+               "gen_000001": hol_result("invalid-core", blockers=["bad core"]),
+               "gen_000002": hol_result("elaboration-rejected", blockers=["12: unsupported"])}
+        status, text = self.run_main(hol, "--admission-only")
+        self.assertEqual(status, 1)
+        errors, dropped = text.split("## Generator bugs")
+        self.assertIn("## Core errors (the run fails)", errors)
+        self.assertIn("`gen_000001` (invalid-core)", errors)
+        self.assertIn("`gen_000002` (elaboration-rejected)", dropped)
+        self.assertNotIn("gen_000001", dropped)
+
+    def run_main(self, hol: dict[str, Any] | None, *extra: str) -> tuple[int, str]:
+        """Run the driver over seeds 0:3 with these HOL results (None: HOL
+        must not run); its status and report."""
+        def build(solc: Path, sources: dict[str, str], profile: Path) -> dict[str, Any]:
+            return {"sources": sources}
+
+        with patch.object(exporter, "build_artifact_from_sources", side_effect=build), \
+                patch.object(programs.coverage, "run_hol", return_value=hol,
+                             side_effect=None if hol else AssertionError), \
+                patch("builtins.print"):
+            status = programs.main(["--seeds", "0:3", "--solc", "solc",
+                                    "--output", str(self.output), *extra])
+        return status, (self.output / "report.md").read_text()
+
+    def test_resuming_after_admission_starts_the_fuzzing(self) -> None:
+        hol = {p.name: hol_result("admitted") for p in self.programs}
+        self.assertEqual(self.run_main(hol, "--admission-only")[0], 0)
+
+        def targets(path: Path) -> list[SimpleNamespace]:
+            return [SimpleNamespace(entry=e) for e in json.loads(path.read_text())["targets"]]
+
+        def run_inputs(targets: list[Any], *settings: int) -> dict[str, Any]:
+            # The fake targets have no artifacts to fingerprint.
+            return real_run_inputs([], *settings)
+
+        real_run_inputs = fuzz.run_inputs
+
+        with patch.object(fuzz, "Fuzzer") as fuzzer, \
+                patch.object(fuzz, "manifest_targets", side_effect=targets), \
+                patch.object(fuzz, "run_inputs", side_effect=run_inputs), \
+                patch.object(fuzz, "markdown", return_value="# Differential fuzzing\n"), \
+                patch.object(fuzz, "failed", return_value=False):
+            fuzzer.return_value.run.return_value = {}
+            status, _ = self.run_main(None, "--resume")
+        self.assertEqual(status, 0)
+        self.assertEqual([t.entry["name"] for t in fuzzer.return_value.run.call_args.args[0]],
+                         [p.name for p in self.programs])
+        self.assertTrue((self.output / "fuzz" / "inputs.json").is_file())
 
     def test_an_admission_only_run_writes_its_report(self) -> None:
         hol = {p.name: hol_result("admitted") for p in self.programs}
