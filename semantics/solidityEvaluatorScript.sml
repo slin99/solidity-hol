@@ -1391,14 +1391,27 @@ Definition assembly_inputs_def:
     | _ => NONE)
 End
 
+(* The arguments es' substituted from a builtin b's arguments es, with a
+ * sub-word load's mload given the length of the prefix it keeps
+ * (mload_prefix) as a second argument, so that only those bytes are
+ * checked. *)
+Definition yul_prefix_load_def:
+  yul_prefix_load b es es' =
+    case (es, es') of
+      ([YulLit (LitNumber k); YulBuiltin m [_]], [k'; YulCheckedBuiltin _ [p]]) =>
+        (case mload_prefix b k m of
+           SOME n => [k'; YulCheckedBuiltin YMLoad [p; YulLit (LitNumber (n2w n))]]
+         | NONE => es')
+    | _ => es'
+End
+
 (* The code with each name in sub read as its word, as the compiler puts the
  * values of x.slot, x.offset and constants in the code. A Yul function's
  * parameters and results may reuse a name for its body; a let may not.
  * Nested function definitions aren't imported, so a body's narrowed sub never
  * reaches an inner function, where the compiler would see the block's names.
  * Each builtin call becomes a checked one, whose memory reads the evaluator
- * holds to the memory the block was given; a sub-word load's mload carries
- * the length of the prefix it keeps (mload_prefix) as a second argument. *)
+ * holds to the memory the block was given (yul_prefix_load). *)
 Definition yul_substitute_expr_def:
   (yul_substitute_expr sub (YulLit l) = YulLit l) ∧
   (yul_substitute_expr sub (YulName x) =
@@ -1407,34 +1420,22 @@ Definition yul_substitute_expr_def:
     | NONE => YulName x) ∧
   (yul_substitute_expr sub (YulBuiltin b es) =
     YulCheckedBuiltin b
-      (case es of
-         YulBuiltin YGas [] :: rest =>
-           if MEM b [YCall; YStaticCall; YDelegateCall] then
-             YulBuiltin YGas [] :: yul_substitute_exprs sub rest
-           else yul_substitute_exprs sub es
-       | [YulLit (LitNumber k); YulBuiltin m [p]] =>
-           (case mload_prefix b k m of
-              SOME n =>
-                [YulLit (LitNumber k);
-                 YulCheckedBuiltin YMLoad
-                   [yul_substitute_expr sub p; YulLit (LitNumber (n2w n))]]
-            | NONE => yul_substitute_exprs sub es)
-       | _ => yul_substitute_exprs sub es)) ∧
+      (yul_prefix_load b es
+        (case es of
+           YulBuiltin YGas [] :: rest =>
+             if MEM b [YCall; YStaticCall; YDelegateCall] then
+               YulBuiltin YGas [] :: yul_substitute_exprs sub rest
+             else yul_substitute_exprs sub es
+         | _ => yul_substitute_exprs sub es))) ∧
   (yul_substitute_expr sub (YulCheckedBuiltin b es) =
     YulCheckedBuiltin b
-      (case es of
-         YulBuiltin YGas [] :: rest =>
-           if MEM b [YCall; YStaticCall; YDelegateCall] then
-             YulBuiltin YGas [] :: yul_substitute_exprs sub rest
-           else yul_substitute_exprs sub es
-       | [YulLit (LitNumber k); YulBuiltin m [p]] =>
-           (case mload_prefix b k m of
-              SOME n =>
-                [YulLit (LitNumber k);
-                 YulCheckedBuiltin YMLoad
-                   [yul_substitute_expr sub p; YulLit (LitNumber (n2w n))]]
-            | NONE => yul_substitute_exprs sub es)
-       | _ => yul_substitute_exprs sub es)) ∧
+      (yul_prefix_load b es
+        (case es of
+           YulBuiltin YGas [] :: rest =>
+             if MEM b [YCall; YStaticCall; YDelegateCall] then
+               YulBuiltin YGas [] :: yul_substitute_exprs sub rest
+             else yul_substitute_exprs sub es
+         | _ => yul_substitute_exprs sub es))) ∧
   (yul_substitute_expr sub (YulApply f es) =
     YulApply f (yul_substitute_exprs sub es)) ∧
   (yul_substitute_exprs sub [] = []) ∧
@@ -2132,17 +2133,8 @@ val () = cv_auto_trans assembly_value_def;
 val () = cv_auto_trans assembly_cell_word_def;
 val () = cv_auto_trans assembly_reference_word_def;
 val () = cv_auto_trans assembly_inputs_def;
-val yul_substitute_expr_pre_def = cv_auto_trans_pre
-  "yul_substitute_expr_pre yul_substitute_exprs_pre" yul_substitute_expr_def;
-
-Theorem yul_substitute_expr_pre[cv_pre,local]:
-  (∀sub e. yul_substitute_expr_pre sub e) ∧
-  (∀sub es. yul_substitute_exprs_pre sub es)
-Proof
-  ho_match_mp_tac yul_substitute_expr_ind >> rpt strip_tac >>
-  simp[Once yul_substitute_expr_pre_def] >> rw[] >> gvs[]
-QED
-
+val () = cv_auto_trans yul_prefix_load_def;
+val () = cv_auto_trans yul_substitute_expr_def;
 val () = cv_auto_trans yul_unbind_def;
 val () = cv_auto_trans yul_substitute_stmt_def;
 val () = cv_auto_trans object_padding_def;
