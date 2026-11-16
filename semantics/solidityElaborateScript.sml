@@ -2784,11 +2784,22 @@ End
  * array, and the plain name of a calldata static array, name the calldata
  * the reference covers.
  *)
+(* The declarations assembly_value_type reads: the enums. The importer gives
+ * a user-defined value type's values their underlying type. *)
+Definition elab_enum_environment_def:
+  elab_enum_environment ctx =
+    <| procedures := []; state_variables := []; immutables := [];
+       struct_layouts := [];
+       type_declarations :=
+         MAP (λ(id, members). (AstId id, EnumDeclaration members)) ctx.enums |>
+End
+
 Definition elab_assembly_reference_def:
   (elab_assembly_reference ctx n (id : num) (SrcAssemblyValue x) =
     case ALOOKUP ctx.variables x of
       SOME ty =>
-        if assembly_value_type ty then INL (([], AssemblyLocal (AstId x) ty), n)
+        if assembly_value_type (elab_enum_environment ctx) ty then
+          INL (([], AssemblyLocal (AstId x) ty), n)
         else
           (case ty of
              LocatedT MemoryLoc t =>
@@ -2808,7 +2819,7 @@ Definition elab_assembly_reference_def:
     | NONE =>
       case ALOOKUP ctx.constants x of
         SOME (ty, w) =>
-          if assembly_value_type ty then
+          if assembly_value_type (elab_enum_environment ctx) ty then
             let p = if ctx.mode = CheckedArithmetic then x else w in
             let (ss, a) = bind_value n ty (InternalCallOperation (AstId p) []) in
             INL ((ss, AssemblyConstant a ty), n + 1)
@@ -4255,6 +4266,7 @@ Proof
 QED
 
 val () = cv_auto_trans return_atoms_def;
+val () = cv_auto_trans elab_enum_environment_def;
 val () = cv_auto_trans elab_assembly_reference_def;
 val elab_assembly_references_pre_def =
   cv_auto_trans_pre "elab_assembly_references_pre" elab_assembly_references_def;

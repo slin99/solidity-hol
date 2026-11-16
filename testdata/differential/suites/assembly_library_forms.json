@@ -1,0 +1,206 @@
+{
+  "name": "assembly_library_forms",
+  "source": "testdata/differential/assembly_library_forms.sol",
+  "contract": "AssemblyLibraryForms",
+  "artifact": "testdata/differential/expected/assembly_library_forms.json",
+  "peer": {
+    "source": "testdata/differential/assembly_calls_peer.sol",
+    "contract": "AsmPeer",
+    "artifact": "testdata/differential/expected/assembly_calls_peer.json"
+  },
+  "cases": [
+    {
+      "name": "hash_pair",
+      "function": "hashPair",
+      "args": [
+        1,
+        2
+      ],
+      "expect": {
+        "return": [
+          "0xe90b7bceb6e7df5418fb78d8ee546e97c83a08bbccc01a0644d599ccd2a7c2e0"
+        ]
+      }
+    },
+    {
+      "name": "hash_four_restores",
+      "function": "hashFour",
+      "args": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "expect": {
+        "return": [
+          "0x392791df626408017a264f53fde61065d5a93a32b60171df9d8a46afdf82992d",
+          1
+        ]
+      }
+    },
+    {
+      "name": "packed_loop",
+      "function": "packed",
+      "args": [
+        3,
+        false
+      ],
+      "expect": {
+        "return": [
+          "0x413cf5a7d45bfc2caa068358a2641231c68471f142a7657312bbeb1e475dd363"
+        ]
+      }
+    },
+    {
+      "name": "packed_loop_copy",
+      "function": "packed",
+      "args": [
+        5,
+        true
+      ],
+      "expect": {
+        "return": [
+          "0x71d461c6543f483500e29926dd1b7a9d34aa6bd86b5ff79899c4b5c5ea8b42e3"
+        ]
+      }
+    },
+    {
+      "name": "packed_empty_copy",
+      "function": "packed",
+      "args": [
+        0,
+        true
+      ],
+      "expect": {
+        "return": [
+          "0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5"
+        ]
+      }
+    },
+    {
+      "name": "loop_byte_once",
+      "function": "loopByte",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x03783fac2efed8fbc9ad443e592ee30e61d65f471140c10ca155e937b435b760"
+        ]
+      }
+    },
+    {
+      "name": "loop_byte_last",
+      "function": "loopByte",
+      "args": [
+        2
+      ],
+      "expect": {
+        "return": [
+          "0x017e667f4b8c174291d1543c466717566e206df1bfd6f30271055ddafdb18f72"
+        ]
+      }
+    },
+    {
+      "name": "branch_calldatacopy",
+      "function": "branchCopy",
+      "args": [
+        true,
+        7
+      ],
+      "expect": {
+        "return": [
+          "0xa66cc928b5edb82af9bd49922954155ab7b0942694bea4ce44661d9a8736c688"
+        ]
+      }
+    },
+    {
+      "name": "switch_case_mcopy",
+      "function": "switchCopy",
+      "args": [
+        0,
+        9
+      ],
+      "expect": {
+        "return": [
+          "0x87e8a52529e8ece4ef759037313542a6429ff494a9fab9027fb79db90124eba6"
+        ]
+      }
+    },
+    {
+      "name": "switch_default_mcopy",
+      "function": "switchCopy",
+      "args": [
+        3,
+        9
+      ],
+      "expect": {
+        "return": [
+          "0xcbc4e5fb02c3d1de23a9f1e014b4d2ee5aeaea9505df5e855c9210bf472495af"
+        ]
+      }
+    },
+    {
+      "name": "zero_slot_restored",
+      "function": "zeroSlot",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          1
+        ]
+      }
+    },
+    {
+      "name": "return_data_in_function",
+      "function": "lastWord",
+      "args": [
+        20480,
+        7
+      ],
+      "expect": {
+        "return": [
+          96,
+          7
+        ]
+      }
+    },
+    {
+      "name": "enum_first",
+      "function": "nextState",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          1
+        ]
+      }
+    },
+    {
+      "name": "enum_last",
+      "function": "nextState",
+      "args": [
+        1
+      ],
+      "expect": {
+        "return": [
+          2
+        ]
+      }
+    },
+    {
+      "name": "udvt_local",
+      "function": "doubled",
+      "args": [
+        21
+      ],
+      "expect": {
+        "return": [
+          42
+        ]
+      }
+    }
+  ]
+}
