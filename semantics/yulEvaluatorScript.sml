@@ -212,6 +212,22 @@ Definition yul_memory_write_def:
     yul_memory_write (m with memory := m.memory |+ (offset, b)) (offset + 1) bs
 End
 
+(* The same read and write on the byte map alone: a caller writing many bytes
+ * updates the machine once, not once a byte (yulEvaluatorProps relates them).
+ *)
+Definition yul_mem_read_def:
+  (yul_mem_read (mem : num |-> word8) offset 0 = []) ∧
+  (yul_mem_read mem offset (SUC k) =
+     (case FLOOKUP mem offset of NONE => 0w | SOME b => b) ::
+     yul_mem_read mem (offset + 1) k)
+End
+
+Definition yul_mem_write_def:
+  (yul_mem_write (mem : num |-> word8) offset [] = mem) ∧
+  (yul_mem_write mem offset (b :: bs) =
+     yul_mem_write (mem |+ (offset, b)) (offset + 1) bs)
+End
+
 
 Definition yul_memory_touch_def:
   yul_memory_touch m offset sz =
@@ -983,6 +999,8 @@ Proof
   gvs[]
 QED
 
+val () = cv_auto_trans yul_mem_read_def;
+val () = cv_auto_trans yul_mem_write_def;
 val () = cv_auto_trans yul_set_immutable_def;
 val () = cv_auto_trans eval_yul_builtin_call_def;
 val () = cv_auto_trans yul_read_regions_def;

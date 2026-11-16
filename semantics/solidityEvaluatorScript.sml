@@ -1480,7 +1480,8 @@ Definition assembly_project_def:
         SOME obj =>
           if assembly_memory_type env obj.object_type then
             case assembly_object_bytes env heap obj of
-              SOME bs => SOME (yul_memory_write m1 obj.object_address bs)
+              SOME bs =>
+                SOME (m1 with memory := yul_mem_write m1.memory obj.object_address bs)
             | NONE => NONE
           else SOME m1
       | NONE => SOME m1)
@@ -1550,7 +1551,7 @@ End
 Definition assembly_read_elements_def:
   (assembly_read_elements heap [] (m : yul_machine) a i cells = SOME cells) ∧
   (assembly_read_elements heap (ty :: tys) m a i cells =
-    let w = num_of_be_bytes (yul_memory_read m a 32) in
+    let w = num_of_be_bytes (yul_mem_read m.memory a 32) in
     if assembly_value_type ty then
       (case assembly_value ty w of
          SOME scalar =>
@@ -1582,7 +1583,7 @@ Definition assembly_read_back_def:
           assembly_read_back env
             (heap |+ (SUC i, obj with <|
                object_cells := byte_cells
-                 (yul_memory_read m (obj.object_address + 32) obj.object_length);
+                 (yul_mem_read m.memory (obj.object_address + 32) obj.object_length);
                object_padded := memory_zeros m.memory
                  (obj.object_address + 32 + obj.object_length)
                  (object_padding obj) |>))
