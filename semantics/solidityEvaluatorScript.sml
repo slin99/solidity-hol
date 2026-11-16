@@ -256,6 +256,7 @@ Definition environment_value_def:
         ValueOk (ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.baseFeePerGas))))
     | BlockGasLimit =>
         ValueOk (ScalarValue (IntegerValue (wrap_integer F 256 (&fr.tx_params.blockGasLimit))))
+    | BlockPrevRandao => ValueOk (ScalarValue (IntegerValue (&w2n fr.tx_params.prevRandao)))
     | GasLeft => ValueAbrupt (InvalidCompletion "missing gasleft observation")
 End
 
@@ -275,41 +276,47 @@ Definition indexed_byte_def:
     | NONE => ValueAbrupt (InvalidCompletion "bad byte index")
 End
 
-(* Pure operations; calls and array mutations are handled by statements. *)
-(* A builtin's value on its operands' values. ecrecover is the precompile at
- * address 1, as the compiler calls it: an invalid signature returns nothing,
- * which reads as address(0). *)
+(* A builtin's value on its operands' values, and the state after it.
+ * ecrecover is the precompile at address 1, as the compiler calls it: an
+ * invalid signature returns nothing, which reads as address(0). a.code
+ * allocates memory bytes as the compiler does: Panic(0x41) when the free
+ * memory pointer would pass 2^64. *)
 Definition eval_builtin_def:
   eval_builtin st op vs =
     case (op, vs) of
       (Keccak256Builtin, [ReferenceValue r]) =>
         (case byte_contents st r of
-           INL bs => ValueOk (ScalarValue (BytesValue (num_to_bytes 32
-                       (w2n (word_of_bytes_be (Keccak_256_w64 bs) : bytes32)))))
-         | INR c => ValueAbrupt c)
+           INL bs => INL (ScalarValue (BytesValue (num_to_bytes 32
+                       (w2n (word_of_bytes_be (Keccak_256_w64 bs) : bytes32)))), st)
+         | INR c => INR c)
     | (EcrecoverBuiltin,
        [ScalarValue (BytesValue hb); ScalarValue (IntegerValue vi);
         ScalarValue (BytesValue rb); ScalarValue (BytesValue sb)]) =>
-        ValueOk (ScalarValue (AddressValue
+        INL (ScalarValue (AddressValue
           (case ecrecover (word_of_bytes_be hb) (Num vi)
                   (num_of_be_bytes rb) (num_of_be_bytes sb) of
              SOME a => a
-           | NONE => 0w)))
+           | NONE => 0w)), st)
     | (CodeLengthBuiltin, [ScalarValue (AddressValue address)]) =>
-        ValueOk (ScalarValue (IntegerValue
-          (&(LENGTH (lookup_account address st.world.accounts).code))))
+        INL (ScalarValue (IntegerValue
+          (&(LENGTH (lookup_account address st.world.accounts).code))), st)
     | (BalanceBuiltin, [ScalarValue (AddressValue address)]) =>
-        ValueOk (ScalarValue (IntegerValue
-          (&(lookup_account address st.world.accounts).balance)))
+        INL (ScalarValue (IntegerValue
+          (&(lookup_account address st.world.accounts).balance)), st)
     | (Sha256Builtin, [ReferenceValue r]) =>
         (case byte_contents st r of
-           INL bs => ValueOk (ScalarValue (BytesValue (num_to_bytes 32
-                       (w2n (SHA_256_bytes bs)))))
-         | INR c => ValueAbrupt c)
+           INL bs => INL (ScalarValue (BytesValue (num_to_bytes 32
+                       (w2n (SHA_256_bytes bs)))), st)
+         | INR c => INR c)
     | (BlockhashBuiltin, [ScalarValue (IntegerValue n)]) =>
-        ValueOk (ScalarValue (BytesValue (num_to_bytes 32
-          (w2n (block_hash_word st.frame.tx_params (Num n))))))
-    | _ => ValueAbrupt (InvalidCompletion "bad builtin operands")
+        INL (ScalarValue (BytesValue (num_to_bytes 32
+          (w2n (block_hash_word st.frame.tx_params (Num n))))), st)
+    | (CodeBuiltin, [ScalarValue (AddressValue address)]) =>
+        let code = (lookup_account address st.world.accounts).code in
+        if 2 ** 64 ≤ 128 + st.memory_allocated + 32 + 32 * ((LENGTH code + 31) DIV 32)
+        then INR (PanicCompletion 65)
+        else INL (allocate_bytes T BytesT code st)
+    | _ => INR (InvalidCompletion "bad builtin operands")
 End
 
 (* The builtins the compiler computes by calling a precompile: ecrecover at
@@ -317,6 +324,8 @@ End
 Definition builtin_calls_precompile_def:
   builtin_calls_precompile b ⇔ b = EcrecoverBuiltin ∨ b = Sha256Builtin
 End
+
+(* Pure operations; calls and array mutations are handled by statements. *)
 
 Definition eval_operation_def:
   eval_operation env (st : source_state) op =
@@ -427,10 +436,6 @@ Definition eval_operation_def:
                     (offset + Num first * stride) (Num (stop - first)) ty))
               | _ => ValueAbrupt (InvalidCompletion "bad calldata slice end"))
          | _ => ValueAbrupt (InvalidCompletion "bad calldata slice operands"))
-    | BuiltinOperation op args =>
-        (case eval_atoms st.scopes args of
-           SOME vs => eval_builtin st op vs
-         | NONE => ValueAbrupt (InvalidCompletion "bad builtin operands"))
     (* The compiler's decoder from memory: short data, or a value outside its
      * type, reverts with no data; data after the encoding is ignored. *)
     | ArrayLengthOperation a =>
@@ -1027,7 +1032,16 @@ Definition simple_stmt_def:
                normal_result (define_binding x ty v st') gas
              else
                (case element of
-                  StructT s =>
+                  ArrayT _ (SOME k) =>
+                    if Num n ≠ k then
+                      abrupt_result (InvalidCompletion "bad array allocation") st gas
+                    else
+                      (case allocate_object element k (32 * k) st of
+                         SOME (id, st1) =>
+                           normal_result (define_binding x ty
+                             (ReferenceValue (MemoryReference (HeapId id) 0 element)) st1) gas
+                       | NONE => abrupt_result (PanicCompletion 65) st gas)
+                | StructT s =>
                     (case lookup_struct env s of
                        SOME fields =>
                          if Num n ≠ LENGTH fields then
@@ -1119,12 +1133,15 @@ Definition simple_stmt_def:
     (* A builtin computed by a precompile call leaves return data the source
      * computes no bytes for. *)
     | DefineStmt x ty (BuiltinOperation b args) =>
-        (case eval_operation env st (BuiltinOperation b args) of
-           ValueOk v =>
-             normal_result (define_binding x ty v
-               (if builtin_calls_precompile b then st with return_data := NONE
-                else st)) gas
-         | ValueAbrupt c => abrupt_result c st gas)
+        (case eval_atoms st.scopes args of
+           SOME vs =>
+             (case eval_builtin st b vs of
+                INL (v, st') =>
+                  normal_result (define_binding x ty v
+                    (if builtin_calls_precompile b then st' with return_data := NONE
+                     else st')) gas
+              | INR c => abrupt_result c st gas)
+         | NONE => abrupt_result (InvalidCompletion "bad builtin operands") st gas)
     | DefineStmt x ty op =>
         (case eval_operation env st op of
            ValueOk v => normal_result (define_binding x ty v st) gas
@@ -1261,36 +1278,56 @@ End
  * Non-canonical words and storage bytes are outside the model (InvalidCompletion).
  *)
 
-(* A value-type scalar as the stack word the compiler keeps it in: integers
- * in two's complement, fixed bytes left-aligned. *)
-Definition assembly_word_def:
-  assembly_word ty s =
+(* The elementary type a value type's word is kept as: a user-defined value
+ * type's underlying type, and any other type itself. *)
+Definition assembly_word_type_def:
+  assembly_word_type env ty =
     case ty of
-      FixedBytesT k =>
-        OPTION_MAP (λn. n * 2 ** (8 * (32 - k))) (stored_number k s)
-    | _ => stored_number 32 s
+      UserValueT id => lookup_user_value env id
+    | _ => SOME ty
 End
 
-(* The value of type ty a word written to a local stands for. *)
+(* A value-type scalar as the stack word the compiler keeps it in: integers
+ * and enums in two's complement, fixed bytes left-aligned. *)
+Definition assembly_word_def:
+  assembly_word env ty s =
+    case assembly_word_type env ty of
+      SOME (FixedBytesT k) =>
+        OPTION_MAP (λn. n * 2 ** (8 * (32 - k))) (stored_number k s)
+    | SOME _ => stored_number 32 s
+    | NONE => NONE
+End
+
+(* The value of type ty a word written to a local stands for; an enum word
+ * outside its members stands for none. *)
 Definition assembly_value_def:
-  assembly_value ty (w : num) =
+  assembly_value env ty (w : num) =
     case ty of
-      BoolT => SOME (BoolValue (w ≠ 0))
-    | FixedBytesT k => stored_value ty (w DIV 2 ** (8 * (32 - k)))
+      EnumT id =>
+        (case lookup_enum env id of
+           SOME members =>
+             if w < members then SOME (IntegerValue (&w)) else NONE
+         | NONE => NONE)
     | _ =>
-        case storage_bytes ty of
-          SOME b => stored_value ty (w MOD 2 ** (8 * b))
-        | NONE => NONE
+      case assembly_word_type env ty of
+        SOME BoolT => SOME (BoolValue (w ≠ 0))
+      | SOME (FixedBytesT k) =>
+          stored_value (FixedBytesT k) (w DIV 2 ** (8 * (32 - k)))
+      | SOME u =>
+          (case storage_bytes u of
+             SOME b => stored_value u (w MOD 2 ** (8 * b))
+           | NONE => NONE)
+      | NONE => NONE
 End
 
 (* A scalar cell is a word; a reference cell is its object's address. Only
  * byte sequences and dynamic arrays share the empty object at the zero slot.
  * Bytes/string conversions may share the same byte-sequence object. *)
 Definition assembly_cell_word_def:
-  assembly_cell_word heap ty v =
+  assembly_cell_word env heap ty v =
     case v of
       ScalarValue scalar =>
-        if assembly_value_type ty then assembly_word ty scalar else NONE
+        if assembly_value_type env ty then assembly_word env ty scalar else NONE
     | ReferenceValue (MemoryReference (HeapId id) 0 rty) =>
         if rty ≠ ty then NONE else
         if id = 0 then
@@ -1313,7 +1350,7 @@ Definition assembly_reference_word_def:
         (case lookup_binding x st.scopes of
            SOME b =>
              (case b.binding_value of
-                ScalarValue s => assembly_word ty s
+                ScalarValue s => assembly_word env ty s
               | _ => NONE)
          | NONE => NONE)
     | AssemblySlot x =>
@@ -1352,12 +1389,12 @@ Definition assembly_reference_word_def:
          | NONE => NONE)
     | AssemblyConstant a ty =>
         (case eval_atom st.scopes a of
-           SOME (ScalarValue s) => assembly_word ty s
+           SOME (ScalarValue s) => assembly_word env ty s
          | _ => NONE)
     (* The zero slot belongs only to empty byte sequences and dynamic arrays. *)
     | AssemblyMemory x ty =>
         (case lookup_binding x st.scopes of
-           SOME b => assembly_cell_word st.heap ty b.binding_value
+           SOME b => assembly_cell_word env st.heap ty b.binding_value
          | NONE => NONE)
 End
 
@@ -1489,10 +1526,10 @@ End
 
 (* Serialize the cells using their declared types, including pointer words. *)
 Definition assembly_element_words_def:
-  (assembly_element_words heap [] obj i = SOME []) ∧
-  (assembly_element_words heap (ty :: tys) obj i =
-    case (assembly_cell_word heap ty (memory_cell obj ty i),
-           assembly_element_words heap tys obj (i + 1)) of
+  (assembly_element_words env heap [] obj i = SOME []) ∧
+  (assembly_element_words env heap (ty :: tys) obj i =
+    case (assembly_cell_word env heap ty (memory_cell obj ty i),
+           assembly_element_words env heap tys obj (i + 1)) of
       (SOME w, SOME bs) => SOME (word_to_bytes_be (n2w w : bytes32) ++ bs)
     | _ => NONE)
 End
@@ -1513,7 +1550,7 @@ Definition assembly_object_bytes_def:
       case assembly_layout env obj.object_type obj.object_length of
         SOME (tys, header) =>
           OPTION_MAP (λbs. (if header = 32 then length_word else []) ++ bs)
-            (assembly_element_words heap tys obj 0)
+            (assembly_element_words env heap tys obj 0)
       | NONE => NONE
 End
 
@@ -1565,10 +1602,11 @@ Definition assembly_data_def:
 End
 
 (* The memory a block may change and still exit normally, as (start, length)
- * ranges: the scratch space, and the data of each object with id 1 to i the
- * block sees. *)
+ * ranges: the scratch space, the free memory pointer and the zero slot, whose
+ * values assembly_result checks, and the data of each object with id 1 to i
+ * the block sees. *)
 Definition assembly_writable_def:
-  (assembly_writable env heap 0 = [(0, 64)]) ∧
+  (assembly_writable env heap 0 = [(0, 128)]) ∧
   (assembly_writable env heap (SUC i) =
     case FLOOKUP heap (SUC i) of
       SOME obj =>
@@ -1599,27 +1637,27 @@ End
 (* Read scalar cells canonically. Reference cells keep their identity and
  * pointer word; the pointed-to allocation is read back in its own turn. *)
 Definition assembly_read_elements_def:
-  (assembly_read_elements heap [] (m : yul_machine) a i cells = SOME cells) ∧
-  (assembly_read_elements heap (ty :: tys) m a i cells =
+  (assembly_read_elements env heap [] (m : yul_machine) a i cells = SOME cells) ∧
+  (assembly_read_elements env heap (ty :: tys) m a i cells =
     let w = num_of_be_bytes (yul_memory_read m a 32) in
-    if assembly_value_type ty then
-      (case assembly_value ty w of
+    if assembly_value_type env ty then
+      (case assembly_value env ty w of
          SOME scalar =>
-           if assembly_word ty scalar = SOME w then
-             assembly_read_elements heap tys m (a + 32) (i + 1)
+           if assembly_word env ty scalar = SOME w then
+             assembly_read_elements env heap tys m (a + 32) (i + 1)
                (cells |+ (i, ScalarValue scalar))
            else NONE
        | NONE => NONE)
     else
       case FLOOKUP cells i of
         SOME v =>
-          if assembly_cell_word heap ty v = SOME w then
-            assembly_read_elements heap tys m (a + 32) (i + 1) cells
+          if assembly_cell_word env heap ty v = SOME w then
+            assembly_read_elements env heap tys m (a + 32) (i + 1) cells
           else NONE
       | NONE =>
-          if assembly_cell_word heap ty
+          if assembly_cell_word env heap ty
                (ReferenceValue (MemoryReference (HeapId 0) 0 ty)) = SOME w then
-            assembly_read_elements heap tys m (a + 32) (i + 1) cells
+            assembly_read_elements env heap tys m (a + 32) (i + 1) cells
           else NONE)
 End
 
@@ -1641,7 +1679,7 @@ Definition assembly_read_back_def:
         else
           (case assembly_layout env obj.object_type obj.object_length of
              SOME (tys, header) =>
-               (case assembly_read_elements heap tys m (obj.object_address + header) 0
+               (case assembly_read_elements env heap tys m (obj.object_address + header) 0
                        obj.object_cells of
                   SOME cells =>
                     assembly_read_back env
@@ -1686,11 +1724,12 @@ Definition assembly_new_object_def:
     else
       case assembly_layout env ty n of
         SOME (tys, _) =>
-          if EVERY assembly_value_type tys ∧ memory_written m.memory (p + header) data then
+          if EVERY (assembly_value_type env) tys ∧
+             memory_written m.memory (p + header) data then
             OPTION_MAP (λcells. (<| object_type := ty; object_length := n;
                                     object_cells := cells; object_address := p;
                                     object_padded := T |>, header + data))
-              (assembly_read_elements heap tys m (p + header) 0 FEMPTY)
+              (assembly_read_elements env heap tys m (p + header) 0 FEMPTY)
           else NONE
       | NONE => NONE
 End
@@ -1770,21 +1809,23 @@ End
  * as the slot alone. A calldata reference is rebound to the offset and
  * length the block leaves, keeping its type. *)
 Definition assembly_write_one_def:
-  assembly_write_one self (name, r) scopes
+  assembly_write_one env self (name, r) scopes
                      (yscopes : (string |-> bytes32 option) list) =
     case r of
       AssemblyLocal x ty =>
         (case yul_lookup name yscopes of
            NONE => NONE
          | SOME NONE =>
-             if ty = UintT 256 ∨ ty = IntT 256 ∨ ty = FixedBytesT 32 then
-               update_binding x UnwrittenValue scopes
-             else NONE
+             (case assembly_word_type env ty of
+                SOME (UintT 256) => update_binding x UnwrittenValue scopes
+              | SOME (IntT 256) => update_binding x UnwrittenValue scopes
+              | SOME (FixedBytesT 32) => update_binding x UnwrittenValue scopes
+              | _ => NONE)
          | SOME (SOME w) =>
-             case assembly_value ty (w2n w) of
+             case assembly_value env ty (w2n w) of
                NONE => NONE
              | SOME s =>
-                 if assembly_word ty s = SOME (w2n w) then
+                 if assembly_word env ty s = SOME (w2n w) then
                    update_binding x (ScalarValue s) scopes
                  else NONE)
     | AssemblyPointerSlot x =>
@@ -1858,11 +1899,11 @@ Definition assembly_calldata_ok_def:
 End
 
 Definition assembly_write_back_def:
-  (assembly_write_back self [] scopes yscopes = SOME scopes) ∧
-  (assembly_write_back self (r :: refs) scopes yscopes =
-    case assembly_write_one self r scopes yscopes of
+  (assembly_write_back env self [] scopes yscopes = SOME scopes) ∧
+  (assembly_write_back env self (r :: refs) scopes yscopes =
+    case assembly_write_one env self r scopes yscopes of
       NONE => NONE
-    | SOME scopes' => assembly_write_back self refs scopes' yscopes)
+    | SOME scopes' => assembly_write_back env self refs scopes' yscopes)
 End
 
 (* The return data after a block that exits normally. A non-empty buffer
@@ -1883,12 +1924,17 @@ Definition assembly_result_def:
       YulNormal =>
         let f0 = memory_free_pointer st in
         let f1 = num_of_be_bytes (yul_memory_read r.machine 0x40 32) in
-        let writable = (0x40, 32) :: (f0, r.machine.memory_size - f0) ::
+        let writable = (f0, r.machine.memory_size - f0) ::
                        assembly_writable env st.heap st.next_heap_id in
         if without_ranges writable r.machine.memory ≠
            without_ranges writable m0.memory then
           abrupt_result
             (InvalidCompletion "assembly wrote memory outside the scratch space and byte sequence data")
+            st gas
+        (* empty byte sequences and dynamic arrays share the zero slot *)
+        else if num_of_be_bytes (yul_memory_read r.machine 0x60 32) ≠ 0 then
+          abrupt_result
+            (InvalidCompletion "assembly left the zero slot non-zero")
             st gas
         else if f1 < f0 ∨ 2 ** 64 ≤ f1 then
           abrupt_result
@@ -1900,7 +1946,7 @@ Definition assembly_result_def:
             (InvalidCompletion "assembly left the free memory pointer unaligned")
             st gas
         else
-          (case (assembly_write_back st.frame.self_address refs st.scopes
+          (case (assembly_write_back env st.frame.self_address refs st.scopes
                    r.machine.scopes,
                  assembly_read_back env st.heap st.next_heap_id r.machine) of
              (SOME scopes, SOME heap) =>
@@ -2110,6 +2156,7 @@ val () = cv_auto_trans write_target_value_def;
 val () = cv_auto_trans write_target_def;
 val () = cv_auto_trans reset_target_def;
 val () = cv_auto_trans simple_stmt_def;
+val () = cv_auto_trans assembly_word_type_def;
 val () = cv_auto_trans assembly_word_def;
 val () = cv_auto_trans assembly_value_def;
 val () = cv_auto_trans assembly_cell_word_def;
