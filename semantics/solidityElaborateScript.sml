@@ -165,11 +165,9 @@ Definition expr_id_def:
   (expr_id (SrcCreate info _ _ _ _ _) = info.node_id) ∧
   (expr_id (SrcStructConstructor info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcEnumValue info _ _ _) = info.node_id) ∧
-  (expr_id (SrcKeccak256 info _ _ _) = info.node_id) ∧
+  (expr_id (SrcBuiltinOperation info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcModular info _ _ _ _) = info.node_id) ∧
-  (expr_id (SrcAddressMember info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcSelector info _ _ _) = info.node_id) ∧
-  (expr_id (SrcEcrecover info _ _ _) = info.node_id) ∧
   (expr_id (SrcAbiEncode info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcAbiDecode info _ _ _ _) = info.node_id) ∧
   (expr_id (SrcTransfer info _ _ _ _) = info.node_id) ∧
@@ -257,7 +255,10 @@ Definition coerce_def:
             then INR "type conversion between these types"
             else INL (bind_value n ty (CopyToMemoryOperation a), n + 1)
         | (LocatedT _ _, LocatedT _ _) => INR "type conversion between these types"
-        | _ => INL (bind_value n ty (ConvertOperation ty a), n + 1))
+        | _ =>
+            if implicitly_convertible src ty
+            then INL (bind_value n ty (ConvertOperation ty a), n + 1)
+            else INR "type conversion between these types")
     | ElabBytesLiteral =>
         (case (ty, a) of
            (FixedBytesT k, ConstantAtom (BytesValue bs)) =>
@@ -536,13 +537,11 @@ Definition expr_assigns_def:
   (expr_assigns (SrcNew _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcCreate _ _ _ operands _ _) ⇔ exprs_assign operands) ∧
   (expr_assigns (SrcStructConstructor _ _ args _ _) ⇔ exprs_assign args) ∧
-  (expr_assigns (SrcKeccak256 _ _ e _) ⇔ expr_assigns e) ∧
+  (expr_assigns (SrcBuiltinOperation _ _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcModular _ _ _ args _) ⇔ exprs_assign args) ∧
-  (expr_assigns (SrcAddressMember _ _ _ e _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcSelector _ _ receiver _) ⇔
     case receiver of NONE => F | SOME e => expr_assigns e) ∧
   (expr_assigns (SrcAbiEncode _ _ _ args _) ⇔ exprs_assign args) ∧
-  (expr_assigns (SrcEcrecover _ _ args _) ⇔ exprs_assign args) ∧
   (expr_assigns (SrcAbiDecode _ _ e _ _) ⇔ expr_assigns e) ∧
   (expr_assigns (SrcTransfer _ _ target value _) ⇔ expr_assigns target ∨ expr_assigns value) ∧
   (expr_assigns (SrcLowLevelCall _ _ _ _ operands _) ⇔ exprs_assign operands) ∧
@@ -814,6 +813,23 @@ Definition convert_operands_def:
          | INR bs => INR bs)
     | INR why => INR ((i, why) :: blockers (convert_operands n id ids ts vs))) ∧
   (convert_operands n id _ _ _ = INR [(id, "value count mismatch")])
+End
+
+(* A builtin on its operands' values, each converted to its operand type.
+ * The hash of a literal is a constant, as the compiler folds it without
+ * allocating memory. *)
+Definition elab_builtin_def:
+  elab_builtin n id ids op vs =
+    let (operand_tys, result) = builtin_signature op in
+    case (op, vs) of
+      (Keccak256Builtin, [(ConstantAtom (BytesValue bs), ElabBytesLiteral)]) =>
+        INL (([], ConstantAtom (BytesValue (Keccak_256_w64 bs))), n)
+    | _ =>
+      case convert_operands n id ids (values_of operand_tys) vs of
+        INL (cs, _, atoms, n1) =>
+          let (rs, r) = bind_value n1 result (BuiltinOperation op atoms) in
+          INL ((cs ++ rs, r), n1 + 1)
+      | INR bs => INR bs
 End
 
 (* The operation of abi.encode* on the values of its arguments, after any
@@ -2076,36 +2092,14 @@ Definition elab_expr_def:
                   blockers (elab_expr ctx n t) ++ blockers (elab_expr ctx n f))
          | INR bs =>
              INR (bs ++ blockers (elab_expr ctx n t) ++ blockers (elab_expr ctx n f))))
-    | SrcAddressMember info _ member e tid =>
-        (case elab_expr ctx n e of
-           INL ((ss, a, ElabType (AddressT _)), n1) =>
-             if tid ≠ "t_uint256" then INR [(info.node_id, "type annotation mismatch")] else
-             let operation = case member of
-               AddressCodeLength => CodeLengthOperation a
-             | AddressBalance => BalanceOperation a in
-             let (rs, r) = bind_value n1 (UintT 256) operation in
-             INL ((ss ++ rs, r, ElabType (UintT 256)), n1 + 1)
-         | INL _ => INR [(info.node_id, "member of a non-address")]
-         | INR bs => INR bs)
-    (* Literal hashes are constants; other bytes convert to memory as an
-       argument would. *)
-    | SrcKeccak256 info _ e tid =>
-        (case elab_expr ctx n e of
-           INL ((ss, a, vt), n1) =>
-             if ¬(source_type_matches (FixedBytesT 32) tid ∧
-                  case vt of
-                    ElabBytesLiteral => T
-                  | ElabType (LocatedT _ BytesT) => T
-                  | _ => F) then INR [(info.node_id, "keccak256 of this type")] else
-             (case (vt, a) of
-                (ElabBytesLiteral, ConstantAtom (BytesValue bs)) =>
-                  INL ((ss, ConstantAtom (BytesValue (Keccak_256_w64 bs)),
-                        ElabType (FixedBytesT 32)), n1)
-              | _ => case coerce n1 (LocatedT MemoryLoc BytesT) a vt of
-                INL ((cs, b), n2) =>
-                  let (hs, h) = bind_value n2 (FixedBytesT 32) (Keccak256Operation b) in
-                  INL ((ss ++ cs ++ hs, h, ElabType (FixedBytesT 32)), n2 + 1)
-              | INR why => INR [(expr_id e, why)])
+    | SrcBuiltinOperation info _ op args tid =>
+        let result = SND (builtin_signature op) in
+        ensure (source_type_matches result tid) (info.node_id, "type annotation mismatch")
+        (case elab_arg_values ctx n args of
+           INL ((ss, vs), n1) =>
+             (case elab_builtin n1 info.node_id (expr_ids args) op vs of
+                INL ((cs, r), n2) => INL ((ss ++ cs, r, ElabType result), n2)
+              | INR bs => INR bs)
          | INR bs => INR bs)
     | SrcModular info _ op args tid =>
         (* the operands in order, then the modulus check and the operation *)
@@ -2132,20 +2126,6 @@ Definition elab_expr_def:
                    INL ((ss ++ cs ++ es, r, ElabType ty), n2 + 1)
                | INR bs => INR bs)
           | INR bs => INR bs))
-    | SrcEcrecover info _ args tid =>
-        let ty = AddressT NonpayableAddress in
-        ensure (annotation_matches tid (ElabType ty)) (info.node_id, "type annotation mismatch")
-        (case elab_arg_values ctx n args of
-           INL ((ss, vs), n1) =>
-             (case convert_operands n1 info.node_id (expr_ids args)
-                     (values_of [FixedBytesT 32; UintT 8; FixedBytesT 32;
-                                 FixedBytesT 32]) vs of
-                INL (cs, _, [h; v; r; s], n2) =>
-                  let (es, a) = bind_value n2 ty (EcrecoverOperation h v r s) in
-                  INL ((ss ++ cs ++ es, a, ElabType ty), n2 + 1)
-              | INL _ => INR [(info.node_id, "value count mismatch")]
-              | INR bs => INR bs)
-         | INR bs => INR bs)
     (* The operands are the target, the call options in source order and
        the data, evaluated in that order. Only call sends value. *)
     | SrcLowLevelCall info _ kind opts operands tid =>
@@ -4046,6 +4026,7 @@ Proof
   simp[Once convert_operands_pre_def] >> rw[] >> fs[]
 QED
 
+val () = cv_auto_trans elab_builtin_def;
 val () = cv_auto_trans selector_encoding_def;
 val () = cv_auto_trans abi_encoding_def;
 val () = cv_auto_trans decoded_types_match_def;

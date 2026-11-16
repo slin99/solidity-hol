@@ -115,6 +115,17 @@ Datatype:
   | BlockBaseFee | BlockGasLimit | GasLeft
 End
 
+(* The builtin functions that compute a value from their operands and the
+ * world without changing it: keccak256(a), the Keccak-256 hash of the memory
+ * bytes a; ecrecover(h, v, r, s), the address the signature (v, r, s) of the
+ * hash h recovers, or address(0) if it is invalid; a.code.length, the
+ * account's code size, without a memory bytes allocation; and a.balance.
+ *)
+Datatype:
+  builtin_op
+  = Keccak256Builtin | EcrecoverBuiltin | CodeLengthBuiltin | BalanceBuiltin
+End
+
 (* DefaultReferenceOperation loc ty: a placeholder reference that a source
  * variable must be assigned before reading, or a compiler join overwrites.
  * DefaultMemoryOperation ty: the default value of a memory variable of type
@@ -124,10 +135,8 @@ End
  * and writing each field. ArrayIndexOperation a i: element i of fixed bytes,
  * or a located byte sequence or array a. CopyToMemoryOperation a: a new memory
  * copy of the calldata or storage object a.
- * Keccak256Operation a: the Keccak-256 hash of the memory byte sequence a, as
- * bytes32. EcrecoverOperation h v r s: ecrecover(h, v, r,
- * s), the address the signature (v, r, s) of the bytes32 hash h recovers, or
- * address(0) if it is invalid; v is a uint8 and r and s are bytes32.
+ * BuiltinOperation op args: the builtin op on its operands, typed by
+ * builtin_signature (solidityCoreWf).
  * AbiDecodeOperation types a: abi.decode(a, (types)) of the memory bytes a
  * into values of those elementary types, one value or a tuple of them.
  * AbiEncodeOperation selector types arguments: abi.encode(arguments) of the
@@ -168,12 +177,7 @@ Datatype:
   | CalldataSliceOperation core_atom core_atom (core_atom option)
   | CopyToMemoryOperation core_atom
   | ArrayLengthOperation core_atom
-  | Keccak256Operation core_atom
-  | EcrecoverOperation core_atom core_atom core_atom core_atom
-  (* The addressed account's code size, without a memory bytes allocation. *)
-  | CodeLengthOperation core_atom
-  (* The addressed account's current balance. *)
-  | BalanceOperation core_atom
+  | BuiltinOperation builtin_op (core_atom list)
   | AbiEncodeOperation (core_atom option) (sol_type list) (core_atom list)
   | AbiEncodePackedOperation (sol_type list) (core_atom list)
   | AbiDecodeOperation (sol_type list) core_atom
