@@ -7,7 +7,9 @@ calldata (10%), with initial storage seeded from the storage layout and
 immutables by name. pyrevm runs every candidate on the contract's runtime code
 in the differential transaction's world and records the outcome, the written
 storage and the logs; a stratified K per contract become cases in the
-differential suite format, with that recording as their expectation.
+differential suite format, with that recording as their expectation. With
+--sequences a candidate is 2 to 4 calls on one deployment, each screened from
+the storage the call before it left and each a case of its own.
 
 HOL batches on the fleet prepare each contract once and evaluate the source
 on its cases (solidityDifferentialLib.run_fuzz_cases). Every difference from
@@ -313,8 +315,7 @@ class Target:
     """A contract and what fuzzing it needs from its compiler artifact. suite
     is a differential suite (name, source, contract, artifact, optional peer
     and fuel); its cases are ignored. A suite without a peer gets the echo
-    peer, so calls to 0x5000 return their arguments. An optional "functions"
-    list of signatures limits the calls to those functions."""
+    peer, so calls to 0x5000 return their arguments."""
 
     def __init__(self, suite: dict[str, Any], fuel: int):
         self.name = suite["name"]
@@ -323,18 +324,12 @@ class Target:
         peer = suite.get("peer", ECHO_PEER)
         self.entry: dict[str, Any] = {
             **{k: suite[k] for k in ("name", "source", "contract", "artifact")},
-            "peer": peer, "fuel": suite.get("fuel", fuel),
-            **({"functions": suite["functions"]} if "functions" in suite else {})}
+            "peer": peer, "fuel": suite.get("fuel", fuel)}
         artifact = json.loads((ROOT / suite["artifact"]).read_text())
         output = artifact["output"]
         contract = output["contracts"][suite["source"]][suite["contract"]]
         evm = contract["evm"]
         self.functions = [f for f in contract["abi"] if f["type"] == "function"]
-        if "functions" in suite:
-            unknown = set(suite["functions"]) - {signature(f) for f in self.functions}
-            if unknown:
-                raise SystemExit(f"{self.name}: no function {', '.join(sorted(unknown))}")
-            self.functions = [f for f in self.functions if signature(f) in suite["functions"]]
         self.selectors = {signature(f): bytes.fromhex(evm["methodIdentifiers"][signature(f)])
                           for f in self.functions}
         self.code = bytes.fromhex(evm["deployedBytecode"]["object"])

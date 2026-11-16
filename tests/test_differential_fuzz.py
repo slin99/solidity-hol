@@ -535,16 +535,6 @@ class TargetTests(unittest.TestCase):
         self.assertEqual(t.entry["peer"], peer)
 
 
-    def test_a_function_list_limits_the_calls(self) -> None:
-        suite = json.loads((fuzz.SUITES / f"{SUITE}.json").read_text())
-        [first, *_] = target().selectors
-        t = fuzz.Target({**suite, "functions": [first]}, 1)
-        self.assertEqual(list(t.selectors), [first])
-        self.assertEqual(t.entry["functions"], [first])
-        self.assertEqual({c.function for c in fuzz.generate_calls(0, t, 50)}, {first, fuzz.RAW})
-        with self.assertRaisesRegex(SystemExit, "no function nope()"):
-            fuzz.Target({**suite, "functions": [first, "nope()"]}, 1)
-
     def test_a_shard_takes_every_nth_target(self) -> None:
         self.assertEqual(fuzz.parse_shard("1/3"), (1, 3))
         for bad in ("3/3", "1", "-1/2"):
