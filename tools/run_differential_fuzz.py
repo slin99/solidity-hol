@@ -175,7 +175,7 @@ def encode_value(t: AbiType, v: Any) -> bytes:
         return encode_tuple(t["components"], v)
     if t["type"] in ("bytes", "string"):
         return word(len(v)) + v + bytes(-len(v) % 32)
-    if re.fullmatch(r"bytes\d+", t["type"]):
+    if t["type"] == "function" or re.fullmatch(r"bytes\d+", t["type"]):
         return v.ljust(32, b"\0")
     return word(int(v))
 
@@ -242,6 +242,9 @@ def random_value(rng: random.Random, t: AbiType) -> Any:
         return rng.random() < 0.5
     if name == "address":
         return rng.choice(ADDRESSES)
+    if name == "function":
+        # An external function value: address then selector, encoded like bytes24.
+        return rng.choice(ADDRESSES).to_bytes(20, "big") + random_bytes(rng, 4)
     if name.startswith("bytes"):
         return random_bytes(rng, int(name[5:]))
     return int_value(rng, name)

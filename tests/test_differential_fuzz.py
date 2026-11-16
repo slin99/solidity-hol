@@ -60,6 +60,14 @@ class EncodingTests(unittest.TestCase):
         self.assertEqual(encoded[32:64], b"\xff" * 32)
         self.assertEqual(fuzz.canonical(t), "(bool,int8)[2]")
 
+    def test_external_function_values_are_address_and_selector(self) -> None:
+        t = {"type": "tuple", "components": [{"type": "function"}, {"type": "function[]"}]}
+        value = fuzz.random_value(fuzz.random.Random(1), t)
+        self.assertEqual(len(value[0]), 24)
+        self.assertIn(int.from_bytes(value[0][:20], "big"), fuzz.ADDRESSES)
+        encoded = fuzz.encode_tuple([{"type": "function"}], [value[0]])
+        self.assertEqual(encoded, value[0] + bytes(8))
+
 
 class GenerationTests(unittest.TestCase):
     def test_generation_is_deterministic_per_seed(self) -> None:
