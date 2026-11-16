@@ -1883,11 +1883,11 @@ Proof
 QED
 
 (* The static rule admits return data reads before a call of the block's own,
- * but not in a Yul function's body. Value gas() uses explicit observations. *)
+ * in a Yul function's body too. Value gas() uses explicit observations. *)
 Theorem asm_gas_rule:
   assembly_gas_ok rd_size ∧
   assembly_gas_ok rd_bubble ∧
-  ¬assembly_gas_ok [YulFunction "f" [] ["r"]
+  assembly_gas_ok [YulFunction "f" [] ["r"]
                       [YulAssign ["r"] (YulBuiltin YReturnDataSize [])]] ∧
   assembly_gas_ok [YulAssign ["x"] (YulBuiltin YGas [])]
 Proof
