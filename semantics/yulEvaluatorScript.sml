@@ -496,6 +496,8 @@ Definition eval_yul_builtin_def:
     | (YMemoryGuard, [x]) => EvalValues [x] m
     | (YCaller, []) => EvalValues [n2w (w2n m.caller_address)] m
     | (YAddress, []) => EvalValues [n2w (w2n m.self_address)] m
+    | (YSelfBalance, []) =>
+        EvalValues [n2w (lookup_account m.self_address m.accounts).balance] m
     | (YOrigin, []) =>
         EvalValues [n2w (w2n m.transaction_parameters.origin)] m
     | (YGasPrice, []) =>
@@ -544,6 +546,8 @@ Definition eval_yul_builtin_def:
                   data := bs |>])
     | (YPop, [_]) => EvalValues [] m
     | (YGas, []) => EvalValues [n2w m.gas_limit] m
+    | (YBalance, [a]) =>
+        EvalValues [n2w (lookup_account (w2w a) m.accounts).balance] m
     | (YExtCodeSize, [a]) =>
         EvalValues [n2w (LENGTH (lookup_account (w2w a) m.accounts).code)] m
     | (YExtCodeCopy, [a; dst; src; sz]) =>
@@ -576,6 +580,10 @@ Definition eval_yul_builtin_def:
           EvalAbrupt (YulRevert bs) m'
     | (YCodeSize, []) => EvalValues [n2w (LENGTH m.code)] m
     | (YCodeCopy, [dst; src; sz]) =>
+        EvalValues []
+          (yul_memory_write (yul_memory_touch m (w2n dst) (w2n sz))
+             (w2n dst) (take_pad_0 (w2n sz) (DROP (w2n src) m.code)))
+    | (YDataCopy, [dst; src; sz]) =>
         EvalValues []
           (yul_memory_write (yul_memory_touch m (w2n dst) (w2n sz))
              (w2n dst) (take_pad_0 (w2n sz) (DROP (w2n src) m.code)))

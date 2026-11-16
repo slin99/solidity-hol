@@ -1405,6 +1405,18 @@ Proof
   EVAL_TAC
 QED
 
+Theorem assembly_balances_are_read_only_and_datacopy_is_unsupported:
+  assembly_expr_ok (assembly_unsupported ++ assembly_state_writes)
+    (YulBuiltin YBalance [YulLit (LitNumber 0w)]) ∧
+  assembly_expr_ok (assembly_unsupported ++ assembly_state_writes)
+    (YulBuiltin YSelfBalance []) ∧
+  ¬assembly_expr_ok assembly_unsupported
+    (YulBuiltin YDataCopy
+      [YulLit (LitNumber 0w); YulLit (LitNumber 0w); YulLit (LitNumber 0w)])
+Proof
+  EVAL_TAC
+QED
+
 (* codesize and codecopy pass the static check (a creation frame refuses
  * them at run time); extcodecopy writes like the other copies, and a literal
  * region it writes is readable after it. *)

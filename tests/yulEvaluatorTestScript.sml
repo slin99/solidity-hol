@@ -1371,3 +1371,60 @@ Theorem creation_unknown_object_fails:
 Proof
   CONV_TAC cv_eval
 QED
+
+Definition yul_balance_machine_def:
+  yul_balance_machine = yul_frame_machine with accounts :=
+    update_account 0x1234w (empty_account_state with balance := 17)
+      (update_account 0x77w (empty_account_state with balance := 29)
+        empty_accounts)
+End
+
+val () = cv_auto_trans yul_balance_machine_def;
+
+Theorem balance_reads_account_without_changing_machine:
+  eval_yul_builtin YBalance [0x77w] yul_balance_machine =
+    EvalValues [29w] yul_balance_machine ∧
+  eval_yul_builtin YBalance [n2w (2 ** 160 + 0x77)] yul_balance_machine =
+    EvalValues [29w] yul_balance_machine ∧
+  eval_yul_builtin YBalance [0x79w] yul_balance_machine =
+    EvalValues [0w] yul_balance_machine ∧
+  eval_yul_builtin YBalance [0x1234w] yul_balance_machine =
+    EvalValues [17w] yul_balance_machine ∧
+  eval_yul_builtin YSelfBalance [] yul_balance_machine =
+    EvalValues [17w] yul_balance_machine ∧
+  eval_yul_builtin YSelfBalance [] yul_frame_machine =
+    EvalValues [0w] yul_frame_machine
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem datacopy_zero_pads_and_expands_memory:
+  case eval_yul_builtin YDataCopy [31w; 1w; 4w]
+    (yul_frame_machine with <|
+       code := [0x11w; 0x22w; 0x33w]; call_data := [0xffw; 0xffw];
+       memory := FEMPTY |+ (30, 0xaaw) |+ (33, 0xffw) |+ (35, 0xbbw) |>) of
+    EvalValues [] m =>
+      yul_memory_read m 30 6 = [0xaaw; 0x22w; 0x33w; 0w; 0w; 0xbbw] ∧
+      m.memory_size = 64
+  | _ => F
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem datacopy_empty_range_touches_nothing:
+  eval_yul_builtin YDataCopy [0xffffw; 0xffffw; 0w] yul_frame_machine =
+    EvalValues [] yul_frame_machine
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem balance_and_datacopy_bad_arity_fails:
+  eval_yul_builtin YBalance [] yul_frame_machine =
+    EvalAbrupt (YulInvalid "bad builtin call") yul_frame_machine ∧
+  eval_yul_builtin YSelfBalance [0w] yul_frame_machine =
+    EvalAbrupt (YulInvalid "bad builtin call") yul_frame_machine ∧
+  eval_yul_builtin YDataCopy [0w; 1w] yul_frame_machine =
+    EvalAbrupt (YulInvalid "bad builtin call") yul_frame_machine
+Proof
+  CONV_TAC cv_eval
+QED

@@ -1157,7 +1157,7 @@ End
  * calls and return data are limited by assembly_gas_ok instead. *)
 Definition assembly_unsupported_def:
   assembly_unsupported =
-    [YDataSize; YDataOffset; YSetImmutable; YLinkerSymbol]
+    [YDataCopy; YDataSize; YDataOffset; YSetImmutable; YLinkerSymbol]
 End
 
 (* The builtins that change the world, which a static frame forbids. A call

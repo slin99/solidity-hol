@@ -708,7 +708,7 @@ def object_level_forms(fixtures: list[dict[str, Any]]) -> dict[str, Any]:
                 if obj["dataSections"]:
                     add_occurrences(forms, role, fixture["source"], "data",
                                     obj["dataSections"])
-                if obj["subobjects"] and obj["depth"] == 0:
+                if obj["subobjects"]:
                     add_occurrences(forms, role, fixture["source"], "subobject",
                                     obj["subobjects"])
                 for name, count in obj["builtins"].items():
