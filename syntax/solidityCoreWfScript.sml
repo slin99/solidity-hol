@@ -2082,7 +2082,17 @@ val () = cv_auto_trans stmts_escape_def;
 val () = cv_auto_trans ends_in_halt_def;
 val () = cv_auto_trans block_halts_def;
 val () = cv_auto_trans mload_prefix_def;
-val () = cv_auto_trans memory_expr_ok_def;
+val memory_expr_ok_pre_def = cv_auto_trans_pre
+  "memory_expr_ok_pre memory_exprs_ok_pre" memory_expr_ok_def;
+
+Theorem memory_expr_ok_pre[cv_pre,local]:
+  (∀h ws e. memory_expr_ok_pre h ws e) ∧
+  (∀h ws es. memory_exprs_ok_pre h ws es)
+Proof
+  ho_match_mp_tac memory_expr_ok_ind >> rpt strip_tac >>
+  simp[Once memory_expr_ok_pre_def] >> rw[] >> gvs[]
+QED
+
 val () = cv_auto_trans memory_stmt_ok_def;
 val () = cv_auto_trans assembly_memory_ok_def;
 val () = cv_auto_trans is_call_builtin_def;

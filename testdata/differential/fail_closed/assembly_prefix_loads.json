@@ -1,0 +1,21 @@
+{
+  "name": "rejected_assembly_prefix_loads",
+  "source": "testdata/differential/assembly_prefix_loads.sol",
+  "contract": "AssemblyPrefixLoads",
+  "artifact": "testdata/differential/expected/assembly_prefix_loads.json",
+  "cases": [
+    {
+      "name": "four_past_end",
+      "function": "fourAt",
+      "args": [
+        455867356320691211509944977504407603390036387149619137164185182714736811808,
+        30
+      ],
+      "expect": {
+        "return": [
+          522190848
+        ]
+      }
+    }
+  ]
+}

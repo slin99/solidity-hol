@@ -1,0 +1,71 @@
+{
+  "name": "assembly_prefix_loads",
+  "source": "testdata/differential/assembly_prefix_loads.sol",
+  "contract": "AssemblyPrefixLoads",
+  "artifact": "testdata/differential/expected/assembly_prefix_loads.json",
+  "cases": [
+    {
+      "name": "address_from_word",
+      "function": "addressAt",
+      "args": [
+        103929005307927756724354605802047639613112342136
+      ],
+      "expect": {
+        "return": [
+          103929005307927756724354605802047639613112342136
+        ]
+      }
+    },
+    {
+      "name": "low_half",
+      "function": "lowHalf",
+      "args": [
+        455867356320691211509944977504407603390036387149619137164185182714736811808
+      ],
+      "expect": {
+        "return": [
+          22690724228668807036942595891182575392
+        ]
+      }
+    },
+    {
+      "name": "first_char",
+      "function": "charAt",
+      "args": [
+        455867356320691211509944977504407603390036387149619137164185182714736811808,
+        0
+      ],
+      "expect": {
+        "return": [
+          1
+        ]
+      }
+    },
+    {
+      "name": "last_char",
+      "function": "charAt",
+      "args": [
+        455867356320691211509944977504407603390036387149619137164185182714736811808,
+        31
+      ],
+      "expect": {
+        "return": [
+          32
+        ]
+      }
+    },
+    {
+      "name": "last_four",
+      "function": "fourAt",
+      "args": [
+        455867356320691211509944977504407603390036387149619137164185182714736811808,
+        28
+      ],
+      "expect": {
+        "return": [
+          488513312
+        ]
+      }
+    }
+  ]
+}
