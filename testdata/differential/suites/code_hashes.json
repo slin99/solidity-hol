@@ -1,0 +1,171 @@
+{
+  "name": "code_hashes",
+  "source": "testdata/differential/code_hashes.sol",
+  "contract": "CodeHashes",
+  "artifact": "testdata/differential/expected/code_hashes.json",
+  "peer": {
+    "source": "testdata/differential/low_level_calls_peer.sol",
+    "contract": "StaticPeer",
+    "artifact": "testdata/differential/expected/low_level_calls_peer.json"
+  },
+  "cases": [
+    {
+      "name": "eoa",
+      "function": "hash",
+      "args": [
+        8192
+      ],
+      "expect": {
+        "return": [
+          "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+        ]
+      }
+    },
+    {
+      "name": "absent_account",
+      "function": "hash",
+      "args": [
+        4660
+      ],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "zero_address",
+      "function": "hash",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "deployed_peer",
+      "function": "hash",
+      "args": [
+        20480
+      ],
+      "expect": {
+        "return": [
+          "0xf86d1317355de9f85d60fea4327229e8264f203c8730194d2e3225770fc1cad6"
+        ]
+      }
+    },
+    {
+      "name": "payable_peer",
+      "function": "payableHash",
+      "args": [
+        20480
+      ],
+      "expect": {
+        "return": [
+          "0xf86d1317355de9f85d60fea4327229e8264f203c8730194d2e3225770fc1cad6"
+        ]
+      }
+    },
+    {
+      "name": "own_code",
+      "function": "selfHash",
+      "args": [],
+      "expect": {
+        "return": [
+          "0xa489f660016639e312a1039a74a0fabc456338003141a712e1bb5faa8eea839b"
+        ]
+      }
+    },
+    {
+      "name": "absent_is_empty",
+      "function": "isEmpty",
+      "args": [
+        4660
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "eoa_is_not_empty",
+      "function": "isEmpty",
+      "args": [
+        8192
+      ],
+      "expect": {
+        "return": [
+          false
+        ]
+      }
+    },
+    {
+      "name": "receiver_evaluated_once",
+      "function": "once",
+      "args": [
+        20480
+      ],
+      "expect": {
+        "return": [
+          "0xf86d1317355de9f85d60fea4327229e8264f203c8730194d2e3225770fc1cad6",
+          1
+        ]
+      },
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "assembly_eoa",
+      "function": "assemblyHash",
+      "args": [
+        8192
+      ],
+      "expect": {
+        "return": [
+          "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+        ]
+      }
+    },
+    {
+      "name": "assembly_absent_account",
+      "function": "assemblyHash",
+      "args": [
+        4660
+      ],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "assembly_deployed_peer",
+      "function": "assemblyHash",
+      "args": [
+        20480
+      ],
+      "expect": {
+        "return": [
+          "0xf86d1317355de9f85d60fea4327229e8264f203c8730194d2e3225770fc1cad6"
+        ]
+      }
+    },
+    {
+      "name": "assembly_dirty_word",
+      "function": "assemblyWordHash",
+      "args": [
+        1461501637330902918203684832716283019655932563456
+      ],
+      "expect": {
+        "return": [
+          "0xf86d1317355de9f85d60fea4327229e8264f203c8730194d2e3225770fc1cad6"
+        ]
+      }
+    }
+  ]
+}

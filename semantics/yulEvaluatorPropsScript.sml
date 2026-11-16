@@ -726,3 +726,17 @@ Theorem yul_memory_write_fields:
 Proof
   Induct >> simp [yul_memory_write_def]
 QED
+
+Theorem yul_memory_read_mem:
+  ∀k m offset. yul_memory_read m offset k = yul_mem_read m.memory offset k
+Proof
+  Induct >> simp [yul_memory_read_def, yul_mem_read_def, yul_memory_byte_def]
+QED
+
+Theorem yul_memory_write_mem:
+  ∀bs m offset.
+    yul_memory_write m offset bs = m with memory := yul_mem_write m.memory offset bs
+Proof
+  Induct >> simp [yul_memory_write_def, yul_mem_write_def,
+                  yulStateTheory.yul_machine_component_equality]
+QED
