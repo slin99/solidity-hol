@@ -1134,8 +1134,9 @@ fun run_fuzz_contract root s =
     val prefix = "fuzz_" ^ contract
     val source = string_field s "source"
     val contract_name = string_field s "contract"
-    val checked = solidityPrepareLib.prepare_artifact
-      {root = root, path = root ^ "/" ^ string_field s "artifact", source = source}
+    val checked = solidityPrepareLib.prepare_contract_artifact
+      {root = root, path = root ^ "/" ^ string_field s "artifact", source = source,
+       contract = SOME contract_name}
     val () = check_unit_contracts (#prepared checked) contract_name
     val (unit, program) = prepared_constants prefix (#prepared checked)
     val code = code_constant (prefix ^ "_code") "deployedBytecode"

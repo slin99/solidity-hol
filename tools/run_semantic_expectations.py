@@ -508,6 +508,40 @@ def run_batches(holbuild: str, work: Path, pending: list[dict[str, Any]],
               file=sys.stderr, flush=True)
 
 
+def admitted_tests(solidity: Path, solc: Path, coverage_path: Path) -> list[str]:
+    """The admitted tests of a coverage report, after checking that the
+    compiler, the test corpus and the report match this checkout's pin."""
+    pin = exporter.PIN_FILE.read_text().strip()
+    profile = exporter.read_json(exporter.DEFAULT_PROFILE)
+    exporter.compiler_identity(solc, profile["compilerVersion"], pin)
+    report = exporter.read_json(coverage_path)
+    if report["solidity_pin"] != pin or report["profile"] != exporter.DEFAULT_PROFILE.stem:
+        raise SystemExit("coverage report compiler pin/profile differs from this checkout")
+    corpus_pin = subprocess.check_output(["git", "-C", str(solidity), "rev-parse", "HEAD"], text=True).strip()
+    if corpus_pin != pin:
+        raise SystemExit(f"test corpus revision {corpus_pin} differs from pin {pin}")
+    return [t["test"] for t in report["tests"] if t["category"] == coverage.ADMITTED]
+
+
+def compile_admitted(solc: Path, tests_root: Path, name: str, work: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Compile a test into work: its entry (test, artifact, source, contract),
+    the contract being the last one of its last source, and the artifact."""
+    test = coverage.read_test(tests_root, tests_root / name)
+    artifact = coverage.compile_test(solc, test, exporter.DEFAULT_PROFILE)
+    path = work / (hashlib.sha256(name.encode()).hexdigest()[:16] + ".json")
+    exporter.write_json_atomic(path, artifact)
+    sources = artifact["output"]["sources"]
+    source_names = [m[2] for line in (tests_root / name).read_text().splitlines()
+                    if (m := coverage.SOURCE_MARKER.match(line)) and m[1] == "Source"]
+    source = source_names[-1] if source_names else name
+    candidates = [(source, n["name"]) for n in sources[source]["ast"]["nodes"]
+                  if n["nodeType"] == "ContractDefinition"]
+    if not candidates:
+        raise SystemExit(f"{name}: no deployable contract")
+    source, contract = candidates[-1]
+    return {"test": name, "artifact": str(path), "source": source, "contract": contract}, artifact
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("solidity", type=Path)
@@ -522,37 +556,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("-j", type=int, default=4)
     args = parser.parse_args(argv)
     pin = exporter.PIN_FILE.read_text().strip()
-    profile = exporter.read_json(exporter.DEFAULT_PROFILE)
-    exporter.compiler_identity(args.solc, profile["compilerVersion"], pin)
-    report = exporter.read_json(args.coverage)
-    if report["solidity_pin"] != pin or report["profile"] != exporter.DEFAULT_PROFILE.stem:
-        raise SystemExit("coverage report compiler pin/profile differs from this checkout")
-    corpus_pin = subprocess.check_output(["git", "-C", str(args.solidity), "rev-parse", "HEAD"], text=True).strip()
-    if corpus_pin != pin:
-        raise SystemExit(f"test corpus revision {corpus_pin} differs from pin {pin}")
     work = args.work_dir.resolve()
     work.mkdir(parents=True, exist_ok=True)
     tests_root = args.solidity / coverage.TESTS_DIR
-    selected = [t["test"] for t in report["tests"] if t["category"] == coverage.ADMITTED and args.match in t["test"]]
+    selected = [t for t in admitted_tests(args.solidity, args.solc, args.coverage) if args.match in t]
 
     def compile_one(name: str) -> dict[str, Any]:
-        test = coverage.read_test(tests_root, tests_root / name)
-        artifact = coverage.compile_test(args.solc, test, exporter.DEFAULT_PROFILE)
-        path = work / (hashlib.sha256(name.encode()).hexdigest()[:16] + ".json")
-        exporter.write_json_atomic(path, artifact)
-        sources = artifact["output"]["sources"]
-        source_names = [m[2] for line in (tests_root / name).read_text().splitlines()
-                        if (m := coverage.SOURCE_MARKER.match(line)) and m[1] == "Source"]
-        source = source_names[-1] if source_names else name
-        candidates = [(source, n["name"]) for n in sources[source]["ast"]["nodes"]
-                      if n["nodeType"] == "ContractDefinition"]
-        if not candidates:
-            raise SystemExit(f"{name}: no deployable contract")
-        source, contract = candidates[-1]
-        methods = artifact["output"]["contracts"][source][contract]["evm"]["methodIdentifiers"]
+        entry, artifact = compile_admitted(args.solc, tests_root, name, work)
+        methods = artifact["output"]["contracts"][entry["source"]][entry["contract"]]["evm"]["methodIdentifiers"]
         calls = parse_calls((tests_root / name).read_text(), methods)
-        return {"test": name, "artifact": str(path), "source": source, "contract": contract,
-                "calls": [c.manifest() for c in calls], "verify_bytecode": args.verify_bytecode}
+        return {**entry, "calls": [c.manifest() for c in calls], "verify_bytecode": args.verify_bytecode}
 
     with ThreadPoolExecutor(max_workers=args.j) as pool:
         tests = list(pool.map(compile_one, selected))

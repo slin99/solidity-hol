@@ -85,6 +85,60 @@ class GenerationTests(unittest.TestCase):
         self.assertTrue(all(c.calldata[:4] in selectors for c in calls if c.mode == "typed"))
 
 
+class SequenceTests(unittest.TestCase):
+    def test_sequences_have_2_to_4_calls_start_with_each_function_and_share_immutables(self) -> None:
+        t = target()
+        sequences = fuzz.generate_sequences(0, t, 30)
+        self.assertEqual(sequences, fuzz.generate_sequences(0, t, 30))
+        self.assertEqual({len(s) for s in sequences}, {2, 3, 4})
+        firsts = Counter(s[0].function for s in sequences if s[0].mode != "raw")
+        self.assertEqual(set(firsts), set(t.selectors))
+        for s in sequences:
+            self.assertEqual({json.dumps(sorted(c.immutables.items())) for c in s},
+                             {json.dumps(sorted(s[0].immutables.items()))})
+            self.assertTrue(all(c.storage == {} for c in s[1:]))
+
+    def test_each_call_starts_from_the_storage_the_one_before_left(self) -> None:
+        # Each call writes its value to slot 1 and clears slot 2.
+        def screen(t: fuzz.Target, c: fuzz.Call) -> fuzz.Recording:
+            if c.value == 13:
+                raise fuzz.Halt("OutOfGas")
+            return fuzz.Recording({"returned": "0x"}, {1: c.value, 2: 0}, [])
+
+        with tempfile.TemporaryDirectory() as temporary:
+            fuzzer = fuzz.Fuzzer(Path(temporary), seed=0, candidates=1, k=4, evaluate=None,  # type: ignore[arg-type]
+                                 screen=screen, sequences=True)
+            steps, halt = fuzzer.screen_sequence(target(), [
+                call(value=5, storage={2: 7, 3: 9}), call(value=6), call(value=13), call(value=8)])
+        self.assertEqual(halt, "OutOfGas")
+        self.assertEqual([c.storage for c, _ in steps], [{2: 7, 3: 9}, {1: 5, 3: 9}])
+
+    def test_k_counts_calls_and_each_step_is_a_case(self) -> None:
+        ok = fuzz.Recording({"returned": "0x"}, {}, [])
+        screened = [[(call(function=f, value=i), ok) for i in range(3)] for f in "abcd"]
+        chosen = fuzz.stratify(0, "t", screened, 5)
+        self.assertEqual(len(chosen), 2)
+        cases = fuzz.make_cases(chosen)
+        self.assertEqual([c.name for c in cases],
+                         [f"seq_000{n}_{step}" for n in range(2) for step in range(3)])
+        self.assertEqual([c.name for c in cases if c.confirm], ["seq_0000_0"])
+        self.assertEqual(cases[4].suite_case()["fuzz"]["sequence"], 1)
+        self.assertEqual(cases[4].suite_case()["fuzz"]["step"], 1)
+
+    def test_a_sequence_agrees_only_if_every_call_does(self) -> None:
+        manifests = {"c": {"screening": {}, "cases": [
+            {"name": f"seq_000{n}_{step}",
+             "fuzz": {"function": "f", "mode": "typed", "sequence": n, "step": step}}
+            for n in range(2) for step in range(2)]}}
+        results = [{"kind": "case", "contract": "c", "case": f"seq_000{n}_{step}",
+                    "status": "inconclusive" if (n, step) == (1, 1) else "agree",
+                    "reason": "OutOfFuel", "confirmed": False}
+                   for n in range(2) for step in range(2)]
+        summary = fuzz.report(manifests, results)
+        self.assertEqual(summary["sequences"], {"evaluated": 2, "every_call_agrees": 1})
+        self.assertIn("2 call sequences, 1 agreeing after every call", fuzz.markdown(summary))
+
+
 class OverloadTests(unittest.TestCase):
     def overloaded(self) -> fuzz.Target:
         t = copy.copy(target())
@@ -97,9 +151,9 @@ class OverloadTests(unittest.TestCase):
     def test_overloads_are_generated_stratified_and_reported_apart(self) -> None:
         calls = [c for c in fuzz.generate_calls(0, self.overloaded(), 20) if c.mode != "raw"]
         self.assertEqual({c.function for c in calls}, {"f(uint8)", "f(uint256)"})
-        screened = [(c, fuzz.Recording({"returned": "0x"}, {}, [])) for c in calls]
+        screened = [[(c, fuzz.Recording({"returned": "0x"}, {}, []))] for c in calls]
         chosen = fuzz.stratify(0, "t", screened, 2)
-        self.assertEqual({c.function for c, _ in chosen}, {"f(uint8)", "f(uint256)"})
+        self.assertEqual({c.function for [(c, _)] in chosen}, {"f(uint8)", "f(uint256)"})
         manifests = {"c": {"screening": {}, "cases": [
             {"name": n, "fuzz": {"function": f, "mode": "typed"}}
             for n, f in (("a", "f(uint8)"), ("b", "f(uint256)"))]}}
@@ -159,24 +213,24 @@ class StratifyTests(unittest.TestCase):
         return fuzz.Recording({"revert": data}, {}, [])
 
     def test_functions_alternate_and_rare_shapes_come_first(self) -> None:
-        common = [(call(function="a", value=i), self.recording("0x01")) for i in range(10)]
-        rare = [(call(function="a", value=99), self.recording("0x02"))]
-        other = [(call(function="b", value=i), self.recording("0x01")) for i in range(5)]
+        common = [[(call(function="a", value=i), self.recording("0x01"))] for i in range(10)]
+        rare = [[(call(function="a", value=99), self.recording("0x02"))]]
+        other = [[(call(function="b", value=i), self.recording("0x01"))] for i in range(5)]
         chosen = fuzz.stratify(0, "t", common + rare + other, 4)
-        self.assertEqual([c.function for c, _ in chosen], ["a", "b", "a", "b"])
-        self.assertIn(99, [c.value for c, _ in chosen])
+        self.assertEqual([c.function for [(c, _)] in chosen], ["a", "b", "a", "b"])
+        self.assertIn(99, [c.value for [(c, _)] in chosen])
 
     def test_every_twentieth_case_is_confirmed(self) -> None:
-        screened = [(call(value=i), self.recording("0x")) for i in range(41)]
+        screened = [[(call(value=i), self.recording("0x"))] for i in range(41)]
         cases = fuzz.make_cases(screened)
         self.assertEqual([c.name for c in cases if c.confirm], ["fuzz_0000", "fuzz_0020", "fuzz_0040"])
 
 
 class StratifySeedTests(unittest.TestCase):
     def test_with_more_functions_than_k_the_seed_picks_which(self) -> None:
-        screened = [(call(function=f"f{i}"), fuzz.Recording({"returned": "0x"}, {}, []))
+        screened = [[(call(function=f"f{i}"), fuzz.Recording({"returned": "0x"}, {}, []))]
                     for i in range(8)]
-        picked = {frozenset(c.function for c, _ in fuzz.stratify(seed, "c", list(screened), 2))
+        picked = {frozenset(c.function for [(c, _)] in fuzz.stratify(seed, "c", list(screened), 2))
                   for seed in range(10)}
         self.assertGreater(len(picked), 1)
 
@@ -275,6 +329,16 @@ class FuzzerTests(unittest.TestCase):
         self.assertEqual(self.screened, screened + 2)  # only the minimized recordings
         self.assertTrue((self.output / "report.md").is_file())
 
+    def test_a_sequence_run_evaluates_and_reports_each_call(self) -> None:
+        fuzzer = fuzz.Fuzzer(self.output, seed=0, candidates=2, k=4, evaluate=self.evaluate,
+                             screen=self.screen, sequences=True)
+        summary = fuzzer.run(fuzz.suite_targets([SUITE]), max_batches=None, shrink_rounds=0)
+        self.assertGreaterEqual(summary["cases"], 4)
+        self.assertEqual(summary["totals"], {"agree": summary["cases"]})
+        self.assertEqual(summary["sequences"]["evaluated"],
+                         summary["sequences"]["every_call_agrees"])
+        self.assertGreater(summary["sequences"]["evaluated"], 1)
+
     def test_a_disagreement_the_bytecode_run_does_not_record_is_not_minimized(self) -> None:
         self.recording_matches = False
         summary = self.fuzzer().run(fuzz.suite_targets([SUITE]), max_batches=None, shrink_rounds=5)
@@ -349,12 +413,13 @@ class FuzzerTests(unittest.TestCase):
         self.assertTrue(fuzz.failed(summary))
 
     def test_resume_is_refused_when_inputs_change(self) -> None:
-        inputs = fuzz.run_inputs([target()], 0, 5, 4)
+        inputs = fuzz.run_inputs([target()], 0, 5, 4, sequences=False)
         fuzz.check_inputs(self.output, inputs, resume=False)
         fuzz.check_inputs(self.output, inputs, resume=True)
         with self.assertRaisesRegex(SystemExit, "not empty"):
-            fuzz.check_inputs(self.output, inputs, resume=False)
-        for changed in ({**inputs, "seed": 1}, fuzz.run_inputs([target()], 0, 5, 8),
+            fuzz.main(["--output", str(self.output), "--suite", SUITE])
+        for changed in ({**inputs, "seed": 1}, fuzz.run_inputs([target()], 0, 5, 8, sequences=False),
+                        fuzz.run_inputs([target()], 0, 5, 4, sequences=True),
                         {**inputs, "source_hash": "0"}):
             with self.assertRaisesRegex(SystemExit, "cannot resume"):
                 fuzz.check_inputs(self.output, changed, resume=True)
@@ -468,6 +533,47 @@ class TargetTests(unittest.TestCase):
             [t] = fuzz.manifest_targets(manifest)
         self.assertEqual(t.entry["artifact"], suite["artifact"])
         self.assertEqual(t.entry["peer"], peer)
+
+
+    def test_a_function_list_limits_the_calls(self) -> None:
+        suite = json.loads((fuzz.SUITES / f"{SUITE}.json").read_text())
+        [first, *_] = target().selectors
+        t = fuzz.Target({**suite, "functions": [first]}, 1)
+        self.assertEqual(list(t.selectors), [first])
+        self.assertEqual(t.entry["functions"], [first])
+        self.assertEqual({c.function for c in fuzz.generate_calls(0, t, 50)}, {first, fuzz.RAW})
+        with self.assertRaisesRegex(SystemExit, "no function nope()"):
+            fuzz.Target({**suite, "functions": [first, "nope()"]}, 1)
+
+    def test_a_shard_takes_every_nth_target(self) -> None:
+        self.assertEqual(fuzz.parse_shard("1/3"), (1, 3))
+        for bad in ("3/3", "1", "-1/2"):
+            with self.assertRaises(fuzz.argparse.ArgumentTypeError):
+                fuzz.parse_shard(bad)
+        with patch.object(fuzz, "check_inputs", side_effect=SystemExit("stop")) as check, \
+                self.assertRaises(SystemExit):
+            fuzz.main(["--output", "out", "--shard", "1/3"])
+        names = [t["name"] for t in check.call_args.args[1]["targets"]]
+        self.assertEqual(names, [t.name for t in fuzz.suite_targets([])][1::3])
+
+    def test_semantic_tests_are_named_by_path_and_compiled_per_shard(self) -> None:
+        suite = json.loads((fuzz.SUITES / f"{SUITE}.json").read_text())
+        compiled = []
+
+        def compile_admitted(solc: Path, root: Path, name: str, work: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+            compiled.append(name)
+            return {"test": name, "artifact": str(ROOT / suite["artifact"]),
+                    "source": suite["source"], "contract": suite["contract"]}, {}
+
+        tests = ["a/b-c.sol", "d.sol", "e/f.sol"]
+        with patch.object(fuzz.fleet, "admitted_tests", return_value=tests), \
+                patch.object(fuzz.fleet, "compile_admitted", side_effect=compile_admitted), \
+                tempfile.TemporaryDirectory() as temporary:
+            targets = fuzz.semantic_targets(Path("sol"), Path("cov"), Path("solc"),
+                                            Path(temporary), (0, 2))
+        self.assertEqual(compiled, ["a/b-c.sol", "e/f.sol"])
+        self.assertEqual([t.name for t in targets], ["st_a_b_c", "st_e_f"])
+        self.assertEqual(targets[0].entry["artifact"], suite["artifact"])
 
 
 class FleetTests(unittest.TestCase):
@@ -599,6 +705,18 @@ class ScreeningTests(unittest.TestCase):
         fuzz.screen(self.pyrevm, t, c)
         with patch.object(fuzz, "GAS_BUDGET", 0), self.assertRaisesRegex(fuzz.Halt, "OverGasBudget"):
             fuzz.screen(self.pyrevm, t, c)
+
+    def test_later_calls_of_a_sequence_see_earlier_writes(self) -> None:
+        t = target()
+        with tempfile.TemporaryDirectory() as temporary:
+            fuzzer = fuzz.Fuzzer(Path(temporary), seed=0, candidates=1, k=1, evaluate=None,  # type: ignore[arg-type]
+                                 screen=lambda t, c: fuzz.screen(self.pyrevm, t, c), sequences=True)
+            screened = [fuzzer.screen_sequence(t, s)[0] for s in fuzz.generate_sequences(0, t, 10)]
+        carried = [(a, b) for steps in screened for a, b in zip(steps, steps[1:])
+                   if a[1].final_storage]
+        self.assertTrue(carried)
+        for (call_a, recording_a), (call_b, _) in carried:
+            self.assertEqual(call_b.storage, fuzz.carried_storage(call_a, recording_a))
 
     def test_logs_are_recorded(self) -> None:
         t = target("qualified_events")
