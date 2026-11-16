@@ -32,7 +32,8 @@ local
   fun json_list xs = "[" ^ String.concatWith "," (map json_string xs) ^ "]"
 
   (* A rejected test reports every blocker line; an admitted one how many
-   * functions calls reach and why the unsupported ones among them are. *)
+   * functions calls reach, why the unsupported ones among them are, and why
+   * its creation has no procedure, if it has none. *)
   fun emit test status fields =
     (TextIO.output (output, "coverage-result: {\"test\":" ^ json_string test ^
             ",\"status\":" ^ json_string status ^
@@ -71,7 +72,7 @@ local
              * did prepare block the test too. *)
             val reasons = List.concat (map (fn Prepared p =>
                 List.concat (map (String.fields (fn c => c = #"\n"))
-                  (List.mapPartial #reason (#functions p)))
+                  (List.mapPartial #reason (#functions p))) @ #creation p
               | Rejected _ => []) outcomes)
           in
             emit test (status_name kind)
@@ -82,10 +83,16 @@ local
             val functions = List.concat
               (map (fn Prepared p => #functions p | Rejected _ => []) outcomes)
             val reasons = List.mapPartial #reason functions
+            (* A creation without a procedure leaves the unit partially
+             * admitted, like an unsupported function, but isn't one. *)
+            val creation =
+              List.concat (map (fn Prepared p => #creation p | Rejected _ => []) outcomes)
           in
-            emit test (if null reasons then "admitted" else "partially-admitted")
+            emit test (if null reasons andalso null creation then "admitted"
+                       else "partially-admitted")
               [("functions", Int.toString (length functions)),
-               ("unsupported", json_list reasons)]
+               ("unsupported", json_list reasons),
+               ("creation", json_list creation)]
           end
     end
     handle solidityPrepareLib.PreparationError (kind, message) =>

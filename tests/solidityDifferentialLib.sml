@@ -261,12 +261,14 @@ fun check_unit_contracts prepared contract =
                "], not " ^ contract)
   end
 
-(* The corpus checks supported features, so each of its functions must be
- * supported: a function the frontend marks unsupported fails the suite. *)
+(* The corpus checks supported features, so each of its functions and its
+ * creation must be supported: a function the frontend marks unsupported, or
+ * a creation without a procedure, fails the suite. *)
 fun check_supported (prepared : solidityPrepareLib.prepared) =
-  case List.filter (isSome o #reason) (#functions prepared) of
-    [] => ()
-  | fs => fail ("unsupported functions: " ^
+  case (List.filter (isSome o #reason) (#functions prepared), #creation prepared) of
+    ([], []) => ()
+  | ([], lines) => fail ("unsupported creation: " ^ String.concatWith "; " lines)
+  | (fs, _) => fail ("unsupported functions: " ^
                 String.concatWith "; "
                   (map (fn {name, reason, ...} => name ^ ": " ^ valOf reason) fs))
 
