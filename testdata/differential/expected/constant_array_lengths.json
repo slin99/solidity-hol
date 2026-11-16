@@ -1,0 +1,2941 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/constant_array_lengths.sol": {
+        "content": "// SPDX-License-Identifier: UNLICENSED\npragma solidity ^0.8.37;\n\nuint256 constant CACHE_LENGTH = 2;\nuint256 constant FLAT_LENGTH = CACHE_LENGTH * 3;\n\nstruct Cached {\n    uint104 value;\n    uint48 stamp;\n}\n\nstruct CachedRecord {\n    Cached[CACHE_LENGTH] cache;\n    uint256 total;\n}\n\ncontract ConstantArrayLengths {\n    uint256 constant LOCAL_LENGTH = 3;\n\n    CachedRecord internal record;\n    uint256[FLAT_LENGTH] internal flat;\n    uint8[LOCAL_LENGTH] internal small;\n\n    function store(uint104 a, uint104 b) external {\n        record.cache[0] = Cached(a, 1);\n        record.cache[1] = Cached(b, 2);\n        record.total = uint256(a) + b;\n        flat[FLAT_LENGTH - 1] = record.total;\n        small[2] = 7;\n    }\n\n    function readStorage() external view returns (uint104, uint48, uint104, uint256, uint256) {\n        return (record.cache[0].value, record.cache[1].stamp, record.cache[1].value,\n                record.total, flat[5]);\n    }\n\n    function lengths() external view returns (uint256, uint256, uint256) {\n        return (record.cache.length, flat.length, small.length);\n    }\n\n    function inMemory(uint104 a) external pure returns (uint256, uint104) {\n        CachedRecord memory r;\n        r.cache[1].value = a;\n        return (r.cache.length, r.cache[1].value);\n    }\n\n    function copied() external view returns (uint104, uint256) {\n        CachedRecord memory r = record;\n        return (r.cache[1].value, r.total);\n    }\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/constant_array_lengths.sol": {
+        "ConstantArrayLengths": {
+          "abi": [
+            {
+              "inputs": [],
+              "name": "copied",
+              "outputs": [
+                {
+                  "internalType": "uint104",
+                  "name": "",
+                  "type": "uint104"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint104",
+                  "name": "a",
+                  "type": "uint104"
+                }
+              ],
+              "name": "inMemory",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint104",
+                  "name": "",
+                  "type": "uint104"
+                }
+              ],
+              "stateMutability": "pure",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "lengths",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "readStorage",
+              "outputs": [
+                {
+                  "internalType": "uint104",
+                  "name": "",
+                  "type": "uint104"
+                },
+                {
+                  "internalType": "uint48",
+                  "name": "",
+                  "type": "uint48"
+                },
+                {
+                  "internalType": "uint104",
+                  "name": "",
+                  "type": "uint104"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint104",
+                  "name": "a",
+                  "type": "uint104"
+                },
+                {
+                  "internalType": "uint104",
+                  "name": "b",
+                  "type": "uint104"
+                }
+              ],
+              "name": "store",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "608060405234601c57600e6020565b610db961002b8239610db990f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b61031f565b61001d5f3561006c565b80630bf668b81461006757806331fadddf146100625780638aa9c8511461005d578063a2e8f7e5146100585763dab1fa120361000e576102e7565b61027f565b610226565b6101ac565b6100e7565b60e01c90565b60405190565b5f80fd5b5f80fd5b6cffffffffffffffffffffffffff1690565b61009b81610080565b036100a257565b5f80fd5b905035906100b382610092565b565b91906040838203126100dd57806100d16100da925f86016100a6565b936020016100a6565b90565b61007c565b5f0190565b34610116576101006100fa3660046100b5565b9061085a565b610108610072565b80610112816100e2565b0390f35b610078565b5f91031261012557565b61007c565b61013390610080565b9052565b65ffffffffffff1690565b61014b90610137565b9052565b90565b61015b9061014f565b9052565b909594926101aa946101996101a39261018f60809661018560a088019c5f89019061012a565b6020870190610142565b604085019061012a565b6060830190610152565b0190610152565b565b346101e0576101bc36600461011b565b6101dc6101c76109fd565b916101d3959395610072565b9586958661015f565b0390f35b610078565b906020828203126101fe576101fb915f016100a6565b90565b61007c565b91602061022492949361021d60408201965f830190610152565b019061012a565b565b346102575761023e6102393660046101e5565b610bca565b9061025361024a610072565b92839283610203565b0390f35b610078565b91602061027d92949361027660408201965f83019061012a565b0190610152565b565b346102b05761028f36600461011b565b610297610d2b565b906102ac6102a3610072565b9283928361025c565b0390f35b610078565b6040906102de6102e594969593966102d460608401985f850190610152565b6020830190610152565b0190610152565b565b3461031a576102f736600461011b565b610316610302610d78565b61030d939193610072565b938493846102b5565b0390f35b610078565b5f80fd5b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b9061034b90610323565b810190811067ffffffffffffffff82111761036557604052565b61032d565b9061037d610376610072565b9283610341565b565b610389604061036a565b90565b9061039690610080565b9052565b90565b90565b6103b46103af6103b99261039a565b61039d565b610137565b90565b906103c690610137565b9052565b634e487b7160e01b5f52603260045260245ffd5b50600290565b90565b6103f0816103de565b82101561040a576104026001916103e4565b910201905f90565b6103ca565b634e487b7160e01b5f525f60045260245ffd5b61042c9051610080565b90565b5f1b90565b9061044c6cffffffffffffffffffffffffff9161042f565b9181191691161790565b61046a61046561046f92610080565b61039d565b610080565b90565b90565b9061048a61048561049192610456565b610472565b8254610434565b9055565b61049f9051610137565b90565b60681b90565b906104bc65ffffffffffff60681b916104a2565b9181191691161790565b6104da6104d56104df92610137565b61039d565b610137565b90565b90565b906104fa6104f5610501926104c6565b6104e2565b82546104a8565b9055565b9061052f60205f61053594610527828201610521848801610422565b90610475565b019201610495565b906104e5565b565b91906105485761054691610505565b565b61040f565b90565b61056461055f6105699261054d565b61039d565b610137565b90565b61058061057b61058592610080565b61039d565b61014f565b90565b634e487b7160e01b5f52601160045260245ffd5b6105ab6105b19193929361014f565b9261014f565b82018092116105bc57565b610588565b906105cd5f199161042f565b9181191691161790565b6105eb6105e66105f09261014f565b61039d565b61014f565b90565b90565b9061060b610606610612926105d7565b6105f3565b82546105c1565b9055565b5f1c90565b90565b61062a61062f91610616565b61061b565b90565b61063c905461061e565b90565b61065361064e6106589261054d565b61039d565b61014f565b90565b610665600261063f565b90565b90565b61067f61067a61068492610668565b61039d565b61014f565b90565b61069661069c9193929361014f565b9261014f565b916106a883820261014f565b9281840414901517156106b757565b610588565b6106d76106c761065b565b6106d1600361066b565b90610687565b90565b6106ee6106e96106f39261039a565b61039d565b61014f565b90565b61070561070b9193929361014f565b9261014f565b820391821161071657565b610588565b50600690565b90565b61072d8161071b565b8210156107475761073f600191610721565b910201905f90565b6103ca565b1b90565b9190600861076b9102916107655f198461074c565b9261074c565b9181191691161790565b919061078b610786610793936105d7565b6105f3565b908354610750565b9055565b90565b60ff1690565b6107b46107af6107b992610797565b61039d565b61079a565b90565b50600390565b90565b9190916107d1816107bc565b8310156107ef5760206107e56001926107c2565b8185040193060290565b6103ca565b9190600861080f91029161080960ff8461074c565b9261074c565b9181191691161790565b61082d6108286108329261079a565b61039d565b61079a565b90565b90565b919061084e61084961085693610819565b610835565b9083546107f4565b9055565b610905916108f66108f06108fc936108a98161089661088d600161088861087f61037f565b945f860161038c565b6103a0565b602083016103bc565b6108a35f80015f906103e7565b90610537565b6108eb846108d76108ce60026108c96108c061037f565b945f860161038c565b610550565b602083016103bc565b6108e55f80016001906103e7565b90610537565b61056c565b9161056c565b9061059c565b60025f016105f6565b61094061091460025f01610632565b61093a60036109346109246106bc565b61092e60016106da565b906106f6565b90610724565b90610775565b61096061094d60076107a0565b61095a60096002906107c5565b90610838565b565b5f90565b5f90565b5f90565b6cffffffffffffffffffffffffff1690565b61098c61099191610616565b61096e565b90565b61099e9054610980565b90565b60681c90565b65ffffffffffff1690565b6109be6109c3916109a1565b6109a7565b90565b6109d090546109b2565b90565b1c90565b6109e79060086109ec93026109d3565b61061b565b90565b906109fa91546109d7565b90565b610a05610962565b50610a0e610966565b50610a17610962565b50610a2061096a565b50610a2961096a565b50610a425f610a3b81800182906103e7565b5001610994565b610a5b5f610a548180016001906103e7565b50016109c6565b91610a755f610a6e8180016001906103e7565b5001610994565b91610a8260025f01610632565b91610a99610a936003600590610724565b906109ef565b919493929190565b610aab604061036a565b90565b67ffffffffffffffff8111610ac35760200290565b61032d565b610ad4610ad991610aae565b61036a565b90565b610ae6604061036a565b90565b5f90565b5f90565b610af9610adc565b9060208083610b06610ae9565b815201610b11610aed565b81525050565b610b1f610af1565b90565b5f5b828110610b3057505050565b602090610b3b610b17565b8184015201610b24565b90610b63610b5283610ac8565b92610b5d8491610aae565b90610b22565b565b610b6f6002610b45565b90565b5f90565b610b7e610aa1565b9060208083610b8b610b65565b815201610b96610b72565b81525050565b610ba4610b76565b90565b50600290565b90610bb782610ba7565b811015610bc5576020020190565b6103ca565b90610bd361096a565b50610bdc610962565b50610c08610be8610b9c565b925f610c0181860151610bfb60016106da565b90610bad565b510161038c565b610c365f610c2f81610c1c81870151610ba7565b950151610c2960016106da565b90610bad565b5101610422565b90565b90610c6f610c665f610c49610adc565b94610c60610c58838301610994565b83880161038c565b016109c6565b602084016103bc565b565b610c7a90610c39565b90565b90610c87826103de565b610c9081610ac8565b92610c9b84916103e4565b5f915b838310610cab5750505050565b600160208192610cba85610c71565b815201920192019190610c9e565b52565b90610cd59061014f565b9052565b90610d10610d076002610cea610aa1565b94610d01610cf95f8301610c7d565b5f8801610cc8565b01610632565b60208401610ccb565b565b610d1b90610cd9565b90565b610d28905161014f565b90565b610d33610962565b50610d3c61096a565b50610d465f610d12565b90610d756020610d6e5f610d6781870151610d6160016106da565b90610bad565b5101610422565b9301610d1e565b90565b610d8061096a565b50610d8961096a565b50610d9261096a565b50610d9e5f80016103de565b610da8600361071b565b91610db360096107bc565b9192919056"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": "60806040526004361015610013575b61031f565b61001d5f3561006c565b80630bf668b81461006757806331fadddf146100625780638aa9c8511461005d578063a2e8f7e5146100585763dab1fa120361000e576102e7565b61027f565b610226565b6101ac565b6100e7565b60e01c90565b60405190565b5f80fd5b5f80fd5b6cffffffffffffffffffffffffff1690565b61009b81610080565b036100a257565b5f80fd5b905035906100b382610092565b565b91906040838203126100dd57806100d16100da925f86016100a6565b936020016100a6565b90565b61007c565b5f0190565b34610116576101006100fa3660046100b5565b9061085a565b610108610072565b80610112816100e2565b0390f35b610078565b5f91031261012557565b61007c565b61013390610080565b9052565b65ffffffffffff1690565b61014b90610137565b9052565b90565b61015b9061014f565b9052565b909594926101aa946101996101a39261018f60809661018560a088019c5f89019061012a565b6020870190610142565b604085019061012a565b6060830190610152565b0190610152565b565b346101e0576101bc36600461011b565b6101dc6101c76109fd565b916101d3959395610072565b9586958661015f565b0390f35b610078565b906020828203126101fe576101fb915f016100a6565b90565b61007c565b91602061022492949361021d60408201965f830190610152565b019061012a565b565b346102575761023e6102393660046101e5565b610bca565b9061025361024a610072565b92839283610203565b0390f35b610078565b91602061027d92949361027660408201965f83019061012a565b0190610152565b565b346102b05761028f36600461011b565b610297610d2b565b906102ac6102a3610072565b9283928361025c565b0390f35b610078565b6040906102de6102e594969593966102d460608401985f850190610152565b6020830190610152565b0190610152565b565b3461031a576102f736600461011b565b610316610302610d78565b61030d939193610072565b938493846102b5565b0390f35b610078565b5f80fd5b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b9061034b90610323565b810190811067ffffffffffffffff82111761036557604052565b61032d565b9061037d610376610072565b9283610341565b565b610389604061036a565b90565b9061039690610080565b9052565b90565b90565b6103b46103af6103b99261039a565b61039d565b610137565b90565b906103c690610137565b9052565b634e487b7160e01b5f52603260045260245ffd5b50600290565b90565b6103f0816103de565b82101561040a576104026001916103e4565b910201905f90565b6103ca565b634e487b7160e01b5f525f60045260245ffd5b61042c9051610080565b90565b5f1b90565b9061044c6cffffffffffffffffffffffffff9161042f565b9181191691161790565b61046a61046561046f92610080565b61039d565b610080565b90565b90565b9061048a61048561049192610456565b610472565b8254610434565b9055565b61049f9051610137565b90565b60681b90565b906104bc65ffffffffffff60681b916104a2565b9181191691161790565b6104da6104d56104df92610137565b61039d565b610137565b90565b90565b906104fa6104f5610501926104c6565b6104e2565b82546104a8565b9055565b9061052f60205f61053594610527828201610521848801610422565b90610475565b019201610495565b906104e5565b565b91906105485761054691610505565b565b61040f565b90565b61056461055f6105699261054d565b61039d565b610137565b90565b61058061057b61058592610080565b61039d565b61014f565b90565b634e487b7160e01b5f52601160045260245ffd5b6105ab6105b19193929361014f565b9261014f565b82018092116105bc57565b610588565b906105cd5f199161042f565b9181191691161790565b6105eb6105e66105f09261014f565b61039d565b61014f565b90565b90565b9061060b610606610612926105d7565b6105f3565b82546105c1565b9055565b5f1c90565b90565b61062a61062f91610616565b61061b565b90565b61063c905461061e565b90565b61065361064e6106589261054d565b61039d565b61014f565b90565b610665600261063f565b90565b90565b61067f61067a61068492610668565b61039d565b61014f565b90565b61069661069c9193929361014f565b9261014f565b916106a883820261014f565b9281840414901517156106b757565b610588565b6106d76106c761065b565b6106d1600361066b565b90610687565b90565b6106ee6106e96106f39261039a565b61039d565b61014f565b90565b61070561070b9193929361014f565b9261014f565b820391821161071657565b610588565b50600690565b90565b61072d8161071b565b8210156107475761073f600191610721565b910201905f90565b6103ca565b1b90565b9190600861076b9102916107655f198461074c565b9261074c565b9181191691161790565b919061078b610786610793936105d7565b6105f3565b908354610750565b9055565b90565b60ff1690565b6107b46107af6107b992610797565b61039d565b61079a565b90565b50600390565b90565b9190916107d1816107bc565b8310156107ef5760206107e56001926107c2565b8185040193060290565b6103ca565b9190600861080f91029161080960ff8461074c565b9261074c565b9181191691161790565b61082d6108286108329261079a565b61039d565b61079a565b90565b90565b919061084e61084961085693610819565b610835565b9083546107f4565b9055565b610905916108f66108f06108fc936108a98161089661088d600161088861087f61037f565b945f860161038c565b6103a0565b602083016103bc565b6108a35f80015f906103e7565b90610537565b6108eb846108d76108ce60026108c96108c061037f565b945f860161038c565b610550565b602083016103bc565b6108e55f80016001906103e7565b90610537565b61056c565b9161056c565b9061059c565b60025f016105f6565b61094061091460025f01610632565b61093a60036109346109246106bc565b61092e60016106da565b906106f6565b90610724565b90610775565b61096061094d60076107a0565b61095a60096002906107c5565b90610838565b565b5f90565b5f90565b5f90565b6cffffffffffffffffffffffffff1690565b61098c61099191610616565b61096e565b90565b61099e9054610980565b90565b60681c90565b65ffffffffffff1690565b6109be6109c3916109a1565b6109a7565b90565b6109d090546109b2565b90565b1c90565b6109e79060086109ec93026109d3565b61061b565b90565b906109fa91546109d7565b90565b610a05610962565b50610a0e610966565b50610a17610962565b50610a2061096a565b50610a2961096a565b50610a425f610a3b81800182906103e7565b5001610994565b610a5b5f610a548180016001906103e7565b50016109c6565b91610a755f610a6e8180016001906103e7565b5001610994565b91610a8260025f01610632565b91610a99610a936003600590610724565b906109ef565b919493929190565b610aab604061036a565b90565b67ffffffffffffffff8111610ac35760200290565b61032d565b610ad4610ad991610aae565b61036a565b90565b610ae6604061036a565b90565b5f90565b5f90565b610af9610adc565b9060208083610b06610ae9565b815201610b11610aed565b81525050565b610b1f610af1565b90565b5f5b828110610b3057505050565b602090610b3b610b17565b8184015201610b24565b90610b63610b5283610ac8565b92610b5d8491610aae565b90610b22565b565b610b6f6002610b45565b90565b5f90565b610b7e610aa1565b9060208083610b8b610b65565b815201610b96610b72565b81525050565b610ba4610b76565b90565b50600290565b90610bb782610ba7565b811015610bc5576020020190565b6103ca565b90610bd361096a565b50610bdc610962565b50610c08610be8610b9c565b925f610c0181860151610bfb60016106da565b90610bad565b510161038c565b610c365f610c2f81610c1c81870151610ba7565b950151610c2960016106da565b90610bad565b5101610422565b90565b90610c6f610c665f610c49610adc565b94610c60610c58838301610994565b83880161038c565b016109c6565b602084016103bc565b565b610c7a90610c39565b90565b90610c87826103de565b610c9081610ac8565b92610c9b84916103e4565b5f915b838310610cab5750505050565b600160208192610cba85610c71565b815201920192019190610c9e565b52565b90610cd59061014f565b9052565b90610d10610d076002610cea610aa1565b94610d01610cf95f8301610c7d565b5f8801610cc8565b01610632565b60208401610ccb565b565b610d1b90610cd9565b90565b610d28905161014f565b90565b610d33610962565b50610d3c61096a565b50610d465f610d12565b90610d756020610d6e5f610d6781870151610d6160016106da565b90610bad565b5101610422565b9301610d1e565b90565b610d8061096a565b50610d8961096a565b50610d9261096a565b50610d9e5f80016103de565b610da8600361071b565b91610db360096107bc565b9192919056"
+            },
+            "methodIdentifiers": {
+              "copied()": "a2e8f7e5",
+              "inMemory(uint104)": "8aa9c851",
+              "lengths()": "dab1fa12",
+              "readStorage()": "31fadddf",
+              "store(uint104,uint104)": "0bf668b8"
+            }
+          },
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 28,
+                "contract": "testdata/differential/constant_array_lengths.sol:ConstantArrayLengths",
+                "label": "record",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_struct(CachedRecord)22_storage"
+              },
+              {
+                "astId": 32,
+                "contract": "testdata/differential/constant_array_lengths.sol:ConstantArrayLengths",
+                "label": "flat",
+                "offset": 0,
+                "slot": "3",
+                "type": "t_array(t_uint256)6_storage"
+              },
+              {
+                "astId": 36,
+                "contract": "testdata/differential/constant_array_lengths.sol:ConstantArrayLengths",
+                "label": "small",
+                "offset": 0,
+                "slot": "9",
+                "type": "t_array(t_uint8)3_storage"
+              }
+            ],
+            "types": {
+              "t_array(t_struct(Cached)14_storage)2_storage": {
+                "base": "t_struct(Cached)14_storage",
+                "encoding": "inplace",
+                "label": "struct Cached[2]",
+                "numberOfBytes": "64"
+              },
+              "t_array(t_uint256)6_storage": {
+                "base": "t_uint256",
+                "encoding": "inplace",
+                "label": "uint256[6]",
+                "numberOfBytes": "192"
+              },
+              "t_array(t_uint8)3_storage": {
+                "base": "t_uint8",
+                "encoding": "inplace",
+                "label": "uint8[3]",
+                "numberOfBytes": "32"
+              },
+              "t_struct(Cached)14_storage": {
+                "encoding": "inplace",
+                "label": "struct Cached",
+                "members": [
+                  {
+                    "astId": 11,
+                    "contract": "testdata/differential/constant_array_lengths.sol:ConstantArrayLengths",
+                    "label": "value",
+                    "offset": 0,
+                    "slot": "0",
+                    "type": "t_uint104"
+                  },
+                  {
+                    "astId": 13,
+                    "contract": "testdata/differential/constant_array_lengths.sol:ConstantArrayLengths",
+                    "label": "stamp",
+                    "offset": 13,
+                    "slot": "0",
+                    "type": "t_uint48"
+                  }
+                ],
+                "numberOfBytes": "32"
+              },
+              "t_struct(CachedRecord)22_storage": {
+                "encoding": "inplace",
+                "label": "struct CachedRecord",
+                "members": [
+                  {
+                    "astId": 19,
+                    "contract": "testdata/differential/constant_array_lengths.sol:ConstantArrayLengths",
+                    "label": "cache",
+                    "offset": 0,
+                    "slot": "0",
+                    "type": "t_array(t_struct(Cached)14_storage)2_storage"
+                  },
+                  {
+                    "astId": 21,
+                    "contract": "testdata/differential/constant_array_lengths.sol:ConstantArrayLengths",
+                    "label": "total",
+                    "offset": 0,
+                    "slot": "2",
+                    "type": "t_uint256"
+                  }
+                ],
+                "numberOfBytes": "96"
+              },
+              "t_uint104": {
+                "encoding": "inplace",
+                "label": "uint104",
+                "numberOfBytes": "13"
+              },
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              },
+              "t_uint48": {
+                "encoding": "inplace",
+                "label": "uint48",
+                "numberOfBytes": "6"
+              },
+              "t_uint8": {
+                "encoding": "inplace",
+                "label": "uint8",
+                "numberOfBytes": "1"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/constant_array_lengths.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/constant_array_lengths.sol",
+          "exportedSymbols": {
+            "CACHE_LENGTH": [
+              4
+            ],
+            "Cached": [
+              14
+            ],
+            "CachedRecord": [
+              22
+            ],
+            "ConstantArrayLengths": [
+              203
+            ],
+            "FLAT_LENGTH": [
+              9
+            ]
+          },
+          "id": 204,
+          "license": "UNLICENSED",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "^",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "39:24:0"
+            },
+            {
+              "constant": true,
+              "id": 4,
+              "mutability": "constant",
+              "name": "CACHE_LENGTH",
+              "nameLocation": "82:12:0",
+              "nodeType": "VariableDeclaration",
+              "scope": 204,
+              "src": "65:33:0",
+              "stateVariable": false,
+              "storageLocation": "default",
+              "typeDescriptions": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              },
+              "typeName": {
+                "id": 2,
+                "name": "uint256",
+                "nodeType": "ElementaryTypeName",
+                "src": "65:7:0",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_uint256",
+                  "typeString": "uint256"
+                }
+              },
+              "value": {
+                "hexValue": "32",
+                "id": 3,
+                "isConstant": false,
+                "isLValue": false,
+                "isPure": true,
+                "kind": "number",
+                "lValueRequested": false,
+                "nodeType": "Literal",
+                "src": "97:1:0",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_rational_2_by_1",
+                  "typeString": "int_const 2"
+                },
+                "value": "2"
+              },
+              "visibility": "internal"
+            },
+            {
+              "constant": true,
+              "id": 9,
+              "mutability": "constant",
+              "name": "FLAT_LENGTH",
+              "nameLocation": "117:11:0",
+              "nodeType": "VariableDeclaration",
+              "scope": 204,
+              "src": "100:47:0",
+              "stateVariable": false,
+              "storageLocation": "default",
+              "typeDescriptions": {
+                "typeIdentifier": "t_uint256",
+                "typeString": "uint256"
+              },
+              "typeName": {
+                "id": 5,
+                "name": "uint256",
+                "nodeType": "ElementaryTypeName",
+                "src": "100:7:0",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_uint256",
+                  "typeString": "uint256"
+                }
+              },
+              "value": {
+                "commonType": {
+                  "typeIdentifier": "t_uint256",
+                  "typeString": "uint256"
+                },
+                "id": 8,
+                "isConstant": false,
+                "isLValue": false,
+                "isPure": true,
+                "lValueRequested": false,
+                "leftExpression": {
+                  "id": 6,
+                  "name": "CACHE_LENGTH",
+                  "nodeType": "Identifier",
+                  "overloadedDeclarations": [],
+                  "referencedDeclaration": 4,
+                  "src": "131:12:0",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  }
+                },
+                "nodeType": "BinaryOperation",
+                "operator": "*",
+                "rightExpression": {
+                  "hexValue": "33",
+                  "id": 7,
+                  "isConstant": false,
+                  "isLValue": false,
+                  "isPure": true,
+                  "kind": "number",
+                  "lValueRequested": false,
+                  "nodeType": "Literal",
+                  "src": "146:1:0",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_rational_3_by_1",
+                    "typeString": "int_const 3"
+                  },
+                  "value": "3"
+                },
+                "src": "131:16:0",
+                "typeDescriptions": {
+                  "typeIdentifier": "t_uint256",
+                  "typeString": "uint256"
+                }
+              },
+              "visibility": "internal"
+            },
+            {
+              "canonicalName": "Cached",
+              "id": 14,
+              "members": [
+                {
+                  "constant": false,
+                  "id": 11,
+                  "mutability": "mutable",
+                  "name": "value",
+                  "nameLocation": "178:5:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14,
+                  "src": "170:13:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint104",
+                    "typeString": "uint104"
+                  },
+                  "typeName": {
+                    "id": 10,
+                    "name": "uint104",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "170:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint104",
+                      "typeString": "uint104"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 13,
+                  "mutability": "mutable",
+                  "name": "stamp",
+                  "nameLocation": "196:5:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 14,
+                  "src": "189:12:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint48",
+                    "typeString": "uint48"
+                  },
+                  "typeName": {
+                    "id": 12,
+                    "name": "uint48",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "189:6:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint48",
+                      "typeString": "uint48"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "name": "Cached",
+              "nameLocation": "157:6:0",
+              "nodeType": "StructDefinition",
+              "scope": 204,
+              "src": "150:54:0",
+              "visibility": "public"
+            },
+            {
+              "canonicalName": "CachedRecord",
+              "id": 22,
+              "members": [
+                {
+                  "constant": false,
+                  "id": 19,
+                  "mutability": "mutable",
+                  "name": "cache",
+                  "nameLocation": "253:5:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 22,
+                  "src": "232:26:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_struct$_Cached_$14_storage_$2_storage_ptr",
+                    "typeString": "struct Cached[2]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 16,
+                      "nodeType": "UserDefinedTypeName",
+                      "pathNode": {
+                        "id": 15,
+                        "name": "Cached",
+                        "nameLocations": [
+                          "232:6:0"
+                        ],
+                        "nodeType": "IdentifierPath",
+                        "referencedDeclaration": 14,
+                        "src": "232:6:0"
+                      },
+                      "referencedDeclaration": 14,
+                      "src": "232:6:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_struct$_Cached_$14_storage_ptr",
+                        "typeString": "struct Cached"
+                      }
+                    },
+                    "id": 18,
+                    "length": {
+                      "id": 17,
+                      "name": "CACHE_LENGTH",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 4,
+                      "src": "239:12:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    },
+                    "nodeType": "ArrayTypeName",
+                    "src": "232:20:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_struct$_Cached_$14_storage_$2_storage_ptr",
+                      "typeString": "struct Cached[2]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 21,
+                  "mutability": "mutable",
+                  "name": "total",
+                  "nameLocation": "272:5:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 22,
+                  "src": "264:13:0",
+                  "stateVariable": false,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 20,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "264:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                }
+              ],
+              "name": "CachedRecord",
+              "nameLocation": "213:12:0",
+              "nodeType": "StructDefinition",
+              "scope": 204,
+              "src": "206:74:0",
+              "visibility": "public"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "ConstantArrayLengths",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 203,
+              "linearizedBaseContracts": [
+                203
+              ],
+              "name": "ConstantArrayLengths",
+              "nameLocation": "291:20:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": true,
+                  "id": 25,
+                  "mutability": "constant",
+                  "name": "LOCAL_LENGTH",
+                  "nameLocation": "335:12:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 203,
+                  "src": "318:33:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 23,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "318:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": {
+                    "hexValue": "33",
+                    "id": 24,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": true,
+                    "kind": "number",
+                    "lValueRequested": false,
+                    "nodeType": "Literal",
+                    "src": "350:1:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_rational_3_by_1",
+                      "typeString": "int_const 3"
+                    },
+                    "value": "3"
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 28,
+                  "mutability": "mutable",
+                  "name": "record",
+                  "nameLocation": "380:6:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 203,
+                  "src": "358:28:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_struct$_CachedRecord_$22_storage",
+                    "typeString": "struct CachedRecord"
+                  },
+                  "typeName": {
+                    "id": 27,
+                    "nodeType": "UserDefinedTypeName",
+                    "pathNode": {
+                      "id": 26,
+                      "name": "CachedRecord",
+                      "nameLocations": [
+                        "358:12:0"
+                      ],
+                      "nodeType": "IdentifierPath",
+                      "referencedDeclaration": 22,
+                      "src": "358:12:0"
+                    },
+                    "referencedDeclaration": 22,
+                    "src": "358:12:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_struct$_CachedRecord_$22_storage_ptr",
+                      "typeString": "struct CachedRecord"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 32,
+                  "mutability": "mutable",
+                  "name": "flat",
+                  "nameLocation": "422:4:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 203,
+                  "src": "392:34:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_uint256_$6_storage",
+                    "typeString": "uint256[6]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 29,
+                      "name": "uint256",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "392:7:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    },
+                    "id": 31,
+                    "length": {
+                      "id": 30,
+                      "name": "FLAT_LENGTH",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 9,
+                      "src": "400:11:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    },
+                    "nodeType": "ArrayTypeName",
+                    "src": "392:20:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_uint256_$6_storage_ptr",
+                      "typeString": "uint256[6]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "id": 36,
+                  "mutability": "mutable",
+                  "name": "small",
+                  "nameLocation": "461:5:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 203,
+                  "src": "432:34:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_uint8_$3_storage",
+                    "typeString": "uint8[3]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 33,
+                      "name": "uint8",
+                      "nodeType": "ElementaryTypeName",
+                      "src": "432:5:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint8",
+                        "typeString": "uint8"
+                      }
+                    },
+                    "id": 35,
+                    "length": {
+                      "id": 34,
+                      "name": "LOCAL_LENGTH",
+                      "nodeType": "Identifier",
+                      "overloadedDeclarations": [],
+                      "referencedDeclaration": 25,
+                      "src": "438:12:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    },
+                    "nodeType": "ArrayTypeName",
+                    "src": "432:19:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_uint8_$3_storage_ptr",
+                      "typeString": "uint8[3]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "body": {
+                    "id": 91,
+                    "nodeType": "Block",
+                    "src": "519:194:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 52,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "baseExpression": {
+                              "expression": {
+                                "id": 43,
+                                "name": "record",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 28,
+                                "src": "529:6:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_CachedRecord_$22_storage",
+                                  "typeString": "struct CachedRecord storage ref"
+                                }
+                              },
+                              "id": 46,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "536:5:0",
+                              "memberName": "cache",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 19,
+                              "src": "529:12:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_array$_t_struct$_Cached_$14_storage_$2_storage",
+                                "typeString": "struct Cached storage ref[2] storage ref"
+                              }
+                            },
+                            "id": 47,
+                            "indexExpression": {
+                              "hexValue": "30",
+                              "id": 45,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "number",
+                              "lValueRequested": false,
+                              "nodeType": "Literal",
+                              "src": "542:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_rational_0_by_1",
+                                "typeString": "int_const 0"
+                              },
+                              "value": "0"
+                            },
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "nodeType": "IndexAccess",
+                            "src": "529:15:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_struct$_Cached_$14_storage",
+                              "typeString": "struct Cached storage ref"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "arguments": [
+                              {
+                                "id": 49,
+                                "name": "a",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 38,
+                                "src": "554:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_uint104",
+                                  "typeString": "uint104"
+                                }
+                              },
+                              {
+                                "hexValue": "31",
+                                "id": 50,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "557:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_1_by_1",
+                                  "typeString": "int_const 1"
+                                },
+                                "value": "1"
+                              }
+                            ],
+                            "expression": {
+                              "argumentTypes": [
+                                {
+                                  "typeIdentifier": "t_uint104",
+                                  "typeString": "uint104"
+                                },
+                                {
+                                  "typeIdentifier": "t_rational_1_by_1",
+                                  "typeString": "int_const 1"
+                                }
+                              ],
+                              "id": 48,
+                              "name": "Cached",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 14,
+                              "src": "547:6:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_type$_t_struct$_Cached_$14_storage_ptr_$",
+                                "typeString": "type(struct Cached storage pointer)"
+                              }
+                            },
+                            "id": 51,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "kind": "structConstructorCall",
+                            "lValueRequested": false,
+                            "nameLocations": [],
+                            "names": [],
+                            "nodeType": "FunctionCall",
+                            "src": "547:12:0",
+                            "tryCall": false,
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_struct$_Cached_$14_memory_ptr",
+                              "typeString": "struct Cached memory"
+                            }
+                          },
+                          "src": "529:30:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Cached_$14_storage",
+                            "typeString": "struct Cached storage ref"
+                          }
+                        },
+                        "id": 53,
+                        "nodeType": "ExpressionStatement",
+                        "src": "529:30:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 63,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "baseExpression": {
+                              "expression": {
+                                "id": 54,
+                                "name": "record",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 28,
+                                "src": "569:6:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_CachedRecord_$22_storage",
+                                  "typeString": "struct CachedRecord storage ref"
+                                }
+                              },
+                              "id": 57,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "576:5:0",
+                              "memberName": "cache",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 19,
+                              "src": "569:12:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_array$_t_struct$_Cached_$14_storage_$2_storage",
+                                "typeString": "struct Cached storage ref[2] storage ref"
+                              }
+                            },
+                            "id": 58,
+                            "indexExpression": {
+                              "hexValue": "31",
+                              "id": 56,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "number",
+                              "lValueRequested": false,
+                              "nodeType": "Literal",
+                              "src": "582:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_rational_1_by_1",
+                                "typeString": "int_const 1"
+                              },
+                              "value": "1"
+                            },
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "nodeType": "IndexAccess",
+                            "src": "569:15:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_struct$_Cached_$14_storage",
+                              "typeString": "struct Cached storage ref"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "arguments": [
+                              {
+                                "id": 60,
+                                "name": "b",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 40,
+                                "src": "594:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_uint104",
+                                  "typeString": "uint104"
+                                }
+                              },
+                              {
+                                "hexValue": "32",
+                                "id": 61,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "597:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_2_by_1",
+                                  "typeString": "int_const 2"
+                                },
+                                "value": "2"
+                              }
+                            ],
+                            "expression": {
+                              "argumentTypes": [
+                                {
+                                  "typeIdentifier": "t_uint104",
+                                  "typeString": "uint104"
+                                },
+                                {
+                                  "typeIdentifier": "t_rational_2_by_1",
+                                  "typeString": "int_const 2"
+                                }
+                              ],
+                              "id": 59,
+                              "name": "Cached",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 14,
+                              "src": "587:6:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_type$_t_struct$_Cached_$14_storage_ptr_$",
+                                "typeString": "type(struct Cached storage pointer)"
+                              }
+                            },
+                            "id": 62,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "kind": "structConstructorCall",
+                            "lValueRequested": false,
+                            "nameLocations": [],
+                            "names": [],
+                            "nodeType": "FunctionCall",
+                            "src": "587:12:0",
+                            "tryCall": false,
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_struct$_Cached_$14_memory_ptr",
+                              "typeString": "struct Cached memory"
+                            }
+                          },
+                          "src": "569:30:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Cached_$14_storage",
+                            "typeString": "struct Cached storage ref"
+                          }
+                        },
+                        "id": 64,
+                        "nodeType": "ExpressionStatement",
+                        "src": "569:30:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 74,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "id": 65,
+                              "name": "record",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 28,
+                              "src": "609:6:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_CachedRecord_$22_storage",
+                                "typeString": "struct CachedRecord storage ref"
+                              }
+                            },
+                            "id": 67,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "616:5:0",
+                            "memberName": "total",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 21,
+                            "src": "609:12:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "commonType": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            },
+                            "id": 73,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "leftExpression": {
+                              "arguments": [
+                                {
+                                  "id": 70,
+                                  "name": "a",
+                                  "nodeType": "Identifier",
+                                  "overloadedDeclarations": [],
+                                  "referencedDeclaration": 38,
+                                  "src": "632:1:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_uint104",
+                                    "typeString": "uint104"
+                                  }
+                                }
+                              ],
+                              "expression": {
+                                "argumentTypes": [
+                                  {
+                                    "typeIdentifier": "t_uint104",
+                                    "typeString": "uint104"
+                                  }
+                                ],
+                                "id": 69,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "lValueRequested": false,
+                                "nodeType": "ElementaryTypeNameExpression",
+                                "src": "624:7:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_type$_t_uint256_$",
+                                  "typeString": "type(uint256)"
+                                },
+                                "typeName": {
+                                  "id": 68,
+                                  "name": "uint256",
+                                  "nodeType": "ElementaryTypeName",
+                                  "src": "624:7:0",
+                                  "typeDescriptions": {}
+                                }
+                              },
+                              "id": 71,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "kind": "typeConversion",
+                              "lValueRequested": false,
+                              "nameLocations": [],
+                              "names": [],
+                              "nodeType": "FunctionCall",
+                              "src": "624:10:0",
+                              "tryCall": false,
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            "nodeType": "BinaryOperation",
+                            "operator": "+",
+                            "rightExpression": {
+                              "id": 72,
+                              "name": "b",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 40,
+                              "src": "637:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint104",
+                                "typeString": "uint104"
+                              }
+                            },
+                            "src": "624:14:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "609:29:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 75,
+                        "nodeType": "ExpressionStatement",
+                        "src": "609:29:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 83,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "baseExpression": {
+                              "id": 76,
+                              "name": "flat",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 32,
+                              "src": "648:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_array$_t_uint256_$6_storage",
+                                "typeString": "uint256[6] storage ref"
+                              }
+                            },
+                            "id": 80,
+                            "indexExpression": {
+                              "commonType": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              },
+                              "id": 79,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "lValueRequested": false,
+                              "leftExpression": {
+                                "id": 77,
+                                "name": "FLAT_LENGTH",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 9,
+                                "src": "653:11:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_uint256",
+                                  "typeString": "uint256"
+                                }
+                              },
+                              "nodeType": "BinaryOperation",
+                              "operator": "-",
+                              "rightExpression": {
+                                "hexValue": "31",
+                                "id": 78,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "667:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_1_by_1",
+                                  "typeString": "int_const 1"
+                                },
+                                "value": "1"
+                              },
+                              "src": "653:15:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "nodeType": "IndexAccess",
+                            "src": "648:21:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "expression": {
+                              "id": 81,
+                              "name": "record",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 28,
+                              "src": "672:6:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_CachedRecord_$22_storage",
+                                "typeString": "struct CachedRecord storage ref"
+                              }
+                            },
+                            "id": 82,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "679:5:0",
+                            "memberName": "total",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 21,
+                            "src": "672:12:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "648:36:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 84,
+                        "nodeType": "ExpressionStatement",
+                        "src": "648:36:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 89,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "baseExpression": {
+                              "id": 85,
+                              "name": "small",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 36,
+                              "src": "694:5:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_array$_t_uint8_$3_storage",
+                                "typeString": "uint8[3] storage ref"
+                              }
+                            },
+                            "id": 87,
+                            "indexExpression": {
+                              "hexValue": "32",
+                              "id": 86,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "number",
+                              "lValueRequested": false,
+                              "nodeType": "Literal",
+                              "src": "700:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_rational_2_by_1",
+                                "typeString": "int_const 2"
+                              },
+                              "value": "2"
+                            },
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "nodeType": "IndexAccess",
+                            "src": "694:8:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint8",
+                              "typeString": "uint8"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "hexValue": "37",
+                            "id": 88,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "number",
+                            "lValueRequested": false,
+                            "nodeType": "Literal",
+                            "src": "705:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_rational_7_by_1",
+                              "typeString": "int_const 7"
+                            },
+                            "value": "7"
+                          },
+                          "src": "694:12:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint8",
+                            "typeString": "uint8"
+                          }
+                        },
+                        "id": 90,
+                        "nodeType": "ExpressionStatement",
+                        "src": "694:12:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "0bf668b8",
+                  "id": 92,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "store",
+                  "nameLocation": "482:5:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 41,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 38,
+                        "mutability": "mutable",
+                        "name": "a",
+                        "nameLocation": "496:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 92,
+                        "src": "488:9:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint104",
+                          "typeString": "uint104"
+                        },
+                        "typeName": {
+                          "id": 37,
+                          "name": "uint104",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "488:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint104",
+                            "typeString": "uint104"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 40,
+                        "mutability": "mutable",
+                        "name": "b",
+                        "nameLocation": "507:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 92,
+                        "src": "499:9:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint104",
+                          "typeString": "uint104"
+                        },
+                        "typeName": {
+                          "id": 39,
+                          "name": "uint104",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "499:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint104",
+                            "typeString": "uint104"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "487:22:0"
+                  },
+                  "returnParameters": {
+                    "id": 42,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "519:0:0"
+                  },
+                  "scope": 203,
+                  "src": "473:240:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 127,
+                    "nodeType": "Block",
+                    "src": "809:132:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "components": [
+                            {
+                              "expression": {
+                                "baseExpression": {
+                                  "expression": {
+                                    "id": 105,
+                                    "name": "record",
+                                    "nodeType": "Identifier",
+                                    "overloadedDeclarations": [],
+                                    "referencedDeclaration": 28,
+                                    "src": "827:6:0",
+                                    "typeDescriptions": {
+                                      "typeIdentifier": "t_struct$_CachedRecord_$22_storage",
+                                      "typeString": "struct CachedRecord storage ref"
+                                    }
+                                  },
+                                  "id": 106,
+                                  "isConstant": false,
+                                  "isLValue": true,
+                                  "isPure": false,
+                                  "lValueRequested": false,
+                                  "memberLocation": "834:5:0",
+                                  "memberName": "cache",
+                                  "nodeType": "MemberAccess",
+                                  "referencedDeclaration": 19,
+                                  "src": "827:12:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_array$_t_struct$_Cached_$14_storage_$2_storage",
+                                    "typeString": "struct Cached storage ref[2] storage ref"
+                                  }
+                                },
+                                "id": 108,
+                                "indexExpression": {
+                                  "hexValue": "30",
+                                  "id": 107,
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": true,
+                                  "kind": "number",
+                                  "lValueRequested": false,
+                                  "nodeType": "Literal",
+                                  "src": "840:1:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_rational_0_by_1",
+                                    "typeString": "int_const 0"
+                                  },
+                                  "value": "0"
+                                },
+                                "isConstant": false,
+                                "isLValue": true,
+                                "isPure": false,
+                                "lValueRequested": false,
+                                "nodeType": "IndexAccess",
+                                "src": "827:15:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_Cached_$14_storage",
+                                  "typeString": "struct Cached storage ref"
+                                }
+                              },
+                              "id": 109,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "843:5:0",
+                              "memberName": "value",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 11,
+                              "src": "827:21:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint104",
+                                "typeString": "uint104"
+                              }
+                            },
+                            {
+                              "expression": {
+                                "baseExpression": {
+                                  "expression": {
+                                    "id": 110,
+                                    "name": "record",
+                                    "nodeType": "Identifier",
+                                    "overloadedDeclarations": [],
+                                    "referencedDeclaration": 28,
+                                    "src": "850:6:0",
+                                    "typeDescriptions": {
+                                      "typeIdentifier": "t_struct$_CachedRecord_$22_storage",
+                                      "typeString": "struct CachedRecord storage ref"
+                                    }
+                                  },
+                                  "id": 111,
+                                  "isConstant": false,
+                                  "isLValue": true,
+                                  "isPure": false,
+                                  "lValueRequested": false,
+                                  "memberLocation": "857:5:0",
+                                  "memberName": "cache",
+                                  "nodeType": "MemberAccess",
+                                  "referencedDeclaration": 19,
+                                  "src": "850:12:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_array$_t_struct$_Cached_$14_storage_$2_storage",
+                                    "typeString": "struct Cached storage ref[2] storage ref"
+                                  }
+                                },
+                                "id": 113,
+                                "indexExpression": {
+                                  "hexValue": "31",
+                                  "id": 112,
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": true,
+                                  "kind": "number",
+                                  "lValueRequested": false,
+                                  "nodeType": "Literal",
+                                  "src": "863:1:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_rational_1_by_1",
+                                    "typeString": "int_const 1"
+                                  },
+                                  "value": "1"
+                                },
+                                "isConstant": false,
+                                "isLValue": true,
+                                "isPure": false,
+                                "lValueRequested": false,
+                                "nodeType": "IndexAccess",
+                                "src": "850:15:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_Cached_$14_storage",
+                                  "typeString": "struct Cached storage ref"
+                                }
+                              },
+                              "id": 114,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "866:5:0",
+                              "memberName": "stamp",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 13,
+                              "src": "850:21:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint48",
+                                "typeString": "uint48"
+                              }
+                            },
+                            {
+                              "expression": {
+                                "baseExpression": {
+                                  "expression": {
+                                    "id": 115,
+                                    "name": "record",
+                                    "nodeType": "Identifier",
+                                    "overloadedDeclarations": [],
+                                    "referencedDeclaration": 28,
+                                    "src": "873:6:0",
+                                    "typeDescriptions": {
+                                      "typeIdentifier": "t_struct$_CachedRecord_$22_storage",
+                                      "typeString": "struct CachedRecord storage ref"
+                                    }
+                                  },
+                                  "id": 116,
+                                  "isConstant": false,
+                                  "isLValue": true,
+                                  "isPure": false,
+                                  "lValueRequested": false,
+                                  "memberLocation": "880:5:0",
+                                  "memberName": "cache",
+                                  "nodeType": "MemberAccess",
+                                  "referencedDeclaration": 19,
+                                  "src": "873:12:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_array$_t_struct$_Cached_$14_storage_$2_storage",
+                                    "typeString": "struct Cached storage ref[2] storage ref"
+                                  }
+                                },
+                                "id": 118,
+                                "indexExpression": {
+                                  "hexValue": "31",
+                                  "id": 117,
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": true,
+                                  "kind": "number",
+                                  "lValueRequested": false,
+                                  "nodeType": "Literal",
+                                  "src": "886:1:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_rational_1_by_1",
+                                    "typeString": "int_const 1"
+                                  },
+                                  "value": "1"
+                                },
+                                "isConstant": false,
+                                "isLValue": true,
+                                "isPure": false,
+                                "lValueRequested": false,
+                                "nodeType": "IndexAccess",
+                                "src": "873:15:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_Cached_$14_storage",
+                                  "typeString": "struct Cached storage ref"
+                                }
+                              },
+                              "id": 119,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "889:5:0",
+                              "memberName": "value",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 11,
+                              "src": "873:21:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint104",
+                                "typeString": "uint104"
+                              }
+                            },
+                            {
+                              "expression": {
+                                "id": 120,
+                                "name": "record",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 28,
+                                "src": "912:6:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_CachedRecord_$22_storage",
+                                  "typeString": "struct CachedRecord storage ref"
+                                }
+                              },
+                              "id": 121,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "919:5:0",
+                              "memberName": "total",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 21,
+                              "src": "912:12:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            {
+                              "baseExpression": {
+                                "id": 122,
+                                "name": "flat",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 32,
+                                "src": "926:4:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_uint256_$6_storage",
+                                  "typeString": "uint256[6] storage ref"
+                                }
+                              },
+                              "id": 124,
+                              "indexExpression": {
+                                "hexValue": "35",
+                                "id": 123,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "931:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_5_by_1",
+                                  "typeString": "int_const 5"
+                                },
+                                "value": "5"
+                              },
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "nodeType": "IndexAccess",
+                              "src": "926:7:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            }
+                          ],
+                          "id": 125,
+                          "isConstant": false,
+                          "isInlineArray": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "nodeType": "TupleExpression",
+                          "src": "826:108:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$_t_uint104_$_t_uint48_$_t_uint104_$_t_uint256_$_t_uint256_$",
+                            "typeString": "tuple(uint104,uint48,uint104,uint256,uint256)"
+                          }
+                        },
+                        "functionReturnParameters": 104,
+                        "id": 126,
+                        "nodeType": "Return",
+                        "src": "819:115:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "31fadddf",
+                  "id": 128,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "readStorage",
+                  "nameLocation": "728:11:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 93,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "739:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 104,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 95,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 128,
+                        "src": "765:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint104",
+                          "typeString": "uint104"
+                        },
+                        "typeName": {
+                          "id": 94,
+                          "name": "uint104",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "765:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint104",
+                            "typeString": "uint104"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 97,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 128,
+                        "src": "774:6:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint48",
+                          "typeString": "uint48"
+                        },
+                        "typeName": {
+                          "id": 96,
+                          "name": "uint48",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "774:6:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint48",
+                            "typeString": "uint48"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 99,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 128,
+                        "src": "782:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint104",
+                          "typeString": "uint104"
+                        },
+                        "typeName": {
+                          "id": 98,
+                          "name": "uint104",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "782:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint104",
+                            "typeString": "uint104"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 101,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 128,
+                        "src": "791:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 100,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "791:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 103,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 128,
+                        "src": "800:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 102,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "800:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "764:44:0"
+                  },
+                  "scope": 203,
+                  "src": "719:222:0",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 146,
+                    "nodeType": "Block",
+                    "src": "1016:72:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "components": [
+                            {
+                              "expression": {
+                                "expression": {
+                                  "id": 137,
+                                  "name": "record",
+                                  "nodeType": "Identifier",
+                                  "overloadedDeclarations": [],
+                                  "referencedDeclaration": 28,
+                                  "src": "1034:6:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_struct$_CachedRecord_$22_storage",
+                                    "typeString": "struct CachedRecord storage ref"
+                                  }
+                                },
+                                "id": 138,
+                                "isConstant": false,
+                                "isLValue": true,
+                                "isPure": false,
+                                "lValueRequested": false,
+                                "memberLocation": "1041:5:0",
+                                "memberName": "cache",
+                                "nodeType": "MemberAccess",
+                                "referencedDeclaration": 19,
+                                "src": "1034:12:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_struct$_Cached_$14_storage_$2_storage",
+                                  "typeString": "struct Cached storage ref[2] storage ref"
+                                }
+                              },
+                              "id": 139,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "1047:6:0",
+                              "memberName": "length",
+                              "nodeType": "MemberAccess",
+                              "src": "1034:19:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            {
+                              "expression": {
+                                "id": 140,
+                                "name": "flat",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 32,
+                                "src": "1055:4:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_uint256_$6_storage",
+                                  "typeString": "uint256[6] storage ref"
+                                }
+                              },
+                              "id": 141,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "1060:6:0",
+                              "memberName": "length",
+                              "nodeType": "MemberAccess",
+                              "src": "1055:11:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            {
+                              "expression": {
+                                "id": 142,
+                                "name": "small",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 36,
+                                "src": "1068:5:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_uint8_$3_storage",
+                                  "typeString": "uint8[3] storage ref"
+                                }
+                              },
+                              "id": 143,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "1074:6:0",
+                              "memberName": "length",
+                              "nodeType": "MemberAccess",
+                              "src": "1068:12:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            }
+                          ],
+                          "id": 144,
+                          "isConstant": false,
+                          "isInlineArray": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "nodeType": "TupleExpression",
+                          "src": "1033:48:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$_t_uint256_$_t_uint256_$_t_uint256_$",
+                            "typeString": "tuple(uint256,uint256,uint256)"
+                          }
+                        },
+                        "functionReturnParameters": 136,
+                        "id": 145,
+                        "nodeType": "Return",
+                        "src": "1026:55:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "dab1fa12",
+                  "id": 147,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "lengths",
+                  "nameLocation": "956:7:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 129,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "963:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 136,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 131,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 147,
+                        "src": "989:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 130,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "989:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 133,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 147,
+                        "src": "998:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 132,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "998:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 135,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 147,
+                        "src": "1007:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 134,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1007:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "988:27:0"
+                  },
+                  "scope": 203,
+                  "src": "947:141:0",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 179,
+                    "nodeType": "Block",
+                    "src": "1164:119:0",
+                    "statements": [
+                      {
+                        "assignments": [
+                          158
+                        ],
+                        "declarations": [
+                          {
+                            "constant": false,
+                            "id": 158,
+                            "mutability": "mutable",
+                            "name": "r",
+                            "nameLocation": "1194:1:0",
+                            "nodeType": "VariableDeclaration",
+                            "scope": 179,
+                            "src": "1174:21:0",
+                            "stateVariable": false,
+                            "storageLocation": "memory",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_struct$_CachedRecord_$22_memory_ptr",
+                              "typeString": "struct CachedRecord"
+                            },
+                            "typeName": {
+                              "id": 157,
+                              "nodeType": "UserDefinedTypeName",
+                              "pathNode": {
+                                "id": 156,
+                                "name": "CachedRecord",
+                                "nameLocations": [
+                                  "1174:12:0"
+                                ],
+                                "nodeType": "IdentifierPath",
+                                "referencedDeclaration": 22,
+                                "src": "1174:12:0"
+                              },
+                              "referencedDeclaration": 22,
+                              "src": "1174:12:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_CachedRecord_$22_storage_ptr",
+                                "typeString": "struct CachedRecord"
+                              }
+                            },
+                            "visibility": "internal"
+                          }
+                        ],
+                        "id": 159,
+                        "nodeType": "VariableDeclarationStatement",
+                        "src": "1174:21:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 167,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "baseExpression": {
+                                "expression": {
+                                  "id": 160,
+                                  "name": "r",
+                                  "nodeType": "Identifier",
+                                  "overloadedDeclarations": [],
+                                  "referencedDeclaration": 158,
+                                  "src": "1205:1:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_struct$_CachedRecord_$22_memory_ptr",
+                                    "typeString": "struct CachedRecord memory"
+                                  }
+                                },
+                                "id": 163,
+                                "isConstant": false,
+                                "isLValue": true,
+                                "isPure": false,
+                                "lValueRequested": false,
+                                "memberLocation": "1207:5:0",
+                                "memberName": "cache",
+                                "nodeType": "MemberAccess",
+                                "referencedDeclaration": 19,
+                                "src": "1205:7:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_struct$_Cached_$14_memory_ptr_$2_memory_ptr",
+                                  "typeString": "struct Cached memory[2] memory"
+                                }
+                              },
+                              "id": 164,
+                              "indexExpression": {
+                                "hexValue": "31",
+                                "id": 162,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "1213:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_1_by_1",
+                                  "typeString": "int_const 1"
+                                },
+                                "value": "1"
+                              },
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "nodeType": "IndexAccess",
+                              "src": "1205:10:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Cached_$14_memory_ptr",
+                                "typeString": "struct Cached memory"
+                              }
+                            },
+                            "id": 165,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "1216:5:0",
+                            "memberName": "value",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 11,
+                            "src": "1205:16:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint104",
+                              "typeString": "uint104"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 166,
+                            "name": "a",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 149,
+                            "src": "1224:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint104",
+                              "typeString": "uint104"
+                            }
+                          },
+                          "src": "1205:20:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint104",
+                            "typeString": "uint104"
+                          }
+                        },
+                        "id": 168,
+                        "nodeType": "ExpressionStatement",
+                        "src": "1205:20:0"
+                      },
+                      {
+                        "expression": {
+                          "components": [
+                            {
+                              "expression": {
+                                "expression": {
+                                  "id": 169,
+                                  "name": "r",
+                                  "nodeType": "Identifier",
+                                  "overloadedDeclarations": [],
+                                  "referencedDeclaration": 158,
+                                  "src": "1243:1:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_struct$_CachedRecord_$22_memory_ptr",
+                                    "typeString": "struct CachedRecord memory"
+                                  }
+                                },
+                                "id": 170,
+                                "isConstant": false,
+                                "isLValue": true,
+                                "isPure": false,
+                                "lValueRequested": false,
+                                "memberLocation": "1245:5:0",
+                                "memberName": "cache",
+                                "nodeType": "MemberAccess",
+                                "referencedDeclaration": 19,
+                                "src": "1243:7:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_struct$_Cached_$14_memory_ptr_$2_memory_ptr",
+                                  "typeString": "struct Cached memory[2] memory"
+                                }
+                              },
+                              "id": 171,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "1251:6:0",
+                              "memberName": "length",
+                              "nodeType": "MemberAccess",
+                              "src": "1243:14:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            {
+                              "expression": {
+                                "baseExpression": {
+                                  "expression": {
+                                    "id": 172,
+                                    "name": "r",
+                                    "nodeType": "Identifier",
+                                    "overloadedDeclarations": [],
+                                    "referencedDeclaration": 158,
+                                    "src": "1259:1:0",
+                                    "typeDescriptions": {
+                                      "typeIdentifier": "t_struct$_CachedRecord_$22_memory_ptr",
+                                      "typeString": "struct CachedRecord memory"
+                                    }
+                                  },
+                                  "id": 173,
+                                  "isConstant": false,
+                                  "isLValue": true,
+                                  "isPure": false,
+                                  "lValueRequested": false,
+                                  "memberLocation": "1261:5:0",
+                                  "memberName": "cache",
+                                  "nodeType": "MemberAccess",
+                                  "referencedDeclaration": 19,
+                                  "src": "1259:7:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_array$_t_struct$_Cached_$14_memory_ptr_$2_memory_ptr",
+                                    "typeString": "struct Cached memory[2] memory"
+                                  }
+                                },
+                                "id": 175,
+                                "indexExpression": {
+                                  "hexValue": "31",
+                                  "id": 174,
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": true,
+                                  "kind": "number",
+                                  "lValueRequested": false,
+                                  "nodeType": "Literal",
+                                  "src": "1267:1:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_rational_1_by_1",
+                                    "typeString": "int_const 1"
+                                  },
+                                  "value": "1"
+                                },
+                                "isConstant": false,
+                                "isLValue": true,
+                                "isPure": false,
+                                "lValueRequested": false,
+                                "nodeType": "IndexAccess",
+                                "src": "1259:10:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_Cached_$14_memory_ptr",
+                                  "typeString": "struct Cached memory"
+                                }
+                              },
+                              "id": 176,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "1270:5:0",
+                              "memberName": "value",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 11,
+                              "src": "1259:16:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint104",
+                                "typeString": "uint104"
+                              }
+                            }
+                          ],
+                          "id": 177,
+                          "isConstant": false,
+                          "isInlineArray": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "nodeType": "TupleExpression",
+                          "src": "1242:34:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$_t_uint256_$_t_uint104_$",
+                            "typeString": "tuple(uint256,uint104)"
+                          }
+                        },
+                        "functionReturnParameters": 155,
+                        "id": 178,
+                        "nodeType": "Return",
+                        "src": "1235:41:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "8aa9c851",
+                  "id": 180,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "inMemory",
+                  "nameLocation": "1103:8:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 150,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 149,
+                        "mutability": "mutable",
+                        "name": "a",
+                        "nameLocation": "1120:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 180,
+                        "src": "1112:9:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint104",
+                          "typeString": "uint104"
+                        },
+                        "typeName": {
+                          "id": 148,
+                          "name": "uint104",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1112:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint104",
+                            "typeString": "uint104"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "1111:11:0"
+                  },
+                  "returnParameters": {
+                    "id": 155,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 152,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 180,
+                        "src": "1146:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 151,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1146:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 154,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 180,
+                        "src": "1155:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint104",
+                          "typeString": "uint104"
+                        },
+                        "typeName": {
+                          "id": 153,
+                          "name": "uint104",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1155:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint104",
+                            "typeString": "uint104"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "1145:18:0"
+                  },
+                  "scope": 203,
+                  "src": "1094:189:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 201,
+                    "nodeType": "Block",
+                    "src": "1348:91:0",
+                    "statements": [
+                      {
+                        "assignments": [
+                          189
+                        ],
+                        "declarations": [
+                          {
+                            "constant": false,
+                            "id": 189,
+                            "mutability": "mutable",
+                            "name": "r",
+                            "nameLocation": "1378:1:0",
+                            "nodeType": "VariableDeclaration",
+                            "scope": 201,
+                            "src": "1358:21:0",
+                            "stateVariable": false,
+                            "storageLocation": "memory",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_struct$_CachedRecord_$22_memory_ptr",
+                              "typeString": "struct CachedRecord"
+                            },
+                            "typeName": {
+                              "id": 188,
+                              "nodeType": "UserDefinedTypeName",
+                              "pathNode": {
+                                "id": 187,
+                                "name": "CachedRecord",
+                                "nameLocations": [
+                                  "1358:12:0"
+                                ],
+                                "nodeType": "IdentifierPath",
+                                "referencedDeclaration": 22,
+                                "src": "1358:12:0"
+                              },
+                              "referencedDeclaration": 22,
+                              "src": "1358:12:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_CachedRecord_$22_storage_ptr",
+                                "typeString": "struct CachedRecord"
+                              }
+                            },
+                            "visibility": "internal"
+                          }
+                        ],
+                        "id": 191,
+                        "initialValue": {
+                          "id": 190,
+                          "name": "record",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 28,
+                          "src": "1382:6:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_CachedRecord_$22_storage",
+                            "typeString": "struct CachedRecord storage ref"
+                          }
+                        },
+                        "nodeType": "VariableDeclarationStatement",
+                        "src": "1358:30:0"
+                      },
+                      {
+                        "expression": {
+                          "components": [
+                            {
+                              "expression": {
+                                "baseExpression": {
+                                  "expression": {
+                                    "id": 192,
+                                    "name": "r",
+                                    "nodeType": "Identifier",
+                                    "overloadedDeclarations": [],
+                                    "referencedDeclaration": 189,
+                                    "src": "1406:1:0",
+                                    "typeDescriptions": {
+                                      "typeIdentifier": "t_struct$_CachedRecord_$22_memory_ptr",
+                                      "typeString": "struct CachedRecord memory"
+                                    }
+                                  },
+                                  "id": 193,
+                                  "isConstant": false,
+                                  "isLValue": true,
+                                  "isPure": false,
+                                  "lValueRequested": false,
+                                  "memberLocation": "1408:5:0",
+                                  "memberName": "cache",
+                                  "nodeType": "MemberAccess",
+                                  "referencedDeclaration": 19,
+                                  "src": "1406:7:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_array$_t_struct$_Cached_$14_memory_ptr_$2_memory_ptr",
+                                    "typeString": "struct Cached memory[2] memory"
+                                  }
+                                },
+                                "id": 195,
+                                "indexExpression": {
+                                  "hexValue": "31",
+                                  "id": 194,
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": true,
+                                  "kind": "number",
+                                  "lValueRequested": false,
+                                  "nodeType": "Literal",
+                                  "src": "1414:1:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_rational_1_by_1",
+                                    "typeString": "int_const 1"
+                                  },
+                                  "value": "1"
+                                },
+                                "isConstant": false,
+                                "isLValue": true,
+                                "isPure": false,
+                                "lValueRequested": false,
+                                "nodeType": "IndexAccess",
+                                "src": "1406:10:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_Cached_$14_memory_ptr",
+                                  "typeString": "struct Cached memory"
+                                }
+                              },
+                              "id": 196,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "1417:5:0",
+                              "memberName": "value",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 11,
+                              "src": "1406:16:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint104",
+                                "typeString": "uint104"
+                              }
+                            },
+                            {
+                              "expression": {
+                                "id": 197,
+                                "name": "r",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 189,
+                                "src": "1424:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_CachedRecord_$22_memory_ptr",
+                                  "typeString": "struct CachedRecord memory"
+                                }
+                              },
+                              "id": 198,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "1426:5:0",
+                              "memberName": "total",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 21,
+                              "src": "1424:7:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            }
+                          ],
+                          "id": 199,
+                          "isConstant": false,
+                          "isInlineArray": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "nodeType": "TupleExpression",
+                          "src": "1405:27:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$_t_uint104_$_t_uint256_$",
+                            "typeString": "tuple(uint104,uint256)"
+                          }
+                        },
+                        "functionReturnParameters": 186,
+                        "id": 200,
+                        "nodeType": "Return",
+                        "src": "1398:34:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "a2e8f7e5",
+                  "id": 202,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "copied",
+                  "nameLocation": "1298:6:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 181,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "1304:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 186,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 183,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 202,
+                        "src": "1330:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint104",
+                          "typeString": "uint104"
+                        },
+                        "typeName": {
+                          "id": 182,
+                          "name": "uint104",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1330:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint104",
+                            "typeString": "uint104"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 185,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 202,
+                        "src": "1339:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 184,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1339:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "1329:18:0"
+                  },
+                  "scope": 203,
+                  "src": "1289:150:0",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 204,
+              "src": "282:1159:0",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "39:1403:0"
+        },
+        "id": 0
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}

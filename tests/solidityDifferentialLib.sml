@@ -280,8 +280,8 @@ fun run_suite_with_bytecode bytecode root fuel s =
     val cases = array_field s "cases"
   in
     let
-      val checked = solidityPrepareLib.prepare_artifact
-        {root = root, path = artifact, source = source}
+      val checked = solidityPrepareLib.prepare_contract_artifact
+        {root = root, path = artifact, source = source, contract = SOME contract}
       val () = check_unit_contracts (#prepared checked) contract
       val () = check_supported (#prepared checked)
       val (unit, program) = prepared_constants prefix (#prepared checked)
@@ -630,8 +630,8 @@ fun run_suite_three_way root yul_root s =
     val source = string_field s "source"
     val contract = string_field s "contract"
     val cases = array_field s "cases"
-    val checked = solidityPrepareLib.prepare_artifact
-      {root = root, path = artifact, source = source}
+    val checked = solidityPrepareLib.prepare_contract_artifact
+      {root = root, path = artifact, source = source, contract = SOME contract}
     val () = check_unit_contracts (#prepared checked) contract
     val () = check_supported (#prepared checked)
     val (unit, program) = prepared_constants prefix (#prepared checked)
