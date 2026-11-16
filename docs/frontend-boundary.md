@@ -384,9 +384,10 @@ the compiler's creation code does, and `deploy_contract` returns the final
 table; `call_contract` takes the table, which with the program stands for the
 deployed code. The differential harness compares a creation's table with the
 words the compiler's created code holds at its `immutableReferences` offsets,
-and patches a call case's immutables into the runtime bytecode there (an
-internal function immutable has no such word, so it is checked only through
-its uses during creation). Other immutables are rejected.
+and patches a call case's immutables into the runtime bytecode there. The
+harness encodes no internal function values, so a fixture's function
+immutables are used only during creation, which leaves them out of
+`immutableReferences`. Other immutables are rejected.
 
 A contract or interface type is read as `address`, which is its value at
 run time, stored and ABI encoded as one: in type names, in the type
