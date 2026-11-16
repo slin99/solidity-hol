@@ -281,3 +281,17 @@ val () =
        not (null (fst (listSyntax.dest_list code))) then ()
     else raise ERR "yulImportTest" "creation import did not retain distinct code"
   end
+
+val () =
+  if aconv
+    (import (output_with
+      [runtime_object
+        [expression_statement (call "extcodecopy"
+           [number "119", number "0", number "1", number "2"]),
+         expression_statement (call "pop" [call "blockhash" [number "3"]])]]
+      creation_code))
+    “[YulExprStmt (YulBuiltin YExtCodeCopy
+         [YulLit (LitNumber 119w); YulLit (LitNumber 0w); YulLit (LitNumber 1w);
+          YulLit (LitNumber 2w)]);
+       YulExprStmt (YulBuiltin YPop [YulBuiltin YBlockHash [YulLit (LitNumber 3w)]])]”
+  then () else raise ERR "yulImportTest" "extcodecopy/blockhash import";

@@ -1,0 +1,211 @@
+{
+  "name": "sha256_blockhash",
+  "source": "testdata/differential/sha256_blockhash.sol",
+  "contract": "Sha256Blockhash",
+  "artifact": "testdata/differential/expected/sha256_blockhash.json",
+  "cases": [
+    {
+      "name": "digest_empty",
+      "function": "digest",
+      "args": [
+        "0x"
+      ],
+      "expect": {
+        "return": [
+          "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        ]
+      }
+    },
+    {
+      "name": "digest_abc",
+      "function": "digest",
+      "args": [
+        "0x616263"
+      ],
+      "expect": {
+        "return": [
+          "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        ]
+      }
+    },
+    {
+      "name": "digest_two_blocks",
+      "function": "digest",
+      "args": [
+        "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f60616263"
+      ],
+      "expect": {
+        "return": [
+          "0xbce0aff19cf5aa6a7469a30d61d04e4376e4bbf6381052ee9e7f33925c954d52"
+        ]
+      }
+    },
+    {
+      "name": "digest_calldata",
+      "function": "digestCalldata",
+      "args": [
+        "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2021222324252627"
+      ],
+      "expect": {
+        "return": [
+          "0x5faa4eec3611556812c2d74b437c8c49add3f910f10063d801441f7d75cd5e3b"
+        ]
+      }
+    },
+    {
+      "name": "digest_packed",
+      "function": "digestPacked",
+      "args": [
+        4660,
+        782064
+      ],
+      "expect": {
+        "return": [
+          "0x978feefe72a5db3276740f724fa63ddd528858c3f63288f9c59ffc6f1363143e"
+        ]
+      }
+    },
+    {
+      "name": "digest_literals",
+      "function": "digestLiterals",
+      "args": [],
+      "expect": {
+        "return": [
+          "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        ]
+      }
+    },
+    {
+      "name": "hash_previous",
+      "function": "hashOf",
+      "args": [
+        10
+      ],
+      "expect": {
+        "return": [
+          "0x3737373737373737373737373737373737373737373737373737373737373741"
+        ]
+      }
+    },
+    {
+      "name": "hash_genesis",
+      "function": "hashOf",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x3737373737373737373737373737373737373737373737373737373737373737"
+        ]
+      }
+    },
+    {
+      "name": "hash_current",
+      "function": "hashOf",
+      "args": [
+        11
+      ],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "hash_future",
+      "function": "hashOf",
+      "args": [
+        12
+      ],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "hash_huge",
+      "function": "hashOf",
+      "args": [
+        115792089237316195423570985008687907853269984665640564039457584007913129639935
+      ],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "hash_narrow",
+      "function": "hashOfNarrow",
+      "args": [
+        3
+      ],
+      "expect": {
+        "return": [
+          "0x373737373737373737373737373737373737373737373737373737373737373a"
+        ]
+      }
+    },
+    {
+      "name": "hash_narrow_future",
+      "function": "hashOfNarrow",
+      "args": [
+        255
+      ],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "recent",
+      "function": "recent",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x3737373737373737373737373737373737373737373737373737373737373741",
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "assembly_previous",
+      "function": "hashInAssembly",
+      "args": [
+        10
+      ],
+      "expect": {
+        "return": [
+          "0x3737373737373737373737373737373737373737373737373737373737373741"
+        ]
+      }
+    },
+    {
+      "name": "assembly_current",
+      "function": "hashInAssembly",
+      "args": [
+        11
+      ],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "assembly_old",
+      "function": "hashInAssembly",
+      "args": [
+        1
+      ],
+      "expect": {
+        "return": [
+          "0x3737373737373737373737373737373737373737373737373737373737373738"
+        ]
+      }
+    }
+  ]
+}

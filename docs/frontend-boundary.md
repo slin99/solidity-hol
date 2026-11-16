@@ -443,7 +443,9 @@ its effects and failures; the selector still comes from the declaration.
 the interface `I` declares itself, not those it inherits, nor its `fallback`
 or `receive`; `I` must name an interface directly, not through a module, and
 an abstract contract's `interfaceId` is rejected. A selector of any other
-function-typed value is rejected, and so are `sha256` and `ripemd160`.
+function-typed value is rejected, and so is `ripemd160`. `sha256(b)` hashes
+bytes in memory, as the precompile at address 2 does, and `blockhash(n)` is
+the hash of one of the 256 blocks before the current one, or 0.
 
 `c ? a : b` evaluates `c`, then only the operand it chooses, converted to the
 type the compiler gives the whole expression, which must be a value type,

@@ -415,6 +415,19 @@ Definition modular_word_def:
     if n = 0w then 0w else n2w (f (w2n a) (w2n b) MOD w2n n)
 End
 
+(* The hash of block n, as the EVM's BLOCKHASH computes it (verifereum's
+ * step_block_hash): one of the 256 blocks before the current one, read from
+ * the transaction's previous hashes, most recent first, and 0 for any other
+ * block or one the hashes don't reach.
+ *)
+Definition block_hash_word_def:
+  block_hash_word (tx : transaction_parameters) (n : num) : bytes32 =
+    let index = tx.blockNumber - n - 1 in
+      if n < tx.blockNumber ∧ tx.blockNumber - 256 ≤ n ∧
+         index < LENGTH tx.prevHashes
+      then EL index tx.prevHashes else 0w
+End
+
 (* One builtin on evaluated values. Literal-name operands are dispatched by
  * eval_yul_builtin_call; unsupported builtins and wrong arities fail closed.
  *)
@@ -494,6 +507,8 @@ Definition eval_yul_builtin_def:
         EvalValues [n2w m.transaction_parameters.blockGasLimit] m
     | (YNumber, []) =>
         EvalValues [n2w m.transaction_parameters.blockNumber] m
+    | (YBlockHash, [n]) =>
+        EvalValues [block_hash_word m.transaction_parameters (w2n n)] m
     | (YTimestamp, []) =>
         EvalValues [n2w m.transaction_parameters.blockTimeStamp] m
     | (YCoinbase, []) =>
@@ -531,6 +546,12 @@ Definition eval_yul_builtin_def:
     | (YGas, []) => EvalValues [n2w m.gas_limit] m
     | (YExtCodeSize, [a]) =>
         EvalValues [n2w (LENGTH (lookup_account (w2w a) m.accounts).code)] m
+    | (YExtCodeCopy, [a; dst; src; sz]) =>
+        EvalValues []
+          (yul_memory_write (yul_memory_touch m (w2n dst) (w2n sz))
+             (w2n dst)
+             (take_pad_0 (w2n sz)
+                (DROP (w2n src) (lookup_account (w2w a) m.accounts).code)))
     | (YReturnDataSize, []) =>
         EvalValues [n2w (LENGTH m.return_data)] m
     | (YReturnDataCopy, [dst; src; sz]) => yul_return_data_copy m dst src sz
@@ -960,6 +981,13 @@ QED
 val () = cv_auto_trans yul_call_def;
 val () = cv_auto_trans yul_create_def;
 val () = cv_auto_trans yul_return_data_copy_def;
+val block_hash_word_pre_def =
+  cv_trans_pre "block_hash_word_pre" block_hash_word_def;
+Theorem block_hash_word_pre[cv_pre]:
+  ∀tx n. block_hash_word_pre tx n
+Proof
+  simp[block_hash_word_pre_def, cv_stdTheory.EL_pre]
+QED
 (* Bound left shifts before computing powers, as in the EVM translation. *)
 val () = cv_auto_trans
   (REWRITE_RULE [word_lsl_modexp, modular_word_def] eval_yul_builtin_def);

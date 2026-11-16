@@ -71,6 +71,7 @@ Definition builtin_name_def:
   builtin_name YGasPrice = "gasprice" ∧
   builtin_name YBaseFee = "basefee" ∧
   builtin_name YGasLimit = "gaslimit" ∧
+  builtin_name YBlockHash = "blockhash" ∧
   builtin_name YStop = "stop" ∧
   builtin_name YInvalid = "invalid" ∧
   builtin_name YCall = "call" ∧
@@ -79,6 +80,7 @@ Definition builtin_name_def:
   builtin_name YCreate = "create" ∧
   builtin_name YCreate2 = "create2" ∧
   builtin_name YExtCodeSize = "extcodesize" ∧
+  builtin_name YExtCodeCopy = "extcodecopy" ∧
   builtin_name YReturnDataSize = "returndatasize" ∧
   builtin_name YReturnDataCopy = "returndatacopy" ∧
   builtin_name YGas = "gas" ∧
@@ -150,6 +152,7 @@ Definition builtin_of_name_def:
     else if name = "gasprice" then SOME YGasPrice
     else if name = "basefee" then SOME YBaseFee
     else if name = "gaslimit" then SOME YGasLimit
+    else if name = "blockhash" then SOME YBlockHash
     else if name = "stop" then SOME YStop
     else if name = "invalid" then SOME YInvalid
     else if name = "call" then SOME YCall
@@ -158,6 +161,7 @@ Definition builtin_of_name_def:
     else if name = "create" then SOME YCreate
     else if name = "create2" then SOME YCreate2
     else if name = "extcodesize" then SOME YExtCodeSize
+    else if name = "extcodecopy" then SOME YExtCodeCopy
     else if name = "returndatasize" then SOME YReturnDataSize
     else if name = "returndatacopy" then SOME YReturnDataCopy
     else if name = "gas" then SOME YGas
@@ -189,7 +193,8 @@ Datatype:
                        last call *)
   | EffectCall      (* reaches other accounts: a message call, which reads
                        its input from memory, writes its output there and
-                       changes the world, or another account's code size *)
+                       changes the world, or another account's code: its
+                       size, or a copy of it into memory *)
   | EffectLog       (* appends a log entry, whose payload it reads from
                        memory: a touch like any other, so it can raise the
                        frame's memory size *)
@@ -255,6 +260,7 @@ Definition builtin_effect_def:
   builtin_effect YGasPrice = EffectFrame ∧
   builtin_effect YBaseFee = EffectFrame ∧
   builtin_effect YGasLimit = EffectFrame ∧
+  builtin_effect YBlockHash = EffectFrame ∧
   builtin_effect YStop = EffectHalt ∧
   builtin_effect YInvalid = EffectHalt ∧
   builtin_effect YCall = EffectCall ∧
@@ -263,6 +269,7 @@ Definition builtin_effect_def:
   builtin_effect YCreate = EffectCall ∧
   builtin_effect YCreate2 = EffectCall ∧
   builtin_effect YExtCodeSize = EffectCall ∧
+  builtin_effect YExtCodeCopy = EffectCall ∧
   builtin_effect YReturnDataSize = EffectFrame ∧
   builtin_effect YReturnDataCopy = EffectMemory ∧
   builtin_effect YGas = EffectFrame ∧
