@@ -291,6 +291,18 @@ class FuzzerTests(unittest.TestCase):
             with self.assertRaisesRegex(SystemExit, "cannot resume"):
                 fuzz.check_inputs(self.output, changed, resume=True)
 
+    def test_resume_drops_a_truncated_last_record_and_reruns_its_contract(self) -> None:
+        targets = fuzz.suite_targets([])[:2]
+        self.fuzzer().run(targets, max_batches=None, shrink_rounds=0)
+        [results] = fuzz.fleet.result_files(self.output / "work")
+        lines = results.read_text().splitlines(keepends=True)
+        second = next(i for i, line in enumerate(lines) if f'"{targets[1].name}"' in line)
+        results.write_text("".join(lines[:second]) + lines[second][:30])
+        self.evaluated.clear()
+        summary = self.fuzzer().run(targets, max_batches=None, shrink_rounds=0)
+        self.assertEqual(self.evaluated[0], [targets[1].name])
+        self.assertEqual(summary["contracts"], 2)
+
     def test_a_contract_sent_to_hol_without_a_result_fails_the_run(self) -> None:
         targets = fuzz.suite_targets([])[:2]
         evaluate = self.evaluate
@@ -343,6 +355,15 @@ class TargetTests(unittest.TestCase):
             [t] = fuzz.manifest_targets(manifest)
         self.assertEqual((t.name, t.entry["fuel"], t.entry["peer"]), ("outside", 7, fuzz.ECHO_PEER))
         self.assertEqual(t.selectors, target().selectors)
+
+    def test_repeated_target_names_are_rejected(self) -> None:
+        suite = json.loads((fuzz.SUITES / f"{SUITE}.json").read_text())
+        entry = {k: suite[k] for k in ("name", "source", "contract", "artifact")}
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = Path(temporary) / "targets.json"
+            manifest.write_text(json.dumps({"targets": [entry, entry]}))
+            with self.assertRaisesRegex(SystemExit, f"repeated: {SUITE}"):
+                fuzz.manifest_targets(manifest)
 
     def test_target_artifact_paths_are_kept_relative_to_the_root(self) -> None:
         suite = json.loads((fuzz.SUITES / f"{SUITE}.json").read_text())

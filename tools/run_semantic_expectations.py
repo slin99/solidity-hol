@@ -316,14 +316,14 @@ def test_status(calls: list[dict[str, Any]]) -> str:
     return "agree"
 
 
-def result_records(text: str) -> list[dict[str, Any]]:
+def result_records(text: str, prefix: str = PREFIX) -> list[dict[str, Any]]:
     """Read flushed result lines; a truncated final record belongs to an unfinished test."""
     records: list[dict[str, Any]] = []
     for line in text.splitlines(keepends=True):
-        if not line.startswith(PREFIX):
+        if not line.startswith(prefix):
             continue
         try:
-            records.append(json.loads(line[len(PREFIX):]))
+            records.append(json.loads(line[len(prefix):]))
         except json.JSONDecodeError:
             if not line.endswith("\n"):
                 break

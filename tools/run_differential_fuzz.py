@@ -670,9 +670,8 @@ def make_cases(selected: list[tuple[Call, Recording]]) -> list[Case]:
 # Results
 
 def records(path: Path) -> list[dict[str, Any]]:
-    return [json.loads(line[len(PREFIX):])
-            for line in path.read_text(encoding="utf-8", errors="replace").splitlines()
-            if line.startswith(PREFIX)]
+    """A batch's records; a truncated last one, from an interrupted run, is dropped."""
+    return fleet.result_records(path.read_text(encoding="utf-8", errors="replace"), PREFIX)
 
 
 def batch_records(work: Path) -> list[dict[str, Any]]:
@@ -850,6 +849,9 @@ def manifest_targets(path: Path) -> list[Target]:
 
     fuel = json.loads(CORPUS.read_text())["fuel"]
     entries = json.loads(path.read_text())["targets"]
+    names = [e["name"] for e in entries]
+    if duplicates := sorted({n for n in names if names.count(n) > 1}):
+        raise SystemExit(f"{path}: target names must be unique; repeated: {', '.join(duplicates)}")
     return [Target({**e, "artifact": from_root(e["artifact"]),
                     **({"peer": {**e["peer"], "artifact": from_root(e["peer"]["artifact"])}}
                        if "peer" in e else {})}, fuel)
