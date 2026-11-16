@@ -116,7 +116,8 @@ class SequenceTests(unittest.TestCase):
     def test_k_counts_calls_and_each_step_is_a_case(self) -> None:
         ok = fuzz.Recording({"returned": "0x"}, {}, [])
         screened = [[(call(function=f, value=i), ok) for i in range(3)] for f in "abcd"]
-        chosen = fuzz.stratify(0, "t", screened, 5)
+        self.assertEqual([len(s) for s in fuzz.stratify(0, "t", screened, 5)], [3])
+        chosen = fuzz.stratify(0, "t", screened, 6)
         self.assertEqual(len(chosen), 2)
         cases = fuzz.make_cases(chosen)
         self.assertEqual([c.name for c in cases],
@@ -129,14 +130,16 @@ class SequenceTests(unittest.TestCase):
         manifests = {"c": {"screening": {}, "cases": [
             {"name": f"seq_000{n}_{step}",
              "fuzz": {"function": "f", "mode": "typed", "sequence": n, "step": step}}
-            for n in range(2) for step in range(2)]}}
+            for n in range(3) for step in range(2)]}}
+        # Sequence 1 ends inconclusive; sequence 2's last step has no result.
         results = [{"kind": "case", "contract": "c", "case": f"seq_000{n}_{step}",
                     "status": "inconclusive" if (n, step) == (1, 1) else "agree",
                     "reason": "OutOfFuel", "confirmed": False}
-                   for n in range(2) for step in range(2)]
+                   for n in range(3) for step in range(2) if (n, step) != (2, 1)]
         summary = fuzz.report(manifests, results)
-        self.assertEqual(summary["sequences"], {"evaluated": 2, "every_call_agrees": 1})
-        self.assertIn("2 call sequences, 1 agreeing after every call", fuzz.markdown(summary))
+        self.assertEqual(summary["sequences"], {"evaluated": 3, "every_call_agrees": 1})
+        self.assertEqual(summary["missing"], ["c/seq_0002_1"])
+        self.assertIn("3 call sequences, 1 agreeing after every call", fuzz.markdown(summary))
 
 
 class OverloadTests(unittest.TestCase):
@@ -333,11 +336,11 @@ class FuzzerTests(unittest.TestCase):
         fuzzer = fuzz.Fuzzer(self.output, seed=0, candidates=2, k=4, evaluate=self.evaluate,
                              screen=self.screen, sequences=True)
         summary = fuzzer.run(fuzz.suite_targets([SUITE]), max_batches=None, shrink_rounds=0)
-        self.assertGreaterEqual(summary["cases"], 4)
+        self.assertIn(summary["cases"], (3, 4))  # K=4 bounds calls; no sequence has 1
         self.assertEqual(summary["totals"], {"agree": summary["cases"]})
         self.assertEqual(summary["sequences"]["evaluated"],
                          summary["sequences"]["every_call_agrees"])
-        self.assertGreater(summary["sequences"]["evaluated"], 1)
+        self.assertGreaterEqual(summary["sequences"]["evaluated"], 1)
 
     def test_a_disagreement_the_bytecode_run_does_not_record_is_not_minimized(self) -> None:
         self.recording_matches = False
@@ -546,7 +549,7 @@ class TargetTests(unittest.TestCase):
         names = [t["name"] for t in check.call_args.args[1]["targets"]]
         self.assertEqual(names, [t.name for t in fuzz.suite_targets([])][1::3])
 
-    def test_semantic_tests_are_named_by_path_and_compiled_per_shard(self) -> None:
+    def test_admitted_and_partially_admitted_semantic_tests_are_named_by_path_and_compiled_per_shard(self) -> None:
         suite = json.loads((fuzz.SUITES / f"{SUITE}.json").read_text())
         compiled = []
 
@@ -556,11 +559,12 @@ class TargetTests(unittest.TestCase):
                     "source": suite["source"], "contract": suite["contract"]}, {}
 
         tests = ["a/b-c.sol", "d.sol", "e/f.sol"]
-        with patch.object(fuzz.fleet, "admitted_tests", return_value=tests), \
+        with patch.object(fuzz.fleet, "admitted_tests", return_value=tests) as admitted, \
                 patch.object(fuzz.fleet, "compile_admitted", side_effect=compile_admitted), \
                 tempfile.TemporaryDirectory() as temporary:
             targets = fuzz.semantic_targets(Path("sol"), Path("cov"), Path("solc"),
                                             Path(temporary), (0, 2))
+        self.assertEqual(admitted.call_args.args[3], ("admitted", "partially-admitted"))
         self.assertEqual(compiled, ["a/b-c.sol", "e/f.sol"])
         self.assertEqual([t.name for t in targets], ["st_a_b_c", "st_e_f"])
         self.assertEqual(targets[0].entry["artifact"], suite["artifact"])

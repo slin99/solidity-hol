@@ -508,9 +508,10 @@ def run_batches(holbuild: str, work: Path, pending: list[dict[str, Any]],
               file=sys.stderr, flush=True)
 
 
-def admitted_tests(solidity: Path, solc: Path, coverage_path: Path) -> list[str]:
-    """The admitted tests of a coverage report, after checking that the
-    compiler, the test corpus and the report match this checkout's pin."""
+def admitted_tests(solidity: Path, solc: Path, coverage_path: Path,
+                   categories: tuple[str, ...] = (coverage.ADMITTED,)) -> list[str]:
+    """The tests of a coverage report in the given categories, after checking
+    that the compiler, the test corpus and the report match this checkout's pin."""
     pin = exporter.PIN_FILE.read_text().strip()
     profile = exporter.read_json(exporter.DEFAULT_PROFILE)
     exporter.compiler_identity(solc, profile["compilerVersion"], pin)
@@ -520,7 +521,7 @@ def admitted_tests(solidity: Path, solc: Path, coverage_path: Path) -> list[str]
     corpus_pin = subprocess.check_output(["git", "-C", str(solidity), "rev-parse", "HEAD"], text=True).strip()
     if corpus_pin != pin:
         raise SystemExit(f"test corpus revision {corpus_pin} differs from pin {pin}")
-    return [t["test"] for t in report["tests"] if t["category"] == coverage.ADMITTED]
+    return [t["test"] for t in report["tests"] if t["category"] in categories]
 
 
 def compile_admitted(solc: Path, tests_root: Path, name: str, work: Path) -> tuple[dict[str, Any], dict[str, Any]]:

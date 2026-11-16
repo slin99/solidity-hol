@@ -706,9 +706,12 @@ def stratify(seed: int, name: str, screened: list[list[Step]], k: int) -> list[l
     calls = 0
     while calls < k and any(queues):
         for queue in queues:
-            if queue and calls < k:
+            # A sequence longer than the calls left is skipped, so K bounds the calls.
+            if queue and len(queue[0]) <= k - calls:
                 chosen.append(queue.popleft())
                 calls += len(chosen[-1])
+            elif queue:
+                queue.popleft()
     return chosen
 
 
@@ -775,10 +778,11 @@ def report(manifests: dict[str, dict[str, Any]], results: list[dict[str, Any]]) 
         if fuzz["mode"] == "typed":
             typed[(key[0], fuzz["function"])].append(r.get("reason", r["status"]))
     failed = {n for n, r in contracts.items() if r["status"] != "ok"}
-    sequences: dict[tuple[str, int], list[str]] = defaultdict(list)
-    for key, r in cases.items():
-        if "sequence" in metadata[key]:
-            sequences[(key[0], metadata[key]["sequence"])].append(r["status"])
+    # A sequence agrees only if every step in its manifest has an agree result.
+    sequences: dict[tuple[str, int], list[str | None]] = defaultdict(list)
+    for key, fuzz in metadata.items():
+        if "sequence" in fuzz and key[0] not in failed:
+            sequences[(key[0], fuzz["sequence"])].append(cases[key]["status"] if key in cases else None)
 
     def listed(status: str) -> list[dict[str, Any]]:
         return [{**r, **metadata[k]} for k, r in sorted(cases.items()) if r["status"] == status]
@@ -789,7 +793,7 @@ def report(manifests: dict[str, dict[str, Any]], results: list[dict[str, Any]]) 
         "missing": sorted(f"{c}/{n}" for c, n in metadata.keys() - cases.keys() if c not in failed),
         "totals": dict(sorted(Counter(r["status"] for r in cases.values()).items())),
         "confirmed": sum(1 for r in cases.values() if r.get("confirmed")),
-        "sequences": {"evaluated": len(sequences),
+        "sequences": {"evaluated": sum(any(sequence) for sequence in sequences.values()),
                       "every_call_agrees": sum(all(s == "agree" for s in statuses)
                                                for statuses in sequences.values())},
         "contract_failures": {n: contracts[n] for n in sorted(failed)},
@@ -947,7 +951,10 @@ def semantic_targets(solidity: Path, coverage_path: Path, solc: Path, work: Path
     this shard), each compiled into work and named st_<test path>."""
     fuel = json.loads(CORPUS.read_text())["fuel"]
     index, count = shard
-    tests = fleet.admitted_tests(solidity, solc, coverage_path)[index::count]
+    # A partially admitted contract is fuzzed too: calls to its unsupported
+    # functions end inconclusive, and its report lists them.
+    tests = fleet.admitted_tests(solidity, solc, coverage_path,
+                                 (fleet.coverage.ADMITTED, fleet.coverage.PARTIALLY_ADMITTED))[index::count]
     tests_root = solidity / fleet.coverage.TESTS_DIR
     work.mkdir(parents=True, exist_ok=True)
     targets = []

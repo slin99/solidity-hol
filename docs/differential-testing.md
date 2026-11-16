@@ -280,8 +280,10 @@ in exactly the next call's starting state: this compares the source with the
 bytecode after every call of the sequence, and a disagreement is already a
 single-call case. Only storage carries over; balances and the peer start
 afresh, as for single calls. A call that halts ends its sequence. Selection
-takes sequences by their functions and outcome shapes, and K counts calls; the
-report adds how many sequences agreed after every call.
+takes sequences by their functions and outcome shapes, and K bounds the calls
+(a sequence longer than the calls left is skipped); the report adds how many
+sequences agreed after every call, a sequence counting only if every one of
+its calls has an agreeing result.
 
 Disagreements are shrunk (storage, immutables, value, sender and calldata
 words dropped while HOL still confirms them) and written as suites under
@@ -300,7 +302,8 @@ uv run --python 3.11 --with pyrevm tools/run_differential_fuzz.py --output /tmp/
 
 `--suite` picks suites, `--targets` names other contracts in the same shape,
 and `--semantic-tests <solidity checkout> --coverage <report> --solc <solc>`
-fuzzes the report's admitted semanticTests (each compiled as the expectation
+fuzzes the report's admitted and partially admitted semanticTests (calls to
+an unsupported function end inconclusive; each test is compiled as the expectation
 runner does, named `st_<test path>`). `--shard I/N` takes every Nth target
 from the Ith: run shards in parallel, each from its own checkout, since a
 fleet action updates the project it starts from.
