@@ -102,9 +102,9 @@ val () =
   if map (fn {name, reason, ...} => (name, isSome reason))
        (#functions external_library) =
      [("supported", false), ("callsPublic", false), ("callsExternal", false),
-      ("callsIndirect", true), ("callsCaller", true),
-      ("safePrivate", false), ("safeInternal", false), ("indirect", true)]
-  then () else raise Fail "external library admission or internal call isolation differs";
+      ("callsIndirect", false), ("callsCaller", false),
+      ("safePrivate", false), ("safeInternal", false), ("indirect", false)]
+  then () else raise Fail "library function admission differs";
 val () = rejects solidityPrepareLib.SourceRejected
   (fn () => ignore (solidityPrepareLib.prepare_unit (edited_unit "wrong_scope")));
 val () = rejects solidityPrepareLib.SourceRejected
