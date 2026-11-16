@@ -34,7 +34,7 @@
  *
  * The transaction and block the frame runs in are Verifereum's transaction
  * parameters, read by origin(), gasprice(), chainid(), number(),
- * timestamp(), coinbase(), basefee() and gaslimit().
+ * timestamp(), coinbase(), basefee(), gaslimit() and prevrandao().
  *
  * Gas is not modelled, but a frame still has a budget: gas_limit is what the
  * frame's caller gave it, gas() reads it, and a message call hands the call's

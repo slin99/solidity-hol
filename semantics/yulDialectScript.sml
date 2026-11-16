@@ -73,6 +73,7 @@ Definition builtin_name_def:
   builtin_name YBaseFee = "basefee" ∧
   builtin_name YGasLimit = "gaslimit" ∧
   builtin_name YBlockHash = "blockhash" ∧
+  builtin_name YPrevRandao = "prevrandao" ∧
   builtin_name YStop = "stop" ∧
   builtin_name YInvalid = "invalid" ∧
   builtin_name YCall = "call" ∧
@@ -157,6 +158,7 @@ Definition builtin_of_name_def:
     else if name = "basefee" then SOME YBaseFee
     else if name = "gaslimit" then SOME YGasLimit
     else if name = "blockhash" then SOME YBlockHash
+    else if name = "prevrandao" then SOME YPrevRandao
     else if name = "stop" then SOME YStop
     else if name = "invalid" then SOME YInvalid
     else if name = "call" then SOME YCall
@@ -268,6 +270,7 @@ Definition builtin_effect_def:
   builtin_effect YBaseFee = EffectFrame ∧
   builtin_effect YGasLimit = EffectFrame ∧
   builtin_effect YBlockHash = EffectFrame ∧
+  builtin_effect YPrevRandao = EffectFrame ∧
   builtin_effect YStop = EffectHalt ∧
   builtin_effect YInvalid = EffectHalt ∧
   builtin_effect YCall = EffectCall ∧

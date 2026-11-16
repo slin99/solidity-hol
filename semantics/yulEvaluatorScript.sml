@@ -515,6 +515,7 @@ Definition eval_yul_builtin_def:
         EvalValues [n2w m.transaction_parameters.blockTimeStamp] m
     | (YCoinbase, []) =>
         EvalValues [n2w (w2n m.transaction_parameters.blockCoinBase)] m
+    | (YPrevRandao, []) => EvalValues [m.transaction_parameters.prevRandao] m
     | (YLog0, [p; s]) =>
         let (m', bs) = yul_memory_region m (w2n p) (w2n s) in
           EvalValues []
