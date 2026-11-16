@@ -125,6 +125,18 @@ class ReportTests(unittest.TestCase):
             "unsupported member access": 1, "calls an unsupported function": 1})
         self.assertIn("| unsupported member access | 1 |", report.markdown())
 
+    def test_creation_blockers_are_not_functions(self) -> None:
+        partial = coverage.classify("t.sol", {
+            "status": "partially-admitted", "functions": 1, "unsupported": [],
+            "creation": ["51: not a storage location", "60: unsupported expression"]})
+        report = coverage.Report("pin", "profile", [partial])
+        self.assertEqual(report.json()["functions"], {"total": 1, "unsupported": 0})
+        self.assertEqual(report.function_reasons(), {})
+        self.assertEqual(report.json()["tests"][0]["creation"],
+                         ["51: not a storage location", "60: unsupported expression"])
+        self.assertIn("1 are supported and 0 unsupported", report.markdown())
+        self.assertIn("- `t.sol`\n  - creation: 51: not a storage location", report.markdown())
+
 
 if __name__ == "__main__":
     unittest.main()
