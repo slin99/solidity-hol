@@ -227,6 +227,38 @@ class FuzzerTests(unittest.TestCase):
         self.assertEqual(summary["missing"], [])
         self.assertTrue(fuzz.failed(summary))
 
+    def test_a_case_error_is_reported_and_fails_the_run(self) -> None:
+        manifests = {"c": {"screening": {}, "cases": [
+            {"name": "a", "fuzz": {"function": "f", "mode": "typed"}}]}}
+        results = [{"kind": "contract", "contract": "c", "status": "ok", "unsupported": []},
+                   {"kind": "case", "contract": "c", "case": "a", "status": "error",
+                    "message": "boom"}]
+        summary = fuzz.report(manifests, results)
+        self.assertEqual([r["case"] for r in summary["error"]], ["a"])
+        self.assertTrue(fuzz.failed(summary))
+
+    def test_a_partially_evaluated_contract_reports_its_missing_cases(self) -> None:
+        targets = fuzz.suite_targets([SUITE])
+        fuzzer = self.fuzzer()
+
+        def partial(work: Path, entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            entry = entries[0]
+            lines = [{"kind": "contract", "contract": entry["name"], "status": "ok",
+                      "unsupported": []},
+                     {"kind": "case", "contract": entry["name"], "case": "fuzz_0001",
+                      "status": "disagree", "screen": "Mismatch", "confirmed": True}]
+            batch = work / "batch-0000"
+            batch.mkdir(parents=True)
+            (batch / "results.jsonl").write_text(
+                "".join(fuzz.PREFIX + json.dumps(line) + "\n" for line in lines))
+            return fuzz.batch_records(work)
+
+        fuzzer.evaluate = partial
+        summary = fuzzer.run(targets, max_batches=None, shrink_rounds=0)
+        self.assertEqual([r["case"] for r in summary["disagree"]], ["fuzz_0001"])
+        self.assertEqual(len(summary["missing"]), 3)
+        self.assertTrue(fuzz.failed(summary))
+
     def test_resume_is_refused_when_inputs_change(self) -> None:
         inputs = fuzz.run_inputs([target()], 0, 5, 4)
         fuzz.check_inputs(self.output, inputs, resume=False)

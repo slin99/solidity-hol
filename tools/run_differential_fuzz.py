@@ -716,7 +716,7 @@ def report(manifests: dict[str, dict[str, Any]], results: list[dict[str, Any]]) 
         "cases": len(cases),
         "missing": sorted(f"{c}/{n}" for c, n in metadata.keys() - cases.keys() if c not in failed),
         "totals": dict(sorted(Counter(r["status"] for r in cases.values()).items())),
-        "confirmed": sum(1 for r in cases.values() if r["confirmed"]),
+        "confirmed": sum(1 for r in cases.values() if r.get("confirmed")),
         "contract_failures": {n: contracts[n] for n in sorted(failed)},
         "unsupported": {n: r["unsupported"] for n, r in sorted(contracts.items())
                         if r.get("unsupported")},
@@ -993,9 +993,10 @@ class Fuzzer:
         if max_batches is not None:
             pending = pending[:max_batches * fleet.BATCH_SIZE]
         results = self.evaluate(work, pending) if pending else batch_records(work)
-        finished = completed_contracts(results, manifests)
-        summary = report({n: m for n, m in manifests.items() if n in finished}, results)
-        summary["unevaluated"] = sorted(manifests.keys() - finished)
+        # A contract with any result is reported, its cases without one as missing.
+        evaluated = {r["contract"] for r in results}
+        summary = report({n: m for n, m in manifests.items() if n in evaluated}, results)
+        summary["unevaluated"] = sorted(manifests.keys() - evaluated)
         if summary["disagree"]:
             summary["minimized"] = [str(p) for p in self.minimize(
                 by_name, manifests, summary["disagree"], shrink_rounds)]
