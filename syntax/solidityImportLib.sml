@@ -344,13 +344,19 @@ fun address_type_name v =
 
 (* Type names *)
 
-(* The length of a fixed array type v, a positive integer constant, as solc
- * evaluated it: the last dimension "_$<n>" of v's type identifier, such as
- * t_array$_t_uint256_$2_storage_ptr, or t_type$_t_array$_..._$2_memory_ptr_$
- * for a type written as an expression. A "$" in a name is escaped as "$$$",
- * so it is never "_$" followed by a digit. *)
-fun array_dimension v =
+(* The length of a fixed array type v, a positive integer constant: the
+ * length's rational number type, or for a constant's name, the last
+ * dimension "_$<n>" of v's own type identifier, such as
+ * t_array$_t_uint256_$2_storage_ptr, as solc evaluated it. A "$" in a name
+ * is escaped as "$$$", so it is never "_$" followed by a digit. *)
+fun array_dimension v length =
   let
+    fun rational s =
+      case String.fields (fn c => c = #"_") s of
+        ["t", "rational", n, "by", "1"] =>
+          if size n > 0 andalso CharVector.all Char.isDigit n
+          then IntInf.fromString n else NONE
+      | _ => NONE
     val tid = raw_type_id v
     val n = size tid
     fun digits i =
@@ -366,10 +372,14 @@ fun array_dimension v =
           else last stop found
         end
       else last (i + 1) found
+    val length_type = string_field (field length "typeDescriptions") "typeIdentifier"
+    val dimension =
+      if String.isPrefix "t_rational_" length_type then rational length_type
+      else last 0 NONE
   in
-    case last 0 NONE of
-      SOME d => if d > 0 then d else fail (describe v ^ ": nonpositive array length")
-    | NONE => fail (describe v ^ ": no array length in type " ^ tid)
+    case dimension of
+      SOME d => if d > 0 then d else fail "nonpositive array length"
+    | NONE => fail (describe v ^ ": array length is not a positive integer constant")
   end
 
 fun type_name v = guarded (fn _ => []) unsupported_type_name (fn v => within v (fn v =>
@@ -412,9 +422,9 @@ fun type_name v = guarded (fn _ => []) unsupported_type_name (fn v => within v (
   | "ArrayTypeName" =>
       (case optional_field v "length" of
          NONE => con "SrcDynamicArrayTypeName" [info v, type_name (field v "baseType")]
-       | SOME _ =>
+       | SOME length =>
            con "SrcArrayTypeName"
-             [info v, type_name (field v "baseType"), mk_num (array_dimension v)])
+             [info v, type_name (field v "baseType"), mk_num (array_dimension v length)])
   | "FunctionTypeName" =>
       (require v (string_field v "visibility" = "internal")
          "external function types are not supported";
@@ -1345,8 +1355,8 @@ and abi_decode_call v callee args =
             Option.map (fn base =>
                 case optional_field c "indexExpression" of
                   NONE => con "SrcDynamicArrayTypeName" [info c, base]
-                | SOME _ =>
-                    con "SrcArrayTypeName" [info c, base, mk_num (array_dimension c)])
+                | SOME length =>
+                    con "SrcArrayTypeName" [info c, base, mk_num (array_dimension c length)])
               (decoded_type (field c "baseExpression"))
         | _ =>
           case value_type_expression c of
