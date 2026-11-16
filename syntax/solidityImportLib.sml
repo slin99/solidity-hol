@@ -996,23 +996,30 @@ fun expr v = guarded (fn e => [ExprChild e]) unsupported_expr (fn v => within v 
                  (selector_bytes v base
                   handle ImportError msg => (ignore (expr base); raise ImportError msg)),
                  mk_opt expr_ty (Option.map expr (selector_receiver base)), type_id v]
-            else case string_field v "memberName" of
-              "length" =>
-                if is_address_code base then
-                  builtin_operation v (SOME base) "CodeLengthBuiltin"
-                    [expr (field base "expression")]
-                else con "SrcArrayLength" [info v, expr base, type_id v]
-            | "balance" =>
+            else
+            let
+              (* a.balance or a.codehash: a builtin of the address a *)
+              fun address_builtin member name =
                 (require v (List.exists (fn t => t = raw_type_id base)
                               ["t_address", "t_address_payable"])
-                   "balance of a non-address";
-                 builtin_operation v NONE "BalanceBuiltin" [expr base])
-            | member =>
-                let val receiver = expr (field v "expression") in
-                  require v (member = "push" orelse member = "pop")
-                    "unsupported built-in member";
-                  con "SrcArrayMember" [info v, mk_str member, receiver, type_id v]
-                end
+                   (member ^ " of a non-address");
+                 builtin_operation v NONE name [expr base])
+            in
+              case string_field v "memberName" of
+                "length" =>
+                  if is_address_code base then
+                    builtin_operation v (SOME base) "CodeLengthBuiltin"
+                      [expr (field base "expression")]
+                  else con "SrcArrayLength" [info v, expr base, type_id v]
+              | "balance" => address_builtin "balance" "BalanceBuiltin"
+              | "codehash" => address_builtin "codehash" "CodeHashBuiltin"
+              | member =>
+                  let val receiver = expr (field v "expression") in
+                    require v (member = "push" orelse member = "pop")
+                      "unsupported built-in member";
+                    con "SrcArrayMember" [info v, mk_str member, receiver, type_id v]
+                  end
+            end
            end)
   | "Literal" =>
       let

@@ -1,0 +1,160 @@
+{
+  "name": "storage_call_data",
+  "source": "testdata/differential/storage_call_data.sol",
+  "contract": "StorageCallData",
+  "artifact": "testdata/differential/expected/storage_call_data.json",
+  "peer": {
+    "source": "testdata/differential/low_level_calls_peer.sol",
+    "contract": "StaticPeer",
+    "artifact": "testdata/differential/expected/low_level_calls_peer.json"
+  },
+  "cases": [
+    {
+      "name": "long_payload",
+      "function": "callStored",
+      "args": [
+        20480,
+        "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000015"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0x000000000000000000000000000000000000000000000000000000000000002a"
+        ]
+      }
+    },
+    {
+      "name": "payload_over_two_slots",
+      "function": "callStored",
+      "args": [
+        20480,
+        "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000015abababababababababababababababababababababababababababababababababababababababab"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0x000000000000000000000000000000000000000000000000000000000000002a"
+        ]
+      }
+    },
+    {
+      "name": "short_payload",
+      "function": "callStored",
+      "args": [
+        20480,
+        "0x448f30a3"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "empty_payload",
+      "function": "callStored",
+      "args": [
+        20480,
+        "0x"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "callee_revert_is_returned",
+      "function": "callStored",
+      "args": [
+        20480,
+        "0x132e4f3c0000000000000000000000000000000000000000000000000000000000000001"
+      ],
+      "expect": {
+        "return": [
+          false,
+          "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000b70656572206661696c6564000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "name": "static_long_payload",
+      "function": "staticStored",
+      "args": [
+        20480,
+        "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000015"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0x000000000000000000000000000000000000000000000000000000000000002a"
+        ]
+      }
+    },
+    {
+      "name": "static_write_fails",
+      "function": "staticStored",
+      "args": [
+        20480,
+        "0x68110b2f"
+      ],
+      "expect": {
+        "return": [
+          false,
+          "0x"
+        ]
+      }
+    },
+    {
+      "name": "delegate_writes_own_storage",
+      "function": "delegateStored",
+      "args": [
+        20480,
+        "0x68110b2f"
+      ],
+      "storage": {
+        "0": 7
+      },
+      "expect": {
+        "return": [
+          true,
+          "0x",
+          8
+        ]
+      },
+      "final_storage": {
+        "0": 8
+      }
+    },
+    {
+      "name": "struct_element_long",
+      "function": "callElement",
+      "args": [
+        20480,
+        "0xc5a46ee60000000000000000000000000000000000000000000000000000000000000015"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0x000000000000000000000000000000000000000000000000000000000000002a"
+        ]
+      }
+    },
+    {
+      "name": "struct_element_short",
+      "function": "callElement",
+      "args": [
+        20480,
+        "0x448f30a3"
+      ],
+      "expect": {
+        "return": [
+          true,
+          "0x"
+        ]
+      }
+    }
+  ]
+}

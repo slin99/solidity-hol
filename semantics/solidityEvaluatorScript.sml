@@ -279,6 +279,9 @@ Definition eval_builtin_def:
     | (BalanceBuiltin, [ScalarValue (AddressValue address)]) =>
         ValueOk (ScalarValue (IntegerValue
           (&(lookup_account address st.world.accounts).balance)))
+    | (CodeHashBuiltin, [ScalarValue (AddressValue address)]) =>
+        ValueOk (ScalarValue (BytesValue (num_to_bytes 32
+          (w2n (ext_code_hash st.world.accounts address)))))
     | (Sha256Builtin, [ReferenceValue r]) =>
         (case byte_contents st r of
            INL bs => ValueOk (ScalarValue (BytesValue (num_to_bytes 32
