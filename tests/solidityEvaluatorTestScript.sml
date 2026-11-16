@@ -558,7 +558,7 @@ Theorem asm_memory_outside_scratch_invalid:
     initial_state (AstId 110) [ScalarValue (IntegerValue 7)] =
     InvalidCompletion "assembly left the zero slot non-zero" ∧
   run_asm [YulExprStmt (YulBuiltin YMStore [ylit 0x60w; YulName "x"]);
-           YulAssign ["x"] (yadd (YulBuiltin YMLoad [ylit 0x60w]) (ylit 1w));
+           YulAssign ["x"] (YulBuiltin YAdd [YulBuiltin YMLoad [ylit 0x60w]; ylit 1w]);
            YulExprStmt (YulBuiltin YMStore [ylit 0x60w; ylit 0w])]
     initial_state (AstId 110) [ScalarValue (IntegerValue 7)] =
     ReturnCompletion [ScalarValue (IntegerValue 8)] ∧
