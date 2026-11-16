@@ -37,8 +37,9 @@ val prepared = #prepared (solidityPrepareLib.prepare_artifact
  * memory, which the core does not hold, and copyTree copies one in storage.
  * encodePair, emitPair and putPair take a memory struct across an ABI
  * boundary, which elaborates. Roles.Grant has an enum-keyed mapping, which
- * storage holds, so grantParam's storage parameter elaborates, while
- * grantCount's storage local, declared without a value, does not.
+ * storage holds, so grantParam's storage parameter elaborates, and so does
+ * grantCount's storage local, declared without a value and pointed by
+ * assembly.
  * nodeModified's modifier takes a recursive struct in memory, which fails at
  * elaboration rather than leaving the unit ill-formed; treeTuple's tuple holds
  * a storage struct, as a reference, which elaborates. *)
@@ -86,8 +87,7 @@ val () =
      reasons "encodePair" = [NONE] andalso
      reasons "emitPair" = [NONE] andalso
      reasons "putPair" = [NONE] andalso
-     List.all elaboration_failure (reasons "grantCount") andalso
-     length (reasons "grantCount") = 1 andalso
+     reasons "grantCount" = [NONE] andalso
      reasons "grantParam" = [NONE] andalso
      List.all (elaboration_failure_with "unsupported modifier parameter type")
        (reasons "nodeModified") andalso
