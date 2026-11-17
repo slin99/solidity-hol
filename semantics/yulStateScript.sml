@@ -34,7 +34,7 @@
  *
  * The transaction and block the frame runs in are Verifereum's transaction
  * parameters, read by origin(), gasprice(), chainid(), number(),
- * timestamp(), coinbase(), basefee() and gaslimit().
+ * timestamp(), coinbase(), basefee(), gaslimit() and prevrandao().
  *
  * A scope's value is NONE for a word nobody wrote: inline assembly reading
  * memory the source never gave it (yulEvaluator's YulCheckedBuiltin) gets one,

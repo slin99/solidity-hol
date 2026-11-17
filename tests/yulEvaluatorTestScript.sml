@@ -18,7 +18,7 @@ Definition yul_test_tx_params_def:
   yul_test_tx_params =
     <| origin := 0xA1w; gasPrice := 9; baseFeePerGas := 3;
        baseFeePerBlobGas := 0; blockNumber := 7; blockTimeStamp := 1700;
-       blockCoinBase := 0xC0w; blockGasLimit := 30000; prevRandao := 0w;
+       blockCoinBase := 0xC0w; blockGasLimit := 30000; prevRandao := 0x5EEDw;
        prevHashes := []; blobHashes := []; chainId := 5; authRefund := 0 |>
 End
 
@@ -453,7 +453,7 @@ End
 
 val () = cv_auto_trans log3_code_def;
 
-(* mstore(0, address()) mstore(32, origin()) ... return(0, 288)
+(* mstore(0, address()) mstore(32, origin()) ... return(0, 320)
  * The executing account from the frame, the rest from its transaction and
  * block.
  *)
@@ -463,9 +463,9 @@ Definition environment_code_def:
                      [YulLit (LitNumber (n2w (32 * i))); YulBuiltin b []]))
       [(0, YAddress); (1, YOrigin); (2, YChainId); (3, YNumber);
        (4, YTimestamp); (5, YCoinbase); (6, YGasPrice); (7, YBaseFee);
-       (8, YGasLimit)] ++
+       (8, YGasLimit); (9, YPrevRandao)] ++
     [YulExprStmt (YulBuiltin YReturn
-       [YulLit (LitNumber 0w); YulLit (LitNumber 288w)])]
+       [YulLit (LitNumber 0w); YulLit (LitNumber 320w)])]
 End
 
 val () = cv_auto_trans environment_code_def;
@@ -860,7 +860,8 @@ Theorem environment_builtins_read_the_frame_transaction_and_block:
              word_to_bytes_be (0xC0w : bytes32) ++
              word_to_bytes_be (9w : bytes32) ++
              word_to_bytes_be (3w : bytes32) ++
-             word_to_bytes_be (30000w : bytes32))
+             word_to_bytes_be (30000w : bytes32) ++
+             word_to_bytes_be (0x5EEDw : bytes32))
 Proof
   CONV_TAC cv_eval
 QED
