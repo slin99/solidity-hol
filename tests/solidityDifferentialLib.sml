@@ -966,15 +966,21 @@ fun run_expectations {root, manifest} =
                             * its own account (EIP-6780) left it empty, nonce
                             * included, where a surviving one keeps the nonce one
                             * it entered with. Verifereum installs the code before
-                            * the deletions run, so a deleted account gets none. *)
-                           val w = “if (lookup_account ^address ^result_world.accounts).nonce = 0
-                             then ^result_world
-                             else ^result_world with accounts :=
+                            * the deletions run, so a deleted account gets none,
+                            * and later calls would run the source program on an
+                            * account with no code: the sequence stops there. *)
+                           val destroyed = eval “(lookup_account ^address
+                             ^result_world.accounts).nonce = 0” ~~ T
+                           val w = if destroyed then result_world
+                             else “^result_world with accounts :=
                                update_account ^address
                                  ((lookup_account ^address ^result_world.accounts)
                                     with code := ^patched) ^result_world.accounts”
                          in
                            imm := im; world := w;
+                           if destroyed then
+                             stopped := SOME "constructor destroyed the contract"
+                           else ();
                            (con "Returned" [bytes_term []], eval “^w.logs”)
                          end
                      | ("ContractReturned", [bs, w]) =>
