@@ -1462,11 +1462,35 @@ Definition block_halts_def:
   block_halts ss ⇔ ¬stmts_escape F ss ∧ ends_in_halt ss
 End
 
+(* How many leading bytes of the word m reads survive b with literal first
+ * argument k: shr(k, mload(p)) shifts out the last k DIV 8 bytes, and
+ * byte(0, mload(p)) keeps only the first.  The bytes past them may be ones
+ * the block never wrote. *)
+Definition mload_prefix_def:
+  mload_prefix b (k : bytes32) m =
+    if m ≠ YMLoad then NONE
+    else if b = YShr then SOME (32 - w2n k DIV 8)
+    else if b = YByte ∧ k = 0w then SOME 1
+    else NONE
+End
+
 (* Arguments run right to left, so each sees what the ones after it wrote. A
- * body that halts may write anywhere. *)
+ * body that halts may write anywhere. A sub-word load reads only the bytes
+ * that survive it (mload_prefix). *)
 Definition memory_expr_ok_def:
   (memory_expr_ok h ws (YulBuiltin b es) ⇔
-    memory_exprs_ok h ws es ∧ builtin_memory_ok h (exprs_stores es ++ ws) b es) ∧
+    case es of
+      [YulLit (LitNumber k); YulBuiltin m [p]] =>
+        (case mload_prefix b k m of
+           SOME n =>
+             memory_expr_ok h ws p ∧
+             memory_read_ok (expr_stores p ++ ws) p (YulLit (LitNumber (n2w n)))
+         | NONE =>
+             memory_exprs_ok h ws es ∧
+             builtin_memory_ok h (exprs_stores es ++ ws) b es)
+    | _ =>
+        memory_exprs_ok h ws es ∧
+        builtin_memory_ok h (exprs_stores es ++ ws) b es) ∧
   (memory_expr_ok h ws (YulApply _ es) ⇔ memory_exprs_ok h ws es) ∧
   (memory_expr_ok h ws (YulCheckedBuiltin _ _) ⇔ F) ∧
   (memory_expr_ok h ws (YulLit _) ⇔ T) ∧
@@ -2069,7 +2093,18 @@ val () = cv_auto_trans stmt_stores_def;
 val () = cv_auto_trans stmts_escape_def;
 val () = cv_auto_trans ends_in_halt_def;
 val () = cv_auto_trans block_halts_def;
-val () = cv_auto_trans memory_expr_ok_def;
+val () = cv_auto_trans mload_prefix_def;
+val memory_expr_ok_pre_def = cv_auto_trans_pre
+  "memory_expr_ok_pre memory_exprs_ok_pre" memory_expr_ok_def;
+
+Theorem memory_expr_ok_pre[cv_pre,local]:
+  (∀h ws e. memory_expr_ok_pre h ws e) ∧
+  (∀h ws es. memory_exprs_ok_pre h ws es)
+Proof
+  ho_match_mp_tac memory_expr_ok_ind >> rpt strip_tac >>
+  simp[Once memory_expr_ok_pre_def] >> rw[] >> gvs[]
+QED
+
 val () = cv_auto_trans memory_stmt_ok_def;
 val () = cv_auto_trans assembly_memory_ok_def;
 val () = cv_auto_trans is_call_builtin_def;

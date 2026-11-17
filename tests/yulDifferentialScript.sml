@@ -109,7 +109,7 @@ Definition yul_differential_machine_def:
        memory := (FEMPTY : num |-> word8);
        memory_size := 0;
        gas_limit := (differential_tx c.case_sender c.case_value data).gasLimit; gas_observations := [];
-       scopes := ([] : (string |-> bytes32) list);
+       scopes := ([] : (string |-> bytes32 option) list);
        transaction_parameters :=
          initial_tx_params differential_chain_id
            (test_block_hashes differential_block.number) differential_block

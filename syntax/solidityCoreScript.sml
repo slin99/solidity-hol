@@ -47,6 +47,9 @@ Datatype:
   = ScalarValue scalar
   | ReferenceValue reference
   | TupleValue (runtime_value list)
+  (* A full-word assembly local whose word inline assembly loaded from memory
+   * the source never gave it: any read of it fails. *)
+  | UnwrittenValue
 End
 
 (* Operands are pure: effects and intermediate results have already been named.

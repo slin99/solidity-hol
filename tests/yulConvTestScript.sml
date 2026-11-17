@@ -152,7 +152,7 @@ fun fail msg = raise Fail ("yulConvTest: " ^ msg)
 (* Transient helpers must not copy a machine that still contains a call. *)
 val () =
   let
-    val m = “(h : yul_expr_result -> yul_machine)
+    val m = “(h : bytes32 option yul_expr_result -> yul_machine)
                (invoke_yul 1 fns "f" [] m)”
     val unfolded = List.filter
       (fn (_, t) => not (yulConvLib.is_fixed_point [] t))
@@ -432,7 +432,7 @@ val () =
   let
     val t = “LET (λr. if T then r else r)
                ((r0 : yul_result) with machine :=
-                  (h : yul_expr_result -> yul_machine)
+                  (h : bytes32 option yul_expr_result -> yul_machine)
                     (invoke_yul 1 fns "f" [] m))”
     val r = rhs (concl (yulConvLib.yul_eval_conv []
                           “fns : (string |-> yul_function)” t))

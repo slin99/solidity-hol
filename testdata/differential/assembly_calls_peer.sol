@@ -1,15 +1,28 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.37;
 
-// A token-like peer for the assembly call suite: transfer returns true,
-// false, nothing or reverts by amount, and data returns more than one word.
-// transfer writes before it reverts, so a revert has a write to roll back.
+// A token-like peer for the assembly call suite: transfer returns true or
+// false, reverts with a reason or 4 bytes, returns no data (as USDT's does)
+// or 4 bytes by amount, and data returns more than one word. transfer writes
+// before it reverts, so a revert has a write to roll back.
 contract AsmPeer {
     uint256 private total;
 
     function transfer(address, uint256 amount) external returns (bool) {
         total += amount;
         require(amount != 1, "peer refused");
+        if (amount == 3) {
+            assembly { return(0, 0) }
+        }
+        if (amount == 4) {
+            assembly { return(0, 4) }
+        }
+        if (amount == 6) {
+            assembly {
+                mstore(0, shl(224, 0xdeadbeef))
+                revert(0, 4)
+            }
+        }
         return amount != 2;
     }
 
