@@ -898,7 +898,8 @@ fun run_expectations {root, manifest} =
                          let
                            val result = keep “run_external_call ^sender ^address ^data
                              ^value F (100000000 - (if ^value = 0 then 0 else call_stipend))
-                             ^(!evm_accounts) empty_transient_storage ^fr.tx_params”
+                             ^(!evm_accounts) ^(!evm_accounts) empty_transient_storage
+                             ^fr.tx_params”
                            val unavailable = aconv “1n” (eval “if IS_NONE ^result then 1n else 0”)
                          in
                            if unavailable then
@@ -906,7 +907,8 @@ fun run_expectations {root, manifest} =
                            else
                              let
                                val success = aconv “1n” (eval “if (THE ^result).call_success then 1n else 0”)
-                               val () = evm_accounts := keep “(THE ^result).call_accounts”
+                               val () = evm_accounts := keep “process_deletions
+                                 (THE ^result).call_to_delete (THE ^result).call_accounts”
                              in
                                observed (con (if success then "Returned" else "Reverted")
                                  [eval “(THE ^result).call_return”])
@@ -915,8 +917,9 @@ fun run_expectations {root, manifest} =
                          end
                      end
                    val bytecode_fields = bytecode ()
-                   val entered = “^prior_world with accounts :=
-                     transfer_value ^sender ^address ^value ^prior_world.accounts”
+                   val entered = “^prior_world with <| accounts :=
+                     transfer_value ^sender ^address ^value ^prior_world.accounts;
+                     original := ^prior_world.accounts; to_delete := [] |>”
                    val entered = if creating then
                      “^entered with accounts := update_account ^address
                        ((lookup_account ^address ^entered.accounts) with nonce := 1)
@@ -959,12 +962,25 @@ fun run_expectations {root, manifest} =
                                   (fst (listSyntax.dest_list offsets)) end
                            val patched = List.foldl patch code
                              (fst (listSyntax.dest_list refs))
-                           val w = “^result_world with accounts :=
-                             update_account ^address
-                               ((lookup_account ^address ^result_world.accounts)
-                                  with code := ^patched) ^result_world.accounts”
+                           (* The world is settled: a constructor that destroyed
+                            * its own account (EIP-6780) left it empty, nonce
+                            * included, where a surviving one keeps the nonce one
+                            * it entered with. Verifereum installs the code before
+                            * the deletions run, so a deleted account gets none,
+                            * and later calls would run the source program on an
+                            * account with no code: the sequence stops there. *)
+                           val destroyed = eval “(lookup_account ^address
+                             ^result_world.accounts).nonce = 0” ~~ T
+                           val w = if destroyed then result_world
+                             else “^result_world with accounts :=
+                               update_account ^address
+                                 ((lookup_account ^address ^result_world.accounts)
+                                    with code := ^patched) ^result_world.accounts”
                          in
                            imm := im; world := w;
+                           if destroyed then
+                             stopped := SOME "constructor destroyed the contract"
+                           else ();
                            (con "Returned" [bytes_term []], eval “^w.logs”)
                          end
                      | ("ContractReturned", [bs, w]) =>
@@ -982,7 +998,8 @@ fun run_expectations {root, manifest} =
                           (con "Diagnostic" [“OutOfFuel”], bytes_term []))
                      | _ => raise ERR "run_expectations" "unexpected contract_result"
                    val () = world := keep “^(!world) with
-                     <| logs := []; transient := empty_transient_storage |>”
+                     <| logs := []; transient := empty_transient_storage;
+                        original := ^(!world).accounts; to_delete := [] |>”
                    fun expected_event e =
                      let
                        val event_sig = string_field e "signature"

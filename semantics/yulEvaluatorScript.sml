@@ -372,11 +372,14 @@ End
  * region gets only the first min(outsize, returndatasize) bytes of it, left
  * as they were beyond that.
  *
+ * A successful call also takes back the transaction's original accounts and
+ * the accounts the callee left pending deletion, which the frame keeps for
+ * its caller.
+ *
  * run_external_call answers NONE where the call leaves the model: a recipient
- * balance overflow, a run outside the domain (one that ends in no frame, in
- * more than one, or in a vfm_abort), or a callee that ends with accounts
- * pending deletion. That is an invalid outcome, not a failed call, since the
- * model cannot say whether it would have succeeded.
+ * balance overflow or a run outside the domain (one that ends in no frame, in
+ * more than one, or in a vfm_abort). That is an invalid outcome, not a failed
+ * call, since the model cannot say whether it would have succeeded.
  *)
 (* The words are pinned rather than left to inference: every one of the sizes
  * reaches the machine only through w2n, which says nothing about its width, so
@@ -392,17 +395,19 @@ Definition yul_call_def:
       case (if delegate then
               run_delegate_call m1.self_address m1.caller_address
                 (w2n m1.call_value) (w2w callee) args static
-                (MIN (w2n gas) m1.gas_limit) m1.accounts m1.transient
-                m1.transaction_parameters
+                (MIN (w2n gas) m1.gas_limit) m1.accounts m1.original
+                m1.transient m1.transaction_parameters
             else
               run_external_call m1.self_address (w2w callee) args (w2n value)
-                static (MIN (w2n gas) m1.gas_limit) m1.accounts m1.transient
-                m1.transaction_parameters) of
+                static (MIN (w2n gas) m1.gas_limit) m1.accounts m1.original
+                m1.transient m1.transaction_parameters) of
         NONE => EvalAbrupt (YulInvalid "call outside the model") m1
       | SOME outcome =>
           let m2 = m1 with <| accounts := outcome.call_accounts;
                                transient := outcome.call_transient;
                                logs := m1.logs ++ outcome.call_logs;
+                               original := outcome.call_original;
+                               to_delete := m1.to_delete ++ outcome.call_to_delete;
                                return_data := outcome.call_return |> in
             EvalValues [b2w outcome.call_success]
               (yul_memory_write
@@ -416,13 +421,15 @@ Definition yul_create_def:
              (input : bytes32) (size : bytes32) : bytes32 yul_expr_result =
     let (m1, initcode) = yul_memory_region m (w2n input) (w2n size) in
     case run_create_call m1.self_address salt initcode (w2n value) m1.gas_limit
-           m1.accounts m1.transient m1.transaction_parameters of
+           m1.accounts m1.original m1.transient m1.transaction_parameters of
       NONE => EvalAbrupt (YulInvalid "creation outside the model") m1
     | SOME r =>
         EvalValues [case r.create_address of NONE => 0w | SOME a => w2w a]
           (m1 with <| accounts := r.create_accounts;
                       transient := r.create_transient;
                       logs := m1.logs ++ r.create_logs;
+                      original := r.create_original;
+                      to_delete := m1.to_delete ++ r.create_to_delete;
                       return_data := r.create_return |>)
 End
 

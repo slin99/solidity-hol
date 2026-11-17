@@ -19,7 +19,9 @@
  * sides. Its observation is the outcome the EVM sees (a return of ABI-encoded
  * data, a revert, or a diagnostic), the contract's committed storage and the
  * log the frame wrote; a revert takes the initial world back, as
- * finish_yul_frame says. The calldata is built by the same input_call the
+ * finish_yul_frame says, and since the frame is the whole transaction a
+ * success ends with its pending deletions applied (yul_transaction_frame).
+ * The calldata is built by the same input_call the
  * bytecode run uses, so a named call and raw calldata are called identically
  * on both sides, and the verdict is solidityDifferential's own, with the Yul
  * run standing where the core run stands: a Mismatch is the bytecode run and
@@ -77,6 +79,9 @@ End
  *)
 Definition yul_differential_machine_def:
   yul_differential_machine code imm c data =
+    let pre = case_accounts (patch_immutables c.case_immutable_refs imm code)
+                c.case_storage c.case_sender c.case_peer_code
+                c.case_peer_storage c.case_libraries in
     <| accounts :=
          (* the same world the source run starts from: the case's value has
           * already moved to the contract, so a call the frame makes with part
@@ -85,10 +90,10 @@ Definition yul_differential_machine_def:
           * back to its address -- Caller.bumpSelf's ISelf(address(this)) -- so
           * that such a call runs the bytecode the real transaction would.
           *)
-         transfer_value c.case_sender contract_address c.case_value
-           (case_accounts (patch_immutables c.case_immutable_refs imm code)
-              c.case_storage c.case_sender c.case_peer_code
-              c.case_peer_storage c.case_libraries);
+         transfer_value c.case_sender contract_address c.case_value pre;
+       (* the transaction's original accounts: the world before the value
+        * moved *)
+       original := pre; to_delete := [];
        transient := empty_transient_storage;
        logs := [];
        self_address := contract_address;
@@ -113,7 +118,21 @@ Definition yul_differential_machine_def:
            (differential_tx c.case_sender c.case_value data) 0 |>
 End
 
-(* What the frame's caller sees, as finish_yul_frame decides it: the same
+(* The frame is the whole transaction: a stop or a return also carries out
+ * the deletions its calls left pending (EIP-6780), as solidityEntry's
+ * settle_source_world does for a source frame; a revert or an abort keeps
+ * the initial world.
+ *)
+Definition yul_transaction_frame_def:
+  yul_transaction_frame initial final completion =
+    case finish_yul_frame initial final completion of
+      YulFrameSuccess data w =>
+        YulFrameSuccess data
+          (w with accounts := process_deletions final.to_delete w.accounts)
+    | other => other
+End
+
+(* What the frame's caller sees, as yul_transaction_frame decides it: the same
  * shape contract_observation gives the bytecode run.
  *)
 Definition yul_frame_observation_def:
@@ -136,6 +155,11 @@ Definition yul_creation_machine_def:
   yul_creation_machine p c data =
     (yul_differential_machine [] ([] : (num # scalar # byte list) list) c []) with
       <| accounts := transfer_value c.case_sender (case_address c) c.case_value
+           (case_accounts [] c.case_storage c.case_sender
+              c.case_peer_code c.case_peer_storage c.case_libraries);
+         (* the created account is empty in the original accounts, as
+          * Verifereum's CREATE marks it *)
+         original := update_account (case_address c) empty_account_state
            (case_accounts [] c.case_storage c.case_sender
               c.case_peer_code c.case_peer_storage c.case_libraries);
          self_address := case_address c;
@@ -169,7 +193,7 @@ Definition yul_creation_execution_def:
     else
       let m = yul_creation_machine p c data in
       let r = run_yul fuel p.creation_body m in
-      case finish_yul_frame m r.machine r.completion of
+      case yul_transaction_frame m r.machine r.completion of
         YulFrameSuccess out w =>
           if out = yul_created_code p r.machine.immutables then
             (Returned (code_immutable_words p.creation_refs out),
@@ -203,7 +227,7 @@ Definition yul_case_execution_def:
              let m = yul_differential_machine ycode.runtime_bytes imm
                        (c with case_immutable_refs := ycode.runtime_refs) data in
              let r = run_yul fuel ycode.runtime_body m in
-             yul_frame_observation (finish_yul_frame m r.machine r.completion))
+             yul_frame_observation (yul_transaction_frame m r.machine r.completion))
 End
 
 Definition yul_observation_def:
@@ -302,6 +326,7 @@ Proof
   BasicProvers.every_case_tac >> gvs[is_agreement_def]
 QED
 
+val () = cv_auto_trans yul_transaction_frame_def;
 val () = cv_auto_trans yul_differential_machine_def;
 val () = cv_auto_trans yul_frame_observation_def;
 val () = cv_auto_trans yul_creation_machine_def;

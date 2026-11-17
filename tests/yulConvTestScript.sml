@@ -87,7 +87,8 @@ Definition yul_conv_machine_def:
        code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
        memory_size := 0; gas_limit := 0; gas_observations := []; scopes := [];
-       transaction_parameters := yul_conv_tx_params |>
+       transaction_parameters := yul_conv_tx_params;
+       original := empty_accounts; to_delete := [] |>
 End
 
 val yul_conv_machine_term = rhs (concl yul_conv_machine_def)

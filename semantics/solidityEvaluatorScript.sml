@@ -17,8 +17,10 @@
  * byte offset of the program's layout. Reads and writes go straight to that
  * world, so a write is seen by everything after it, callers and callees
  * included; restoring the world on revert is the frame's job
- * (finish_source_frame). Access sets and original values, which only matter
- * to gas, are not tracked.
+ * (finish_source_frame). Access sets are not tracked. The world also
+ * carries the transaction's original accounts and pending deletions, which
+ * the evaluator only threads through the message calls and creations it
+ * hands to Verifereum (externalCallScript.sml).
  *
  * Gas evidence is passed through unchanged; the EVM boundary is out of scope.
  * Unsupported statements and operations, and anything the checker would reject,
@@ -771,15 +773,18 @@ Definition call_create_def:
            INR c => abrupt_result c st gas
          | INL data =>
              case run_create_call st.frame.self_address salt (code ++ data)
-                    (Num v) external_call_gas st.world.accounts st.world.transient
+                    (Num v) external_call_gas st.world.accounts
+                    st.world.original st.world.transient
                     st.frame.tx_params of
                NONE => abrupt_result (InvalidCompletion "creation outside the model") st gas
              | SOME r =>
                  let st1 = st with <|
                    return_data := SOME r.create_return;
-                   world := <| accounts := r.create_accounts;
+                   world := st.world with <| accounts := r.create_accounts;
                                transient := r.create_transient;
-                               logs := st.world.logs ++ r.create_logs |> |> in
+                               logs := st.world.logs ++ r.create_logs;
+                               original := r.create_original;
+                               to_delete := st.world.to_delete ++ r.create_to_delete |> |> in
                  case r.create_address of
                    NONE => abrupt_result (RevertCompletion r.create_return) st1 gas
                  | SOME addr => normal_result
@@ -806,11 +811,13 @@ Definition call_external_mode_def:
              case (if kind = ExternalDelegateCall then
                      run_delegate_call st.frame.self_address st.frame.sender_address
                        st.frame.call_value callee (selector ++ data) static limit
-                       st.world.accounts st.world.transient st.frame.tx_params
+                       st.world.accounts st.world.original
+                       st.world.transient st.frame.tx_params
                    else
                      run_external_call st.frame.self_address callee
                        (selector ++ data) (Num v) static limit
-                       st.world.accounts st.world.transient st.frame.tx_params) of
+                       st.world.accounts st.world.original
+                       st.world.transient st.frame.tx_params) of
                NONE =>
                  abrupt_result (InvalidCompletion "call outside the model") st gas
              | SOME r =>
@@ -827,9 +834,11 @@ Definition call_external_mode_def:
                             [ScalarValue (BytesValue r.call_return)])) st) gas)
                else
                  let st' = st with world :=
-                       <| accounts := r.call_accounts;
+                       st.world with <| accounts := r.call_accounts;
                           transient := r.call_transient;
-                          logs := st.world.logs ++ r.call_logs |> in
+                          logs := st.world.logs ++ r.call_logs;
+                          original := r.call_original;
+                          to_delete := st.world.to_delete ++ r.call_to_delete |> in
                  let ret_types = abi_types env (LENGTH env.type_declarations) rets in
                  let reserved = if EXISTS is_dynamic ret_types then LENGTH r.call_return
                      else MIN (head_lengths ret_types 0) (LENGTH r.call_return) in
@@ -915,15 +924,18 @@ Definition call_transfer_def:
         else
           (case run_external_call st.frame.self_address callee [] (Num v)
                  st.frame.static_context (if v = 0 then call_stipend else 0)
-                 st.world.accounts st.world.transient st.frame.tx_params of
+                 st.world.accounts st.world.original
+                 st.world.transient st.frame.tx_params of
             NONE => abrupt_result (InvalidCompletion "call outside the model") st gas
           | SOME res =>
               if ¬res.call_success then abrupt_result (RevertCompletion res.call_return) st gas
               else
                 let st' = st with
-                  <| world := <| accounts := res.call_accounts;
+                  <| world := st.world with <| accounts := res.call_accounts;
                                  transient := res.call_transient;
-                                 logs := st.world.logs ++ res.call_logs |>;
+                                 logs := st.world.logs ++ res.call_logs;
+                                 original := res.call_original;
+                                 to_delete := st.world.to_delete ++ res.call_to_delete |>;
                      return_data := SOME res.call_return |> in
                 normal_result (define_binding x ty (TupleValue []) st') gas)
     | _ => abrupt_result (InvalidCompletion "bad transfer operands") st gas
@@ -956,19 +968,23 @@ Definition call_low_level_def:
            case (if kind = ExternalDelegateCall then
                    run_delegate_call st.frame.self_address st.frame.sender_address
                      st.frame.call_value callee bs static limit
-                     st.world.accounts st.world.transient st.frame.tx_params
+                     st.world.accounts st.world.original
+                     st.world.transient st.frame.tx_params
                  else
                    run_external_call st.frame.self_address callee bs (Num v)
-                     static limit st.world.accounts st.world.transient
+                     static limit st.world.accounts
+                     st.world.original st.world.transient
                      st.frame.tx_params) of
              NONE => abrupt_result (InvalidCompletion "call outside the model") st gas
            | SOME res =>
              let st = st with return_data := SOME res.call_return in
              let st' = if res.call_success then
                    st with world :=
-                     <| accounts := res.call_accounts;
+                     st.world with <| accounts := res.call_accounts;
                         transient := res.call_transient;
-                        logs := st.world.logs ++ res.call_logs |>
+                        logs := st.world.logs ++ res.call_logs;
+                        original := res.call_original;
+                        to_delete := st.world.to_delete ++ res.call_to_delete |>
                  else st in
              let success = ScalarValue (BoolValue res.call_success) in
              case materialize_revert_data res.call_return st' of
@@ -1626,7 +1642,8 @@ Definition assembly_machine_def:
             objects := FEMPTY; immutable_offsets := FEMPTY;
             immutables := FEMPTY; memory := FEMPTY; memory_size := 0;
             gas_limit := external_call_gas; gas_observations := []; scopes := [scope];
-            transaction_parameters := st.frame.tx_params |>
+            transaction_parameters := st.frame.tx_params;
+            original := st.world.original; to_delete := st.world.to_delete |>
          0x40 (word_to_bytes_be (n2w (memory_free_pointer st) : bytes32)))
 End
 
@@ -1834,8 +1851,8 @@ End
 
 Definition assembly_world_def:
   assembly_world (m : yul_machine) =
-    (<| accounts := m.accounts; transient := m.transient; logs := m.logs |>
-       : source_world)
+    (<| accounts := m.accounts; transient := m.transient; logs := m.logs;
+        original := m.original; to_delete := m.to_delete |> : source_world)
 End
 
 (* Writes a referenced local back from the block's final scopes; a location

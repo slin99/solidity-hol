@@ -743,7 +743,9 @@ Theorem yul_memory_write_fields:
     (yul_memory_write m off bs).memory_size = m.memory_size ∧
     (yul_memory_write m off bs).gas_limit = m.gas_limit ∧
     (yul_memory_write m off bs).scopes = m.scopes ∧
-    (yul_memory_write m off bs).transaction_parameters = m.transaction_parameters
+    (yul_memory_write m off bs).transaction_parameters = m.transaction_parameters ∧
+    (yul_memory_write m off bs).original = m.original ∧
+    (yul_memory_write m off bs).to_delete = m.to_delete
 Proof
   Induct >> simp [yul_memory_write_def]
 QED

@@ -260,8 +260,8 @@ End
 
 Definition differential_world_def:
   differential_world accounts =
-    (<| accounts := accounts; transient := empty_transient_storage; logs := [] |>
-       : source_world)
+    (<| accounts := accounts; transient := empty_transient_storage; logs := [];
+        original := accounts; to_delete := [] |> : source_world)
 End
 
 (* The outcome, complete committed contract storage and logs of a run; a
@@ -293,11 +293,11 @@ Definition source_execution_at_def:
         let fr0 = differential_frame c.case_sender c.case_value data in
         let fr = fr0 with <| self_address := a; code_address := a;
                              tx_params := fr0.tx_params with gasPrice := gas_price |> in
-        let w = differential_world
-                  (transfer_value c.case_sender a c.case_value
-                     (case_accounts (patch_immutables c.case_immutable_refs imm code)
-                        c.case_storage c.case_sender
-                        c.case_peer_code c.case_peer_storage c.case_libraries)) in
+        let pre = case_accounts (patch_immutables c.case_immutable_refs imm code)
+                    c.case_storage c.case_sender
+                    c.case_peer_code c.case_peer_storage c.case_libraries in
+        let w = differential_world (transfer_value c.case_sender a c.case_value pre)
+                  with original := pre in
         contract_observation u c.case_immutable_refs a
           (case c.case_input of
              Deploy _ _ => deploy_contract_with_gas fuel prog fr
