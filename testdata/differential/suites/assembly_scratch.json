@@ -58,6 +58,70 @@
    }
   },
   {
+   "name": "packed_no_data",
+   "function": "packedResult",
+   "args": [
+    20480,
+    3
+   ],
+   "expect": {
+    "return": [
+     true
+    ]
+   },
+   "final_storage": {
+    "0": 1
+   }
+  },
+  {
+   "name": "packed_no_code",
+   "function": "packedResult",
+   "args": [
+    4660,
+    5
+   ],
+   "expect": {
+    "return": [
+     true
+    ]
+   },
+   "final_storage": {
+    "0": 1
+   }
+  },
+  {
+   "name": "packed_short_return",
+   "function": "packedResult",
+   "args": [
+    20480,
+    4
+   ],
+   "expect": {
+    "return": [
+     false
+    ]
+   },
+   "final_storage": {
+    "0": 1
+   }
+  },
+  {
+   "name": "packed_short_revert",
+   "function": "packedResult",
+   "args": [
+    20480,
+    6
+   ],
+   "expect": {
+    "return": [
+     false
+    ]
+   },
+   "final_storage": {
+    "0": 1
+   }
+  },
+  {
    "name": "last_true",
    "function": "lastResult",
    "args": [

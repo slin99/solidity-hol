@@ -99,7 +99,9 @@ Definition eval_atom_def:
   (eval_atom scopes (ConstantAtom s) = SOME (ScalarValue s)) ∧
   (eval_atom scopes (BoundAtom x) =
     case lookup_binding x scopes of
-      SOME b => SOME b.binding_value
+      SOME b =>
+        if b.binding_value = UnwrittenValue then NONE
+        else SOME b.binding_value
     | NONE => NONE)
 End
 
@@ -109,6 +111,24 @@ Definition eval_atoms_def:
     case (eval_atom scopes a, eval_atoms scopes atoms) of
       (SOME v, SOME vs) => SOME (v :: vs)
     | _ => NONE)
+End
+
+(* A local holding a word inline assembly loaded from memory nobody wrote. *)
+Definition unwritten_atom_def:
+  (unwritten_atom scopes (ConstantAtom s) ⇔ F) ∧
+  (unwritten_atom scopes (BoundAtom x) ⇔
+    case lookup_binding x scopes of
+      SOME b => b.binding_value = UnwrittenValue
+    | NONE => F)
+End
+
+(* Why atoms have no values: reading an unwritten word is the read the
+ * assembly that loaded it could not make, and says so. *)
+Definition unbound_atoms_reason_def:
+  unbound_atoms_reason scopes atoms =
+    if EXISTS (unwritten_atom scopes) atoms
+    then "assembly read memory it was not given"
+    else "unbound atom"
 End
 
 Definition scalar_values_def:
@@ -143,7 +163,8 @@ Definition eval_pure_operation_def:
     case op of
       ScalarOperation ty mode oper atoms =>
         (case eval_atoms scopes atoms of
-           NONE => ValueAbrupt (InvalidCompletion "unbound atom")
+           NONE =>
+             ValueAbrupt (InvalidCompletion (unbound_atoms_reason scopes atoms))
          | SOME vs =>
              (case scalar_values vs of
                 NONE => ValueAbrupt (InvalidCompletion "non-scalar operand")
@@ -161,7 +182,8 @@ Definition eval_pure_operation_def:
     | TupleOperation atoms =>
         (case eval_atoms scopes atoms of
            SOME vs => ValueOk (TupleValue vs)
-         | NONE => ValueAbrupt (InvalidCompletion "unbound atom"))
+         | NONE =>
+             ValueAbrupt (InvalidCompletion (unbound_atoms_reason scopes atoms)))
     | TupleComponentOperation n a =>
         (case eval_atom scopes a of
            SOME (TupleValue vs) =>
@@ -504,8 +526,8 @@ End
 Definition read_returns_def:
   (read_returns scopes [] = SOME []) ∧
   (read_returns scopes ((x, _) :: rets) =
-    case (lookup_binding x scopes, read_returns scopes rets) of
-      (SOME b, SOME vs) => SOME (b.binding_value :: vs)
+    case (eval_atom scopes (BoundAtom x), read_returns scopes rets) of
+      (SOME v, SOME vs) => SOME (v :: vs)
     | _ => NONE)
 End
 
@@ -1203,7 +1225,9 @@ Definition simple_stmt_def:
     | ReturnStmt atoms =>
         (case eval_atoms st.scopes atoms of
            SOME vs => abrupt_result (ReturnCompletion vs) st gas
-         | NONE => abrupt_result (InvalidCompletion "unbound atom") st gas)
+         | NONE =>
+             abrupt_result
+               (InvalidCompletion (unbound_atoms_reason st.scopes atoms)) st gas)
     | BreakStmt => abrupt_result BreakCompletion st gas
     | ContinueStmt => abrupt_result ContinueCompletion st gas
     | PanicStmt code => abrupt_result (PanicCompletion code) st gas
@@ -1214,7 +1238,9 @@ Definition simple_stmt_def:
              (case encoded_runtime_values env st params vs of
                 INL data => abrupt_result (RevertCompletion (selector ++ data)) st gas
               | INR c => abrupt_result c st gas)
-         | NONE => abrupt_result (InvalidCompletion "unbound atom") st gas)
+         | NONE =>
+             abrupt_result
+               (InvalidCompletion (unbound_atoms_reason st.scopes args)) st gas)
     | RevertStmt a =>
         (case eval_atom st.scopes a of
            SOME (ScalarValue (BytesValue data)) =>
@@ -1377,20 +1403,28 @@ End
 
 (* The words of a block's references: the assignable ones' (locals, storage
  * pointer slots and memory references) as the block's initial scope, and the
- * read-only ones' by name, for the code to hold as literals. *)
+ * read-only ones' by name, for the code to hold as literals.  A local holding
+ * a word nobody wrote starts the block unknown. *)
 Definition assembly_inputs_def:
   (assembly_inputs env st [] =
-    SOME (FEMPTY : string |-> bytes32, [] : (string # bytes32) list)) ∧
+    SOME (FEMPTY : string |-> bytes32 option, [] : (string # bytes32) list)) ∧
   (assembly_inputs env st ((name, r) :: refs) =
     case (assembly_reference_word env st r, assembly_inputs env st refs) of
       (SOME w, SOME (scope, literals)) =>
         (case r of
-           AssemblyLocal _ _ => SOME (scope |+ (name, n2w w), literals)
-         | AssemblyPointerSlot _ => SOME (scope |+ (name, n2w w), literals)
-         | AssemblyMemory _ _ => SOME (scope |+ (name, n2w w), literals)
-         | AssemblyCalldataOffset _ => SOME (scope |+ (name, n2w w), literals)
-         | AssemblyCalldataLength _ => SOME (scope |+ (name, n2w w), literals)
+           AssemblyLocal _ _ => SOME (scope |+ (name, SOME (n2w w)), literals)
+         | AssemblyPointerSlot _ => SOME (scope |+ (name, SOME (n2w w)), literals)
+         | AssemblyMemory _ _ => SOME (scope |+ (name, SOME (n2w w)), literals)
+         | AssemblyCalldataOffset _ => SOME (scope |+ (name, SOME (n2w w)), literals)
+         | AssemblyCalldataLength _ => SOME (scope |+ (name, SOME (n2w w)), literals)
          | _ => SOME (scope, (name, n2w w) :: literals))
+    | (NONE, SOME (scope, literals)) =>
+        (case r of
+           AssemblyLocal x _ =>
+             if unwritten_atom st.scopes (BoundAtom x) then
+               SOME (scope |+ (name, NONE), literals)
+             else NONE
+         | _ => NONE)
     | _ => NONE)
 End
 
@@ -1741,7 +1775,7 @@ Definition assembly_allocate_def:
     case r of
       AssemblyMemory x ty =>
         (case (yul_lookup name m0.scopes, yul_lookup name m.scopes) of
-           (SOME w0, SOME w) =>
+           (SOME (SOME w0), SOME (SOME w)) =>
              if w = w0 then assembly_allocate env f0 f1 m0 m refs st news else
              let p = w2n w in
              if p < f0 then NONE else
@@ -1786,19 +1820,29 @@ Definition assembly_world_def:
 End
 
 (* Writes a referenced local back from the block's final scopes; a location
- * or constant reference has nothing to write. A storage pointer whose slot
+ * or constant reference has nothing to write. A full-word local the block
+ * left holding a word nobody wrote holds UnwrittenValue, which fails only
+ * when something reads it; a narrower one fails now, since its value would be
+ * the word's cleaned part. A storage pointer whose slot
  * the block may have assigned is rebound to that slot of the executing
  * account, at offset 0, keeping its type, as the compiler keeps the pointer
  * as the slot alone. A calldata reference is rebound to the offset and
  * length the block leaves, keeping its type. *)
 Definition assembly_write_one_def:
   assembly_write_one env self (name, r) scopes
-                     (yscopes : (string |-> bytes32) list) =
+                     (yscopes : (string |-> bytes32 option) list) =
     case r of
       AssemblyLocal x ty =>
         (case yul_lookup name yscopes of
            NONE => NONE
-         | SOME w =>
+         | SOME NONE =>
+             (case assembly_word_type env ty of
+                SOME t =>
+                  if t = UintT 256 ∨ t = IntT 256 ∨ t = FixedBytesT 32 then
+                    update_binding x UnwrittenValue scopes
+                  else NONE
+              | NONE => NONE)
+         | SOME (SOME w) =>
              case assembly_value env ty (w2n w) of
                NONE => NONE
              | SOME s =>
@@ -1807,7 +1851,7 @@ Definition assembly_write_one_def:
                  else NONE)
     | AssemblyPointerSlot x =>
         (case (yul_lookup name yscopes, lookup_binding x scopes) of
-           (SOME w, SOME b) =>
+           (SOME (SOME w), SOME b) =>
              (case b.binding_value of
                 ReferenceValue (StorageReference PersistentStorage _ _ _ ty layout) =>
                   update_binding x
@@ -1818,7 +1862,7 @@ Definition assembly_write_one_def:
          | _ => NONE)
     | AssemblyCalldataOffset x =>
         (case (yul_lookup name yscopes, lookup_binding x scopes) of
-           (SOME w, SOME b) =>
+           (SOME (SOME w), SOME b) =>
              (case b.binding_value of
                 ReferenceValue (CalldataReference _ length ty) =>
                   update_binding x
@@ -1827,7 +1871,7 @@ Definition assembly_write_one_def:
          | _ => NONE)
     | AssemblyCalldataLength x =>
         (case (yul_lookup name yscopes, lookup_binding x scopes) of
-           (SOME w, SOME b) =>
+           (SOME (SOME w), SOME b) =>
              (case b.binding_value of
                 ReferenceValue (CalldataReference offset _ ty) =>
                   if calldata_slice_type ty then
@@ -2051,7 +2095,9 @@ Definition eval_block_def:
   (eval_stmt n env (DefineStmt x ty (InternalCallOperation f atoms)) st gas =
     case eval_atoms st.scopes atoms of
       SOME args => bind_call_result x ty (invoke_source n env f args st gas)
-    | NONE => abrupt_result (InvalidCompletion "unbound atom") st gas) ∧
+    | NONE =>
+        abrupt_result
+          (InvalidCompletion (unbound_atoms_reason st.scopes atoms)) st gas) ∧
   (* The zero function value panics after the arguments are evaluated, as the
    * compiler's internal dispatch does for an unknown function. *)
   (eval_stmt n env (DefineStmt x ty (FunctionValueCallOperation g atoms)) st gas =
