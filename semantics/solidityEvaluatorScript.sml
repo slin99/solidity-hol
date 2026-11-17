@@ -613,7 +613,8 @@ End
 (* The pinned profile checks push against 2^64, independently of source
  * arithmetic mode. push() preserves existing bytes at the appended location.
  * Update length before the value write, including in the presence of slot
- * collisions; pop clears the element before updating length. *)
+ * collisions; pop clears the element before updating length. A byte array
+ * pushes and pops as solc's byte array functions do (solidityStorage). *)
 Definition push_storage_array_def:
   push_storage_array env x annotation a (st : source_state) gas =
     if st.frame.static_context then
@@ -638,6 +639,16 @@ Definition push_storage_array_def:
                       (st with world := st.world with accounts := accounts)) gas
               | NONE => abrupt_result (InvalidCompletion "bad array length write") st gas)
          | _ => abrupt_result (InvalidCompletion "bad array push element") st gas)
+    | SOME (ReferenceValue
+        (StorageReference PersistentStorage addr slot 0 BytesT layout)) =>
+        (case push_storage_bytes st.world.accounts addr slot of
+           INL (accounts, data_slot, offset) =>
+             normal_result
+               (define_binding x annotation
+                 (ReferenceValue (StorageReference PersistentStorage addr
+                    data_slot offset (FixedBytesT 1) layout))
+                 (st with world := st.world with accounts := accounts)) gas
+         | INR c => abrupt_result c st gas)
     | _ => abrupt_result (InvalidCompletion "bad dynamic array reference") st gas
 End
 
@@ -667,6 +678,14 @@ Definition pop_storage_array_def:
                    | NONE => abrupt_result (InvalidCompletion "bad array length write") st gas)
               | INR c => abrupt_result c st gas)
          | _ => abrupt_result (InvalidCompletion "bad array pop element") st gas)
+    | SOME (ReferenceValue
+        (StorageReference PersistentStorage addr slot 0 BytesT layout)) =>
+        (case pop_storage_bytes st.world.accounts addr slot of
+           INL accounts =>
+             normal_result
+               (define_binding x annotation (TupleValue [])
+                 (st with world := st.world with accounts := accounts)) gas
+         | INR c => abrupt_result c st gas)
     | _ => abrupt_result (InvalidCompletion "bad dynamic array reference") st gas
 End
 

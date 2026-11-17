@@ -98,13 +98,18 @@ fun edited_unit name =
 val external_library = #prepared (solidityPrepareLib.prepare_artifact
   {root = "..", path = "../testdata/frontend/expected/external_library.json",
    source = "testdata/frontend/external_library.sol"});
+val external_library_reasons =
+  map (fn {name, reason, ...} => (name, reason)) (#functions external_library);
 val () =
-  if map (fn {name, reason, ...} => (name, isSome reason))
-       (#functions external_library) =
+  if map (fn (name, reason) => (name, isSome reason)) external_library_reasons =
      [("supported", false), ("callsPublic", false), ("callsExternal", false),
-      ("callsIndirect", true), ("callsCaller", true),
-      ("safePrivate", false), ("safeInternal", false), ("indirect", true)]
-  then () else raise Fail "external library admission or internal call isolation differs";
+      ("callsIndirect", false), ("callsCaller", false), ("linkedPublic", false),
+      ("safePrivate", false), ("safeInternal", false), ("indirect", false)]
+  then () else
+    raise Fail ("library function admission differs: " ^
+      String.concatWith "; "
+        (map (fn (name, reason) => name ^ " " ^ getOpt (reason, "admitted"))
+           external_library_reasons));
 val () = rejects solidityPrepareLib.SourceRejected
   (fn () => ignore (solidityPrepareLib.prepare_unit (edited_unit "wrong_scope")));
 val () = rejects solidityPrepareLib.SourceRejected

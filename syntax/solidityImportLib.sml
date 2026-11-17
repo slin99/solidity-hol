@@ -2081,25 +2081,40 @@ fun static_references (v as JSON.OBJECT fields) =
   | static_references (JSON.ARRAY vs) = List.concat (map static_references vs)
   | static_references _ = []
 
-(* The declarations the nodes of v refer to. *)
-fun references (v as JSON.OBJECT fields) =
+fun is_delegate_call_reference v =
+  case optional_field v "typeDescriptions" of
+    SOME d =>
+      (case optional_field d "typeIdentifier" of
+         SOME (JSON.STRING s) => String.isPrefix "t_function_delegatecall_" s
+       | _ => false)
+  | NONE => false
+
+(* The declarations the nodes of v refer to; when internal, without the
+ * callee of a delegate call, which runs as the linked library's code. *)
+fun declaration_references internal (v as JSON.OBJECT fields) =
       (* Only a selector's computed receiver executes, not the function it
        * names. Include that receiver's helper and constant dependencies. *)
       if is_selector v then
         (case selector_receiver (field v "expression") of
-           SOME receiver => references receiver
+           SOME receiver => declaration_references internal receiver
          | NONE => [])
       else if JSONUtil.testField "nodeType"
            (fn JSON.STRING s => s = "UsingForDirective" | _ => false) v
       then [] else
-      List.concat
-        (map (fn ("referencedDeclaration", JSON.INT i) => [i]
-               (* an inline assembly block's reference *)
-               | ("declaration", JSON.INT i) => [i]
-               | ("function", JSON.INT i) => [i]
-               | (_, w) => references w) fields)
-  | references (JSON.ARRAY vs) = List.concat (map references vs)
-  | references _ = []
+      let val delegated = internal andalso is_delegate_call_reference v in
+        List.concat
+          (map (fn ("referencedDeclaration", JSON.INT i) => if delegated then [] else [i]
+                 (* an inline assembly block's reference *)
+                 | ("declaration", JSON.INT i) => [i]
+                 | ("function", JSON.INT i) => [i]
+                 | (_, w) => declaration_references internal w) fields)
+      end
+  | declaration_references internal (JSON.ARRAY vs) =
+      List.concat (map (declaration_references internal) vs)
+  | declaration_references _ _ = []
+
+fun references v = declaration_references false v
+fun internal_references v = declaration_references true v
 
 (* A contract's constant with its value. *)
 fun constant_declaration v = within v (fn v =>
@@ -2332,15 +2347,16 @@ fun contract external_structs contracts declared v = within v (fn v =>
                          | kv => kv) kvs)
             | c => c) bases
     (* The library members those bases refer to, also through other library
-     * members. *)
+     * members. A public library function is a member when called
+     * internally, as from its own library; a delegate call runs it as the
+     * linked library's code. *)
     fun reached picked =
       let
-        val ids = List.concat (map references (reachable_bases @ picked))
+        val ids = List.concat (map internal_references (reachable_bases @ picked))
         val picked' =
           map #2 (List.filter (fn (i, m) => List.exists (fn j => j = i) ids andalso
                       (node_type m <> "FunctionDefinition" orelse
-                       string_field m "visibility" = "internal" orelse
-                       string_field m "visibility" = "private"))
+                       string_field m "visibility" <> "external"))
                     (!library_members))
       in
         if length picked' = length picked then picked else reached picked'
@@ -2352,9 +2368,8 @@ fun contract external_structs contracts declared v = within v (fn v =>
       List.app (fn m => recover m (fn () => within m (fn m =>
         case node_type m of
           "FunctionDefinition" =>
-            require m (string_field m "visibility" = "internal" orelse
-                       string_field m "visibility" = "private")
-              "only internal library functions are supported"
+            require m (string_field m "visibility" <> "external")
+              "external library functions are called only through delegate calls"
         | "VariableDeclaration" =>
             require m (bool_field m "constant")
               "library variables are not supported"

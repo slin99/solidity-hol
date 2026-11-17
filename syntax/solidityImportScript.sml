@@ -1700,8 +1700,7 @@ Definition check_contract_def:
     EVERY (function_header_ok c.contract_bases)
       (checked_contract_functions c) ∧
     EVERY (λf. f.fn_kind = FunctionKind ∧
-               (f.fn_visibility = InternalVisibility ∨
-                f.fn_visibility = PrivateVisibility) ∧
+               f.fn_visibility ≠ ExternalVisibility ∧
                function_header_ok c.contract_libraries f)
       c.contract_library_functions ∧
     EVERY modifier_header_ok c.contract_modifiers ∧
@@ -1782,8 +1781,7 @@ Definition contract_rejections_def:
             (checked_contract_functions c)) ++
     FLAT (MAP (λf. rejected_unless (f.fn_kind = FunctionKind) f.fn_info.node_id
                      "library function kind" ++
-                   rejected_unless (f.fn_visibility = InternalVisibility ∨
-                                    f.fn_visibility = PrivateVisibility)
+                   rejected_unless (f.fn_visibility ≠ ExternalVisibility)
                      f.fn_info.node_id "library function visibility" ++
                    function_header_rejections c.contract_libraries f)
             c.contract_library_functions) ++

@@ -400,6 +400,15 @@ Definition storage_base_def:
     | _ => NONE
 End
 
+(* The element a push appends to a dynamic storage array or byte array. *)
+Definition pushed_element_def:
+  pushed_element ty =
+    case ty of
+      ArrayT element NONE => SOME element
+    | BytesT => SOME (FixedBytesT 1)
+    | _ => NONE
+End
+
 (* ProductType is reserved for tuples and multiple returns: never singleton. *)
 Definition wf_core_value_type_def:
   (wf_core_value_type env (SingleType ty) ⇔
@@ -1025,19 +1034,24 @@ Definition wf_core_operation_def:
     case a of
       BoundAtom x =>
         (case storage_base (ALOOKUP ctx.bindings x) of
-           SOME (ArrayT element NONE) =>
-             storage_type_ok env element ∧
-             annotation = ReferenceType element
-         | _ => F)
+           SOME ty =>
+             (case pushed_element ty of
+                SOME element =>
+                  storage_type_ok env element ∧
+                  annotation = ReferenceType element
+              | NONE => F)
+         | NONE => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (ArrayPopOperation a) ⇔
     annotation = ProductType [] ∧
     case a of
       BoundAtom x =>
         (case storage_base (ALOOKUP ctx.bindings x) of
-           SOME (ArrayT element NONE) =>
-             storage_type_ok env element
-         | _ => F)
+           SOME ty =>
+             (case pushed_element ty of
+                SOME element => storage_type_ok env element
+              | NONE => F)
+         | NONE => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (InternalCallOperation f args) ⇔
     case lookup_procedure env f of
