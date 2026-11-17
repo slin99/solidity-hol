@@ -1,0 +1,2020 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/namespaced_storage.sol": {
+        "content": "// SPDX-License-Identifier: CC0-1.0\npragma solidity 0.8.37;\n\nabstract contract NamespacedStorageBase {\n    struct Counter {\n        uint64 value;\n        bool entered;\n    }\n\n    struct Permissions {\n        mapping(address => bool) allowed;\n    }\n\n    uint256 private constant COUNTER_SLOT = 0x1000;\n    uint256 private constant PERMISSIONS_SLOT = 0x2000;\n\n    function counter() internal pure returns (Counter storage item) {\n        assembly { item.slot := COUNTER_SLOT }\n    }\n\n    function permissions() internal pure returns (Permissions storage item) {\n        assembly { item.slot := PERMISSIONS_SLOT }\n    }\n\n    function write(Counter storage item, uint64 value, bool entered) internal {\n        item.value = value;\n        item.entered = entered;\n    }\n}\n\ncontract NamespacedStorage is NamespacedStorageBase {\n    function set(uint64 value, bool entered) public returns (uint64, bool) {\n        Counter storage item = counter();\n        write(item, value, entered);\n        return (item.value, item.entered);\n    }\n\n    function read() public view returns (uint64, bool) {\n        return (counter().value, counter().entered);\n    }\n\n    function grant(address who, bool allowed) public returns (bool, uint64) {\n        Permissions storage item = permissions();\n        item.allowed[who] = allowed;\n        return (permissions().allowed[who], counter().value);\n    }\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/namespaced_storage.sol": {
+        "NamespacedStorage": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "address",
+                  "name": "who",
+                  "type": "address"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "allowed",
+                  "type": "bool"
+                }
+              ],
+              "name": "grant",
+              "outputs": [
+                {
+                  "internalType": "bool",
+                  "name": "",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "",
+                  "type": "uint64"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "read",
+              "outputs": [
+                {
+                  "internalType": "uint64",
+                  "name": "",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "",
+                  "type": "bool"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint64",
+                  "name": "value",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "entered",
+                  "type": "bool"
+                }
+              ],
+              "name": "set",
+              "outputs": [
+                {
+                  "internalType": "uint64",
+                  "name": "",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "",
+                  "type": "bool"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "608060405234601c57600e6020565b61052861002b823961052890f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b61025f565b61001d5f3561004c565b80630fdec35b1461004757806357de26a41461004257637fd101020361000e57610228565b610168565b610122565b60e01c90565b60405190565b5f80fd5b5f80fd5b67ffffffffffffffff1690565b61007681610060565b0361007d57565b5f80fd5b9050359061008e8261006d565b565b151590565b61009e81610090565b036100a557565b5f80fd5b905035906100b682610095565b565b91906040838203126100e057806100d46100dd925f8601610081565b936020016100a9565b90565b61005c565b6100ee90610060565b9052565b6100fb90610090565b9052565b91602061012092949361011960408201965f8301906100e5565b01906100f2565b565b346101545761013b6101353660046100b8565b906102cb565b90610150610147610052565b928392836100ff565b0390f35b610058565b5f91031261016357565b61005c565b3461019957610178366004610159565b61018061030f565b9061019561018c610052565b928392836100ff565b0390f35b610058565b60018060a01b031690565b6101b29061019e565b90565b6101be816101a9565b036101c557565b5f80fd5b905035906101d6826101b5565b565b919060408382031261020057806101f46101fd925f86016101c9565b936020016100a9565b90565b61005c565b91602061022692949361021f60408201965f8301906100f2565b01906100e5565b565b3461025a5761024161023b3660046101d8565b90610401565b9061025661024d610052565b92839283610205565b0390f35b610058565b5f80fd5b5f90565b5f90565b5f1c90565b67ffffffffffffffff1690565b61028961028e9161026b565b610270565b90565b61029b905461027d565b90565b60401c90565b60ff1690565b6102b66102bb9161029e565b6102a4565b90565b6102c890546102aa565b90565b6102f6909291926102da610263565b506102e3610267565b506102ec610461565b9384919091610507565b61030c5f610305818501610291565b93016102be565b90565b610317610263565b50610320610267565b506103335f61032d610461565b01610291565b906103465f610340610461565b016102be565b90565b90565b61036061035b6103659261019e565b610349565b61019e565b90565b6103719061034c565b90565b61037d90610368565b90565b9061038a90610374565b5f5260205260405f2090565b5f1b90565b906103a760ff91610396565b9181191691161790565b6103ba90610090565b90565b90565b906103d56103d06103dc926103b1565b6103bd565b825461039b565b9055565b6103ec6103f19161026b565b6102a4565b90565b6103fe90546103e0565b90565b6104469061043761044b93610414610267565b5061041d610263565b506104325f61042a610522565b018490610380565b6103c0565b5f610440610522565b01610380565b6103f4565b9061045e5f610458610461565b01610291565b90565b61100090565b9061047a67ffffffffffffffff91610396565b9181191691161790565b61049861049361049d92610060565b610349565b610060565b90565b90565b906104b86104b36104bf92610484565b6104a0565b8254610467565b9055565b60401b90565b906104dd68ff0000000000000000916104c3565b9181191691161790565b906104fc6104f7610503926103b1565b6103bd565b82546104c9565b9055565b90610520926105195f928385016104a3565b91016104e7565b565b6120009056"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": "60806040526004361015610013575b61025f565b61001d5f3561004c565b80630fdec35b1461004757806357de26a41461004257637fd101020361000e57610228565b610168565b610122565b60e01c90565b60405190565b5f80fd5b5f80fd5b67ffffffffffffffff1690565b61007681610060565b0361007d57565b5f80fd5b9050359061008e8261006d565b565b151590565b61009e81610090565b036100a557565b5f80fd5b905035906100b682610095565b565b91906040838203126100e057806100d46100dd925f8601610081565b936020016100a9565b90565b61005c565b6100ee90610060565b9052565b6100fb90610090565b9052565b91602061012092949361011960408201965f8301906100e5565b01906100f2565b565b346101545761013b6101353660046100b8565b906102cb565b90610150610147610052565b928392836100ff565b0390f35b610058565b5f91031261016357565b61005c565b3461019957610178366004610159565b61018061030f565b9061019561018c610052565b928392836100ff565b0390f35b610058565b60018060a01b031690565b6101b29061019e565b90565b6101be816101a9565b036101c557565b5f80fd5b905035906101d6826101b5565b565b919060408382031261020057806101f46101fd925f86016101c9565b936020016100a9565b90565b61005c565b91602061022692949361021f60408201965f8301906100f2565b01906100e5565b565b3461025a5761024161023b3660046101d8565b90610401565b9061025661024d610052565b92839283610205565b0390f35b610058565b5f80fd5b5f90565b5f90565b5f1c90565b67ffffffffffffffff1690565b61028961028e9161026b565b610270565b90565b61029b905461027d565b90565b60401c90565b60ff1690565b6102b66102bb9161029e565b6102a4565b90565b6102c890546102aa565b90565b6102f6909291926102da610263565b506102e3610267565b506102ec610461565b9384919091610507565b61030c5f610305818501610291565b93016102be565b90565b610317610263565b50610320610267565b506103335f61032d610461565b01610291565b906103465f610340610461565b016102be565b90565b90565b61036061035b6103659261019e565b610349565b61019e565b90565b6103719061034c565b90565b61037d90610368565b90565b9061038a90610374565b5f5260205260405f2090565b5f1b90565b906103a760ff91610396565b9181191691161790565b6103ba90610090565b90565b90565b906103d56103d06103dc926103b1565b6103bd565b825461039b565b9055565b6103ec6103f19161026b565b6102a4565b90565b6103fe90546103e0565b90565b6104469061043761044b93610414610267565b5061041d610263565b506104325f61042a610522565b018490610380565b6103c0565b5f610440610522565b01610380565b6103f4565b9061045e5f610458610461565b01610291565b90565b61100090565b9061047a67ffffffffffffffff91610396565b9181191691161790565b61049861049361049d92610060565b610349565b610060565b90565b90565b906104b86104b36104bf92610484565b6104a0565b8254610467565b9055565b60401b90565b906104dd68ff0000000000000000916104c3565b9181191691161790565b906104fc6104f7610503926103b1565b6103bd565b82546104c9565b9055565b90610520926105195f928385016104a3565b91016104e7565b565b6120009056"
+            },
+            "methodIdentifiers": {
+              "grant(address,bool)": "7fd10102",
+              "read()": "57de26a4",
+              "set(uint64,bool)": "0fdec35b"
+            }
+          },
+          "storageLayout": {
+            "storage": [],
+            "types": null
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        },
+        "NamespacedStorageBase": {
+          "abi": [],
+          "evm": {
+            "bytecode": {
+              "object": ""
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": ""
+            },
+            "methodIdentifiers": {}
+          },
+          "storageLayout": {
+            "storage": [],
+            "types": null
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/namespaced_storage.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/namespaced_storage.sol",
+          "exportedSymbols": {
+            "NamespacedStorage": [
+              142
+            ],
+            "NamespacedStorageBase": [
+              57
+            ]
+          },
+          "id": 143,
+          "license": "CC0-1.0",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "36:23:0"
+            },
+            {
+              "abstract": true,
+              "baseContracts": [],
+              "canonicalName": "NamespacedStorageBase",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 57,
+              "linearizedBaseContracts": [
+                57
+              ],
+              "name": "NamespacedStorageBase",
+              "nameLocation": "79:21:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "canonicalName": "NamespacedStorageBase.Counter",
+                  "id": 6,
+                  "members": [
+                    {
+                      "constant": false,
+                      "id": 3,
+                      "mutability": "mutable",
+                      "name": "value",
+                      "nameLocation": "139:5:0",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 6,
+                      "src": "132:12:0",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint64",
+                        "typeString": "uint64"
+                      },
+                      "typeName": {
+                        "id": 2,
+                        "name": "uint64",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "132:6:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint64",
+                          "typeString": "uint64"
+                        }
+                      },
+                      "visibility": "internal"
+                    },
+                    {
+                      "constant": false,
+                      "id": 5,
+                      "mutability": "mutable",
+                      "name": "entered",
+                      "nameLocation": "159:7:0",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 6,
+                      "src": "154:12:0",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bool",
+                        "typeString": "bool"
+                      },
+                      "typeName": {
+                        "id": 4,
+                        "name": "bool",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "154:4:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bool",
+                          "typeString": "bool"
+                        }
+                      },
+                      "visibility": "internal"
+                    }
+                  ],
+                  "name": "Counter",
+                  "nameLocation": "114:7:0",
+                  "nodeType": "StructDefinition",
+                  "scope": 57,
+                  "src": "107:66:0",
+                  "visibility": "public"
+                },
+                {
+                  "canonicalName": "NamespacedStorageBase.Permissions",
+                  "id": 11,
+                  "members": [
+                    {
+                      "constant": false,
+                      "id": 10,
+                      "mutability": "mutable",
+                      "name": "allowed",
+                      "nameLocation": "233:7:0",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 11,
+                      "src": "208:32:0",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_mapping$_t_address_$_t_bool_$",
+                        "typeString": "mapping(address => bool)"
+                      },
+                      "typeName": {
+                        "id": 9,
+                        "keyName": "",
+                        "keyNameLocation": "-1:-1:-1",
+                        "keyType": {
+                          "id": 7,
+                          "name": "address",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "216:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_address",
+                            "typeString": "address"
+                          }
+                        },
+                        "nodeType": "Mapping",
+                        "src": "208:24:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_mapping$_t_address_$_t_bool_$",
+                          "typeString": "mapping(address => bool)"
+                        },
+                        "valueName": "",
+                        "valueNameLocation": "-1:-1:-1",
+                        "valueType": {
+                          "id": 8,
+                          "name": "bool",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "227:4:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        }
+                      },
+                      "visibility": "internal"
+                    }
+                  ],
+                  "name": "Permissions",
+                  "nameLocation": "186:11:0",
+                  "nodeType": "StructDefinition",
+                  "scope": 57,
+                  "src": "179:68:0",
+                  "visibility": "public"
+                },
+                {
+                  "constant": true,
+                  "id": 14,
+                  "mutability": "constant",
+                  "name": "COUNTER_SLOT",
+                  "nameLocation": "278:12:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 57,
+                  "src": "253:46:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 12,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "253:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": {
+                    "hexValue": "307831303030",
+                    "id": 13,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": true,
+                    "kind": "number",
+                    "lValueRequested": false,
+                    "nodeType": "Literal",
+                    "src": "293:6:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_rational_4096_by_1",
+                      "typeString": "int_const 4096"
+                    },
+                    "value": "0x1000"
+                  },
+                  "visibility": "private"
+                },
+                {
+                  "constant": true,
+                  "id": 17,
+                  "mutability": "constant",
+                  "name": "PERMISSIONS_SLOT",
+                  "nameLocation": "330:16:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 57,
+                  "src": "305:50:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 15,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "305:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": {
+                    "hexValue": "307832303030",
+                    "id": 16,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": true,
+                    "kind": "number",
+                    "lValueRequested": false,
+                    "nodeType": "Literal",
+                    "src": "349:6:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_rational_8192_by_1",
+                      "typeString": "int_const 8192"
+                    },
+                    "value": "0x2000"
+                  },
+                  "visibility": "private"
+                },
+                {
+                  "body": {
+                    "id": 24,
+                    "nodeType": "Block",
+                    "src": "426:54:0",
+                    "statements": [
+                      {
+                        "AST": {
+                          "nativeSrc": "445:29:0",
+                          "nodeType": "YulBlock",
+                          "src": "445:29:0",
+                          "statements": [
+                            {
+                              "nativeSrc": "447:25:0",
+                              "nodeType": "YulAssignment",
+                              "src": "447:25:0",
+                              "value": {
+                                "name": "COUNTER_SLOT",
+                                "nativeSrc": "460:12:0",
+                                "nodeType": "YulIdentifier",
+                                "src": "460:12:0"
+                              },
+                              "variableNames": [
+                                {
+                                  "name": "item.slot",
+                                  "nativeSrc": "447:9:0",
+                                  "nodeType": "YulIdentifier",
+                                  "src": "447:9:0"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        "evmVersion": "osaka",
+                        "externalReferences": [
+                          {
+                            "declaration": 14,
+                            "isOffset": false,
+                            "isSlot": false,
+                            "src": "460:12:0",
+                            "valueSize": 1
+                          },
+                          {
+                            "declaration": 21,
+                            "isOffset": false,
+                            "isSlot": true,
+                            "src": "447:9:0",
+                            "suffix": "slot",
+                            "valueSize": 1
+                          }
+                        ],
+                        "id": 23,
+                        "nodeType": "InlineAssembly",
+                        "src": "436:38:0"
+                      }
+                    ]
+                  },
+                  "id": 25,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "counter",
+                  "nameLocation": "371:7:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 18,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "378:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 22,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 21,
+                        "mutability": "mutable",
+                        "name": "item",
+                        "nameLocation": "420:4:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 25,
+                        "src": "404:20:0",
+                        "stateVariable": false,
+                        "storageLocation": "storage",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                          "typeString": "struct NamespacedStorageBase.Counter"
+                        },
+                        "typeName": {
+                          "id": 20,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 19,
+                            "name": "Counter",
+                            "nameLocations": [
+                              "404:7:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 6,
+                            "src": "404:7:0"
+                          },
+                          "referencedDeclaration": 6,
+                          "src": "404:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                            "typeString": "struct NamespacedStorageBase.Counter"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "403:22:0"
+                  },
+                  "scope": 57,
+                  "src": "362:118:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "internal"
+                },
+                {
+                  "body": {
+                    "id": 32,
+                    "nodeType": "Block",
+                    "src": "558:58:0",
+                    "statements": [
+                      {
+                        "AST": {
+                          "nativeSrc": "577:33:0",
+                          "nodeType": "YulBlock",
+                          "src": "577:33:0",
+                          "statements": [
+                            {
+                              "nativeSrc": "579:29:0",
+                              "nodeType": "YulAssignment",
+                              "src": "579:29:0",
+                              "value": {
+                                "name": "PERMISSIONS_SLOT",
+                                "nativeSrc": "592:16:0",
+                                "nodeType": "YulIdentifier",
+                                "src": "592:16:0"
+                              },
+                              "variableNames": [
+                                {
+                                  "name": "item.slot",
+                                  "nativeSrc": "579:9:0",
+                                  "nodeType": "YulIdentifier",
+                                  "src": "579:9:0"
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        "evmVersion": "osaka",
+                        "externalReferences": [
+                          {
+                            "declaration": 17,
+                            "isOffset": false,
+                            "isSlot": false,
+                            "src": "592:16:0",
+                            "valueSize": 1
+                          },
+                          {
+                            "declaration": 29,
+                            "isOffset": false,
+                            "isSlot": true,
+                            "src": "579:9:0",
+                            "suffix": "slot",
+                            "valueSize": 1
+                          }
+                        ],
+                        "id": 31,
+                        "nodeType": "InlineAssembly",
+                        "src": "568:42:0"
+                      }
+                    ]
+                  },
+                  "id": 33,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "permissions",
+                  "nameLocation": "495:11:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 26,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "506:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 30,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 29,
+                        "mutability": "mutable",
+                        "name": "item",
+                        "nameLocation": "552:4:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 33,
+                        "src": "532:24:0",
+                        "stateVariable": false,
+                        "storageLocation": "storage",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_struct$_Permissions_$11_storage_ptr",
+                          "typeString": "struct NamespacedStorageBase.Permissions"
+                        },
+                        "typeName": {
+                          "id": 28,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 27,
+                            "name": "Permissions",
+                            "nameLocations": [
+                              "532:11:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 11,
+                            "src": "532:11:0"
+                          },
+                          "referencedDeclaration": 11,
+                          "src": "532:11:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Permissions_$11_storage_ptr",
+                            "typeString": "struct NamespacedStorageBase.Permissions"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "531:26:0"
+                  },
+                  "scope": 57,
+                  "src": "486:130:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "internal"
+                },
+                {
+                  "body": {
+                    "id": 55,
+                    "nodeType": "Block",
+                    "src": "696:67:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 47,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "id": 43,
+                              "name": "item",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 36,
+                              "src": "706:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                                "typeString": "struct NamespacedStorageBase.Counter storage pointer"
+                              }
+                            },
+                            "id": 45,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "711:5:0",
+                            "memberName": "value",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 3,
+                            "src": "706:10:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint64",
+                              "typeString": "uint64"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 46,
+                            "name": "value",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 38,
+                            "src": "719:5:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint64",
+                              "typeString": "uint64"
+                            }
+                          },
+                          "src": "706:18:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint64",
+                            "typeString": "uint64"
+                          }
+                        },
+                        "id": 48,
+                        "nodeType": "ExpressionStatement",
+                        "src": "706:18:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 53,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "id": 49,
+                              "name": "item",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 36,
+                              "src": "734:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                                "typeString": "struct NamespacedStorageBase.Counter storage pointer"
+                              }
+                            },
+                            "id": 51,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "739:7:0",
+                            "memberName": "entered",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 5,
+                            "src": "734:12:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_bool",
+                              "typeString": "bool"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 52,
+                            "name": "entered",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 40,
+                            "src": "749:7:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_bool",
+                              "typeString": "bool"
+                            }
+                          },
+                          "src": "734:22:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        },
+                        "id": 54,
+                        "nodeType": "ExpressionStatement",
+                        "src": "734:22:0"
+                      }
+                    ]
+                  },
+                  "id": 56,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "write",
+                  "nameLocation": "631:5:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 41,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 36,
+                        "mutability": "mutable",
+                        "name": "item",
+                        "nameLocation": "653:4:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 56,
+                        "src": "637:20:0",
+                        "stateVariable": false,
+                        "storageLocation": "storage",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                          "typeString": "struct NamespacedStorageBase.Counter"
+                        },
+                        "typeName": {
+                          "id": 35,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 34,
+                            "name": "Counter",
+                            "nameLocations": [
+                              "637:7:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 6,
+                            "src": "637:7:0"
+                          },
+                          "referencedDeclaration": 6,
+                          "src": "637:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                            "typeString": "struct NamespacedStorageBase.Counter"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 38,
+                        "mutability": "mutable",
+                        "name": "value",
+                        "nameLocation": "666:5:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 56,
+                        "src": "659:12:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint64",
+                          "typeString": "uint64"
+                        },
+                        "typeName": {
+                          "id": 37,
+                          "name": "uint64",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "659:6:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint64",
+                            "typeString": "uint64"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 40,
+                        "mutability": "mutable",
+                        "name": "entered",
+                        "nameLocation": "678:7:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 56,
+                        "src": "673:12:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bool",
+                          "typeString": "bool"
+                        },
+                        "typeName": {
+                          "id": 39,
+                          "name": "bool",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "673:4:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "636:50:0"
+                  },
+                  "returnParameters": {
+                    "id": 42,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "696:0:0"
+                  },
+                  "scope": 57,
+                  "src": "622:141:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "internal"
+                }
+              ],
+              "scope": 143,
+              "src": "61:704:0",
+              "usedErrors": [],
+              "usedEvents": []
+            },
+            {
+              "abstract": false,
+              "baseContracts": [
+                {
+                  "baseName": {
+                    "id": 58,
+                    "name": "NamespacedStorageBase",
+                    "nameLocations": [
+                      "797:21:0"
+                    ],
+                    "nodeType": "IdentifierPath",
+                    "referencedDeclaration": 57,
+                    "src": "797:21:0"
+                  },
+                  "id": 59,
+                  "nodeType": "InheritanceSpecifier",
+                  "src": "797:21:0"
+                }
+              ],
+              "canonicalName": "NamespacedStorage",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 142,
+              "linearizedBaseContracts": [
+                142,
+                57
+              ],
+              "name": "NamespacedStorage",
+              "nameLocation": "776:17:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "body": {
+                    "id": 88,
+                    "nodeType": "Block",
+                    "src": "896:129:0",
+                    "statements": [
+                      {
+                        "assignments": [
+                          72
+                        ],
+                        "declarations": [
+                          {
+                            "constant": false,
+                            "id": 72,
+                            "mutability": "mutable",
+                            "name": "item",
+                            "nameLocation": "922:4:0",
+                            "nodeType": "VariableDeclaration",
+                            "scope": 88,
+                            "src": "906:20:0",
+                            "stateVariable": false,
+                            "storageLocation": "storage",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                              "typeString": "struct NamespacedStorageBase.Counter"
+                            },
+                            "typeName": {
+                              "id": 71,
+                              "nodeType": "UserDefinedTypeName",
+                              "pathNode": {
+                                "id": 70,
+                                "name": "Counter",
+                                "nameLocations": [
+                                  "906:7:0"
+                                ],
+                                "nodeType": "IdentifierPath",
+                                "referencedDeclaration": 6,
+                                "src": "906:7:0"
+                              },
+                              "referencedDeclaration": 6,
+                              "src": "906:7:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                                "typeString": "struct NamespacedStorageBase.Counter"
+                              }
+                            },
+                            "visibility": "internal"
+                          }
+                        ],
+                        "id": 75,
+                        "initialValue": {
+                          "arguments": [],
+                          "expression": {
+                            "argumentTypes": [],
+                            "id": 73,
+                            "name": "counter",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 25,
+                            "src": "929:7:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_internal_pure$__$returns$_t_struct$_Counter_$6_storage_ptr_$",
+                              "typeString": "function () pure returns (struct NamespacedStorageBase.Counter storage pointer)"
+                            }
+                          },
+                          "id": 74,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "929:9:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                            "typeString": "struct NamespacedStorageBase.Counter storage pointer"
+                          }
+                        },
+                        "nodeType": "VariableDeclarationStatement",
+                        "src": "906:32:0"
+                      },
+                      {
+                        "expression": {
+                          "arguments": [
+                            {
+                              "id": 77,
+                              "name": "item",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 72,
+                              "src": "954:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                                "typeString": "struct NamespacedStorageBase.Counter storage pointer"
+                              }
+                            },
+                            {
+                              "id": 78,
+                              "name": "value",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 61,
+                              "src": "960:5:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint64",
+                                "typeString": "uint64"
+                              }
+                            },
+                            {
+                              "id": 79,
+                              "name": "entered",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 63,
+                              "src": "967:7:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_bool",
+                                "typeString": "bool"
+                              }
+                            }
+                          ],
+                          "expression": {
+                            "argumentTypes": [
+                              {
+                                "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                                "typeString": "struct NamespacedStorageBase.Counter storage pointer"
+                              },
+                              {
+                                "typeIdentifier": "t_uint64",
+                                "typeString": "uint64"
+                              },
+                              {
+                                "typeIdentifier": "t_bool",
+                                "typeString": "bool"
+                              }
+                            ],
+                            "id": 76,
+                            "name": "write",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 56,
+                            "src": "948:5:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_internal_nonpayable$_t_struct$_Counter_$6_storage_ptr_$_t_uint64_$_t_bool_$returns$__$",
+                              "typeString": "function (struct NamespacedStorageBase.Counter storage pointer,uint64,bool)"
+                            }
+                          },
+                          "id": 80,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "948:27:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$__$",
+                            "typeString": "tuple()"
+                          }
+                        },
+                        "id": 81,
+                        "nodeType": "ExpressionStatement",
+                        "src": "948:27:0"
+                      },
+                      {
+                        "expression": {
+                          "components": [
+                            {
+                              "expression": {
+                                "id": 82,
+                                "name": "item",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 72,
+                                "src": "993:4:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                                  "typeString": "struct NamespacedStorageBase.Counter storage pointer"
+                                }
+                              },
+                              "id": 83,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "998:5:0",
+                              "memberName": "value",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 3,
+                              "src": "993:10:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint64",
+                                "typeString": "uint64"
+                              }
+                            },
+                            {
+                              "expression": {
+                                "id": 84,
+                                "name": "item",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 72,
+                                "src": "1005:4:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                                  "typeString": "struct NamespacedStorageBase.Counter storage pointer"
+                                }
+                              },
+                              "id": 85,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "1010:7:0",
+                              "memberName": "entered",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 5,
+                              "src": "1005:12:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_bool",
+                                "typeString": "bool"
+                              }
+                            }
+                          ],
+                          "id": 86,
+                          "isConstant": false,
+                          "isInlineArray": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "nodeType": "TupleExpression",
+                          "src": "992:26:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$_t_uint64_$_t_bool_$",
+                            "typeString": "tuple(uint64,bool)"
+                          }
+                        },
+                        "functionReturnParameters": 69,
+                        "id": 87,
+                        "nodeType": "Return",
+                        "src": "985:33:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "0fdec35b",
+                  "id": 89,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "set",
+                  "nameLocation": "834:3:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 64,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 61,
+                        "mutability": "mutable",
+                        "name": "value",
+                        "nameLocation": "845:5:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 89,
+                        "src": "838:12:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint64",
+                          "typeString": "uint64"
+                        },
+                        "typeName": {
+                          "id": 60,
+                          "name": "uint64",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "838:6:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint64",
+                            "typeString": "uint64"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 63,
+                        "mutability": "mutable",
+                        "name": "entered",
+                        "nameLocation": "857:7:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 89,
+                        "src": "852:12:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bool",
+                          "typeString": "bool"
+                        },
+                        "typeName": {
+                          "id": 62,
+                          "name": "bool",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "852:4:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "837:28:0"
+                  },
+                  "returnParameters": {
+                    "id": 69,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 66,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 89,
+                        "src": "882:6:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint64",
+                          "typeString": "uint64"
+                        },
+                        "typeName": {
+                          "id": 65,
+                          "name": "uint64",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "882:6:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint64",
+                            "typeString": "uint64"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 68,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 89,
+                        "src": "890:4:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bool",
+                          "typeString": "bool"
+                        },
+                        "typeName": {
+                          "id": 67,
+                          "name": "bool",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "890:4:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "881:14:0"
+                  },
+                  "scope": 142,
+                  "src": "825:200:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 104,
+                    "nodeType": "Block",
+                    "src": "1082:60:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "components": [
+                            {
+                              "expression": {
+                                "arguments": [],
+                                "expression": {
+                                  "argumentTypes": [],
+                                  "id": 96,
+                                  "name": "counter",
+                                  "nodeType": "Identifier",
+                                  "overloadedDeclarations": [],
+                                  "referencedDeclaration": 25,
+                                  "src": "1100:7:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_function_internal_pure$__$returns$_t_struct$_Counter_$6_storage_ptr_$",
+                                    "typeString": "function () pure returns (struct NamespacedStorageBase.Counter storage pointer)"
+                                  }
+                                },
+                                "id": 97,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": false,
+                                "kind": "functionCall",
+                                "lValueRequested": false,
+                                "nameLocations": [],
+                                "names": [],
+                                "nodeType": "FunctionCall",
+                                "src": "1100:9:0",
+                                "tryCall": false,
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                                  "typeString": "struct NamespacedStorageBase.Counter storage pointer"
+                                }
+                              },
+                              "id": 98,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "1110:5:0",
+                              "memberName": "value",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 3,
+                              "src": "1100:15:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint64",
+                                "typeString": "uint64"
+                              }
+                            },
+                            {
+                              "expression": {
+                                "arguments": [],
+                                "expression": {
+                                  "argumentTypes": [],
+                                  "id": 99,
+                                  "name": "counter",
+                                  "nodeType": "Identifier",
+                                  "overloadedDeclarations": [],
+                                  "referencedDeclaration": 25,
+                                  "src": "1117:7:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_function_internal_pure$__$returns$_t_struct$_Counter_$6_storage_ptr_$",
+                                    "typeString": "function () pure returns (struct NamespacedStorageBase.Counter storage pointer)"
+                                  }
+                                },
+                                "id": 100,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": false,
+                                "kind": "functionCall",
+                                "lValueRequested": false,
+                                "nameLocations": [],
+                                "names": [],
+                                "nodeType": "FunctionCall",
+                                "src": "1117:9:0",
+                                "tryCall": false,
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                                  "typeString": "struct NamespacedStorageBase.Counter storage pointer"
+                                }
+                              },
+                              "id": 101,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "1127:7:0",
+                              "memberName": "entered",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 5,
+                              "src": "1117:17:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_bool",
+                                "typeString": "bool"
+                              }
+                            }
+                          ],
+                          "id": 102,
+                          "isConstant": false,
+                          "isInlineArray": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "nodeType": "TupleExpression",
+                          "src": "1099:36:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$_t_uint64_$_t_bool_$",
+                            "typeString": "tuple(uint64,bool)"
+                          }
+                        },
+                        "functionReturnParameters": 95,
+                        "id": 103,
+                        "nodeType": "Return",
+                        "src": "1092:43:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "57de26a4",
+                  "id": 105,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "read",
+                  "nameLocation": "1040:4:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 90,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "1044:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 95,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 92,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 105,
+                        "src": "1068:6:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint64",
+                          "typeString": "uint64"
+                        },
+                        "typeName": {
+                          "id": 91,
+                          "name": "uint64",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1068:6:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint64",
+                            "typeString": "uint64"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 94,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 105,
+                        "src": "1076:4:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bool",
+                          "typeString": "bool"
+                        },
+                        "typeName": {
+                          "id": 93,
+                          "name": "bool",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1076:4:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "1067:14:0"
+                  },
+                  "scope": 142,
+                  "src": "1031:111:0",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 140,
+                    "nodeType": "Block",
+                    "src": "1220:156:0",
+                    "statements": [
+                      {
+                        "assignments": [
+                          118
+                        ],
+                        "declarations": [
+                          {
+                            "constant": false,
+                            "id": 118,
+                            "mutability": "mutable",
+                            "name": "item",
+                            "nameLocation": "1250:4:0",
+                            "nodeType": "VariableDeclaration",
+                            "scope": 140,
+                            "src": "1230:24:0",
+                            "stateVariable": false,
+                            "storageLocation": "storage",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_struct$_Permissions_$11_storage_ptr",
+                              "typeString": "struct NamespacedStorageBase.Permissions"
+                            },
+                            "typeName": {
+                              "id": 117,
+                              "nodeType": "UserDefinedTypeName",
+                              "pathNode": {
+                                "id": 116,
+                                "name": "Permissions",
+                                "nameLocations": [
+                                  "1230:11:0"
+                                ],
+                                "nodeType": "IdentifierPath",
+                                "referencedDeclaration": 11,
+                                "src": "1230:11:0"
+                              },
+                              "referencedDeclaration": 11,
+                              "src": "1230:11:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Permissions_$11_storage_ptr",
+                                "typeString": "struct NamespacedStorageBase.Permissions"
+                              }
+                            },
+                            "visibility": "internal"
+                          }
+                        ],
+                        "id": 121,
+                        "initialValue": {
+                          "arguments": [],
+                          "expression": {
+                            "argumentTypes": [],
+                            "id": 119,
+                            "name": "permissions",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 33,
+                            "src": "1257:11:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_internal_pure$__$returns$_t_struct$_Permissions_$11_storage_ptr_$",
+                              "typeString": "function () pure returns (struct NamespacedStorageBase.Permissions storage pointer)"
+                            }
+                          },
+                          "id": 120,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "1257:13:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Permissions_$11_storage_ptr",
+                            "typeString": "struct NamespacedStorageBase.Permissions storage pointer"
+                          }
+                        },
+                        "nodeType": "VariableDeclarationStatement",
+                        "src": "1230:40:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 128,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "baseExpression": {
+                              "expression": {
+                                "id": 122,
+                                "name": "item",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 118,
+                                "src": "1280:4:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_Permissions_$11_storage_ptr",
+                                  "typeString": "struct NamespacedStorageBase.Permissions storage pointer"
+                                }
+                              },
+                              "id": 125,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "1285:7:0",
+                              "memberName": "allowed",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 10,
+                              "src": "1280:12:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_mapping$_t_address_$_t_bool_$",
+                                "typeString": "mapping(address => bool)"
+                              }
+                            },
+                            "id": 126,
+                            "indexExpression": {
+                              "id": 124,
+                              "name": "who",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 107,
+                              "src": "1293:3:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_address",
+                                "typeString": "address"
+                              }
+                            },
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "nodeType": "IndexAccess",
+                            "src": "1280:17:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_bool",
+                              "typeString": "bool"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 127,
+                            "name": "allowed",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 109,
+                            "src": "1300:7:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_bool",
+                              "typeString": "bool"
+                            }
+                          },
+                          "src": "1280:27:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        },
+                        "id": 129,
+                        "nodeType": "ExpressionStatement",
+                        "src": "1280:27:0"
+                      },
+                      {
+                        "expression": {
+                          "components": [
+                            {
+                              "baseExpression": {
+                                "expression": {
+                                  "arguments": [],
+                                  "expression": {
+                                    "argumentTypes": [],
+                                    "id": 130,
+                                    "name": "permissions",
+                                    "nodeType": "Identifier",
+                                    "overloadedDeclarations": [],
+                                    "referencedDeclaration": 33,
+                                    "src": "1325:11:0",
+                                    "typeDescriptions": {
+                                      "typeIdentifier": "t_function_internal_pure$__$returns$_t_struct$_Permissions_$11_storage_ptr_$",
+                                      "typeString": "function () pure returns (struct NamespacedStorageBase.Permissions storage pointer)"
+                                    }
+                                  },
+                                  "id": 131,
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": false,
+                                  "kind": "functionCall",
+                                  "lValueRequested": false,
+                                  "nameLocations": [],
+                                  "names": [],
+                                  "nodeType": "FunctionCall",
+                                  "src": "1325:13:0",
+                                  "tryCall": false,
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_struct$_Permissions_$11_storage_ptr",
+                                    "typeString": "struct NamespacedStorageBase.Permissions storage pointer"
+                                  }
+                                },
+                                "id": 132,
+                                "isConstant": false,
+                                "isLValue": true,
+                                "isPure": false,
+                                "lValueRequested": false,
+                                "memberLocation": "1339:7:0",
+                                "memberName": "allowed",
+                                "nodeType": "MemberAccess",
+                                "referencedDeclaration": 10,
+                                "src": "1325:21:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_mapping$_t_address_$_t_bool_$",
+                                  "typeString": "mapping(address => bool)"
+                                }
+                              },
+                              "id": 134,
+                              "indexExpression": {
+                                "id": 133,
+                                "name": "who",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 107,
+                                "src": "1347:3:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_address",
+                                  "typeString": "address"
+                                }
+                              },
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "nodeType": "IndexAccess",
+                              "src": "1325:26:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_bool",
+                                "typeString": "bool"
+                              }
+                            },
+                            {
+                              "expression": {
+                                "arguments": [],
+                                "expression": {
+                                  "argumentTypes": [],
+                                  "id": 135,
+                                  "name": "counter",
+                                  "nodeType": "Identifier",
+                                  "overloadedDeclarations": [],
+                                  "referencedDeclaration": 25,
+                                  "src": "1353:7:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_function_internal_pure$__$returns$_t_struct$_Counter_$6_storage_ptr_$",
+                                    "typeString": "function () pure returns (struct NamespacedStorageBase.Counter storage pointer)"
+                                  }
+                                },
+                                "id": 136,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": false,
+                                "kind": "functionCall",
+                                "lValueRequested": false,
+                                "nameLocations": [],
+                                "names": [],
+                                "nodeType": "FunctionCall",
+                                "src": "1353:9:0",
+                                "tryCall": false,
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_Counter_$6_storage_ptr",
+                                  "typeString": "struct NamespacedStorageBase.Counter storage pointer"
+                                }
+                              },
+                              "id": 137,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "1363:5:0",
+                              "memberName": "value",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 3,
+                              "src": "1353:15:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint64",
+                                "typeString": "uint64"
+                              }
+                            }
+                          ],
+                          "id": 138,
+                          "isConstant": false,
+                          "isInlineArray": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "nodeType": "TupleExpression",
+                          "src": "1324:45:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$_t_bool_$_t_uint64_$",
+                            "typeString": "tuple(bool,uint64)"
+                          }
+                        },
+                        "functionReturnParameters": 115,
+                        "id": 139,
+                        "nodeType": "Return",
+                        "src": "1317:52:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "7fd10102",
+                  "id": 141,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "grant",
+                  "nameLocation": "1157:5:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 110,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 107,
+                        "mutability": "mutable",
+                        "name": "who",
+                        "nameLocation": "1171:3:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 141,
+                        "src": "1163:11:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_address",
+                          "typeString": "address"
+                        },
+                        "typeName": {
+                          "id": 106,
+                          "name": "address",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1163:7:0",
+                          "stateMutability": "nonpayable",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_address",
+                            "typeString": "address"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 109,
+                        "mutability": "mutable",
+                        "name": "allowed",
+                        "nameLocation": "1181:7:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 141,
+                        "src": "1176:12:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bool",
+                          "typeString": "bool"
+                        },
+                        "typeName": {
+                          "id": 108,
+                          "name": "bool",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1176:4:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "1162:27:0"
+                  },
+                  "returnParameters": {
+                    "id": 115,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 112,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 141,
+                        "src": "1206:4:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bool",
+                          "typeString": "bool"
+                        },
+                        "typeName": {
+                          "id": 111,
+                          "name": "bool",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1206:4:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 114,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 141,
+                        "src": "1212:6:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint64",
+                          "typeString": "uint64"
+                        },
+                        "typeName": {
+                          "id": 113,
+                          "name": "uint64",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "1212:6:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint64",
+                            "typeString": "uint64"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "1205:14:0"
+                  },
+                  "scope": 142,
+                  "src": "1148:228:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "public"
+                }
+              ],
+              "scope": 143,
+              "src": "767:611:0",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "36:1343:0"
+        },
+        "id": 0
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}

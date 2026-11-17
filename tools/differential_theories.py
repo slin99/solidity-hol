@@ -35,6 +35,8 @@ def fixture_files(root: Path, suite: dict[str, Any], *, sources: bool) -> set[Pa
         if sources:
             artifact = json.loads((root / path).read_text(encoding="utf-8"))
             paths.update(Path(name) for name in artifact["input"]["sources"])
+            if "unoptimizedFailure" in artifact:
+                paths.add(Path("profiles/solc-0.8.37-via-ir-osaka-optimized.json"))
     if sources:
         paths.update([Path("SOLIDITY_PIN"), Path("profiles/solc-0.8.37-via-ir-osaka.json")])
     return paths

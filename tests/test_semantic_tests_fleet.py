@@ -43,7 +43,8 @@ class FleetCoverageTests(unittest.TestCase):
                             if arg == "--support"]
                 staged = {path.relative_to(script.parent).as_posix() for path in supports}
                 self.assertEqual(staged, {"manifest.txt", "0.json", "SOLIDITY_PIN",
-                                         "profiles/solc-0.8.37-via-ir-osaka.json"})
+                                         "profiles/solc-0.8.37-via-ir-osaka.json",
+                                         "profiles/solc-0.8.37-via-ir-osaka-optimized.json"})
                 name, path = (script.parent / "manifest.txt").read_text().strip().split("\t")
                 self.assertEqual(name, "test.sol")
                 self.assertFalse(Path(path).is_absolute())

@@ -7,6 +7,7 @@ Ancestors
   solidityDifferential solidityBytecode
   solidityDifferentialCorpus_pure_core solidityDifferentialCorpus_storage
   solidityDifferentialCorpus_mappings solidityDifferentialCorpus_token
+  solidityDifferentialCorpus_transient_values
 Libs
   solidityImportLib solidityDifferentialLib cv_transLib wordsLib intLib
 
@@ -308,3 +309,28 @@ in
                 "\"status\":\"inconclusive\"", "UnknownFunction"]
     then () else raise Fail ("bridge regression: " ^ report)
 end
+
+(* call_contract is a frame entry. The transaction driver supplies a fresh
+ * transient map, while another call in the same transaction keeps it. *)
+Definition enter_transient_guard_def:
+  enter_transient_guard world =
+    case input_call corpus_transient_values_unit (NamedCall "enter" []) of
+      INR (data, _) => call_contract 1000 corpus_transient_values_program FEMPTY
+        (differential_frame 0x2000w 0 data) world
+    | INL _ => ContractInvalid "test calldata"
+End
+
+val () = cv_auto_trans enter_transient_guard_def;
+
+Theorem transient_guard_lives_for_one_transaction:
+  case enter_transient_guard (differential_world empty_accounts) of
+    ContractReturned data world =>
+      data = num_to_bytes 32 11 ∧
+      (case enter_transient_guard world of
+         ContractReverted [] _ => T | _ => F) ∧
+      (case enter_transient_guard (differential_world world.accounts) of
+         ContractReturned next _ => next = data | _ => F)
+  | _ => F
+Proof
+  CONV_TAC cv_eval
+QED

@@ -88,6 +88,8 @@ Datatype:
   | SrcMappingTypeName node_info src_type_name src_type_name
   | SrcStructTypeName node_info num string
   | SrcEnumTypeName node_info num
+  (* an internal function type, by its type identifier *)
+  | SrcFunctionTypeName node_info string
   | SrcUnsupportedTypeName node_info string
 End
 
@@ -98,6 +100,7 @@ Datatype:
     var_scope : num;
     var_type_name : src_type_name;
     var_type_id : string;
+    var_transient : bool;
     var_location : data_location option
   |>
 End
@@ -160,6 +163,20 @@ Datatype:
            | AbiStringConcat
 End
 
+(* A call option, {value: v} or {gas: g}, in a call's source order. *)
+Datatype:
+  call_option = ValueOption | GasOption
+End
+
+(* a.call, a.staticcall and a.delegatecall of an address. *)
+Datatype:
+  low_level_kind = LowLevelCall | LowLevelStaticCall | LowLevelDelegateCall
+End
+
+Datatype:
+  address_member = AddressCodeLength | AddressBalance
+End
+
 Datatype:
   src_expr
   = SrcIdentifier node_info string num string
@@ -172,25 +189,32 @@ Datatype:
   | SrcConditional node_info src_expr src_expr src_expr string
   | SrcAssignment node_info (src_binary_operator option) src_expr src_expr string
   | SrcIndexAccess node_info src_expr src_expr string
+  | SrcIndexRangeAccess node_info src_expr (src_expr option) (src_expr option) string
   | SrcTupleExpression node_info (src_expr option list) string
   | SrcFunctionCall node_info src_expr (src_expr list) (num list) string
   | SrcSuperCall node_info num (src_expr list) (num list) string
+  | SrcBaseCall node_info num (src_expr list) (num list) string
   | SrcBuiltinCall node_info node_info src_builtin (src_expr option)
       (src_expr option) string
+  | SrcRequireError node_info node_info src_expr src_error (src_expr list)
+      (num list) string
   | SrcTypeConversion node_info src_type_name src_expr string
   | SrcEnvironment node_info environment_field string
-  | SrcExternalCall node_info src_external bool (src_expr list) (num list) string
+  | SrcExternalCall node_info src_external (call_option list) (src_expr list)
+      (num list) string
   | SrcTypeMember node_info string src_type_name string
   | SrcNew node_info src_type_name src_expr string
   | SrcEnumValue node_info src_type_name num string
   | SrcKeccak256 node_info node_info src_expr string
   | SrcModular node_info node_info core_operator (src_expr list) string
-  | SrcAddressCodeLength node_info node_info src_expr string
-  | SrcSelector node_info (byte list) string
+  | SrcAddressMember node_info node_info address_member src_expr string
+  | SrcSelector node_info (byte list) (src_expr option) string
   | SrcEcrecover node_info node_info (src_expr list) string
   | SrcAbiEncode node_info node_info abi_form (src_expr list) string
   | SrcAbiDecode node_info node_info src_expr (src_type_name list) string
-  | SrcStaticCall node_info node_info src_expr src_expr string
+  | SrcLowLevelCall node_info node_info low_level_kind (call_option list)
+      (src_expr list) string
+  | SrcTransfer node_info node_info src_expr src_expr string
   | SrcUnsupportedExpr node_info string (src_expr list)
 End
 
@@ -200,12 +224,14 @@ End
  * positional arguments. RevertError: revert E(args), the error and the
  * positional arguments. InlineAssembly: the block's code, and each Solidity
  * variable it names, keyed by the name the code uses (x, or x.slot and
- * x.offset for a state variable's location).
+ * x.offset for a state variable's location or a storage pointer's, x.offset
+ * and x.length for a calldata reference).
  *)
 Datatype:
   src_assembly_reference = SrcAssemblyValue num
                          | SrcAssemblySlot num
                          | SrcAssemblyOffset num
+                         | SrcAssemblyLength num
 End
 
 Datatype:
@@ -217,7 +243,7 @@ Datatype:
       (src_variable option list) (src_expr option)
   | SrcIfStatement node_info src_expr src_stmt (src_stmt option)
   | SrcTryStatement node_info src_expr
-      node_info (src_variable list) src_stmt node_info src_variable src_stmt
+      node_info (src_variable list) src_stmt (src_catch list)
   | SrcWhileStatement node_info src_expr src_stmt
   | SrcDoWhileStatement node_info src_stmt src_expr
   | SrcForStatement node_info (src_stmt option) (src_expr option)
@@ -231,6 +257,7 @@ Datatype:
       ((string # src_assembly_reference) list)
   | SrcPlaceholder node_info
   | SrcUnsupportedStmt node_info string (src_expr list) (src_stmt list)
+; src_catch = SrcCatchClause node_info catch_kind (src_variable list) src_stmt
 End
 
 (* A modifier: its parameters and its body, where SrcPlaceholder runs the
@@ -275,6 +302,7 @@ Datatype:
     fn_returns : src_variable list;
     fn_modifiers : (num # src_expr list) list;
     fn_super_calls : num list;
+    fn_static_calls : num list;
     fn_body : src_stmt;
     fn_unsupported : string option
   |>
@@ -286,6 +314,7 @@ End
 Datatype:
   src_storage_entry = <|
     storage_id : num;
+    storage_backend : storage_backend;
     storage_slot : num;
     storage_offset : num;
     storage_type_id : string
@@ -335,6 +364,8 @@ Datatype:
     contract_libraries : num list;
     contract_constants : (src_variable # src_expr) list;
     contract_base_arguments : (num # num # src_expr list) list;
+    (* Static calls in initializers and inheritance specifiers. *)
+    contract_static_calls : num list;
     contract_storage : src_storage_entry list;
     contract_structs : src_struct list;
     (* the enums of the compilation, by id, with their member counts *)
@@ -386,6 +417,86 @@ Definition elementary_type_def:
     else NONE
 End
 
+(* The fields of a string between occurrences of a separator: FIELDS for a
+ * single separator character, by structural recursion so that it has a cv
+ * translation (FIELDS' does not terminate under cv_auto_trans).
+ *)
+Definition separated_fields_def:
+  (separated_fields sep acc [] = [REVERSE acc]) ∧
+  (separated_fields sep acc (c :: cs) =
+    if c = sep then REVERSE acc :: separated_fields sep "" cs
+    else separated_fields sep (c :: acc) cs)
+End
+
+(* A type a slot holds, by its type identifier: an elementary value type or
+ * an enum. *)
+Definition scalar_type_identifier_def:
+  scalar_type_identifier s =
+    if s = "t_address_payable" then SOME (AddressT PayableAddress)
+    else if isPREFIX "t_enum_" s then
+      OPTION_MAP (λid. EnumT (AstId id)) (fromDecString (DROP 7 s))
+    else if isPREFIX "t_" s ∧ s ≠ "t_uint" ∧ s ≠ "t_int" then
+      case elementary_type (DROP 2 s) of
+        SOME ty => if is_elementary_type ty then SOME ty else NONE
+      | NONE => NONE
+    else NONE
+End
+
+(* The types of "_t1_" fields: types a slot holds. *)
+Definition scalar_components_def:
+  (scalar_components [] = SOME []) ∧
+  (scalar_components (f :: fs) =
+    if 2 < LENGTH f ∧ isPREFIX "_" f ∧ isPREFIX "_" (REVERSE f) then
+      case (scalar_type_identifier (TAKE (LENGTH f - 2) (DROP 1 f)),
+            scalar_components fs) of
+        (SOME ty, SOME tys) => SOME (ty :: tys)
+      | _ => NONE
+    else NONE)
+End
+
+(* A function type's parameter or return list, "$_t1_$_t2_$", from its fields
+ * between the "$"s: "__" alone for the empty list. *)
+Definition function_type_components_def:
+  function_type_components fs =
+    if fs = ["__"] then SOME []
+    else if fs = [] then NONE
+    else scalar_components fs
+End
+
+(* The fields before the first "returns" field and those after it. *)
+Definition split_at_returns_def:
+  (split_at_returns acc [] = NONE) ∧
+  (split_at_returns acc (f :: fs) =
+    if f = "returns" then SOME (REVERSE acc, fs)
+    else split_at_returns (f :: acc) fs)
+End
+
+(* An internal function type's identifier,
+ * "t_function_internal_" m "$_p1_$_p2_$returns$_r1_$", whose parameters and
+ * returns are types a slot holds. An internal function is never payable. *)
+Definition function_type_identifier_def:
+  function_type_identifier s =
+    case separated_fields #"$" "" s of
+      head :: fs =>
+        let mutability =
+          if head = "t_function_internal_pure" then SOME PureMut
+          else if head = "t_function_internal_view" then SOME ViewMut
+          else if head = "t_function_internal_nonpayable" then SOME NonpayableMut
+          else NONE in
+        (case (mutability, split_at_returns [] fs) of
+           (SOME m, SOME (ps, rs)) =>
+             (case REVERSE rs of
+                [] :: rrs =>
+                  (case (function_type_components ps,
+                         function_type_components (REVERSE rrs)) of
+                     (SOME params, SOME rets) =>
+                       SOME (FunctionT InternalFn m params rets)
+                   | _ => NONE)
+              | _ => NONE)
+         | _ => NONE)
+    | [] => NONE
+End
+
 Definition normalize_type_name_def:
   (normalize_type_name (SrcElementaryTypeName _ name mutability) =
     case elementary_type name of
@@ -394,21 +505,25 @@ Definition normalize_type_name_def:
     | NONE => NONE) ∧
   (normalize_type_name (SrcArrayTypeName _ element n) =
     case normalize_type_name element of
-      SOME ty => if 0 < n ∧ n < 2 ** 256 then SOME (ArrayT ty (SOME n))
-                 else NONE
+      SOME ty => if 0 < n ∧ n < 2 ** 256 ∧ ¬is_function_type ty
+                 then SOME (ArrayT ty (SOME n)) else NONE
     | NONE => NONE) ∧
   (normalize_type_name (SrcStructTypeName _ id tid) =
     if isPREFIX "t_struct$_" tid ∧
        isPREFIX (REVERSE ("_$" ++ toString id ++ "_storage_ptr")) (REVERSE tid)
     then SOME (StructT (AstId id)) else NONE) ∧
   (normalize_type_name (SrcEnumTypeName _ id) = SOME (EnumT (AstId id))) ∧
+  (normalize_type_name (SrcFunctionTypeName _ tid) = function_type_identifier tid) ∧
   (normalize_type_name (SrcUnsupportedTypeName _ _) = NONE) ∧
   (normalize_type_name (SrcDynamicArrayTypeName _ element) =
-    OPTION_MAP (λty. ArrayT ty NONE) (normalize_type_name element)) ∧
+    case normalize_type_name element of
+      SOME ty => if is_function_type ty then NONE else SOME (ArrayT ty NONE)
+    | NONE => NONE) ∧
   (normalize_type_name (SrcMappingTypeName _ key value) =
     case (normalize_type_name key, normalize_type_name value) of
       (SOME k, SOME v) =>
-        if is_elementary_type k then SOME (MappingT k v) else NONE
+        if (is_elementary_type k ∨ byte_sequence_type k) ∧ ¬is_function_type v
+        then SOME (MappingT k v) else NONE
     | _ => NONE)
 End
 
@@ -421,17 +536,6 @@ Datatype:
   | SrcByteLiteral
   | SrcRational int num
   | SrcTupleType (sol_type list)
-End
-
-(* The fields of a string between occurrences of a separator: FIELDS for a
- * single separator character, by structural recursion so that it has a cv
- * translation (FIELDS' does not terminate under cv_auto_trans).
- *)
-Definition separated_fields_def:
-  (separated_fields sep acc [] = [REVERSE acc]) ∧
-  (separated_fields sep acc (c :: cs) =
-    if c = sep then REVERSE acc :: separated_fields sep "" cs
-    else separated_fields sep (c :: acc) cs)
 End
 
 (* A memory array "t_array$_" ^ k, its base, then each dimension innermost
@@ -583,20 +687,27 @@ Definition tuple_component_def:
           SOME (SrcRational i d) =>
             if d = 1 then SOME (if i < 0 then IntT 256 else UintT 256) else NONE
         | _ => NONE
+      else if isPREFIX "t_function_internal_" tid then function_type_identifier tid
       else decode_elementary_identifier tid
     else NONE
 End
 
 (* The components of a tuple identifier from its `$`-separated fields,
  * rejoining an array's fields: "_t_array" opens an array and a dimension,
- * the one field without a leading "_", closes one. *)
+ * the one field without a leading "_", closes one. A function type's fields
+ * are rejoined likewise: "_t_function_internal_..." opens it, its "returns"
+ * field stays inside, and the field "_" (its closing "$" then "_") closes
+ * it; its parameters and returns are never arrays or functions. *)
 Definition tuple_identifier_components_def:
   (tuple_identifier_components (depth : num) acc [] =
     if depth = 0 ∧ acc = "" then SOME [] else NONE) ∧
   (tuple_identifier_components depth acc (f :: fs) =
     let component = if acc = "" then f else acc ++ "$" ++ f in
-    let depth' = if f = "_t_array" then depth + 1
-                 else if isPREFIX "_" f then depth else depth - 1 in
+    let depth' = if f = "_t_array" ∨ isPREFIX "_t_function_internal_" f
+                 then depth + 1
+                 else if f = "_" then depth - 1
+                 else if isPREFIX "_" f ∨ f = "returns" then depth
+                 else depth - 1 in
     if depth' = 0 then
       case tuple_identifier_components 0 "" fs of
         SOME cs => SOME (component :: cs)
@@ -616,6 +727,8 @@ Definition decode_type_identifier_def:
              SOME cs => OPTION_MAP SrcTupleType (all_some (MAP tuple_component cs))
            | NONE => NONE)
       | _ => NONE
+    else if isPREFIX "t_function_internal_" s then
+      OPTION_MAP SrcType (function_type_identifier s)
     else OPTION_MAP SrcType (decode_elementary_identifier s)
 End
 
@@ -641,6 +754,26 @@ Proof
                        valid_mapping_key_def]
 QED
 
+Theorem scalar_type_identifier_valid[local]:
+  scalar_type_identifier s = SOME ty ⇒ valid_type_shape ty
+Proof
+  rw[scalar_type_identifier_def, AllCaseEqs()] >>
+  simp[valid_type_shape_def] >> metis_tac[elementary_type_valid]
+QED
+
+Theorem function_type_identifier_valid[local]:
+  function_type_identifier s = SOME ty ⇒
+  valid_type_shape ty ∧ outer_location_free ty
+Proof
+  ‘∀fs tys. scalar_components fs = SOME tys ⇒ EVERY valid_type_shape tys’
+    by (Induct >> rw[scalar_components_def, AllCaseEqs()] >>
+        gvs[] >> metis_tac[scalar_type_identifier_valid]) >>
+  ‘∀fs tys. function_type_components fs = SOME tys ⇒ EVERY valid_type_shape tys’
+    by (rw[function_type_components_def] >> gvs[] >> metis_tac[]) >>
+  rw[function_type_identifier_def, AllCaseEqs()] >>
+  simp[valid_type_shape_def, outer_location_free_def] >> metis_tac[]
+QED
+
 Theorem normalize_type_name_shape[local]:
   ∀ty. normalize_type_name tn = SOME ty ⇒
        valid_type_shape ty ∧ outer_location_free ty
@@ -648,8 +781,9 @@ Proof
   Induct_on ‘tn’ >> rw[normalize_type_name_def, AllCaseEqs()] >>
   imp_res_tac elementary_type_valid >>
   imp_res_tac elementary_type_outer_free >>
-  gvs[valid_type_shape_def, outer_location_free_def, valid_array_length_def] >>
-  metis_tac[elementary_mapping_key]
+  gvs[valid_type_shape_def, outer_location_free_def, valid_array_length_def,
+      solidityCoreWfTheory.byte_sequence_type_def, valid_mapping_key_def] >>
+  metis_tac[elementary_mapping_key, function_type_identifier_valid]
 QED
 
 Theorem normalize_type_name_valid:
@@ -672,7 +806,7 @@ Theorem tuple_component_valid[local]:
 Proof
   rw[tuple_component_def, AllCaseEqs()] >>
   gvs[valid_type_shape_def, solidityASTTheory.valid_int_width_def] >>
-  metis_tac[decode_elementary_identifier_valid]
+  metis_tac[decode_elementary_identifier_valid, function_type_identifier_valid]
 QED
 
 Theorem decode_type_identifier_valid:
@@ -686,7 +820,8 @@ Proof
         gvs[] >> metis_tac[tuple_component_valid]) >>
   rw[decode_type_identifier_def, decode_rational_def, rational_type_def,
      AllCaseEqs()] >>
-  gvs[] >> metis_tac[decode_elementary_identifier_valid]
+  gvs[] >> metis_tac[decode_elementary_identifier_valid,
+                     function_type_identifier_valid]
 QED
 
 (* The elementary type, or the integer value of an integer literal type, of a
@@ -715,6 +850,12 @@ Definition storage_type_identifier_def:
       (if ty = BytesT then "t_bytes" else "t_string") ++
       (case loc of MemoryLoc => "_memory_ptr" | CalldataLoc => "_calldata_ptr"
                  | StorageLoc => "_storage_ptr")
+    else if loc = StorageLoc then
+      (* A storage pointer: the storage type's identifier with "_ptr", except
+       * that a mapping's identifier names no location. *)
+      (case ty of
+         MappingT _ _ => storage_type_identifier ty
+       | _ => storage_type_identifier ty ++ "_ptr")
     else "") ∧
   (storage_type_identifier BytesT = "t_bytes_storage") ∧
   (storage_type_identifier StringT = "t_string_storage") ∧
@@ -733,7 +874,10 @@ Definition storage_type_identifier_def:
   (storage_type_identifier (ArrayT element NONE) =
     "t_array$_" ++ storage_type_identifier element ++ "_$dyn_storage") ∧
   (storage_type_identifier (MappingT key value) =
-    "t_mapping$_" ++ storage_type_identifier key ++ "_$_" ++
+    "t_mapping$_" ++
+    (if key = BytesT then "t_bytes_memory_ptr"
+     else if key = StringT then "t_string_memory_ptr"
+     else storage_type_identifier key) ++ "_$_" ++
     storage_type_identifier value ++ "_$") ∧
   (storage_type_identifier _ = "")
 End
@@ -746,7 +890,10 @@ Definition storage_layout_identifier_def:
   (storage_layout_identifier (ArrayT element NONE) =
     "t_array(" ++ storage_layout_identifier element ++ ")dyn_storage") ∧
   (storage_layout_identifier (MappingT key value) =
-    "t_mapping(" ++ storage_layout_identifier key ++ "," ++
+    "t_mapping(" ++
+    (if key = BytesT then "t_bytes_memory_ptr"
+     else if key = StringT then "t_string_memory_ptr"
+     else storage_layout_identifier key) ++ "," ++
     storage_layout_identifier value ++ ")") ∧
   (storage_layout_identifier (StructT (AstId id)) =
     "t_struct()" ++ toString id ++ "_storage") ∧
@@ -786,6 +933,7 @@ End
 
 Definition source_type_matches_def:
   source_type_matches ty tid ⇔
+    if is_function_type ty then function_type_identifier tid = SOME ty else
     canonical_storage_identifier 0 0 tid =
       case ty of
         LocatedT MemoryLoc element => located_type_identifier MemoryLoc element
@@ -794,19 +942,22 @@ Definition source_type_matches_def:
 End
 
 (* A parameter, return or local variable: an elementary value type in the
- * default location, a byte sequence in any location or a memory array,
- * agreeing with its typeIdentifier.
+ * default location, a byte sequence in any location, a memory or calldata
+ * array, or a storage pointer to an array, mapping or struct, agreeing with
+ * its typeIdentifier.
  *)
 Definition variable_type_def:
   variable_type (v : src_variable) =
+    if v.var_transient then NONE else
     case normalize_type_name v.var_type_name of
       SOME ty =>
         if byte_sequence_type ty ∨
-           (IS_SOME v.var_location ∧ case ty of ArrayT _ _ => T | _ => F) then
+           (IS_SOME v.var_location ∧ case ty of ArrayT _ _ => T | _ => F) ∨
+           (v.var_location = SOME StorageLoc ∧
+            case ty of MappingT _ _ => T | StructT _ => T | _ => F) then
           case v.var_location of
             SOME loc =>
               if located_value_type (LocatedT loc ty) ∧
-                 (loc = StorageLoc ⇒ byte_sequence_type ty) ∧
                  source_type_matches (LocatedT loc ty) v.var_type_id then
                 SOME (LocatedT loc ty) else NONE
           | NONE => NONE
@@ -824,13 +975,13 @@ Definition call_variable_type_def:
     | _ => ty) (variable_type v)
 End
 
-(* Event declarations omit an explicit location; analyzed byte parameters
+(* Event declarations omit an explicit location; analyzed reference parameters
  * carry memory identifiers. *)
 Definition event_variable_type_def:
   event_variable_type (v : src_variable) =
     case normalize_type_name v.var_type_name of
       SOME ty =>
-        if byte_sequence_type ty then
+        if memory_object_type ty then
           if v.var_location = NONE ∧
              source_type_matches (LocatedT MemoryLoc ty) v.var_type_id then
             SOME (LocatedT MemoryLoc ty) else NONE
@@ -842,6 +993,7 @@ End
  * unlike state declarations. Mappings retain their ordinary identifier. *)
 Definition field_variable_type_def:
   field_variable_type (v : src_variable) =
+    if v.var_transient then NONE else
     case normalize_type_name v.var_type_name of
       SOME ty =>
         let suffix = case ty of ArrayT _ _ => "_ptr" | StructT _ => "_ptr"
@@ -875,6 +1027,7 @@ Definition type_name_ids_def:
   (type_name_ids (SrcStructTypeName info _ _) = [info.node_id]) ∧
   (type_name_ids (SrcEnumTypeName info _) = [info.node_id]) ∧
   (type_name_ids (SrcUnsupportedTypeName info _) = [info.node_id]) ∧
+  (type_name_ids (SrcFunctionTypeName info _) = [info.node_id]) ∧
   (type_name_ids (SrcDynamicArrayTypeName info element) =
     info.node_id :: type_name_ids element) ∧
   (type_name_ids (SrcMappingTypeName info key value) =
@@ -902,6 +1055,10 @@ Definition expr_ids_def:
     info.node_id :: expr_ids c ++ expr_ids t ++ expr_ids f) ∧
   (expr_ids (SrcIndexAccess info b i _) =
     info.node_id :: expr_ids b ++ expr_ids i) ∧
+  (expr_ids (SrcIndexRangeAccess info base start end_bound _) =
+    info.node_id :: expr_ids base ++
+    (case start of NONE => [] | SOME e => expr_ids e) ++
+    (case end_bound of NONE => [] | SOME e => expr_ids e)) ∧
   (expr_ids (SrcAssignment info _ l r _) =
     info.node_id :: expr_ids l ++ expr_ids r) ∧
   (expr_ids (SrcTupleExpression info cs _) =
@@ -909,10 +1066,13 @@ Definition expr_ids_def:
   (expr_ids (SrcFunctionCall info f args _ _) =
     info.node_id :: expr_ids f ++ exprs_ids args) ∧
   (expr_ids (SrcSuperCall info _ args _ _) = info.node_id :: exprs_ids args) ∧
+  (expr_ids (SrcBaseCall info _ args _ _) = info.node_id :: exprs_ids args) ∧
   (expr_ids (SrcBuiltinCall info callee _ condition message _) =
     [info.node_id; callee.node_id] ++
     (case condition of NONE => [] | SOME c => expr_ids c) ++
     (case message of NONE => [] | SOME m => expr_ids m)) ∧
+  (expr_ids (SrcRequireError info callee condition _ args _ _) =
+    [info.node_id; callee.node_id] ++ expr_ids condition ++ exprs_ids args) ∧
   (expr_ids (SrcTypeConversion info tn e _) =
     info.node_id :: type_name_ids tn ++ expr_ids e) ∧
   (expr_ids (SrcEnvironment info _ _) = [info.node_id]) ∧
@@ -922,15 +1082,20 @@ Definition expr_ids_def:
     info.node_id :: callee.node_id :: expr_ids e) ∧
   (expr_ids (SrcModular info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
-  (expr_ids (SrcAddressCodeLength info member e _) =
-    info.node_id :: member.node_id :: expr_ids e) ∧
-  (expr_ids (SrcSelector info _ _) = [info.node_id]) ∧
+  (expr_ids (SrcAddressMember info member kind e _) =
+    info.node_id ::
+    (case kind of AddressCodeLength => [member.node_id] | AddressBalance => []) ++
+    expr_ids e) ∧
+  (expr_ids (SrcSelector info _ receiver _) =
+    info.node_id :: (case receiver of NONE => [] | SOME e => expr_ids e)) ∧
   (expr_ids (SrcEcrecover info callee args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
   (expr_ids (SrcAbiEncode info callee _ args _) =
     info.node_id :: callee.node_id :: exprs_ids args) ∧
-  (expr_ids (SrcStaticCall info callee target data _) =
-    info.node_id :: callee.node_id :: expr_ids target ++ expr_ids data) ∧
+  (expr_ids (SrcLowLevelCall info callee _ _ operands _) =
+    info.node_id :: callee.node_id :: exprs_ids operands) ∧
+  (expr_ids (SrcTransfer info callee target value _) =
+    info.node_id :: callee.node_id :: expr_ids target ++ expr_ids value) ∧
   (expr_ids (SrcAbiDecode info callee e tns _) =
     info.node_id :: callee.node_id :: expr_ids e ++ FLAT (MAP type_name_ids tns)) ∧
   (expr_ids (SrcExternalCall info _ _ operands _ _) =
@@ -964,10 +1129,9 @@ Definition stmt_ids_def:
     info.node_id :: declarations_ids decls ++ option_expr_ids init) ∧
   (stmt_ids (SrcIfStatement info c t e) =
     info.node_id :: expr_ids c ++ stmt_ids t ++ option_stmt_ids e) ∧
-  (stmt_ids (SrcTryStatement info call ok ps body err reason handler) =
-    [info.node_id; ok.node_id; err.node_id] ++ expr_ids call ++
-    FLAT (MAP variable_ids ps) ++ variable_ids reason ++
-    stmt_ids body ++ stmt_ids handler) ∧
+  (stmt_ids (SrcTryStatement info call ok ps body handlers) =
+    [info.node_id; ok.node_id] ++ expr_ids call ++
+    FLAT (MAP variable_ids ps) ++ stmt_ids body ++ catches_ids handlers) ∧
   (stmt_ids (SrcWhileStatement info c body) =
     info.node_id :: expr_ids c ++ stmt_ids body) ∧
   (stmt_ids (SrcDoWhileStatement info body c) =
@@ -987,7 +1151,19 @@ Definition stmt_ids_def:
   (option_stmt_ids NONE = []) ∧
   (option_stmt_ids (SOME s) = stmt_ids s) ∧
   (stmts_ids [] = []) ∧
-  (stmts_ids (s :: ss) = stmt_ids s ++ stmts_ids ss)
+  (stmts_ids (s :: ss) = stmt_ids s ++ stmts_ids ss) ∧
+  (catch_ids (SrcCatchClause info _ ps body) =
+    info.node_id :: FLAT (MAP variable_ids ps) ++ stmt_ids body) ∧
+  (catches_ids [] = []) ∧
+  (catches_ids (c :: cs) = catch_ids c ++ catches_ids cs)
+Termination
+  WF_REL_TAC ‘measure (λx. case x of
+    INL s => src_stmt_size s
+  | INR (INL s) => option_size src_stmt_size s
+  | INR (INR (INL ss)) => list_size src_stmt_size ss
+  | INR (INR (INR (INL c))) => src_catch_size c
+  | INR (INR (INR (INR cs))) => list_size src_catch_size cs)’ >>
+  rw[fetch "-" "src_stmt_size_def", listTheory.list_size_def, basicSizeTheory.option_size_def]
 End
 
 Definition function_ids_def:
@@ -1040,8 +1216,7 @@ Definition source_struct_field_def:
     | NONE => NONE
 End
 
-(* Literal bytes are imported from solc's hexValue, including UTF-8 and NULs.
- * Dynamic strings are a later runtime increment. *)
+(* Literal bytes are imported from solc's hexValue, including UTF-8 and NULs. *)
 Definition literal_message_def:
   (literal_message (SrcLiteral _ kind value tid) =
     if kind ≠ NumberLiteral ∧ kind ≠ BoolLiteral ∧
@@ -1051,14 +1226,12 @@ Definition literal_message_def:
 End
 
 Definition builtin_shape_def:
-  (builtin_shape AssertBuiltin condition message ⇔
+  (builtin_shape AssertBuiltin (condition : src_expr option) (message : src_expr option) ⇔
     IS_SOME condition ∧ message = NONE) ∧
   (builtin_shape RequireBuiltin condition message ⇔
-    IS_SOME condition ∧
-    (case message of NONE => T | SOME m => IS_SOME (literal_message m))) ∧
+    IS_SOME condition) ∧
   (builtin_shape RevertBuiltin condition message ⇔
-    condition = NONE ∧
-    (case message of NONE => T | SOME m => IS_SOME (literal_message m)))
+    condition = NONE)
 End
 
 (* type(T).max and type(T).min of an integer type T. *)
@@ -1116,9 +1289,14 @@ Definition state_variable_def:
     if ¬MEM v.var_scope bases then NONE else
     case normalize_type_name v.var_type_name of
       SOME ty =>
-        if byte_sequence_type ty then
+        if v.var_transient then
+          if v.var_location = NONE ∧ is_stored_scalar_type ty ∧
+             source_type_matches ty v.var_type_id
+          then SOME (v.var_info.node_id, ty) else NONE
+        else if byte_sequence_type ty then
           if v.var_location = NONE ∧ source_type_matches ty v.var_type_id then
             SOME (v.var_info.node_id, ty) else NONE
+        else if is_function_type ty then NONE
         else scoped_variable v.var_scope v
     | NONE => NONE
 End
@@ -1127,7 +1305,7 @@ End
  * type its references have: byte sequences are in memory. *)
 Definition constant_variable_def:
   constant_variable bases (v : src_variable) =
-    if ¬MEM v.var_scope bases ∨ IS_SOME v.var_location then NONE else
+    if ¬MEM v.var_scope bases ∨ IS_SOME v.var_location ∨ v.var_transient then NONE else
     case normalize_type_name v.var_type_name of
       SOME ty =>
         let ty' = if byte_sequence_type ty then LocatedT MemoryLoc ty else ty in
@@ -1146,6 +1324,7 @@ End
 (* An immutable, declared by one of the contract's bases, of elementary type. *)
 Definition immutable_variable_def:
   immutable_variable bases (v : src_variable) =
+    if v.var_transient then NONE else
     case state_variable bases v of
       SOME (x, ty) => if is_elementary_type ty then SOME (x, ty) else NONE
     | NONE => NONE
@@ -1240,21 +1419,40 @@ Definition add_functions_def:
        then rs else rs ++ [g]) gs)
 End
 
+(* Statically named base implementations, without virtual redirection. *)
+Definition static_targets_def:
+  (static_targets fs [] = []) ∧
+  (static_targets fs ((f : src_function) :: rs) =
+    (if f.fn_unsupported ≠ NONE then [] else
+     FILTER (λ(g : src_function). MEM g.fn_info.node_id f.fn_static_calls) fs) ++
+    static_targets fs rs)
+End
+
 (* The functions calls reach: the live ones and those super calls reach from
  * them. Each round adds a function or ends, so as many rounds as there are
  * functions suffice. *)
 Definition reached_functions_def:
   (reached_functions fs bases 0 rs = rs) ∧
   (reached_functions fs bases (SUC k) rs =
-    let rs' = add_functions rs (super_targets fs bases rs) in
+    let rs' = add_functions rs
+                (super_targets fs bases rs ++ static_targets fs rs) in
     if LENGTH rs' = LENGTH rs then rs else reached_functions fs bases k rs')
 End
 
-(* The functions checked and elaborated: the live ones, then those only super
- * calls reach, which the dispatch table does not list. *)
+(* The live functions and implementations reached by super or static calls. *)
 Definition checked_functions_def:
   checked_functions fs bases =
     reached_functions fs bases (LENGTH fs) (live_functions fs)
+End
+
+(* Initializers also reach static implementations, even without a constructor. *)
+Definition checked_contract_functions_def:
+  checked_contract_functions (c : src_contract) =
+    reached_functions c.contract_functions c.contract_bases
+      (LENGTH c.contract_functions)
+      (add_functions (live_functions c.contract_functions)
+         (FILTER (λf. MEM f.fn_info.node_id c.contract_static_calls)
+            c.contract_functions))
 End
 
 (* The constructor a base declares, if any. *)
@@ -1304,8 +1502,8 @@ Definition getter_shape_def:
   getter_shape structs ty =
     case ty of
       MappingT key value =>
-        if is_elementary_type key then
-          OPTION_MAP (λ(ps, r). (key :: ps, r)) (getter_shape structs value)
+        if is_elementary_type key ∨ byte_sequence_type key then
+          OPTION_MAP (λ(ps, r). (mapping_key_type key :: ps, r)) (getter_shape structs value)
         else NONE
     | ArrayT element _ =>
         OPTION_MAP (λ(ps, r). (UintT 256 :: ps, r)) (getter_shape structs element)
@@ -1344,6 +1542,8 @@ Definition storage_layout_ok_def:
   (storage_layout_ok fields [] [] ⇔ T) ∧
   (storage_layout_ok fields ((v : src_variable) :: vs) (e :: es) ⇔
      e.storage_id = v.var_info.node_id ∧
+     e.storage_backend = (if ¬fields ∧ v.var_transient
+                          then TransientStorage else PersistentStorage) ∧
      (case (if fields then field_variable_type v
             else OPTION_MAP SND (state_variable [v.var_scope] v)) of
         SOME ty => canonical_storage_identifier 0 0 e.storage_type_id = storage_layout_identifier ty
@@ -1365,11 +1565,10 @@ Definition check_struct_def:
         storage_layout_ok T s.struct_members fields
 End
 
-(* Event parameters are elementary value types declared by the event. *)
+(* Event parameters belong to their declaration; emit sites check their types. *)
 Definition check_event_def:
   check_event (e : src_event) ⇔
-    EVERY (λp. (FST p).var_scope = e.event_info.node_id ∧
-                  IS_SOME (event_variable_type (FST p)))
+    EVERY (λp. (FST p).var_scope = e.event_info.node_id)
       e.event_parameters
 End
 
@@ -1386,12 +1585,13 @@ Definition check_contract_def:
     c.contract_scope = unit_id ∧
     (case c.contract_bases of x :: _ => x = c.contract_info.node_id | [] => F) ∧
     ALL_DISTINCT (c.contract_bases ++ c.contract_libraries) ∧
-    EVERY (check_struct sources c.contract_bases) c.contract_structs ∧
+    EVERY (check_struct sources (c.contract_bases ++ c.contract_libraries))
+      c.contract_structs ∧
     EVERY (λ(_, members). 0 < members ∧ members ≤ 256) c.contract_enums ∧
     EVERY check_event c.contract_events ∧
     storage_layout_ok F c.contract_state_variables c.contract_storage ∧
     EVERY (function_header_ok c.contract_bases)
-      (checked_functions c.contract_functions c.contract_bases) ∧
+      (checked_contract_functions c) ∧
     EVERY (λf. f.fn_kind = FunctionKind ∧
                (f.fn_visibility = InternalVisibility ∨
                 f.fn_visibility = PrivateVisibility) ∧
@@ -1462,7 +1662,8 @@ Definition contract_rejections_def:
       c.contract_info.node_id "linearization" ++
     rejected_unless (ALL_DISTINCT (c.contract_bases ++ c.contract_libraries))
       c.contract_info.node_id "duplicate bases" ++
-    FLAT (MAP (struct_rejections sources c.contract_bases) c.contract_structs) ++
+    FLAT (MAP (struct_rejections sources (c.contract_bases ++ c.contract_libraries))
+            c.contract_structs) ++
     FLAT (MAP (λ(x, members). rejected_unless (0 < members ∧ members ≤ 256) x "enum size")
             c.contract_enums) ++
     FLAT (MAP (λe. rejected_unless (check_event e) e.event_info.node_id
@@ -1471,7 +1672,7 @@ Definition contract_rejections_def:
       (storage_layout_ok F c.contract_state_variables c.contract_storage)
       c.contract_info.node_id "storage layout" ++
     FLAT (MAP (function_header_rejections c.contract_bases)
-            (checked_functions c.contract_functions c.contract_bases)) ++
+            (checked_contract_functions c)) ++
     FLAT (MAP (λf. rejected_unless (f.fn_kind = FunctionKind) f.fn_info.node_id
                      "library function kind" ++
                    rejected_unless (f.fn_visibility = InternalVisibility ∨
@@ -1576,7 +1777,7 @@ Definition unit_functions_def:
   unit_functions (u : src_unit) =
     FLAT (MAP (λc.
       MAP (λ(f : src_function). (f.fn_info.node_id, f.fn_name, f.fn_unsupported))
-        (checked_functions c.contract_functions c.contract_bases ++
+        (checked_contract_functions c ++
          c.contract_library_functions)) u.unit_contracts)
 End
 
@@ -1618,18 +1819,20 @@ val () = cv_auto_trans_rec expr_ids_def (
 );
 
 val stmt_ids_pre_def = cv_auto_trans_pre_rec
-  "stmt_ids_pre option_stmt_ids_pre stmts_ids_pre" stmt_ids_def (
+  "stmt_ids_pre option_stmt_ids_pre stmts_ids_pre catch_ids_pre catches_ids_pre" stmt_ids_def (
   WF_REL_TAC ‘measure (λx. case x of
                  INL s => cv_size s
                | INR (INL s) => cv_size s
-               | INR (INR ss) => cv_size ss)’ >>
+               | INR (INR (INL ss)) => cv_size ss
+               | INR (INR (INR (INL c))) => cv_size c
+               | INR (INR (INR (INR cs))) => cv_size cs)’ >>
   cv_termination_tac
 );
 
 Theorem stmt_ids_pre[cv_pre,local]:
-  (∀v. stmt_ids_pre v) ∧ (∀v. stmts_ids_pre v) ∧ (∀v. option_stmt_ids_pre v)
+  (∀v. stmt_ids_pre v) ∧ (∀v. option_stmt_ids_pre v) ∧
+  (∀v. stmts_ids_pre v) ∧ (∀v. catch_ids_pre v) ∧ (∀v. catches_ids_pre v)
 Proof
-  CONV_TAC (RAND_CONV (REWR_CONV CONJ_COMM)) >>
   ho_match_mp_tac stmt_ids_ind >> rpt strip_tac >>
   simp[Once stmt_ids_pre_def] >> rw[] >> fs[]
 QED
@@ -1663,8 +1866,10 @@ val () = cv_auto_trans super_target_def;
 val () = cv_auto_trans super_table_def;
 val () = cv_auto_trans super_targets_def;
 val () = cv_auto_trans add_functions_def;
+val () = cv_auto_trans static_targets_def;
 val () = cv_auto_trans reached_functions_def;
 val () = cv_auto_trans checked_functions_def;
+val () = cv_auto_trans checked_contract_functions_def;
 val () = cv_auto_trans storage_layout_ok_def;
 val () = cv_auto_trans function_header_ok_def;
 val () = cv_auto_trans modifier_header_ok_def;

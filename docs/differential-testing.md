@@ -59,7 +59,11 @@ at the immutable's `immutableReferences` offsets, given to the evaluator as
 the immutables table `call_contract` takes, and to the Yul run by the names
 its `loadimmutable` reads; an immutable the case leaves out is zero. The HOL corpus theory proves one
 `differential_agrees` theorem per case. Diagnostic failures and exhausted fuel
-are inconclusive, never agreement.
+are inconclusive, never agreement. Non-canonical assembly write-backs and
+`bool`/enum storage bytes are checked separately in `solidityDirtyBitsTest`:
+source execution must fail closed, while `solidityDirtyBitsBytecodeTest`
+checks the compiler outcomes from `testdata/differential/fail_closed/`.
+These cases are outside the agreement corpus.
 
 Each suite has two committed theories under `tests/corpus/`:
 
@@ -134,7 +138,7 @@ Run the same checks as CI with:
 
 ```sh
 python3 tools/run_differential.py -j2 \
-  -- --max-heap 6000 --skip-checkpoints --skip-proof-steps
+  -- --max-heap 8192 --skip-checkpoints --skip-proof-steps
 holbuild -j8 build --skip-checkpoints --skip-proof-steps solidityHolTheory
 ```
 
@@ -185,9 +189,6 @@ The returned bytes must match that runtime with its immutable patches. The
 comparison then observes the immutable words, complete storage and logs, just
 as the source/bytecode deployment comparison does. Unsupported object names and
 layouts remain failures, including when the runtime object itself was admitted.
-
-`delegatecall` is not implemented and the dialect does not name it, so a stage
-that uses one is rejected at import rather than run wrongly.
 
 The ASTs are tens of megabytes across the corpus, so the tool generates them
 with the pinned compiler instead of committing them. It also generates one

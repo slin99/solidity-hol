@@ -1,0 +1,112 @@
+{
+  "name": "qualified_events",
+  "source": "testdata/differential/qualified_events.sol",
+  "contract": "QualifiedEvents",
+  "artifact": "testdata/differential/expected/qualified_events.json",
+  "cases": [
+    {
+      "name": "library_qualified_event",
+      "function": "libraryEvent",
+      "args": [
+        42
+      ],
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [
+            "0xb52dda022b6c1a1f40905a85f257f689aa5d69d850e49cf939d688fbe5af5946",
+            "0x0000000000000000000000000000000000000000000000000000000000002000"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000002a"
+        }
+      ]
+    },
+    {
+      "name": "event_from_library_body",
+      "function": "libraryFunction",
+      "args": [
+        43
+      ],
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [
+            "0xb52dda022b6c1a1f40905a85f257f689aa5d69d850e49cf939d688fbe5af5946",
+            "0x0000000000000000000000000000000000000000000000000000000000002000"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000002b"
+        }
+      ]
+    },
+    {
+      "name": "named_interface_arguments_run_in_written_order",
+      "function": "namedInterfaceEvent",
+      "args": [],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 2
+      },
+      "logs": [
+        {
+          "topics": [
+            "0x3eba6e4e6c3578f15699283e5ea7386f515b7cce2fc7e4806cd59bc5194fc81a",
+            "0x0000000000000000000000000000000000000000000000000000000000000002"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000001"
+        }
+      ]
+    },
+    {
+      "name": "module_qualified_event",
+      "function": "moduleEvent",
+      "args": [
+        7,
+        11
+      ],
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [
+            "0x3eba6e4e6c3578f15699283e5ea7386f515b7cce2fc7e4806cd59bc5194fc81a",
+            "0x0000000000000000000000000000000000000000000000000000000000000007"
+          ],
+          "data": "0x000000000000000000000000000000000000000000000000000000000000000b"
+        }
+      ]
+    },
+    {
+      "name": "compilation_level_event",
+      "function": "freeEvent",
+      "args": [
+        19
+      ],
+      "expect": {
+        "return": []
+      },
+      "logs": [
+        {
+          "topics": [
+            "0x02f3fa1a6c0f21c3f9d55c2b268808551a072e79432f5cf1534530a895b17e8a"
+          ],
+          "data": "0x0000000000000000000000000000000000000000000000000000000000000013"
+        }
+      ]
+    },
+    {
+      "name": "qualified_event_and_effects_roll_back",
+      "function": "rolledBack",
+      "args": [],
+      "expect": {
+        "revert": "0x"
+      }
+    }
+  ]
+}

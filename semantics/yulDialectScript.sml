@@ -74,6 +74,7 @@ Definition builtin_name_def:
   builtin_name YStop = "stop" ∧
   builtin_name YCall = "call" ∧
   builtin_name YStaticCall = "staticcall" ∧
+  builtin_name YDelegateCall = "delegatecall" ∧
   builtin_name YExtCodeSize = "extcodesize" ∧
   builtin_name YReturnDataSize = "returndatasize" ∧
   builtin_name YReturnDataCopy = "returndatacopy" ∧
@@ -149,6 +150,7 @@ Definition builtin_of_name_def:
     else if name = "stop" then SOME YStop
     else if name = "call" then SOME YCall
     else if name = "staticcall" then SOME YStaticCall
+    else if name = "delegatecall" then SOME YDelegateCall
     else if name = "extcodesize" then SOME YExtCodeSize
     else if name = "returndatasize" then SOME YReturnDataSize
     else if name = "returndatacopy" then SOME YReturnDataCopy
@@ -250,6 +252,7 @@ Definition builtin_effect_def:
   builtin_effect YStop = EffectHalt ∧
   builtin_effect YCall = EffectCall ∧
   builtin_effect YStaticCall = EffectCall ∧
+  builtin_effect YDelegateCall = EffectCall ∧
   builtin_effect YExtCodeSize = EffectCall ∧
   builtin_effect YReturnDataSize = EffectFrame ∧
   builtin_effect YReturnDataCopy = EffectMemory ∧

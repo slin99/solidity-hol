@@ -1,0 +1,92 @@
+{
+  "name": "enum_bounds",
+  "source": "testdata/differential/enum_bounds.sol",
+  "contract": "EnumBounds",
+  "artifact": "testdata/differential/expected/enum_bounds.json",
+  "cases": [
+    {
+      "name": "file_scope",
+      "function": "fileBounds",
+      "args": [],
+      "expect": {
+        "return": [
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "name": "contract_scope",
+      "function": "localBounds",
+      "args": [],
+      "expect": {
+        "return": [
+          0,
+          4
+        ]
+      }
+    },
+    {
+      "name": "library_qualified",
+      "function": "libraryBounds",
+      "args": [],
+      "expect": {
+        "return": [
+          0,
+          3
+        ]
+      }
+    },
+    {
+      "name": "base_qualified",
+      "function": "baseBounds",
+      "args": [],
+      "expect": {
+        "return": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "name": "singleton",
+      "function": "singletonBounds",
+      "args": [],
+      "expect": {
+        "return": [
+          0,
+          0
+        ]
+      }
+    },
+    {
+      "name": "full_256",
+      "function": "fullBounds",
+      "args": [],
+      "expect": {
+        "return": [
+          0,
+          255
+        ]
+      }
+    },
+    {
+      "name": "governor_bitmap",
+      "function": "bitmap",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x000000000000000000000000000000000000000000000000000000000000001f"
+        ]
+      }
+    },
+    {
+      "name": "bound_conversion_retains_uint8",
+      "function": "checkedOverflow",
+      "args": [],
+      "expect": {
+        "panic": "0x11"
+      }
+    }
+  ]
+}

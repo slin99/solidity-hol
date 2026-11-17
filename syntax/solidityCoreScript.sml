@@ -36,7 +36,9 @@ Datatype:
   | IntegerValue int
   | AddressValue address
   | BytesValue (byte list)
-  | InternalFunctionValue ast_id
+  (* An internal function value: SOME f calls procedure f; NONE is the zero
+   * value, whose call panics. *)
+  | InternalFunctionValue (ast_id option)
   | ExternalFunctionValue address (byte list)
 End
 
@@ -55,6 +57,7 @@ End
 Datatype:
   core_value_type = SingleType sol_type | ReferenceType sol_type
                   | ProductType (core_value_type list)
+                  | RevertDataType
 End
 
 Datatype:
@@ -97,6 +100,10 @@ Datatype:
   external_kind = ExternalCall | ExternalStaticCall | ExternalDelegateCall
 End
 
+Datatype:
+  catch_kind = ErrorCatch | PanicCatch | GenericCatch
+End
+
 (* The call and transaction context a body reads: msg.sender, msg.value,
  * address(this), tx.origin, tx.gasprice and the block's scalars. msg.data is
  * the complete read-only calldata bytes, including the selector.
@@ -110,9 +117,9 @@ End
 
 (* DefaultMemoryOperation ty: the default value of a memory variable of type
  * ty. AllocateMemoryOperation ty n: new ty(n), a zeroed byte sequence or
- * dynamic array of length n. ArrayIndexOperation a i: element i of the memory
- * or calldata array a. CopyToMemoryOperation a: a new memory copy of the
- * calldata array a. Keccak256Operation a: the Keccak-256 hash of the memory
+ * dynamic array of length n. ArrayIndexOperation a i: element i of fixed bytes,
+ * or a located byte sequence or array a. CopyToMemoryOperation a: a new memory
+ * copy of the calldata array a. Keccak256Operation a: the Keccak-256 hash of the memory
  * byte sequence a, as bytes32. EcrecoverOperation h v r s: ecrecover(h, v, r,
  * s), the address the signature (v, r, s) of the bytes32 hash h recovers, or
  * address(0) if it is invalid; v is a uint8 and r and s are bytes32.
@@ -125,11 +132,14 @@ End
  * sequence as its contents, as a new memory bytes, or as a new memory string
  * (string.concat) when the result is defined as one.
  * ExternalCallOperation kind selector parameter_types return_types target
- * value arguments: a high-level call I(target).f{value: value}(arguments) of
- * the function with that selector and those ABI types.
- * StaticCallOperation target data: the low-level target.staticcall(data) of
- * the memory bytes data, giving whether it succeeded and its return data as a
- * new memory bytes.
+ * value gas arguments: a high-level call
+ * I(target).f{value: value, gas: gas}(arguments) of the function with that
+ * selector and those ABI types; with no gas option, the callee gets the gas
+ * every call gives.
+ * LowLevelCallOperation kind target value gas data: the low-level
+ * target.call{value: value, gas: gas}(data), target.staticcall(data) or
+ * target.delegatecall(data) of the memory bytes or bytes literal data,
+ * giving whether it succeeded and its return data as a new memory bytes.
  *)
 Datatype:
   core_operation
@@ -142,44 +152,67 @@ Datatype:
   | ImmutableReferenceOperation ast_id
   | NavigateOperation sol_type core_atom navigation
   | DefaultMemoryOperation sol_type
+  | NullMemoryOperation sol_type
   | BytesLiteralOperation sol_type (byte list)
   | AllocateMemoryOperation sol_type core_atom
-  | ByteIndexOperation core_atom core_atom
+  | BytesToFixedOperation num core_atom
   | ArrayIndexOperation core_atom core_atom
+  (* Calldata view [start:end], with an omitted end using the current length. *)
+  | CalldataSliceOperation core_atom core_atom (core_atom option)
   | CopyToMemoryOperation core_atom
   | ArrayLengthOperation core_atom
   | Keccak256Operation core_atom
   | EcrecoverOperation core_atom core_atom core_atom core_atom
   (* The addressed account's code size, without a memory bytes allocation. *)
   | CodeLengthOperation core_atom
+  (* The addressed account's current balance. *)
+  | BalanceOperation core_atom
   | AbiEncodeOperation (core_atom option) (sol_type list) (core_atom list)
   | AbiEncodePackedOperation (sol_type list) (core_atom list)
   | AbiDecodeOperation (sol_type list) core_atom
+  (* A non-reverting typed catch decoder, and the generic catch's lazy copy
+   * of the internal RevertDataType value into source memory. *)
+  | TryDecodeErrorOperation catch_kind core_atom
+  | MaterializeRevertDataOperation core_atom
   | ArrayPushOperation core_atom (core_atom option)
   | ArrayPopOperation core_atom
   | InternalCallOperation ast_id (core_atom list)
+  (* a call of the procedure an internal function value names *)
+  | FunctionValueCallOperation core_atom (core_atom list)
   | ExternalCallOperation external_kind (byte list) (sol_type list)
-      (sol_type list) core_atom core_atom (core_atom list)
-  | StaticCallOperation core_atom core_atom
-  (* success flag, scalar returns, raw failure bytes; only a failed EVM call
+      (sol_type list) core_atom core_atom (core_atom option) (core_atom list)
+  | LowLevelCallOperation external_kind core_atom core_atom (core_atom option)
+      core_atom
+  (* target.transfer(value): exact stipend, failure bytes forwarded, no
+   * return-data allocation. *)
+  | TransferOperation core_atom core_atom
+  (* success flag, scalar returns, RevertDataType; only a failed EVM call
    * is caught. Operand and return-decoding failures still propagate. *)
   | TryExternalCallOperation external_kind (byte list) (sol_type list)
-      (sol_type list) core_atom core_atom (core_atom list)
+      (sol_type list) core_atom core_atom (core_atom option) (core_atom list)
   | EnvironmentOperation environment_field
 End
 
 (* What an inline assembly block's Yul variable stands for: a local of value
  * type (read on entry, written back on exit), the storage slot or byte offset
- * of a state variable (x.slot, x.offset), the value of a constant of value
- * type, held in an atom, or the memory address of a local holding a memory
- * byte sequence of the given type (bytes or string). All but the first are
- * read-only.
+ * of a state variable (x.slot, x.offset), the slot or offset of the reference
+ * a storage pointer local holds (assigning its slot rebinds the local), the
+ * calldata offset or length of the reference a calldata local holds (x.offset
+ * and x.length of a byte sequence or dynamic array, the plain name of a
+ * static array; assigning either rebinds the local), the value of a constant
+ * of value type, held in an atom, or the memory address of a local holding a
+ * memory byte sequence of the given type (bytes or string). Only locals,
+ * storage pointer slots and calldata offsets and lengths are assignable.
  *)
 Datatype:
   assembly_reference
   = AssemblyLocal ast_id sol_type
   | AssemblySlot ast_id
   | AssemblyOffset ast_id
+  | AssemblyPointerSlot ast_id
+  | AssemblyPointerOffset ast_id
+  | AssemblyCalldataOffset ast_id
+  | AssemblyCalldataLength ast_id
   | AssemblyConstant core_atom sol_type
   | AssemblyMemory ast_id sol_type
 End
@@ -230,6 +263,7 @@ End
 Datatype:
   core_state_variable = <|
     state_id : ast_id;
+    state_backend : storage_backend;
     state_type : sol_type;
     state_slot : bytes32;
     state_offset : num

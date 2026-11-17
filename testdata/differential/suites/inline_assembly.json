@@ -31,30 +31,6 @@
       }
     },
     {
-      "name": "dirty_uint8_cleaned",
-      "function": "dirtyUint8",
-      "args": [
-        300
-      ],
-      "expect": {
-        "return": [
-          44
-        ]
-      }
-    },
-    {
-      "name": "dirty_bool_true",
-      "function": "dirtyBool",
-      "args": [
-        2
-      ],
-      "expect": {
-        "return": [
-          true
-        ]
-      }
-    },
-    {
       "name": "dirty_bool_false",
       "function": "dirtyBool",
       "args": [
@@ -63,32 +39,6 @@
       "expect": {
         "return": [
           false
-        ]
-      }
-    },
-    {
-      "name": "signed_negative_sign_extended",
-      "function": "signed",
-      "args": [
-        -1
-      ],
-      "expect": {
-        "return": [
-          -1,
-          -1
-        ]
-      }
-    },
-    {
-      "name": "signed_positive",
-      "function": "signed",
-      "args": [
-        5
-      ],
-      "expect": {
-        "return": [
-          5,
-          5
         ]
       }
     },
@@ -113,19 +63,6 @@
         "return": [
           true,
           "0x3100000000000000000000000000000000000000000000000000000000000000"
-        ]
-      }
-    },
-    {
-      "name": "address_low_order",
-      "function": "addressBits",
-      "args": [
-        48879
-      ],
-      "expect": {
-        "return": [
-          48879,
-          1461501637330902918203684832716283019655932542975
         ]
       }
     },
@@ -240,18 +177,6 @@
       "expect": {
         "return": [
           255
-        ]
-      }
-    },
-    {
-      "name": "write_back_cleans_before_checked_add",
-      "function": "blockThenSolidity",
-      "args": [
-        255
-      ],
-      "expect": {
-        "return": [
-          1
         ]
       }
     },
@@ -382,6 +307,30 @@
       },
       "final_storage": {
         "0": 6
+      }
+    },
+    {
+      "name": "canonical_uint8",
+      "function": "dirtyUint8",
+      "args": [
+        44
+      ],
+      "expect": {
+        "return": [
+          44
+        ]
+      }
+    },
+    {
+      "name": "canonical_bool_true",
+      "function": "dirtyBool",
+      "args": [
+        1
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
       }
     }
   ]

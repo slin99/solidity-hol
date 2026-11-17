@@ -11,7 +11,8 @@ Libs
 
 fun holbuild_extra_deps (_ : string list) = ()
 val () = holbuild_extra_deps [
-  "../testdata/differential/expected/constant_conversions.json"
+  "../testdata/differential/expected/constant_conversions.json",
+  "../testdata/differential/expected/pointer_only_structs.json"
 ]
 
 val elaborated = cv_eval “elaborate_unit pure_core”;
@@ -96,7 +97,7 @@ Definition initial_state_def:
     heap := FEMPTY;
     next_heap_id := 0; immutables := FEMPTY;
     memory_allocated := 0;
-    targets := FEMPTY
+    targets := FEMPTY; return_data := SOME []
   |>
 End
 
@@ -268,22 +269,85 @@ Definition missing_struct_layout_unit_def:
   missing_struct_layout_unit =
     case struct_unit.unit_contracts of
       c :: cs =>
-        (case c.contract_structs of
-           s :: ss => struct_unit with unit_contracts :=
-             (c with contract_structs := (s with struct_layout := NONE) :: ss) :: cs
-         | [] => struct_unit)
+        struct_unit with unit_contracts :=
+          (c with contract_structs :=
+            MAP (λs. s with struct_layout := NONE) c.contract_structs) :: cs
     | [] => struct_unit
 End
 val () = cv_auto_trans missing_struct_layout_unit_def;
 
-Theorem struct_layout_required_for_execution:
+Theorem missing_struct_layouts_computed_for_execution:
   IS_SOME (elaborate_unit struct_unit) ∧
   valid_src_unit missing_struct_layout_unit ∧
   case elaborate_unit missing_struct_layout_unit of
-    SOME p => ¬wf_core_program (core_program_environment p) p
+    SOME p => wf_core_program (core_program_environment p) p
   | NONE => F
 Proof
   rpt conj_tac >- CONV_TAC cv_eval >- CONV_TAC cv_eval >>
+  CONV_TAC cv_eval
+QED
+
+Theorem computed_struct_layouts_match_solc:
+  elaborate_unit missing_struct_layout_unit = elaborate_unit struct_unit ∧
+  elab_struct_layouts (REVERSE (HD missing_struct_layout_unit.unit_contracts).contract_structs) =
+    OPTION_MAP REVERSE (elab_struct_layouts (HD struct_unit.unit_contracts).contract_structs)
+Proof
+  conj_tac >- CONV_TAC cv_eval >> EVAL_TAC
+QED
+
+Definition unlayoutable_structs_def:
+  unlayoutable_structs =
+    case struct_unit.unit_contracts of
+      c :: _ =>
+        (case c.contract_structs of
+           s :: _ => [s with <| struct_layout := NONE;
+             struct_members := MAP (λv. v with var_location := SOME MemoryLoc)
+               s.struct_members |>]
+         | [] => [])
+    | [] => []
+End
+val () = cv_auto_trans unlayoutable_structs_def;
+
+Theorem unlayoutable_struct_still_omitted:
+  LENGTH unlayoutable_structs = 1 ∧
+  elab_struct_layouts unlayoutable_structs = SOME []
+Proof
+  CONV_TAC cv_eval
+QED
+
+Definition pointer_only_structs_unit_def:
+  pointer_only_structs_unit = ^(import_artifact
+    "../testdata/differential/expected/pointer_only_structs.json"
+    "testdata/differential/pointer_only_structs.sol")
+End
+val () = cv_auto_trans pointer_only_structs_unit_def;
+
+Definition pointer_only_layouts_def:
+  pointer_only_layouts =
+    case pointer_only_structs_unit.unit_contracts of
+      c :: _ => computed_struct_layouts (LENGTH c.contract_structs) c.contract_structs
+    | [] => []
+End
+val () = cv_auto_trans pointer_only_layouts_def;
+
+Definition pointer_only_layout_summary_def:
+  pointer_only_layout_summary =
+    (EVERY (λs. s.struct_layout = NONE)
+       (FLAT (MAP (λc. c.contract_structs) pointer_only_structs_unit.unit_contracts)),
+     MAP (λs. (s.struct_slots,
+       MAP (λv. (w2n v.state_slot, v.state_offset)) s.struct_fields)) pointer_only_layouts)
+End
+val () = cv_auto_trans pointer_only_layout_summary_def;
+
+(* The outer struct's fixed uint24[11] uses two slots, not one; its nested
+ * struct is declared later. Neither has a compiler-provided layout. *)
+Theorem pointer_only_packing:
+  LENGTH pointer_only_layouts = 3 ∧
+  FST pointer_only_layout_summary ∧
+  MEM (11, [(0, 0); (0, 16); (1, 0); (2, 0); (4, 0); (5, 0);
+            (7, 0); (8, 0); (9, 0); (10, 0)])
+    (SND pointer_only_layout_summary)
+Proof
   CONV_TAC cv_eval
 QED
 
@@ -292,14 +356,14 @@ QED
 Theorem asm_halt_rejected_in_constructor:
   ∀info.
     ISL (elab_stmt
-      <| functions := []; supers := []; structs := []; enums := []; events := [];
+      <| functions := []; static_functions := []; supers := []; structs := []; enums := []; events := [];
          variables := []; state := []; locations := []; immutables := [];
          constants := []; returns := []; placeholder := NONE;
          mode := CheckedArithmetic; creation := F; scope := 0;
          returns_id := 0; in_loop := F; bad_ids := [] |> 0
       (SrcInlineAssembly info [YulExprStmt (YulBuiltin YStop [])] [])) ∧
     elab_stmt
-      <| functions := []; supers := []; structs := []; enums := []; events := [];
+      <| functions := []; static_functions := []; supers := []; structs := []; enums := []; events := [];
          variables := []; state := []; locations := []; immutables := [];
          constants := []; returns := []; placeholder := NONE;
          mode := CheckedArithmetic; creation := T; scope := 0;
@@ -326,11 +390,11 @@ Theorem declaration_body_and_tuple_fraction_rejected:
                                     loc_source := 0 |> |>;
       x = <| var_info := info with node_id := 1; var_name := "x"; var_scope := 0;
              var_type_name := SrcElementaryTypeName info "uint256" NONE;
-             var_type_id := "t_uint256"; var_location := NONE |>;
+             var_type_id := "t_uint256"; var_transient := F; var_location := NONE |>;
       d = SrcVariableDeclarationStatement info [SOME 1] [SOME x] NONE;
       c = SrcLiteral info BoolLiteral "true" "t_bool";
       half = SrcLiteral info NumberLiteral "" "t_rational_1_by_2";
-      ctx = <| functions := []; supers := []; structs := []; enums := [];
+      ctx = <| functions := []; static_functions := []; supers := []; structs := []; enums := [];
                events := []; variables := []; state := []; locations := [];
                immutables := []; constants := []; returns := [];
                placeholder := NONE; mode := CheckedArithmetic; creation := F;
@@ -344,23 +408,21 @@ Proof
   EVAL_TAC
 QED
 
-(* bytesN(b) of a dynamic byte sequence fails elaboration, since the core
- * has no such conversion; bytesN of a shorter or longer bytesM elaborates. *)
-Theorem bytes_to_fixed_bytes_rejected:
+(* Dynamic bytes and fixed bytes both convert to a fixed-size prefix. *)
+Theorem bytes_to_fixed_bytes_admitted:
   let info = <| node_id := 0;
                 node_location := <| loc_start := 0; loc_length := 0;
                                     loc_source := 0 |> |>;
       to16 e = SrcTypeConversion info
                  (SrcElementaryTypeName info "bytes16" NONE) e "t_bytes16";
-      ctx = <| functions := []; supers := []; structs := []; enums := [];
+      ctx = <| functions := []; static_functions := []; supers := []; structs := []; enums := [];
                events := [];
                variables := [(1, LocatedT MemoryLoc BytesT); (2, FixedBytesT 32)];
                state := []; locations := [];
                immutables := []; constants := []; returns := [];
                placeholder := NONE; mode := CheckedArithmetic; creation := F;
                scope := 0; returns_id := 0; in_loop := F; bad_ids := [] |> in
-    elab_expr ctx 3 (to16 (SrcIdentifier info "b" 1 "t_bytes_memory_ptr")) =
-    INR [(0, "unsupported type conversion")] ∧
+    ISL (elab_expr ctx 3 (to16 (SrcIdentifier info "b" 1 "t_bytes_memory_ptr"))) ∧
     ISL (elab_expr ctx 3 (to16 (SrcIdentifier info "w" 2 "t_bytes32")))
 Proof
   EVAL_TAC
@@ -374,14 +436,14 @@ val info0 = “<| node_id := 0;
                 node_location := <| loc_start := 0; loc_length := 0;
                                     loc_source := 0 |> |>”;
 fun at id = “^info0 with node_id := ^(numSyntax.term_of_int id)”;
-val ctx0 = “<| functions := []; supers := []; structs := []; enums := [];
+val ctx0 = “<| functions := []; static_functions := []; supers := []; structs := []; enums := [];
                events := []; variables := []; state := []; locations := [];
                immutables := []; constants := []; returns := [];
                placeholder := NONE; mode := CheckedArithmetic; creation := F;
                scope := 0; returns_id := 0; in_loop := F; bad_ids := [] |>”;
 fun local_y tn = “<| var_info := ^(at 4); var_name := "y"; var_scope := 0;
                      var_type_name := ^tn; var_type_id := "t_uint256";
-                     var_location := NONE |>”;
+                     var_transient := F; var_location := NONE |>”;
 val supported_y = local_y “SrcElementaryTypeName ^(at 7) "uint256" NONE”;
 val unsupported_y = local_y “SrcUnsupportedTypeName ^(at 7) "function type"”;
 val read_y = “SrcExpressionStatement ^(at 5) (SrcIdentifier ^(at 6) "y" 4 "t_uint256")”;
@@ -416,7 +478,7 @@ val empty_contract =
       contract_bases := []; contract_state_variables := [];
       contract_immutables := []; contract_initializers := [];
       contract_libraries := []; contract_constants := [];
-      contract_base_arguments := []; contract_storage := [];
+      contract_base_arguments := []; contract_static_calls := []; contract_storage := [];
       contract_structs := []; contract_enums := []; contract_events := [];
       contract_modifiers := []; contract_functions := [];
       contract_library_functions := []; contract_getters := [] |>”;
@@ -427,7 +489,7 @@ fun function_of ps rs ss =
       fn_base_functions := []; fn_parameters_id := 2; fn_parameters := ^ps;
       fn_nominal_parameters := [];
       fn_returns_id := 3; fn_returns := ^rs; fn_modifiers := [];
-      fn_super_calls := []; fn_body := SrcBlock ^(at 9) ^ss;
+      fn_super_calls := []; fn_static_calls := []; fn_body := SrcBlock ^(at 9) ^ss;
       fn_unsupported := NONE |>”;
 val break_11 = “SrcBreak ^(at 11)”;
 val return_1 = “SrcReturn ^(at 12) 3
@@ -450,7 +512,8 @@ QED
 Theorem unsupported_try_keeps_clause_blockers:
   elab_stmt ^ctx0 10
     (SrcTryStatement ^(at 19) (SrcLiteral ^(at 20) BoolLiteral "true" "t_bool")
-       ^(at 21) [] (SrcBreak ^(at 11)) ^(at 22) ^supported_y (SrcContinue ^(at 12))) =
+       ^(at 21) [] (SrcBreak ^(at 11))
+       [SrcCatchClause ^(at 22) GenericCatch [] (SrcContinue ^(at 12))]) =
   INR [(19, "unsupported try statement"); (11, "break outside a loop");
        (12, "continue outside a loop")]
 Proof
@@ -541,7 +604,7 @@ Theorem external_call_operands_all_report:
                (SrcExternalCall ^(at 30)
                   <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut;
                      ext_parameters := []; ext_returns := [] |>
-                  F [^(bad_at 32); ^(bad_at 33)] [] "t_tuple$__$")”
+                  [] [^(bad_at 32); ^(bad_at 33)] [] "t_tuple$__$")”
      (“(30, "unsupported external call")” :: bad_32_33))
 Proof
   EVAL_TAC
@@ -712,4 +775,16 @@ Theorem function_conditional_fails_elaboration:
   unit_elaboration_failures T function_conditional ≠ []
 Proof
   CONV_TAC cv_eval
+QED
+
+Theorem address_literal_bounds_checked:
+  elab_expr ^ctx0 10
+    (SrcLiteral ^(at 30) NumberLiteral
+       "1461501637330902918203684832716283019655932542976" "t_address") =
+    INR [(30, "unsupported literal")] ∧
+  elab_expr ^ctx0 10
+    (SrcLiteral ^(at 30) NumberLiteral "-1" "t_address") =
+    INR [(30, "unsupported literal")]
+Proof
+  EVAL_TAC
 QED

@@ -1,0 +1,286 @@
+{
+  "name": "expression_members",
+  "source": "testdata/differential/expression_members.sol",
+  "contract": "ExpressionMembers",
+  "artifact": "testdata/differential/expected/expression_members.json",
+  "cases": [
+    {
+      "name": "delete_packed_scalars_keeps_neighbors",
+      "function": "clearPacked",
+      "args": [],
+      "expect": {
+        "return": [
+          7,
+          0,
+          false,
+          "0x00000000",
+          0,
+          0,
+          0
+        ]
+      },
+      "storage": {
+        "0": "77707700756018121199403007380174299244608569268486597397146362339050710368256"
+      },
+      "final_storage": {
+        "0": "77707700756018121199403007380174299244608569268486597397146362339050710368263"
+      }
+    },
+    {
+      "name": "delete_index_evaluated_once",
+      "function": "clearIndex",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          1,
+          0,
+          6,
+          7
+        ]
+      },
+      "storage": {
+        "3": 460293
+      },
+      "final_storage": {
+        "1": 1,
+        "3": 460288
+      }
+    },
+    {
+      "name": "delete_out_of_bounds_rolls_back_index",
+      "function": "clearIndex",
+      "args": [
+        3
+      ],
+      "expect": {
+        "panic": 50
+      },
+      "storage": {
+        "1": 9,
+        "3": 460293
+      }
+    },
+    {
+      "name": "delete_mapping_evaluates_key_once",
+      "function": "clearMapping",
+      "args": [
+        42
+      ],
+      "expect": {
+        "return": [
+          0,
+          1
+        ]
+      },
+      "final_storage": {
+        "1": 1
+      }
+    },
+    {
+      "name": "delete_struct_field_keeps_neighbor",
+      "function": "clearField",
+      "args": [],
+      "expect": {
+        "return": [
+          0,
+          11
+        ]
+      },
+      "storage": {
+        "4": 2825
+      },
+      "final_storage": {
+        "4": 2816
+      }
+    },
+    {
+      "name": "delete_local",
+      "function": "clearLocal",
+      "args": [],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "balance_missing_account",
+      "function": "balanceOf",
+      "args": [
+        12345
+      ],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "balance_includes_call_value",
+      "function": "ownBalance",
+      "args": [],
+      "expect": {
+        "return": [
+          123,
+          123
+        ]
+      },
+      "value": 123
+    },
+    {
+      "name": "balance_computed_receiver_once",
+      "function": "computedBalance",
+      "args": [
+        4096
+      ],
+      "expect": {
+        "return": [
+          42,
+          1
+        ]
+      },
+      "value": 42,
+      "final_storage": {
+        "1": 1
+      }
+    },
+    {
+      "name": "selector_receiver_runs_without_calling_function",
+      "function": "computedSelector",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x773acdef",
+          1
+        ]
+      },
+      "final_storage": {
+        "1": 1
+      }
+    },
+    {
+      "name": "selector_of_parameter_receiver",
+      "function": "variableSelector",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x773acdef"
+        ]
+      }
+    },
+    {
+      "name": "selector_of_computed_getter",
+      "function": "getterSelector",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          "0x06661abd"
+        ]
+      }
+    },
+    {
+      "name": "selector_constant_receiver_panics",
+      "function": "failingSelector",
+      "args": [],
+      "expect": {
+        "panic": 18
+      }
+    },
+    {
+      "name": "selector_receiver_index_panics",
+      "function": "boundsSelector",
+      "args": [
+        3
+      ],
+      "expect": {
+        "panic": 50
+      }
+    },
+    {
+      "name": "fixed_bytes_lengths",
+      "function": "fixedLength",
+      "args": [
+        "0xff",
+        "0x123456789abcdef0",
+        "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ],
+      "expect": {
+        "return": [
+          1,
+          8,
+          32
+        ]
+      }
+    },
+    {
+      "name": "fixed_length_evaluates_receiver_once",
+      "function": "computedLength",
+      "args": [],
+      "expect": {
+        "return": [
+          8,
+          1
+        ]
+      },
+      "final_storage": {
+        "1": 1
+      }
+    },
+    {
+      "name": "fixed_length_preserves_receiver_panic",
+      "function": "checkedLength",
+      "args": [
+        0
+      ],
+      "expect": {
+        "panic": 18
+      }
+    },
+    {
+      "name": "fixed_length_of_computed_value",
+      "function": "checkedLength",
+      "args": [
+        1
+      ],
+      "expect": {
+        "return": [
+          8
+        ]
+      }
+    },
+    {
+      "name": "selector_receiver_assignment_keeps_earlier_value",
+      "function": "selectorAssignment",
+      "args": [
+        4660
+      ],
+      "expect": {
+        "return": [
+          4660,
+          "0x773acdef"
+        ]
+      }
+    },
+    {
+      "name": "length_receiver_assignment_keeps_earlier_value",
+      "function": "lengthAssignment",
+      "args": [
+        "0x123456789abcdef0"
+      ],
+      "expect": {
+        "return": [
+          "0x123456789abcdef0",
+          8
+        ]
+      }
+    }
+  ]
+}

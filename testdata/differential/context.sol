@@ -12,6 +12,8 @@ contract Context {
 
     uint256 private deposits;
     address private last;
+    mapping(address => uint256) private balances;
+    address private owner;
 
     receive() external payable {
         deposits += msg.value;
@@ -67,5 +69,47 @@ contract Context {
 
     function narrow(uint8 a, int16 b, bytes2 c, bool d) external pure returns (uint8, int16, bytes2, bool) {
         return (a, b, c, d);
+    }
+
+    // Helpers that take the call context: one reads nothing else, one reads storage.
+    function callerOf() internal view returns (address) {
+        return msg.sender;
+    }
+
+    function isOwner() internal view returns (bool) {
+        return msg.sender == owner;
+    }
+
+    function myBalance() external view returns (uint256) {
+        return balances[msg.sender];
+    }
+
+    function ownerBalance() external view returns (uint256) {
+        require(msg.sender == owner, "not owner");
+        return balances[msg.sender];
+    }
+
+    function caller() external view returns (address) {
+        return callerOf();
+    }
+
+    function ownerCheck() external view returns (bool) {
+        return isOwner();
+    }
+
+    function emitIf(bool flag, uint256 x) external {
+        if (flag) {
+            emit Plain(x);
+        }
+    }
+
+    // Recursion with storage writes and logs at each level.
+    function tally(uint256 n) public returns (uint256) {
+        if (n == 0) {
+            return 0;
+        }
+        deposits += n;
+        emit Plain(n);
+        return n + tally(n - 1);
     }
 }

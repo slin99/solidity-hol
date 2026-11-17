@@ -1,0 +1,83 @@
+{
+  "name": "rejected_inline_assembly",
+  "source": "testdata/differential/inline_assembly.sol",
+  "contract": "InlineAssembly",
+  "artifact": "testdata/differential/expected/inline_assembly.json",
+  "cases": [
+    {
+      "name": "dirty_uint8_cleaned",
+      "function": "dirtyUint8",
+      "args": [
+        300
+      ],
+      "expect": {
+        "return": [
+          44
+        ]
+      }
+    },
+    {
+      "name": "dirty_bool_true",
+      "function": "dirtyBool",
+      "args": [
+        2
+      ],
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    },
+    {
+      "name": "signed_negative_sign_extended",
+      "function": "signed",
+      "args": [
+        -1
+      ],
+      "expect": {
+        "return": [
+          -1,
+          -1
+        ]
+      }
+    },
+    {
+      "name": "signed_positive",
+      "function": "signed",
+      "args": [
+        5
+      ],
+      "expect": {
+        "return": [
+          5,
+          5
+        ]
+      }
+    },
+    {
+      "name": "address_low_order",
+      "function": "addressBits",
+      "args": [
+        48879
+      ],
+      "expect": {
+        "return": [
+          48879,
+          1461501637330902918203684832716283019655932542975
+        ]
+      }
+    },
+    {
+      "name": "write_back_cleans_before_checked_add",
+      "function": "blockThenSolidity",
+      "args": [
+        255
+      ],
+      "expect": {
+        "return": [
+          1
+        ]
+      }
+    }
+  ]
+}

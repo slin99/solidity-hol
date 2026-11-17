@@ -75,6 +75,8 @@ val yul_lookup_names_c =
  * from the callee's own theorem. *)
 val run_external_call_c =
   prim_mk_const {Thy = "externalCall", Name = "run_external_call"}
+val run_delegate_call_c =
+  prim_mk_const {Thy = "externalCall", Name = "run_delegate_call"}
 
 
 (* The constants are recognised by theory and name, reading the record
@@ -221,7 +223,7 @@ val test_compset =
     (List.foldl (fn (c, cs) => computeLib.scrub_const cs c)
        (computeLib.copy (computeLib.the_compset ()))
        [eval_yul_block_c, invoke_c, eval_yul_loop_c, word_exp_c,
-        word_exp_tailrec_c, run_external_call_c])
+        word_exp_tailrec_c, run_external_call_c, run_delegate_call_c])
 
 fun eval_test tm = computeLib.CBV_CONV test_compset tm
 
@@ -1488,6 +1490,7 @@ val eval_compset =
                        (computeLib.scrub_const cs0 eval_yul_builtin_c)
                        eval_yul_loop_c)
                     run_external_call_c
+        val cs1 = computeLib.scrub_const cs1 run_delegate_call_c
         val cs2 = wordsLib.add_words_compset true cs1
         val cs3 =
           computeLib.scrub_const
@@ -1880,7 +1883,7 @@ fun yul_loop_conv defs tm =
 val conversion_consts =
   List.map (const_key o dest_thy_const)
     (flookup_tm :: invoke_c :: eval_yul_loop_c :: eval_yul_builtin_c ::
-     run_external_call_c :: yul_lookup_c ::
+     run_external_call_c :: run_delegate_call_c :: yul_lookup_c ::
      yul_lookup_names_c ::
      (clause_heads (evaluator_clauses @ helper_defs @ block_def_clauses) @
       List.map (fn (c, _, _) => c) guarded_helpers))
@@ -1889,7 +1892,8 @@ fun residues tm =
   Lib.mk_set (List.filter (fn k => Lib.mem k conversion_consts) (consts_in tm))
 
 (* What a form may still be standing on: the call and the loop it left folded,
- * the message call a `call` builtin made (`run_external_call`), and the
+ * the message call a `call` builtin made (`run_external_call`, or
+ * `run_delegate_call` for `delegatecall`), and the
  * operations whose input is a value nobody has -- the frame and memory
  * operations of `guarded_helper_defs` (a binding over a machine that holds a
  * call, an `FLOOKUP` of a scope that came out of the callee's frame), the scope
@@ -1905,6 +1909,7 @@ fun residues tm =
 val permitted_residues =
   ("yulEvaluator", "invoke_yul") :: ("yulEvaluator", "eval_yul_loop")
   :: ("externalCall", "run_external_call")
+  :: ("externalCall", "run_delegate_call")
   :: List.map (const_key o dest_thy_const)
        (flookup_tm :: yul_lookup_c :: yul_lookup_names_c ::
         (clause_heads helper_defs @

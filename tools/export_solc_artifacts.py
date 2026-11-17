@@ -16,6 +16,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROFILE = ROOT / "profiles" / "solc-0.8.37-via-ir-osaka.json"
+OPTIMIZED_PROFILE = ROOT / "profiles" / "solc-0.8.37-via-ir-osaka-optimized.json"
 PIN_FILE = ROOT / "SOLIDITY_PIN"
 VERSION_RE = re.compile(r"Version:\s*(\d+\.\d+\.\d+)\+commit\.([0-9a-fA-F]+)")
 
@@ -76,6 +77,31 @@ def source_name(path: Path) -> str:
         raise SystemExit(f"source is outside the repository: {path}") from error
 
 
+def stack_depth_errors(errors: Any) -> bool:
+    """Whether every diagnostic is a compiler stack-depth failure."""
+    return isinstance(errors, list) and bool(errors) and all(
+        isinstance(error, dict)
+        and error.get("severity") == "error"
+        and error.get("type") in {"YulException", "CompilerError"}
+        and isinstance(error.get("message"), str)
+        and any(text in error["message"].lower()
+                for text in ("stack too deep", "too deep in the stack"))
+        for error in errors
+    )
+
+
+class CompilationError(SystemExit):
+    """A solc diagnostic failure, retaining structured errors for the fallback."""
+
+    def __init__(self, errors: list[dict[str, Any]]) -> None:
+        self.errors = errors
+        messages = "\n\n".join(
+            error.get("formattedMessage", json.dumps(error, sort_keys=True))
+            for error in errors
+        )
+        super().__init__(f"solc reported compilation errors:\n{messages}")
+
+
 def compile_standard_json(solc: Path, compiler_input: dict[str, Any]) -> dict[str, Any]:
     proc = subprocess.run(
         [str(solc), "--standard-json"],
@@ -97,11 +123,7 @@ def compile_standard_json(solc: Path, compiler_input: dict[str, Any]) -> dict[st
         if diagnostic.get("severity") == "error"
     ]
     if errors:
-        messages = "\n\n".join(
-            diagnostic.get("formattedMessage", json.dumps(diagnostic, sort_keys=True))
-            for diagnostic in errors
-        )
-        raise SystemExit(f"solc reported compilation errors:\n{messages}")
+        raise CompilationError(errors)
     return output
 
 
@@ -153,6 +175,8 @@ def build_artifact_from_sources(
         raise SystemExit(f"{PIN_FILE} must contain one lowercase 40-character SHA")
 
     profile = read_json(profile_path)
+    if profile != read_json(DEFAULT_PROFILE):
+        raise SystemExit("source artifacts must start with the pinned unoptimized profile")
     expected_version = profile.get("compilerVersion")
     settings = profile.get("settings")
     if not isinstance(expected_version, str) or not isinstance(settings, dict):
@@ -166,8 +190,19 @@ def build_artifact_from_sources(
     }
     if remappings:
         compiler_input["settings"]["remappings"] = list(remappings)
-    compiler_output = compile_standard_json(solc, compiler_input)
-    return {
+    failure = None
+    try:
+        compiler_output = compile_standard_json(solc, compiler_input)
+    except CompilationError as error:
+        if not stack_depth_errors(error.errors):
+            raise
+        failure = {"profile": profile, "errors": error.errors}
+        profile = read_json(OPTIMIZED_PROFILE)
+        compiler_input["settings"] = {
+            **compiler_input["settings"], **profile["settings"],
+        }
+        compiler_output = compile_standard_json(solc, compiler_input)
+    artifact = {
         "format": "solidity-hol-solc-artifact-v1",
         "compiler": {
             "pin": pin,
@@ -177,6 +212,9 @@ def build_artifact_from_sources(
         "input": compiler_input,
         "output": compiler_output,
     }
+    if failure is not None:
+        artifact["unoptimizedFailure"] = failure
+    return artifact
 
 
 def main() -> None:

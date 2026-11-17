@@ -73,7 +73,9 @@ val output_selection = JSON.OBJECT [("*", JSON.OBJECT [
 fun read_artifact {root, path} = json_input (fn () =>
   let
     val artifact = read_json path
-    val profile = read_json (OS.Path.concat (root, "profiles/solc-0.8.37-via-ir-osaka.json"))
+    val default_profile = read_json
+      (OS.Path.concat (root, "profiles/solc-0.8.37-via-ir-osaka.json"))
+    val profile = field artifact "profile"
     val pin = read_pin root
     fun require condition message =
       if condition then () else reject MalformedInput (path ^ ": " ^ message)
@@ -82,7 +84,7 @@ fun read_artifact {root, path} = json_input (fn () =>
       ("artifact format " ^ format ^ "; expected solidity-hol-solc-artifact-v1")
     val compiler = field artifact "compiler"
     val () = require (string_field compiler "pin" = pin) "compiler pin differs from SOLIDITY_PIN"
-    val prefix = string_field profile "compilerVersion" ^ "+commit."
+    val prefix = string_field default_profile "compilerVersion" ^ "+commit."
     fun identity token =
       String.isPrefix prefix token andalso
       let
@@ -98,8 +100,34 @@ fun read_artifact {root, path} = json_input (fn () =>
     val () = require (reported_identity
       (String.tokens Char.isSpace (string_field compiler "reportedVersion")))
       "reported compiler version/commit differs from pinned profile"
-    val () = require (json_equal (field artifact "profile", profile))
-      "recorded profile differs from pinned profile"
+    val () =
+      if json_equal (profile, default_profile) then
+        require (not (Option.isSome (JSONUtil.findField artifact "unoptimizedFailure")))
+          "unoptimized profile must not record a fallback"
+      else
+        let
+          val optimized_profile = read_json
+            (OS.Path.concat (root, "profiles/solc-0.8.37-via-ir-osaka-optimized.json"))
+          val () = require (json_equal (profile, optimized_profile))
+            "recorded profile differs from pinned profiles"
+          val failure = field artifact "unoptimizedFailure"
+          val () = require (json_equal (field failure "profile", default_profile))
+            "fallback did not start with the pinned unoptimized profile"
+          fun stack_depth_error error =
+            let
+              val kind = string_field error "type"
+              val message = String.map Char.toLower (string_field error "message")
+            in
+              string_field error "severity" = "error" andalso
+              (kind = "YulException" orelse kind = "CompilerError") andalso
+              (String.isSubstring "stack too deep" message orelse
+               String.isSubstring "too deep in the stack" message)
+            end
+          val errors = JSONUtil.asArray (field failure "errors") |> Vector.foldr (op ::) []
+        in
+          require (not (null errors) andalso List.all stack_depth_error errors)
+            "optimized profile requires unoptimized stack-depth errors only"
+        end
     val settings = object (field profile "settings")
     val input = field artifact "input"
     val () = require (string_field input "language" = "Solidity") "input language must be Solidity"

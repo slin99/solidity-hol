@@ -414,24 +414,6 @@
       }
     },
     {
-      "name": "dirty_bool_reads_true",
-      "function": "flagGet",
-      "args": [
-        32
-      ],
-      "storage": {
-        "12": 2
-      },
-      "expect": {
-        "return": [
-          true
-        ]
-      },
-      "final_storage": {
-        "12": 2
-      }
-    },
-    {
       "name": "bool_neighbour_preserved",
       "function": "flagPut",
       "args": [

@@ -48,10 +48,9 @@
  * Gas is not charged, so gas() reports the whole budget the frame was given
  * and never falls, and a call hands its own gas argument on to the callee,
  * capped at that budget: solc writes gas() there unless the source names a
- * limit. delegatecall is not
- * implemented and the dialect does not name it, so importing Yul that uses it
- * fails closed. docs/yul-call-design.md says why, and what the model does not
- * do.
+ * limit. delegatecall goes to run_delegate_call, which runs the callee's code
+ * in this frame's account, with the frame's caller and call value.
+ * docs/yul-call-design.md says what the model does not do.
  *)
 Theory yulEvaluator
 Ancestors
@@ -312,7 +311,7 @@ Datatype:
   | EvalAbrupt yul_completion yul_machine
 End
 
-(* A message call, as the EVM's CALL and STATICCALL make it.
+(* A message call, as the EVM's CALL, STATICCALL and DELEGATECALL make it.
  *
  * The input region is read out of the caller's memory and touched, then the
  * call goes to run_external_call, which is Verifereum's run_call on the fresh
@@ -324,6 +323,9 @@ End
  * The callee's code is the account's -- a delegated
  * account runs its delegate's, as the EVM's CALL does. The callee starts
  * from the frame's transient storage, as it does from the frame's accounts.
+ * A delegate call (delegate) goes to run_delegate_call instead: the callee's
+ * code runs under this frame's address, with its caller and call value, and
+ * moves no value.
  *
  * What comes back is CALL's own answer: 1 if the callee stopped or returned
  * and 0 if it reverted or halted exceptionally, with the frame's accounts,
@@ -346,13 +348,19 @@ End
  * dispatch is a definition the kernel will not accept.
  *)
 Definition yul_call_def:
-  yul_call (m : yul_machine) (static : bool) (gas : bytes32)
+  yul_call (m : yul_machine) (static : bool) (delegate : bool) (gas : bytes32)
            (callee : bytes32) (value : bytes32) (input : bytes32)
            (input_size : bytes32) (output : bytes32) (output_size : bytes32) =
     let (m1, args) = yul_memory_region m (w2n input) (w2n input_size) in
-      case run_external_call m1.self_address (w2w callee) args (w2n value)
-             static (MIN (w2n gas) m1.gas_limit) m1.accounts m1.transient
-             m1.transaction_parameters of
+      case (if delegate then
+              run_delegate_call m1.self_address m1.caller_address
+                (w2n m1.call_value) (w2w callee) args static
+                (MIN (w2n gas) m1.gas_limit) m1.accounts m1.transient
+                m1.transaction_parameters
+            else
+              run_external_call m1.self_address (w2w callee) args (w2n value)
+                static (MIN (w2n gas) m1.gas_limit) m1.accounts m1.transient
+                m1.transaction_parameters) of
         NONE => EvalAbrupt (YulInvalid "call outside the model") m1
       | SOME outcome =>
           let m2 = m1 with <| accounts := outcome.call_accounts;
@@ -512,10 +520,13 @@ Definition eval_yul_builtin_def:
     | (YReturnDataCopy, [dst; src; sz]) => yul_return_data_copy m dst src sz
     (* call(gas, address, value, args, argsSize, ret, retSize) *)
     | (YCall, [gl; ad; v; inp; insz; outp; outsz]) =>
-        yul_call m F gl ad v inp insz outp outsz
+        yul_call m F F gl ad v inp insz outp outsz
     (* staticcall(gas, address, args, argsSize, ret, retSize) *)
     | (YStaticCall, [gl; ad; inp; insz; outp; outsz]) =>
-        yul_call m T gl ad 0w inp insz outp outsz
+        yul_call m T F gl ad 0w inp insz outp outsz
+    (* delegatecall(gas, address, args, argsSize, ret, retSize) *)
+    | (YDelegateCall, [gl; ad; inp; insz; outp; outsz]) =>
+        yul_call m F T gl ad 0w inp insz outp outsz
     | (YStop, []) => EvalAbrupt (YulReturn []) m
     | (YReturn, [p; s]) =>
         let (m', bs) = yul_memory_region m (w2n p) (w2n s) in
@@ -605,6 +616,7 @@ Definition yul_read_regions_def:
     | (YLog4, [p; s; _; _; _; _]) => [(w2n p, w2n s)]
     | (YCall, [_; _; _; i; isz; _; _]) => [(w2n i, w2n isz)]
     | (YStaticCall, [_; _; i; isz; _; _]) => [(w2n i, w2n isz)]
+    | (YDelegateCall, [_; _; i; isz; _; _]) => [(w2n i, w2n isz)]
     | _ => []
 End
 

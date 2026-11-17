@@ -305,7 +305,7 @@ Definition programs_state_def:
     heap := FEMPTY;
     next_heap_id := 0; immutables := FEMPTY;
     memory_allocated := 0;
-    targets := FEMPTY
+    targets := FEMPTY; return_data := SOME []
   |>
 End
 

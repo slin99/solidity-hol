@@ -1,0 +1,30 @@
+{
+  "name": "pointer_only_structs",
+  "source": "testdata/differential/pointer_only_structs.sol",
+  "contract": "PointerOnlyStructs",
+  "artifact": "testdata/differential/expected/pointer_only_structs.json",
+  "cases": [
+    {
+      "name": "unused_pointer_helpers_admitted",
+      "function": "increment",
+      "args": [
+        41
+      ],
+      "expect": {
+        "return": [
+          42
+        ]
+      }
+    },
+    {
+      "name": "overflow_with_pointer_helpers_admitted",
+      "function": "increment",
+      "args": [
+        "115792089237316195423570985008687907853269984665640564039457584007913129639935"
+      ],
+      "expect": {
+        "panic": "0x11"
+      }
+    }
+  ]
+}

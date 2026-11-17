@@ -9,7 +9,7 @@ Ancestors
   externalCall solidityMemory solidityEvaluator solidityABI solidityEntry solidityEvaluatorProps solidityEvaluatorTest
   solidityCoreProgramsTest solidityImport solidityImportTest
   solidityElaborate solidityElaborateTest solidityPrepareTest solidityPartialTest
-  solidityDifferential solidityDifferentialTest
+  solidityDifferential solidityDifferentialTest solidityDirtyBitsTest
   yulAST yulDialect yulState yulEvaluator yulEvaluatorProps yulEvaluatorTest
   yulImportTest yulContractTest yulConvTest yulDifferential yulDifferentialTest
   verifereum

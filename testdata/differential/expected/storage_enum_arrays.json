@@ -1,0 +1,2085 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/storage_enum_arrays.sol": {
+        "content": "pragma solidity 0.8.37;\n\nenum CopyEnum { A, B, C }\n\ncontract StorageEnumArrays {\n    CopyEnum[] internal source;\n    CopyEnum[] public dest;\n    CopyEnum[35] internal fixedSource;\n    CopyEnum[35] public fixedDest;\n    uint256 public sentinel;\n\n    constructor() {\n        source.push(CopyEnum.A);\n        source.push(CopyEnum.C);\n        dest = source;\n    }\n\n    function copy() external { dest = source; }\n\n    function copyAndRead() external returns (uint256, CopyEnum, CopyEnum) {\n        dest = source;\n        if (dest.length == 0) return (0, CopyEnum.A, CopyEnum.A);\n        return (dest.length, dest[0], dest[dest.length - 1]);\n    }\n\n    function copyFixed() external { fixedDest = fixedSource; }\n\n    function copyFixedAndRead() external returns (CopyEnum, CopyEnum, CopyEnum, CopyEnum, uint256) {\n        fixedDest = fixedSource;\n        return (fixedDest[0], fixedDest[31], fixedDest[32], fixedDest[34], sentinel);\n    }\n\n    function copyToSelf() external { source = source; }\n\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/storage_enum_arrays.sol": {
+        "StorageEnumArrays": {
+          "abi": [
+            {
+              "inputs": [],
+              "stateMutability": "nonpayable",
+              "type": "constructor"
+            },
+            {
+              "inputs": [],
+              "name": "copy",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "copyAndRead",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "enum CopyEnum",
+                  "name": "",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "enum CopyEnum",
+                  "name": "",
+                  "type": "uint8"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "copyFixed",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "copyFixedAndRead",
+              "outputs": [
+                {
+                  "internalType": "enum CopyEnum",
+                  "name": "",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "enum CopyEnum",
+                  "name": "",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "enum CopyEnum",
+                  "name": "",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "enum CopyEnum",
+                  "name": "",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "copyToSelf",
+              "outputs": [],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "name": "dest",
+              "outputs": [
+                {
+                  "internalType": "enum CopyEnum",
+                  "name": "",
+                  "type": "uint8"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "name": "fixedDest",
+              "outputs": [
+                {
+                  "internalType": "enum CopyEnum",
+                  "name": "",
+                  "type": "uint8"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "sentinel",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "60806040523461002757610011610396565b61001961002c565b610aa96103cb8239610aa990f35b610032565b60405190565b5f80fd5b90565b634e487b7160e01b5f52604160045260245ffd5b5f5260205f2090565b634e487b7160e01b5f52603260045260245ffd5b5490565b91909161007a8161006a565b83101561009857602061008e60019261004d565b8185040193060290565b610056565b1b90565b919060086100bc9102916100b660ff8461009d565b9261009d565b9181191691161790565b634e487b7160e01b5f52602160045260245ffd5b600311156100e457565b6100c6565b906100f3826100da565b565b6100fe906100e9565b90565b90565b919061011a610115610122936100f5565b610101565b9083546100a1565b9055565b9081549168010000000000000000831015610156578261014e9160016101549501815561006e565b90610104565b565b610039565b5490565b90565b60209060018203010490565b5f5260205f2090565b9190600861019291029161018c5f198461009d565b9261009d565b9181191691161790565b90565b6101b36101ae6101b89261015f565b61019c565b61015f565b90565b90565b91906101d46101cf6101dc9361019f565b6101bb565b908354610177565b9055565b5f90565b6101f6916101f06101e0565b916101be565b565b5f5b82811061020657505050565b806102155f60019385016101e4565b016101fa565b1c90565b90610232905f199060200360080261021b565b8154169055565b9190808210610248575b505050565b610282926001602061025c61026e94610162565b9261026686610162565b94859161016e565b019406025f811161028a575b5003906101f8565b5f8080610243565b610297906001850361021f565b5f61027a565b906801000000000000000081116102c657816102bb6102c49361015b565b90828155610239565b565b610039565b90565b906102de905f199060080261009d565b191690565b90808214610386576102f48161015b565b9060018060401b0382116103815761031861031e91610313848661029d565b61016e565b9261016e565b60208204918354905f5b84811061036357506020840290035f8111610345575b5050505050565b600191826103549202906102ce565b93505001555f8080808061033e565b9491600161037181926102cb565b9301958654938186015501610328565b610039565b5050565b90610394916102e3565b565b6103a96103a25f610036565b5f90610126565b6103bd6103b55f610036565b600290610126565b6103c85f600161038a565b56fe60806040526004361015610013575b6104f7565b61001d5f3561009c565b80630afdac8d1461009757806323235673146100925780633041129c1461008d57806360726abb146100885780638e304f7714610083578063ad49ff6f1461007e578063f4aaa75b146100795763f58c251c0361000e576104c2565b610442565b61040d565b610370565b6102f0565b6102b8565b610246565b6101fd565b60e01c90565b60405190565b5f80fd5b5f80fd5b90565b6100bc816100b0565b036100c357565b5f80fd5b905035906100d4826100b3565b565b906020828203126100ef576100ec915f016100c7565b90565b6100ac565b634e487b7160e01b5f52603260045260245ffd5b5490565b5f5260205f2090565b91909161012181610108565b83101561013f57602061013560019261010c565b8185040193060290565b6100f4565b1c90565b60ff1690565b61015e9060086101639302610144565b610148565b90565b90610171915461014e565b90565b600161017f81610108565b82101561019c576101999161019391610115565b90610166565b90565b5f80fd5b634e487b7160e01b5f52602160045260245ffd5b600311156101be57565b6101a0565b906101cd826101b4565b565b6101d8906101c3565b90565b6101e4906101cf565b9052565b91906101fb905f602085019401906101db565b565b3461022d576102296102186102133660046100d6565b610174565b6102206100a2565b918291826101e8565b0390f35b6100a8565b5f91031261023c57565b6100ac565b5f0190565b3461027457610256366004610232565b61025e61074d565b6102666100a2565b8061027081610241565b0390f35b6100a8565b610282906100b0565b9052565b6040906102af6102b694969593966102a560608401985f850190610279565b60208301906101db565b01906101db565b565b346102eb576102c8366004610232565b6102e76102d3610915565b6102de9391936100a2565b93849384610286565b0390f35b6100a8565b3461031e57610300366004610232565b6103086109c5565b6103106100a2565b8061031a81610241565b0390f35b6100a8565b9095949261036e9461035d6103679261035360809661034960a088019c5f8901906101db565b60208701906101db565b60408501906101db565b60608301906101db565b0190610279565b565b346103a457610380366004610232565b6103a061038b6109f8565b916103979593956100a2565b95869586610323565b0390f35b6100a8565b50602390565b90565b9190916103be816103a9565b8310156103dc5760206103d26001926103af565b8185040193060290565b6100f4565b60046103ec816103a9565b8210156104095761040691610400916103b2565b90610166565b90565b5f80fd5b3461043d576104396104286104233660046100d6565b6103e1565b6104306100a2565b918291826101e8565b0390f35b6100a8565b3461047057610452366004610232565b61045a610a9d565b6104626100a2565b8061046c81610241565b0390f35b6100a8565b90565b61048890600861048d9302610144565b610475565b90565b9061049b9154610478565b90565b6104aa60065f90610490565b90565b91906104c0905f60208501940190610279565b565b346104f2576104d2366004610232565b6104ee6104dd61049e565b6104e56100a2565b918291826104ad565b0390f35b6100a8565b5f80fd5b634e487b7160e01b5f52604160045260245ffd5b634e487b7160e01b5f52601160045260245ffd5b60209060018203010490565b1b90565b9190600861054e9102916105485f198461052f565b9261052f565b9181191691161790565b90565b61056f61056a610574926100b0565b610558565b6100b0565b90565b90565b919061059061058b6105989361055b565b610577565b908354610533565b9055565b5f90565b6105b2916105ac61059c565b9161057a565b565b5f5b8281106105c257505050565b806105d15f60019385016105a0565b016105b6565b906105ea905f1990602003600802610144565b8154169055565b9190808210610600575b505050565b61063a926001602061061461062694610523565b9261061e86610523565b9485916103af565b019406025f8111610642575b5003906105b4565b5f80806105fb565b61064f90600185036105d7565b5f610632565b9068010000000000000000811161067b5781610673610679936103a9565b906105f1565b565b6104fb565b90565b90610693905f199060080261052f565b191690565b9080821461073d576106a9816103a9565b9067ffffffffffffffff8211610738576106cf6106d5916106ca8486610655565b6103af565b926103af565b60208204918354905f5b84811061071a57506020840290035f81116106fc575b5050505050565b6001918261070b920290610683565b93505001555f808080806106f5565b949160016107288192610680565b93019586549381860155016106df565b6104fb565b5050565b9061074b91610698565b565b61075960026004610741565b565b5f90565b60209060018203010490565b919080821061077a575b505050565b6107b4926001602061078e6107a09461075f565b926107988661075f565b94859161010c565b019406025f81116107bc575b5003906105b4565b5f8080610775565b6107c990600185036105d7565b5f6107ac565b906801000000000000000081116107f857816107ed6107f693610108565b9082815561076b565b565b6104fb565b908082146108a25761080e81610108565b9067ffffffffffffffff821161089d5761083461083a9161082f84866107cf565b61010c565b9261010c565b60208204918354905f5b84811061087f57506020840290035f8111610861575b5050505050565b60019182610870920290610683565b93505001555f8080808061085a565b9491600161088d8192610680565b9301958654938186015501610844565b6104fb565b5050565b906108b0916107fd565b565b90565b6108c96108c46108ce926108b2565b610558565b6100b0565b90565b90565b6108e86108e36108ed926108d1565b610558565b6100b0565b90565b6108ff610905919392936100b0565b926100b0565b820391821161091057565b61050f565b61091d61059c565b5061092661075b565b5061092f61075b565b5061093b5f60016108a6565b6109456001610108565b6109576109515f6108b5565b916100b0565b146109b3576109666001610108565b61097b61097560015f90610115565b90610166565b916109ad6109a760016109a16109916001610108565b61099b60016108d4565b906108f0565b90610115565b90610166565b91929190565b5f5f916109c05f926108b5565b929190565b6109d05f60016108a6565b565b5f1c90565b6109e36109e8916109d2565b610475565b90565b6109f590546109d7565b90565b610a0061075b565b50610a0961075b565b50610a1261075b565b50610a1b61075b565b50610a2461059c565b50610a3160026004610741565b610a46610a4060045f906103b2565b90610166565b610a5c610a566004601f906103b2565b90610166565b91610a73610a6d60046020906103b2565b90610166565b91610a8a610a8460046022906103b2565b90610166565b91610a9560066109eb565b919493929190565b610aa75f5f6108a6565b56"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": "60806040526004361015610013575b6104f7565b61001d5f3561009c565b80630afdac8d1461009757806323235673146100925780633041129c1461008d57806360726abb146100885780638e304f7714610083578063ad49ff6f1461007e578063f4aaa75b146100795763f58c251c0361000e576104c2565b610442565b61040d565b610370565b6102f0565b6102b8565b610246565b6101fd565b60e01c90565b60405190565b5f80fd5b5f80fd5b90565b6100bc816100b0565b036100c357565b5f80fd5b905035906100d4826100b3565b565b906020828203126100ef576100ec915f016100c7565b90565b6100ac565b634e487b7160e01b5f52603260045260245ffd5b5490565b5f5260205f2090565b91909161012181610108565b83101561013f57602061013560019261010c565b8185040193060290565b6100f4565b1c90565b60ff1690565b61015e9060086101639302610144565b610148565b90565b90610171915461014e565b90565b600161017f81610108565b82101561019c576101999161019391610115565b90610166565b90565b5f80fd5b634e487b7160e01b5f52602160045260245ffd5b600311156101be57565b6101a0565b906101cd826101b4565b565b6101d8906101c3565b90565b6101e4906101cf565b9052565b91906101fb905f602085019401906101db565b565b3461022d576102296102186102133660046100d6565b610174565b6102206100a2565b918291826101e8565b0390f35b6100a8565b5f91031261023c57565b6100ac565b5f0190565b3461027457610256366004610232565b61025e61074d565b6102666100a2565b8061027081610241565b0390f35b6100a8565b610282906100b0565b9052565b6040906102af6102b694969593966102a560608401985f850190610279565b60208301906101db565b01906101db565b565b346102eb576102c8366004610232565b6102e76102d3610915565b6102de9391936100a2565b93849384610286565b0390f35b6100a8565b3461031e57610300366004610232565b6103086109c5565b6103106100a2565b8061031a81610241565b0390f35b6100a8565b9095949261036e9461035d6103679261035360809661034960a088019c5f8901906101db565b60208701906101db565b60408501906101db565b60608301906101db565b0190610279565b565b346103a457610380366004610232565b6103a061038b6109f8565b916103979593956100a2565b95869586610323565b0390f35b6100a8565b50602390565b90565b9190916103be816103a9565b8310156103dc5760206103d26001926103af565b8185040193060290565b6100f4565b60046103ec816103a9565b8210156104095761040691610400916103b2565b90610166565b90565b5f80fd5b3461043d576104396104286104233660046100d6565b6103e1565b6104306100a2565b918291826101e8565b0390f35b6100a8565b3461047057610452366004610232565b61045a610a9d565b6104626100a2565b8061046c81610241565b0390f35b6100a8565b90565b61048890600861048d9302610144565b610475565b90565b9061049b9154610478565b90565b6104aa60065f90610490565b90565b91906104c0905f60208501940190610279565b565b346104f2576104d2366004610232565b6104ee6104dd61049e565b6104e56100a2565b918291826104ad565b0390f35b6100a8565b5f80fd5b634e487b7160e01b5f52604160045260245ffd5b634e487b7160e01b5f52601160045260245ffd5b60209060018203010490565b1b90565b9190600861054e9102916105485f198461052f565b9261052f565b9181191691161790565b90565b61056f61056a610574926100b0565b610558565b6100b0565b90565b90565b919061059061058b6105989361055b565b610577565b908354610533565b9055565b5f90565b6105b2916105ac61059c565b9161057a565b565b5f5b8281106105c257505050565b806105d15f60019385016105a0565b016105b6565b906105ea905f1990602003600802610144565b8154169055565b9190808210610600575b505050565b61063a926001602061061461062694610523565b9261061e86610523565b9485916103af565b019406025f8111610642575b5003906105b4565b5f80806105fb565b61064f90600185036105d7565b5f610632565b9068010000000000000000811161067b5781610673610679936103a9565b906105f1565b565b6104fb565b90565b90610693905f199060080261052f565b191690565b9080821461073d576106a9816103a9565b9067ffffffffffffffff8211610738576106cf6106d5916106ca8486610655565b6103af565b926103af565b60208204918354905f5b84811061071a57506020840290035f81116106fc575b5050505050565b6001918261070b920290610683565b93505001555f808080806106f5565b949160016107288192610680565b93019586549381860155016106df565b6104fb565b5050565b9061074b91610698565b565b61075960026004610741565b565b5f90565b60209060018203010490565b919080821061077a575b505050565b6107b4926001602061078e6107a09461075f565b926107988661075f565b94859161010c565b019406025f81116107bc575b5003906105b4565b5f8080610775565b6107c990600185036105d7565b5f6107ac565b906801000000000000000081116107f857816107ed6107f693610108565b9082815561076b565b565b6104fb565b908082146108a25761080e81610108565b9067ffffffffffffffff821161089d5761083461083a9161082f84866107cf565b61010c565b9261010c565b60208204918354905f5b84811061087f57506020840290035f8111610861575b5050505050565b60019182610870920290610683565b93505001555f8080808061085a565b9491600161088d8192610680565b9301958654938186015501610844565b6104fb565b5050565b906108b0916107fd565b565b90565b6108c96108c46108ce926108b2565b610558565b6100b0565b90565b90565b6108e86108e36108ed926108d1565b610558565b6100b0565b90565b6108ff610905919392936100b0565b926100b0565b820391821161091057565b61050f565b61091d61059c565b5061092661075b565b5061092f61075b565b5061093b5f60016108a6565b6109456001610108565b6109576109515f6108b5565b916100b0565b146109b3576109666001610108565b61097b61097560015f90610115565b90610166565b916109ad6109a760016109a16109916001610108565b61099b60016108d4565b906108f0565b90610115565b90610166565b91929190565b5f5f916109c05f926108b5565b929190565b6109d05f60016108a6565b565b5f1c90565b6109e36109e8916109d2565b610475565b90565b6109f590546109d7565b90565b610a0061075b565b50610a0961075b565b50610a1261075b565b50610a1b61075b565b50610a2461059c565b50610a3160026004610741565b610a46610a4060045f906103b2565b90610166565b610a5c610a566004601f906103b2565b90610166565b91610a73610a6d60046020906103b2565b90610166565b91610a8a610a8460046022906103b2565b90610166565b91610a9560066109eb565b919493929190565b610aa75f5f6108a6565b56"
+            },
+            "methodIdentifiers": {
+              "copy()": "60726abb",
+              "copyAndRead()": "3041129c",
+              "copyFixed()": "23235673",
+              "copyFixedAndRead()": "8e304f77",
+              "copyToSelf()": "f4aaa75b",
+              "dest(uint256)": "0afdac8d",
+              "fixedDest(uint256)": "ad49ff6f",
+              "sentinel()": "f58c251c"
+            }
+          },
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 9,
+                "contract": "testdata/differential/storage_enum_arrays.sol:StorageEnumArrays",
+                "label": "source",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_array(t_enum(CopyEnum)5)dyn_storage"
+              },
+              {
+                "astId": 13,
+                "contract": "testdata/differential/storage_enum_arrays.sol:StorageEnumArrays",
+                "label": "dest",
+                "offset": 0,
+                "slot": "1",
+                "type": "t_array(t_enum(CopyEnum)5)dyn_storage"
+              },
+              {
+                "astId": 18,
+                "contract": "testdata/differential/storage_enum_arrays.sol:StorageEnumArrays",
+                "label": "fixedSource",
+                "offset": 0,
+                "slot": "2",
+                "type": "t_array(t_enum(CopyEnum)5)35_storage"
+              },
+              {
+                "astId": 23,
+                "contract": "testdata/differential/storage_enum_arrays.sol:StorageEnumArrays",
+                "label": "fixedDest",
+                "offset": 0,
+                "slot": "4",
+                "type": "t_array(t_enum(CopyEnum)5)35_storage"
+              },
+              {
+                "astId": 25,
+                "contract": "testdata/differential/storage_enum_arrays.sol:StorageEnumArrays",
+                "label": "sentinel",
+                "offset": 0,
+                "slot": "6",
+                "type": "t_uint256"
+              }
+            ],
+            "types": {
+              "t_array(t_enum(CopyEnum)5)35_storage": {
+                "base": "t_enum(CopyEnum)5",
+                "encoding": "inplace",
+                "label": "enum CopyEnum[35]",
+                "numberOfBytes": "64"
+              },
+              "t_array(t_enum(CopyEnum)5)dyn_storage": {
+                "base": "t_enum(CopyEnum)5",
+                "encoding": "dynamic_array",
+                "label": "enum CopyEnum[]",
+                "numberOfBytes": "32"
+              },
+              "t_enum(CopyEnum)5": {
+                "encoding": "inplace",
+                "label": "enum CopyEnum",
+                "numberOfBytes": "1"
+              },
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "errors": [
+      {
+        "component": "general",
+        "errorCode": "1878",
+        "formattedMessage": "Warning: SPDX license identifier not provided in source file. Before publishing, consider adding a comment containing \"SPDX-License-Identifier: <SPDX-License>\" to each source file. Use \"SPDX-License-Identifier: UNLICENSED\" for non-open-source code. Please see https://spdx.org for more information.\n--> testdata/differential/storage_enum_arrays.sol\n\n",
+        "message": "SPDX license identifier not provided in source file. Before publishing, consider adding a comment containing \"SPDX-License-Identifier: <SPDX-License>\" to each source file. Use \"SPDX-License-Identifier: UNLICENSED\" for non-open-source code. Please see https://spdx.org for more information.",
+        "severity": "warning",
+        "sourceLocation": {
+          "end": -1,
+          "file": "testdata/differential/storage_enum_arrays.sol",
+          "start": -1
+        },
+        "type": "Warning"
+      }
+    ],
+    "sources": {
+      "testdata/differential/storage_enum_arrays.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/storage_enum_arrays.sol",
+          "exportedSymbols": {
+            "CopyEnum": [
+              5
+            ],
+            "StorageEnumArrays": [
+              150
+            ]
+          },
+          "id": 151,
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "0:23:0"
+            },
+            {
+              "canonicalName": "CopyEnum",
+              "id": 5,
+              "members": [
+                {
+                  "id": 2,
+                  "name": "A",
+                  "nameLocation": "41:1:0",
+                  "nodeType": "EnumValue",
+                  "src": "41:1:0"
+                },
+                {
+                  "id": 3,
+                  "name": "B",
+                  "nameLocation": "44:1:0",
+                  "nodeType": "EnumValue",
+                  "src": "44:1:0"
+                },
+                {
+                  "id": 4,
+                  "name": "C",
+                  "nameLocation": "47:1:0",
+                  "nodeType": "EnumValue",
+                  "src": "47:1:0"
+                }
+              ],
+              "name": "CopyEnum",
+              "nameLocation": "30:8:0",
+              "nodeType": "EnumDefinition",
+              "src": "25:25:0"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "StorageEnumArrays",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 150,
+              "linearizedBaseContracts": [
+                150
+              ],
+              "name": "StorageEnumArrays",
+              "nameLocation": "61:17:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": false,
+                  "id": 9,
+                  "mutability": "mutable",
+                  "name": "source",
+                  "nameLocation": "105:6:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 150,
+                  "src": "85:26:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                    "typeString": "enum CopyEnum[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 7,
+                      "nodeType": "UserDefinedTypeName",
+                      "pathNode": {
+                        "id": 6,
+                        "name": "CopyEnum",
+                        "nameLocations": [
+                          "85:8:0"
+                        ],
+                        "nodeType": "IdentifierPath",
+                        "referencedDeclaration": 5,
+                        "src": "85:8:0"
+                      },
+                      "referencedDeclaration": 5,
+                      "src": "85:8:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_enum$_CopyEnum_$5",
+                        "typeString": "enum CopyEnum"
+                      }
+                    },
+                    "id": 8,
+                    "nodeType": "ArrayTypeName",
+                    "src": "85:10:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage_ptr",
+                      "typeString": "enum CopyEnum[]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "functionSelector": "0afdac8d",
+                  "id": 13,
+                  "mutability": "mutable",
+                  "name": "dest",
+                  "nameLocation": "135:4:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 150,
+                  "src": "117:22:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                    "typeString": "enum CopyEnum[]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 11,
+                      "nodeType": "UserDefinedTypeName",
+                      "pathNode": {
+                        "id": 10,
+                        "name": "CopyEnum",
+                        "nameLocations": [
+                          "117:8:0"
+                        ],
+                        "nodeType": "IdentifierPath",
+                        "referencedDeclaration": 5,
+                        "src": "117:8:0"
+                      },
+                      "referencedDeclaration": 5,
+                      "src": "117:8:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_enum$_CopyEnum_$5",
+                        "typeString": "enum CopyEnum"
+                      }
+                    },
+                    "id": 12,
+                    "nodeType": "ArrayTypeName",
+                    "src": "117:10:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage_ptr",
+                      "typeString": "enum CopyEnum[]"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "constant": false,
+                  "id": 18,
+                  "mutability": "mutable",
+                  "name": "fixedSource",
+                  "nameLocation": "167:11:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 150,
+                  "src": "145:33:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage",
+                    "typeString": "enum CopyEnum[35]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 15,
+                      "nodeType": "UserDefinedTypeName",
+                      "pathNode": {
+                        "id": 14,
+                        "name": "CopyEnum",
+                        "nameLocations": [
+                          "145:8:0"
+                        ],
+                        "nodeType": "IdentifierPath",
+                        "referencedDeclaration": 5,
+                        "src": "145:8:0"
+                      },
+                      "referencedDeclaration": 5,
+                      "src": "145:8:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_enum$_CopyEnum_$5",
+                        "typeString": "enum CopyEnum"
+                      }
+                    },
+                    "id": 17,
+                    "length": {
+                      "hexValue": "3335",
+                      "id": 16,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": true,
+                      "kind": "number",
+                      "lValueRequested": false,
+                      "nodeType": "Literal",
+                      "src": "154:2:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_rational_35_by_1",
+                        "typeString": "int_const 35"
+                      },
+                      "value": "35"
+                    },
+                    "nodeType": "ArrayTypeName",
+                    "src": "145:12:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage_ptr",
+                      "typeString": "enum CopyEnum[35]"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "functionSelector": "ad49ff6f",
+                  "id": 23,
+                  "mutability": "mutable",
+                  "name": "fixedDest",
+                  "nameLocation": "204:9:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 150,
+                  "src": "184:29:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage",
+                    "typeString": "enum CopyEnum[35]"
+                  },
+                  "typeName": {
+                    "baseType": {
+                      "id": 20,
+                      "nodeType": "UserDefinedTypeName",
+                      "pathNode": {
+                        "id": 19,
+                        "name": "CopyEnum",
+                        "nameLocations": [
+                          "184:8:0"
+                        ],
+                        "nodeType": "IdentifierPath",
+                        "referencedDeclaration": 5,
+                        "src": "184:8:0"
+                      },
+                      "referencedDeclaration": 5,
+                      "src": "184:8:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_enum$_CopyEnum_$5",
+                        "typeString": "enum CopyEnum"
+                      }
+                    },
+                    "id": 22,
+                    "length": {
+                      "hexValue": "3335",
+                      "id": 21,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": true,
+                      "kind": "number",
+                      "lValueRequested": false,
+                      "nodeType": "Literal",
+                      "src": "193:2:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_rational_35_by_1",
+                        "typeString": "int_const 35"
+                      },
+                      "value": "35"
+                    },
+                    "nodeType": "ArrayTypeName",
+                    "src": "184:12:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage_ptr",
+                      "typeString": "enum CopyEnum[35]"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "constant": false,
+                  "functionSelector": "f58c251c",
+                  "id": 25,
+                  "mutability": "mutable",
+                  "name": "sentinel",
+                  "nameLocation": "234:8:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 150,
+                  "src": "219:23:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 24,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "219:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 46,
+                    "nodeType": "Block",
+                    "src": "263:96:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "arguments": [
+                            {
+                              "expression": {
+                                "id": 31,
+                                "name": "CopyEnum",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 5,
+                                "src": "285:8:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_type$_t_enum$_CopyEnum_$5_$",
+                                  "typeString": "type(enum CopyEnum)"
+                                }
+                              },
+                              "id": 32,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "lValueRequested": false,
+                              "memberLocation": "294:1:0",
+                              "memberName": "A",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 2,
+                              "src": "285:10:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_enum$_CopyEnum_$5",
+                                "typeString": "enum CopyEnum"
+                              }
+                            }
+                          ],
+                          "expression": {
+                            "argumentTypes": [
+                              {
+                                "typeIdentifier": "t_enum$_CopyEnum_$5",
+                                "typeString": "enum CopyEnum"
+                              }
+                            ],
+                            "expression": {
+                              "id": 28,
+                              "name": "source",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 9,
+                              "src": "273:6:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                                "typeString": "enum CopyEnum[] storage ref"
+                              }
+                            },
+                            "id": 30,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "280:4:0",
+                            "memberName": "push",
+                            "nodeType": "MemberAccess",
+                            "src": "273:11:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_arraypush_nonpayable$_t_array$_t_enum$_CopyEnum_$5_$dyn_storage_ptr_$_t_enum$_CopyEnum_$5_$returns$__$attached_to$_t_array$_t_enum$_CopyEnum_$5_$dyn_storage_ptr_$",
+                              "typeString": "function (enum CopyEnum[] storage pointer,enum CopyEnum)"
+                            }
+                          },
+                          "id": 33,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "273:23:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$__$",
+                            "typeString": "tuple()"
+                          }
+                        },
+                        "id": 34,
+                        "nodeType": "ExpressionStatement",
+                        "src": "273:23:0"
+                      },
+                      {
+                        "expression": {
+                          "arguments": [
+                            {
+                              "expression": {
+                                "id": 38,
+                                "name": "CopyEnum",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 5,
+                                "src": "318:8:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_type$_t_enum$_CopyEnum_$5_$",
+                                  "typeString": "type(enum CopyEnum)"
+                                }
+                              },
+                              "id": 39,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "lValueRequested": false,
+                              "memberLocation": "327:1:0",
+                              "memberName": "C",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 4,
+                              "src": "318:10:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_enum$_CopyEnum_$5",
+                                "typeString": "enum CopyEnum"
+                              }
+                            }
+                          ],
+                          "expression": {
+                            "argumentTypes": [
+                              {
+                                "typeIdentifier": "t_enum$_CopyEnum_$5",
+                                "typeString": "enum CopyEnum"
+                              }
+                            ],
+                            "expression": {
+                              "id": 35,
+                              "name": "source",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 9,
+                              "src": "306:6:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                                "typeString": "enum CopyEnum[] storage ref"
+                              }
+                            },
+                            "id": 37,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "313:4:0",
+                            "memberName": "push",
+                            "nodeType": "MemberAccess",
+                            "src": "306:11:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_arraypush_nonpayable$_t_array$_t_enum$_CopyEnum_$5_$dyn_storage_ptr_$_t_enum$_CopyEnum_$5_$returns$__$attached_to$_t_array$_t_enum$_CopyEnum_$5_$dyn_storage_ptr_$",
+                              "typeString": "function (enum CopyEnum[] storage pointer,enum CopyEnum)"
+                            }
+                          },
+                          "id": 40,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "306:23:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$__$",
+                            "typeString": "tuple()"
+                          }
+                        },
+                        "id": 41,
+                        "nodeType": "ExpressionStatement",
+                        "src": "306:23:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 44,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 42,
+                            "name": "dest",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 13,
+                            "src": "339:4:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                              "typeString": "enum CopyEnum[] storage ref"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 43,
+                            "name": "source",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 9,
+                            "src": "346:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                              "typeString": "enum CopyEnum[] storage ref"
+                            }
+                          },
+                          "src": "339:13:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                            "typeString": "enum CopyEnum[] storage ref"
+                          }
+                        },
+                        "id": 45,
+                        "nodeType": "ExpressionStatement",
+                        "src": "339:13:0"
+                      }
+                    ]
+                  },
+                  "id": 47,
+                  "implemented": true,
+                  "kind": "constructor",
+                  "modifiers": [],
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 26,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "260:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 27,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "263:0:0"
+                  },
+                  "scope": 150,
+                  "src": "249:110:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 54,
+                    "nodeType": "Block",
+                    "src": "390:18:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 52,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 50,
+                            "name": "dest",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 13,
+                            "src": "392:4:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                              "typeString": "enum CopyEnum[] storage ref"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 51,
+                            "name": "source",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 9,
+                            "src": "399:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                              "typeString": "enum CopyEnum[] storage ref"
+                            }
+                          },
+                          "src": "392:13:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                            "typeString": "enum CopyEnum[] storage ref"
+                          }
+                        },
+                        "id": 53,
+                        "nodeType": "ExpressionStatement",
+                        "src": "392:13:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "60726abb",
+                  "id": 55,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "copy",
+                  "nameLocation": "374:4:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 48,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "378:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 49,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "390:0:0"
+                  },
+                  "scope": 150,
+                  "src": "365:43:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 95,
+                    "nodeType": "Block",
+                    "src": "484:158:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 68,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 66,
+                            "name": "dest",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 13,
+                            "src": "494:4:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                              "typeString": "enum CopyEnum[] storage ref"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 67,
+                            "name": "source",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 9,
+                            "src": "501:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                              "typeString": "enum CopyEnum[] storage ref"
+                            }
+                          },
+                          "src": "494:13:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                            "typeString": "enum CopyEnum[] storage ref"
+                          }
+                        },
+                        "id": 69,
+                        "nodeType": "ExpressionStatement",
+                        "src": "494:13:0"
+                      },
+                      {
+                        "condition": {
+                          "commonType": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          },
+                          "id": 73,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftExpression": {
+                            "expression": {
+                              "id": 70,
+                              "name": "dest",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 13,
+                              "src": "521:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                                "typeString": "enum CopyEnum[] storage ref"
+                              }
+                            },
+                            "id": 71,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "526:6:0",
+                            "memberName": "length",
+                            "nodeType": "MemberAccess",
+                            "src": "521:11:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "BinaryOperation",
+                          "operator": "==",
+                          "rightExpression": {
+                            "hexValue": "30",
+                            "id": 72,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "number",
+                            "lValueRequested": false,
+                            "nodeType": "Literal",
+                            "src": "536:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_rational_0_by_1",
+                              "typeString": "int_const 0"
+                            },
+                            "value": "0"
+                          },
+                          "src": "521:16:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_bool",
+                            "typeString": "bool"
+                          }
+                        },
+                        "id": 81,
+                        "nodeType": "IfStatement",
+                        "src": "517:56:0",
+                        "trueBody": {
+                          "expression": {
+                            "components": [
+                              {
+                                "hexValue": "30",
+                                "id": 74,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "547:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_0_by_1",
+                                  "typeString": "int_const 0"
+                                },
+                                "value": "0"
+                              },
+                              {
+                                "expression": {
+                                  "id": 75,
+                                  "name": "CopyEnum",
+                                  "nodeType": "Identifier",
+                                  "overloadedDeclarations": [],
+                                  "referencedDeclaration": 5,
+                                  "src": "550:8:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_type$_t_enum$_CopyEnum_$5_$",
+                                    "typeString": "type(enum CopyEnum)"
+                                  }
+                                },
+                                "id": 76,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "lValueRequested": false,
+                                "memberLocation": "559:1:0",
+                                "memberName": "A",
+                                "nodeType": "MemberAccess",
+                                "referencedDeclaration": 2,
+                                "src": "550:10:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_enum$_CopyEnum_$5",
+                                  "typeString": "enum CopyEnum"
+                                }
+                              },
+                              {
+                                "expression": {
+                                  "id": 77,
+                                  "name": "CopyEnum",
+                                  "nodeType": "Identifier",
+                                  "overloadedDeclarations": [],
+                                  "referencedDeclaration": 5,
+                                  "src": "562:8:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_type$_t_enum$_CopyEnum_$5_$",
+                                    "typeString": "type(enum CopyEnum)"
+                                  }
+                                },
+                                "id": 78,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "lValueRequested": false,
+                                "memberLocation": "571:1:0",
+                                "memberName": "A",
+                                "nodeType": "MemberAccess",
+                                "referencedDeclaration": 2,
+                                "src": "562:10:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_enum$_CopyEnum_$5",
+                                  "typeString": "enum CopyEnum"
+                                }
+                              }
+                            ],
+                            "id": 79,
+                            "isConstant": false,
+                            "isInlineArray": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "lValueRequested": false,
+                            "nodeType": "TupleExpression",
+                            "src": "546:27:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_tuple$_t_rational_0_by_1_$_t_enum$_CopyEnum_$5_$_t_enum$_CopyEnum_$5_$",
+                              "typeString": "tuple(int_const 0,enum CopyEnum,enum CopyEnum)"
+                            }
+                          },
+                          "functionReturnParameters": 65,
+                          "id": 80,
+                          "nodeType": "Return",
+                          "src": "539:34:0"
+                        }
+                      },
+                      {
+                        "expression": {
+                          "components": [
+                            {
+                              "expression": {
+                                "id": 82,
+                                "name": "dest",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 13,
+                                "src": "591:4:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                                  "typeString": "enum CopyEnum[] storage ref"
+                                }
+                              },
+                              "id": 83,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "596:6:0",
+                              "memberName": "length",
+                              "nodeType": "MemberAccess",
+                              "src": "591:11:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            {
+                              "baseExpression": {
+                                "id": 84,
+                                "name": "dest",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 13,
+                                "src": "604:4:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                                  "typeString": "enum CopyEnum[] storage ref"
+                                }
+                              },
+                              "id": 86,
+                              "indexExpression": {
+                                "hexValue": "30",
+                                "id": 85,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "609:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_0_by_1",
+                                  "typeString": "int_const 0"
+                                },
+                                "value": "0"
+                              },
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "nodeType": "IndexAccess",
+                              "src": "604:7:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_enum$_CopyEnum_$5",
+                                "typeString": "enum CopyEnum"
+                              }
+                            },
+                            {
+                              "baseExpression": {
+                                "id": 87,
+                                "name": "dest",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 13,
+                                "src": "613:4:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                                  "typeString": "enum CopyEnum[] storage ref"
+                                }
+                              },
+                              "id": 92,
+                              "indexExpression": {
+                                "commonType": {
+                                  "typeIdentifier": "t_uint256",
+                                  "typeString": "uint256"
+                                },
+                                "id": 91,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": false,
+                                "lValueRequested": false,
+                                "leftExpression": {
+                                  "expression": {
+                                    "id": 88,
+                                    "name": "dest",
+                                    "nodeType": "Identifier",
+                                    "overloadedDeclarations": [],
+                                    "referencedDeclaration": 13,
+                                    "src": "618:4:0",
+                                    "typeDescriptions": {
+                                      "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                                      "typeString": "enum CopyEnum[] storage ref"
+                                    }
+                                  },
+                                  "id": 89,
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": false,
+                                  "lValueRequested": false,
+                                  "memberLocation": "623:6:0",
+                                  "memberName": "length",
+                                  "nodeType": "MemberAccess",
+                                  "src": "618:11:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_uint256",
+                                    "typeString": "uint256"
+                                  }
+                                },
+                                "nodeType": "BinaryOperation",
+                                "operator": "-",
+                                "rightExpression": {
+                                  "hexValue": "31",
+                                  "id": 90,
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": true,
+                                  "kind": "number",
+                                  "lValueRequested": false,
+                                  "nodeType": "Literal",
+                                  "src": "632:1:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_rational_1_by_1",
+                                    "typeString": "int_const 1"
+                                  },
+                                  "value": "1"
+                                },
+                                "src": "618:15:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_uint256",
+                                  "typeString": "uint256"
+                                }
+                              },
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "nodeType": "IndexAccess",
+                              "src": "613:21:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_enum$_CopyEnum_$5",
+                                "typeString": "enum CopyEnum"
+                              }
+                            }
+                          ],
+                          "id": 93,
+                          "isConstant": false,
+                          "isInlineArray": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "nodeType": "TupleExpression",
+                          "src": "590:45:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$_t_uint256_$_t_enum$_CopyEnum_$5_$_t_enum$_CopyEnum_$5_$",
+                            "typeString": "tuple(uint256,enum CopyEnum,enum CopyEnum)"
+                          }
+                        },
+                        "functionReturnParameters": 65,
+                        "id": 94,
+                        "nodeType": "Return",
+                        "src": "583:52:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "3041129c",
+                  "id": 96,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "copyAndRead",
+                  "nameLocation": "423:11:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 56,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "434:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 65,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 58,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 96,
+                        "src": "455:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 57,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "455:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 61,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 96,
+                        "src": "464:8:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_enum$_CopyEnum_$5",
+                          "typeString": "enum CopyEnum"
+                        },
+                        "typeName": {
+                          "id": 60,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 59,
+                            "name": "CopyEnum",
+                            "nameLocations": [
+                              "464:8:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 5,
+                            "src": "464:8:0"
+                          },
+                          "referencedDeclaration": 5,
+                          "src": "464:8:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_enum$_CopyEnum_$5",
+                            "typeString": "enum CopyEnum"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 64,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 96,
+                        "src": "474:8:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_enum$_CopyEnum_$5",
+                          "typeString": "enum CopyEnum"
+                        },
+                        "typeName": {
+                          "id": 63,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 62,
+                            "name": "CopyEnum",
+                            "nameLocations": [
+                              "474:8:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 5,
+                            "src": "474:8:0"
+                          },
+                          "referencedDeclaration": 5,
+                          "src": "474:8:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_enum$_CopyEnum_$5",
+                            "typeString": "enum CopyEnum"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "454:29:0"
+                  },
+                  "scope": 150,
+                  "src": "414:228:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 103,
+                    "nodeType": "Block",
+                    "src": "678:28:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 101,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 99,
+                            "name": "fixedDest",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 23,
+                            "src": "680:9:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage",
+                              "typeString": "enum CopyEnum[35] storage ref"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 100,
+                            "name": "fixedSource",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 18,
+                            "src": "692:11:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage",
+                              "typeString": "enum CopyEnum[35] storage ref"
+                            }
+                          },
+                          "src": "680:23:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage",
+                            "typeString": "enum CopyEnum[35] storage ref"
+                          }
+                        },
+                        "id": 102,
+                        "nodeType": "ExpressionStatement",
+                        "src": "680:23:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "23235673",
+                  "id": 104,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "copyFixed",
+                  "nameLocation": "657:9:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 97,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "666:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 98,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "678:0:0"
+                  },
+                  "scope": 150,
+                  "src": "648:58:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 140,
+                    "nodeType": "Block",
+                    "src": "807:126:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 123,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 121,
+                            "name": "fixedDest",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 23,
+                            "src": "817:9:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage",
+                              "typeString": "enum CopyEnum[35] storage ref"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 122,
+                            "name": "fixedSource",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 18,
+                            "src": "829:11:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage",
+                              "typeString": "enum CopyEnum[35] storage ref"
+                            }
+                          },
+                          "src": "817:23:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage",
+                            "typeString": "enum CopyEnum[35] storage ref"
+                          }
+                        },
+                        "id": 124,
+                        "nodeType": "ExpressionStatement",
+                        "src": "817:23:0"
+                      },
+                      {
+                        "expression": {
+                          "components": [
+                            {
+                              "baseExpression": {
+                                "id": 125,
+                                "name": "fixedDest",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 23,
+                                "src": "858:9:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage",
+                                  "typeString": "enum CopyEnum[35] storage ref"
+                                }
+                              },
+                              "id": 127,
+                              "indexExpression": {
+                                "hexValue": "30",
+                                "id": 126,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "868:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_0_by_1",
+                                  "typeString": "int_const 0"
+                                },
+                                "value": "0"
+                              },
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "nodeType": "IndexAccess",
+                              "src": "858:12:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_enum$_CopyEnum_$5",
+                                "typeString": "enum CopyEnum"
+                              }
+                            },
+                            {
+                              "baseExpression": {
+                                "id": 128,
+                                "name": "fixedDest",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 23,
+                                "src": "872:9:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage",
+                                  "typeString": "enum CopyEnum[35] storage ref"
+                                }
+                              },
+                              "id": 130,
+                              "indexExpression": {
+                                "hexValue": "3331",
+                                "id": 129,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "882:2:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_31_by_1",
+                                  "typeString": "int_const 31"
+                                },
+                                "value": "31"
+                              },
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "nodeType": "IndexAccess",
+                              "src": "872:13:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_enum$_CopyEnum_$5",
+                                "typeString": "enum CopyEnum"
+                              }
+                            },
+                            {
+                              "baseExpression": {
+                                "id": 131,
+                                "name": "fixedDest",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 23,
+                                "src": "887:9:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage",
+                                  "typeString": "enum CopyEnum[35] storage ref"
+                                }
+                              },
+                              "id": 133,
+                              "indexExpression": {
+                                "hexValue": "3332",
+                                "id": 132,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "897:2:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_32_by_1",
+                                  "typeString": "int_const 32"
+                                },
+                                "value": "32"
+                              },
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "nodeType": "IndexAccess",
+                              "src": "887:13:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_enum$_CopyEnum_$5",
+                                "typeString": "enum CopyEnum"
+                              }
+                            },
+                            {
+                              "baseExpression": {
+                                "id": 134,
+                                "name": "fixedDest",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 23,
+                                "src": "902:9:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$35_storage",
+                                  "typeString": "enum CopyEnum[35] storage ref"
+                                }
+                              },
+                              "id": 136,
+                              "indexExpression": {
+                                "hexValue": "3334",
+                                "id": 135,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "912:2:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_34_by_1",
+                                  "typeString": "int_const 34"
+                                },
+                                "value": "34"
+                              },
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "nodeType": "IndexAccess",
+                              "src": "902:13:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_enum$_CopyEnum_$5",
+                                "typeString": "enum CopyEnum"
+                              }
+                            },
+                            {
+                              "id": 137,
+                              "name": "sentinel",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 25,
+                              "src": "917:8:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            }
+                          ],
+                          "id": 138,
+                          "isConstant": false,
+                          "isInlineArray": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "nodeType": "TupleExpression",
+                          "src": "857:69:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$_t_enum$_CopyEnum_$5_$_t_enum$_CopyEnum_$5_$_t_enum$_CopyEnum_$5_$_t_enum$_CopyEnum_$5_$_t_uint256_$",
+                            "typeString": "tuple(enum CopyEnum,enum CopyEnum,enum CopyEnum,enum CopyEnum,uint256)"
+                          }
+                        },
+                        "functionReturnParameters": 120,
+                        "id": 139,
+                        "nodeType": "Return",
+                        "src": "850:76:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "8e304f77",
+                  "id": 141,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "copyFixedAndRead",
+                  "nameLocation": "721:16:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 105,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "737:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 120,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 108,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 141,
+                        "src": "758:8:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_enum$_CopyEnum_$5",
+                          "typeString": "enum CopyEnum"
+                        },
+                        "typeName": {
+                          "id": 107,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 106,
+                            "name": "CopyEnum",
+                            "nameLocations": [
+                              "758:8:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 5,
+                            "src": "758:8:0"
+                          },
+                          "referencedDeclaration": 5,
+                          "src": "758:8:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_enum$_CopyEnum_$5",
+                            "typeString": "enum CopyEnum"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 111,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 141,
+                        "src": "768:8:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_enum$_CopyEnum_$5",
+                          "typeString": "enum CopyEnum"
+                        },
+                        "typeName": {
+                          "id": 110,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 109,
+                            "name": "CopyEnum",
+                            "nameLocations": [
+                              "768:8:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 5,
+                            "src": "768:8:0"
+                          },
+                          "referencedDeclaration": 5,
+                          "src": "768:8:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_enum$_CopyEnum_$5",
+                            "typeString": "enum CopyEnum"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 114,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 141,
+                        "src": "778:8:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_enum$_CopyEnum_$5",
+                          "typeString": "enum CopyEnum"
+                        },
+                        "typeName": {
+                          "id": 113,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 112,
+                            "name": "CopyEnum",
+                            "nameLocations": [
+                              "778:8:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 5,
+                            "src": "778:8:0"
+                          },
+                          "referencedDeclaration": 5,
+                          "src": "778:8:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_enum$_CopyEnum_$5",
+                            "typeString": "enum CopyEnum"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 117,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 141,
+                        "src": "788:8:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_enum$_CopyEnum_$5",
+                          "typeString": "enum CopyEnum"
+                        },
+                        "typeName": {
+                          "id": 116,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 115,
+                            "name": "CopyEnum",
+                            "nameLocations": [
+                              "788:8:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 5,
+                            "src": "788:8:0"
+                          },
+                          "referencedDeclaration": 5,
+                          "src": "788:8:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_enum$_CopyEnum_$5",
+                            "typeString": "enum CopyEnum"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 119,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 141,
+                        "src": "798:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 118,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "798:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "757:49:0"
+                  },
+                  "scope": 150,
+                  "src": "712:221:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 148,
+                    "nodeType": "Block",
+                    "src": "970:20:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 146,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 144,
+                            "name": "source",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 9,
+                            "src": "972:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                              "typeString": "enum CopyEnum[] storage ref"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 145,
+                            "name": "source",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 9,
+                            "src": "981:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                              "typeString": "enum CopyEnum[] storage ref"
+                            }
+                          },
+                          "src": "972:15:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_array$_t_enum$_CopyEnum_$5_$dyn_storage",
+                            "typeString": "enum CopyEnum[] storage ref"
+                          }
+                        },
+                        "id": 147,
+                        "nodeType": "ExpressionStatement",
+                        "src": "972:15:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "f4aaa75b",
+                  "id": 149,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "copyToSelf",
+                  "nameLocation": "948:10:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 142,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "958:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 143,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "970:0:0"
+                  },
+                  "scope": 150,
+                  "src": "939:51:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 151,
+              "src": "52:941:0",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "0:994:0"
+        },
+        "id": 0
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}

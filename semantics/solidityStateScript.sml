@@ -27,14 +27,18 @@ End
  * Byte sequences use the length and byte cells; other heap values are deferred.
  * object_address is the memory address the compiler's allocator gives the
  * object (the free memory pointer when it is allocated), which inline
- * assembly sees as the reference's value.
+ * assembly sees as the reference's value. object_padded says the compiler's
+ * memory holds zeros from a byte sequence's last byte to its word boundary,
+ * as the compiler's allocations write it; a copy of return data leaves what
+ * was there before.
  *)
 Datatype:
   heap_object = <|
     object_type : sol_type;
     object_length : num;
     object_cells : num |-> runtime_value;
-    object_address : num
+    object_address : num;
+    object_padded : bool
   |>
 End
 
@@ -54,7 +58,10 @@ End
  * by the ast_id's number), which cv encodes as sptrees. Scopes are innermost
  * first. The immutables are the values of the contract's immutables, keyed by
  * their declarations: those the deployed code holds, or, during creation, those
- * the constructor has assigned so far; one not there is zero.
+ * the constructor has assigned so far; one not there is zero. The return
+ * data is the frame's return data buffer, the last message call's return or
+ * revert bytes, where the source knows it: NONE after a call whose return data
+ * the source computes no bytes for (the ecrecover precompile).
  *)
 Datatype:
   source_state = <|
@@ -65,7 +72,8 @@ Datatype:
     heap : num |-> heap_object;
     next_heap_id : num;
     memory_allocated : num;
-    targets : num |-> captured_target
+    targets : num |-> captured_target;
+    return_data : byte list option
   |>
 End
 

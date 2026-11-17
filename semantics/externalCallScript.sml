@@ -17,6 +17,9 @@
  * accounts pending deletion is outside the model (NONE), since a fresh frame
  * cannot hand them back to the caller's transaction.
  *
+ * A delegate call runs the target's code in the caller's own account, with
+ * the caller frame's sender and value, and moves no value.
+ *
  * The construction follows vyper-hol's concrete external calls.
  *)
 Theory externalCall
@@ -111,6 +114,49 @@ Definition run_external_call_def:
         | NONE => NONE
 End
 
+(* The callee's message for DELEGATECALL, as Verifereum's proceed_call makes
+ * it: the target's code (or its delegate's) runs as the caller, at its
+ * address on its storage and balance, with the sender and value of the
+ * caller's own frame. No value moves, so no stipend comes with it. *)
+Definition delegate_call_state_def:
+  delegate_call_state self sender value target calldata static gas accounts
+                      transient tx_params =
+    let tx = <| from := sender; to := SOME self; data := calldata;
+                nonce := 0; value := value; gasLimit := gas;
+                gasPrice := 0; accessList := []; blobVersionedHashes := [];
+                maxFeePerBlobGas := NONE; maxFeePerGas := NONE;
+                authorizationList := [] |> in
+    let code = case get_delegate (lookup_account target accounts).code of
+                 NONE => (lookup_account target accounts).code
+               | SOME d => (lookup_account d accounts).code in
+    let ctxt = initial_context self code static empty_return_destination tx in
+    let rollback = <| accounts := accounts; tStorage := transient;
+                      accesses := <| addresses := fINSERT self
+                                                    (fINSERT target fEMPTY);
+                                     storageKeys := fEMPTY |>;
+                      toDelete := [] |> in
+    <| contexts := [(ctxt, rollback)]; txParams := tx_params;
+       rollback := rollback; originalAccounts := accounts;
+       msdomain := Collect empty_domain |>
+End
+
+(* A delegate call from the frame of self (called by sender with value) to
+ * the code at target: a precompile target runs as the precompile. *)
+Definition run_delegate_call_def:
+  run_delegate_call self sender value target calldata static gas accounts
+                    transient tx_params =
+    let s0 = delegate_call_state self sender value target calldata static gas
+               accounts transient tx_params in
+    if fIN target precompile_addresses then
+      external_call_result accounts transient (dispatch_precompiles target s0)
+    else
+      case run_call s0 of
+        SOME outcome => external_call_result accounts transient outcome
+      | NONE => NONE
+End
+
 val () = cv_auto_trans external_call_state_def;
 val () = cv_auto_trans external_call_result_def;
 val () = cv_auto_trans run_external_call_def;
+val () = cv_auto_trans delegate_call_state_def;
+val () = cv_auto_trans run_delegate_call_def;

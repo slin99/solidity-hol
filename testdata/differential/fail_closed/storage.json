@@ -1,0 +1,21 @@
+{
+  "name": "rejected_storage",
+  "source": "testdata/differential/storage.sol",
+  "contract": "Storage",
+  "artifact": "testdata/differential/expected/storage.json",
+  "cases": [
+    {
+      "name": "dirty_bool_reads_true",
+      "function": "getFlag",
+      "args": [],
+      "storage": {
+        "1": "0x02000000"
+      },
+      "expect": {
+        "return": [
+          true
+        ]
+      }
+    }
+  ]
+}
