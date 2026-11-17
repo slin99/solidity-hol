@@ -26,7 +26,9 @@
  *
  * valid_src_unit checks what holds for the unit as a whole: distinct ids,
  * declarations, function and modifier headers, storage layout, state
- * variables, constants, getters and bases. Function bodies, and the
+ * variables, constants, immutables (each non-transient, declared in a base
+ * of the contract, of a stored scalar or function type: immutable_variable),
+ * getters and bases. Function bodies, and the
  * expressions of initializers, base-constructor arguments and constant
  * values, are checked where solidityElaborate elaborates them.
  * unit_rejections lists the checks a unit fails, with the node each is about.
@@ -365,8 +367,9 @@ End
 (* A contract flattened along its linearization (the compiler's
  * linearizedBaseContracts, most derived first, which bases lists): the
  * members of all its bases, functions most derived first, state variables in
- * storage order. Declarations without a body are left out. Initializers
- * give state variables (by id) their declared values; constants come with
+ * storage order; contract_immutables are the immutables, which have no
+ * storage slot. Declarations without a body are left out. Initializers
+ * give state variables and immutables (by id) their declared values; constants come with
  * their values; base arguments are
  * the base constructor arguments: the base giving them, the base whose
  * constructor takes them, and the arguments, in evaluation order.

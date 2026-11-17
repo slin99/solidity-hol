@@ -260,13 +260,29 @@ class CorpusTests(unittest.TestCase):
                  "data must be 0x-prefixed hex"),
                 ({"calldata": "0x", "logs": [{"topics": []}]}, "must have topics, data"),
                 ({"calldata": "0x", "logs": [{"topics": [], "data": "0x", "logger": 2**160}]},
-                 r"logger must be a 160-bit word")]:
+                 r"logger must be a 160-bit word"),
+                ({"deploy": True, "args": [], "immutables": {"x": 1}},
+                 "immutables must be a non-empty object, in a call"),
+                ({"function": "f", "args": [], "immutables": {}},
+                 "immutables must be a non-empty object, in a call"),
+                ({"function": "f", "args": [], "immutables": [1]},
+                 "immutables must be a non-empty object, in a call"),
+                ({"function": "f", "args": [], "immutables": {"x": "xyz"}},
+                 r"immutables\.x must be an integer")]:
             case = {**base, **fields}
             with self.subTest(fields=fields), tempfile.TemporaryDirectory() as temporary:
                 path = Path(temporary) / "corpus.json"
                 path.write_text(json.dumps(corpus([case])), encoding="utf-8")
                 with self.assertRaisesRegex(driver.CorpusError, message):
                     driver.load_corpus(path)
+
+    def test_accepts_immutables_in_a_call(self) -> None:
+        case = {"name": "f", "function": "f", "args": [], "immutables": {"x": 1},
+                "expect": {"return": []}}
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "corpus.json"
+            path.write_text(json.dumps(corpus([case])), encoding="utf-8")
+            driver.load_corpus(path)
 
     def test_peer_suites(self) -> None:
         peer = {"source": "p.sol", "contract": "P", "artifact": "p.json"}
