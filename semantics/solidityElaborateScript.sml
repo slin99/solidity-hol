@@ -240,7 +240,9 @@ End
 Definition join_operation_def:
   join_operation ty =
     case ty of
-      LocatedT MemoryLoc element => SOME (DefaultReferenceOperation MemoryLoc element)
+      LocatedT loc element =>
+        if located_value_type ty then SOME (DefaultReferenceOperation loc element)
+        else NONE
     | _ => default_operation ty
 End
 
@@ -689,6 +691,16 @@ Definition conditional_targets_def:
               assign_local (n + 2) n ty b ++ fs, v :: vs, n1)
     | _ => NONE) ∧
   (conditional_targets n _ _ _ = NONE)
+End
+
+(* A tuple of destinations, as against a parenthesised destination `(e)`,
+ * which is the destination e itself. *)
+Definition tuple_destination_def:
+  tuple_destination e =
+    case e of
+      SrcTupleExpression _ [SOME _] _ => F
+    | SrcTupleExpression _ _ _ => T
+    | _ => F
 End
 
 (* Snapshots of the bound values of a tuple right-hand side. *)
@@ -1734,6 +1746,7 @@ Definition elab_expr_def:
                 | INR bs => INR bs)
          | _ => reject (info.node_id, "unsupported operator type") (elab_expr ctx n1 r))
     | SrcAssignment info op lhs rhs tid =>
+        if tuple_destination lhs then
         (case lhs of
            SrcTupleExpression linfo cs ltid =>
              ensure (IS_SOME (decode_type_identifier tid)) (info.node_id, "type annotation mismatch")
@@ -1757,7 +1770,8 @@ Definition elab_expr_def:
                         | INR bs => INR bs)
                    | INR bs => INR bs)
               | INR bs => INR bs)
-         | _ =>
+         | _ => INR [(info.node_id, "unsupported tuple assignment")])
+        else
              (case elab_expr ctx n rhs of
                 INL ((sr, ar, vr), n1) =>
                   let (copied, n2) = case lhs of
@@ -1793,7 +1807,7 @@ Definition elab_expr_def:
                                | INR why => INR [(expr_id rhs, why)])
                           | NONE => INR [(info.node_id, "unsupported compound assignment")])
                    | INR bs => INR bs)
-              | INR bs => INR (bs ++ blockers (elab_destination ctx n lhs))))
+              | INR bs => INR (bs ++ blockers (elab_destination ctx n lhs)))
     | SrcTupleExpression info [SOME e] tid =>
         (case elab_expr ctx n e of
            INL ((ss, a, vt), n1) =>
@@ -1825,48 +1839,49 @@ Definition elab_expr_def:
         (case callee of
            SrcArrayMember _ member root_expr _ =>
              (case elab_location ctx n root_expr of
-                INL ((ss, ref, ArrayT element NONE), n1) =>
-                  if order ≠ []
-                  then INR [(info.node_id, "unsupported array member call")] else
-                  if member = "push" then
-                    (case args of
-                       [] =>
-                         if ¬source_type_matches element tid
-                         then INR [(info.node_id, "type annotation mismatch")] else
-                         let target = BoundAtom (AstId n1) in
-                         let ty = read_value_type element in
-                         let (rs, a) = bind_value (n1 + 1) ty
-                                         (ReadOperation element target) in
-                         INL ((ss ++ [DefineStmt (AstId n1) (ReferenceType element)
-                                        (ArrayPushOperation ref)] ++ rs,
-                               a, ElabType ty), n1 + 2)
-                     | [arg] =>
-                         ensure (tid = "t_tuple$__$") (info.node_id, "type annotation mismatch")
-                         (let array_ty = ArrayT element NONE in
-                          let (saved, array) = bind_value n1 (LocatedT StorageLoc array_ty)
-                            (ReadOperation array_ty ref) in
-                          case elab_expr ctx (n1 + 1) arg of
-                            INL ((sa, a, vt), n2) =>
-                              let target = ReferenceDestination (BoundAtom (AstId n2)) element in
-                              if ¬copy_target_ok ctx.enums ctx.structs target
-                              then INR [(info.node_id, "storage copy of this type")] else
-                              (case plain_assignment (n2 + 1) target a vt of
-                                 INL ((cs, _, _), n3) =>
-                                   INL ((ss ++ saved ++ sa ++
-                                           [DefineStmt (AstId n2) (ReferenceType element)
-                                              (ArrayPushOperation array)] ++ cs,
-                                         ConstantAtom (BoolValue F), ElabTuple []), n3)
-                               | INR why => INR [(expr_id arg, why)])
-                          | INR bs => INR bs)
-                     | _ => INR [(info.node_id, "unsupported array member call")])
-                  else if member = "pop" ∧ args = [] ∧ tid = "t_tuple$__$" then
-                    INL ((ss ++ [DefineStmt (AstId n1) (ProductType [])
-                                   (ArrayPopOperation ref)],
-                          ConstantAtom (BoolValue F), ElabTuple []), n1 + 1)
-                  else INR [(info.node_id, "unsupported array member call")]
-              | INL _ =>
-                  reject (info.node_id, "unsupported array member call")
-                    (elab_arg_values ctx n args)
+                INL ((ss, ref, rty), n1) =>
+                  (case pushed_element rty of
+                     NONE =>
+                       reject (info.node_id, "unsupported array member call")
+                         (elab_arg_values ctx n args)
+                   | SOME element =>
+                     if order ≠ []
+                     then INR [(info.node_id, "unsupported array member call")] else
+                     if member = "push" then
+                       (case args of
+                          [] =>
+                            if ¬source_type_matches element tid
+                            then INR [(info.node_id, "type annotation mismatch")] else
+                            let target = BoundAtom (AstId n1) in
+                            let ty = read_value_type element in
+                            let (rs, a) = bind_value (n1 + 1) ty
+                                            (ReadOperation element target) in
+                            INL ((ss ++ [DefineStmt (AstId n1) (ReferenceType element)
+                                           (ArrayPushOperation ref)] ++ rs,
+                                  a, ElabType ty), n1 + 2)
+                        | [arg] =>
+                            ensure (tid = "t_tuple$__$") (info.node_id, "type annotation mismatch")
+                            (let (saved, array) = bind_value n1 (LocatedT StorageLoc rty)
+                               (ReadOperation rty ref) in
+                             case elab_expr ctx (n1 + 1) arg of
+                               INL ((sa, a, vt), n2) =>
+                                 let target = ReferenceDestination (BoundAtom (AstId n2)) element in
+                                 if ¬copy_target_ok ctx.enums ctx.structs target
+                                 then INR [(info.node_id, "storage copy of this type")] else
+                                 (case plain_assignment (n2 + 1) target a vt of
+                                    INL ((cs, _, _), n3) =>
+                                      INL ((ss ++ saved ++ sa ++
+                                              [DefineStmt (AstId n2) (ReferenceType element)
+                                                 (ArrayPushOperation array)] ++ cs,
+                                            ConstantAtom (BoolValue F), ElabTuple []), n3)
+                                  | INR why => INR [(expr_id arg, why)])
+                             | INR bs => INR bs)
+                        | _ => INR [(info.node_id, "unsupported array member call")])
+                     else if member = "pop" ∧ args = [] ∧ tid = "t_tuple$__$" then
+                       INL ((ss ++ [DefineStmt (AstId n1) (ProductType [])
+                                      (ArrayPopOperation ref)],
+                             ConstantAtom (BoolValue F), ElabTuple []), n1 + 1)
+                     else INR [(info.node_id, "unsupported array member call")])
               | INR bs => INR (bs ++ blockers (elab_arg_values ctx n args)))
          | _ => INR [(info.node_id, "unsupported callee")])
         else
@@ -2056,7 +2071,9 @@ Definition elab_expr_def:
          | NONE => INR (type_name_blockers (info.node_id, "unsupported enum value") tn))
     | SrcConditional info c t f tid =>
         (case decode_type_identifier tid of
-           SOME (SrcTupleType tys) =>
+           SOME (SrcTupleType tys0) =>
+             (* a storage component is a reference, as a read gives it *)
+             let tys = MAP read_value_type tys0 in
              if ¬EVERY (memory_binding_ok ctx.enums ctx.structs) tys
              then INR [(info.node_id, "unsupported conditional type")] else
              (case elab_expr ctx n c of
@@ -2092,11 +2109,10 @@ Definition elab_expr_def:
            INL ((sc, ac', ElabType BoolT), n2) =>
              (case elab_expr ctx (n2 + 2) t of
                 INL ((st, at, vt), n3) =>
-                  (case identifier_type tid of
+                  (case OPTION_MAP read_value_type (identifier_type tid) of
                      SOME ty =>
-                       if ¬(case ty of LocatedT loc _ => loc = MemoryLoc
-                                     | _ => is_stored_scalar_type ty ∨
-                                            is_function_type ty) ∨
+                       if ¬(located_value_type ty ∨ is_stored_scalar_type ty ∨
+                            is_function_type ty) ∨
                           ¬memory_binding_ok ctx.enums ctx.structs ty
                        then reject (info.node_id, "unsupported conditional type")
                               (elab_expr ctx n f) else
@@ -2517,14 +2533,16 @@ Definition elab_expr_def:
                   blockers (elab_expr ctx n index)))
     | SrcFunctionCall info (SrcArrayMember _ member root_expr _) [] [] tid =>
         (case elab_location ctx n root_expr of
-           INL ((ss, ref, ArrayT element NONE), n1) =>
-             if ¬(member = "push" ∧
-                  source_type_matches element tid)
-             then INR [(info.node_id, "unsupported array member call")] else
-             INL ((ss ++ [DefineStmt (AstId n1) (ReferenceType element)
-                            (ArrayPushOperation ref)],
-                   BoundAtom (AstId n1), element), n1 + 1)
-         | INL _ => INR [(info.node_id, "unsupported array member call")]
+           INL ((ss, ref, rty), n1) =>
+             (case pushed_element rty of
+                SOME element =>
+                  if ¬(member = "push" ∧
+                       source_type_matches element tid)
+                  then INR [(info.node_id, "unsupported array member call")] else
+                  INL ((ss ++ [DefineStmt (AstId n1) (ReferenceType element)
+                                 (ArrayPushOperation ref)],
+                        BoundAtom (AstId n1), element), n1 + 1)
+              | NONE => INR [(info.node_id, "unsupported array member call")])
          | INR bs => INR bs)
     | SrcFunctionCall info (SrcIdentifier _ _ _ _) args order _ =>
         (case call_target ctx e of
@@ -2545,12 +2563,48 @@ Definition elab_expr_def:
              call_location info.node_id
                (bind_call callee rets (elab_args ctx n info.node_id 0 order (values_of params) args))
          | INR b => reject b (elab_arg_values ctx n args))
+    | SrcTupleExpression info [SOME e'] tid =>
+        (case elab_location ctx n e' of
+           INL ((ss, ref, ty), n1) =>
+             if annotation_matches tid (ElabType (LocatedT StorageLoc ty))
+             then INL ((ss, ref, ty), n1)
+             else INR [(info.node_id, "type annotation mismatch")]
+         | INR bs => INR bs)
+    | SrcConditional info c t f tid =>
+        (* a storage reference on each arm, joined as elab_expr joins one *)
+        (case elab_expr ctx n c of
+           INL ((sc, cond, ElabType BoolT), n1) =>
+             (case elab_expr ctx (n1 + 2) t of
+                INL ((st, at, ElabType (LocatedT StorageLoc ty)), n2) =>
+                  (case elab_expr ctx (n2 + 1) f of
+                     INL ((sf, af, vf), n3) =>
+                       let lty = LocatedT StorageLoc ty in
+                       if vf ≠ ElabType lty then INR [(expr_id f, "type mismatch")] else
+                       if ¬annotation_matches tid (ElabType lty)
+                       then INR [(info.node_id, "type annotation mismatch")] else
+                       let (rs, res) = bind_value n1 lty (DefaultReferenceOperation StorageLoc ty) in
+                       INL ((sc ++ rs ++
+                             [IfStmt cond (st ++ assign_local (n1 + 1) n1 lty at)
+                                          (sf ++ assign_local n2 n1 lty af)],
+                             res, ty), n3)
+                   | INR bs => INR bs)
+              | INL _ => INR [(expr_id t, "not a storage location")]
+              | INR bs => INR bs)
+         | INL _ => INR [(expr_id c, "condition not a bool")]
+         | INR bs => INR bs)
     | SrcUnsupportedExpr info msg es =>
         INR ((info.node_id, msg) :: blockers (elab_arg_values ctx n es))
     | _ => INR [(expr_id e, "not a storage location")]) ∧
   (elab_destination ctx n e =
     case e of
-      SrcIdentifier info _ x tid =>
+      SrcTupleExpression info [SOME e'] tid =>
+        (case elab_destination ctx n e' of
+           INL ((ss, target), n1) =>
+             if annotation_matches tid (ElabType (read_value_type (destination_type target)))
+             then INL ((ss, target), n1)
+             else INR [(info.node_id, "type annotation mismatch")]
+         | INR bs => INR bs)
+    | SrcIdentifier info _ x tid =>
         (case variable_destination ctx n x tid of
            SOME d => INL d
          | NONE => unknown_reference ctx info.node_id "assignment to this target" x)
@@ -3553,15 +3607,17 @@ End
 
 (* The getter of the public state variable or immutable x of type ty, the
  * procedure its selector reaches: it returns what getter_results says of the
- * location its arguments name. *)
+ * location its arguments name, each result a value the ABI can encode. *)
 Definition elab_getter_def:
-  elab_getter structs state immutables n (x : num) =
+  elab_getter enums structs state immutables n (x : num) =
     case ALOOKUP (state ++ immutables) x of
       NONE => NONE
     | SOME ty =>
         case getter_shape structs ty of
           NONE => NONE
         | SOME (keys, results) =>
+            if ¬EVERY (abi_binding_ok enums structs o getter_result o SND) results
+            then NONE else
             let params = getter_parameters n keys in
             let root = n + LENGTH keys in
             let ((nav, ref, _), n1) =
@@ -3581,11 +3637,11 @@ Definition elab_getter_def:
 End
 
 Definition elab_getters_def:
-  (elab_getters structs state immutables n [] = SOME ([], n)) ∧
-  (elab_getters structs state immutables n (x :: gs) =
-    case elab_getter structs state immutables n x of
+  (elab_getters enums structs state immutables n [] = SOME ([], n)) ∧
+  (elab_getters enums structs state immutables n (x :: gs) =
+    case elab_getter enums structs state immutables n x of
       SOME (p, n1) =>
-        (case elab_getters structs state immutables n1 gs of
+        (case elab_getters enums structs state immutables n1 gs of
            SOME (ps, n2) => SOME (p :: ps, n2)
          | NONE => NONE)
     | NONE => NONE)
@@ -3831,7 +3887,7 @@ Definition elaborate_contract_def:
           INR _ => NONE
         | INL (lfps, n0) =>
         let fps = cfps ++ lfps in
-        (case elab_getters c.contract_structs state immutables n0
+        (case elab_getters c.contract_enums c.contract_structs state immutables n0
                 (FILTER (λx. IS_SOME (ALOOKUP (state ++ immutables) x))
                    (MAP FST c.contract_getters)) of
            NONE => NONE
@@ -3912,7 +3968,7 @@ Definition contract_blockers_def:
     blockers (elab_functions ctx c T T n (elaborated_library_functions c)) ++
     MAP (λx. (x, "unsupported getter"))
       (FILTER (λx. IS_SOME (ALOOKUP (state ++ immutables) x) ∧
-                   IS_NONE (elab_getter c.contract_structs state immutables n x))
+                   IS_NONE (elab_getter c.contract_enums c.contract_structs state immutables n x))
          (MAP FST c.contract_getters)) ++
     blockers (elab_constants (contract_ctx c [] [] [] ctx.constants) n
                 c.contract_constants) ++
@@ -4072,6 +4128,7 @@ val () = cv_auto_trans tuple_components_def;
 val () = cv_auto_trans tuple_write_def;
 val () = cv_auto_trans tuple_writes_def;
 val () = cv_auto_trans conditional_targets_def;
+val () = cv_auto_trans tuple_destination_def;
 val snapshot_values_pre_def =
   cv_auto_trans_pre "snapshot_values_pre" snapshot_values_def;
 

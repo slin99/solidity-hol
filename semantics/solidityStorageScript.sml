@@ -91,13 +91,15 @@ Definition state_reference_def:
     | NONE => NONE
 End
 
-(* Solidity mapping keys occupy one 32-byte word: integers are extended to
- * 256 bits, addresses and booleans are zero padded, bytesN are right padded.
+(* Solidity mapping keys occupy one 32-byte word: integers and enums are
+ * extended to 256 bits, addresses and booleans are zero padded, bytesN are
+ * right padded.
  *)
 Definition mapping_key_bytes_def:
-  mapping_key_bytes key s =
+  mapping_key_bytes env key s =
     if byte_sequence_type key then (case s of BytesValue bs => SOME bs | _ => NONE)
-    else if ¬elementary_storage_type_ok key ∨ ¬elementary_scalar_has_type key s then NONE
+    else if ¬(is_stored_scalar_type key ∧ storage_type_ok env key ∧
+              scalar_has_type env key s) then NONE
     else case s of
       BytesValue bs => SOME (bs ++ REPLICATE (32 - LENGTH bs) 0w)
     | _ => OPTION_MAP (num_to_bytes 32) (stored_number 32 s)
@@ -211,6 +213,62 @@ Definition store_storage_bytes_def:
         if ¬byte_sequence_type ty then INR (InvalidCompletion "not storage bytes")
         else replace_storage_bytes accounts addr slot bs static
     | _ => INR (InvalidCompletion "not storage bytes")
+End
+
+(* The first k bytes of a word, the rest zeroed. *)
+Definition word_prefix_def:
+  word_prefix (w : bytes32) k = w && ¬(¬0w >>> (8 * k))
+End
+
+(* The length update of push(b) as solc 0.8.37 emits it, which push(b) then
+ * follows with a write of b at the returned location: a short sequence's
+ * length tag rises by 2; at 31 bytes the root word, its tag byte cleared,
+ * moves to the data area; a long sequence's length rises by one. solc's
+ * push() also clears a short root word past the new length; its own writes
+ * keep those bytes zero, so push() shares this update. *)
+Definition push_storage_bytes_def:
+  push_storage_bytes accounts addr slot =
+    case storage_byte_length accounts addr slot of
+      INR c => INR c
+    | INL length =>
+        if 2 ** 64 ≤ length then INR (PanicCompletion 65) else
+        let root = lookup_storage slot (lookup_account addr accounts).storage in
+        let accounts' =
+          if length < 31 then set_storage_word accounts addr slot (root + 2w)
+          else if length = 31 then
+            set_storage_word
+              (set_storage_word accounts addr (mapping_slot [] slot) (word_prefix root 31))
+              addr slot 65w
+          else set_storage_word accounts addr slot (n2w (2 * (length + 1) + 1)) in
+        INL (accounts', storage_byte_location slot (length + 1) length)
+End
+
+(* pop() as solc 0.8.37 emits it: a sequence of at most 32 bytes keeps its
+ * first length - 1 bytes in a short root word, clearing the data area's
+ * first word at 32; a longer one clears its last byte and updates its
+ * length. *)
+Definition pop_storage_bytes_def:
+  pop_storage_bytes accounts addr slot =
+    case storage_byte_length accounts addr slot of
+      INR c => INR c
+    | INL length =>
+        if length = 0 then INR (PanicCompletion 49) else
+        let storage = (lookup_account addr accounts).storage in
+        let data_slot = mapping_slot [] slot in
+        if length = 32 then
+          INL (set_storage_word
+            (set_storage_word accounts addr slot
+               (word_prefix (lookup_storage data_slot storage) 31 + 62w))
+            addr data_slot 0w)
+        else if length < 32 then
+          INL (set_storage_word accounts addr slot
+            (word_prefix (lookup_storage slot storage) (length - 1) +
+             n2w (2 * (length - 1))))
+        else
+          let (byte_slot, offset) = storage_byte_location slot length (length - 1) in
+          let cleared = set_storage_word accounts addr byte_slot
+                (lookup_storage byte_slot storage && ¬(255w << (8 * offset))) in
+          INL (set_storage_word cleared addr slot (n2w (2 * (length - 1) + 1)))
 End
 
 (* Storage copies read each source word after clearing obsolete destination
@@ -616,7 +674,7 @@ Definition navigate_storage_def:
   navigate_storage env accounts r s =
     case r of
       StorageReference PersistentStorage addr slot 0 (MappingT key value) layout =>
-        (case mapping_key_bytes key s of
+        (case mapping_key_bytes env key s of
            SOME bs =>
              ValueOk (ReferenceValue
                (StorageReference PersistentStorage addr (mapping_slot bs slot)
@@ -704,6 +762,9 @@ val () = cv_auto_trans clear_byte_slots_def;
 val () = cv_auto_trans store_byte_chunks_def;
 val () = cv_auto_trans replace_storage_bytes_def;
 val () = cv_auto_trans store_storage_bytes_def;
+val () = cv_auto_trans word_prefix_def;
+val () = cv_auto_trans push_storage_bytes_def;
+val () = cv_auto_trans pop_storage_bytes_def;
 val () = cv_auto_trans copy_storage_byte_chunks_def;
 val () = cv_auto_trans copy_storage_bytes_def;
 val () = cv_auto_trans storage_element_location_def;

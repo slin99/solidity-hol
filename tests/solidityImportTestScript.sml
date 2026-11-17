@@ -841,8 +841,9 @@ val () = edited_unit_with struct_contracts "struct_field_identity_mismatch"
 val () = edited_unit_with struct_contracts "struct_field_type_mismatch"
   (edit_first "MemberAccess" (type_identifier "t_uint16") struct_ast)
 
-(* A public struct has a getter when each member it returns is a value or a
- * byte sequence: item's members are values, nested's include a struct. *)
+(* A public struct has a getter when each member it returns is a value, a
+ * byte sequence or a struct: item's members are values, nested's include a
+ * struct. *)
 fun public_state_variable name selector =
   edit_first_where
     (fn v => is_node "VariableDeclaration" v andalso
@@ -865,8 +866,8 @@ val () = import_error_with Unsupported struct_contracts "undeclared struct membe
     (set_field "referencedDeclaration" (JSON.INT 999999) o
      type_identifier "t_struct$_Packed_$999999_storage_ptr") struct_ast)
 
-Theorem nested_struct_getter_rejected:
-  valid_src_unit struct_getter ∧ ¬valid_src_unit nested_struct_getter
+Theorem nested_struct_getter_valid:
+  valid_src_unit struct_getter ∧ valid_src_unit nested_struct_getter
 Proof
   CONV_TAC cv_eval
 QED

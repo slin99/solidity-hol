@@ -370,11 +370,13 @@ A public state variable's getter takes one key per mapping and one index per
 array along its type, an index past an array's length reverting with no data.
 It returns the value it reaches, a byte sequence copied to memory; for a
 struct, its members in declaration order, skipping mappings and arrays other
-than `bytes` and `string`, as the compiler's getter does. A struct with a
-struct-typed member, or with no member to return, has no getter here, and
-neither has a mapping whose key is neither an elementary value type nor bytes/string.
+than `bytes` and `string`, as the compiler's getter does; a struct-typed
+member is returned whole as a copy in memory. Every result must be a type the
+ABI encodes, so a getter whose struct member holds a mapping fails closed. A
+struct with no member to return has no getter here, and neither has a mapping
+whose key is neither an elementary value type, an enum nor bytes/string.
 
-Constants of elementary value types, `string` and `bytes`, declared in the
+Constants of elementary value types, enums, `string` and `bytes`, declared in the
 contract, a base, a reached library or at file level are imported with their
 values when reachable. Each elaborates to two
 procedures without parameters that evaluate the value and convert it to the
@@ -444,7 +446,8 @@ An enum is ABI encoded as `uint8`, as a parameter, a return, an event
 argument or an external call's argument. A call or creation whose enum
 argument is out of range reverts when the decoder reaches it, before later arguments are read.
 `type(E).min` and `type(E).max` are the first and last enum values.
-Enums as mapping keys, constants or immutables are rejected.
+An enum may be a mapping key, hashed as one 32-byte word like other value
+types, a constant or an immutable.
 
 `keccak256(b)` hashes the contents of a `bytes` value with Keccak-256, giving
 a `bytes32`. A string or hex literal is hashed directly without allocating

@@ -49,7 +49,7 @@ interface IPair {
     function put(Pair memory p) external;
 }
 
-// A mapping key type the core cannot hold: the struct is left out too.
+// A struct holding an enum-keyed mapping.
 library Roles {
     enum Role { A, B }
 
@@ -149,7 +149,7 @@ contract Partial is Mid {
 
     function nodeModified() public withNode(tree) {}
 
-    // a storage parameter of a struct that is left out
+    // a storage parameter of a struct holding an enum-keyed mapping
     function grantParam(Roles.Grant storage) internal pure {}
 
     // a tuple holding a storage struct, as a reference

@@ -193,7 +193,8 @@ Definition storage_type_ok_def:
     0 < n ∧ n < 2 ** 256 ∧ storage_type_ok env element ∧
     IS_SOME (fixed_storage_slots env (ArrayT element (SOME n)))) ∧
   (storage_type_ok env (MappingT key value) ⇔
-    (elementary_storage_type_ok key ∨ byte_sequence_type key) ∧ storage_type_ok env value) ∧
+    ((is_stored_scalar_type key ∧ storage_type_ok env key) ∨ byte_sequence_type key) ∧
+    storage_type_ok env value) ∧
   (storage_type_ok env (ArrayT element NONE) ⇔ storage_type_ok env element) ∧
   (storage_type_ok env (StructT id) ⇔ IS_SOME (lookup_struct_layout env id)) ∧
   (storage_type_ok env (EnumT id) ⇔ IS_SOME (lookup_enum env id)) ∧
@@ -397,6 +398,15 @@ Definition storage_base_def:
     case binding of
       SOME (ReferenceType ty) => SOME ty
     | SOME (SingleType (LocatedT StorageLoc ty)) => SOME ty
+    | _ => NONE
+End
+
+(* The element a push appends to a dynamic storage array or byte array. *)
+Definition pushed_element_def:
+  pushed_element ty =
+    case ty of
+      ArrayT element NONE => SOME element
+    | BytesT => SOME (FixedBytesT 1)
     | _ => NONE
 End
 
@@ -1025,19 +1035,24 @@ Definition wf_core_operation_def:
     case a of
       BoundAtom x =>
         (case storage_base (ALOOKUP ctx.bindings x) of
-           SOME (ArrayT element NONE) =>
-             storage_type_ok env element ∧
-             annotation = ReferenceType element
-         | _ => F)
+           SOME ty =>
+             (case pushed_element ty of
+                SOME element =>
+                  storage_type_ok env element ∧
+                  annotation = ReferenceType element
+              | NONE => F)
+         | NONE => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (ArrayPopOperation a) ⇔
     annotation = ProductType [] ∧
     case a of
       BoundAtom x =>
         (case storage_base (ALOOKUP ctx.bindings x) of
-           SOME (ArrayT element NONE) =>
-             storage_type_ok env element
-         | _ => F)
+           SOME ty =>
+             (case pushed_element ty of
+                SOME element => storage_type_ok env element
+              | NONE => F)
+         | NONE => F)
     | _ => F) ∧
   (wf_core_operation env ctx annotation (InternalCallOperation f args) ⇔
     case lookup_procedure env f of
