@@ -11,8 +11,10 @@ fun holbuild_extra_deps (_ : string list) = ()
 val () = holbuild_extra_deps [
   "../SOLIDITY_PIN", "../profiles/solc-0.8.37-via-ir-osaka.json",
   "../testdata/frontend/expected/pure_core.json",
-  "../testdata/frontend/expected/qualified_unsupported_event.json",
+  "../testdata/frontend/expected/qualified_struct_event.json",
   "../testdata/frontend/expected/external_library.json",
+  "../testdata/differential/expected/contract_creation.json",
+  "../testdata/differential/expected/contract_qualified_variables.json",
   "../profiles/solc-0.8.37-via-ir-osaka-optimized.json",
   "../testdata/frontend/expected/stack_depth.json"
 ]
@@ -34,19 +36,20 @@ Proof
   CONV_TAC cv_eval
 QED
 
-(* An unsupported qualified event must not reject unrelated functions. *)
+(* A library event with a struct parameter, emitted by its qualified name,
+ * elaborates beside an unrelated function. *)
 val qualified_event_artifact = solidityPrepareLib.prepare_artifact
-  {root = "..", path = "../testdata/frontend/expected/qualified_unsupported_event.json",
-   source = "testdata/frontend/qualified_unsupported_event.sol"};
+  {root = "..", path = "../testdata/frontend/expected/qualified_struct_event.json",
+   source = "testdata/frontend/qualified_struct_event.sol"};
 val qualified_event_functions = #functions (#prepared qualified_event_artifact);
 val () =
   case List.find (fn {name, ...} => name = "supported") qualified_event_functions of
     SOME {reason = NONE, ...} => ()
-  | _ => raise Fail "supported: rejected by an unrelated qualified event";
+  | _ => raise Fail "supported: rejected beside a qualified event";
 val () =
-  case List.find (fn {name, ...} => name = "emitsUnsupported") qualified_event_functions of
-    SOME {reason = SOME _, ...} => ()
-  | _ => raise Fail "emitsUnsupported: not marked unsupported";
+  case List.find (fn {name, ...} => name = "emitsPayload") qualified_event_functions of
+    SOME {reason = NONE, ...} => ()
+  | _ => raise Fail "emitsPayload: qualified struct event not supported";
 
 fun rejects expected work =
   (work (); raise Fail "preparation unexpectedly accepted input")
@@ -92,23 +95,21 @@ val () =
 fun edited_unit name =
   rhs (concl (DB.fetch "solidityImportTest" (name ^ "_def")));
 
-val public_library = solidityPrepareLib.prepare_unit
-  (edited_unit "public_library_unit");
-val () =
-  case List.find (fn {name, ...} => name = "bound") (#functions public_library) of
-    SOME {reason = SOME _, ...} => ()
-  | _ => raise Fail "bound: public library call not marked unsupported";
-
 val external_library = #prepared (solidityPrepareLib.prepare_artifact
   {root = "..", path = "../testdata/frontend/expected/external_library.json",
    source = "testdata/frontend/external_library.sol"});
+val external_library_reasons =
+  map (fn {name, reason, ...} => (name, reason)) (#functions external_library);
 val () =
-  if map (fn {name, reason, ...} => (name, isSome reason))
-       (#functions external_library) =
-     [("supported", false), ("callsPublic", true), ("callsExternal", true),
-      ("callsIndirect", true), ("callsCaller", true),
-      ("safePrivate", false), ("safeInternal", false), ("indirect", true)]
-  then () else raise Fail "external library calls were not isolated per caller";
+  if map (fn (name, reason) => (name, isSome reason)) external_library_reasons =
+     [("supported", false), ("callsPublic", false), ("callsExternal", false),
+      ("callsIndirect", false), ("callsCaller", false), ("linkedPublic", false),
+      ("safePrivate", false), ("safeInternal", false), ("indirect", false)]
+  then () else
+    raise Fail ("library function admission differs: " ^
+      String.concatWith "; "
+        (map (fn (name, reason) => name ^ " " ^ getOpt (reason, "admitted"))
+           external_library_reasons));
 val () = rejects solidityPrepareLib.SourceRejected
   (fn () => ignore (solidityPrepareLib.prepare_unit (edited_unit "wrong_scope")));
 val () = rejects solidityPrepareLib.SourceRejected
@@ -175,6 +176,8 @@ val () = List.app (fn extra => with_extra_settings extra
    "\"remappings\": [1],",
    "\"remappings\": [\"a/b/\"],",
    "\"remappings\": [], \"remappings\": [],",
+   "\"libraries\": {\"fake.sol\": {\"L\": \"0x0000000000000000000000000000000000005000\"}},",
+   "\"libraries\": {}, \"libraries\": {},",
    "\"remappings\": [\"a/=b/\"], \"unknownSetting\": true,",
    "\"remappings\": [\"a/=b/\"], \"viaIR\": false,"];
 
@@ -227,3 +230,87 @@ val () = List.app (fn text => with_artifact_text text
   [Substring.string without_failure ^ "\n}\n",
    replace_text "\"type\": \"YulException\"" "\"type\": \"ParserError\"" fallback_text,
    replace_text "too deep in the stack" "unrelated compilation error" fallback_text];
+
+(* A factory with a realistically sized child initcode must pass the same
+ * preparation checks, with every byte retained in the resulting program. *)
+val large_creation_artifact = JSONParser.parseFile
+  "../testdata/differential/expected/contract_creation.json";
+fun set_json_field key value (JSON.OBJECT fields) =
+      JSON.OBJECT (map (fn (k, v) => (k, if k = key then value else v)) fields)
+  | set_json_field _ _ _ = raise Fail "expected artifact object";
+fun set_json_path [] value object = value
+  | set_json_path (key :: keys) value object =
+      set_json_field key
+        (set_json_path keys value (JSONUtil.lookupField object key)) object;
+val large_creation_artifact = set_json_path
+  ["output", "contracts", "testdata/differential/contract_creation_child.sol",
+   "CreatedChild", "evm", "bytecode", "object"]
+  (JSON.STRING (String.concat (List.tabulate (3000, fn _ => "00ff017e"))))
+  large_creation_artifact;
+val large_creation_unit = solidityPrepareLib.import_unit large_creation_artifact
+  "testdata/differential/contract_creation.sol";
+
+Definition large_creation_unit_def:
+  large_creation_unit = ^large_creation_unit
+End
+
+val large_creation = solidityPrepareLib.prepare_unit “large_creation_unit”;
+val () = if List.all (fn {reason, ...} => not (isSome reason))
+    (#functions large_creation) then ()
+  else raise Fail "large child initcode rejected a factory function";
+val _ = save_thm ("large_creation_source_valid", #source_valid large_creation);
+val _ = save_thm ("large_creation_elaborates", #elaborates large_creation);
+val _ = save_thm ("large_creation_core_wf", #core_wf large_creation);
+val create_operation = prim_mk_const
+  {Thy = "solidityCore", Name = "CreateContractOperation"};
+fun is_create_operation tm =
+  let val (head, args) = strip_comb tm in
+    head ~~ create_operation andalso length args = 5
+  end;
+val prepared_codes = map (hd o #2 o strip_comb)
+  (find_terms is_create_operation (#program large_creation));
+val expected_code = listSyntax.mk_list
+  (List.concat (List.tabulate (3000, fn _ =>
+     map (fn n => wordsSyntax.mk_wordii (n, 8)) [0, 255, 1, 126])), “:word8”);
+fun unfold_code code =
+  let val {Thy, Name, ...} = dest_thy_const code in
+    rhs (concl (DB.fetch Thy (Name ^ "_def")))
+  end;
+val () = if List.exists (fn code => unfold_code code ~~ expected_code) prepared_codes
+  then () else raise Fail "large child initcode changed during preparation";
+
+(* Variables named through their contract elaborate everywhere, the creation
+ * included (contract_qualified_variables.sol). With an initializer the
+ * elaborator rejects, the functions still elaborate but the creation has no
+ * procedure: preparation says why, so the unit is not taken as admitted. *)
+val qualified = #prepared (solidityPrepareLib.prepare_artifact
+  {root = "..", path = "../testdata/differential/expected/contract_qualified_variables.json",
+   source = "testdata/differential/contract_qualified_variables.sol"});
+val () =
+  if List.all (fn {reason, ...} => not (isSome reason)) (#functions qualified) andalso
+     null (#creation qualified)
+  then () else raise Fail "contract-qualified variables not supported";
+
+Definition qualified_unit_def:
+  qualified_unit = ^(#unit qualified)
+End
+
+val failed_initializer = rhs (concl (EVAL
+  “qualified_unit with unit_contracts :=
+     [HD qualified_unit.unit_contracts with contract_initializers :=
+        MAP (λ(x, e). (x, SrcUnsupportedExpr
+                            <| node_id := expr_id e;
+                               node_location := <| loc_start := 0; loc_length := 0;
+                                                   loc_source := 0 |> |>
+                            "edited initializer" []))
+          (HD qualified_unit.unit_contracts).contract_initializers]”));
+
+Definition failed_initializer_unit_def:
+  failed_initializer_unit = ^failed_initializer
+End
+
+val failed_creation = solidityPrepareLib.prepare_unit “failed_initializer_unit”;
+val () =
+  if List.all (fn {reason, ...} => not (isSome reason)) (#functions failed_creation) andalso
+     List.exists (String.isSubstring "edited initializer") (#creation failed_creation)
+  then () else raise Fail "a creation without a procedure was not reported";

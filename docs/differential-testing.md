@@ -30,10 +30,35 @@ through the elaborated program's dispatcher (`solidityEntry`), so selector
 lookup, payability, argument decoding, `receive` and `fallback` are compared
 too. An expectation is `{"return": [...]}` for typed results,
 `{"returned": "0x..."}` for exact return bytes, `{"panic": code}`, or
-`{"revert": "0x..."}`. Raw calldata declares no return types; use `returned`
+`{"revert": "0x..."}`, or `{"abort": true}` for an invalid-opcode abort. Raw calldata declares no return types; use `returned`
 to check its successful return payload, or `{"return": []}` for empty data.
 Dynamic bytes and strings are supplied as `0x` byte strings, preserving UTF-8,
 NUL bytes and arbitrary binary contents.
+
+A case may supply `"gas": [g0, g1, ...]` for source `gasleft()` and value-position
+inline assembly `gas()` reads, in evaluation order. Each value must fit a
+256-bit word, and execution must consume the entire list. Missing, mistagged,
+out-of-range or leftover evidence is diagnostic. A direct first-operand
+`gas()` in assembly `call`, `staticcall` or `delegatecall` uses the frame's
+call budget and consumes no evidence.
+
+For a nonempty list, the kernel checks the readings against a replay of the
+same Verifereum transaction. It records the actual values pushed by top-frame
+`GAS` steps, excluding words that a bounded scan carries through `PUSH`, `DUP`
+and `SWAP` directly into a call's gas operand. Duplicating the gas word itself
+counts as an observation. This conservative filter can reject a source read
+used directly as a call budget when the compiled instructions match that
+scan. Classification depends on the bytecode layout, not the source spelling. The raw-Yul three-way report classifies cases
+with nonempty gas evidence as inconclusive because raw Yul does not model
+these observations.
+
+Library calls run the library's linked bytecode as `DELEGATECALL`, sharing the
+calling contract's storage, sender and value. The exporter records the
+deterministic addresses in `settings.libraries` (see [profiles.md](profiles.md));
+both executions install every linked library from that artifact in their initial
+accounts. No extra suite field is needed. The library's source body is not
+executed by the source evaluator. Storage-reference arguments cross the ABI as
+slot words, while ordinary arguments and results use the shared ABI codec.
 
 A case with `"deploy": true` and the constructor's `args` (or, as
 `calldata`, their raw encoding) is a creation instead: Verifereum runs a creation transaction whose data is the artifact's
@@ -99,11 +124,19 @@ python3 tools/run_differential.py -j2 --shard-count 8 --shard-index 2
 
 Integration pushes save all eight shard snapshots for later PRs; PR and
 merge-queue runs save only shard 0 to bound cache use.
+Shard 0 also builds `solidityHolBaseTheory`, including the creation-call tests
+but excluding the corpus already covered by the shards. `solidityHolTheory`
+retains the complete roll-up. Each shard preserves holbuild logs and reports
+cache use in its workflow summary.
 Source and Yul suite theories declare a `.results.jsonl` extra output beside
 their scripts. holbuild caches and restores it with the theory, so reports
 retain outcomes and stage admissions without an old build log. Missing suite
-or case records fail the report, including on cache hits. Failed builds use
-their diagnostic logs and ignore possibly stale result files.
+or case records fail the report, including on cache hits. A suite theory
+that failed or was never reached uses its diagnostic log and ignores any
+possibly stale result file. When a multi-target build fails, the suites it
+reports as built, restored from cache or up to date still finished, so their
+result files are read and reported. The runners pass `--verbose` so holbuild
+names up-to-date targets too.
 
 `solidityDifferentialCorpus` remains a compatibility roll-up, refreshed with
 integration reports. It owns no case definitions: ML consumers enumerating
@@ -121,8 +154,9 @@ Verifereum executes the recorded bytecode. This comparison does not certify
 the compiler or its artifact producer.
 
 Both runs return an outcome, the complete committed storage of the tested
-contract and the logs. Source frame completion rolls back writes on panic or revert before
-comparison. The verdict compares total word-to-word storage functions by HOL
+contract and the logs. Source frame completion rolls back writes on panic, revert or invalid-opcode abort before
+comparison. Only Verifereum’s `InvalidOpcode` exception matches an abort; other
+EVM exceptions remain diagnostic. The verdict compares total word-to-word storage functions by HOL
 equality, so agreement includes every slot, including unlisted mapping keys and
 cleared slots. The existing Verifereum from/to theorem and HOL's generic cv
 equality rule evaluate this equality using the canonical sparse encoding,
@@ -182,9 +216,11 @@ high-level calls use; `docs/yul-call-design.md` says how.
 
 A deployment executes the top-level creation code at the created address, with
 empty calldata and the encoded constructor arguments appended to the stage's
-actual initcode. Named object sizes and offsets come from the initcode and its
-runtime suffix; layouts without that suffix are rejected. `codecopy` reads those
-bytes, and `setimmutable` patches the copied runtime at its emitted offsets.
+actual initcode. The runtime offset comes from an exact runtime suffix when
+present, otherwise from a unique byte match within the initcode. Missing or
+ambiguous matches are rejected. `yul_creation_execution` checks the recorded
+span's bounds and bytes. `codecopy` reads those bytes, and `setimmutable`
+patches the copied runtime at its emitted offsets.
 The returned bytes must match that runtime with its immutable patches. The
 comparison then observes the immutable words, complete storage and logs, just
 as the source/bytecode deployment comparison does. Unsupported object names and
@@ -202,3 +238,95 @@ python3 tools/run_yul_differential.py --solc ~/.local/opt/solc-0.8.37/solc -j8
 `docs/yul-differential.md` is the last run's result: the stages admitted, the
 agreements, and every case that is not an agreement, with its status.
 `--no-hol` runs the compiler-side checks alone.
+
+## Fuzzing
+
+`tools/run_differential_fuzz.py` generates calls to the suites' contracts and
+checks the source against the bytecode on them, outside per-PR CI. For each
+function it screens seeded candidates: 70% ABI-encoded arguments, 20%
+encodings with a word, a length or an offset changed, dirty high bits, bytes
+cut or added, and 10% raw calldata. Initial storage is filled from the
+contract's storage layout with clean values of each variable's type; mappings
+get slots for keys from the same pool of addresses and small numbers the
+arguments use, and arrays and byte strings are short. Address, integer and
+bool immutables get values too. A suite without a peer gets
+`testdata/differential/fuzz/echo_peer.sol` at `0x5000`, which returns its
+arguments.
+
+pyrevm runs each candidate on the runtime code in the transaction's world
+(the addresses, block and gas limit of `solidityBytecode`, but gas price 0:
+pyrevm doesn't debit the gas purchase from the sender, so the fuzz runs in HOL
+price gas at 0 too, and a contract reading the sender's balance sees the same
+balance in all three runs) and records the outcome,
+the changed slots and the logs. Calls that halt any other way than `INVALID`,
+or use more than a million gas (HOL's runs of those take minutes), are
+dropped. Of the rest, K per contract (`-k`, 32 by default) become cases in
+the suite format, picked by function and then by outcome shape, so rare
+outcomes come before repeats.
+
+One fleet action per contract runs its cases through
+`solidityDifferentialLib.run_fuzz_cases` (several contracts in one HOL process
+ran out of memory, and an action that fails, out of memory or time, fails only
+its contract). An action that runs past 30 minutes plus 240 seconds per case
+(the case cap twice, for a confirmed case) is stopped, and its contract is
+reported as inconclusive with status `prepare-timeout`, so one contract never
+holds up a run. The contract is prepared once, and each case's source run is compared with
+its recording by `fuzz_verdict`, evaluated with `cv_eval`, with no theorem
+saved. Every difference, and every twentieth case, is then confirmed by
+`confirm_verdict`: the source against Verifereum's run of the bytecode, and
+that run against the recording. A confirmation mark on a case that ends in a
+diagnostic passes to the contract's next case. A case's status is:
+
+- `agree`: the source matches the recording (and, when confirmed, the bytecode,
+  which matches the recording);
+- `disagree`: the source and Verifereum's run of the bytecode differ in
+  outcome, complete storage or logs;
+- `pyrevm-mismatch`: they agree with each other but not with pyrevm;
+- `inconclusive`: either run ended in a diagnostic, reported by reason, or the
+  case's evaluation ran past 120 seconds (`Timeout`; a confirmation of a
+  difference that does is an `error`);
+- `error`: the case could not be built or evaluated.
+
+With `--sequences`, a candidate is a sequence of 2 to 4 calls on one
+deployment instead: per function, sequences starting with it, the later calls
+to any function, all with the first call's immutables. pyrevm runs each call
+in a fresh world whose contract storage is the complete storage the call
+before it left, and each call becomes an ordinary case seeded with that
+storage (`seq_NNNN_S` for step `S` of sequence `NNNN`). The verdicts compare
+outcome, complete storage and logs, so a call that agrees leaves the source
+in exactly the next call's starting state: this compares the source with the
+bytecode after every call of the sequence, and a disagreement is already a
+single-call case. Only storage carries over; balances and the peer start
+afresh, as for single calls. A call that halts ends its sequence. Selection
+takes sequences by their functions and outcome shapes, and K bounds the calls
+(a sequence longer than the calls left is skipped); the report adds how many
+sequences agreed after every call, a sequence counting only if every one of
+its calls has an agreeing result.
+
+Disagreements are shrunk (storage, immutables, value, sender and calldata
+words dropped while HOL still confirms them) and written as suites under
+`<output>/minimized/`, ready to add to `testdata/differential/suites/`. A
+written case's expectation is pyrevm's recording, so only disagreements whose
+recording matches Verifereum's bytecode run (`recording_matches`) are shrunk
+and written, and every shrinking step keeps that; the others are listed as not
+minimized.
+The report (`report.md`, `report.json`) also lists inconclusives by contract,
+function and reason, and the functions whose every ABI-encoded case ended in
+`InvalidCompletion`. pyrevm needs Python 3.11:
+
+```sh
+uv run --python 3.11 --with pyrevm tools/run_differential_fuzz.py --output /tmp/fuzz
+```
+
+`--suite` picks suites, `--targets` names other contracts in the same shape,
+and `--semantic-tests <solidity checkout> --coverage <report> --solc <solc>`
+fuzzes the report's admitted and partially admitted semanticTests (calls to
+an unsupported function end inconclusive; each test is compiled as the expectation
+runner does, named `st_<test path>`). `--shard I/N` takes every Nth target
+from the Ith: run shards in parallel, each from its own checkout, since a
+fleet action updates the project it starts from.
+`--seed` and `--candidates` change the calls, and `--max-batches` bounds the
+HOL actions; `--resume` reuses the output's cases and finished contracts, and runs a
+contract whose action failed again. Like the
+expectation runner, it runs only on the fleet
+when remote execution is configured.

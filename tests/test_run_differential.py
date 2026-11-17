@@ -180,6 +180,22 @@ class CorpusTests(unittest.TestCase):
             with self.assertRaisesRegex(driver.CorpusError, "duplicate case"):
                 driver.load_corpus(path)
 
+    def test_gas_observations_and_abort(self) -> None:
+        data = corpus([{"name": "abort", "function": "f", "args": [],
+                        "gas": [123, "0xff"], "expect": {"abort": True}}])
+        with tempfile.TemporaryDirectory() as temporary:
+            fake = FakeRoot(Path(temporary))
+            fake.write_corpus(data)
+            self.assertEqual(driver.load_corpus(fake.root / driver.CORPUS)["suites"][0]["cases"],
+                             data["suites"][0]["cases"])
+            for gas in ([True], [-1], [2**256], "bad"):
+                data["suites"][0]["cases"][0]["gas"] = gas
+                fake.write_corpus(data)
+                with self.assertRaises(driver.CorpusError):
+                    driver.load_corpus(fake.root / driver.CORPUS)
+        with self.assertRaises(driver.CorpusError):
+            driver.check_expectation({"abort": False}, "expect")
+
     def test_rejects_malformed_expectation(self) -> None:
         case = {"name": "f", "function": "f", "args": [], "expect": {"return": [1], "panic": 1}}
         with tempfile.TemporaryDirectory() as temporary:
@@ -247,13 +263,29 @@ class CorpusTests(unittest.TestCase):
                  "data must be 0x-prefixed hex"),
                 ({"calldata": "0x", "logs": [{"topics": []}]}, "must have topics, data"),
                 ({"calldata": "0x", "logs": [{"topics": [], "data": "0x", "logger": 2**160}]},
-                 r"logger must be a 160-bit word")]:
+                 r"logger must be a 160-bit word"),
+                ({"deploy": True, "args": [], "immutables": {"x": 1}},
+                 "immutables must be a non-empty object, in a call"),
+                ({"function": "f", "args": [], "immutables": {}},
+                 "immutables must be a non-empty object, in a call"),
+                ({"function": "f", "args": [], "immutables": [1]},
+                 "immutables must be a non-empty object, in a call"),
+                ({"function": "f", "args": [], "immutables": {"x": "xyz"}},
+                 r"immutables\.x must be an integer")]:
             case = {**base, **fields}
             with self.subTest(fields=fields), tempfile.TemporaryDirectory() as temporary:
                 path = Path(temporary) / "corpus.json"
                 path.write_text(json.dumps(corpus([case])), encoding="utf-8")
                 with self.assertRaisesRegex(driver.CorpusError, message):
                     driver.load_corpus(path)
+
+    def test_accepts_immutables_in_a_call(self) -> None:
+        case = {"name": "f", "function": "f", "args": [], "immutables": {"x": 1},
+                "expect": {"return": []}}
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "corpus.json"
+            path.write_text(json.dumps(corpus([case])), encoding="utf-8")
+            driver.load_corpus(path)
 
     def test_peer_suites(self) -> None:
         peer = {"source": "p.sol", "contract": "P", "artifact": "p.json"}
@@ -667,6 +699,52 @@ class DriverTests(unittest.TestCase):
         self.assertEqual(result["status"], 1)
         self.assertEqual([row["case"] for row in result["results"]],
                          ["source_failure", "bytecode_failure"])
+
+    def test_failed_multi_target_build_reports_the_suites_that_finished(self) -> None:
+        # Verbose holbuild prints an up-to-date target, and times each outcome.
+        for outcome in ("built", "restored from cache", "is up to date in 0.002s"):
+            for a_ran in (False, True):
+                with self.subTest(outcome=outcome, a_ran=a_ran), \
+                        tempfile.TemporaryDirectory() as temporary:
+                    fake = FakeRoot(Path(temporary))
+                    data = corpus()
+                    data["suites"].append({**data["suites"][0], "name": "b"})
+                    fake.write_corpus(data)
+                    fake.wrappers()
+                    a, b = (driver.theories.theory_name(name, "source") + "Theory"
+                            for name in ("a", "b"))
+                    agree = {"kind": "case", "case": "f_returns", "status": "agree",
+                             "outcome": RETURNED}
+
+                    def lines(rows):
+                        return "".join(driver.RESULT_PREFIX + json.dumps(row) + "\n"
+                                       for row in rows)
+
+                    # a's verdict file is left over from an earlier, successful build.
+                    fake.write(driver.theories.results_path(a).as_posix(),
+                               lines([SUITE_OK, {**agree, "suite": "a"}]))
+                    script = [f"open({driver.theories.results_path(b).as_posix()!r}, 'w')"
+                              f".write({lines([{**SUITE_OK, 'suite': 'b'}, {**agree, 'suite': 'b'}])!r})",
+                              f"print({b + ' ' + outcome!r})"]
+                    if a_ran:
+                        log = f".holbuild/logs/current/solidity-hol/{a}/build.log"
+                        fake.write(log, lines([{"kind": "case", "suite": "a", "case": "f_returns",
+                                                "status": "error", "message": "boom"}]))
+                        script.append(f"print({'child log: ' + str(fake.root / log)!r})")
+                    fake.write("holbuild", f"#!{sys.executable}\nimport sys\n" +
+                               "\n".join(script) + "\nsys.exit(1)\n")
+                    (fake.root / "holbuild").chmod(0o755)
+                    status, report = fake.run(fake.root / "holbuild")
+                self.assertEqual(report["hol"]["command"][1], "--verbose")
+                self.assertEqual(status, 1)
+                self.assertEqual({w["suite"] for w in report["kernel_checked"]}, {"b"})
+                self.assertEqual(len(report["kernel_checked"]), 3)
+                self.assertTrue(all(w["status"] == ("proved" if outcome.startswith("built")
+                                                    else "proved (cached)")
+                                    for w in report["kernel_checked"]))
+                self.assertEqual([(f["kind"], f.get("suite"), f["status"])
+                                  for f in report["failures"]],
+                                 [("case", "a", "error")] if a_ran else [("hol-build", None, 1)])
 
     def test_build_failure_without_results_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

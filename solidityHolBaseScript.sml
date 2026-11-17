@@ -4,7 +4,7 @@ Ancestors
   solidityAST solidityCore solidityCoreWf solidityScalar solidityState
   solidityEVMCall solidityScalarTest
   solidityEVMBoundaryProps solidityCoreWfTest
-  solidityEVMCallTest solidityEVMCreateTest solidityEVMFrameTest
+  solidityEVMCallTest solidityEVMCreateTest solidityCreateCallTest solidityEVMFrameTest
   solidityEVMReentryTest solidityEVMBookkeepingTest
   externalCall solidityMemory solidityEvaluator solidityABI solidityEntry solidityEvaluatorProps solidityEvaluatorTest
   solidityCoreProgramsTest solidityImport solidityImportTest

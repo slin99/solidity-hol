@@ -252,12 +252,12 @@ val () = expect_lines "refused case literal"
               ("cases", arr
                  [obj [("nodeType", str "YulCase"),
                        ("value", obj [("nodeType", str "YulLiteral"), ("kind", str "bool"),
-                                      ("value", str "true"), ("type", str "")]),
+                                      ("value", str "maybe"), ("type", str "")]),
                        ("body", block [])],
                   obj [("nodeType", str "YulCase"), ("value", str "default"),
                        ("body", block [expression_statement (call "case_unknown" [])])]])]]]
      creation_code)
-  ["unsupported literal kind bool", "call to case_unknown"]
+  ["invalid boolean literal maybe", "call to case_unknown"]
 
 (* An object nested in the runtime object does not hide the blockers of
  * its code. *)
@@ -281,3 +281,34 @@ val () =
        not (null (fst (listSyntax.dest_list code))) then ()
     else raise ERR "yulImportTest" "creation import did not retain distinct code"
   end
+
+(* These names must travel through the same dialect-derived table as every
+ * other compiler-emitted builtin. *)
+val () =
+  if aconv
+    (import (output_with
+      [runtime_object
+        [expression_statement (call "pop" [call "balance" [number "119"]]),
+         expression_statement (call "pop" [call "selfbalance" []]),
+         expression_statement (call "datacopy" [number "0", number "1", number "2"])]]
+      creation_code))
+    “[(YulExprStmt (YulBuiltin YPop
+         [YulBuiltin YBalance [YulLit (LitNumber 119w)]]));
+       YulExprStmt (YulBuiltin YPop [YulBuiltin YSelfBalance []]);
+       YulExprStmt (YulBuiltin YDataCopy
+         [YulLit (LitNumber 0w); YulLit (LitNumber 1w); YulLit (LitNumber 2w)])]”
+  then () else raise ERR "yulImportTest" "balance/selfbalance/datacopy import";
+
+val () =
+  if aconv
+    (import (output_with
+      [runtime_object
+        [expression_statement (call "extcodecopy"
+           [number "119", number "0", number "1", number "2"]),
+         expression_statement (call "pop" [call "blockhash" [number "3"]])]]
+      creation_code))
+    “[YulExprStmt (YulBuiltin YExtCodeCopy
+         [YulLit (LitNumber 119w); YulLit (LitNumber 0w); YulLit (LitNumber 1w);
+          YulLit (LitNumber 2w)]);
+       YulExprStmt (YulBuiltin YPop [YulBuiltin YBlockHash [YulLit (LitNumber 3w)]])]”
+  then () else raise ERR "yulImportTest" "extcodecopy/blockhash import";

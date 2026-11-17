@@ -43,21 +43,22 @@ Datatype:
   | YKeccak256 | YMLoad | YMStore | YMStore8 | YMCopy | YSLoad | YSStore | YTLoad | YTStore
     (* frame and call data *)
   | YCallDataLoad | YCallDataSize | YCallDataCopy | YCallValue | YMemoryGuard | YCaller
-  | YLoadImmutable | YAddress
+  | YLoadImmutable | YAddress | YSelfBalance
     (* the transaction and block *)
   | YOrigin | YGasPrice | YChainId | YNumber | YTimestamp | YCoinbase | YBaseFee
-  | YGasLimit
+  | YGasLimit | YBlockHash | YPrevRandao
     (* message calls, other accounts and the frame's gas *)
-  | YCall | YStaticCall | YDelegateCall | YExtCodeSize | YReturnDataSize | YReturnDataCopy
-  | YGas
+  | YCall | YStaticCall | YDelegateCall | YBalance | YExtCodeSize | YExtCodeCopy | YExtCodeHash
+  | YReturnDataSize | YReturnDataCopy
+  | YGas | YCreate | YCreate2
     (* events *)
   | YLog0 | YLog1 | YLog2 | YLog3 | YLog4
     (* discards a value *)
   | YPop
     (* halting *)
-  | YStop | YReturn | YRevert
+  | YStop | YReturn | YRevert | YInvalid
     (* object level: the creation object only *)
-  | YCodeSize | YCodeCopy | YDataSize | YDataOffset | YSetImmutable
+  | YCodeSize | YCodeCopy | YDataCopy | YDataSize | YDataOffset | YSetImmutable
     (* linking *)
   | YLinkerSymbol
 End

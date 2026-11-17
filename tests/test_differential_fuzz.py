@@ -1,0 +1,763 @@
+from collections import Counter
+from dataclasses import replace
+from pathlib import Path
+import copy
+import json
+import subprocess
+import sys
+import tempfile
+from types import SimpleNamespace
+from typing import Any
+import unittest
+from unittest.mock import patch
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
+
+import run_differential_fuzz as fuzz
+from test_semantic_expectations_fleet import holbuild
+
+SUITE = "storage_structs"
+
+
+def target(name: str = SUITE) -> fuzz.Target:
+    [t] = fuzz.suite_targets([name])
+    return t
+
+
+def call(**fields: Any) -> fuzz.Call:
+    return replace(fuzz.Call(function="f", mode="typed", calldata=b"\x01\x02\x03\x04",
+                             sender=fuzz.SENDER, value=0, storage={}, immutables={}), **fields)
+
+
+class EncodingTests(unittest.TestCase):
+    def test_keccak_matches_known_digests(self) -> None:
+        self.assertEqual(fuzz.keccak256(b"").hex(),
+                         "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470")
+        self.assertEqual(fuzz.keccak256(b"abc").hex(),
+                         "4e03657aea45a94fc7d47ba826c8d667c0d1e6e33a64a036ec44f58fa12d6c45")
+        # Two blocks: the rate is 136 bytes.
+        self.assertEqual(fuzz.keccak256(b"a" * 200).hex(),
+                         "96ea54061def936c4be90b518992fdc6f12f535068a256229aca54267b4d084d")
+
+    def test_selectors_agree_with_the_compiler(self) -> None:
+        for t in fuzz.suite_targets([]):
+            for sig, selector in t.selectors.items():
+                self.assertEqual(fuzz.keccak256(sig.encode())[:4], selector, f"{t.name}: {sig}")
+
+    def test_dynamic_values_are_encoded_after_the_heads(self) -> None:
+        types = [{"type": "uint256"}, {"type": "bytes"}, {"type": "uint256[]"}]
+        encoded = fuzz.encode_tuple(types, [1, b"ab", [2]])
+        words = [encoded[i:i + 32] for i in range(0, len(encoded), 32)]
+        self.assertEqual([int.from_bytes(w, "big") for w in words[:3]], [1, 0x60, 0xA0])
+        self.assertEqual(int.from_bytes(words[3], "big"), 2)
+        self.assertEqual(words[4], b"ab".ljust(32, b"\0"))
+        self.assertEqual([int.from_bytes(w, "big") for w in words[5:]], [1, 2])
+
+    def test_static_tuples_and_arrays_are_inline(self) -> None:
+        t = {"type": "tuple[2]", "components": [{"type": "bool"}, {"type": "int8"}]}
+        self.assertFalse(fuzz.is_dynamic(t))
+        self.assertEqual(fuzz.head_size(t), 128)
+        encoded = fuzz.encode_tuple([t], [[[True, -1], [False, 2]]])
+        self.assertEqual(encoded[32:64], b"\xff" * 32)
+        self.assertEqual(fuzz.canonical(t), "(bool,int8)[2]")
+
+    def test_external_function_values_are_address_and_selector(self) -> None:
+        t = {"type": "tuple", "components": [{"type": "function"}, {"type": "function[]"}]}
+        value = fuzz.random_value(fuzz.random.Random(1), t)
+        self.assertEqual(len(value[0]), 24)
+        self.assertIn(int.from_bytes(value[0][:20], "big"), fuzz.ADDRESSES)
+        encoded = fuzz.encode_tuple([{"type": "function"}], [value[0]])
+        self.assertEqual(encoded, value[0] + bytes(8))
+
+
+class GenerationTests(unittest.TestCase):
+    def test_generation_is_deterministic_per_seed(self) -> None:
+        t = target()
+        self.assertEqual(fuzz.generate_calls(3, t, 20), fuzz.generate_calls(3, t, 20))
+        self.assertNotEqual(fuzz.generate_calls(3, t, 20), fuzz.generate_calls(4, t, 20))
+
+    def test_calldata_is_70_percent_typed_20_mutated_10_raw(self) -> None:
+        calls = fuzz.generate_calls(0, target(), 2000)
+        modes = Counter(c.mode for c in calls)
+        for mode, share in (("typed", 0.7), ("mutated", 0.2), ("raw", 0.1)):
+            self.assertAlmostEqual(modes[mode] / len(calls), share, delta=0.02)
+        selectors = set(target().selectors.values())
+        self.assertTrue(all(c.calldata[:4] in selectors for c in calls if c.mode == "typed"))
+
+
+class SequenceTests(unittest.TestCase):
+    def test_sequences_have_2_to_4_calls_start_with_each_function_and_share_immutables(self) -> None:
+        t = target()
+        sequences = fuzz.generate_sequences(0, t, 30)
+        self.assertEqual(sequences, fuzz.generate_sequences(0, t, 30))
+        self.assertEqual({len(s) for s in sequences}, {2, 3, 4})
+        firsts = Counter(s[0].function for s in sequences if s[0].mode != "raw")
+        self.assertEqual(set(firsts), set(t.selectors))
+        for s in sequences:
+            self.assertEqual({json.dumps(sorted(c.immutables.items())) for c in s},
+                             {json.dumps(sorted(s[0].immutables.items()))})
+            self.assertTrue(all(c.storage == {} for c in s[1:]))
+
+    def test_each_call_starts_from_the_storage_the_one_before_left(self) -> None:
+        # Each call writes its value to slot 1 and clears slot 2.
+        def screen(t: fuzz.Target, c: fuzz.Call) -> fuzz.Recording:
+            if c.value == 13:
+                raise fuzz.Halt("OutOfGas")
+            return fuzz.Recording({"returned": "0x"}, {1: c.value, 2: 0}, [])
+
+        with tempfile.TemporaryDirectory() as temporary:
+            fuzzer = fuzz.Fuzzer(Path(temporary), seed=0, candidates=1, k=4, evaluate=None,  # type: ignore[arg-type]
+                                 screen=screen, sequences=True)
+            steps, halt = fuzzer.screen_sequence(target(), [
+                call(value=5, storage={2: 7, 3: 9}), call(value=6), call(value=13), call(value=8)])
+        self.assertEqual(halt, "OutOfGas")
+        self.assertEqual([c.storage for c, _ in steps], [{2: 7, 3: 9}, {1: 5, 3: 9}])
+
+    def test_k_counts_calls_and_each_step_is_a_case(self) -> None:
+        ok = fuzz.Recording({"returned": "0x"}, {}, [])
+        screened = [[(call(function=f, value=i), ok) for i in range(3)] for f in "abcd"]
+        self.assertEqual([len(s) for s in fuzz.stratify(0, "t", screened, 5)], [3])
+        chosen = fuzz.stratify(0, "t", screened, 6)
+        self.assertEqual(len(chosen), 2)
+        cases = fuzz.make_cases(chosen)
+        self.assertEqual([c.name for c in cases],
+                         [f"seq_000{n}_{step}" for n in range(2) for step in range(3)])
+        self.assertEqual([c.name for c in cases if c.confirm], ["seq_0000_0"])
+        self.assertEqual(cases[4].suite_case()["fuzz"]["sequence"], 1)
+        self.assertEqual(cases[4].suite_case()["fuzz"]["step"], 1)
+
+    def test_a_sequence_agrees_only_if_every_call_does(self) -> None:
+        manifests = {"c": {"screening": {}, "cases": [
+            {"name": f"seq_000{n}_{step}",
+             "fuzz": {"function": "f", "mode": "typed", "sequence": n, "step": step}}
+            for n in range(3) for step in range(2)]}}
+        # Sequence 1 ends inconclusive; sequence 2's last step has no result.
+        results = [{"kind": "case", "contract": "c", "case": f"seq_000{n}_{step}",
+                    "status": "inconclusive" if (n, step) == (1, 1) else "agree",
+                    "reason": "OutOfFuel", "confirmed": False}
+                   for n in range(3) for step in range(2) if (n, step) != (2, 1)]
+        summary = fuzz.report(manifests, results)
+        self.assertEqual(summary["sequences"], {"evaluated": 3, "every_call_agrees": 1})
+        self.assertEqual(summary["missing"], ["c/seq_0002_1"])
+        self.assertIn("3 call sequences, 1 agreeing after every call", fuzz.markdown(summary))
+
+
+class OverloadTests(unittest.TestCase):
+    def overloaded(self) -> fuzz.Target:
+        t = copy.copy(target())
+        t.functions = [{"name": "f", "stateMutability": "nonpayable", "inputs": [{"type": ty}]}
+                       for ty in ("uint8", "uint256")]
+        t.selectors = {fuzz.signature(f): fuzz.keccak256(fuzz.signature(f).encode())[:4]
+                       for f in t.functions}
+        return t
+
+    def test_overloads_are_generated_stratified_and_reported_apart(self) -> None:
+        calls = [c for c in fuzz.generate_calls(0, self.overloaded(), 20) if c.mode != "raw"]
+        self.assertEqual({c.function for c in calls}, {"f(uint8)", "f(uint256)"})
+        screened = [[(c, fuzz.Recording({"returned": "0x"}, {}, []))] for c in calls]
+        chosen = fuzz.stratify(0, "t", screened, 2)
+        self.assertEqual({c.function for [(c, _)] in chosen}, {"f(uint8)", "f(uint256)"})
+        manifests = {"c": {"screening": {}, "cases": [
+            {"name": n, "fuzz": {"function": f, "mode": "typed"}}
+            for n, f in (("a", "f(uint8)"), ("b", "f(uint256)"))]}}
+        results = [{"kind": "case", "contract": "c", "case": n, "status": "inconclusive",
+                    "reason": "OutOfFuel", "confirmed": False} for n in ("a", "b")]
+        self.assertEqual([r["function"] for r in fuzz.report(manifests, results)["inconclusive"]],
+                         ["f(uint256)", "f(uint8)"])
+
+
+class StorageTests(unittest.TestCase):
+    LAYOUT = {
+        "storage": [
+            {"label": "balances", "slot": "0", "offset": 0, "type": "t_mapping"},
+            {"label": "values", "slot": "1", "offset": 0, "type": "t_array"},
+            {"label": "small", "slot": "2", "offset": 0, "type": "t_uint8"},
+            {"label": "flag", "slot": "2", "offset": 1, "type": "t_bool"},
+            {"label": "name", "slot": "3", "offset": 0, "type": "t_string"},
+        ],
+        "types": {
+            "t_mapping": {"encoding": "mapping", "key": "t_address", "value": "t_uint256",
+                          "label": "mapping(address => uint256)", "numberOfBytes": "32"},
+            "t_array": {"encoding": "dynamic_array", "base": "t_uint256",
+                        "label": "uint256[]", "numberOfBytes": "32"},
+            "t_address": {"encoding": "inplace", "label": "address", "numberOfBytes": "20"},
+            "t_uint256": {"encoding": "inplace", "label": "uint256", "numberOfBytes": "32"},
+            "t_uint8": {"encoding": "inplace", "label": "uint8", "numberOfBytes": "1"},
+            "t_bool": {"encoding": "inplace", "label": "bool", "numberOfBytes": "1"},
+            "t_string": {"encoding": "bytes", "label": "string", "numberOfBytes": "32"},
+        },
+    }
+
+    def test_seeded_slots_follow_the_layout(self) -> None:
+        stub = SimpleNamespace(layout=self.LAYOUT, enum_sizes={})
+        mapping_slots = {fuzz.hash_word(fuzz.word(a) + fuzz.word(0)) for a in fuzz.ADDRESSES}
+        element = fuzz.hash_word(fuzz.word(1))
+        for seed in range(50):
+            storage = fuzz.initial_storage(fuzz.random.Random(seed), stub)  # type: ignore[arg-type]
+            length = storage.get(1, 0)
+            self.assertLessEqual(length, fuzz.MAX_ELEMENTS)
+            allowed = {0, 1, 2, 3} | mapping_slots | {element + i for i in range(length)}
+            self.assertLessEqual(set(storage), allowed | {fuzz.hash_word(fuzz.word(3)) + i
+                                                          for i in range(2)})
+            packed = storage.get(2, 0)
+            self.assertLess(packed, 1 << 16)
+            self.assertIn(packed >> 8, (0, 1))
+            name = storage.get(3, 0)
+            if name and name & 1 == 0:  # short: length * 2 in the low byte
+                self.assertLess((name & 0xFF) // 2, 32)
+
+    def test_real_layouts_seed_without_errors(self) -> None:
+        for t in fuzz.suite_targets([]):
+            fuzz.initial_storage(fuzz.random.Random(0), t)
+
+
+class StratifyTests(unittest.TestCase):
+    def recording(self, data: str) -> fuzz.Recording:
+        return fuzz.Recording({"revert": data}, {}, [])
+
+    def test_functions_alternate_and_rare_shapes_come_first(self) -> None:
+        common = [[(call(function="a", value=i), self.recording("0x01"))] for i in range(10)]
+        rare = [[(call(function="a", value=99), self.recording("0x02"))]]
+        other = [[(call(function="b", value=i), self.recording("0x01"))] for i in range(5)]
+        chosen = fuzz.stratify(0, "t", common + rare + other, 4)
+        self.assertEqual([c.function for [(c, _)] in chosen], ["a", "b", "a", "b"])
+        self.assertIn(99, [c.value for [(c, _)] in chosen])
+
+    def test_every_twentieth_case_is_confirmed(self) -> None:
+        screened = [[(call(value=i), self.recording("0x"))] for i in range(41)]
+        cases = fuzz.make_cases(screened)
+        self.assertEqual([c.name for c in cases if c.confirm], ["fuzz_0000", "fuzz_0020", "fuzz_0040"])
+
+
+class StratifySeedTests(unittest.TestCase):
+    def test_with_more_functions_than_k_the_seed_picks_which(self) -> None:
+        screened = [[(call(function=f"f{i}"), fuzz.Recording({"returned": "0x"}, {}, []))]
+                    for i in range(8)]
+        picked = {frozenset(c.function for [(c, _)] in fuzz.stratify(seed, "c", list(screened), 2))
+                  for seed in range(10)}
+        self.assertGreater(len(picked), 1)
+
+
+class ShrinkTests(unittest.TestCase):
+    def test_shrinking_keeps_only_what_the_failure_needs(self) -> None:
+        # Fails while the first argument word is nonzero.
+        def still_fails(proposals: dict[str, list[fuzz.Call]]) -> dict[str, list[bool]]:
+            return {k: [any(c.calldata[4:36]) for c in calls] for k, calls in proposals.items()}
+
+        data = b"\xaa\xbb\xcc\xdd" + fuzz.word(5) + fuzz.word(6) + fuzz.word(7)
+        failing = call(calldata=data, storage={1: 2, 3: 4, 5: 6}, value=10, sender=0xC0FFEE,
+                       immutables={"owner": 1})
+        [(key, minimal)] = fuzz.shrink({"c/fuzz_0000": failing}, still_fails, 20).items()
+        self.assertEqual(key, "c/fuzz_0000")
+        self.assertEqual(minimal, call(calldata=b"\xaa\xbb\xcc\xdd" + fuzz.word(5)))
+
+    def test_storage_spread_over_every_quarter_still_shrinks_to_what_is_needed(self) -> None:
+        needed = {0, 3, 6, 9}
+
+        def still_fails(proposals: dict[str, list[fuzz.Call]]) -> dict[str, list[bool]]:
+            return {k: [needed <= set(c.storage) for c in calls] for k, calls in proposals.items()}
+
+        failing = call(storage={slot: 1 for slot in range(12)})
+        [minimal] = fuzz.shrink({"c/x": failing}, still_fails, 20).values()
+        self.assertEqual(set(minimal.storage), needed)
+
+    def test_a_case_no_variant_reproduces_is_left_alone(self) -> None:
+        failing = call(storage={1: 2})
+        never = lambda proposals: {k: [False] * len(v) for k, v in proposals.items()}
+        self.assertEqual(fuzz.shrink({"c/x": failing}, never, 5), {"c/x": failing})
+
+
+class FuzzerTests(unittest.TestCase):
+    """The driver with pyrevm and HOL replaced: screening records every call
+    as returning nothing; HOL reports the first case of each contract, and
+    every variant of it, as disagreeing."""
+
+    def setUp(self) -> None:
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.output = Path(temporary.name)
+        self.evaluated: list[list[str]] = []
+        self.screened = 0
+        # Whether Verifereum's bytecode run matches pyrevm's recording.
+        self.recording_matches = True
+
+    def screen(self, t: fuzz.Target, c: fuzz.Call) -> fuzz.Recording:
+        self.screened += 1
+        return fuzz.Recording({"returned": "0x"}, {}, [])
+
+    def evaluate(self, work: Path, entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        self.evaluated.append([e["name"] for e in entries])
+        lines = []
+        for entry in entries:
+            lines.append({"kind": "contract", "contract": entry["name"], "status": "ok",
+                          "unsupported": []})
+            for case in entry["cases"]:
+                bad = case["name"].startswith("fuzz_0000")
+                lines.append({"kind": "case", "contract": entry["name"], "case": case["name"],
+                              "status": "disagree" if bad else "agree", "screen": "Agree",
+                              "confirmed": bad or bool(case.get("confirm")),
+                              **({"recording_matches": self.recording_matches} if bad else {})})
+        batch = work / f"batch-{len(list(work.glob('batch-*'))):04d}"
+        batch.mkdir(parents=True)
+        (batch / "results.jsonl").write_text(
+            "".join(fuzz.PREFIX + json.dumps(line) + "\n" for line in lines))
+        return fuzz.batch_records(work)
+
+    def fuzzer(self) -> fuzz.Fuzzer:
+        return fuzz.Fuzzer(self.output, seed=0, candidates=5, k=4,
+                           evaluate=self.evaluate, screen=self.screen)
+
+    def test_a_run_reports_minimizes_and_resumes(self) -> None:
+        targets = fuzz.suite_targets([SUITE, "qualified_events"])
+        summary = self.fuzzer().run(targets, max_batches=None, shrink_rounds=5)
+        self.assertEqual(summary["totals"], {"agree": 6, "disagree": 2})
+        self.assertEqual(summary["confirmed"], 2)
+        self.assertEqual(summary["missing"], [])
+        self.assertEqual({r["contract"] for r in summary["disagree"]}, {SUITE, "qualified_events"})
+        minimized = json.loads((self.output / "minimized" / f"{SUITE}.json").read_text())
+        [case] = minimized["cases"]
+        self.assertEqual(case["name"], "fuzz_0000")
+        self.assertNotIn("fuzz", case)
+        self.assertNotIn("confirm", case)
+        self.assertEqual(case["storage"], {})
+        self.assertEqual(minimized["name"], f"fuzz_{SUITE}")
+        self.assertEqual(minimized["peer"], fuzz.ECHO_PEER)  # what the recording ran with
+        self.assertEqual(minimized["fuel"], targets[0].entry["fuel"])
+        self.assertTrue(fuzz.failed(summary))
+
+        screened, evaluated = self.screened, len(self.evaluated)
+        again = self.fuzzer().run(targets, max_batches=None, shrink_rounds=0)
+        self.assertEqual(again["totals"], summary["totals"])
+        self.assertEqual(len(self.evaluated), evaluated)  # nothing left to evaluate
+        self.assertEqual(self.screened, screened + 2)  # only the minimized recordings
+        self.assertTrue((self.output / "report.md").is_file())
+
+    def test_a_sequence_run_evaluates_and_reports_each_call(self) -> None:
+        fuzzer = fuzz.Fuzzer(self.output, seed=0, candidates=2, k=4, evaluate=self.evaluate,
+                             screen=self.screen, sequences=True)
+        summary = fuzzer.run(fuzz.suite_targets([SUITE]), max_batches=None, shrink_rounds=0)
+        self.assertIn(summary["cases"], (3, 4))  # K=4 bounds calls; no sequence has 1
+        self.assertEqual(summary["totals"], {"agree": summary["cases"]})
+        self.assertEqual(summary["sequences"]["evaluated"],
+                         summary["sequences"]["every_call_agrees"])
+        self.assertGreaterEqual(summary["sequences"]["evaluated"], 1)
+
+    def test_a_disagreement_the_bytecode_run_does_not_record_is_not_minimized(self) -> None:
+        self.recording_matches = False
+        summary = self.fuzzer().run(fuzz.suite_targets([SUITE]), max_batches=None, shrink_rounds=5)
+        self.assertEqual([r["case"] for r in summary["unminimized"]], ["fuzz_0000"])
+        self.assertNotIn("minimized", summary)
+        self.assertFalse((self.output / "minimized").exists())
+        self.assertEqual(len(self.evaluated), 1)  # no shrinking round
+        self.assertIn("not minimized", fuzz.markdown(summary))
+        self.assertTrue(fuzz.failed(summary))
+
+    def test_a_variant_counts_only_if_the_bytecode_run_matches_its_recording(self) -> None:
+        target = fuzz.suite_targets([SUITE])[0]
+        self.recording_matches = False
+        verdicts = self.fuzzer().still_disagree({SUITE: target}, self.output / "round",
+                                                {f"{SUITE}/fuzz_0000": [call()]})
+        self.assertEqual(verdicts, {f"{SUITE}/fuzz_0000": [False]})
+        self.recording_matches = True
+        verdicts = self.fuzzer().still_disagree({SUITE: target}, self.output / "round",
+                                                {f"{SUITE}/fuzz_0000": [call()]})
+        self.assertEqual(verdicts, {f"{SUITE}/fuzz_0000": [True]})
+
+    def test_a_contract_that_fails_to_prepare_fails_the_run(self) -> None:
+        manifests = {"c": {"screening": {}, "cases": [
+            {"name": "a", "fuzz": {"function": "f", "mode": "typed"}}]}}
+        results = [{"kind": "contract", "contract": "c", "status": "error", "message": "boom"}]
+        summary = fuzz.report(manifests, results)
+        self.assertEqual(summary["missing"], [])
+        self.assertTrue(fuzz.failed(summary))
+
+    def test_a_contract_whose_candidates_all_halt_fails_the_run(self) -> None:
+        def halting(t: fuzz.Target, c: fuzz.Call) -> fuzz.Recording:
+            raise fuzz.Halt("OutOfGas")
+
+        fuzzer = fuzz.Fuzzer(self.output, seed=0, candidates=5, k=4,
+                             evaluate=self.evaluate, screen=halting)
+        summary = fuzzer.run(fuzz.suite_targets([SUITE]), max_batches=None, shrink_rounds=0)
+        self.assertEqual(summary["no_cases"], [SUITE])
+        self.assertGreater(summary["screening"][SUITE]["halted"]["OutOfGas"], 0)
+        self.assertTrue(fuzz.failed(summary))
+        self.assertIn(SUITE, fuzz.markdown(summary))
+
+    def test_a_case_error_is_reported_and_fails_the_run(self) -> None:
+        manifests = {"c": {"screening": {}, "cases": [
+            {"name": "a", "fuzz": {"function": "f", "mode": "typed"}}]}}
+        results = [{"kind": "contract", "contract": "c", "status": "ok", "unsupported": []},
+                   {"kind": "case", "contract": "c", "case": "a", "status": "error",
+                    "message": "boom"}]
+        summary = fuzz.report(manifests, results)
+        self.assertEqual([r["case"] for r in summary["error"]], ["a"])
+        self.assertTrue(fuzz.failed(summary))
+
+    def test_a_partially_evaluated_contract_reports_its_missing_cases(self) -> None:
+        targets = fuzz.suite_targets([SUITE])
+        fuzzer = self.fuzzer()
+
+        def partial(work: Path, entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            entry = entries[0]
+            lines = [{"kind": "contract", "contract": entry["name"], "status": "ok",
+                      "unsupported": []},
+                     {"kind": "case", "contract": entry["name"], "case": "fuzz_0001",
+                      "status": "disagree", "screen": "Mismatch", "confirmed": True}]
+            batch = work / "batch-0000"
+            batch.mkdir(parents=True)
+            (batch / "results.jsonl").write_text(
+                "".join(fuzz.PREFIX + json.dumps(line) + "\n" for line in lines))
+            return fuzz.batch_records(work)
+
+        fuzzer.evaluate = partial
+        summary = fuzzer.run(targets, max_batches=None, shrink_rounds=0)
+        self.assertEqual([r["case"] for r in summary["disagree"]], ["fuzz_0001"])
+        self.assertEqual(len(summary["missing"]), 3)
+        self.assertTrue(fuzz.failed(summary))
+
+    def test_resume_is_refused_when_inputs_change(self) -> None:
+        inputs = fuzz.run_inputs([target()], 0, 5, 4, sequences=False)
+        fuzz.check_inputs(self.output, inputs, resume=False)
+        fuzz.check_inputs(self.output, inputs, resume=True)
+        with self.assertRaisesRegex(SystemExit, "not empty"):
+            fuzz.main(["--output", str(self.output), "--suite", SUITE])
+        for changed in ({**inputs, "seed": 1}, fuzz.run_inputs([target()], 0, 5, 8, sequences=False),
+                        fuzz.run_inputs([target()], 0, 5, 4, sequences=True),
+                        {**inputs, "source_hash": "0"}):
+            with self.assertRaisesRegex(SystemExit, "cannot resume"):
+                fuzz.check_inputs(self.output, changed, resume=True)
+
+    def test_resume_drops_a_truncated_last_record_and_reruns_its_contract(self) -> None:
+        targets = fuzz.suite_targets([])[:2]
+        self.fuzzer().run(targets, max_batches=None, shrink_rounds=0)
+        [results] = fuzz.fleet.result_files(self.output / "work")
+        lines = results.read_text().splitlines(keepends=True)
+        second = next(i for i, line in enumerate(lines) if f'"{targets[1].name}"' in line)
+        results.write_text("".join(lines[:second]) + lines[second][:30])
+        self.evaluated.clear()
+        summary = self.fuzzer().run(targets, max_batches=None, shrink_rounds=0)
+        self.assertEqual(self.evaluated[0], [targets[1].name])
+        self.assertEqual(summary["contracts"], 2)
+
+    def test_a_shrink_round_ignores_an_interrupted_runs_records(self) -> None:
+        [t] = fuzz.suite_targets([SUITE])
+        round_dir = self.output / "shrink" / "round-00"
+        stale = round_dir / "batch-0000"
+        stale.mkdir(parents=True)
+        (stale / "results.jsonl").write_text(fuzz.PREFIX + json.dumps(
+            {"kind": "case", "contract": SUITE, "case": "fuzz_0001_v000", "status": "disagree",
+             "screen": "Mismatch", "confirmed": True}) + "\n")
+        verdicts = self.fuzzer().still_disagree({SUITE: t}, round_dir,
+                                                {f"{SUITE}/fuzz_0001": [call(function="g")]})
+        self.assertEqual(verdicts, {f"{SUITE}/fuzz_0001": [False]})
+
+    def test_resume_runs_a_contract_whose_action_failed_again(self) -> None:
+        targets = fuzz.suite_targets([])[:1]
+        batch = self.output / "work" / "batch-0000"
+        batch.mkdir(parents=True)
+        (batch / "results.jsonl").write_text(fuzz.PREFIX + json.dumps(
+            {"kind": "contract", "contract": targets[0].name, "status": "action-failed",
+             "message": "status 1"}) + "\n")
+        summary = self.fuzzer().run(targets, max_batches=None, shrink_rounds=0)
+        self.assertEqual(self.evaluated, [[targets[0].name]])
+        self.assertEqual(summary["contract_failures"], {})
+
+    def test_a_contract_sent_to_hol_without_a_result_fails_the_run(self) -> None:
+        targets = fuzz.suite_targets([])[:2]
+        evaluate = self.evaluate
+        self.evaluate = lambda work, entries: evaluate(work, entries[:1])  # type: ignore[method-assign]
+        summary = self.fuzzer().run(targets, max_batches=None, shrink_rounds=0)
+        self.assertEqual(summary["unreported"], [targets[1].name])
+        self.assertTrue(fuzz.failed(summary))
+        self.assertIn(targets[1].name, (self.output / "report.md").read_text())
+
+    def test_a_relative_output_is_made_absolute(self) -> None:
+        with patch.object(fuzz, "check_inputs", side_effect=SystemExit("stop")) as check, \
+                self.assertRaises(SystemExit):
+            fuzz.main(["--output", "out", "--suite", SUITE])
+        self.assertEqual(check.call_args.args[0], Path.cwd() / "out")
+
+    def test_max_batches_bounds_the_contracts_evaluated(self) -> None:
+        targets = fuzz.suite_targets([])[:3]
+        summary = self.fuzzer().run(targets, max_batches=2, shrink_rounds=0)
+        self.assertEqual(len(self.evaluated[0]), 2)
+        self.assertEqual(summary["contracts"], 2)
+        self.assertEqual(summary["unevaluated"], [targets[-1].name])
+
+    def test_inconclusives_are_grouped_and_invalid_completion_functions_flagged(self) -> None:
+        manifests = {"c": {"screening": {}, "cases": [
+            {"name": "a", "fuzz": {"function": "f", "mode": "typed"}},
+            {"name": "b", "fuzz": {"function": "f", "mode": "mutated"}},
+            {"name": "d", "fuzz": {"function": "g", "mode": "typed"}}]}}
+        results = [
+            {"kind": "case", "contract": "c", "case": "a", "status": "inconclusive",
+             "reason": "InvalidCompletion", "confirmed": False},
+            {"kind": "case", "contract": "c", "case": "b", "status": "agree", "confirmed": False},
+            {"kind": "case", "contract": "c", "case": "d", "status": "inconclusive",
+             "reason": "OutOfFuel", "confirmed": False}]
+        summary = fuzz.report(manifests, results)
+        self.assertEqual(summary["inconclusive"], [
+            {"contract": "c", "function": "f", "reason": "InvalidCompletion", "cases": 1},
+            {"contract": "c", "function": "g", "reason": "OutOfFuel", "cases": 1}])
+        self.assertEqual(summary["invalid_completion_functions"], [{"contract": "c", "function": "f"}])
+
+
+class TargetTests(unittest.TestCase):
+    def test_a_targets_manifest_names_contracts_outside_the_suites(self) -> None:
+        suite = json.loads((fuzz.SUITES / f"{SUITE}.json").read_text())
+        entry = {k: suite[k] for k in ("source", "contract")}
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = Path(temporary) / "targets.json"
+            manifest.write_text(json.dumps({"targets": [
+                {**entry, "name": "outside", "artifact": str(ROOT / suite["artifact"]),
+                 "fuel": 7}]}))
+            [t] = fuzz.manifest_targets(manifest)
+        self.assertEqual((t.name, t.entry["fuel"], t.entry["peer"]), ("outside", 7, fuzz.ECHO_PEER))
+        self.assertEqual(t.selectors, target().selectors)
+
+    def test_repeated_target_names_are_rejected(self) -> None:
+        suite = json.loads((fuzz.SUITES / f"{SUITE}.json").read_text())
+        entry = {k: suite[k] for k in ("name", "source", "contract", "artifact")}
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = Path(temporary) / "targets.json"
+            manifest.write_text(json.dumps({"targets": [entry, entry]}))
+            with self.assertRaisesRegex(SystemExit, f"repeated: {SUITE}"):
+                fuzz.manifest_targets(manifest)
+
+    def test_target_artifact_paths_are_kept_relative_to_the_root(self) -> None:
+        suite = json.loads((fuzz.SUITES / f"{SUITE}.json").read_text())
+        peer = fuzz.ECHO_PEER
+        with tempfile.TemporaryDirectory() as temporary:
+            manifest = Path(temporary) / "targets.json"
+            manifest.write_text(json.dumps({"targets": [
+                {**{k: suite[k] for k in ("name", "source", "contract")},
+                 "artifact": str(ROOT / suite["artifact"]),
+                 "peer": {**peer, "artifact": str(ROOT / peer["artifact"])}}]}))
+            [t] = fuzz.manifest_targets(manifest)
+        self.assertEqual(t.entry["artifact"], suite["artifact"])
+        self.assertEqual(t.entry["peer"], peer)
+
+
+    def test_a_shard_takes_every_nth_target(self) -> None:
+        self.assertEqual(fuzz.parse_shard("1/3"), (1, 3))
+        for bad in ("3/3", "1", "-1/2"):
+            with self.assertRaises(fuzz.argparse.ArgumentTypeError):
+                fuzz.parse_shard(bad)
+        with patch.object(fuzz, "check_inputs", side_effect=SystemExit("stop")) as check, \
+                self.assertRaises(SystemExit):
+            fuzz.main(["--output", "out", "--shard", "1/3"])
+        names = [t["name"] for t in check.call_args.args[1]["targets"]]
+        self.assertEqual(names, [t.name for t in fuzz.suite_targets([])][1::3])
+
+    def test_admitted_and_partially_admitted_semantic_tests_are_named_by_path_and_compiled_per_shard(self) -> None:
+        suite = json.loads((fuzz.SUITES / f"{SUITE}.json").read_text())
+        compiled = []
+
+        def compile_admitted(solc: Path, root: Path, name: str, work: Path) -> tuple[dict[str, Any], dict[str, Any]]:
+            compiled.append(name)
+            return {"test": name, "artifact": str(ROOT / suite["artifact"]),
+                    "source": suite["source"], "contract": suite["contract"]}, {}
+
+        tests = ["a/b-c.sol", "d.sol", "e/f.sol"]
+        with patch.object(fuzz.fleet, "admitted_tests", return_value=tests) as admitted, \
+                patch.object(fuzz.fleet, "compile_admitted", side_effect=compile_admitted), \
+                tempfile.TemporaryDirectory() as temporary:
+            targets = fuzz.semantic_targets(Path("sol"), Path("cov"), Path("solc"),
+                                            Path(temporary), (0, 2))
+        self.assertEqual(admitted.call_args.args[3], ("admitted", "partially-admitted"))
+        self.assertEqual(compiled, ["a/b-c.sol", "e/f.sol"])
+        self.assertEqual([t.name for t in targets], ["st_a_b_c", "st_e_f"])
+        self.assertEqual(targets[0].entry["artifact"], suite["artifact"])
+
+
+class FleetTests(unittest.TestCase):
+    def test_each_contract_gets_an_action_and_a_failed_one_fails_only_itself(self) -> None:
+        names = ["first", "second"]
+        entries = [{**target().entry, "name": n, "cases": [], "screening": {}} for n in names]
+        actions = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            if "--help" in command:
+                return subprocess.CompletedProcess(command, 0, stdout="run-action")
+            if "build" in command:
+                return subprocess.CompletedProcess(command, 0)
+            script = Path(command[command.index("--script") + 1])
+            [staged] = json.loads((script.parent / "batch.json").read_text())["contracts"]
+            actions.append(staged["name"])
+            outputs = Path(command[command.index("--outputs-dir") + 1]) / "solidity-hol" / \
+                fuzz.fleet.CONTEXT
+            outputs.mkdir(parents=True)
+            if staged["name"] == "first":
+                kwargs["stdout"].write(f"solidity-hol:{fuzz.fleet.CONTEXT} {'a' * 64} failed memory\n")
+                return subprocess.CompletedProcess(command, 1)
+            (outputs / "results.jsonl").write_text(fuzz.PREFIX + json.dumps(
+                {"kind": "contract", "contract": "second", "status": "ok", "unsupported": []}) + "\n")
+            kwargs["stdout"].write(f"solidity-hol:{fuzz.fleet.CONTEXT} {'a' * 64} done\n")
+            return subprocess.CompletedProcess(command, 0)
+
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch.dict(fuzz.fleet.os.environ, {}, clear=True), \
+                holbuild(run):
+            results = fuzz.run_fleet("holbuild", Path(temporary) / "work", entries)
+        self.assertEqual(actions, names)
+        self.assertEqual([(r["contract"], r["status"], r.get("message")) for r in results],
+                         [("first", "action-failed", "memory"), ("second", "ok", None)])
+        summary = fuzz.report({e["name"]: e for e in entries}, results)
+        self.assertEqual(list(summary["contract_failures"]), ["first"])
+
+    def test_a_contract_past_its_action_cap_is_inconclusive_as_prepare_timeout(self) -> None:
+        case = {"name": "c", "fuzz": {"function": "f", "mode": "typed"}}
+        entries = [{**target().entry, "name": n, "cases": [case] * cases, "screening": {}}
+                   for n, cases in (("slow", 3), ("fast", 0))]
+        caps = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            if "--help" in command:
+                return subprocess.CompletedProcess(command, 0, stdout="run-action")
+            if "build" in command:
+                return subprocess.CompletedProcess(command, 0)
+            outputs = Path(command[command.index("--outputs-dir") + 1]) / "solidity-hol" / \
+                fuzz.fleet.CONTEXT
+            outputs.mkdir(parents=True)
+            (outputs / "results.jsonl").write_text(fuzz.PREFIX + json.dumps(
+                {"kind": "contract", "contract": "fast", "status": "ok", "unsupported": []}) + "\n")
+            kwargs["stdout"].write(f"solidity-hol:{fuzz.fleet.CONTEXT} {'a' * 64} done\n")
+            return subprocess.CompletedProcess(command, 0)
+
+        def wait(process: Any, log: Path, seconds: float) -> int | None:
+            caps.append(seconds)
+            return None if len(caps) == 1 else process.wait()
+
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch.dict(fuzz.fleet.os.environ, {}, clear=True), holbuild(run), \
+                patch.object(fuzz.fleet, "wait_capped", side_effect=wait):
+            results = fuzz.run_fleet("holbuild", Path(temporary) / "work", entries)
+        self.assertEqual(caps, [fuzz.PREPARE_SECONDS + 3 * 2 * fuzz.CASE_SECONDS,
+                                fuzz.PREPARE_SECONDS])
+        self.assertEqual([(r["contract"], r["status"]) for r in results],
+                         [("slow", "prepare-timeout"), ("fast", "ok")])
+        summary = fuzz.report({e["name"]: e for e in entries}, results)
+        self.assertEqual(summary["prepare_timeout"], ["slow"])
+        self.assertEqual(summary["contract_failures"], {})
+        self.assertNotIn("slow/c", summary["missing"])
+        self.assertIn("prepare-timeout", fuzz.markdown(summary))
+        self.assertFalse(fuzz.failed(summary))
+
+    def test_a_coordinator_lost_after_the_first_contract_stops_the_run(self) -> None:
+        entries = [{**target().entry, "name": n, "cases": []} for n in ("first", "second")]
+        local = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            if "--help" in command:
+                return subprocess.CompletedProcess(command, 0, stdout="run-action")
+            if "build" in command:
+                return subprocess.CompletedProcess(command, 0)
+            if "run-action" not in command:
+                local.append(command)
+                return subprocess.CompletedProcess(command, 0)
+            script = Path(command[command.index("--script") + 1])
+            [staged] = json.loads((script.parent / "batch.json").read_text())["contracts"]
+            if staged["name"] == "second":
+                kwargs["stdout"].write(fuzz.fleet.NO_COORDINATOR + "\n")
+                return subprocess.CompletedProcess(command, 75)
+            outputs = Path(command[command.index("--outputs-dir") + 1]) / "solidity-hol" / \
+                fuzz.fleet.CONTEXT
+            outputs.mkdir(parents=True)
+            (outputs / "results.jsonl").write_text("")
+            kwargs["stdout"].write(f"solidity-hol:{fuzz.fleet.CONTEXT} {'a' * 64} done\n")
+            return subprocess.CompletedProcess(command, 0)
+
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch.dict(fuzz.fleet.os.environ, {}, clear=True), \
+                holbuild(run), \
+                self.assertRaisesRegex(SystemExit, "coordinator disappeared"):
+            fuzz.run_fleet("holbuild", Path(temporary) / "work", entries)
+        self.assertEqual(local, [])
+
+    def test_contracts_run_through_the_fuzz_script_with_their_peer(self) -> None:
+        entry = {**target().entry, "cases": []}
+        commands = []
+
+        def run(command: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+            commands.append(command)
+            if "--help" in command:
+                return subprocess.CompletedProcess(command, 0, stdout="run-action")
+            if "build" in command:
+                return subprocess.CompletedProcess(command, 0)
+            outputs = Path(command[command.index("--outputs-dir") + 1]) / "solidity-hol" / \
+                fuzz.fleet.CONTEXT
+            outputs.mkdir(parents=True)
+            (outputs / "results.jsonl").write_text(fuzz.PREFIX + json.dumps(
+                {"kind": "contract", "contract": SUITE, "status": "ok", "unsupported": []}) + "\n")
+            kwargs["stdout"].write(f"solidity-hol:{fuzz.fleet.CONTEXT} {'a' * 64} done\n")
+            return subprocess.CompletedProcess(command, 0)
+
+        with tempfile.TemporaryDirectory() as temporary, \
+                patch.dict(fuzz.fleet.os.environ, {}, clear=True), \
+                holbuild(run):
+            results = fuzz.run_fleet("holbuild", Path(temporary) / "work", [entry])
+            [action] = [c for c in commands if "run-action" in c]
+            script = Path(action[action.index("--script") + 1])
+            self.assertEqual(script.read_text(), fuzz.SCRIPT.path.read_text())
+            [staged] = json.loads((script.parent / "batch.json").read_text())["contracts"]
+            self.assertEqual(staged["peer"]["artifact"], "0.peer.json")
+            self.assertTrue((script.parent / "0.peer.json").is_file())
+        self.assertEqual([r["contract"] for r in results], [SUITE])
+
+
+@unittest.skipUnless(sys.version_info[:2] == (3, 11), "pyrevm runs on Python 3.11")
+class ScreeningTests(unittest.TestCase):
+    def setUp(self) -> None:
+        try:
+            import pyrevm  # type: ignore[import-not-found]
+        except ImportError:
+            self.skipTest("pyrevm is not installed")
+        self.pyrevm = pyrevm
+
+    def test_the_block_gas_limit_is_the_bytecode_runs_and_gas_is_free(self) -> None:
+        t = target("context")
+        c = call(function="feeInfo()", calldata=t.selectors["feeInfo()"])
+        returned = bytes.fromhex(fuzz.screen(self.pyrevm, t, c).expect["returned"][2:])
+        gas_price, base_fee, gas_limit = (int.from_bytes(returned[i:i + 32], "big")
+                                          for i in range(0, 96, 32))
+        self.assertEqual((gas_price, gas_limit), (0, fuzz.BLOCK_GAS_LIMIT))
+        self.assertEqual(base_fee, 0)  # pyrevm's message_call zeroes it
+
+    def test_recordings_cover_returns_reverts_and_storage_writes(self) -> None:
+        t = target()
+        recordings = [fuzz.screen(self.pyrevm, t, c) for c in fuzz.generate_calls(0, t, 30)]
+        kinds = Counter(next(iter(r.expect)) for r in recordings)
+        self.assertGreater(kinds["returned"], 0)
+        self.assertGreater(kinds["revert"], 0)
+        self.assertTrue(any(r.final_storage for r in recordings))
+
+    def test_calls_over_the_gas_budget_are_dropped(self) -> None:
+        t = target()
+        c = fuzz.generate_calls(0, t, 1)[0]
+        fuzz.screen(self.pyrevm, t, c)
+        with patch.object(fuzz, "GAS_BUDGET", 0), self.assertRaisesRegex(fuzz.Halt, "OverGasBudget"):
+            fuzz.screen(self.pyrevm, t, c)
+
+    def test_later_calls_of_a_sequence_see_earlier_writes(self) -> None:
+        t = target()
+        with tempfile.TemporaryDirectory() as temporary:
+            fuzzer = fuzz.Fuzzer(Path(temporary), seed=0, candidates=1, k=1, evaluate=None,  # type: ignore[arg-type]
+                                 screen=lambda t, c: fuzz.screen(self.pyrevm, t, c), sequences=True)
+            screened = [fuzzer.screen_sequence(t, s)[0] for s in fuzz.generate_sequences(0, t, 10)]
+        carried = [(a, b) for steps in screened for a, b in zip(steps, steps[1:])
+                   if a[1].final_storage]
+        self.assertTrue(carried)
+        for (call_a, recording_a), (call_b, _) in carried:
+            self.assertEqual(call_b.storage, fuzz.carried_storage(call_a, recording_a))
+
+    def test_logs_are_recorded(self) -> None:
+        t = target("qualified_events")
+        recordings = [fuzz.screen(self.pyrevm, t, c) for c in fuzz.generate_calls(0, t, 30)]
+        logged = [log for r in recordings for log in r.logs]
+        self.assertTrue(logged)
+        self.assertTrue(all(log["logger"] == fuzz.address(fuzz.CONTRACT) for log in logged))
+
+
+if __name__ == "__main__":
+    unittest.main()

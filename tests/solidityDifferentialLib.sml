@@ -31,10 +31,14 @@ fun emit fields = emit_result "differential-result: " fields
 
 fun prepared_constants prefix (prepared : solidityPrepareLib.prepared) =
   let
-    val unit_def = define (prefix ^ "_unit") (#unit prepared)
-    val () = cv_auto_trans unit_def
-    val program_def = define (prefix ^ "_program") (#program prepared)
-    val () = cv_auto_trans program_def
+    (* Each constant is defined as preparation's, which is translated already:
+     * translating a large unit's whole term again took hours. *)
+    fun constant name def =
+      let val th = define (prefix ^ name) (lhs (concl def)) in
+        cv_auto_trans th; TRANS th def
+      end
+    val unit_def = constant "_unit" (#unit_def prepared)
+    val program_def = constant "_program" (#program_def prepared)
     fun named name th = save_thm (prefix ^ name,
       REWRITE_RULE [SYM unit_def, SYM program_def] th)
     val _ = named "_source_valid" (#source_valid prepared)
@@ -97,7 +101,7 @@ fun unit_immutables unit artifact source contract =
 fun case_fuel c fuel =
   case JSONUtil.findField c "fuel" of SOME v => integer v | NONE => fuel
 
-fun run_case {suite, code, initcode, peer, immutables, unit, program, fuel, bytecode} c =
+fun run_case {suite, code, initcode, fixture, immutables, unit, program, fuel, bytecode} c =
   let
     val case_name = name_field c "name"
     val theorem = suite ^ "_" ^ case_name
@@ -105,7 +109,7 @@ fun run_case {suite, code, initcode, peer, immutables, unit, program, fuel, byte
     val input = call_input initcode c
 
     val expect = expectation (field c "expect")
-    val case_tm = case_term peer immutables input c
+    val case_tm = case_term fixture immutables input c
     val verdict_tm =
       list_mk_comb (prim_mk_const {Thy = "solidityDifferential",
                                    Name = "differential_verdict"},
@@ -137,10 +141,21 @@ fun run_case {suite, code, initcode, peer, immutables, unit, program, fuel, byte
                       String.concatWith ", " (map #1 different))
               end
             val bridge = EQT_ELIM bridge_result
-            val evm = (REWRITE_CONV [evm_execution_def, bridge, sumTheory.sum_case_def]
-                       THENC DEPTH_CONV BETA_CONV THENC REWRITE_CONV [cached])
-              “evm_execution ^code ^unit ^case_tm”
-            val () = if rhs (concl evm) ~~ rhs (concl cached) then () else
+            val unfolded =
+              (REWRITE_CONV [evm_execution_def, bridge, sumTheory.sum_case_def]
+               THENC DEPTH_CONV BETA_CONV)
+                “evm_execution ^code ^unit ^case_tm”
+            val (gas_bad, invalid_gas, _) = boolSyntax.dest_cond (rhs (concl unfolded))
+            val gas_check = cv_eval gas_bad
+            val expected =
+              if rhs (concl gas_check) ~~ T then invalid_gas
+              else if rhs (concl gas_check) ~~ F then rhs (concl cached)
+              else fail "gas evidence check did not reduce to a boolean"
+            val evm = CONV_RULE
+              (RAND_CONV
+                (RATOR_CONV (RATOR_CONV (RAND_CONV (K gas_check)))
+                 THENC REWRITE_CONV [cached])) unfolded
+            val () = if rhs (concl evm) ~~ expected then () else
               fail "cached bytecode result was not substituted completely"
           in
             (PURE_REWRITE_CONV [differential_verdict_def, evm] THENC cv_eval) verdict_tm
@@ -250,12 +265,14 @@ fun check_unit_contracts prepared contract =
                "], not " ^ contract)
   end
 
-(* The corpus checks supported features, so each of its functions must be
- * supported: a function the frontend marks unsupported fails the suite. *)
+(* The corpus checks supported features, so each of its functions and its
+ * creation must be supported: a function the frontend marks unsupported, or
+ * a creation without a procedure, fails the suite. *)
 fun check_supported (prepared : solidityPrepareLib.prepared) =
-  case List.filter (isSome o #reason) (#functions prepared) of
-    [] => ()
-  | fs => fail ("unsupported functions: " ^
+  case (List.filter (isSome o #reason) (#functions prepared), #creation prepared) of
+    ([], []) => ()
+  | ([], lines) => fail ("unsupported creation: " ^ String.concatWith "; " lines)
+  | (fs, _) => fail ("unsupported functions: " ^
                 String.concatWith "; "
                   (map (fn {name, reason, ...} => name ^ ": " ^ valOf reason) fs))
 
@@ -269,8 +286,8 @@ fun run_suite_with_bytecode bytecode root fuel s =
     val cases = array_field s "cases"
   in
     let
-      val checked = solidityPrepareLib.prepare_artifact
-        {root = root, path = artifact, source = source}
+      val checked = solidityPrepareLib.prepare_contract_artifact
+        {root = root, path = artifact, source = source, contract = SOME contract}
       val () = check_unit_contracts (#prepared checked) contract
       val () = check_supported (#prepared checked)
       val (unit, program) = prepared_constants prefix (#prepared checked)
@@ -285,7 +302,7 @@ fun run_suite_with_bytecode bytecode root fuel s =
             let val tm = code_constant (prefix ^ "_initcode") "bytecode"
                            (#artifact checked) source contract
             in initcode_constant := SOME tm; tm end
-      val peer = peer_code root prefix s
+      val fixture = fixture_code root prefix s
       val () = emit [("kind", json_string "suite"),
                      ("suite", json_string suite),
                      ("status", json_string "ok"),
@@ -293,7 +310,7 @@ fun run_suite_with_bytecode bytecode root fuel s =
                        [prefix ^ "_elaborates", prefix ^ "_program_wf"]))]
       val immutables = unit_immutables (#unit (#prepared checked))
                          (#artifact checked) source contract
-      val env = {suite = suite, code = code, initcode = initcode, peer = peer,
+      val env = {suite = suite, code = code, initcode = initcode, fixture = fixture,
                  immutables = immutables, unit = unit, program = program,
                  fuel = fuel, bytecode = bytecode}
     in
@@ -378,6 +395,33 @@ fun yul_stages yul_root suite =
  *)
 val yul_fuel = 1000000;
 
+val yul_encoding_conv =
+  EVAL THENC PURE_REWRITE_CONV [cv_primTheory.cv_rep_T, cv_primTheory.cv_rep_F];
+
+(* The backend can append creation data after the runtime object. *)
+fun deployed_code_offset artifact source contract =
+  let
+    fun bytes kind = String.implode (map chr (hex_bytes ("0x" ^
+      JSONUtil.asString (JSONUtil.get (artifact,
+        map JSONUtil.SEL ["output", "contracts", source, contract, "evm",
+                          kind, "object"])))))
+    val creation = bytes "bytecode"
+    val deployed = bytes "deployedBytecode"
+  in
+    if String.isSuffix deployed creation then size creation - size deployed
+    else
+      let
+        val (prefix, suffix) = Substring.position deployed (Substring.full creation)
+      in
+        if Substring.isEmpty suffix then
+          fail "runtime bytecode is not present in initcode"
+        else if String.isSubstring deployed
+                  (Substring.string (Substring.triml 1 suffix)) then
+          fail "runtime bytecode has ambiguous locations in initcode"
+        else Substring.size prefix
+      end
+  end
+
 fun yul_code_constant name path source contract stage unit deploy =
   let
     val artifact = JSONParser.parseFile path
@@ -386,7 +430,7 @@ fun yul_code_constant name path source contract stage unit deploy =
     val output = field artifact "output"
     val runtime_def = define (name ^ "_runtime")
                 (yulImportLib.import_runtime output source contract stage)
-    val () = cv_trans_deep_embedding EVAL runtime_def
+    val () = cv_trans_deep_embedding yul_encoding_conv runtime_def
     val runtime = lhs (concl runtime_def)
     val deployed = code_constant (name ^ "_deployed") "deployedBytecode"
                      artifact source contract
@@ -398,7 +442,7 @@ fun yul_code_constant name path source contract stage unit deploy =
           val (obj_name, deployed_name, body) =
             yulImportLib.import_creation output source contract stage
           val body_def = define (name ^ "_creation") body
-          val () = cv_trans_deep_embedding EVAL body_def
+          val () = cv_trans_deep_embedding yul_encoding_conv body_def
           val initcode = code_constant (name ^ "_initcode") "bytecode"
                            artifact source contract
           val program =
@@ -406,6 +450,8 @@ fun yul_code_constant name path source contract stage unit deploy =
                 creation_name := ^(stringSyntax.fromMLstring obj_name);
                 deployed_name := ^(stringSyntax.fromMLstring deployed_name);
                 creation_bytes := ^initcode; deployed_bytes := ^deployed;
+                deployed_offset := ^(num_term (IntInf.fromInt
+                  (deployed_code_offset artifact source contract)));
                 creation_refs := ^refs |>”
         in optionSyntax.mk_some program end
     val def = define name
@@ -558,12 +604,22 @@ fun run_case_three_way suite_name env c =
     val input = call_input (#initcode env) c
     val case_env =
       {suite = suite_name, case_name = name_field c "name",
-       case_tm = case_term (#peer env) (#immutables env) input c, input = input,
+       case_tm = case_term (#fixture env) (#immutables env) input c, input = input,
        expect = expectation (field c "expect"),
        unit = #unit env, code = #code env, program = #program env}
   in
-    List.foldl (fn (stage, ok) => run_yul_stage case_env stage andalso ok)
-      true (#stages env)
+    if null (fst (listSyntax.dest_list (record_field "case_gas" (#case_tm case_env)))) then
+      List.foldl (fn (stage, ok) => run_yul_stage case_env stage andalso ok)
+        true (#stages env)
+    else
+      (List.app (fn (_, json_tag, _) =>
+         emit_yul [("kind", json_string "case"), ("suite", json_string suite_name),
+                   ("case", json_string (#case_name case_env)),
+                   ("stage", json_string json_tag),
+                   ("status", json_string "inconclusive"),
+                   ("message", json_string "gas observations not modelled in raw Yul")])
+         (#stages env);
+       true)
   end
   handle e =>
     (emit_yul [("kind", json_string "case"), ("suite", json_string suite_name),
@@ -580,14 +636,14 @@ fun run_suite_three_way root yul_root s =
     val source = string_field s "source"
     val contract = string_field s "contract"
     val cases = array_field s "cases"
-    val checked = solidityPrepareLib.prepare_artifact
-      {root = root, path = artifact, source = source}
+    val checked = solidityPrepareLib.prepare_contract_artifact
+      {root = root, path = artifact, source = source, contract = SOME contract}
     val () = check_unit_contracts (#prepared checked) contract
     val () = check_supported (#prepared checked)
     val (unit, program) = prepared_constants prefix (#prepared checked)
     val code = code_constant (prefix ^ "_code") "deployedBytecode"
                  (#artifact checked) source contract
-    val peer = peer_code root prefix s
+    val fixture = fixture_code root prefix s
     val deploy = List.exists (fn c =>
       case JSONUtil.findField c "deploy" of SOME (JSON.BOOL true) => true
                                            | _ => false) cases
@@ -602,7 +658,7 @@ fun run_suite_three_way root yul_root s =
         in initcode_tm := SOME tm; tm end
     val immutables = unit_immutables (#unit (#prepared checked))
                        (#artifact checked) source contract
-    val env = {unit = unit, code = code, peer = peer, immutables = immutables,
+    val env = {unit = unit, code = code, fixture = fixture, immutables = immutables,
                program = program, stages = stages, initcode = initcode}
   in
     emit_yul [("kind", json_string "suite"), ("suite", json_string suite),
@@ -773,6 +829,7 @@ fun run_expectations {root, manifest} =
                         tx_params := (differential_frame ^sender ^value ^data).tx_params with
                           <| origin := 0x9292929292929292929292929292929292929292w;
                              gasPrice := 3000000000; blockNumber := ^bn;
+                             prevHashes := test_block_hashes ^bn;
                              blockTimeStamp := 15 * ^bn; chainId := 1;
                              blockCoinBase := 0x7878787878787878787878787878787878787878w;
                              blockGasLimit := 20000000;
@@ -841,7 +898,8 @@ fun run_expectations {root, manifest} =
                          let
                            val result = keep “run_external_call ^sender ^address ^data
                              ^value F (100000000 - (if ^value = 0 then 0 else call_stipend))
-                             ^(!evm_accounts) empty_transient_storage ^fr.tx_params”
+                             ^(!evm_accounts) ^(!evm_accounts) empty_transient_storage
+                             ^fr.tx_params”
                            val unavailable = aconv “1n” (eval “if IS_NONE ^result then 1n else 0”)
                          in
                            if unavailable then
@@ -849,7 +907,8 @@ fun run_expectations {root, manifest} =
                            else
                              let
                                val success = aconv “1n” (eval “if (THE ^result).call_success then 1n else 0”)
-                               val () = evm_accounts := keep “(THE ^result).call_accounts”
+                               val () = evm_accounts := keep “process_deletions
+                                 (THE ^result).call_to_delete (THE ^result).call_accounts”
                              in
                                observed (con (if success then "Returned" else "Reverted")
                                  [eval “(THE ^result).call_return”])
@@ -858,8 +917,14 @@ fun run_expectations {root, manifest} =
                          end
                      end
                    val bytecode_fields = bytecode ()
-                   val entered = “^prior_world with accounts :=
-                     transfer_value ^sender ^address ^value ^prior_world.accounts”
+                   val entered = “^prior_world with <| accounts :=
+                     transfer_value ^sender ^address ^value ^prior_world.accounts;
+                     original := ^prior_world.accounts; to_delete := [] |>”
+                   val entered = if creating then
+                     “^entered with accounts := update_account ^address
+                       ((lookup_account ^address ^entered.accounts) with nonce := 1)
+                       ^entered.accounts”
+                     else entered
                    val invocation = if creating then
                      “deploy_contract 10000 ^program ^fr ^entered”
                      else “call_contract 10000 ^program ^(!imm) ^fr ^entered”
@@ -870,10 +935,16 @@ fun run_expectations {root, manifest} =
                      ContractCreated im _ => ContractCreated im (differential_world empty_accounts)
                    | ContractReturned bs _ => ContractReturned bs (differential_world empty_accounts)
                    | ContractReverted bs _ => ContractReverted bs (differential_world empty_accounts)
+                   | ContractAborted _ => ContractAborted (differential_world empty_accounts)
                    | other => other”
                    val result_world = “case ^result of
                      ContractCreated _ w => w | ContractReturned _ w => w
                      | ContractReverted _ w => w | _ => ^entered”
+                   (* A failed call keeps no state; a failed creation stops the test. *)
+                   fun rolled_back why bs =
+                     (world := prior_world;
+                      if creating then stopped := SOME why else ();
+                      (con "Reverted" [if creating then bytes_term [] else bs], bytes_term []))
                    val (constructor, args) = strip_comb r
                    val kind = fst (dest_const constructor)
                    val (outcome, logs) =
@@ -891,21 +962,34 @@ fun run_expectations {root, manifest} =
                                   (fst (listSyntax.dest_list offsets)) end
                            val patched = List.foldl patch code
                              (fst (listSyntax.dest_list refs))
-                           val w = “^result_world with accounts :=
-                             update_account ^address
-                               ((lookup_account ^address ^result_world.accounts)
-                                  with code := ^patched) ^result_world.accounts”
+                           (* The world is settled: a constructor that destroyed
+                            * its own account (EIP-6780) left it empty, nonce
+                            * included, where a surviving one keeps the nonce one
+                            * it entered with. Verifereum installs the code before
+                            * the deletions run, so a deleted account gets none,
+                            * and later calls would run the source program on an
+                            * account with no code: the sequence stops there. *)
+                           val destroyed = eval “(lookup_account ^address
+                             ^result_world.accounts).nonce = 0” ~~ T
+                           val w = if destroyed then result_world
+                             else “^result_world with accounts :=
+                               update_account ^address
+                                 ((lookup_account ^address ^result_world.accounts)
+                                    with code := ^patched) ^result_world.accounts”
                          in
                            imm := im; world := w;
+                           if destroyed then
+                             stopped := SOME "constructor destroyed the contract"
+                           else ();
                            (con "Returned" [bytes_term []], eval “^w.logs”)
                          end
                      | ("ContractReturned", [bs, w]) =>
                          (world := result_world;
                           (con "Returned" [bs], eval “^result_world.logs”))
-                     | ("ContractReverted", [bs, _]) =>
-                         (world := prior_world;
-                          if creating then stopped := SOME "deployment reverted" else ();
-                          (con "Reverted" [if creating then bytes_term [] else bs], bytes_term []))
+                     | ("ContractReverted", [bs, _]) => rolled_back "deployment reverted" bs
+                     (* An abort fails with no return data, which the expectation
+                      * format, like the bytecode run, shows as an empty revert. *)
+                     | ("ContractAborted", [_]) => rolled_back "deployment aborted" (bytes_term [])
                      | ("ContractInvalid", [reason]) =>
                          (stopped := SOME (stringSyntax.fromHOLstring reason);
                           (con "Diagnostic" [“InvalidCompletion”], bytes_term []))
@@ -914,7 +998,8 @@ fun run_expectations {root, manifest} =
                           (con "Diagnostic" [“OutOfFuel”], bytes_term []))
                      | _ => raise ERR "run_expectations" "unexpected contract_result"
                    val () = world := keep “^(!world) with
-                     <| logs := []; transient := empty_transient_storage |>”
+                     <| logs := []; transient := empty_transient_storage;
+                        original := ^(!world).accounts; to_delete := [] |>”
                    fun expected_event e =
                      let
                        val event_sig = string_field e "signature"
@@ -958,5 +1043,157 @@ fun run_expectations {root, manifest} =
   in
     List.app run_test (ListPair.zip (List.tabulate (length tests, fn i => i), tests))
   end
+
+(* Fuzz cases: generated calls in the corpus case format whose expectation is
+ * what a screening EVM recorded. The source runs against that recording
+ * (fuzz_verdict); every difference, and every case marked "confirm", is
+ * then confirmed (confirm_verdict): the source against Verifereum's run of
+ * the bytecode, and that run against the recording. So a reported
+ * disagreement never rests on the recording. Results are "fuzz-result: "
+ * lines; nothing is saved per case. *)
+
+fun emit_fuzz fields = emit_result "fuzz-result: " fields
+
+fun verdict_name tm = fst (dest_const (fst (strip_comb tm)))
+
+(* A run_verdict's operands as JSON, named for the runs it compared. *)
+fun verdict_fields (reference, run) verdict =
+  case snd (strip_comb verdict) of
+    [a, b] =>
+      let
+        val name = verdict_name verdict
+        val json = if String.isPrefix "Storage" name then storage_json
+                   else if String.isPrefix "Log" name then logs_json
+                   else outcome_json
+      in [(reference, json a), (run, json b)] end
+  | [a] => [("outcome", outcome_json a)]
+  | _ => []
+
+fun diagnostic_reason verdict =
+  case List.find (is_con "Diagnostic") (snd (strip_comb verdict)) of
+    SOME d => fst (dest_const (rand d))
+  | NONE => raise ERR "diagnostic_reason" "no diagnostic in the verdict"
+
+(* A case's status, its verdict and the names of that verdict's runs. The
+ * bytecode and the source differing is a disagreement; both agreeing but
+ * the bytecode differing from the recording, the screening EVM was wrong. *)
+fun fuzz_status screened confirmed =
+  case confirmed of
+    NONE =>
+      if is_con "Agree" screened then ("agree", screened, ("recorded", "source"))
+      else ("inconclusive", screened, ("recorded", "source"))
+  | SOME (source, recording) =>
+      if is_con "Inconclusive" source then ("inconclusive", source, ("bytecode", "source"))
+      else if not (is_con "Agree" source) then ("disagree", source, ("bytecode", "source"))
+      else if is_con "Agree" recording then ("agree", source, ("bytecode", "source"))
+      else ("pyrevm-mismatch", recording, ("recorded", "bytecode"))
+
+(* A case whose evaluation runs past this many seconds is inconclusive, with
+ * reason "Timeout": cases take seconds, and one that keeps going sits at the
+ * heap cap until it takes its contract's whole action down with it. An
+ * evaluation interrupted before then (Poly/ML interrupts a thread when the
+ * heap runs out) counts the same. A difference whose confirmation runs past
+ * it is an error instead, so a disagreement is never filed as inconclusive. *)
+val fuzz_case_seconds = 120.0
+
+(* owed counts the "confirm" marks on cases that screened inconclusive or ran
+ * out of time: each passes to the next case that doesn't, so a contract's
+ * sample isn't lost to diagnostics. *)
+fun run_fuzz_case {contract, code, unit, program, fuel, fixture, immutables} owed c =
+  let
+    val case_name = name_field c "name"
+    fun emit fields =
+      emit_fuzz ([("kind", json_string "case"), ("contract", json_string contract),
+                  ("case", json_string case_name)] @ fields)
+    val marked = case JSONUtil.findField c "confirm" of
+                   SOME (JSON.BOOL b) => b | _ => false
+  in
+    let
+      val no_initcode = fn () => fail "fuzz cases are calls, not creations"
+      val case_tm = case_term fixture immutables (call_input no_initcode c) c
+      fun evaluate name =
+        Timeout.apply (Time.fromReal fuzz_case_seconds) (fn () =>
+          rhs (concl (cv_eval (list_mk_comb
+            (prim_mk_const {Thy = "solidityDifferential", Name = name},
+             [code, unit, program, num_term fuel, case_tm]))))) ()
+        handle Interrupt => raise Timeout.TIMEOUT Time.zeroTime
+      val screened = evaluate "fuzz_verdict"
+      val inconclusive = is_con "Inconclusive" screened
+      val confirm = not inconclusive andalso
+                    (marked orelse !owed > 0 orelse not (is_con "Agree" screened))
+      val confirmed =
+        if not confirm then NONE
+        else SOME (pairSyntax.dest_pair (evaluate "confirm_verdict"))
+             handle Timeout.TIMEOUT _ =>
+               if is_con "Agree" screened then raise Timeout.TIMEOUT Time.zeroTime
+               else raise ERR "run_fuzz_case"
+                 ("confirming a difference ran past " ^ Real.toString fuzz_case_seconds ^ "s")
+      val () = if marked andalso inconclusive then owed := !owed + 1
+               else if confirm andalso not marked andalso !owed > 0 then owed := !owed - 1
+               else ()
+      val (status, verdict, runs) = fuzz_status screened confirmed
+    in
+      emit ([("status", json_string status), ("screen", json_string (verdict_name screened)),
+             ("confirmed", if confirm then "true" else "false")] @
+            (case confirmed of
+               SOME (_, recording) =>
+                 [("recording_matches", if is_con "Agree" recording then "true" else "false")]
+             | NONE => []) @
+            (if status = "inconclusive"
+             then [("reason", json_string (diagnostic_reason verdict))] else []) @
+            (if status = "agree" then [] else verdict_fields runs verdict))
+    end
+    handle Timeout.TIMEOUT _ =>
+      (if marked then owed := !owed + 1 else ();
+       emit [("status", json_string "inconclusive"), ("screen", json_string "Timeout"),
+             ("confirmed", "false"), ("reason", json_string "Timeout")])
+  end
+  handle e =>
+    emit_fuzz [("kind", json_string "case"), ("contract", json_string contract),
+               ("case", json_string (string_field c "name" handle _ => "?")),
+               ("status", json_string "error"),
+               ("message", json_string (General.exnMessage e))]
+
+fun run_fuzz_contract root s =
+  let
+    val contract = name_field s "name"
+    val fuel = integer (field s "fuel")
+    val prefix = "fuzz_" ^ contract
+    val source = string_field s "source"
+    val contract_name = string_field s "contract"
+    val checked = solidityPrepareLib.prepare_contract_artifact
+      {root = root, path = root ^ "/" ^ string_field s "artifact", source = source,
+       contract = SOME contract_name}
+    val () = check_unit_contracts (#prepared checked) contract_name
+    val (unit, program) = prepared_constants prefix (#prepared checked)
+    val code = code_constant (prefix ^ "_code") "deployedBytecode"
+                 (#artifact checked) source contract_name
+    val env = {contract = contract, code = code, unit = unit, program = program,
+               fuel = fuel, fixture = fixture_code root prefix s,
+               immutables = unit_immutables (#unit (#prepared checked))
+                              (#artifact checked) source contract_name}
+    val unsupported =
+      List.mapPartial (fn {name, reason, ...} =>
+        Option.map (fn r => json_object [("function", json_string name),
+                                         ("reason", json_string r)]) reason)
+        (#functions (#prepared checked))
+  in
+    emit_fuzz [("kind", json_string "contract"), ("contract", json_string contract),
+               ("status", json_string "ok"), ("unsupported", json_array unsupported)];
+    List.app (run_fuzz_case env (ref 0)) (array_field s "cases")
+  end
+  handle solidityPrepareLib.PreparationError (kind, message) =>
+           emit_fuzz [("kind", json_string "contract"),
+                      ("contract", json_string (string_field s "name" handle _ => "?")),
+                      ("status", json_string (solidityPrepareLib.failure_name kind)),
+                      ("message", json_string message)]
+       | e =>
+           emit_fuzz [("kind", json_string "contract"),
+                      ("contract", json_string (string_field s "name" handle _ => "?")),
+                      ("status", json_string "error"),
+                      ("message", json_string (General.exnMessage e))]
+
+fun run_fuzz_cases {root, manifest} =
+  List.app (run_fuzz_contract root) (array_field (JSONParser.parseFile manifest) "contracts")
 
 end

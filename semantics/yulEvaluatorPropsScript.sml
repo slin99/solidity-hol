@@ -159,9 +159,10 @@ QED
 
 Theorem yul_fuel_expr_apply[local]:
   !n fns f args m.
-    (!vs m'. n <> 0 /\ eval_yul_args n fns args m = EvalValues vs m' ==>
-      !k. yul_running (invoke_yul (n-1) fns f vs m') /\ n-1 <= k ==>
-          invoke_yul k fns f vs m' = invoke_yul (n-1) fns f vs m') /\
+    (!vs m' ws. n <> 0 /\ eval_yul_args n fns args m = EvalValues vs m' /\
+      yul_known vs = SOME ws ==>
+      !k. yul_running (invoke_yul (n-1) fns f ws m') /\ n-1 <= k ==>
+          invoke_yul k fns f ws m' = invoke_yul (n-1) fns f ws m') /\
     (n <> 0 ==>
       !k. yul_running (eval_yul_args n fns args m) /\ n <= k ==>
           eval_yul_args k fns args m = eval_yul_args n fns args m) ==>
@@ -173,6 +174,7 @@ Proof
   once_rewrite_tac[eval_yul_block_def] >>
   Cases_on `n = 0` >> gvs[yul_running_def] >>
   Cases_on `eval_yul_args n fns args m` >> gvs[yul_running_def] >>
+  rename1 `yul_known vs` >> Cases_on `yul_known vs` >> gvs[yul_running_def] >>
   strip_tac >> drule_all yul_fuel_predecessor >> strip_tac >> gvs[]
 QED
 
@@ -247,8 +249,8 @@ QED
 
 Theorem yul_fuel_stmt_if[local]:
   !n fns c body m.
-    (!vs m' v tail. eval_yul_expr n fns c m = EvalValues vs m' /\
-      vs = v::tail /\ tail = [] /\ v <> 0w ==>
+    (!vs m' x tail v. eval_yul_expr n fns c m = EvalValues vs m' /\
+      vs = x::tail /\ tail = [] /\ x = SOME v /\ v <> 0w ==>
       !k. (eval_yul_block n fns body (yul_push_scope m')).completion <> YulOutOfFuel /\ n <= k ==>
           eval_yul_block k fns body (yul_push_scope m') = eval_yul_block n fns body (yul_push_scope m')) /\
     (!k. yul_running (eval_yul_expr n fns c m) /\ n <= k ==>
@@ -261,13 +263,14 @@ Proof
   Cases_on `eval_yul_expr n fns c m` >> gvs[yul_running_def] >>
   rename1 `EvalValues vs m'` >>
   Cases_on `vs` >> gvs[] >> rename1 `EvalValues (v::tail) m'` >>
-  Cases_on `tail` >> gvs[] >> Cases_on `v = 0w` >> gvs[] >> strip_tac >> gvs[]
+  Cases_on `tail` >> gvs[] >> Cases_on `v` >> gvs[] >>
+  rename1 `SOME w` >> Cases_on `w = 0w` >> gvs[] >> strip_tac >> gvs[]
 QED
 
 Theorem yul_fuel_stmt_switch[local]:
   !n fns e cases default m.
-    (!vs m' v tail. eval_yul_expr n fns e m = EvalValues vs m' /\
-      vs = v::tail /\ tail = [] ==>
+    (!vs m' x tail v. eval_yul_expr n fns e m = EvalValues vs m' /\
+      vs = x::tail /\ tail = [] /\ x = SOME v ==>
       !k. (eval_yul_cases n fns v cases default m').completion <> YulOutOfFuel /\ n <= k ==>
           eval_yul_cases k fns v cases default m' = eval_yul_cases n fns v cases default m') /\
     (!k. yul_running (eval_yul_expr n fns e m) /\ n <= k ==>
@@ -280,7 +283,7 @@ Proof
   Cases_on `eval_yul_expr n fns e m` >> gvs[yul_running_def] >>
   rename1 `EvalValues vs m'` >>
   Cases_on `vs` >> gvs[] >> rename1 `EvalValues (v::tail) m'` >>
-  Cases_on `tail` >> gvs[] >> strip_tac >> gvs[]
+  Cases_on `tail` >> gvs[] >> Cases_on `v` >> gvs[] >> strip_tac >> gvs[]
 QED
 
 Theorem yul_fuel_stmt_for[local]:
@@ -326,8 +329,9 @@ QED
 
 Theorem yul_fuel_loop[local]:
   !n fns cond post body m.
-    (!vs m' v tail rb rp.
-      eval_yul_expr n fns cond m = EvalValues vs m' /\ vs = v::tail /\ tail = [] /\ v <> 0w /\
+    (!vs m' x tail v rb rp.
+      eval_yul_expr n fns cond m = EvalValues vs m' /\ vs = x::tail /\ tail = [] /\
+      x = SOME v /\ v <> 0w /\
       rb = yul_pop_result (eval_yul_block n fns body (yul_push_scope m')) /\
       rb.completion <> YulBreak /\ ~(rb.completion <> YulNormal /\ rb.completion <> YulContinue) /\
       rp = yul_pop_result (eval_yul_block n fns post (yul_push_scope rb.machine)) /\
@@ -335,14 +339,16 @@ Theorem yul_fuel_loop[local]:
       ~(rp.completion <> YulNormal) /\ n <> 0 ==>
       !k. (eval_yul_loop (n-1) fns cond post body rp.machine).completion <> YulOutOfFuel /\ n-1 <= k ==>
           eval_yul_loop k fns cond post body rp.machine = eval_yul_loop (n-1) fns cond post body rp.machine) /\
-    (!vs m' v tail rb.
-      eval_yul_expr n fns cond m = EvalValues vs m' /\ vs = v::tail /\ tail = [] /\ v <> 0w /\
+    (!vs m' x tail v rb.
+      eval_yul_expr n fns cond m = EvalValues vs m' /\ vs = x::tail /\ tail = [] /\
+      x = SOME v /\ v <> 0w /\
       rb = yul_pop_result (eval_yul_block n fns body (yul_push_scope m')) /\
       rb.completion <> YulBreak /\ ~(rb.completion <> YulNormal /\ rb.completion <> YulContinue) ==>
       !k. (eval_yul_block n fns post (yul_push_scope rb.machine)).completion <> YulOutOfFuel /\ n <= k ==>
           eval_yul_block k fns post (yul_push_scope rb.machine) = eval_yul_block n fns post (yul_push_scope rb.machine)) /\
-    (!vs m' v tail.
-      eval_yul_expr n fns cond m = EvalValues vs m' /\ vs = v::tail /\ tail = [] /\ v <> 0w ==>
+    (!vs m' x tail v.
+      eval_yul_expr n fns cond m = EvalValues vs m' /\ vs = x::tail /\ tail = [] /\
+      x = SOME v /\ v <> 0w ==>
       !k. (eval_yul_block n fns body (yul_push_scope m')).completion <> YulOutOfFuel /\ n <= k ==>
           eval_yul_block k fns body (yul_push_scope m') = eval_yul_block n fns body (yul_push_scope m')) /\
     (!k. yul_running (eval_yul_expr n fns cond m) /\ n <= k ==>
@@ -355,7 +361,8 @@ Proof
   Cases_on `eval_yul_expr n fns cond m` >> gvs[yul_running_def] >>
   rename1 `EvalValues vs m'` >>
   Cases_on `vs` >> gvs[] >> rename1 `EvalValues (v::tail) m'` >>
-  Cases_on `tail` >> gvs[] >> Cases_on `v = 0w` >> gvs[] >>
+  Cases_on `tail` >> gvs[] >> Cases_on `v` >> gvs[] >>
+  rename1 `SOME w` >> Cases_on `w = 0w` >> gvs[] >>
   qmatch_goalsub_abbrev_tac `B.completion = YulBreak` >>
   qmatch_goalsub_abbrev_tac `yul_pop_scope rb.machine` >>
   qabbrev_tac `P = eval_yul_block n fns post (yul_push_scope rb.machine)` >>
@@ -645,21 +652,34 @@ Proof
   gvs [] >> imp_res_tac yul_lookup_names_length >> gvs []
 QED
 
+(* A call's values are all known: a result variable holding a word nobody
+ * wrote fails the call instead. *)
+Theorem invoke_yul_values_known:
+  ∀n fns name args m vals m'.
+    invoke_yul n fns name args m = EvalValues vals m' ⇒ EVERY IS_SOME vals
+Proof
+  rpt gen_tac >> simp [eval_yul_block_def] >>
+  BasicProvers.every_case_tac >> rpt strip_tac >> gvs []
+QED
+
 (* The spine a call's answer has, off the callee's own result names: a list of
  * a known length is still a variable, and `ZIP` and `list_CASE` match on `::`
  * and `[]`, so a caller binding the answer stays stuck on it however well its
  * length is known.  Taking the names' own shape turns the known length into
- * the constructors the match needs. *)
+ * the constructors the match needs, and each value's `SOME` into the
+ * constructor a test of whether it is known matches. *)
 Definition yul_take_shape_def:
-  (yul_take_shape ([] : string list) (vals : bytes32 list) = []) ∧
-  (yul_take_shape (nm :: nms) vals = HD vals :: yul_take_shape nms (TL vals))
+  (yul_take_shape ([] : string list) (vals : bytes32 option list) = []) ∧
+  (yul_take_shape (nm :: nms) vals =
+     SOME (THE (HD vals)) :: yul_take_shape nms (TL vals))
 End
 
 Theorem yul_take_shape_id:
-  ∀nms vals. LENGTH nms = LENGTH vals ⇒ yul_take_shape nms vals = vals
+  ∀nms vals. LENGTH nms = LENGTH vals ∧ EVERY IS_SOME vals ⇒
+    yul_take_shape nms vals = vals
 Proof
-  Induct_on `nms` >> rpt gen_tac >> Cases_on `vals` >>
-  gvs [yul_take_shape_def]
+  Induct_on `nms` >> Cases_on `vals` >> simp [yul_take_shape_def] >>
+  Cases_on `h` >> gvs []
 QED
 
 (* One rewrite that says both, on the case a caller's split leaves: a branch
@@ -697,6 +717,7 @@ Theorem yul_expr_result_CASE_invoke_frame:
 Proof
   rw [] >> Cases_on `invoke_yul n fns name args m` >>
   imp_res_tac invoke_yul_values_length >> imp_res_tac invoke_yul_scopes >>
+  imp_res_tac invoke_yul_values_known >>
   gvs [yul_take_shape_id, yul_machine_scopes_update_eq]
 QED
 
@@ -722,7 +743,23 @@ Theorem yul_memory_write_fields:
     (yul_memory_write m off bs).memory_size = m.memory_size ∧
     (yul_memory_write m off bs).gas_limit = m.gas_limit ∧
     (yul_memory_write m off bs).scopes = m.scopes ∧
-    (yul_memory_write m off bs).transaction_parameters = m.transaction_parameters
+    (yul_memory_write m off bs).transaction_parameters = m.transaction_parameters ∧
+    (yul_memory_write m off bs).original = m.original ∧
+    (yul_memory_write m off bs).to_delete = m.to_delete
 Proof
   Induct >> simp [yul_memory_write_def]
+QED
+
+Theorem yul_memory_read_mem:
+  ∀k m offset. yul_memory_read m offset k = yul_mem_read m.memory offset k
+Proof
+  Induct >> simp [yul_memory_read_def, yul_mem_read_def, yul_memory_byte_def]
+QED
+
+Theorem yul_memory_write_mem:
+  ∀bs m offset.
+    yul_memory_write m offset bs = m with memory := yul_mem_write m.memory offset bs
+Proof
+  Induct >> simp [yul_memory_write_def, yul_mem_write_def,
+                  yulStateTheory.yul_machine_component_equality]
 QED

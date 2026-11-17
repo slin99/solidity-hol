@@ -5,6 +5,9 @@ inputs:
   holbuild-ref:
     description: holbuild git revision or tag to use
     required: true
+  polyml-rev:
+    description: Resolved revision from setup-polyml
+    required: true
 
 outputs:
   holbuild-rev:
@@ -18,7 +21,7 @@ runs:
       uses: actions/cache@v6
       with:
         path: ~/holbuild
-        key: holbuild-tool-${{ runner.os }}-${{ runner.arch }}-${{ inputs.holbuild-ref }}
+        key: holbuild-tool-${{ runner.os }}-${{ runner.arch }}-${{ inputs.holbuild-ref }}-poly-${{ inputs.polyml-rev }}
 
     - name: Clone holbuild
       shell: bash

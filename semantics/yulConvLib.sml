@@ -309,7 +309,8 @@ val evaluator_clauses =
  * result out of a completion and a machine and never copy one. *)
 val helper_defs = [
   yul_normal_def, yul_abrupt_def, yul_invalid_def,
-  yul_literal_value_def, yul_sign_extend_def, yul_builtin_value_args_def
+  yul_literal_value_def, yul_sign_extend_def, yul_builtin_value_args_def,
+  yul_known_def, yul_lift_result_def
 ]
 
 (* The shaping the frame rule builds with, unfolded unconditionally: it is a
@@ -506,7 +507,7 @@ val frame_update_key =
     (fst (strip_comb
             (lhs (concl (SPEC_ALL yul_machine_scopes_update_self))))))
 
-val vals_shape_keys = [("list", "HD"), ("list", "TL"),
+val vals_shape_keys = [("list", "HD"), ("list", "TL"), ("option", "THE"),
                        ("yulEvaluatorProps", "yul_take_shape")]
 
 (* The number of arguments a term of this type takes. *)
@@ -923,7 +924,7 @@ fun result_conv v tm =
  * m` on a machine that is an `if`, is left where it is: nothing there is read
  * off the decision, and pushing would copy the rest of the body into both
  * branches of a decision the block's own clause does not branch on. *)
-val yul_expr_result_RAND = TypeBase.case_rand_of ``:yul_expr_result``
+val yul_expr_result_RAND = TypeBase.case_rand_of ``:'a yul_expr_result``
 val option_RAND = TypeBase.case_rand_of ``:'a option``
 val list_RAND = TypeBase.case_rand_of ``:'a list``
 

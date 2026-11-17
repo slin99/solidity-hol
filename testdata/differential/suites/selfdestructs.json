@@ -1,0 +1,64 @@
+{
+  "name": "selfdestructs",
+  "source": "testdata/differential/selfdestructs.sol",
+  "contract": "SelfDestructs",
+  "artifact": "testdata/differential/expected/selfdestructs.json",
+  "peer": {
+    "source": "testdata/differential/selfdestructs_peer.sol",
+    "contract": "Destroyer",
+    "artifact": "testdata/differential/expected/selfdestructs_peer.json"
+  },
+  "cases": [
+    {
+      "name": "creation_kept_without_destroy",
+      "deploy": true,
+      "args": [
+        false,
+        false
+      ],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 1
+      }
+    },
+    {
+      "name": "creation_destroyed_in_its_transaction_is_deleted",
+      "deploy": true,
+      "args": [
+        true,
+        false
+      ],
+      "expect": {
+        "return": []
+      },
+      "final_storage": {}
+    },
+    {
+      "name": "creation_revert_after_destroy",
+      "deploy": true,
+      "args": [
+        true,
+        true
+      ],
+      "expect": {
+        "revert": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000d61667465722064657374726f7900000000000000000000000000000000000000"
+      }
+    },
+    {
+      "name": "later_destroy_keeps_account",
+      "function": "destroy",
+      "args": [],
+      "storage": {
+        "0": 1
+      },
+      "expect": {
+        "return": []
+      },
+      "final_storage": {
+        "0": 2
+      }
+    }
+  ]
+}

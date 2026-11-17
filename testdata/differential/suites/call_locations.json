@@ -1,0 +1,453 @@
+{
+  "name": "call_locations",
+  "source": "testdata/differential/call_locations.sol",
+  "contract": "CallLocations",
+  "artifact": "testdata/differential/expected/call_locations.json",
+  "cases": [
+    {
+      "name": "struct_init_assign_return_copies",
+      "storage": {
+        "0": 1
+      },
+      "function": "structSites",
+      "args": [],
+      "expect": {
+        "return": [
+          2,
+          3,
+          4,
+          1
+        ]
+      }
+    },
+    {
+      "name": "array_init_assign_return_copies",
+      "storage": {
+        "1": 1,
+        "80084422859880547211683076133703299733277748156566366325829078699459944778998": 1
+      },
+      "function": "arraySites",
+      "args": [],
+      "expect": {
+        "return": [
+          2,
+          3,
+          4,
+          1
+        ]
+      }
+    },
+    {
+      "name": "bytes_init_assign_return_copies",
+      "storage": {
+        "2": 452312848583266388373324160190187140051835877600158453279131187530910662658
+      },
+      "function": "bytesSites",
+      "args": [],
+      "expect": {
+        "return": [
+          2,
+          3,
+          4,
+          1
+        ]
+      }
+    },
+    {
+      "name": "string_init_assign_return_copies",
+      "storage": {
+        "3": 47219736118171679016481614208494153725245902603978864281390662590579859259402
+      },
+      "function": "stringSites",
+      "args": [],
+      "expect": {
+        "return": [
+          97,
+          98,
+          99,
+          104
+        ]
+      }
+    },
+    {
+      "name": "escaped_name_direct_call",
+      "storage": {
+        "5": 1
+      },
+      "function": "escapedDirect",
+      "args": [],
+      "expect": {
+        "return": [
+          9
+        ]
+      },
+      "final_storage": {
+        "5": 9
+      }
+    },
+    {
+      "name": "escaped_name_internal_call",
+      "storage": {
+        "5": 1
+      },
+      "function": "escapedInternal",
+      "args": [],
+      "expect": {
+        "return": [
+          9
+        ]
+      },
+      "final_storage": {
+        "5": 9
+      }
+    },
+    {
+      "name": "escaped_name_bound_call",
+      "storage": {
+        "5": 1
+      },
+      "function": "escapedBound",
+      "args": [],
+      "expect": {
+        "return": [
+          1
+        ]
+      },
+      "final_storage": {
+        "5": 9
+      }
+    },
+    {
+      "name": "bound_struct_before_mutation",
+      "storage": {
+        "0": 1
+      },
+      "function": "boundOrder",
+      "args": [],
+      "expect": {
+        "return": [
+          1
+        ]
+      },
+      "final_storage": {
+        "0": 9
+      }
+    },
+    {
+      "name": "direct_struct_after_mutation",
+      "storage": {
+        "0": 1
+      },
+      "function": "directOrder",
+      "args": [],
+      "expect": {
+        "return": [
+          9
+        ]
+      },
+      "final_storage": {
+        "0": 9
+      }
+    },
+    {
+      "name": "internal_struct_after_mutation",
+      "storage": {
+        "0": 1
+      },
+      "function": "internalOrder",
+      "args": [],
+      "expect": {
+        "return": [
+          9
+        ]
+      },
+      "final_storage": {
+        "0": 9
+      }
+    },
+    {
+      "name": "bound_named_receiver_first",
+      "storage": {
+        "0": 1
+      },
+      "function": "boundNamed",
+      "args": [],
+      "expect": {
+        "return": [
+          134
+        ]
+      },
+      "final_storage": {
+        "0": 9
+      }
+    },
+    {
+      "name": "direct_named_converts_after_arguments",
+      "storage": {
+        "0": 1
+      },
+      "function": "directNamed",
+      "args": [],
+      "expect": {
+        "return": [
+          934
+        ]
+      },
+      "final_storage": {
+        "0": 9
+      }
+    },
+    {
+      "name": "storage_struct_copy_is_independent",
+      "storage": {
+        "0": 1
+      },
+      "function": "copy",
+      "args": [],
+      "expect": {
+        "return": [
+          7,
+          1
+        ]
+      }
+    },
+    {
+      "name": "memory_struct_alias",
+      "storage": {},
+      "function": "aliasMemory",
+      "args": [],
+      "expect": {
+        "return": [
+          7,
+          7
+        ]
+      }
+    },
+    {
+      "name": "scalar_receiver_survives_rebinding",
+      "storage": {},
+      "function": "reboundScalar",
+      "args": [],
+      "expect": {
+        "return": [
+          19,
+          9
+        ]
+      }
+    },
+    {
+      "name": "early_memory_receiver_retains_alias",
+      "storage": {},
+      "function": "memoryContentMutation",
+      "args": [],
+      "expect": {
+        "return": [
+          9,
+          9
+        ]
+      }
+    },
+    {
+      "name": "memory_receiver_survives_rebinding",
+      "storage": {},
+      "function": "reboundMemory",
+      "args": [],
+      "expect": {
+        "return": [
+          1,
+          9
+        ]
+      }
+    },
+    {
+      "name": "storage_pointer_return_alias",
+      "storage": {
+        "0": 1
+      },
+      "function": "aliasStorage",
+      "args": [],
+      "expect": {
+        "return": [
+          8
+        ]
+      },
+      "final_storage": {
+        "0": 8
+      }
+    },
+    {
+      "name": "computed_receiver_once",
+      "storage": {
+        "0": 1
+      },
+      "function": "computedReceiver",
+      "args": [],
+      "expect": {
+        "return": [
+          1,
+          1
+        ]
+      },
+      "final_storage": {
+        "0": 9,
+        "4": 1
+      }
+    },
+    {
+      "name": "bound_array_before_mutation",
+      "storage": {
+        "1": 1,
+        "80084422859880547211683076133703299733277748156566366325829078699459944778998": 1
+      },
+      "function": "arrayOrder",
+      "args": [],
+      "expect": {
+        "return": [
+          1
+        ]
+      },
+      "final_storage": {
+        "80084422859880547211683076133703299733277748156566366325829078699459944778998": 9
+      }
+    },
+    {
+      "name": "direct_array_after_mutation",
+      "storage": {
+        "1": 1,
+        "80084422859880547211683076133703299733277748156566366325829078699459944778998": 1
+      },
+      "function": "directArrayOrder",
+      "args": [],
+      "expect": {
+        "return": [
+          9
+        ]
+      },
+      "final_storage": {
+        "80084422859880547211683076133703299733277748156566366325829078699459944778998": 9
+      }
+    },
+    {
+      "name": "storage_array_copy_is_independent",
+      "storage": {
+        "1": 1,
+        "80084422859880547211683076133703299733277748156566366325829078699459944778998": 1
+      },
+      "function": "arrayCopy",
+      "args": [],
+      "expect": {
+        "return": [
+          7,
+          1
+        ]
+      }
+    },
+    {
+      "name": "memory_array_alias",
+      "storage": {},
+      "function": "arrayAlias",
+      "args": [],
+      "expect": {
+        "return": [
+          7,
+          7
+        ]
+      }
+    },
+    {
+      "name": "calldata_array_copy_is_independent",
+      "storage": {},
+      "calldata": "0x1e12961c0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000002",
+      "expect": {
+        "returned": "0x00000000000000000000000000000000000000000000000000000000000000070000000000000000000000000000000000000000000000000000000000000001"
+      }
+    },
+    {
+      "name": "bound_bytes_before_mutation",
+      "storage": {
+        "2": 452312848583266388373324160190187140051835877600158453279131187530910662658
+      },
+      "function": "bytesOrder",
+      "args": [],
+      "expect": {
+        "return": [
+          1
+        ]
+      },
+      "final_storage": {
+        "2": 4070815637249397495359917441711684260466522898401426079512180687778195963906
+      }
+    },
+    {
+      "name": "direct_bytes_after_mutation",
+      "storage": {
+        "2": 452312848583266388373324160190187140051835877600158453279131187530910662658
+      },
+      "function": "directBytesOrder",
+      "args": [],
+      "expect": {
+        "return": [
+          9
+        ]
+      },
+      "final_storage": {
+        "2": 4070815637249397495359917441711684260466522898401426079512180687778195963906
+      }
+    },
+    {
+      "name": "storage_bytes_copy_is_independent",
+      "storage": {
+        "2": 452312848583266388373324160190187140051835877600158453279131187530910662658
+      },
+      "function": "bytesCopy",
+      "args": [],
+      "expect": {
+        "return": [
+          7,
+          1
+        ]
+      }
+    },
+    {
+      "name": "memory_bytes_alias",
+      "storage": {},
+      "function": "bytesAlias",
+      "args": [],
+      "expect": {
+        "return": [
+          7,
+          7
+        ]
+      }
+    },
+    {
+      "name": "calldata_bytes_copy_is_independent",
+      "storage": {},
+      "calldata": "0x7965815f000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000020102000000000000000000000000000000000000000000000000000000000000",
+      "expect": {
+        "returned": "0x00000000000000000000000000000000000000000000000000000000000000070000000000000000000000000000000000000000000000000000000000000001"
+      }
+    },
+    {
+      "name": "storage_string_copy",
+      "storage": {
+        "3": 47219736118171679016481614208494153725245902603978864281390662590579859259402
+      },
+      "function": "stringCopy",
+      "args": [],
+      "expect": {
+        "return": [
+          5
+        ]
+      }
+    },
+    {
+      "name": "calldata_string_copy",
+      "storage": {},
+      "calldata": "0x331050cf0000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000568656c6c6f000000000000000000000000000000000000000000000000000000",
+      "expect": {
+        "returned": "0x0000000000000000000000000000000000000000000000000000000000000005"
+      }
+    }
+  ]
+}

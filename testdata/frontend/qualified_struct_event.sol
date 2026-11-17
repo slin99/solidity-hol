@@ -5,16 +5,16 @@ struct EventPayload {
     uint256 value;
 }
 
-library UnsupportedEvents {
+library StructEvents {
     event Payload(EventPayload item);
 }
 
-contract QualifiedUnsupportedEvent {
+contract QualifiedStructEvent {
     function supported() external pure returns (uint256) {
         return 7;
     }
 
-    function emitsUnsupported() external {
-        emit UnsupportedEvents.Payload(EventPayload(1));
+    function emitsPayload() external {
+        emit StructEvents.Payload(EventPayload(1));
     }
 }

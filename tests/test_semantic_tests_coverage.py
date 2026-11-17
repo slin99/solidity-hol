@@ -53,6 +53,52 @@ class ReadTestTests(unittest.TestCase):
         self.assertIsNone(reason("// EVMVersion: >=osaka\n"))
         self.assertIn("revertStrings: debug", reason("// revertStrings: debug\n"))
 
+    def test_syntax_suites_skip_only_expected_errors(self) -> None:
+        def reason(text: str, suite: str = "syntaxTests") -> str | None:
+            return coverage.skip_reason(self.read(text), PROFILE, suite)
+
+        warnings = """\
+            contract C { function f() public { uint x; } }
+            // ====
+            // SMTEngine: all
+            // optimize-yul: false
+            // ----
+            // Warning 2072: (37-43): Unused local variable.
+            // Info 1391: CHC: 1 verification condition(s) proved safe!
+            """
+        self.assertEqual(self.read(warnings).settings,
+                         {"SMTEngine": "all", "optimize-yul": "false"})
+        self.assertIsNone(reason(warnings))
+        self.assertIsNone(reason(warnings, "smtCheckerTests"))
+        self.assertIsNone(reason("contract C {}\n"))
+        self.assertEqual(reason("""\
+            contract C { uint x = "a"; }
+            // ----
+            // Warning 1234: (0-1): W.
+            // TypeError 7407: (26-29): Type literal_string "a" is not convertible.
+            """), "expected compile error (TypeError)")
+        self.assertEqual(reason("contract C {\n// ----\n// ParserError 2314: (13-13): Expected.\n"),
+                         "expected compile error (ParserError)")
+        self.assertEqual(reason("contract C {}\n// ----\n// UnimplementedFeatureError: Not yet.\n",
+                                "smtCheckerTests"),
+                         "expected compile error (UnimplementedFeatureError)")
+        # Below a second delimiter a runner keeps its own expectations.
+        self.assertIsNone(reason("contract C {}\n// ----\n// Warning 1: W.\n// ----\n// TypeError\n"))
+        # compileViaYul picks the pipeline solc's syntax runner checks, and
+        # semanticTests' expectations are calls, never diagnostics.
+        self.assertIsNone(reason("contract C {}\n// ====\n// compileViaYul: false\n// ----\n"))
+        self.assertIsNone(reason("contract C {}\n// ----\n// TypeError() -> 1\n", "semanticTests"))
+        self.assertIn("EVMVersion: <osaka",
+                      reason("contract C {}\n// ====\n// EVMVersion: <osaka\n// ----\n"))
+
+    def test_reads_sources_that_are_not_utf8(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "t.sol"
+            path.write_bytes(b'contract C { string s = "\xc0"; }\n// ----\n// SyntaxError 8452: (1-2): X.\n')
+            test = coverage.read_test(Path(temporary), path)
+        self.assertEqual(coverage.skip_reason(test, PROFILE, "syntaxTests"),
+                         "expected compile error (SyntaxError)")
+
 
 class CompileTests(unittest.TestCase):
     def test_compilation_retains_artifact_contract_for_preparation(self) -> None:
@@ -124,6 +170,33 @@ class ReportTests(unittest.TestCase):
             "IndexRangeAccess: unsupported expression IndexRangeAccess": 1,
             "unsupported member access": 1, "calls an unsupported function": 1})
         self.assertIn("| unsupported member access | 1 |", report.markdown())
+
+    def test_other_suites_report_valid_programs_and_never_default_to_the_snapshot(self) -> None:
+        results = [coverage.Classification("a.sol", coverage.ADMITTED),
+                   coverage.Classification("b.sol", coverage.SKIPPED, "expected compile error (TypeError)"),
+                   coverage.Classification("c.sol", coverage.COMPILE_FAILURE, "stack too deep")]
+        markdown = coverage.Report("pin", "profile", results, "syntaxTests").markdown()
+        self.assertIn("# Coverage of solc's syntaxTests", markdown)
+        self.assertIn("`test/libsolidity/syntaxTests`", markdown)
+        self.assertIn("Of the 1 valid tests, 1 are admitted", markdown)
+        self.assertEqual(coverage.Report("pin", "profile", results, "smtCheckerTests").json()["suite"],
+                         "smtCheckerTests")
+        with patch("sys.stderr"), self.assertRaises(SystemExit):
+            coverage.parse_args(["sol", "--solc", "solc", "--suite", "syntaxTests"])
+        self.assertEqual(coverage.parse_args(["sol", "--solc", "solc"]).output,
+                         coverage.ROOT / "docs" / "semantic-tests-coverage")
+
+    def test_creation_blockers_are_not_functions(self) -> None:
+        partial = coverage.classify("t.sol", {
+            "status": "partially-admitted", "functions": 1, "unsupported": [],
+            "creation": ["51: not a storage location", "60: unsupported expression"]})
+        report = coverage.Report("pin", "profile", [partial])
+        self.assertEqual(report.json()["functions"], {"total": 1, "unsupported": 0})
+        self.assertEqual(report.function_reasons(), {})
+        self.assertEqual(report.json()["tests"][0]["creation"],
+                         ["51: not a storage location", "60: unsupported expression"])
+        self.assertIn("1 are supported and 0 unsupported", report.markdown())
+        self.assertIn("- `t.sol`\n  - creation: 51: not a storage location", report.markdown())
 
 
 if __name__ == "__main__":

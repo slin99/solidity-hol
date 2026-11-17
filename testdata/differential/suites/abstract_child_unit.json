@@ -1,0 +1,50 @@
+{
+  "name": "abstract_child_unit",
+  "source": "testdata/differential/abstract_child_unit.sol",
+  "contract": "AbstractChildData",
+  "artifact": "testdata/differential/expected/abstract_child_unit.json",
+  "cases": [
+    {
+      "name": "bump",
+      "function": "bump",
+      "args": [],
+      "expect": {
+        "return": [
+          5
+        ]
+      },
+      "storage": {
+        "1": "4"
+      },
+      "final_storage": {
+        "1": "5"
+      }
+    },
+    {
+      "name": "count",
+      "function": "count",
+      "args": [],
+      "expect": {
+        "return": [
+          4
+        ]
+      },
+      "storage": {
+        "1": "4"
+      }
+    },
+    {
+      "name": "owner",
+      "function": "owner",
+      "args": [],
+      "expect": {
+        "return": [
+          "0x0000000000000000000000000000000000001234"
+        ]
+      },
+      "storage": {
+        "0": "4660"
+      }
+    }
+  ]
+}

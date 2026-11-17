@@ -57,8 +57,11 @@ arrows and may follow another call on the same physical line.
 expectations compare success/failure only, as isoltest discards creation output.
 
 A revert restores the pre-transaction world, including the value transfer.
-Successful calls commit storage and balances. Logs and transient storage reset
-between transactions. Account-selection and balance/storage builtins do not
+Successful calls commit storage and balances, and then delete the accounts
+created and self-destructed in that transaction (EIP-6780). A constructor
+that destroys its own contract leaves no code to call, so the replay stops the
+sequence there and marks the later calls not runnable ("constructor destroyed
+the contract"). Logs and transient storage reset between transactions. Account-selection and balance/storage builtins do not
 advance blocks. The transaction environment follows the pinned isoltest host,
 including its funded accounts, origin, block progression and first deployment
 address. Precompile addresses 1–8 start with one wei each, as in isoltest.

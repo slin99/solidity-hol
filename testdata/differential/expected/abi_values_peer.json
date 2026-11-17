@@ -1,0 +1,1889 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/abi_values_peer.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.37;\n\ncontract AbiPeer {\n    enum Kind { Low, Mid, High }\n\n    struct Inner {\n        uint8 x;\n        bytes b;\n    }\n\n    struct Outer {\n        uint64 a;\n        Inner[] items;\n        string name;\n        Kind k;\n    }\n\n    struct Pair {\n        uint128 left;\n        bool flag;\n    }\n\n    function echo(Outer calldata o) external pure returns (Outer memory) {\n        return o;\n    }\n\n    function make(uint64 a, string calldata name) external pure returns (Outer memory o, Pair memory p) {\n        o.a = a;\n        o.items = new Inner[](2);\n        o.items[1] = Inner(9, bytes(name));\n        o.name = name;\n        o.k = Kind.Mid;\n        p = Pair(a, true);\n    }\n\n    function fail(Inner calldata i) external pure returns (Outer memory) {\n        require(i.x != 0, \"zero\");\n        revert(\"always\");\n    }\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/abi_values_peer.sol": {
+        "AbiPeer": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "components": [
+                    {
+                      "internalType": "uint64",
+                      "name": "a",
+                      "type": "uint64"
+                    },
+                    {
+                      "components": [
+                        {
+                          "internalType": "uint8",
+                          "name": "x",
+                          "type": "uint8"
+                        },
+                        {
+                          "internalType": "bytes",
+                          "name": "b",
+                          "type": "bytes"
+                        }
+                      ],
+                      "internalType": "struct AbiPeer.Inner[]",
+                      "name": "items",
+                      "type": "tuple[]"
+                    },
+                    {
+                      "internalType": "string",
+                      "name": "name",
+                      "type": "string"
+                    },
+                    {
+                      "internalType": "enum AbiPeer.Kind",
+                      "name": "k",
+                      "type": "uint8"
+                    }
+                  ],
+                  "internalType": "struct AbiPeer.Outer",
+                  "name": "o",
+                  "type": "tuple"
+                }
+              ],
+              "name": "echo",
+              "outputs": [
+                {
+                  "components": [
+                    {
+                      "internalType": "uint64",
+                      "name": "a",
+                      "type": "uint64"
+                    },
+                    {
+                      "components": [
+                        {
+                          "internalType": "uint8",
+                          "name": "x",
+                          "type": "uint8"
+                        },
+                        {
+                          "internalType": "bytes",
+                          "name": "b",
+                          "type": "bytes"
+                        }
+                      ],
+                      "internalType": "struct AbiPeer.Inner[]",
+                      "name": "items",
+                      "type": "tuple[]"
+                    },
+                    {
+                      "internalType": "string",
+                      "name": "name",
+                      "type": "string"
+                    },
+                    {
+                      "internalType": "enum AbiPeer.Kind",
+                      "name": "k",
+                      "type": "uint8"
+                    }
+                  ],
+                  "internalType": "struct AbiPeer.Outer",
+                  "name": "",
+                  "type": "tuple"
+                }
+              ],
+              "stateMutability": "pure",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "components": [
+                    {
+                      "internalType": "uint8",
+                      "name": "x",
+                      "type": "uint8"
+                    },
+                    {
+                      "internalType": "bytes",
+                      "name": "b",
+                      "type": "bytes"
+                    }
+                  ],
+                  "internalType": "struct AbiPeer.Inner",
+                  "name": "i",
+                  "type": "tuple"
+                }
+              ],
+              "name": "fail",
+              "outputs": [
+                {
+                  "components": [
+                    {
+                      "internalType": "uint64",
+                      "name": "a",
+                      "type": "uint64"
+                    },
+                    {
+                      "components": [
+                        {
+                          "internalType": "uint8",
+                          "name": "x",
+                          "type": "uint8"
+                        },
+                        {
+                          "internalType": "bytes",
+                          "name": "b",
+                          "type": "bytes"
+                        }
+                      ],
+                      "internalType": "struct AbiPeer.Inner[]",
+                      "name": "items",
+                      "type": "tuple[]"
+                    },
+                    {
+                      "internalType": "string",
+                      "name": "name",
+                      "type": "string"
+                    },
+                    {
+                      "internalType": "enum AbiPeer.Kind",
+                      "name": "k",
+                      "type": "uint8"
+                    }
+                  ],
+                  "internalType": "struct AbiPeer.Outer",
+                  "name": "",
+                  "type": "tuple"
+                }
+              ],
+              "stateMutability": "pure",
+              "type": "function"
+            },
+            {
+              "inputs": [
+                {
+                  "internalType": "uint64",
+                  "name": "a",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "string",
+                  "name": "name",
+                  "type": "string"
+                }
+              ],
+              "name": "make",
+              "outputs": [
+                {
+                  "components": [
+                    {
+                      "internalType": "uint64",
+                      "name": "a",
+                      "type": "uint64"
+                    },
+                    {
+                      "components": [
+                        {
+                          "internalType": "uint8",
+                          "name": "x",
+                          "type": "uint8"
+                        },
+                        {
+                          "internalType": "bytes",
+                          "name": "b",
+                          "type": "bytes"
+                        }
+                      ],
+                      "internalType": "struct AbiPeer.Inner[]",
+                      "name": "items",
+                      "type": "tuple[]"
+                    },
+                    {
+                      "internalType": "string",
+                      "name": "name",
+                      "type": "string"
+                    },
+                    {
+                      "internalType": "enum AbiPeer.Kind",
+                      "name": "k",
+                      "type": "uint8"
+                    }
+                  ],
+                  "internalType": "struct AbiPeer.Outer",
+                  "name": "o",
+                  "type": "tuple"
+                },
+                {
+                  "components": [
+                    {
+                      "internalType": "uint128",
+                      "name": "left",
+                      "type": "uint128"
+                    },
+                    {
+                      "internalType": "bool",
+                      "name": "flag",
+                      "type": "bool"
+                    }
+                  ],
+                  "internalType": "struct AbiPeer.Pair",
+                  "name": "p",
+                  "type": "tuple"
+                }
+              ],
+              "stateMutability": "pure",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "608060405234601c57600e6020565b610d1d61002b8239610d1d90f35b6026565b60405190565b5f80fdfe60806040526004361015610013575b6104dd565b61001d5f3561004c565b80630f646d1e146100475780633fd7c343146100425763c75b59d70361000e576104c3565b610444565b6102dd565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f80fd5b5f80fd5b908160809103126100765790565b610064565b906020828203126100ab575f82013567ffffffffffffffff81116100a6576100a39201610068565b90565b610060565b61005c565b67ffffffffffffffff1690565b6100c6906100b0565b9052565b5190565b60209181520190565b60200190565b60ff1690565b6100ec906100dd565b9052565b5190565b60209181520190565b90825f9392825e0152565b601f801991011690565b61013161013a60209361013f93610128816100f0565b938480936100f4565b958691016100fd565b610108565b0190565b61016e916020604082019261015e5f8201515f8501906100e3565b0151906020818403910152610112565b90565b9061017b91610143565b90565b60200190565b90610198610191836100ca565b80926100ce565b90816101a9602083028401946100d7565b925f915b8383106101bc57505050505090565b909192939460206101de6101d883856001950387528951610171565b9761017e565b93019301919392906101ad565b5190565b60209181520190565b6102176102206020936102259361020e816101eb565b938480936101ef565b958691016100fd565b610108565b0190565b634e487b7160e01b5f52602160045260245ffd5b6003111561024757565b610229565b906102568261023d565b565b6102619061024c565b90565b61026d90610258565b9052565b906102c2906060806102b76102a5608085016102935f8901515f8801906100bd565b60208801518682036020880152610184565b604087015185820360408701526101f8565b940151910190610264565b90565b6102da9160208201915f818403910152610271565b90565b3461030d576103096102f86102f336600461007b565b610893565b610300610052565b918291826102c5565b0390f35b610058565b61031b816100b0565b0361032257565b5f80fd5b9050359061033382610312565b565b5f80fd5b5f80fd5b5f80fd5b909182601f8301121561037b5781359167ffffffffffffffff831161037657602001926001830284011161037157565b61033d565b610339565b610335565b9190916040818403126103c157610399835f8301610326565b92602082013567ffffffffffffffff81116103bc576103b89201610341565b9091565b610060565b61005c565b6fffffffffffffffffffffffffffffffff1690565b6103e4906103c6565b9052565b151590565b6103f6906103e8565b9052565b9060208061041c936104125f8201515f8601906103db565b01519101906103ed565b565b9291602061043a6104429360608701908782035f890152610271565b9401906103fa565b565b346104765761045d610457366004610380565b91610acb565b90610472610469610052565b9283928361041e565b0390f35b610058565b908160409103126104895790565b610064565b906020828203126104be575f82013567ffffffffffffffff81116104b9576104b6920161047b565b90565b610060565b61005c565b346104d8576104d336600461048e565b610ccb565b610058565b5f80fd5b634e487b7160e01b5f52604160045260245ffd5b906104ff90610108565b810190811067ffffffffffffffff82111761051957604052565b6104e1565b9061053161052a610052565b92836104f5565b565b61053d608061051e565b90565b5f90565b606090565b606090565b5f90565b61055a610533565b90602080808085610569610540565b815201610574610544565b81520161057f610549565b81520161058a61054e565b81525050565b610598610552565b90565b5f80fd5b5f80fd5b67ffffffffffffffff81116105bb5760208091020190565b6104e1565b6105c9816100dd565b036105d057565b5f80fd5b905035906105e1826105c0565b565b5f80fd5b67ffffffffffffffff811161060557610601602091610108565b0190565b6104e1565b90825f939282370152565b9092919261062a610625826105e7565b61051e565b93818552602085019082840111610646576106449261060a565b565b6105e3565b9080601f830112156106695781602061066693359101610615565b90565b610335565b9190916040818403126106c057610685604061051e565b92610692815f84016105d4565b5f850152602082013567ffffffffffffffff81116106bb576106b4920161064b565b6020830152565b61059f565b61059b565b9291906106d96106d4826105a3565b61051e565b93818552602080860192028101918383116107305781905b8382106106ff575050505050565b813567ffffffffffffffff811161072b57602091610720878493870161066e565b8152019101906106f1565b610335565b61033d565b9080601f8301121561075357816020610750933591016106c5565b90565b610335565b67ffffffffffffffff811161077657610772602091610108565b0190565b6104e1565b9092919261079061078b82610758565b61051e565b938185526020850190828401116107ac576107aa9261060a565b565b6105e3565b9080601f830112156107cf578160206107cc9335910161077b565b90565b610335565b600311156107de57565b5f80fd5b905035906107ef826107d4565b565b91909160808184031261088057610808608061051e565b92610815815f8401610326565b5f850152602082013567ffffffffffffffff811161087b5781610839918401610735565b602085015260408201359167ffffffffffffffff8311610876576108628261086f9483016107b1565b60408601526060016107e2565b6060830152565b61059f565b61059f565b61059b565b6108909036906107f1565b90565b6108a59061089f610590565b50610885565b90565b6108b2604061051e565b90565b5f90565b5f90565b6108c56108a8565b90602080836108d26108b5565b8152016108dd6108b9565b81525050565b6108eb6108bd565b90565b906108f8906100b0565b9052565b90565b90565b90565b61091961091461091e926108fc565b610902565b6108ff565b90565b9061093361092e836105a3565b61051e565b918252565b610942604061051e565b90565b5f90565b606090565b610956610938565b9060208083610963610945565b81520161096e610949565b81525050565b61097c61094e565b90565b5f5b82811061098d57505050565b602090610998610974565b8184015201610981565b906109c76109af83610921565b926020806109bd86936105a3565b920191039061097f565b565b91565b6109d6604061051e565b90565b90565b6109f06109eb6109f5926109d9565b610902565b6100dd565b90565b90610a02906100dd565b9052565b610a11913691610615565b90565b52565b634e487b7160e01b5f52603260045260245ffd5b90610a35826100ca565b811015610a46576020809102010190565b610a17565b90565b610a62610a5d610a6792610a4b565b610902565b6108ff565b90565b610a7591369161077b565b90565b90610a829061024c565b9052565b610a90604061051e565b90565b610aa7610aa2610aac926100b0565b610902565b6103c6565b90565b90610ab9906103c6565b9052565b90610ac7906103e8565b9052565b909291610b7e610ad9610590565b94610ae26108e3565b50610aef845f88016108ee565b610b01610afc6002610905565b6109a2565b6020870152610b716009610b47610b3e610b1c8588906109c9565b90610b39610b31610b2b6109cc565b966109dc565b5f87016109f8565b610a06565b60208301610a14565b610b6b602089015191600190610b65610b5f83610a4e565b85610a2b565b52610a4e565b90610a2b565b5150916040860192610a6a565b9052610b8e600160608501610a78565b610bb86001610baf610ba7610ba1610a86565b94610a93565b5f8501610aaf565b60208301610abd565b90565b35610bc5816105c0565b90565b90565b610bdf610bda610be492610bc8565b610902565b6100dd565b90565b60209181520190565b5f7f7a65726f00000000000000000000000000000000000000000000000000000000910152565b610c246004602092610be7565b610c2d81610bf0565b0190565b610c469060208101905f818303910152610c17565b90565b15610c5057565b610c58610052565b62461bcd60e51b815280610c6e60048201610c31565b0390fd5b5f7f616c776179730000000000000000000000000000000000000000000000000000910152565b610ca66006602092610be7565b610caf81610c72565b0190565b610cc89060208101905f818303910152610c99565b90565b610ce25f610cfb92610cdb610590565b5001610bbb565b610cf4610cee5f610bcb565b916100dd565b1415610c49565b610d03610052565b62461bcd60e51b815280610d1960048201610cb3565b0390fd"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {},
+              "object": "60806040526004361015610013575b6104dd565b61001d5f3561004c565b80630f646d1e146100475780633fd7c343146100425763c75b59d70361000e576104c3565b610444565b6102dd565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f80fd5b5f80fd5b908160809103126100765790565b610064565b906020828203126100ab575f82013567ffffffffffffffff81116100a6576100a39201610068565b90565b610060565b61005c565b67ffffffffffffffff1690565b6100c6906100b0565b9052565b5190565b60209181520190565b60200190565b60ff1690565b6100ec906100dd565b9052565b5190565b60209181520190565b90825f9392825e0152565b601f801991011690565b61013161013a60209361013f93610128816100f0565b938480936100f4565b958691016100fd565b610108565b0190565b61016e916020604082019261015e5f8201515f8501906100e3565b0151906020818403910152610112565b90565b9061017b91610143565b90565b60200190565b90610198610191836100ca565b80926100ce565b90816101a9602083028401946100d7565b925f915b8383106101bc57505050505090565b909192939460206101de6101d883856001950387528951610171565b9761017e565b93019301919392906101ad565b5190565b60209181520190565b6102176102206020936102259361020e816101eb565b938480936101ef565b958691016100fd565b610108565b0190565b634e487b7160e01b5f52602160045260245ffd5b6003111561024757565b610229565b906102568261023d565b565b6102619061024c565b90565b61026d90610258565b9052565b906102c2906060806102b76102a5608085016102935f8901515f8801906100bd565b60208801518682036020880152610184565b604087015185820360408701526101f8565b940151910190610264565b90565b6102da9160208201915f818403910152610271565b90565b3461030d576103096102f86102f336600461007b565b610893565b610300610052565b918291826102c5565b0390f35b610058565b61031b816100b0565b0361032257565b5f80fd5b9050359061033382610312565b565b5f80fd5b5f80fd5b5f80fd5b909182601f8301121561037b5781359167ffffffffffffffff831161037657602001926001830284011161037157565b61033d565b610339565b610335565b9190916040818403126103c157610399835f8301610326565b92602082013567ffffffffffffffff81116103bc576103b89201610341565b9091565b610060565b61005c565b6fffffffffffffffffffffffffffffffff1690565b6103e4906103c6565b9052565b151590565b6103f6906103e8565b9052565b9060208061041c936104125f8201515f8601906103db565b01519101906103ed565b565b9291602061043a6104429360608701908782035f890152610271565b9401906103fa565b565b346104765761045d610457366004610380565b91610acb565b90610472610469610052565b9283928361041e565b0390f35b610058565b908160409103126104895790565b610064565b906020828203126104be575f82013567ffffffffffffffff81116104b9576104b6920161047b565b90565b610060565b61005c565b346104d8576104d336600461048e565b610ccb565b610058565b5f80fd5b634e487b7160e01b5f52604160045260245ffd5b906104ff90610108565b810190811067ffffffffffffffff82111761051957604052565b6104e1565b9061053161052a610052565b92836104f5565b565b61053d608061051e565b90565b5f90565b606090565b606090565b5f90565b61055a610533565b90602080808085610569610540565b815201610574610544565b81520161057f610549565b81520161058a61054e565b81525050565b610598610552565b90565b5f80fd5b5f80fd5b67ffffffffffffffff81116105bb5760208091020190565b6104e1565b6105c9816100dd565b036105d057565b5f80fd5b905035906105e1826105c0565b565b5f80fd5b67ffffffffffffffff811161060557610601602091610108565b0190565b6104e1565b90825f939282370152565b9092919261062a610625826105e7565b61051e565b93818552602085019082840111610646576106449261060a565b565b6105e3565b9080601f830112156106695781602061066693359101610615565b90565b610335565b9190916040818403126106c057610685604061051e565b92610692815f84016105d4565b5f850152602082013567ffffffffffffffff81116106bb576106b4920161064b565b6020830152565b61059f565b61059b565b9291906106d96106d4826105a3565b61051e565b93818552602080860192028101918383116107305781905b8382106106ff575050505050565b813567ffffffffffffffff811161072b57602091610720878493870161066e565b8152019101906106f1565b610335565b61033d565b9080601f8301121561075357816020610750933591016106c5565b90565b610335565b67ffffffffffffffff811161077657610772602091610108565b0190565b6104e1565b9092919261079061078b82610758565b61051e565b938185526020850190828401116107ac576107aa9261060a565b565b6105e3565b9080601f830112156107cf578160206107cc9335910161077b565b90565b610335565b600311156107de57565b5f80fd5b905035906107ef826107d4565b565b91909160808184031261088057610808608061051e565b92610815815f8401610326565b5f850152602082013567ffffffffffffffff811161087b5781610839918401610735565b602085015260408201359167ffffffffffffffff8311610876576108628261086f9483016107b1565b60408601526060016107e2565b6060830152565b61059f565b61059f565b61059b565b6108909036906107f1565b90565b6108a59061089f610590565b50610885565b90565b6108b2604061051e565b90565b5f90565b5f90565b6108c56108a8565b90602080836108d26108b5565b8152016108dd6108b9565b81525050565b6108eb6108bd565b90565b906108f8906100b0565b9052565b90565b90565b90565b61091961091461091e926108fc565b610902565b6108ff565b90565b9061093361092e836105a3565b61051e565b918252565b610942604061051e565b90565b5f90565b606090565b610956610938565b9060208083610963610945565b81520161096e610949565b81525050565b61097c61094e565b90565b5f5b82811061098d57505050565b602090610998610974565b8184015201610981565b906109c76109af83610921565b926020806109bd86936105a3565b920191039061097f565b565b91565b6109d6604061051e565b90565b90565b6109f06109eb6109f5926109d9565b610902565b6100dd565b90565b90610a02906100dd565b9052565b610a11913691610615565b90565b52565b634e487b7160e01b5f52603260045260245ffd5b90610a35826100ca565b811015610a46576020809102010190565b610a17565b90565b610a62610a5d610a6792610a4b565b610902565b6108ff565b90565b610a7591369161077b565b90565b90610a829061024c565b9052565b610a90604061051e565b90565b610aa7610aa2610aac926100b0565b610902565b6103c6565b90565b90610ab9906103c6565b9052565b90610ac7906103e8565b9052565b909291610b7e610ad9610590565b94610ae26108e3565b50610aef845f88016108ee565b610b01610afc6002610905565b6109a2565b6020870152610b716009610b47610b3e610b1c8588906109c9565b90610b39610b31610b2b6109cc565b966109dc565b5f87016109f8565b610a06565b60208301610a14565b610b6b602089015191600190610b65610b5f83610a4e565b85610a2b565b52610a4e565b90610a2b565b5150916040860192610a6a565b9052610b8e600160608501610a78565b610bb86001610baf610ba7610ba1610a86565b94610a93565b5f8501610aaf565b60208301610abd565b90565b35610bc5816105c0565b90565b90565b610bdf610bda610be492610bc8565b610902565b6100dd565b90565b60209181520190565b5f7f7a65726f00000000000000000000000000000000000000000000000000000000910152565b610c246004602092610be7565b610c2d81610bf0565b0190565b610c469060208101905f818303910152610c17565b90565b15610c5057565b610c58610052565b62461bcd60e51b815280610c6e60048201610c31565b0390fd5b5f7f616c776179730000000000000000000000000000000000000000000000000000910152565b610ca66006602092610be7565b610caf81610c72565b0190565b610cc89060208101905f818303910152610c99565b90565b610ce25f610cfb92610cdb610590565b5001610bbb565b610cf4610cee5f610bcb565b916100dd565b1415610c49565b610d03610052565b62461bcd60e51b815280610d1960048201610cb3565b0390fd"
+            },
+            "methodIdentifiers": {
+              "echo((uint64,(uint8,bytes)[],string,uint8))": "0f646d1e",
+              "fail((uint8,bytes))": "c75b59d7",
+              "make(uint64,string)": "3fd7c343"
+            }
+          },
+          "storageLayout": {
+            "storage": [],
+            "types": null
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/abi_values_peer.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/abi_values_peer.sol",
+          "exportedSymbols": {
+            "AbiPeer": [
+              127
+            ]
+          },
+          "id": 128,
+          "license": "MIT",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "32:23:0"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "AbiPeer",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 127,
+              "linearizedBaseContracts": [
+                127
+              ],
+              "name": "AbiPeer",
+              "nameLocation": "66:7:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "canonicalName": "AbiPeer.Kind",
+                  "id": 5,
+                  "members": [
+                    {
+                      "id": 2,
+                      "name": "Low",
+                      "nameLocation": "92:3:0",
+                      "nodeType": "EnumValue",
+                      "src": "92:3:0"
+                    },
+                    {
+                      "id": 3,
+                      "name": "Mid",
+                      "nameLocation": "97:3:0",
+                      "nodeType": "EnumValue",
+                      "src": "97:3:0"
+                    },
+                    {
+                      "id": 4,
+                      "name": "High",
+                      "nameLocation": "102:4:0",
+                      "nodeType": "EnumValue",
+                      "src": "102:4:0"
+                    }
+                  ],
+                  "name": "Kind",
+                  "nameLocation": "85:4:0",
+                  "nodeType": "EnumDefinition",
+                  "src": "80:28:0"
+                },
+                {
+                  "canonicalName": "AbiPeer.Inner",
+                  "id": 10,
+                  "members": [
+                    {
+                      "constant": false,
+                      "id": 7,
+                      "mutability": "mutable",
+                      "name": "x",
+                      "nameLocation": "143:1:0",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 10,
+                      "src": "137:7:0",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint8",
+                        "typeString": "uint8"
+                      },
+                      "typeName": {
+                        "id": 6,
+                        "name": "uint8",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "137:5:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint8",
+                          "typeString": "uint8"
+                        }
+                      },
+                      "visibility": "internal"
+                    },
+                    {
+                      "constant": false,
+                      "id": 9,
+                      "mutability": "mutable",
+                      "name": "b",
+                      "nameLocation": "160:1:0",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 10,
+                      "src": "154:7:0",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bytes_storage_ptr",
+                        "typeString": "bytes"
+                      },
+                      "typeName": {
+                        "id": 8,
+                        "name": "bytes",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "154:5:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bytes_storage_ptr",
+                          "typeString": "bytes"
+                        }
+                      },
+                      "visibility": "internal"
+                    }
+                  ],
+                  "name": "Inner",
+                  "nameLocation": "121:5:0",
+                  "nodeType": "StructDefinition",
+                  "scope": 127,
+                  "src": "114:54:0",
+                  "visibility": "public"
+                },
+                {
+                  "canonicalName": "AbiPeer.Outer",
+                  "id": 22,
+                  "members": [
+                    {
+                      "constant": false,
+                      "id": 12,
+                      "mutability": "mutable",
+                      "name": "a",
+                      "nameLocation": "204:1:0",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 22,
+                      "src": "197:8:0",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint64",
+                        "typeString": "uint64"
+                      },
+                      "typeName": {
+                        "id": 11,
+                        "name": "uint64",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "197:6:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint64",
+                          "typeString": "uint64"
+                        }
+                      },
+                      "visibility": "internal"
+                    },
+                    {
+                      "constant": false,
+                      "id": 16,
+                      "mutability": "mutable",
+                      "name": "items",
+                      "nameLocation": "223:5:0",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 22,
+                      "src": "215:13:0",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_array$_t_struct$_Inner_$10_storage_$dyn_storage_ptr",
+                        "typeString": "struct AbiPeer.Inner[]"
+                      },
+                      "typeName": {
+                        "baseType": {
+                          "id": 14,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 13,
+                            "name": "Inner",
+                            "nameLocations": [
+                              "215:5:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 10,
+                            "src": "215:5:0"
+                          },
+                          "referencedDeclaration": 10,
+                          "src": "215:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Inner_$10_storage_ptr",
+                            "typeString": "struct AbiPeer.Inner"
+                          }
+                        },
+                        "id": 15,
+                        "nodeType": "ArrayTypeName",
+                        "src": "215:7:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_array$_t_struct$_Inner_$10_storage_$dyn_storage_ptr",
+                          "typeString": "struct AbiPeer.Inner[]"
+                        }
+                      },
+                      "visibility": "internal"
+                    },
+                    {
+                      "constant": false,
+                      "id": 18,
+                      "mutability": "mutable",
+                      "name": "name",
+                      "nameLocation": "245:4:0",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 22,
+                      "src": "238:11:0",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_string_storage_ptr",
+                        "typeString": "string"
+                      },
+                      "typeName": {
+                        "id": 17,
+                        "name": "string",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "238:6:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_string_storage_ptr",
+                          "typeString": "string"
+                        }
+                      },
+                      "visibility": "internal"
+                    },
+                    {
+                      "constant": false,
+                      "id": 21,
+                      "mutability": "mutable",
+                      "name": "k",
+                      "nameLocation": "264:1:0",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 22,
+                      "src": "259:6:0",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_enum$_Kind_$5",
+                        "typeString": "enum AbiPeer.Kind"
+                      },
+                      "typeName": {
+                        "id": 20,
+                        "nodeType": "UserDefinedTypeName",
+                        "pathNode": {
+                          "id": 19,
+                          "name": "Kind",
+                          "nameLocations": [
+                            "259:4:0"
+                          ],
+                          "nodeType": "IdentifierPath",
+                          "referencedDeclaration": 5,
+                          "src": "259:4:0"
+                        },
+                        "referencedDeclaration": 5,
+                        "src": "259:4:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_enum$_Kind_$5",
+                          "typeString": "enum AbiPeer.Kind"
+                        }
+                      },
+                      "visibility": "internal"
+                    }
+                  ],
+                  "name": "Outer",
+                  "nameLocation": "181:5:0",
+                  "nodeType": "StructDefinition",
+                  "scope": 127,
+                  "src": "174:98:0",
+                  "visibility": "public"
+                },
+                {
+                  "canonicalName": "AbiPeer.Pair",
+                  "id": 27,
+                  "members": [
+                    {
+                      "constant": false,
+                      "id": 24,
+                      "mutability": "mutable",
+                      "name": "left",
+                      "nameLocation": "308:4:0",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 27,
+                      "src": "300:12:0",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint128",
+                        "typeString": "uint128"
+                      },
+                      "typeName": {
+                        "id": 23,
+                        "name": "uint128",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "300:7:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint128",
+                          "typeString": "uint128"
+                        }
+                      },
+                      "visibility": "internal"
+                    },
+                    {
+                      "constant": false,
+                      "id": 26,
+                      "mutability": "mutable",
+                      "name": "flag",
+                      "nameLocation": "327:4:0",
+                      "nodeType": "VariableDeclaration",
+                      "scope": 27,
+                      "src": "322:9:0",
+                      "stateVariable": false,
+                      "storageLocation": "default",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_bool",
+                        "typeString": "bool"
+                      },
+                      "typeName": {
+                        "id": 25,
+                        "name": "bool",
+                        "nodeType": "ElementaryTypeName",
+                        "src": "322:4:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_bool",
+                          "typeString": "bool"
+                        }
+                      },
+                      "visibility": "internal"
+                    }
+                  ],
+                  "name": "Pair",
+                  "nameLocation": "285:4:0",
+                  "nodeType": "StructDefinition",
+                  "scope": 127,
+                  "src": "278:60:0",
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 38,
+                    "nodeType": "Block",
+                    "src": "413:25:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 36,
+                          "name": "o",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 30,
+                          "src": "430:1:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Outer_$22_calldata_ptr",
+                            "typeString": "struct AbiPeer.Outer calldata"
+                          }
+                        },
+                        "functionReturnParameters": 35,
+                        "id": 37,
+                        "nodeType": "Return",
+                        "src": "423:8:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "0f646d1e",
+                  "id": 39,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "echo",
+                  "nameLocation": "353:4:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 31,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 30,
+                        "mutability": "mutable",
+                        "name": "o",
+                        "nameLocation": "373:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 39,
+                        "src": "358:16:0",
+                        "stateVariable": false,
+                        "storageLocation": "calldata",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_struct$_Outer_$22_calldata_ptr",
+                          "typeString": "struct AbiPeer.Outer"
+                        },
+                        "typeName": {
+                          "id": 29,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 28,
+                            "name": "Outer",
+                            "nameLocations": [
+                              "358:5:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 22,
+                            "src": "358:5:0"
+                          },
+                          "referencedDeclaration": 22,
+                          "src": "358:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Outer_$22_storage_ptr",
+                            "typeString": "struct AbiPeer.Outer"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "357:18:0"
+                  },
+                  "returnParameters": {
+                    "id": 35,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 34,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 39,
+                        "src": "399:12:0",
+                        "stateVariable": false,
+                        "storageLocation": "memory",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_struct$_Outer_$22_memory_ptr",
+                          "typeString": "struct AbiPeer.Outer"
+                        },
+                        "typeName": {
+                          "id": 33,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 32,
+                            "name": "Outer",
+                            "nameLocations": [
+                              "399:5:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 22,
+                            "src": "399:5:0"
+                          },
+                          "referencedDeclaration": 22,
+                          "src": "399:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Outer_$22_storage_ptr",
+                            "typeString": "struct AbiPeer.Outer"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "398:14:0"
+                  },
+                  "scope": 127,
+                  "src": "344:94:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 103,
+                    "nodeType": "Block",
+                    "src": "544:176:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 56,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "id": 52,
+                              "name": "o",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 47,
+                              "src": "554:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Outer_$22_memory_ptr",
+                                "typeString": "struct AbiPeer.Outer memory"
+                              }
+                            },
+                            "id": 54,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "556:1:0",
+                            "memberName": "a",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 12,
+                            "src": "554:3:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint64",
+                              "typeString": "uint64"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 55,
+                            "name": "a",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 41,
+                            "src": "560:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint64",
+                              "typeString": "uint64"
+                            }
+                          },
+                          "src": "554:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint64",
+                            "typeString": "uint64"
+                          }
+                        },
+                        "id": 57,
+                        "nodeType": "ExpressionStatement",
+                        "src": "554:7:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 67,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "id": 58,
+                              "name": "o",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 47,
+                              "src": "571:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Outer_$22_memory_ptr",
+                                "typeString": "struct AbiPeer.Outer memory"
+                              }
+                            },
+                            "id": 60,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "573:5:0",
+                            "memberName": "items",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 16,
+                            "src": "571:7:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_struct$_Inner_$10_memory_ptr_$dyn_memory_ptr",
+                              "typeString": "struct AbiPeer.Inner memory[] memory"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "arguments": [
+                              {
+                                "hexValue": "32",
+                                "id": 65,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "593:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_2_by_1",
+                                  "typeString": "int_const 2"
+                                },
+                                "value": "2"
+                              }
+                            ],
+                            "expression": {
+                              "argumentTypes": [
+                                {
+                                  "typeIdentifier": "t_rational_2_by_1",
+                                  "typeString": "int_const 2"
+                                }
+                              ],
+                              "id": 64,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "lValueRequested": false,
+                              "nodeType": "NewExpression",
+                              "src": "581:11:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_function_objectcreation_pure$_t_uint256_$returns$_t_array$_t_struct$_Inner_$10_memory_ptr_$dyn_memory_ptr_$",
+                                "typeString": "function (uint256) pure returns (struct AbiPeer.Inner memory[] memory)"
+                              },
+                              "typeName": {
+                                "baseType": {
+                                  "id": 62,
+                                  "nodeType": "UserDefinedTypeName",
+                                  "pathNode": {
+                                    "id": 61,
+                                    "name": "Inner",
+                                    "nameLocations": [
+                                      "585:5:0"
+                                    ],
+                                    "nodeType": "IdentifierPath",
+                                    "referencedDeclaration": 10,
+                                    "src": "585:5:0"
+                                  },
+                                  "referencedDeclaration": 10,
+                                  "src": "585:5:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_struct$_Inner_$10_storage_ptr",
+                                    "typeString": "struct AbiPeer.Inner"
+                                  }
+                                },
+                                "id": 63,
+                                "nodeType": "ArrayTypeName",
+                                "src": "585:7:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_array$_t_struct$_Inner_$10_storage_$dyn_storage_ptr",
+                                  "typeString": "struct AbiPeer.Inner[]"
+                                }
+                              }
+                            },
+                            "id": 66,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "functionCall",
+                            "lValueRequested": false,
+                            "nameLocations": [],
+                            "names": [],
+                            "nodeType": "FunctionCall",
+                            "src": "581:14:0",
+                            "tryCall": false,
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_array$_t_struct$_Inner_$10_memory_ptr_$dyn_memory_ptr",
+                              "typeString": "struct AbiPeer.Inner memory[] memory"
+                            }
+                          },
+                          "src": "571:24:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_array$_t_struct$_Inner_$10_memory_ptr_$dyn_memory_ptr",
+                            "typeString": "struct AbiPeer.Inner memory[] memory"
+                          }
+                        },
+                        "id": 68,
+                        "nodeType": "ExpressionStatement",
+                        "src": "571:24:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 81,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "baseExpression": {
+                              "expression": {
+                                "id": 69,
+                                "name": "o",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 47,
+                                "src": "605:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_struct$_Outer_$22_memory_ptr",
+                                  "typeString": "struct AbiPeer.Outer memory"
+                                }
+                              },
+                              "id": 72,
+                              "isConstant": false,
+                              "isLValue": true,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "memberLocation": "607:5:0",
+                              "memberName": "items",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 16,
+                              "src": "605:7:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_array$_t_struct$_Inner_$10_memory_ptr_$dyn_memory_ptr",
+                                "typeString": "struct AbiPeer.Inner memory[] memory"
+                              }
+                            },
+                            "id": 73,
+                            "indexExpression": {
+                              "hexValue": "31",
+                              "id": 71,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "number",
+                              "lValueRequested": false,
+                              "nodeType": "Literal",
+                              "src": "613:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_rational_1_by_1",
+                                "typeString": "int_const 1"
+                              },
+                              "value": "1"
+                            },
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "nodeType": "IndexAccess",
+                            "src": "605:10:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_struct$_Inner_$10_memory_ptr",
+                              "typeString": "struct AbiPeer.Inner memory"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "arguments": [
+                              {
+                                "hexValue": "39",
+                                "id": 75,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "624:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_9_by_1",
+                                  "typeString": "int_const 9"
+                                },
+                                "value": "9"
+                              },
+                              {
+                                "arguments": [
+                                  {
+                                    "id": 78,
+                                    "name": "name",
+                                    "nodeType": "Identifier",
+                                    "overloadedDeclarations": [],
+                                    "referencedDeclaration": 43,
+                                    "src": "633:4:0",
+                                    "typeDescriptions": {
+                                      "typeIdentifier": "t_string_calldata_ptr",
+                                      "typeString": "string calldata"
+                                    }
+                                  }
+                                ],
+                                "expression": {
+                                  "argumentTypes": [
+                                    {
+                                      "typeIdentifier": "t_string_calldata_ptr",
+                                      "typeString": "string calldata"
+                                    }
+                                  ],
+                                  "id": 77,
+                                  "isConstant": false,
+                                  "isLValue": false,
+                                  "isPure": true,
+                                  "lValueRequested": false,
+                                  "nodeType": "ElementaryTypeNameExpression",
+                                  "src": "627:5:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_type$_t_bytes_storage_ptr_$",
+                                    "typeString": "type(bytes storage pointer)"
+                                  },
+                                  "typeName": {
+                                    "id": 76,
+                                    "name": "bytes",
+                                    "nodeType": "ElementaryTypeName",
+                                    "src": "627:5:0",
+                                    "typeDescriptions": {}
+                                  }
+                                },
+                                "id": 79,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": false,
+                                "kind": "typeConversion",
+                                "lValueRequested": false,
+                                "nameLocations": [],
+                                "names": [],
+                                "nodeType": "FunctionCall",
+                                "src": "627:11:0",
+                                "tryCall": false,
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_bytes_calldata_ptr",
+                                  "typeString": "bytes calldata"
+                                }
+                              }
+                            ],
+                            "expression": {
+                              "argumentTypes": [
+                                {
+                                  "typeIdentifier": "t_rational_9_by_1",
+                                  "typeString": "int_const 9"
+                                },
+                                {
+                                  "typeIdentifier": "t_bytes_calldata_ptr",
+                                  "typeString": "bytes calldata"
+                                }
+                              ],
+                              "id": 74,
+                              "name": "Inner",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 10,
+                              "src": "618:5:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_type$_t_struct$_Inner_$10_storage_ptr_$",
+                                "typeString": "type(struct AbiPeer.Inner storage pointer)"
+                              }
+                            },
+                            "id": 80,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "kind": "structConstructorCall",
+                            "lValueRequested": false,
+                            "nameLocations": [],
+                            "names": [],
+                            "nodeType": "FunctionCall",
+                            "src": "618:21:0",
+                            "tryCall": false,
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_struct$_Inner_$10_memory_ptr",
+                              "typeString": "struct AbiPeer.Inner memory"
+                            }
+                          },
+                          "src": "605:34:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Inner_$10_memory_ptr",
+                            "typeString": "struct AbiPeer.Inner memory"
+                          }
+                        },
+                        "id": 82,
+                        "nodeType": "ExpressionStatement",
+                        "src": "605:34:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 87,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "id": 83,
+                              "name": "o",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 47,
+                              "src": "649:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Outer_$22_memory_ptr",
+                                "typeString": "struct AbiPeer.Outer memory"
+                              }
+                            },
+                            "id": 85,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "651:4:0",
+                            "memberName": "name",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 18,
+                            "src": "649:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_string_memory_ptr",
+                              "typeString": "string memory"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "id": 86,
+                            "name": "name",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 43,
+                            "src": "658:4:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_string_calldata_ptr",
+                              "typeString": "string calldata"
+                            }
+                          },
+                          "src": "649:13:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_string_memory_ptr",
+                            "typeString": "string memory"
+                          }
+                        },
+                        "id": 88,
+                        "nodeType": "ExpressionStatement",
+                        "src": "649:13:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 94,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "id": 89,
+                              "name": "o",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 47,
+                              "src": "672:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_struct$_Outer_$22_memory_ptr",
+                                "typeString": "struct AbiPeer.Outer memory"
+                              }
+                            },
+                            "id": 91,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "674:1:0",
+                            "memberName": "k",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 21,
+                            "src": "672:3:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_enum$_Kind_$5",
+                              "typeString": "enum AbiPeer.Kind"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "expression": {
+                              "id": 92,
+                              "name": "Kind",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 5,
+                              "src": "678:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_type$_t_enum$_Kind_$5_$",
+                                "typeString": "type(enum AbiPeer.Kind)"
+                              }
+                            },
+                            "id": 93,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "lValueRequested": false,
+                            "memberLocation": "683:3:0",
+                            "memberName": "Mid",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 3,
+                            "src": "678:8:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_enum$_Kind_$5",
+                              "typeString": "enum AbiPeer.Kind"
+                            }
+                          },
+                          "src": "672:14:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_enum$_Kind_$5",
+                            "typeString": "enum AbiPeer.Kind"
+                          }
+                        },
+                        "id": 95,
+                        "nodeType": "ExpressionStatement",
+                        "src": "672:14:0"
+                      },
+                      {
+                        "expression": {
+                          "id": 101,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "id": 96,
+                            "name": "p",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 50,
+                            "src": "696:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_struct$_Pair_$27_memory_ptr",
+                              "typeString": "struct AbiPeer.Pair memory"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "arguments": [
+                              {
+                                "id": 98,
+                                "name": "a",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 41,
+                                "src": "705:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_uint64",
+                                  "typeString": "uint64"
+                                }
+                              },
+                              {
+                                "hexValue": "74727565",
+                                "id": 99,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "bool",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "708:4:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_bool",
+                                  "typeString": "bool"
+                                },
+                                "value": "true"
+                              }
+                            ],
+                            "expression": {
+                              "argumentTypes": [
+                                {
+                                  "typeIdentifier": "t_uint64",
+                                  "typeString": "uint64"
+                                },
+                                {
+                                  "typeIdentifier": "t_bool",
+                                  "typeString": "bool"
+                                }
+                              ],
+                              "id": 97,
+                              "name": "Pair",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 27,
+                              "src": "700:4:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_type$_t_struct$_Pair_$27_storage_ptr_$",
+                                "typeString": "type(struct AbiPeer.Pair storage pointer)"
+                              }
+                            },
+                            "id": 100,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "kind": "structConstructorCall",
+                            "lValueRequested": false,
+                            "nameLocations": [],
+                            "names": [],
+                            "nodeType": "FunctionCall",
+                            "src": "700:13:0",
+                            "tryCall": false,
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_struct$_Pair_$27_memory_ptr",
+                              "typeString": "struct AbiPeer.Pair memory"
+                            }
+                          },
+                          "src": "696:17:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Pair_$27_memory_ptr",
+                            "typeString": "struct AbiPeer.Pair memory"
+                          }
+                        },
+                        "id": 102,
+                        "nodeType": "ExpressionStatement",
+                        "src": "696:17:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "3fd7c343",
+                  "id": 104,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "make",
+                  "nameLocation": "453:4:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 44,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 41,
+                        "mutability": "mutable",
+                        "name": "a",
+                        "nameLocation": "465:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 104,
+                        "src": "458:8:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint64",
+                          "typeString": "uint64"
+                        },
+                        "typeName": {
+                          "id": 40,
+                          "name": "uint64",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "458:6:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint64",
+                            "typeString": "uint64"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 43,
+                        "mutability": "mutable",
+                        "name": "name",
+                        "nameLocation": "484:4:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 104,
+                        "src": "468:20:0",
+                        "stateVariable": false,
+                        "storageLocation": "calldata",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_string_calldata_ptr",
+                          "typeString": "string"
+                        },
+                        "typeName": {
+                          "id": 42,
+                          "name": "string",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "468:6:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_string_storage_ptr",
+                            "typeString": "string"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "457:32:0"
+                  },
+                  "returnParameters": {
+                    "id": 51,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 47,
+                        "mutability": "mutable",
+                        "name": "o",
+                        "nameLocation": "526:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 104,
+                        "src": "513:14:0",
+                        "stateVariable": false,
+                        "storageLocation": "memory",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_struct$_Outer_$22_memory_ptr",
+                          "typeString": "struct AbiPeer.Outer"
+                        },
+                        "typeName": {
+                          "id": 46,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 45,
+                            "name": "Outer",
+                            "nameLocations": [
+                              "513:5:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 22,
+                            "src": "513:5:0"
+                          },
+                          "referencedDeclaration": 22,
+                          "src": "513:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Outer_$22_storage_ptr",
+                            "typeString": "struct AbiPeer.Outer"
+                          }
+                        },
+                        "visibility": "internal"
+                      },
+                      {
+                        "constant": false,
+                        "id": 50,
+                        "mutability": "mutable",
+                        "name": "p",
+                        "nameLocation": "541:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 104,
+                        "src": "529:13:0",
+                        "stateVariable": false,
+                        "storageLocation": "memory",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_struct$_Pair_$27_memory_ptr",
+                          "typeString": "struct AbiPeer.Pair"
+                        },
+                        "typeName": {
+                          "id": 49,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 48,
+                            "name": "Pair",
+                            "nameLocations": [
+                              "529:4:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 27,
+                            "src": "529:4:0"
+                          },
+                          "referencedDeclaration": 27,
+                          "src": "529:4:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Pair_$27_storage_ptr",
+                            "typeString": "struct AbiPeer.Pair"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "512:31:0"
+                  },
+                  "scope": 127,
+                  "src": "444:276:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "external"
+                },
+                {
+                  "body": {
+                    "id": 125,
+                    "nodeType": "Block",
+                    "src": "795:68:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "arguments": [
+                            {
+                              "commonType": {
+                                "typeIdentifier": "t_uint8",
+                                "typeString": "uint8"
+                              },
+                              "id": 117,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": false,
+                              "lValueRequested": false,
+                              "leftExpression": {
+                                "expression": {
+                                  "id": 114,
+                                  "name": "i",
+                                  "nodeType": "Identifier",
+                                  "overloadedDeclarations": [],
+                                  "referencedDeclaration": 107,
+                                  "src": "813:1:0",
+                                  "typeDescriptions": {
+                                    "typeIdentifier": "t_struct$_Inner_$10_calldata_ptr",
+                                    "typeString": "struct AbiPeer.Inner calldata"
+                                  }
+                                },
+                                "id": 115,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": false,
+                                "lValueRequested": false,
+                                "memberLocation": "815:1:0",
+                                "memberName": "x",
+                                "nodeType": "MemberAccess",
+                                "referencedDeclaration": 7,
+                                "src": "813:3:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_uint8",
+                                  "typeString": "uint8"
+                                }
+                              },
+                              "nodeType": "BinaryOperation",
+                              "operator": "!=",
+                              "rightExpression": {
+                                "hexValue": "30",
+                                "id": 116,
+                                "isConstant": false,
+                                "isLValue": false,
+                                "isPure": true,
+                                "kind": "number",
+                                "lValueRequested": false,
+                                "nodeType": "Literal",
+                                "src": "820:1:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_rational_0_by_1",
+                                  "typeString": "int_const 0"
+                                },
+                                "value": "0"
+                              },
+                              "src": "813:8:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_bool",
+                                "typeString": "bool"
+                              }
+                            },
+                            {
+                              "hexValue": "7a65726f",
+                              "id": 118,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "string",
+                              "lValueRequested": false,
+                              "nodeType": "Literal",
+                              "src": "823:6:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_stringliteral_29319238daf40223d6021718c846ac2a0c0ef028ecc765972e999a8ac79662a8",
+                                "typeString": "literal_string \"zero\""
+                              },
+                              "value": "zero"
+                            }
+                          ],
+                          "expression": {
+                            "argumentTypes": [
+                              {
+                                "typeIdentifier": "t_bool",
+                                "typeString": "bool"
+                              },
+                              {
+                                "typeIdentifier": "t_stringliteral_29319238daf40223d6021718c846ac2a0c0ef028ecc765972e999a8ac79662a8",
+                                "typeString": "literal_string \"zero\""
+                              }
+                            ],
+                            "id": 113,
+                            "name": "require",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [
+                              -18,
+                              -18,
+                              -18
+                            ],
+                            "referencedDeclaration": -18,
+                            "src": "805:7:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_require_pure$_t_bool_$_t_string_memory_ptr_$returns$__$",
+                              "typeString": "function (bool,string memory) pure"
+                            }
+                          },
+                          "id": 119,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "805:25:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$__$",
+                            "typeString": "tuple()"
+                          }
+                        },
+                        "id": 120,
+                        "nodeType": "ExpressionStatement",
+                        "src": "805:25:0"
+                      },
+                      {
+                        "expression": {
+                          "arguments": [
+                            {
+                              "hexValue": "616c77617973",
+                              "id": 122,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "kind": "string",
+                              "lValueRequested": false,
+                              "nodeType": "Literal",
+                              "src": "847:8:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_stringliteral_84683ce477c0c34a8181f5939a2145b77b764c1e3d1f295d1e00c56b58a8de8d",
+                                "typeString": "literal_string \"always\""
+                              },
+                              "value": "always"
+                            }
+                          ],
+                          "expression": {
+                            "argumentTypes": [
+                              {
+                                "typeIdentifier": "t_stringliteral_84683ce477c0c34a8181f5939a2145b77b764c1e3d1f295d1e00c56b58a8de8d",
+                                "typeString": "literal_string \"always\""
+                              }
+                            ],
+                            "id": 121,
+                            "name": "revert",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [
+                              -19,
+                              -19
+                            ],
+                            "referencedDeclaration": -19,
+                            "src": "840:6:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_function_revert_pure$_t_string_memory_ptr_$returns$__$",
+                              "typeString": "function (string memory) pure"
+                            }
+                          },
+                          "id": 123,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "kind": "functionCall",
+                          "lValueRequested": false,
+                          "nameLocations": [],
+                          "names": [],
+                          "nodeType": "FunctionCall",
+                          "src": "840:16:0",
+                          "tryCall": false,
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_tuple$__$",
+                            "typeString": "tuple()"
+                          }
+                        },
+                        "id": 124,
+                        "nodeType": "ExpressionStatement",
+                        "src": "840:16:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "c75b59d7",
+                  "id": 126,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "fail",
+                  "nameLocation": "735:4:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 108,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 107,
+                        "mutability": "mutable",
+                        "name": "i",
+                        "nameLocation": "755:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 126,
+                        "src": "740:16:0",
+                        "stateVariable": false,
+                        "storageLocation": "calldata",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_struct$_Inner_$10_calldata_ptr",
+                          "typeString": "struct AbiPeer.Inner"
+                        },
+                        "typeName": {
+                          "id": 106,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 105,
+                            "name": "Inner",
+                            "nameLocations": [
+                              "740:5:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 10,
+                            "src": "740:5:0"
+                          },
+                          "referencedDeclaration": 10,
+                          "src": "740:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Inner_$10_storage_ptr",
+                            "typeString": "struct AbiPeer.Inner"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "739:18:0"
+                  },
+                  "returnParameters": {
+                    "id": 112,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 111,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 126,
+                        "src": "781:12:0",
+                        "stateVariable": false,
+                        "storageLocation": "memory",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_struct$_Outer_$22_memory_ptr",
+                          "typeString": "struct AbiPeer.Outer"
+                        },
+                        "typeName": {
+                          "id": 110,
+                          "nodeType": "UserDefinedTypeName",
+                          "pathNode": {
+                            "id": 109,
+                            "name": "Outer",
+                            "nameLocations": [
+                              "781:5:0"
+                            ],
+                            "nodeType": "IdentifierPath",
+                            "referencedDeclaration": 22,
+                            "src": "781:5:0"
+                          },
+                          "referencedDeclaration": 22,
+                          "src": "781:5:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_struct$_Outer_$22_storage_ptr",
+                            "typeString": "struct AbiPeer.Outer"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "780:14:0"
+                  },
+                  "scope": 127,
+                  "src": "726:137:0",
+                  "stateMutability": "pure",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 128,
+              "src": "57:808:0",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "32:834:0"
+        },
+        "id": 0
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}

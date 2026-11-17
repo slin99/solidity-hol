@@ -624,9 +624,9 @@ def compile_fixture(
         },
     }
     output = compile_standard_json(solc, compiler_input)
-    contracts = output.get("contracts", {}).get(name)
-    if not contracts:
-        raise SystemExit(f"solc produced no contract for {name}")
+    # A source that only declares types and free functions for the fixtures
+    # importing it compiles to no contract.
+    contracts = output.get("contracts", {}).get(name, {})
     artifacts: dict[str, dict[str, str]] = {}
     for contract, section in sorted(contracts.items()):
         if not any(section.get(artifact) for artifact in ARTIFACTS):
@@ -708,7 +708,7 @@ def object_level_forms(fixtures: list[dict[str, Any]]) -> dict[str, Any]:
                 if obj["dataSections"]:
                     add_occurrences(forms, role, fixture["source"], "data",
                                     obj["dataSections"])
-                if obj["subobjects"] and obj["depth"] == 0:
+                if obj["subobjects"]:
                     add_occurrences(forms, role, fixture["source"], "subobject",
                                     obj["subobjects"])
                 for name, count in obj["builtins"].items():

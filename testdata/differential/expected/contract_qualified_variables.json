@@ -1,0 +1,1443 @@
+{
+  "compiler": {
+    "pin": "f401782df49be312ea4ef52a2d467cf5183b5906",
+    "reportedVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.37+commit.f401782d.Linux.g++"
+  },
+  "format": "solidity-hol-solc-artifact-v1",
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "storageLayout",
+            "transientStorageLayout",
+            "evm.bytecode.object",
+            "evm.deployedBytecode.object",
+            "evm.deployedBytecode.immutableReferences",
+            "evm.methodIdentifiers"
+          ]
+        }
+      },
+      "viaIR": true
+    },
+    "sources": {
+      "testdata/differential/contract_qualified_variables.sol": {
+        "content": "// SPDX-License-Identifier: MIT\npragma solidity 0.8.37;\n\n// Variables named through the contract declaring them: an immutable read and\n// assigned in base constructor arguments, in its initializer and in a\n// constructor body, and a state variable and a constant, at creation and at\n// runtime.\ncontract QualifiedBase {\n    uint256 immutable fixedValue = QualifiedBase.fixedValue + 1;\n    uint256 public stored;\n    uint256 public seen;\n    uint256 constant K = 7;\n\n    constructor(uint256 x) {\n        QualifiedBase.stored = x + QualifiedBase.K;\n    }\n\n    function get() external view returns (uint256) {\n        return QualifiedBase.fixedValue;\n    }\n}\n\ncontract QualifiedMiddle is QualifiedBase(QualifiedBase.fixedValue += 8) {\n    constructor(uint256) {}\n}\n\ncontract Qualified is QualifiedMiddle {\n    constructor() QualifiedMiddle(QualifiedBase.fixedValue += 4) {\n        QualifiedBase.seen = QualifiedBase.fixedValue;\n    }\n\n    function bump() external returns (uint256) {\n        QualifiedBase.stored += 2;\n        return QualifiedBase.stored;\n    }\n}\n"
+      }
+    }
+  },
+  "output": {
+    "contracts": {
+      "testdata/differential/contract_qualified_variables.sol": {
+        "Qualified": {
+          "abi": [
+            {
+              "inputs": [],
+              "stateMutability": "nonpayable",
+              "type": "constructor"
+            },
+            {
+              "inputs": [],
+              "name": "bump",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "get",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "seen",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "stored",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "60a06040523461003057610011610104565b610019610035565b61030b6102158239608051816102e9015261030b90f35b61003b565b60405190565b5f80fd5b90565b90565b90565b61005c6100576100619261003f565b610045565b610042565b90565b61006e9051610042565b90565b634e487b7160e01b5f52601160045260245ffd5b61009461009a91939293610042565b92610042565b82018092116100a557565b610071565b5f1b90565b906100bb5f19916100aa565b9181191691161790565b6100d96100d46100de92610042565b610045565b610042565b90565b90565b906100f96100f4610100926100c5565b6100e1565b82546100af565b9055565b61012c6101236101146004610048565b61011e6080610064565b610085565b80608052610161565b6101406101396080610064565b60016100e4565b565b90565b61015961015461015e92610142565b610045565b610042565b90565b5061018a6101816101726008610145565b61017c6080610064565b610085565b806080526101d7565b565b90565b6101a361019e6101a89261018c565b610045565b610042565b90565b90565b6101c26101bd6101c7926101ab565b610045565b610042565b90565b6101d460076101ae565b90565b61020c610212916101fb6101eb6080610064565b6101f5600161018f565b90610085565b6080526102066101ca565b90610085565b5f6100e4565b56fe60806040526004361015610013575b6101c2565b61001d5f3561005c565b806368110b2f146100575780636d4ce63c14610052578063d99aa8e21461004d5763e582dd310361000e5761018d565b61014a565b6100d9565b6100a4565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261007a57565b61006c565b90565b61008b9061007f565b9052565b91906100a2905f60208501940190610082565b565b346100d4576100b4366004610070565b6100d06100bf6102a5565b6100c7610062565b9182918261008f565b0390f35b610068565b34610109576100e9366004610070565b6101056100f46102de565b6100fc610062565b9182918261008f565b0390f35b610068565b1c90565b90565b61012590600861012a930261010e565b610112565b90565b906101389154610115565b90565b61014760015f9061012d565b90565b3461017a5761015a366004610070565b61017661016561013b565b61016d610062565b9182918261008f565b0390f35b610068565b61018a5f5f9061012d565b90565b346101bd5761019d366004610070565b6101b96101a861017f565b6101b0610062565b9182918261008f565b0390f35b610068565b5f80fd5b5f90565b90565b90565b6101e46101df6101e9926101ca565b6101cd565b61007f565b90565b5f1c90565b6101fd610202916101ec565b610112565b90565b61020f90546101f1565b90565b634e487b7160e01b5f52601160045260245ffd5b61023561023b9193929361007f565b9261007f565b820180921161024657565b610212565b5f1b90565b9061025c5f199161024b565b9181191691161790565b61027a61027561027f9261007f565b6101cd565b61007f565b90565b90565b9061029a6102956102a192610266565b610282565b8254610250565b9055565b6102ad6101c6565b506102d26102cc6102be60026101d0565b6102c75f610205565b610226565b5f610285565b6102db5f610205565b90565b6102e66101c6565b507f00000000000000000000000000000000000000000000000000000000000000009056"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {
+                "7": [
+                  {
+                    "length": 32,
+                    "start": 745
+                  }
+                ]
+              },
+              "object": "60806040526004361015610013575b6101c2565b61001d5f3561005c565b806368110b2f146100575780636d4ce63c14610052578063d99aa8e21461004d5763e582dd310361000e5761018d565b61014a565b6100d9565b6100a4565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261007a57565b61006c565b90565b61008b9061007f565b9052565b91906100a2905f60208501940190610082565b565b346100d4576100b4366004610070565b6100d06100bf6102a5565b6100c7610062565b9182918261008f565b0390f35b610068565b34610109576100e9366004610070565b6101056100f46102de565b6100fc610062565b9182918261008f565b0390f35b610068565b1c90565b90565b61012590600861012a930261010e565b610112565b90565b906101389154610115565b90565b61014760015f9061012d565b90565b3461017a5761015a366004610070565b61017661016561013b565b61016d610062565b9182918261008f565b0390f35b610068565b61018a5f5f9061012d565b90565b346101bd5761019d366004610070565b6101b96101a861017f565b6101b0610062565b9182918261008f565b0390f35b610068565b5f80fd5b5f90565b90565b90565b6101e46101df6101e9926101ca565b6101cd565b61007f565b90565b5f1c90565b6101fd610202916101ec565b610112565b90565b61020f90546101f1565b90565b634e487b7160e01b5f52601160045260245ffd5b61023561023b9193929361007f565b9261007f565b820180921161024657565b610212565b5f1b90565b9061025c5f199161024b565b9181191691161790565b61027a61027561027f9261007f565b6101cd565b61007f565b90565b90565b9061029a6102956102a192610266565b610282565b8254610250565b9055565b6102ad6101c6565b506102d26102cc6102be60026101d0565b6102c75f610205565b610226565b5f610285565b6102db5f610205565b90565b6102e66101c6565b507f00000000000000000000000000000000000000000000000000000000000000009056"
+            },
+            "methodIdentifiers": {
+              "bump()": "68110b2f",
+              "get()": "6d4ce63c",
+              "seen()": "d99aa8e2",
+              "stored()": "e582dd31"
+            }
+          },
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 9,
+                "contract": "testdata/differential/contract_qualified_variables.sol:Qualified",
+                "label": "stored",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_uint256"
+              },
+              {
+                "astId": 11,
+                "contract": "testdata/differential/contract_qualified_variables.sol:Qualified",
+                "label": "seen",
+                "offset": 0,
+                "slot": "1",
+                "type": "t_uint256"
+              }
+            ],
+            "types": {
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        },
+        "QualifiedBase": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "x",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "constructor"
+            },
+            {
+              "inputs": [],
+              "name": "get",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "seen",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "stored",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "60a060405234610038576100196100146100e9565b6101f8565b61002161003d565b6101b261023682396080518161019001526101b290f35b610043565b60405190565b5f80fd5b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b9061006f90610047565b810190811060018060401b0382111761008757604052565b610051565b9061009f61009861003d565b9283610065565b565b5f80fd5b90565b6100b1816100a5565b036100b857565b5f80fd5b905051906100c9826100a8565b565b906020828203126100e4576100e1915f016100bc565b90565b6100a1565b6101076103e8803803806100fc8161008c565b9283398101906100cb565b90565b61011490516100a5565b90565b90565b90565b61013161012c61013692610117565b61011a565b6100a5565b90565b634e487b7160e01b5f52601160045260245ffd5b61015c610162919392936100a5565b926100a5565b820180921161016d57565b610139565b90565b61018961018461018e92610172565b61011a565b6100a5565b90565b61019b6007610175565b90565b5f1b90565b906101af5f199161019e565b9181191691161790565b6101cd6101c86101d2926100a5565b61011a565b6100a5565b90565b90565b906101ed6101e86101f4926101b9565b6101d5565b82546101a3565b9055565b61022d6102339161021c61020c608061010a565b610216600161011d565b9061014d565b608052610227610191565b9061014d565b5f6101d8565b56fe60806040526004361015610013575b61017d565b61001d5f3561004c565b80636d4ce63c14610047578063d99aa8e2146100425763e582dd310361000e57610148565b610105565b610094565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261006a57565b61005c565b90565b61007b9061006f565b9052565b9190610092905f60208501940190610072565b565b346100c4576100a4366004610060565b6100c06100af610185565b6100b7610052565b9182918261007f565b0390f35b610058565b1c90565b90565b6100e09060086100e593026100c9565b6100cd565b90565b906100f391546100d0565b90565b61010260015f906100e8565b90565b3461013557610115366004610060565b6101316101206100f6565b610128610052565b9182918261007f565b0390f35b610058565b6101455f5f906100e8565b90565b3461017857610158366004610060565b61017461016361013a565b61016b610052565b9182918261007f565b0390f35b610058565b5f80fd5b5f90565b61018d610181565b507f00000000000000000000000000000000000000000000000000000000000000009056"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {
+                "7": [
+                  {
+                    "length": 32,
+                    "start": 400
+                  }
+                ]
+              },
+              "object": "60806040526004361015610013575b61017d565b61001d5f3561004c565b80636d4ce63c14610047578063d99aa8e2146100425763e582dd310361000e57610148565b610105565b610094565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261006a57565b61005c565b90565b61007b9061006f565b9052565b9190610092905f60208501940190610072565b565b346100c4576100a4366004610060565b6100c06100af610185565b6100b7610052565b9182918261007f565b0390f35b610058565b1c90565b90565b6100e09060086100e593026100c9565b6100cd565b90565b906100f391546100d0565b90565b61010260015f906100e8565b90565b3461013557610115366004610060565b6101316101206100f6565b610128610052565b9182918261007f565b0390f35b610058565b6101455f5f906100e8565b90565b3461017857610158366004610060565b61017461016361013a565b61016b610052565b9182918261007f565b0390f35b610058565b5f80fd5b5f90565b61018d610181565b507f00000000000000000000000000000000000000000000000000000000000000009056"
+            },
+            "methodIdentifiers": {
+              "get()": "6d4ce63c",
+              "seen()": "d99aa8e2",
+              "stored()": "e582dd31"
+            }
+          },
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 9,
+                "contract": "testdata/differential/contract_qualified_variables.sol:QualifiedBase",
+                "label": "stored",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_uint256"
+              },
+              {
+                "astId": 11,
+                "contract": "testdata/differential/contract_qualified_variables.sol:QualifiedBase",
+                "label": "seen",
+                "offset": 0,
+                "slot": "1",
+                "type": "t_uint256"
+              }
+            ],
+            "types": {
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        },
+        "QualifiedMiddle": {
+          "abi": [
+            {
+              "inputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "nonpayable",
+              "type": "constructor"
+            },
+            {
+              "inputs": [],
+              "name": "get",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "seen",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            },
+            {
+              "inputs": [],
+              "name": "stored",
+              "outputs": [
+                {
+                  "internalType": "uint256",
+                  "name": "",
+                  "type": "uint256"
+                }
+              ],
+              "stateMutability": "view",
+              "type": "function"
+            }
+          ],
+          "evm": {
+            "bytecode": {
+              "object": "60a060405234610038576100196100146100e9565b610172565b61002161003d565b6101b261028082396080518161019001526101b290f35b610043565b60405190565b5f80fd5b601f801991011690565b634e487b7160e01b5f52604160045260245ffd5b9061006f90610047565b810190811060018060401b0382111761008757604052565b610051565b9061009f61009861003d565b9283610065565b565b5f80fd5b90565b6100b1816100a5565b036100b857565b5f80fd5b905051906100c9826100a8565b565b906020828203126100e4576100e1915f016100bc565b90565b6100a1565b610107610432803803806100fc8161008c565b9283398101906100cb565b90565b90565b90565b61012461011f6101299261010a565b61010d565b6100a5565b90565b61013690516100a5565b90565b634e487b7160e01b5f52601160045260245ffd5b61015c610162919392936100a5565b926100a5565b820180921161016d57565b610139565b5061019b6101926101836008610110565b61018d608061012c565b61014d565b80608052610242565b565b90565b6101b46101af6101b99261019d565b61010d565b6100a5565b90565b90565b6101d36101ce6101d8926101bc565b61010d565b6100a5565b90565b6101e560076101bf565b90565b5f1b90565b906101f95f19916101e8565b9181191691161790565b61021761021261021c926100a5565b61010d565b6100a5565b90565b90565b9061023761023261023e92610203565b61021f565b82546101ed565b9055565b61027761027d91610266610256608061012c565b61026060016101a0565b9061014d565b6080526102716101db565b9061014d565b5f610222565b56fe60806040526004361015610013575b61017d565b61001d5f3561004c565b80636d4ce63c14610047578063d99aa8e2146100425763e582dd310361000e57610148565b610105565b610094565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261006a57565b61005c565b90565b61007b9061006f565b9052565b9190610092905f60208501940190610072565b565b346100c4576100a4366004610060565b6100c06100af610185565b6100b7610052565b9182918261007f565b0390f35b610058565b1c90565b90565b6100e09060086100e593026100c9565b6100cd565b90565b906100f391546100d0565b90565b61010260015f906100e8565b90565b3461013557610115366004610060565b6101316101206100f6565b610128610052565b9182918261007f565b0390f35b610058565b6101455f5f906100e8565b90565b3461017857610158366004610060565b61017461016361013a565b61016b610052565b9182918261007f565b0390f35b610058565b5f80fd5b5f90565b61018d610181565b507f00000000000000000000000000000000000000000000000000000000000000009056"
+            },
+            "deployedBytecode": {
+              "immutableReferences": {
+                "7": [
+                  {
+                    "length": 32,
+                    "start": 400
+                  }
+                ]
+              },
+              "object": "60806040526004361015610013575b61017d565b61001d5f3561004c565b80636d4ce63c14610047578063d99aa8e2146100425763e582dd310361000e57610148565b610105565b610094565b60e01c90565b60405190565b5f80fd5b5f80fd5b5f91031261006a57565b61005c565b90565b61007b9061006f565b9052565b9190610092905f60208501940190610072565b565b346100c4576100a4366004610060565b6100c06100af610185565b6100b7610052565b9182918261007f565b0390f35b610058565b1c90565b90565b6100e09060086100e593026100c9565b6100cd565b90565b906100f391546100d0565b90565b61010260015f906100e8565b90565b3461013557610115366004610060565b6101316101206100f6565b610128610052565b9182918261007f565b0390f35b610058565b6101455f5f906100e8565b90565b3461017857610158366004610060565b61017461016361013a565b61016b610052565b9182918261007f565b0390f35b610058565b5f80fd5b5f90565b61018d610181565b507f00000000000000000000000000000000000000000000000000000000000000009056"
+            },
+            "methodIdentifiers": {
+              "get()": "6d4ce63c",
+              "seen()": "d99aa8e2",
+              "stored()": "e582dd31"
+            }
+          },
+          "storageLayout": {
+            "storage": [
+              {
+                "astId": 9,
+                "contract": "testdata/differential/contract_qualified_variables.sol:QualifiedMiddle",
+                "label": "stored",
+                "offset": 0,
+                "slot": "0",
+                "type": "t_uint256"
+              },
+              {
+                "astId": 11,
+                "contract": "testdata/differential/contract_qualified_variables.sol:QualifiedMiddle",
+                "label": "seen",
+                "offset": 0,
+                "slot": "1",
+                "type": "t_uint256"
+              }
+            ],
+            "types": {
+              "t_uint256": {
+                "encoding": "inplace",
+                "label": "uint256",
+                "numberOfBytes": "32"
+              }
+            }
+          },
+          "transientStorageLayout": {
+            "storage": [],
+            "types": null
+          }
+        }
+      }
+    },
+    "sources": {
+      "testdata/differential/contract_qualified_variables.sol": {
+        "ast": {
+          "absolutePath": "testdata/differential/contract_qualified_variables.sol",
+          "exportedSymbols": {
+            "Qualified": [
+              87
+            ],
+            "QualifiedBase": [
+              39
+            ],
+            "QualifiedMiddle": [
+              52
+            ]
+          },
+          "id": 88,
+          "license": "MIT",
+          "nodeType": "SourceUnit",
+          "nodes": [
+            {
+              "id": 1,
+              "literals": [
+                "solidity",
+                "0.8",
+                ".37"
+              ],
+              "nodeType": "PragmaDirective",
+              "src": "32:23:0"
+            },
+            {
+              "abstract": false,
+              "baseContracts": [],
+              "canonicalName": "QualifiedBase",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 39,
+              "linearizedBaseContracts": [
+                39
+              ],
+              "name": "QualifiedBase",
+              "nameLocation": "304:13:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "constant": false,
+                  "id": 7,
+                  "mutability": "immutable",
+                  "name": "fixedValue",
+                  "nameLocation": "342:10:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 39,
+                  "src": "324:59:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 2,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "324:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": {
+                    "commonType": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    },
+                    "id": 6,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": false,
+                    "lValueRequested": false,
+                    "leftExpression": {
+                      "expression": {
+                        "id": 3,
+                        "name": "QualifiedBase",
+                        "nodeType": "Identifier",
+                        "overloadedDeclarations": [],
+                        "referencedDeclaration": 39,
+                        "src": "355:13:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_type$_t_contract$_QualifiedBase_$39_$",
+                          "typeString": "type(contract QualifiedBase)"
+                        }
+                      },
+                      "id": 4,
+                      "isConstant": false,
+                      "isLValue": true,
+                      "isPure": false,
+                      "lValueRequested": false,
+                      "memberLocation": "369:10:0",
+                      "memberName": "fixedValue",
+                      "nodeType": "MemberAccess",
+                      "referencedDeclaration": 7,
+                      "src": "355:24:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    },
+                    "nodeType": "BinaryOperation",
+                    "operator": "+",
+                    "rightExpression": {
+                      "hexValue": "31",
+                      "id": 5,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": true,
+                      "kind": "number",
+                      "lValueRequested": false,
+                      "nodeType": "Literal",
+                      "src": "382:1:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_rational_1_by_1",
+                        "typeString": "int_const 1"
+                      },
+                      "value": "1"
+                    },
+                    "src": "355:28:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "constant": false,
+                  "functionSelector": "e582dd31",
+                  "id": 9,
+                  "mutability": "mutable",
+                  "name": "stored",
+                  "nameLocation": "404:6:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 39,
+                  "src": "389:21:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 8,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "389:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "constant": false,
+                  "functionSelector": "d99aa8e2",
+                  "id": 11,
+                  "mutability": "mutable",
+                  "name": "seen",
+                  "nameLocation": "431:4:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 39,
+                  "src": "416:19:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 10,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "416:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "visibility": "public"
+                },
+                {
+                  "constant": true,
+                  "id": 14,
+                  "mutability": "constant",
+                  "name": "K",
+                  "nameLocation": "458:1:0",
+                  "nodeType": "VariableDeclaration",
+                  "scope": 39,
+                  "src": "441:22:0",
+                  "stateVariable": true,
+                  "storageLocation": "default",
+                  "typeDescriptions": {
+                    "typeIdentifier": "t_uint256",
+                    "typeString": "uint256"
+                  },
+                  "typeName": {
+                    "id": 12,
+                    "name": "uint256",
+                    "nodeType": "ElementaryTypeName",
+                    "src": "441:7:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_uint256",
+                      "typeString": "uint256"
+                    }
+                  },
+                  "value": {
+                    "hexValue": "37",
+                    "id": 13,
+                    "isConstant": false,
+                    "isLValue": false,
+                    "isPure": true,
+                    "kind": "number",
+                    "lValueRequested": false,
+                    "nodeType": "Literal",
+                    "src": "462:1:0",
+                    "typeDescriptions": {
+                      "typeIdentifier": "t_rational_7_by_1",
+                      "typeString": "int_const 7"
+                    },
+                    "value": "7"
+                  },
+                  "visibility": "internal"
+                },
+                {
+                  "body": {
+                    "id": 28,
+                    "nodeType": "Block",
+                    "src": "493:59:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 26,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "id": 19,
+                              "name": "QualifiedBase",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 39,
+                              "src": "503:13:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_type$_t_contract$_QualifiedBase_$39_$",
+                                "typeString": "type(contract QualifiedBase)"
+                              }
+                            },
+                            "id": 21,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "517:6:0",
+                            "memberName": "stored",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 9,
+                            "src": "503:20:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "commonType": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            },
+                            "id": 25,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "leftExpression": {
+                              "id": 22,
+                              "name": "x",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 16,
+                              "src": "526:1:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            "nodeType": "BinaryOperation",
+                            "operator": "+",
+                            "rightExpression": {
+                              "expression": {
+                                "id": 23,
+                                "name": "QualifiedBase",
+                                "nodeType": "Identifier",
+                                "overloadedDeclarations": [],
+                                "referencedDeclaration": 39,
+                                "src": "530:13:0",
+                                "typeDescriptions": {
+                                  "typeIdentifier": "t_type$_t_contract$_QualifiedBase_$39_$",
+                                  "typeString": "type(contract QualifiedBase)"
+                                }
+                              },
+                              "id": 24,
+                              "isConstant": false,
+                              "isLValue": false,
+                              "isPure": true,
+                              "lValueRequested": false,
+                              "memberLocation": "544:1:0",
+                              "memberName": "K",
+                              "nodeType": "MemberAccess",
+                              "referencedDeclaration": 14,
+                              "src": "530:15:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_uint256",
+                                "typeString": "uint256"
+                              }
+                            },
+                            "src": "526:19:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "503:42:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 27,
+                        "nodeType": "ExpressionStatement",
+                        "src": "503:42:0"
+                      }
+                    ]
+                  },
+                  "id": 29,
+                  "implemented": true,
+                  "kind": "constructor",
+                  "modifiers": [],
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 17,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 16,
+                        "mutability": "mutable",
+                        "name": "x",
+                        "nameLocation": "490:1:0",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 29,
+                        "src": "482:9:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 15,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "482:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "481:11:0"
+                  },
+                  "returnParameters": {
+                    "id": 18,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "493:0:0"
+                  },
+                  "scope": 39,
+                  "src": "470:82:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 37,
+                    "nodeType": "Block",
+                    "src": "605:48:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "expression": {
+                            "id": 34,
+                            "name": "QualifiedBase",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 39,
+                            "src": "622:13:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_type$_t_contract$_QualifiedBase_$39_$",
+                              "typeString": "type(contract QualifiedBase)"
+                            }
+                          },
+                          "id": 35,
+                          "isConstant": false,
+                          "isLValue": true,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "memberLocation": "636:10:0",
+                          "memberName": "fixedValue",
+                          "nodeType": "MemberAccess",
+                          "referencedDeclaration": 7,
+                          "src": "622:24:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 33,
+                        "id": 36,
+                        "nodeType": "Return",
+                        "src": "615:31:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "6d4ce63c",
+                  "id": 38,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "get",
+                  "nameLocation": "567:3:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 30,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "570:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 33,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 32,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 38,
+                        "src": "596:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 31,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "596:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "595:9:0"
+                  },
+                  "scope": 39,
+                  "src": "558:95:0",
+                  "stateMutability": "view",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 88,
+              "src": "295:360:0",
+              "usedErrors": [],
+              "usedEvents": []
+            },
+            {
+              "abstract": false,
+              "baseContracts": [
+                {
+                  "arguments": [
+                    {
+                      "id": 44,
+                      "isConstant": false,
+                      "isLValue": false,
+                      "isPure": false,
+                      "lValueRequested": false,
+                      "leftHandSide": {
+                        "expression": {
+                          "id": 41,
+                          "name": "QualifiedBase",
+                          "nodeType": "Identifier",
+                          "overloadedDeclarations": [],
+                          "referencedDeclaration": 39,
+                          "src": "699:13:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_type$_t_contract$_QualifiedBase_$39_$",
+                            "typeString": "type(contract QualifiedBase)"
+                          }
+                        },
+                        "id": 42,
+                        "isConstant": false,
+                        "isLValue": true,
+                        "isPure": false,
+                        "lValueRequested": true,
+                        "memberLocation": "713:10:0",
+                        "memberName": "fixedValue",
+                        "nodeType": "MemberAccess",
+                        "referencedDeclaration": 7,
+                        "src": "699:24:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        }
+                      },
+                      "nodeType": "Assignment",
+                      "operator": "+=",
+                      "rightHandSide": {
+                        "hexValue": "38",
+                        "id": 43,
+                        "isConstant": false,
+                        "isLValue": false,
+                        "isPure": true,
+                        "kind": "number",
+                        "lValueRequested": false,
+                        "nodeType": "Literal",
+                        "src": "727:1:0",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_rational_8_by_1",
+                          "typeString": "int_const 8"
+                        },
+                        "value": "8"
+                      },
+                      "src": "699:29:0",
+                      "typeDescriptions": {
+                        "typeIdentifier": "t_uint256",
+                        "typeString": "uint256"
+                      }
+                    }
+                  ],
+                  "baseName": {
+                    "id": 40,
+                    "name": "QualifiedBase",
+                    "nameLocations": [
+                      "685:13:0"
+                    ],
+                    "nodeType": "IdentifierPath",
+                    "referencedDeclaration": 39,
+                    "src": "685:13:0"
+                  },
+                  "id": 45,
+                  "nodeType": "InheritanceSpecifier",
+                  "src": "685:44:0"
+                }
+              ],
+              "canonicalName": "QualifiedMiddle",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 52,
+              "linearizedBaseContracts": [
+                52,
+                39
+              ],
+              "name": "QualifiedMiddle",
+              "nameLocation": "666:15:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "body": {
+                    "id": 50,
+                    "nodeType": "Block",
+                    "src": "757:2:0",
+                    "statements": []
+                  },
+                  "id": 51,
+                  "implemented": true,
+                  "kind": "constructor",
+                  "modifiers": [],
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 48,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 47,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 51,
+                        "src": "748:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 46,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "748:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "747:9:0"
+                  },
+                  "returnParameters": {
+                    "id": 49,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "757:0:0"
+                  },
+                  "scope": 52,
+                  "src": "736:23:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "public"
+                }
+              ],
+              "scope": 88,
+              "src": "657:104:0",
+              "usedErrors": [],
+              "usedEvents": []
+            },
+            {
+              "abstract": false,
+              "baseContracts": [
+                {
+                  "baseName": {
+                    "id": 53,
+                    "name": "QualifiedMiddle",
+                    "nameLocations": [
+                      "785:15:0"
+                    ],
+                    "nodeType": "IdentifierPath",
+                    "referencedDeclaration": 52,
+                    "src": "785:15:0"
+                  },
+                  "id": 54,
+                  "nodeType": "InheritanceSpecifier",
+                  "src": "785:15:0"
+                }
+              ],
+              "canonicalName": "Qualified",
+              "contractDependencies": [],
+              "contractKind": "contract",
+              "fullyImplemented": true,
+              "id": 87,
+              "linearizedBaseContracts": [
+                87,
+                52,
+                39
+              ],
+              "name": "Qualified",
+              "nameLocation": "772:9:0",
+              "nodeType": "ContractDefinition",
+              "nodes": [
+                {
+                  "body": {
+                    "id": 70,
+                    "nodeType": "Block",
+                    "src": "868:62:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 68,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "id": 63,
+                              "name": "QualifiedBase",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 39,
+                              "src": "878:13:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_type$_t_contract$_QualifiedBase_$39_$",
+                                "typeString": "type(contract QualifiedBase)"
+                              }
+                            },
+                            "id": 65,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "892:4:0",
+                            "memberName": "seen",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 11,
+                            "src": "878:18:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "=",
+                          "rightHandSide": {
+                            "expression": {
+                              "id": 66,
+                              "name": "QualifiedBase",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 39,
+                              "src": "899:13:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_type$_t_contract$_QualifiedBase_$39_$",
+                                "typeString": "type(contract QualifiedBase)"
+                              }
+                            },
+                            "id": 67,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": false,
+                            "memberLocation": "913:10:0",
+                            "memberName": "fixedValue",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 7,
+                            "src": "899:24:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "src": "878:45:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 69,
+                        "nodeType": "ExpressionStatement",
+                        "src": "878:45:0"
+                      }
+                    ]
+                  },
+                  "id": 71,
+                  "implemented": true,
+                  "kind": "constructor",
+                  "modifiers": [
+                    {
+                      "arguments": [
+                        {
+                          "id": 60,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "id": 57,
+                              "name": "QualifiedBase",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 39,
+                              "src": "837:13:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_type$_t_contract$_QualifiedBase_$39_$",
+                                "typeString": "type(contract QualifiedBase)"
+                              }
+                            },
+                            "id": 58,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "851:10:0",
+                            "memberName": "fixedValue",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 7,
+                            "src": "837:24:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "+=",
+                          "rightHandSide": {
+                            "hexValue": "34",
+                            "id": 59,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "number",
+                            "lValueRequested": false,
+                            "nodeType": "Literal",
+                            "src": "865:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_rational_4_by_1",
+                              "typeString": "int_const 4"
+                            },
+                            "value": "4"
+                          },
+                          "src": "837:29:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        }
+                      ],
+                      "id": 61,
+                      "kind": "baseConstructorSpecifier",
+                      "modifierName": {
+                        "id": 56,
+                        "name": "QualifiedMiddle",
+                        "nameLocations": [
+                          "821:15:0"
+                        ],
+                        "nodeType": "IdentifierPath",
+                        "referencedDeclaration": 52,
+                        "src": "821:15:0"
+                      },
+                      "nodeType": "ModifierInvocation",
+                      "src": "821:46:0"
+                    }
+                  ],
+                  "name": "",
+                  "nameLocation": "-1:-1:-1",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 55,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "818:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 62,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "868:0:0"
+                  },
+                  "scope": 87,
+                  "src": "807:123:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "public"
+                },
+                {
+                  "body": {
+                    "id": 85,
+                    "nodeType": "Block",
+                    "src": "979:79:0",
+                    "statements": [
+                      {
+                        "expression": {
+                          "id": 80,
+                          "isConstant": false,
+                          "isLValue": false,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "leftHandSide": {
+                            "expression": {
+                              "id": 76,
+                              "name": "QualifiedBase",
+                              "nodeType": "Identifier",
+                              "overloadedDeclarations": [],
+                              "referencedDeclaration": 39,
+                              "src": "989:13:0",
+                              "typeDescriptions": {
+                                "typeIdentifier": "t_type$_t_contract$_QualifiedBase_$39_$",
+                                "typeString": "type(contract QualifiedBase)"
+                              }
+                            },
+                            "id": 78,
+                            "isConstant": false,
+                            "isLValue": true,
+                            "isPure": false,
+                            "lValueRequested": true,
+                            "memberLocation": "1003:6:0",
+                            "memberName": "stored",
+                            "nodeType": "MemberAccess",
+                            "referencedDeclaration": 9,
+                            "src": "989:20:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_uint256",
+                              "typeString": "uint256"
+                            }
+                          },
+                          "nodeType": "Assignment",
+                          "operator": "+=",
+                          "rightHandSide": {
+                            "hexValue": "32",
+                            "id": 79,
+                            "isConstant": false,
+                            "isLValue": false,
+                            "isPure": true,
+                            "kind": "number",
+                            "lValueRequested": false,
+                            "nodeType": "Literal",
+                            "src": "1013:1:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_rational_2_by_1",
+                              "typeString": "int_const 2"
+                            },
+                            "value": "2"
+                          },
+                          "src": "989:25:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "id": 81,
+                        "nodeType": "ExpressionStatement",
+                        "src": "989:25:0"
+                      },
+                      {
+                        "expression": {
+                          "expression": {
+                            "id": 82,
+                            "name": "QualifiedBase",
+                            "nodeType": "Identifier",
+                            "overloadedDeclarations": [],
+                            "referencedDeclaration": 39,
+                            "src": "1031:13:0",
+                            "typeDescriptions": {
+                              "typeIdentifier": "t_type$_t_contract$_QualifiedBase_$39_$",
+                              "typeString": "type(contract QualifiedBase)"
+                            }
+                          },
+                          "id": 83,
+                          "isConstant": false,
+                          "isLValue": true,
+                          "isPure": false,
+                          "lValueRequested": false,
+                          "memberLocation": "1045:6:0",
+                          "memberName": "stored",
+                          "nodeType": "MemberAccess",
+                          "referencedDeclaration": 9,
+                          "src": "1031:20:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "functionReturnParameters": 75,
+                        "id": 84,
+                        "nodeType": "Return",
+                        "src": "1024:27:0"
+                      }
+                    ]
+                  },
+                  "functionSelector": "68110b2f",
+                  "id": 86,
+                  "implemented": true,
+                  "kind": "function",
+                  "modifiers": [],
+                  "name": "bump",
+                  "nameLocation": "945:4:0",
+                  "nodeType": "FunctionDefinition",
+                  "parameters": {
+                    "id": 72,
+                    "nodeType": "ParameterList",
+                    "parameters": [],
+                    "src": "949:2:0"
+                  },
+                  "returnParameters": {
+                    "id": 75,
+                    "nodeType": "ParameterList",
+                    "parameters": [
+                      {
+                        "constant": false,
+                        "id": 74,
+                        "mutability": "mutable",
+                        "name": "",
+                        "nameLocation": "-1:-1:-1",
+                        "nodeType": "VariableDeclaration",
+                        "scope": 86,
+                        "src": "970:7:0",
+                        "stateVariable": false,
+                        "storageLocation": "default",
+                        "typeDescriptions": {
+                          "typeIdentifier": "t_uint256",
+                          "typeString": "uint256"
+                        },
+                        "typeName": {
+                          "id": 73,
+                          "name": "uint256",
+                          "nodeType": "ElementaryTypeName",
+                          "src": "970:7:0",
+                          "typeDescriptions": {
+                            "typeIdentifier": "t_uint256",
+                            "typeString": "uint256"
+                          }
+                        },
+                        "visibility": "internal"
+                      }
+                    ],
+                    "src": "969:9:0"
+                  },
+                  "scope": 87,
+                  "src": "936:122:0",
+                  "stateMutability": "nonpayable",
+                  "virtual": false,
+                  "visibility": "external"
+                }
+              ],
+              "scope": 88,
+              "src": "763:297:0",
+              "usedErrors": [],
+              "usedEvents": []
+            }
+          ],
+          "src": "32:1029:0"
+        },
+        "id": 0
+      }
+    }
+  },
+  "profile": {
+    "compilerVersion": "0.8.37",
+    "settings": {
+      "debug": {
+        "revertStrings": "default"
+      },
+      "evmVersion": "osaka",
+      "metadata": {
+        "appendCBOR": false,
+        "bytecodeHash": "none"
+      },
+      "optimizer": {
+        "enabled": false,
+        "runs": 200
+      },
+      "viaIR": true
+    }
+  }
+}

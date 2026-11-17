@@ -1,0 +1,19 @@
+{
+  "name": "rejected_memory_structs",
+  "source": "testdata/differential/memory_structs.sol",
+  "contract": "MemoryStructs",
+  "artifact": "testdata/differential/expected/memory_structs.json",
+  "cases": [
+    {
+      "name": "paint_copy_byte_out_of_range_panics",
+      "function": "paintCopy",
+      "args": [],
+      "storage": {
+        "1": 5
+      },
+      "expect": {
+        "panic": "0x21"
+      }
+    }
+  ]
+}

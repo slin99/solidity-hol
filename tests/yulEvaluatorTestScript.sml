@@ -18,7 +18,7 @@ Definition yul_test_tx_params_def:
   yul_test_tx_params =
     <| origin := 0xA1w; gasPrice := 9; baseFeePerGas := 3;
        baseFeePerBlobGas := 0; blockNumber := 7; blockTimeStamp := 1700;
-       blockCoinBase := 0xC0w; blockGasLimit := 30000; prevRandao := 0w;
+       blockCoinBase := 0xC0w; blockGasLimit := 30000; prevRandao := 0x5EEDw;
        prevHashes := []; blobHashes := []; chainId := 5; authRefund := 0 |>
 End
 
@@ -29,8 +29,9 @@ Definition yul_test_machine_def:
        caller_address := 0w; call_value := 0w; call_data := []; return_data := [];
        code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
-       memory_size := 0; gas_limit := 0; scopes := [];
-       transaction_parameters := yul_test_tx_params |>
+       memory_size := 0; gas_limit := 0; gas_observations := []; scopes := [];
+       transaction_parameters := yul_test_tx_params;
+       original := empty_accounts; to_delete := [] |>
 End
 
 Definition run_def:
@@ -50,8 +51,9 @@ Definition yul_frame_machine_def:
        caller_address := 0x5678w; call_value := 0w; call_data := []; return_data := [];
        code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32) |+ ("3", 42w);
-       memory := FEMPTY; memory_size := 0; gas_limit := 0; scopes := [];
-       transaction_parameters := yul_test_tx_params |>
+       memory := FEMPTY; memory_size := 0; gas_limit := 0; gas_observations := []; scopes := [];
+       transaction_parameters := yul_test_tx_params;
+       original := empty_accounts; to_delete := [] |>
 End
 
 Definition run_frame_def:
@@ -453,7 +455,7 @@ End
 
 val () = cv_auto_trans log3_code_def;
 
-(* mstore(0, address()) mstore(32, origin()) ... return(0, 288)
+(* mstore(0, address()) mstore(32, origin()) ... return(0, 320)
  * The executing account from the frame, the rest from its transaction and
  * block.
  *)
@@ -463,9 +465,9 @@ Definition environment_code_def:
                      [YulLit (LitNumber (n2w (32 * i))); YulBuiltin b []]))
       [(0, YAddress); (1, YOrigin); (2, YChainId); (3, YNumber);
        (4, YTimestamp); (5, YCoinbase); (6, YGasPrice); (7, YBaseFee);
-       (8, YGasLimit)] ++
+       (8, YGasLimit); (9, YPrevRandao)] ++
     [YulExprStmt (YulBuiltin YReturn
-       [YulLit (LitNumber 0w); YulLit (LitNumber 288w)])]
+       [YulLit (LitNumber 0w); YulLit (LitNumber 320w)])]
 End
 
 val () = cv_auto_trans environment_code_def;
@@ -741,6 +743,49 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* A checked mload of memory nobody wrote gives a word nobody knows: checked
+ * pure builtins, as inline assembly's are, pass it on, and and with zero or
+ * or with all ones fixes it, while any other use of it fails. *)
+Definition unwritten_code_def:
+  unwritten_code mask =
+    [YulLet ["x"] (SOME (YulCheckedBuiltin YAnd
+       [YulCheckedBuiltin YEq [YulCheckedBuiltin YMLoad [YulLit (LitNumber 0w)];
+                        YulLit (LitNumber 1w)];
+        YulLit (LitNumber mask)]));
+     YulExprStmt (YulBuiltin YMStore [YulLit (LitNumber 0w); YulName "x"]);
+     YulExprStmt (YulBuiltin YReturn [YulLit (LitNumber 0w); YulLit (LitNumber 32w)])]
+End
+
+Definition unwritten_or_code_def:
+  unwritten_or_code =
+    [YulExprStmt (YulBuiltin YMStore [YulLit (LitNumber 0w);
+       YulCheckedBuiltin YOr [YulCheckedBuiltin YMLoad [YulLit (LitNumber 0w)];
+                       YulLit (LitNumber UINT_MAXw)]]);
+     YulExprStmt (YulBuiltin YReturn [YulLit (LitNumber 0w); YulLit (LitNumber 32w)])]
+End
+
+Definition unwritten_if_code_def:
+  unwritten_if_code =
+    [YulIf (YulCheckedBuiltin YMLoad [YulLit (LitNumber 0w)]) []]
+End
+
+val () = cv_auto_trans unwritten_code_def;
+val () = cv_auto_trans unwritten_or_code_def;
+val () = cv_auto_trans unwritten_if_code_def;
+
+Theorem an_unwritten_word_propagates_until_observed:
+  (run 20 (unwritten_code 0w)).completion =
+    YulReturn (word_to_bytes_be (0w : bytes32)) ∧
+  (run 20 unwritten_or_code).completion =
+    YulReturn (word_to_bytes_be (UINT_MAXw : bytes32)) ∧
+  (run 20 (unwritten_code 1w)).completion =
+    YulInvalid "assembly read memory it was not given" ∧
+  (run 20 unwritten_if_code).completion =
+    YulInvalid "assembly read memory it was not given"
+Proof
+  CONV_TAC cv_eval
+QED
+
 Theorem unbound_name_is_invalid:
   (run 20 unbound_code).completion = YulInvalid "unbound name"
 Proof
@@ -817,7 +862,8 @@ Theorem environment_builtins_read_the_frame_transaction_and_block:
              word_to_bytes_be (0xC0w : bytes32) ++
              word_to_bytes_be (9w : bytes32) ++
              word_to_bytes_be (3w : bytes32) ++
-             word_to_bytes_be (30000w : bytes32))
+             word_to_bytes_be (30000w : bytes32) ++
+             word_to_bytes_be (0x5EEDw : bytes32))
 Proof
   CONV_TAC cv_eval
 QED
@@ -885,8 +931,9 @@ Definition yul_call_machine_def:
        call_value := 0w; call_data := []; return_data := [0xaaw; 0xbbw; 0xccw];
        code := []; objects := FEMPTY; immutable_offsets := FEMPTY;
        immutables := (FEMPTY : string |-> bytes32); memory := FEMPTY;
-       memory_size := 0; gas_limit := 100000; scopes := [];
-       transaction_parameters := yul_test_tx_params |>
+       memory_size := 0; gas_limit := 100000; gas_observations := []; scopes := [];
+       transaction_parameters := yul_test_tx_params;
+       original := empty_accounts; to_delete := [] |>
 End
 
 Definition run_call_frame_def:
@@ -1321,7 +1368,7 @@ Theorem creation_long_object_name:
       [YulLit (LitBytes (MAP (n2w o ORD) "DynamicStorageArrays_739_deployed"))])
     (yul_test_machine with objects :=
        FEMPTY |+ ("DynamicStorageArrays_739_deployed", (11, 37))) =
-    EvalValues [37w] (yul_test_machine with objects :=
+    EvalValues [SOME 37w] (yul_test_machine with objects :=
        FEMPTY |+ ("DynamicStorageArrays_739_deployed", (11, 37)))
 Proof
   CONV_TAC cv_eval
@@ -1368,6 +1415,96 @@ Theorem creation_unknown_object_fails:
   eval_yul_expr 20 FEMPTY
     (YulBuiltin YDataOffset [YulLit (LitBytes [0x78w])]) yul_test_machine =
     EvalAbrupt (YulInvalid "unknown object") yul_test_machine
+Proof
+  CONV_TAC cv_eval
+QED
+
+Definition yul_balance_machine_def:
+  yul_balance_machine = yul_frame_machine with accounts :=
+    update_account 0x1234w (empty_account_state with balance := 17)
+      (update_account 0x77w (empty_account_state with balance := 29)
+        empty_accounts)
+End
+
+val () = cv_auto_trans yul_balance_machine_def;
+
+Theorem balance_reads_account_without_changing_machine:
+  eval_yul_builtin YBalance [0x77w] yul_balance_machine =
+    EvalValues [29w] yul_balance_machine ∧
+  eval_yul_builtin YBalance [n2w (2 ** 160 + 0x77)] yul_balance_machine =
+    EvalValues [29w] yul_balance_machine ∧
+  eval_yul_builtin YBalance [0x79w] yul_balance_machine =
+    EvalValues [0w] yul_balance_machine ∧
+  eval_yul_builtin YBalance [0x1234w] yul_balance_machine =
+    EvalValues [17w] yul_balance_machine ∧
+  eval_yul_builtin YSelfBalance [] yul_balance_machine =
+    EvalValues [17w] yul_balance_machine ∧
+  eval_yul_builtin YSelfBalance [] yul_frame_machine =
+    EvalValues [0w] yul_frame_machine
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* An externally owned account hashes its empty code, a contract its code,
+ * and an empty or absent account reads 0, as EXTCODEHASH does. *)
+Definition yul_code_hash_machine_def:
+  yul_code_hash_machine = yul_frame_machine with accounts :=
+    update_account 0x1234w (empty_account_state with balance := 17)
+      (update_account 0x77w (empty_account_state with code := [0w])
+        (update_account 0x78w (empty_account_state with nonce := 1)
+          empty_accounts))
+End
+
+val () = cv_auto_trans yul_code_hash_machine_def;
+
+Theorem extcodehash_reads_account_without_changing_machine:
+  eval_yul_builtin YExtCodeHash [0x1234w] yul_code_hash_machine =
+    EvalValues
+      [0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470w]
+      yul_code_hash_machine ∧
+  eval_yul_builtin YExtCodeHash [0x78w] yul_code_hash_machine =
+    EvalValues
+      [0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470w]
+      yul_code_hash_machine ∧
+  eval_yul_builtin YExtCodeHash [n2w (2 ** 160 + 0x77)] yul_code_hash_machine =
+    EvalValues
+      [0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98aw]
+      yul_code_hash_machine ∧
+  eval_yul_builtin YExtCodeHash [0x79w] yul_code_hash_machine =
+    EvalValues [0w] yul_code_hash_machine ∧
+  eval_yul_builtin YExtCodeHash [] yul_code_hash_machine =
+    EvalAbrupt (YulInvalid "bad builtin call") yul_code_hash_machine
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem datacopy_zero_pads_and_expands_memory:
+  case eval_yul_builtin YDataCopy [31w; 1w; 4w]
+    (yul_frame_machine with <|
+       code := [0x11w; 0x22w; 0x33w]; call_data := [0xffw; 0xffw];
+       memory := FEMPTY |+ (30, 0xaaw) |+ (33, 0xffw) |+ (35, 0xbbw) |>) of
+    EvalValues [] m =>
+      yul_memory_read m 30 6 = [0xaaw; 0x22w; 0x33w; 0w; 0w; 0xbbw] ∧
+      m.memory_size = 64
+  | _ => F
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem datacopy_empty_range_touches_nothing:
+  eval_yul_builtin YDataCopy [0xffffw; 0xffffw; 0w] yul_frame_machine =
+    EvalValues [] yul_frame_machine
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem balance_and_datacopy_bad_arity_fails:
+  eval_yul_builtin YBalance [] yul_frame_machine =
+    EvalAbrupt (YulInvalid "bad builtin call") yul_frame_machine ∧
+  eval_yul_builtin YSelfBalance [0w] yul_frame_machine =
+    EvalAbrupt (YulInvalid "bad builtin call") yul_frame_machine ∧
+  eval_yul_builtin YDataCopy [0w; 1w] yul_frame_machine =
+    EvalAbrupt (YulInvalid "bad builtin call") yul_frame_machine
 Proof
   CONV_TAC cv_eval
 QED

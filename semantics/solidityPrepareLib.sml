@@ -131,8 +131,15 @@ fun read_artifact {root, path} = json_input (fn () =>
     val settings = object (field profile "settings")
     val input = field artifact "input"
     val () = require (string_field input "language" = "Solidity") "input language must be Solidity"
+    val (libraries, ordinary_settings) = List.partition
+      (fn (key, _) => key = "libraries") (object (field input "settings"))
+    val () = require (case libraries of
+        [] => true
+      | [(_, links)] => json_equal (links, solidityLinkLib.settings (field artifact "output"))
+      | _ => false)
+      "input libraries differ from the deterministic link assignment"
     val (remappings, input_settings) = List.partition
-      (fn (key, _) => key = "remappings") (object (field input "settings"))
+      (fn (key, _) => key = "remappings") ordinary_settings
     val () = require (case remappings of
         [] => true
       | [(_, JSON.ARRAY entries)] => List.all
@@ -158,7 +165,8 @@ fun read_artifact {root, path} = json_input (fn () =>
 type function_outcome = {id : int, name : string, reason : string option}
 type prepared = {unit : term, program : term, source_valid : thm,
                  elaborates : thm, core_wf : thm,
-                 functions : function_outcome list}
+                 unit_def : thm, program_def : thm,
+                 functions : function_outcome list, creation : string list}
 
 (* A predicate evaluated to T, or a rejection with the message rejection
  * computes. *)
@@ -173,6 +181,92 @@ val elaborate_unit_tm = prim_mk_const {Thy = "solidityElaborate", Name = "elabor
 fun import_const name = prim_mk_const {Thy = "solidityImport", Name = name}
 
 fun cv_value tm = rhs (concl (cv_eval tm))
+
+(* A record literal, as TypeBase.mk_record builds it (an update of every
+ * field, in the caller's order, over ARB), equals its constructor applied to
+ * the values. One equation per type and field order, proved on first use;
+ * NONE for an update that isn't such a literal. *)
+val literal_equations = ref ([] : (string * thm option) list)
+fun literal_equation lit =
+  let
+    val (ty, fields) = TypeBase.dest_record lit
+    val key = type_to_string ty ^ String.concatWith "," (map #1 fields)
+  in
+    case List.find (fn (k, _) => k = key) (!literal_equations) of
+      SOME (_, th) => th
+    | NONE =>
+        let
+          val generic = TypeBase.mk_record (ty,
+            map (fn (name, v) => (name, mk_var ("v_" ^ name, type_of v))) fields)
+          val cases = ISPEC (mk_arb ty) (TypeBase.nchotomy_of ty)
+          val updates = combinTheory.K_THM :: TypeBase.updates_of ty
+          val constructed = rhs (concl ((PURE_ONCE_REWRITE_CONV
+              [ASSUME (snd (strip_exists (concl cases)))] THENC
+            PURE_REWRITE_CONV updates) generic))
+          val th = SOME (TAC_PROOF (([], mk_eq (generic, constructed)),
+              STRUCT_CASES_TAC cases THEN PURE_REWRITE_TAC updates THEN REFL_TAC))
+            handle HOL_ERR _ => NONE
+        in
+          literal_equations := (key, th) :: !literal_equations; th
+        end
+  end
+  handle HOL_ERR _ => NONE
+
+fun is_update tm =
+  is_comb tm andalso
+  let val (head, args) = strip_comb tm in
+    length args = 2 andalso is_const head andalso
+    String.isSuffix "_fupd" (#1 (dest_const head))
+  end
+
+(* tm with its record literals replaced by constructor applications, outside
+ * in, so that EVAL can take them apart. cv_eval would instead prove two
+ * lemmas per literal on every evaluation. *)
+fun literals_conv tm =
+  case if is_update tm then literal_equation tm else NONE of
+    SOME eq => (REWR_CONV eq THENC SUB_CONV literals_conv) tm
+  | NONE => SUB_CONV literals_conv tm
+
+(* from_<ty> v = its cv form, when v is built from constructors and the
+ * constants with the given cv equations (from_<ty> c = c_cv (Num 0)): EVAL
+ * with integers' rules, then those equations and b2c's on literals, which
+ * EVAL leaves in place. v's record literals are taken apart first. This is
+ * much cheaper than cv_eval's own translation, which proves a cv_rep theorem
+ * per node. *)
+fun cv_form_conv cv_thms =
+  let
+    val compset =
+      intReduce.add_int_compset (computeLib.copy (computeLib.the_compset ()))
+  in
+    RAND_CONV literals_conv THENC computeLib.CBV_CONV compset THENC
+    PURE_REWRITE_CONV (cv_primTheory.cv_rep_T :: cv_primTheory.cv_rep_F :: cv_thms)
+  end
+
+(* A fresh constant defined as tm, deep-embedded with conv computing its cv
+ * form, so that cv_eval reads that form from one equation instead of
+ * translating tm node by node. *)
+val embedding_counters = ref ([] : (string * int) list)
+fun embed name conv tm =
+  let
+    val n = case List.find (fn (k, _) => k = name) (!embedding_counters) of
+              SOME (_, n) => n | NONE => 0
+    val () = embedding_counters :=
+      (name, n + 1) :: List.filter (fn (k, _) => k <> name) (!embedding_counters)
+    val name = name ^ "_" ^ Int.toString n
+    val def = new_definition (name ^ "_def", mk_eq (mk_var (name, type_of tm), tm))
+    val () = cv_trans_deep_embedding conv def
+  in
+    def
+  end
+
+(* The cv equation (from_<ty> c = c_cv (Num 0)) of the constant embed
+ * defined by def. *)
+fun cv_thm def =
+  DB.fetch "-" (#1 (dest_const (lhs (concl def))) ^ "_cv_thm")
+
+(* th with the embedded constant of def, at the position conv selects,
+ * replaced by its definition. *)
+fun unembed conv def = CONV_RULE (conv (REWR_CONV def))
 
 fun dedup xs = rev (List.foldl (fn (x, seen) => if mem x seen then seen else x :: seen) [] xs)
 
@@ -252,33 +346,36 @@ fun elaboration_failures strict unit =
 
 (* Mark unsupported the supported functions that fail to elaborate, with
  * their blockers, also because they call an unsupported function, until
- * none does. Each round marks at least one function or ends. *)
-fun mark_failures unit =
+ * none does. Each round marks at least one function or ends. The unit comes
+ * with the definition of its embedded constant, and so does the result.
+ * loose is what fails to elaborate non-strictly in the imported unit: a
+ * function's non-strict blockers don't depend on what is marked. *)
+fun mark_failures embed_unit loose (unit, def) =
   let
     val supported = List.mapPartial (fn f =>
         if optionSyntax.is_none (record_field f "fn_unsupported")
         then SOME (function_id f) else NONE) (unit_function_terms unit)
   in
-    case List.filter (fn (x, _) => mem x supported) (elaboration_failures true unit) of
-      [] => unit
+    case List.filter (fn (x, _) => mem x supported)
+           (elaboration_failures true (lhs (concl def))) of
+      [] => (unit, def)
     | failing =>
         let
-          val loose = elaboration_failures false unit
           fun reason x =
-            case List.find (fn (y, _) => x = y) loose of
+            case List.find (fn (y, _) => x = y) (loose ()) of
               NONE => "calls an unsupported function"
             | SOME (_, []) => "uses an unsupported declaration"
             | SOME (_, blockers) => String.concatWith "\n" blockers
+          val marked = mark_unsupported (map (fn (x, _) => (x, reason x)) failing) unit
         in
-          mark_failures
-            (mark_unsupported (map (fn (x, _) => (x, reason x)) failing) unit)
+          mark_failures embed_unit loose (marked, embed_unit marked)
         end
   end
 
-(* The functions the importer marked unsupported, with their elaboration
- * blockers added to their reasons, so a reason lists every blocker of its
- * function. Only reasons change: the marked functions stay marked. *)
-fun add_elaboration_reasons unit =
+(* The elaboration blockers to add to the reasons of the functions the
+ * importer marked unsupported, so a reason lists every blocker of its
+ * function: the new reasons, by function id. *)
+fun elaboration_reasons loose unit =
   let
     val marked = List.mapPartial (fn f =>
         let val r = record_field f "fn_unsupported" in
@@ -287,8 +384,9 @@ fun add_elaboration_reasons unit =
                      String.fields (fn c => c = #"\n")
                        (stringSyntax.fromHOLstring (optionSyntax.dest_some r)))
         end) (unit_function_terms unit)
-    val loose = if null marked then [] else elaboration_failures false unit
-    val reasons = List.mapPartial (fn (x, lines) =>
+    val loose = if null marked then [] else loose ()
+  in
+    List.mapPartial (fn (x, lines) =>
         case List.find (fn (y, _) => x = y) loose of
           NONE => NONE
         | SOME (_, bs) =>
@@ -296,8 +394,6 @@ fun add_elaboration_reasons unit =
               if length all = length lines then NONE
               else SOME (x, String.concatWith "\n" all)
             end) marked
-  in
-    if null reasons then unit else mark_unsupported reasons unit
   end
 
 (* What elaborate_unit_reason reports for the unit as a whole when it
@@ -315,24 +411,20 @@ fun unit_reason_lines unit =
 
 (* Every blocker of a unit that is rejected: the whole-unit checks', the
  * importer's in its functions, what fails to elaborate, and the unit's own
- * elaboration blockers. *)
-fun rejection_lines unit =
+ * elaboration blockers. The unit comes with its embedded constant and its
+ * non-strict failures. *)
+fun rejection_lines (unit, constant, loose) =
   dedup
     (map blocker_line (#1 (listSyntax.dest_list
-       (cv_value (mk_comb (import_const "unit_rejections", unit))))) @
+       (cv_value (mk_comb (import_const "unit_rejections", constant))))) @
      List.concat (map (fn f =>
          let val reason = record_field f "fn_unsupported" in
            if optionSyntax.is_none reason then []
            else String.fields (fn c => c = #"\n")
                   (stringSyntax.fromHOLstring (optionSyntax.dest_some reason))
          end) (unit_function_terms unit)) @
-     List.concat (map #2 (elaboration_failures false unit)) @
-     unit_reason_lines unit)
-
-fun rejection_message fallback unit () =
-  case rejection_lines unit of
-    [] => fallback
-  | lines => String.concatWith "\n" lines
+     List.concat (map #2 loose) @
+     unit_reason_lines constant)
 
 fun function_outcomes unit =
   map (fn t =>
@@ -347,65 +439,174 @@ fun function_outcomes unit =
     (#1 (listSyntax.dest_list
       (cv_value (mk_comb (import_const "unit_functions", unit)))))
 
+(* The creation code byte lists of a unit and its byte-sequence literals of
+ * at least long_literal bytes (type(C).creationCode) as constants, so that
+ * the certificates keep them folded: input abbreviates the unit, whose
+ * elaboration has the literals' byte lists, which output folds back. *)
+val long_literal = 1024
+fun creation_code_definitions unit =
+  let
+    fun applications name arity tm =
+      let val (head, args) = strip_comb tm in
+        head ~~ import_const name andalso length args = arity
+      end
+    fun code tm = record_field (List.nth (#2 (strip_comb tm), 1)) "create_bytecode"
+    val literals = List.filter (fn s => size (stringSyntax.fromHOLstring s) >= long_literal)
+      (map (fn tm => List.nth (#2 (strip_comb tm), 2))
+         (find_terms (applications "SrcLiteral" 4) unit))
+    fun bytes s =
+      listSyntax.mk_list
+        (map (fn c => wordsSyntax.mk_wordii (Char.ord c, 8))
+           (String.explode (stringSyntax.fromHOLstring s)),
+         wordsSyntax.mk_int_word_type 8)
+    fun distinct tms = List.foldl (fn (tm, seen) =>
+        if List.exists (aconv tm) seen then seen else tm :: seen) [] tms
+    val byte_defs = map (embed "embedded_creation_code" computeLib.EVAL_CONV)
+      (distinct (map code (find_terms (applications "SrcCreate" 6) unit) @
+                 map bytes literals))
+    val literal_defs = map (embed "embedded_literal" computeLib.EVAL_CONV)
+      (distinct literals)
+  in
+    {input = byte_defs @ literal_defs, output = byte_defs}
+  end
+
+(* The unit with its large literals abbreviated, the definitions that do it
+ * and those that fold them back into its elaboration. *)
+fun abbreviate_literals imported =
+  let val {input, output} = creation_code_definitions imported in
+    (subst (map (fn def => rhs (concl def) |-> lhs (concl def)) input) imported,
+     input, output)
+  end
+
+(* A computation done at most once, when first asked for. *)
+fun once f =
+  let val result = ref NONE in
+    fn () => case !result of
+               SOME x => x
+             | NONE => let val x = f () in result := SOME x; x end
+  end
+
+(* Why the program has no procedure for the creation (elaborate_contract
+ * lists it unsupported) when every constructor is supported, whose reasons
+ * would say why: the contracts' own blockers in loose, which include the
+ * creation's. A creation that fails only strictly, by calling an unsupported
+ * function, has none there and gets its contract's id alone. *)
+fun creation_blockers unit program loose =
+  let
+    (* The elaborated program is a constructor application, which
+     * TypeBase.dest_record does not take: its accessors read it. *)
+    fun program_field tm =
+      rhs (concl (PURE_REWRITE_CONV (TypeBase.accessors_of (type_of program)) tm))
+    val creation = program_field “(^program).creation_procedure”
+    val unsupported =
+      #1 (listSyntax.dest_list (program_field “(^program).unsupported_procedures”))
+    val contracts =
+      #1 (listSyntax.dest_list (record_field (unit_record unit) "unit_contracts"))
+    val ids = map (fn c =>
+        numSyntax.int_of_term (record_field (record_field c "contract_info") "node_id"))
+      contracts
+    val constructor_unsupported = List.exists (fn f =>
+        optionSyntax.is_some (record_field f "fn_unsupported") andalso
+        term_eq (record_field f "fn_kind")
+          (import_const "ConstructorKind"))
+      (unit_function_terms unit)
+  in
+    if optionSyntax.is_none creation orelse constructor_unsupported orelse
+       not (List.exists (term_eq (#1 (pairSyntax.dest_pair
+                                       (optionSyntax.dest_some creation))))
+              unsupported)
+    then []
+    else
+      case List.concat (map #2 (List.filter (fn (x, _) => mem x ids) (loose ()))) of
+        [] => map (fn x => Int.toString x ^ ": creation calls an unsupported function") ids
+      | lines => dedup lines
+  end
+
 fun prepare_unit imported =
   let
-    val unit = mark_failures (add_elaboration_reasons imported)
+    val (imported, literal_defs, code_defs) = abbreviate_literals (unit_record imported)
+    val cv_form_conv = cv_form_conv (map cv_thm literal_defs)
+    val embed_unit = embed "embedded_unit" cv_form_conv
+    val imported_def = once (fn () => embed_unit imported)
+    val imported_constant = lhs o concl o imported_def
+    val loose = once (fn () => elaboration_failures false (imported_constant ()))
+    fun rejection_message fallback () =
+      case rejection_lines (imported, imported_constant (), loose ()) of
+        [] => fallback
+      | lines => String.concatWith "\n" lines
+    val (unit, unit_def) = mark_failures embed_unit loose
+      (case elaboration_reasons loose imported of
+         [] => (imported, imported_def ())
+       | reasons => let val unit = mark_unsupported reasons imported in
+                      (unit, embed_unit unit)
+                    end)
+    val constant = lhs (concl unit_def)
     val source_valid = checked_predicate SourceRejected
-      (rejection_message "valid_src_unit failed (source validation/subset restriction)" imported)
-      (mk_comb (import_const "valid_src_unit", unit))
+      (rejection_message "valid_src_unit failed (source validation/subset restriction)")
+      (mk_comb (import_const "valid_src_unit", constant))
     val elaborates = (REWRITE_CONV [elaborate_unit_def, source_valid] THENC cv_eval)
-      (mk_comb (elaborate_unit_tm, unit))
+      (mk_comb (elaborate_unit_tm, constant))
+    val elaborates = PURE_REWRITE_RULE (map SYM code_defs) elaborates
     val result = rhs (concl elaborates)
     val program = if optionSyntax.is_none result then
       reject UnsupportedLowering
-        (rejection_message "elaborate_unit returned NONE (unsupported lowering)" imported ())
+        (rejection_message "elaborate_unit returned NONE (unsupported lowering)" ())
       else optionSyntax.dest_some result
+    val program_def = embed "embedded_program" cv_form_conv program
+    val embedded_program = lhs (concl program_def)
     val core_wf = checked_predicate InvalidCore
       (fn () => "generated program fails wf_core_program")
-      “wf_core_program (core_program_environment ^program) ^program”
+      “wf_core_program (core_program_environment ^embedded_program) ^embedded_program”
   in
-    {unit = unit, program = program, source_valid = source_valid,
-     elaborates = elaborates, core_wf = core_wf,
-     functions = function_outcomes unit}
+    {unit = unit, program = program,
+     source_valid = unembed RAND_CONV unit_def source_valid,
+     elaborates = unembed (LAND_CONV o RAND_CONV) unit_def elaborates,
+     core_wf = unembed (fn c => RAND_CONV c THENC LAND_CONV (RAND_CONV c))
+                 program_def core_wf,
+     unit_def = unit_def, program_def = program_def,
+     functions = function_outcomes constant,
+     creation = creation_blockers unit program loose}
   end
 
 (* A source of an artifact already checked by read_artifact, imported, with
  * the blockers outside its functions. *)
-fun import_unit_blockers artifact source =
+fun import_unit_blockers artifact source contract =
   json_input (fn () =>
-    let
-      val output = field artifact "output"
-      val contracts = case JSONUtil.findField output "contracts" of
-        NONE => JSON.OBJECT []
-      | SOME all => (case JSONUtil.findField all source of
-                      NONE => JSON.OBJECT [] | SOME contracts => contracts)
-    in
-      solidityImportLib.import_source_unit_blockers
-        (map (fn (_, s) => field s "ast") (object (field output "sources")))
-        (JSONUtil.get (output, map JSONUtil.SEL ["sources", source, "ast"])) contracts
-    end)
+    solidityImportLib.import_contract_artifact_unit_blockers artifact source contract)
   handle solidityImportLib.ImportError message => reject UnsupportedImport message
        | solidityImportLib.MalformedInput message => reject MalformedInput message
 
 fun import_unit artifact source =
-  (case import_unit_blockers artifact source of
+  (case import_unit_blockers artifact source NONE of
      (unit, []) => unit
    | (_, blockers) => reject UnsupportedImport (String.concatWith "\n" blockers))
   handle PreparationError (kind, message) => reject kind (source ^ ": " ^ message)
 
-fun prepare_source artifact source =
-  case import_unit_blockers artifact source of
+fun prepare_contract_source artifact source contract =
+  case import_unit_blockers artifact source contract of
     (unit, []) => prepare_unit unit
   | (unit, blockers) =>
-      reject UnsupportedImport (String.concatWith "\n" (dedup (blockers @ rejection_lines unit)))
+      let
+        val (unit, literal_defs, _) = abbreviate_literals (unit_record unit)
+        val constant = lhs (concl (embed "embedded_unit"
+          (cv_form_conv (map cv_thm literal_defs)) unit))
+      in
+        reject UnsupportedImport (String.concatWith "\n" (dedup (blockers @
+          rejection_lines (unit, constant, elaboration_failures false constant))))
+      end
 
-fun prepare_artifact {root, path, source} =
+fun prepare_source artifact source = prepare_contract_source artifact source NONE
+
+fun prepare_contract_artifact {root, path, source, contract} =
   let
     val artifact = read_artifact {root = root, path = path}
-    val prepared = prepare_source artifact source
+    val prepared = prepare_contract_source artifact source contract
       handle PreparationError (kind, message) => reject kind (source ^ ": " ^ message)
   in
     {artifact = artifact, prepared = prepared}
   end
+
+fun prepare_artifact {root, path, source} =
+  prepare_contract_artifact {root = root, path = path, source = source, contract = NONE}
 
 end

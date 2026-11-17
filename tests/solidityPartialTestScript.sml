@@ -23,18 +23,26 @@ val prepared = #prepared (solidityPrepareLib.prepare_artifact
   {root = "..", path = "../testdata/frontend/expected/partial.json",
    source = "testdata/frontend/partial.sol"});
 
-(* add is supported; digest and the fallback use sha256, as does Mid.twice,
+(* add is supported; digest and the fallback use ripemd160, as does Mid.twice,
  * which Partial.twice reaches by super, so Partial.twice, digestTwice and
  * callsTwice call unsupported functions; the constructor's halting assembly
  * does not elaborate. Once Partial.twice is unsupported its super calls
  * reach nothing, so neither Mid.twice nor Base.twice is among the
  * functions calls reach. The constant DIGITS and digits, which reads it,
  * elaborate through the shared fixed-byte indexed access;
- * pointer fails to elaborate, since its assembly assigns a bytes local.
+ * pointer's assembly assigns a bytes local, which elaborates.
  * hookCount's struct has a function-typed member, so the struct is left out
  * and hookCount's local does not elaborate, while the unit still imports.
- * Likewise Roles.Grant has an enum-keyed mapping, so the storage local of
- * grantCount does not elaborate. *)
+ * nodeValue's local and nodeCount's new array hold a recursive struct in
+ * memory, which the core does not hold, and copyTree copies one in storage.
+ * encodePair, emitPair and putPair take a memory struct across an ABI
+ * boundary, which elaborates. Roles.Grant has an enum-keyed mapping, which
+ * storage holds, so grantParam's storage parameter elaborates, and so does
+ * grantCount's storage local, declared without a value and pointed by
+ * assembly.
+ * nodeModified's modifier takes a recursive struct in memory, which fails at
+ * elaboration rather than leaving the unit ill-formed; treeTuple's tuple holds
+ * a storage struct, as a reference, which elaborates. *)
 val outcomes = map (fn {name, reason, ...} => (name, reason)) (#functions prepared);
 fun reasons name =
   map #2 (List.filter (fn (n, _) => n = name) outcomes);
@@ -49,6 +57,8 @@ fun elaboration_failure r =
   case r of
     SOME m => List.all hol_blocker (String.tokens (fn c => c = #"\n") m)
   | NONE => false;
+fun elaboration_failure_with tag r =
+  elaboration_failure r andalso String.isSubstring tag (valOf r);
 fun imported_failure r =
   case r of
     SOME m => not (String.isPrefix "calls" m) andalso not (elaboration_failure r)
@@ -65,13 +75,25 @@ val () =
      reasons "callsTwice" = [calls_unsupported] andalso
      reasons "twice" = [calls_unsupported] andalso
      reasons "digits" = [NONE] andalso
-     List.all elaboration_failure (reasons "pointer") andalso
-     length (reasons "pointer") = 1 andalso
+     reasons "pointer" = [NONE] andalso
      List.all elaboration_failure (reasons "hookCount") andalso
      length (reasons "hookCount") = 1 andalso
-     List.all elaboration_failure (reasons "grantCount") andalso
-     length (reasons "grantCount") = 1 andalso
-     length outcomes = 11
+     List.all elaboration_failure (reasons "nodeValue") andalso
+     length (reasons "nodeValue") = 1 andalso
+     List.all elaboration_failure (reasons "nodeCount") andalso
+     length (reasons "nodeCount") = 1 andalso
+     List.all elaboration_failure (reasons "copyTree") andalso
+     length (reasons "copyTree") = 1 andalso
+     reasons "encodePair" = [NONE] andalso
+     reasons "emitPair" = [NONE] andalso
+     reasons "putPair" = [NONE] andalso
+     reasons "grantCount" = [NONE] andalso
+     reasons "grantParam" = [NONE] andalso
+     List.all (elaboration_failure_with "unsupported modifier parameter type")
+       (reasons "nodeModified") andalso
+     length (reasons "nodeModified") = 1 andalso
+     reasons "treeTuple" = [NONE] andalso
+     length outcomes = 20
   then ()
   else raise Fail ("unexpected function outcomes: " ^
     String.concatWith "; " (map (fn (n, r) => n ^ " " ^
@@ -145,10 +167,12 @@ Proof
   CONV_TAC (QUANT_CONV (LAND_CONV cv_eval)) >> simp[] >> EVAL_TAC
 QED
 
-Theorem partial_pointer_refused:
+(* pointer runs, but its block leaves b at 0, below the free memory
+ * pointer, so the write-back fails closed. *)
+Theorem partial_pointer_fails_closed:
   partial_call (^(listSyntax.mk_list (selector "8a237e56", “:word8”)) ++
                 word_to_bytes (32w : bytes32) T ++ REPLICATE 32 0w) =
-  ContractInvalid "unknown procedure"
+  ContractInvalid "assembly write-back failed"
 Proof
   CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
 QED
@@ -169,9 +193,9 @@ Proof
   CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
 QED
 
-(* A fallback with parameters and returns (testdata/frontend/fallback_params.sol)
- * is unsupported, since the core's fallback takes neither: add runs, and a
- * call reaching the fallback is refused. *)
+(* A fallback taking the calldata as bytes and returning bytes
+ * (testdata/frontend/fallback_params.sol) runs beside add: a call reaching
+ * it returns the calldata itself as the return data, not ABI encoded. *)
 val fallback_prepared = #prepared (solidityPrepareLib.prepare_artifact
   {root = "..", path = "../testdata/frontend/expected/fallback_params.json",
    source = "testdata/frontend/fallback_params.sol"});
@@ -180,8 +204,7 @@ val fallback_outcomes =
   map (fn {name, reason, ...} => (name, reason)) (#functions fallback_prepared);
 val () =
   if (case fallback_outcomes of
-        [("add", NONE), ("", SOME r)] =>
-          String.isSuffix ": fallback with parameters or returns" r
+        [("add", NONE), ("", NONE)] => true
       | _ => false)
   then ()
   else raise Fail ("unexpected fallback_params outcomes: " ^
@@ -213,42 +236,16 @@ Proof
   CONV_TAC (QUANT_CONV (LAND_CONV cv_eval)) >> simp[] >> EVAL_TAC
 QED
 
-Theorem fallback_params_fallback_refused:
-  fallback_params_call [1w; 2w; 3w; 4w] = ContractInvalid "unknown procedure"
+Theorem fallback_params_fallback_echoes:
+  (∃w. fallback_params_call [1w; 2w; 3w; 4w; 5w] =
+       ContractReturned [1w; 2w; 3w; 4w; 5w] w) ∧
+  (∃w. fallback_params_call [] = ContractReturned [] w)
 Proof
-  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
+  CONV_TAC (BINOP_CONV (QUANT_CONV (LAND_CONV cv_eval))) >> simp[]
 QED
 
-(* The elaborator refuses such a fallback even when the importer has not
- * marked it: the fallback is the one part of the unit that fails
- * elaboration, with or without the mark (unit_elaboration_failures
- * elaborates marked functions too, for their reasons). *)
-Definition fallback_params_unit_def:
-  fallback_params_unit = ^(#unit fallback_prepared)
-End
-
-val () = cv_auto_trans fallback_params_unit_def;
-
-Definition fallback_params_unmarked_def:
-  fallback_params_unmarked =
-    fallback_params_unit with unit_contracts :=
-      MAP (λc. c with contract_functions :=
-             MAP (λf. if f.fn_kind = FallbackKind then f with fn_unsupported := NONE
-                      else f) c.contract_functions)
-        fallback_params_unit.unit_contracts
-End
-
-val () = cv_auto_trans fallback_params_unmarked_def;
-
-Theorem fallback_params_unmarked_fails_elaboration:
-  LENGTH (unit_elaboration_failures T fallback_params_unit) = 1 ∧
-  LENGTH (unit_elaboration_failures T fallback_params_unmarked) = 1
-Proof
-  CONV_TAC cv_eval
-QED
-
-(* Both constructor bodies elaborate, but the base-constructor argument
- * calls readString, whose dynamic ABI decoding does not. *)
+(* Both constructor bodies elaborate, and so does readString, which the
+ * base-constructor argument calls, with its dynamic ABI decoding. *)
 val creation_prepared = #prepared (solidityPrepareLib.prepare_artifact
   {root = "..", path = "../testdata/frontend/expected/creation_argument.json",
    source = "testdata/frontend/creation_argument.sol"});
@@ -259,9 +256,8 @@ val () =
   if List.filter (fn (n, _) => n = "") creation_outcomes =
        [("", NONE), ("", NONE)] andalso
      List.filter (fn (n, _) => n = "value") creation_outcomes = [("value", NONE)] andalso
-     (case List.filter (fn (n, _) => n = "readString") creation_outcomes of
-        [(_, SOME r)] => String.isSuffix ": abi decoding of these types" r
-      | _ => false)
+     List.filter (fn (n, _) => n = "readString") creation_outcomes =
+       [("readString", NONE)]
   then ()
   else raise Fail "unexpected creation_argument function outcomes";
 
@@ -293,12 +289,14 @@ Proof
   CONV_TAC (QUANT_CONV (LAND_CONV cv_eval)) >> simp[] >> EVAL_TAC
 QED
 
-Theorem creation_argument_deploy_refused:
-  deploy_contract 1000 creation_argument_program
-    (differential_frame (n2w 0x1212) 0 [])
-    (differential_world empty_accounts) = ContractInvalid "unknown procedure"
+(* With every creation procedure supported, a deployment without encoded
+ * constructor arguments reverts in their decoding, as solc's does. *)
+Theorem creation_argument_empty_deploy_reverts:
+  ∃w. deploy_contract 1000 creation_argument_program
+        (differential_frame (n2w 0x1212) 0 [])
+        (differential_world empty_accounts) = ContractReverted [] w
 Proof
-  CONV_TAC (LAND_CONV cv_eval) >> REFL_TAC
+  CONV_TAC (QUANT_CONV (LAND_CONV cv_eval)) >> simp[]
 QED
 
 (* Function types the core does not model

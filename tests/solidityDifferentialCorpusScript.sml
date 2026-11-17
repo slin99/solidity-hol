@@ -5,30 +5,48 @@ Ancestors
   solidityDifferentialCorpus_abi_decode_udvt
   solidityDifferentialCorpus_abi_decodes
   solidityDifferentialCorpus_abi_encoding
+  solidityDifferentialCorpus_abi_parenthesized_types
+  solidityDifferentialCorpus_abi_values
+  solidityDifferentialCorpus_abstract_child_unit
   solidityDifferentialCorpus_array_events
+  solidityDifferentialCorpus_array_operations
+  solidityDifferentialCorpus_assembly_alloc
   solidityDifferentialCorpus_assembly_arrays
   solidityDifferentialCorpus_assembly_calldata
   solidityDifferentialCorpus_assembly_calls
+  solidityDifferentialCorpus_assembly_code
   solidityDifferentialCorpus_assembly_constants
   solidityDifferentialCorpus_assembly_delegate
+  solidityDifferentialCorpus_assembly_library_forms
   solidityDifferentialCorpus_assembly_memory
   solidityDifferentialCorpus_assembly_pointers
+  solidityDifferentialCorpus_assembly_prefix_loads
   solidityDifferentialCorpus_assembly_return_data
   solidityDifferentialCorpus_assembly_scratch
+  solidityDifferentialCorpus_assembly_structs
   solidityDifferentialCorpus_builtins
   solidityDifferentialCorpus_byte_mapping_keys
   solidityDifferentialCorpus_bytes_constants
+  solidityDifferentialCorpus_bytes_fallback
+  solidityDifferentialCorpus_call_calldata
+  solidityDifferentialCorpus_call_locations
   solidityDifferentialCorpus_calldata_arrays
   solidityDifferentialCorpus_calldata_bytes
+  solidityDifferentialCorpus_calldata_fixed_dynamic
   solidityDifferentialCorpus_calldata_slices
   solidityDifferentialCorpus_calls
+  solidityDifferentialCorpus_code_hashes
   solidityDifferentialCorpus_code_lengths
   solidityDifferentialCorpus_concats
   solidityDifferentialCorpus_conditionals
+  solidityDifferentialCorpus_constant_array_lengths
   solidityDifferentialCorpus_constant_conversions
   solidityDifferentialCorpus_constants
   solidityDifferentialCorpus_constructors
   solidityDifferentialCorpus_context
+  solidityDifferentialCorpus_contract_creation
+  solidityDifferentialCorpus_contract_qualified_variables
+  solidityDifferentialCorpus_contract_selection
   solidityDifferentialCorpus_contract_types
   solidityDifferentialCorpus_control
   solidityDifferentialCorpus_dirty_bits
@@ -38,13 +56,18 @@ Ancestors
   solidityDifferentialCorpus_encode_calls
   solidityDifferentialCorpus_enum_bounds
   solidityDifferentialCorpus_enum_errors
+  solidityDifferentialCorpus_enum_keys_getters
   solidityDifferentialCorpus_enums
+  solidityDifferentialCorpus_environment_code
   solidityDifferentialCorpus_errors
   solidityDifferentialCorpus_expression_members
   solidityDifferentialCorpus_external
   solidityDifferentialCorpus_fallback
+  solidityDifferentialCorpus_function_references
   solidityDifferentialCorpus_function_types
+  solidityDifferentialCorpus_gas_invalid
   solidityDifferentialCorpus_hashes
+  solidityDifferentialCorpus_immutable_kinds
   solidityDifferentialCorpus_immutables
   solidityDifferentialCorpus_immutables_creation
   solidityDifferentialCorpus_imports
@@ -53,9 +76,11 @@ Ancestors
   solidityDifferentialCorpus_inheritance_diamond
   solidityDifferentialCorpus_inherited_payable
   solidityDifferentialCorpus_initializers_only
+  solidityDifferentialCorpus_inline_arrays
   solidityDifferentialCorpus_inline_assembly
   solidityDifferentialCorpus_interface_ids
   solidityDifferentialCorpus_keccak_literal_memory
+  solidityDifferentialCorpus_library_calls
   solidityDifferentialCorpus_library_structs
   solidityDifferentialCorpus_literal_bytes
   solidityDifferentialCorpus_literals
@@ -63,6 +88,7 @@ Ancestors
   solidityDifferentialCorpus_mappings
   solidityDifferentialCorpus_memory_arrays
   solidityDifferentialCorpus_memory_bytes
+  solidityDifferentialCorpus_memory_structs
   solidityDifferentialCorpus_modifiers
   solidityDifferentialCorpus_modular
   solidityDifferentialCorpus_named_arguments
@@ -75,8 +101,11 @@ Ancestors
   solidityDifferentialCorpus_qualified_base_calls
   solidityDifferentialCorpus_qualified_events
   solidityDifferentialCorpus_receive
+  solidityDifferentialCorpus_reference_forms
   solidityDifferentialCorpus_revert_arguments
   solidityDifferentialCorpus_scalars
+  solidityDifferentialCorpus_selfdestructs
+  solidityDifferentialCorpus_sha256_blockhash
   solidityDifferentialCorpus_shadowed_builtins
   solidityDifferentialCorpus_storage
   solidityDifferentialCorpus_storage_array_growth
@@ -84,7 +113,9 @@ Ancestors
   solidityDifferentialCorpus_storage_arrays
   solidityDifferentialCorpus_storage_bytes
   solidityDifferentialCorpus_storage_bytes_aliases
+  solidityDifferentialCorpus_storage_call_data
   solidityDifferentialCorpus_storage_enum_arrays
+  solidityDifferentialCorpus_storage_memory_padding
   solidityDifferentialCorpus_storage_pointer_base
   solidityDifferentialCorpus_storage_pointers
   solidityDifferentialCorpus_storage_references
@@ -96,10 +127,14 @@ Ancestors
   solidityDifferentialCorpus_transfers
   solidityDifferentialCorpus_transient_values
   solidityDifferentialCorpus_try_calls
+  solidityDifferentialCorpus_try_success
   solidityDifferentialCorpus_tuple_literals
   solidityDifferentialCorpus_tuple_values
   solidityDifferentialCorpus_type_bounds
+  solidityDifferentialCorpus_type_members
   solidityDifferentialCorpus_typed_catches
   solidityDifferentialCorpus_udvt
+  solidityDifferentialCorpus_uninitialized_storage_pointers
   solidityDifferentialCorpus_using_for
   solidityDifferentialCorpus_virtual_modifiers
+  solidityDifferentialCorpus_zero_reset

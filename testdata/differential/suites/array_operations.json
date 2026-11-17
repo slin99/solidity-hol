@@ -1,0 +1,448 @@
+{
+  "name": "array_operations",
+  "source": "testdata/differential/array_operations.sol",
+  "contract": "ArrayOperations",
+  "artifact": "testdata/differential/expected/array_operations.json",
+  "cases": [
+    {
+      "name": "struct_memory_value_and_empty_pointer",
+      "function": "structPush",
+      "args": [
+        3,
+        4
+      ],
+      "expect": {
+        "return": [
+          2,
+          3,
+          10
+        ]
+      }
+    },
+    {
+      "name": "storage_value_copied_before_later_mutation",
+      "function": "storagePush",
+      "args": [],
+      "expect": {
+        "return": [
+          3,
+          4
+        ]
+      }
+    },
+    {
+      "name": "root_argument_then_append",
+      "function": "pushOrder",
+      "args": [],
+      "expect": {
+        "return": [
+          12,
+          2,
+          3
+        ]
+      }
+    },
+    {
+      "name": "push_root_saved_before_argument_rebind",
+      "function": "rootReboundByArgument",
+      "args": [],
+      "expect": {
+        "return": [
+          1,
+          1,
+          5
+        ]
+      }
+    },
+    {
+      "name": "nested_array_copy_and_clear",
+      "function": "nestedPush",
+      "args": [],
+      "expect": {
+        "return": [
+          2,
+          9,
+          7
+        ]
+      }
+    },
+    {
+      "name": "nested_empty_push_returns_array_pointer",
+      "function": "nestedEmptyPush",
+      "args": [],
+      "expect": {
+        "return": [
+          5,
+          6
+        ]
+      }
+    },
+    {
+      "name": "fixed_array_element_copy_and_clear",
+      "function": "fixedPush",
+      "args": [],
+      "expect": {
+        "return": [
+          3,
+          6
+        ]
+      }
+    },
+    {
+      "name": "calldata_array_pushed_by_value",
+      "calldata": "0xd16e2424000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000005000000000000000000000000000000000000000000000000000000000000012c0000000000000000000000000000000000000000000000000000000000000007",
+      "expect": {
+        "returned": "0x00000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000007"
+      }
+    },
+    {
+      "name": "byte_sequences_0",
+      "function": "bytesPush",
+      "args": [
+        0
+      ],
+      "expect": {
+        "return": [
+          0,
+          "0x00",
+          47
+        ]
+      }
+    },
+    {
+      "name": "byte_sequences_3",
+      "function": "bytesPush",
+      "args": [
+        3
+      ],
+      "expect": {
+        "return": [
+          3,
+          "0x7f",
+          47
+        ]
+      }
+    },
+    {
+      "name": "byte_sequences_40",
+      "function": "bytesPush",
+      "args": [
+        40
+      ],
+      "expect": {
+        "return": [
+          40,
+          "0x7f",
+          47
+        ]
+      }
+    },
+    {
+      "name": "nested_struct_fields_all_cleared",
+      "function": "bundlePush",
+      "args": [],
+      "expect": {
+        "return": [
+          5,
+          36,
+          300,
+          7
+        ]
+      }
+    },
+    {
+      "name": "struct_mapping_survives_pop_regrow",
+      "function": "mappingSurvives",
+      "args": [],
+      "expect": {
+        "return": [
+          0,
+          17
+        ]
+      },
+      "final_storage": {
+        "3564858712345864682130124736353918935226937242221183350005939469463729015293": "17"
+      }
+    },
+    {
+      "name": "mapping_element_survives_pop_regrow",
+      "function": "mappingElement",
+      "args": [],
+      "expect": {
+        "return": [
+          4
+        ]
+      },
+      "final_storage": {
+        "3881234457586740923002033305974406208995676089663811135680689659712884817687": "4"
+      }
+    },
+    {
+      "name": "storage_recursive_struct_deeper_than_declarations",
+      "function": "recursivePop",
+      "args": [],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "enum_memory_default_index_and_storage_push",
+      "function": "enumMemory",
+      "args": [],
+      "expect": {
+        "return": [
+          3,
+          0,
+          2
+        ]
+      }
+    },
+    {
+      "name": "struct_memory_new_length_and_default",
+      "function": "structMemory",
+      "args": [
+        2,
+        1
+      ],
+      "expect": {
+        "return": [
+          2,
+          7,
+          0
+        ]
+      }
+    },
+    {
+      "name": "nested_fixed_struct_array_memory",
+      "function": "nestedStructMemory",
+      "args": [],
+      "expect": {
+        "return": [
+          2,
+          2,
+          8,
+          0
+        ]
+      }
+    },
+    {
+      "name": "packed_pop_keeps_other_elements",
+      "function": "packedPop",
+      "args": [],
+      "expect": {
+        "return": [
+          11,
+          1
+        ]
+      }
+    },
+    {
+      "name": "struct_pop_clears_slot_padding",
+      "function": "structPush",
+      "args": [
+        3,
+        4
+      ],
+      "expect": {
+        "return": [
+          2,
+          3,
+          10
+        ]
+      },
+      "storage": {
+        "18569430475105882587588266137607568536673111973893317399460219858819262702947": "77345497107738552411838431392522000948863935069627095512151832361461358788663"
+      },
+      "final_storage": {
+        "18569430475105882587588266137607568536673111973893317399460219858819262702947": "0"
+      }
+    },
+    {
+      "name": "packed_pop_keeps_unused_bytes",
+      "function": "packedPop",
+      "args": [],
+      "expect": {
+        "return": [
+          11,
+          1
+        ]
+      },
+      "storage": {
+        "89717814153306320011181716697424560163256864414616650038987186496166826726056": "77345497107738552411838431392522000948863935069627095510731433067785723314176"
+      },
+      "final_storage": {
+        "89717814153306320011181716697424560163256864414616650038987186496166826726056": "77345497107738552411838431392522000948863935069627095510731433067785723314176"
+      }
+    },
+    {
+      "name": "empty_struct_pop_panics",
+      "function": "emptyPop",
+      "args": [],
+      "expect": {
+        "panic": 49
+      }
+    },
+    {
+      "name": "struct_memory_index_out_of_bounds",
+      "function": "structMemory",
+      "args": [
+        0,
+        0
+      ],
+      "expect": {
+        "panic": 50
+      }
+    },
+    {
+      "name": "struct_memory_allocation_overflows",
+      "function": "structMemory",
+      "args": [
+        "18446744073709551616",
+        0
+      ],
+      "expect": {
+        "panic": 65
+      }
+    },
+    {
+      "name": "struct_push_length_overflows",
+      "function": "structPush",
+      "args": [
+        3,
+        4
+      ],
+      "storage": {
+        "0": "18446744073709551616"
+      },
+      "expect": {
+        "panic": 65
+      }
+    },
+    {
+      "name": "struct_copy_preserves_padding_before_pop",
+      "function": "structCopyPadding",
+      "args": [],
+      "storage": {
+        "18569430475105882587588266137607568536673111973893317399460219858819262702947": "77345497107738552411838431392522000948863935069627095512151832361461358788663"
+      },
+      "expect": {
+        "return": [
+          "77345497107738552411838431392522000948863935069627095510805220044080561520643"
+        ]
+      },
+      "final_storage": {
+        "18569430475105882587588266137607568536673111973893317399460219858819262702947": "0"
+      }
+    },
+    {
+      "name": "nested_enum_array_memory_copy_and_clear",
+      "function": "nestedEnumPush",
+      "args": [],
+      "expect": {
+        "return": [
+          2
+        ]
+      }
+    },
+    {
+      "name": "struct_array_copy_preserves_retained_padding_length_1",
+      "function": "structArrayCopyPadding",
+      "args": [],
+      "storage": {
+        "0": "1",
+        "18569430475105882587588266137607568536673111973893317399460219858819262702947": "77345497107738552411838431392522000948863935069627095511137261437407333449739"
+      },
+      "expect": {
+        "return": [
+          "77345497107738552411838431392522000948863935069627095510805220044080561520643"
+        ]
+      },
+      "final_storage": {
+        "0": "0",
+        "18569430475105882587588266137607568536673111973893317399460219858819262702947": "0"
+      }
+    },
+    {
+      "name": "struct_array_copy_preserves_retained_padding_length_2",
+      "function": "structArrayCopyPadding",
+      "args": [],
+      "storage": {
+        "0": "2",
+        "18569430475105882587588266137607568536673111973893317399460219858819262702947": "77345497107738552411838431392522000948863935069627095511137261437407333449739",
+        "18569430475105882587588266137607568536673111973893317399460219858819262702948": "77345497107738552411838431392522000948863935069627095511543089807028943585313"
+      },
+      "expect": {
+        "return": [
+          "77345497107738552411838431392522000948863935069627095510805220044080561520643"
+        ]
+      },
+      "final_storage": {
+        "0": "0",
+        "18569430475105882587588266137607568536673111973893317399460219858819262702947": "0",
+        "18569430475105882587588266137607568536673111973893317399460219858819262702948": "0"
+      }
+    },
+    {
+      "name": "nested_struct_array_push_preserves_retained_padding",
+      "function": "nestedStructArrayCopyPadding",
+      "args": [],
+      "storage": {
+        "84800337471693920904250232874319843718400766719524250287777680170677855896573": "2",
+        "17002087312710631748114524405854659556649133995345820706145322105831772639930": "77345497107738552411838431392522000948863935069627095511137261437407333449739",
+        "17002087312710631748114524405854659556649133995345820706145322105831772639931": "77345497107738552411838431392522000948863935069627095511543089807028943585313"
+      },
+      "expect": {
+        "return": [
+          "77345497107738552411838431392522000948863935069627095510805220044080561520643"
+        ]
+      },
+      "final_storage": {
+        "84800337471693920904250232874319843718400766719524250287777680170677855896573": "0",
+        "17002087312710631748114524405854659556649133995345820706145322105831772639930": "0",
+        "17002087312710631748114524405854659556649133995345820706145322105831772639931": "0"
+      }
+    },
+    {
+      "name": "copy_empty_scalar_array_into_empty_child",
+      "function": "emptyNestedCopy",
+      "args": [],
+      "expect": {
+        "return": [
+          0
+        ]
+      }
+    },
+    {
+      "name": "copy_empty_scalar_array_clears_old_child_slots",
+      "function": "emptyNestedCopy",
+      "args": [],
+      "storage": {
+        "29102676481673041902632991033461445430619272659676223336789171408008386403022": "2",
+        "12072469696963966767691700411905649679726912322096881580412568241040270596576": "77345497107738552411838431392522000948863935069627095510731433067785723838471"
+      },
+      "expect": {
+        "return": [
+          0
+        ]
+      },
+      "final_storage": {
+        "29102676481673041902632991033461445430619272659676223336789171408008386403022": "0",
+        "12072469696963966767691700411905649679726912322096881580412568241040270596576": "0"
+      }
+    },
+    {
+      "name": "tuple_enum_array_copy_keeps_value",
+      "function": "copyInTuple",
+      "args": [],
+      "expect": {
+        "return": [
+          2,
+          1,
+          7
+        ]
+      }
+    }
+  ]
+}

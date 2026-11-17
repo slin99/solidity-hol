@@ -7,7 +7,7 @@ Ancestors
   solidityDifferential solidityBytecode
   solidityDifferentialCorpus_pure_core solidityDifferentialCorpus_storage
   solidityDifferentialCorpus_mappings solidityDifferentialCorpus_token
-  solidityDifferentialCorpus_transient_values
+  solidityDifferentialCorpus_transient_values solidityDifferentialCorpus_gas_invalid
 Libs
   solidityImportLib solidityDifferentialLib cv_transLib wordsLib intLib
 
@@ -18,6 +18,8 @@ val () = holbuild_extra_deps [
   "../testdata/differential/negative/bridge.json",
   "../testdata/differential/expected/storage.json",
   "../testdata/differential/storage.sol", "../SOLIDITY_PIN",
+  "../testdata/differential/expected/gas_invalid.json",
+  "../testdata/differential/gas_invalid.sol",
   "../profiles/solc-0.8.37-via-ir-osaka.json"]
 
 (* testdata/differential/mutant.sol: PureCore.add, but wrapping. *)
@@ -47,8 +49,8 @@ val () = cv_trans_deep_embedding EVAL log_mutant_code_def;
 Definition named_call_def:
   named_call name args storage expect final =
     <| case_sender := 0x2000w; case_value := 0; case_input := NamedCall name args;
-       case_storage := storage; case_peer_code := []; case_peer_storage := [];
-       case_expect := expect; case_final := final; case_logs := [];
+       case_storage := storage; case_peer_code := []; case_peer_storage := []; case_libraries := [];
+       case_expect := expect; case_final := final; case_gas := []; case_logs := [];
        case_immutables := []; case_immutable_refs := [] |>
 End
 
@@ -220,8 +222,8 @@ Theorem unlisted_mapping_write_detected:
   StorageMismatch [(0,0); (1,0); (2,0); (3,0); (4,0); (5,0); (6,0)]
                   [(0,0); (1,0); (2,0); (3,0); (4,0); (5,0); (6,0)]
 Proof
-  simp_tac std_ss [differential_verdict_def, LET_THM] >>
-  CONV_TAC (cv_eval_call "observed_slots") >>
+  (* Unfolding the verdict's lets would copy each run into every comparison
+   * and evaluate it once per copy; evaluating the verdict runs each once. *)
   CONV_TAC cv_eval
 QED
 
@@ -234,13 +236,13 @@ Definition mint_call_def:
   mint_call logs =
     <| case_sender := 0x2000w; case_value := 0;
        case_input := NamedCall "mint" [IntArg 0x3000; IntArg 5];
-       case_storage := []; case_peer_code := []; case_peer_storage := [];
+       case_storage := []; case_peer_code := []; case_peer_storage := []; case_libraries := [];
        case_expect := ExpectReturn [];
        case_final :=
          [(2, 5);
           (68113724183316182233052564790125915752421945217496801851705428207216635038832,
            5)];
-       case_logs := logs; case_immutables := []; case_immutable_refs := [] |>
+       case_gas := []; case_logs := logs; case_immutables := []; case_immutable_refs := [] |>
 End
 
 val () = cv_auto_trans mint_call_def;
@@ -274,33 +276,43 @@ Proof
   CONV_TAC cv_eval
 QED
 
+(* What run prints, with its result. *)
+fun printed run =
+  let
+    val path = OS.FileSys.tmpName ()
+    val output = TextIO.openOut path
+    val saved = TextIO.getOutstream TextIO.stdOut
+    fun restore () =
+      (TextIO.flushOut TextIO.stdOut;
+       TextIO.setOutstream (TextIO.stdOut, saved);
+       TextIO.closeOut output)
+    val () = TextIO.flushOut TextIO.stdOut
+    val () = TextIO.setOutstream (TextIO.stdOut, TextIO.getOutstream output)
+    val result = run ()
+      handle e => (restore (); OS.FileSys.remove path; raise e)
+    val () = restore ()
+    val input = TextIO.openIn path
+    val text = TextIO.inputAll input
+    val () = TextIO.closeIn input
+    val () = OS.FileSys.remove path
+  in (result, text) end
+
+(* The lines with prefix in text that contain all of fields. *)
+fun reported prefix text fields = List.exists
+  (fn line => String.isPrefix prefix line andalso
+     List.all (fn field => String.isSubstring field line) fields)
+  (String.tokens (fn c => c = #"\n") text)
+
 (* Exercise the runner, including its reported diagnostics, rather than only
  * differential_verdict: these paths previously hid an input mismatch or
  * replaced UnknownFunction with a generic bridge error. *)
 local
-  val path = OS.FileSys.tmpName ()
-  val output = TextIO.openOut path
-  val saved = TextIO.getOutstream TextIO.stdOut
-  val () = TextIO.flushOut TextIO.stdOut
-  val () = TextIO.setOutstream (TextIO.stdOut, TextIO.getOutstream output)
-  val rejected =
-    ((solidityDifferentialLib.run_suite_file
-        {root = "..", suite_file = "testdata/differential/negative/bridge.json",
-         fuel = 1000, bytecode_theory = "solidityBytecodeCorpus_storage"}; false)
-     handle HOL_ERR _ => true)
-    handle e => (TextIO.setOutstream (TextIO.stdOut, saved);
-                 TextIO.closeOut output; OS.FileSys.remove path; raise e)
-  val () = TextIO.flushOut TextIO.stdOut
-  val () = TextIO.setOutstream (TextIO.stdOut, saved)
-  val () = TextIO.closeOut output
-  val input = TextIO.openIn path
-  val report = TextIO.inputAll input
-  val () = TextIO.closeIn input
-  val () = OS.FileSys.remove path
-  val cases = List.filter (String.isPrefix "differential-result: " )
-                (String.tokens (fn c => c = #"\n") report)
-  fun reported fields = List.exists
-    (fn line => List.all (fn field => String.isSubstring field line) fields) cases
+  val (rejected, report) = printed (fn () =>
+    (solidityDifferentialLib.run_suite_file
+       {root = "..", suite_file = "testdata/differential/negative/bridge.json",
+        fuel = 1000, bytecode_theory = "solidityBytecodeCorpus_storage"}; false)
+    handle HOL_ERR _ => true)
+  val reported = reported "differential-result: " report
 in
   val () = if rejected andalso
       reported ["\"case\":\"set_total\"", "\"status\":\"error\"",
@@ -308,6 +320,40 @@ in
       reported ["\"case\":\"get_total_reads_storage\"",
                 "\"status\":\"inconclusive\"", "UnknownFunction"]
     then () else raise Fail ("bridge regression: " ^ report)
+end
+
+(* The expectations replay on a call that aborts (INVALID): it fails with no
+ * data, as the bytecode run does, and its storage writes are rolled back. *)
+local
+  val sender = "\"sender\":\"0x1212121212121212121212121212120000000012\""
+  fun call index function =
+    "{\"index\":" ^ Int.toString index ^ ",\"deploy\":false,\"value\":0," ^
+    sender ^ ",\"calldata\":\"0x\",\"signature\":\"" ^ function ^
+    "\",\"events\":[]}"
+  val manifest = OS.FileSys.tmpName ()
+  val out = TextIO.openOut manifest
+  val () = TextIO.output (out, String.concat
+    ["{\"tests\":[{\"test\":\"abort\",",
+     "\"artifact\":\"../testdata/differential/expected/gas_invalid.json\",",
+     "\"source\":\"testdata/differential/gas_invalid.sol\",",
+     "\"contract\":\"GasInvalid\",\"verify_bytecode\":true,\"calls\":[",
+     "{\"index\":0,\"deploy\":true,\"value\":0,", sender,
+     ",\"calldata\":\"0x\",\"events\":[]},",
+     call 1 "abortNow()", ",", call 2 "stored()", "]}]}"])
+  val () = TextIO.closeOut out
+  val ((), report) = printed (fn () =>
+    solidityDifferentialLib.run_expectations {root = "..", manifest = manifest})
+    handle e => (OS.FileSys.remove manifest; raise e)
+  val () = OS.FileSys.remove manifest
+  val reported = reported "expectation-result: " report
+in
+  val () = if
+      reported ["\"index\":1,", "\"bytecode\":{\"reverted\":\"0x\"}",
+                "\"status\":\"executed\"", "\"actual\":{\"reverted\":\"0x\"}"] andalso
+      reported ["\"index\":2,", "\"actual\":{\"returned\":\"0x" ^
+                StringCvt.padLeft #"0" 64 "" ^ "\"}"] andalso
+      reported ["\"kind\":\"complete\""]
+    then () else raise Fail ("aborted call replay: " ^ report)
 end
 
 (* call_contract is a frame entry. The transaction driver supplies a fresh
@@ -331,6 +377,74 @@ Theorem transient_guard_lives_for_one_transaction:
       (case enter_transient_guard (differential_world world.accounts) of
          ContractReturned next _ => next = data | _ => F)
   | _ => F
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* A gas observation is independent evidence: the bytecode trace checks it,
+ * and the source must consume it completely. *)
+Theorem missing_gas_evidence_is_diagnostic:
+  source_execution corpus_gas_invalid_code corpus_gas_invalid_unit
+    corpus_gas_invalid_program 1000
+    (named_call "difference" [] [] (ExpectReturn [IntArg 0]) []) =
+    (Diagnostic InvalidCompletion, NONE, [])
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem invented_gas_evidence_is_diagnostic:
+  evm_execution corpus_gas_invalid_code corpus_gas_invalid_unit
+    ((named_call "difference" [] [] (ExpectReturn [IntArg 0]) []) with
+       case_gas := [1; 0]) =
+    (Diagnostic InvalidGasEvidence, NONE, [])
+Proof
+  CONV_TAC cv_eval
+QED
+
+(* The source reads gasleft() into a local, then passes it to assembly CALL.
+ * solc emits GAS; CALL, so the budget filter removes the concrete 9978304
+ * reading. The empty trace assertion detects removal of that filter. *)
+Definition explicit_gas_budget_case_def:
+  explicit_gas_budget_case =
+    (named_call "explicitBudget" [IntArg 0x5000] []
+       (ExpectReturn [BoolArg T]) []) with case_gas := [9978304]
+End
+
+val () = cv_auto_trans explicit_gas_budget_case_def;
+
+Theorem source_gas_as_call_budget_is_inconclusive:
+  (case prepared_evm_input corpus_gas_invalid_code corpus_gas_invalid_unit
+      explicit_gas_budget_case of
+     INR input => bytecode_gas_observations input = SOME [] ∧
+       FST (bytecode_execution input) = returned [Bool] [NumV 1]
+   | INL _ => F) ∧
+  evm_execution corpus_gas_invalid_code corpus_gas_invalid_unit
+    explicit_gas_budget_case = (Diagnostic InvalidGasEvidence, NONE, []) ∧
+  FST (source_execution corpus_gas_invalid_code corpus_gas_invalid_unit
+    corpus_gas_invalid_program 1000 explicit_gas_budget_case) =
+    returned [Bool] [NumV 1] ∧
+  ¬differential_agrees corpus_gas_invalid_code corpus_gas_invalid_unit
+    corpus_gas_invalid_program 1000 explicit_gas_budget_case
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem budget_gas_scan_handles_push0_and_dup:
+  is_call_budget_gas 16
+    (FEMPTY |+ (1, Push 0 []) |+ (2, Swap 0) |+ (3, Call)) 1 0 ∧
+  ¬is_call_budget_gas 16 (FEMPTY |+ (1, Dup 0) |+ (2, Call)) 1 0 ∧
+  ¬is_call_budget_gas 16 (FEMPTY |+ (1, Create)) 1 0
+Proof
+  EVAL_TAC
+QED
+
+Theorem only_invalid_opcode_is_aborted:
+  FST (bytecode_execution
+    (case_accounts [0xfew] [] 0x2000w [] [] [],
+     differential_tx 0x2000w 0 [], [])) = Aborted ∧
+  FST (bytecode_execution
+    (case_accounts [0x5fw; 0x56w] [] 0x2000w [] [] [],
+     differential_tx 0x2000w 0 [], [])) = Diagnostic ExceptionalHalt
 Proof
   CONV_TAC cv_eval
 QED

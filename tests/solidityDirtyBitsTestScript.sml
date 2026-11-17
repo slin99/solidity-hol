@@ -4,13 +4,16 @@
  * an InvalidCompletion is never counted as differential agreement. *)
 Theory solidityDirtyBitsTest
 Ancestors solidityDifferential solidityDirtyBitsBytecodeTest
-  solidityStorageEnumArraysTest
+  solidityStorageEnumArraysTest solidityAssemblyLibraryFormsTest
+  solidityAssemblyPrefixLoadsTest
+  solidityStorageMemoryPaddingTest
   solidityDifferentialCorpus_inline_assembly
   solidityDifferentialCorpus_storage
   solidityDifferentialCorpus_storage_arrays
   solidityDifferentialCorpus_enums
   solidityDifferentialCorpus_dirty_bits
   solidityDifferentialCorpus_udvt
+  solidityDifferentialCorpus_memory_structs
   solidityDifferentialCorpus_assembly_calldata
   solidityDifferentialCorpus_typed_catches
 Libs solidityBytecodeLib cv_transLib wordsLib
@@ -23,6 +26,7 @@ val () = holbuild_extra_deps [
   "../testdata/differential/fail_closed/enums.json",
   "../testdata/differential/fail_closed/dirty_bits.json",
   "../testdata/differential/fail_closed/udvt.json",
+  "../testdata/differential/fail_closed/memory_structs.json",
   "../testdata/differential/fail_closed/assembly_calldata.json",
   "../testdata/differential/fail_closed/typed_catches.json"
 ]
@@ -42,7 +46,8 @@ fun rejected_case group name =
       | SOME _ => prim_mk_const {Thy = "solidityDirtyBitsBytecodeTest",
           Name = "bytecode_rejected_" ^ group ^ "_peer_code"}
   in
-    case_term peer {names = [], refs = “[] : (num # num list) list”}
+    case_term {peer = peer, libraries = “[] : (address # byte list) list”}
+      {names = [], refs = “[] : (num # num list) list”}
       (call_input (fn () => “[] : byte list”) c) c
   end;
 
@@ -257,6 +262,15 @@ Theorem reject_udvt_wrap_cleans_underlying_bits:
   source_execution bytecode_rejected_udvt_code
     corpus_udvt_unit corpus_udvt_program 1000
     ^(rejected_case "udvt" "wrap_cleans_underlying_bits") =
+  (Diagnostic InvalidCompletion, NONE, [])
+Proof
+  CONV_TAC cv_eval
+QED
+
+Theorem reject_memory_structs_paint_copy_byte_out_of_range_panics:
+  source_execution bytecode_rejected_memory_structs_code
+    corpus_memory_structs_unit corpus_memory_structs_program 1000
+    ^(rejected_case "memory_structs" "paint_copy_byte_out_of_range_panics") =
   (Diagnostic InvalidCompletion, NONE, [])
 Proof
   CONV_TAC cv_eval

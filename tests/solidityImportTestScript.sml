@@ -38,7 +38,12 @@ val () = holbuild_extra_deps [
   "../testdata/differential/expected/transient_values.json",
   "../testdata/differential/expected/byte_mapping_keys.json",
   "../testdata/differential/expected/virtual_modifiers.json",
-  "../testdata/differential/expected/literals.json"
+  "../testdata/differential/expected/modifiers.json",
+  "../testdata/differential/expected/literals.json",
+  "../testdata/differential/expected/contract_creation.json",
+  "../testdata/differential/expected/abstract_child_unit.json",
+  "../testdata/differential/expected/contract_selection.json",
+  "../testdata/differential/expected/type_members.json"
 ]
 
 val fixture = "../testdata/frontend/expected/pure_core.json"
@@ -117,6 +122,24 @@ Theorem type_identifier_decoding:
   decode_type_identifier "t_uint" = NONE ∧
   decode_type_identifier "t_string_memory_ptr" = SOME (SrcType (LocatedT MemoryLoc StringT)) ∧
   decode_type_identifier "t_bytes_memory_ptr" = SOME (SrcType (LocatedT MemoryLoc BytesT))
+Proof
+  EVAL_TAC
+QED
+
+Theorem array_identifier_locations:
+  decode_type_identifier "t_tuple$_t_array$_t_enum_37_$dyn_storage_$_t_rational_7_by_1_$" =
+    SOME (SrcTupleType [ArrayT (EnumT (AstId 37)) NONE; UintT 256]) ∧
+  decode_type_identifier "t_array$_t_enum_37_$dyn_memory_ptr" =
+    SOME (SrcType (LocatedT MemoryLoc (ArrayT (EnumT (AstId 37)) NONE))) ∧
+  decode_type_identifier "t_array$_t_bytes_storage_$dyn_memory_ptr" = NONE ∧
+  decode_type_identifier "t_array$_t_string_storage_$dyn_calldata_ptr" = NONE ∧
+  decode_type_identifier "t_array$_t_struct$_S_$1_storage_$dyn_memory_ptr" = NONE ∧
+  decode_type_identifier "t_array$_t_bytes_storage_ptr_$dyn_storage" = NONE ∧
+  decode_type_identifier "t_array$_t_struct$_S_$1_storage_ptr_$dyn_storage" = NONE ∧
+  decode_type_identifier "t_array$_t_bytes_$dyn_storage" = NONE ∧
+  decode_type_identifier "t_array$_t_string_$dyn_storage" = NONE ∧
+  decode_type_identifier "t_array$_t_enum_37_$dyn_calldata_ptr" =
+    SOME (SrcType (LocatedT CalldataLoc (ArrayT (EnumT (AstId 37)) NONE)))
 Proof
   EVAL_TAC
 QED
@@ -818,8 +841,9 @@ val () = edited_unit_with struct_contracts "struct_field_identity_mismatch"
 val () = edited_unit_with struct_contracts "struct_field_type_mismatch"
   (edit_first "MemberAccess" (type_identifier "t_uint16") struct_ast)
 
-(* A public struct has a getter when each member it returns is a value or a
- * byte sequence: item's members are values, nested's include a struct. *)
+(* A public struct has a getter when each member it returns is a value, a
+ * byte sequence or a struct: item's members are values, nested's include a
+ * struct. *)
 fun public_state_variable name selector =
   edit_first_where
     (fn v => is_node "VariableDeclaration" v andalso
@@ -842,8 +866,8 @@ val () = import_error_with Unsupported struct_contracts "undeclared struct membe
     (set_field "referencedDeclaration" (JSON.INT 999999) o
      type_identifier "t_struct$_Packed_$999999_storage_ptr") struct_ast)
 
-Theorem nested_struct_getter_rejected:
-  valid_src_unit struct_getter ∧ ¬valid_src_unit nested_struct_getter
+Theorem nested_struct_getter_valid:
+  valid_src_unit struct_getter ∧ valid_src_unit nested_struct_getter
 Proof
   CONV_TAC cv_eval
 QED
@@ -1035,10 +1059,8 @@ val () = expect_function_lines "unknown enum bound declaration"
   (edit_first "Identifier" (set_field "referencedDeclaration" (JSON.INT 999999)))
   ["unknown enum declaration"]
 
-(* Libraries: only internal functions, attached through a library name, with a
- * receiver that is not copied, are imported; library functions are plain
- * functions.
- *)
+(* Internal library functions are plain calls with an attached receiver
+ * retained as argument 0, including receivers that change data location. *)
 
 val using_fixture = "../testdata/differential/expected/using_for.json"
 val using_source = "testdata/differential/using_for.sol"
@@ -1090,6 +1112,28 @@ val () =
       if String.isSubstring "modifier without a body" reason then ()
       else raise Fail reason
   | _ => raise Fail "unresolved bodyless modifier not rejected"
+
+(* Only a modifier's returns may lack functionReturnParameters (the compiler
+ * gives them none); a function's must have it. *)
+val modifiers_fixture = "../testdata/differential/expected/modifiers.json"
+val modifiers_source = "testdata/differential/modifiers.sol"
+val modifiers_ast = artifact_part modifiers_fixture ["sources", modifiers_source, "ast"]
+val modifiers_contracts = artifact_part modifiers_fixture ["contracts", modifiers_source]
+
+val () = ignore (import_source_unit [] modifiers_ast modifiers_contracts)
+
+val () =
+  case import_rejection []
+    (edit_first_where
+       (fn v => is_node "FunctionDefinition" v andalso
+                JSONUtil.asString (JSONUtil.get (v, [JSONUtil.SEL "name"])) = "early")
+       "early"
+       (edit_first "Return" (drop_field "functionReturnParameters")) modifiers_ast)
+    modifiers_contracts of
+    SOME (UnsupportedFunction, reason) =>
+      if String.isSubstring "return without return parameters outside a modifier" reason
+      then () else raise Fail reason
+  | _ => raise Fail "return without return parameters outside a modifier imported"
 
 (* A modifier whose body fails import keeps its header, so the source check
  * still sees it (here a parameter's scope); the functions invoking it are
@@ -1144,9 +1188,6 @@ fun named ty name v =
   is_node ty v andalso
   JSONUtil.testField "name" (fn JSON.STRING s => s = name | _ => false) v
 
-val () = edited_unit_with using_contracts "public_library_unit"
-  (edit_first_where (named "FunctionDefinition" "addBonus") "addBonus"
-     (set_field "visibility" (JSON.STRING "public")) using_ast)
 val () = import_error_with Unsupported using_contracts "file-level using with functions"
   (edit_first "UsingForDirective" (drop_field "libraryName") using_ast)
 val () = import_error_with Unsupported using_contracts "contract using with functions"
@@ -1204,16 +1245,6 @@ val () = import_error_with Unsupported using_contracts "reached library using fu
                     | kv => kv) kvs)
        | v => v)
      using_ast)
-val () = import_error_with UnsupportedFunction using_contracts "receiver copied to memory"
-  (edit_first_where
-     (fn v => is_node "MemberAccess" v andalso
-              JSONUtil.testField "memberName" (fn JSON.STRING s => s = "fill" | _ => false) v)
-     "xs.fill"
-     (fn m => set_field "expression"
-                (type_identifier "t_array$_t_uint256_$dyn_storage_ptr"
-                   (JSONUtil.lookupField m "expression")) m)
-     using_ast)
-
 val () = edited_unit_with using_contracts "library_receive"
   (edit_first_where (named "FunctionDefinition" "addBonus") "addBonus"
      (set_field "kind" (JSON.STRING "receive")) using_ast)
@@ -1487,3 +1518,66 @@ val () = literal_error "short address literal" "addressValue"
 
 val () = literal_error "nonhex address literal" "addressValue"
   (set_field "value" (JSON.STRING "0xgg175474E89094C44Da98b954EedeAC495271d0F"))
+
+(* Unlinked constructor bytecode rejects the affected functions at the new
+ * expression, including artifacts whose output selection omits linkReferences. *)
+val () =
+  let
+    val artifact = JSONParser.parseFile
+      "../testdata/differential/expected/contract_creation.json"
+    val source = "testdata/differential/contract_creation.sol"
+    val path = ["output", "contracts",
+      "testdata/differential/contract_creation_child.sol", "CreatedChild", "evm", "bytecode"]
+    fun edit [] f v = f v
+      | edit (k :: ks) f v =
+          set_field k (edit ks f (JSONUtil.get (v, [JSONUtil.SEL k]))) v
+    fun check what change expected =
+      let
+        val (unit, blockers) = import_artifact_unit_blockers (edit path change artifact) source
+        val reasons = function_reasons unit
+      in
+        if null blockers andalso not (null reasons) andalso
+           List.exists (fn r => String.isSubstring "NewExpression " r andalso
+                                String.isSubstring expected r) reasons
+        then () else raise Fail (what ^ ": expected a creation-node blocker")
+      end
+    val () = check "creation placeholder"
+      (set_field "object" (JSON.STRING "__$0123456789012345678901234567890123$__"))
+      "invalid hex string"
+    val () = check "creation nonempty link references"
+      (fn JSON.OBJECT fields => JSON.OBJECT (("linkReferences",
+         JSON.OBJECT [("library.sol", JSON.OBJECT [])]) :: fields)
+        | v => v) "creation bytecode has unresolved links"
+    val (unit, blockers) = import_artifact_unit_blockers artifact source
+    val () = if null blockers andalso null (function_reasons unit) then ()
+             else raise Fail "hex creation bytecode with omitted links rejected"
+  in () end
+
+(* The unit's contracts: the one named, or else those no concrete contract of
+ * the source inherits and no other one creates with new. *)
+val () =
+  let
+    fun field name t = Lib.assoc name (snd (TypeBase.dest_record t))
+    fun check name contract expected =
+      let
+        val artifact = JSONParser.parseFile ("../testdata/differential/expected/" ^ name ^ ".json")
+        val (unit, _) = import_contract_artifact_unit_blockers artifact
+                          ("testdata/differential/" ^ name ^ ".sol") contract
+        val names = map (stringSyntax.fromHOLstring o field "contract_name")
+                      (fst (listSyntax.dest_list (field "unit_contracts" unit)))
+      in
+        if names = expected then ()
+        else raise Fail (name ^ ": unit contracts " ^ String.concatWith ", " names)
+      end
+  in
+    (* a concrete base before its abstract child *)
+    check "abstract_child_unit" NONE ["AbstractChildData"];
+    check "contract_selection" NONE ["SelectionStub", "SelectionProxy", "SelectionOther"];
+    check "contract_selection" (SOME "SelectionProxy") ["SelectionProxy"];
+    (* TypeMembersChild is created by TypeMembers *)
+    check "type_members" NONE ["TypeMembers"];
+    ((check "contract_selection" (SOME "Missing") [];
+      raise Fail "contract_selection: a missing contract selected")
+     handle ImportError _ => ())
+  end
+

@@ -6,8 +6,8 @@ the pinned compiler itself generated, as a JSON AST rather than as text: solc
 emits irAst (the code generator's output) and irOptimizedAst (after the Yul
 transformations) into the Standard JSON output, both of which are the tree the
 compiler's own converter walks. The ASTs need settings.experimental, which
-this exporter sets; it adds no other setting, so the profile it is given is
-the profile the artifact records.
+this exporter sets. The harness can also supply the corpus's library links
+to compile the same linked bytecode.
 """
 
 from __future__ import annotations
@@ -33,7 +33,8 @@ EXPERIMENTAL = True
 
 
 def build_yul_artifact(
-    solc: Path, sources: dict[str, str], profile_path: Path
+    solc: Path, sources: dict[str, str], profile_path: Path,
+    libraries: dict[str, dict[str, str]] | None = None,
 ) -> dict[str, Any]:
     """The Yul AST artifact of sources given by Standard JSON name and content."""
     pin = exporter.PIN_FILE.read_text(encoding="ascii").strip()
@@ -53,6 +54,8 @@ def build_yul_artifact(
             "outputSelection": OUTPUT_SELECTION,
         },
     }
+    if libraries is not None:
+        compiler_input["settings"]["libraries"] = libraries
     compiler_output = exporter.compile_standard_json(solc, compiler_input)
     return {
         "format": "solidity-hol-solc-artifact-v1",

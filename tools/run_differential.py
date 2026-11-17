@@ -73,7 +73,7 @@ def check_argument(value: Any, what: str) -> None:
 
 def check_expectation(value: Any, what: str) -> None:
     if not isinstance(value, dict) or len(value) != 1:
-        raise CorpusError(f"{what} must have exactly one of return, returned, panic and revert")
+        raise CorpusError(f"{what} must have exactly one of return, returned, panic, revert and abort")
     (kind, payload), = value.items()
     if kind == "return":
         if not isinstance(payload, list):
@@ -86,6 +86,9 @@ def check_expectation(value: Any, what: str) -> None:
             or (isinstance(payload, str) and HEX.fullmatch(payload) and payload != "0x")
         ):
             raise CorpusError(f"{what}.panic must be a natural number or 0x-prefixed hex")
+    elif kind == "abort":
+        if payload is not True:
+            raise CorpusError(f"{what}.abort must be true")
     elif kind in {"revert", "returned"}:
         if not isinstance(payload, str) or HEX.fullmatch(payload) is None:
             raise CorpusError(f"{what}.{kind} must be 0x-prefixed hex")
@@ -238,6 +241,11 @@ def load_corpus(path: Path) -> dict[str, Any]:
             if "logs" in case:
                 check_logs(case["logs"], f"{what}.logs")
             check_expectation(case.get("expect"), f"{what}.expect")
+            if "gas" in case:
+                if not isinstance(case["gas"], list):
+                    raise CorpusError(f"{what}.gas must be a list")
+                for index, gas in enumerate(case["gas"]):
+                    check_word(gas, 256, f"{what}.gas[{index}]")
             if "fuel" in case:
                 check_fuel(case["fuel"], f"{what}.fuel")
             for key in ("storage", "final_storage", "peer_storage"):
@@ -256,7 +264,7 @@ def load_corpus(path: Path) -> dict[str, Any]:
                     check_argument(value, f"{what}.immutables.{key}")
             unknown = set(case) - {"name", "function", "deploy", "args", "calldata", "sender",
                                    "value", "storage", "peer_storage", "expect",
-                                   "final_storage", "logs", "fuel", "immutables"}
+                                   "final_storage", "logs", "fuel", "immutables", "gas"}
             if unknown:
                 raise CorpusError(f"{what}: unknown fields {sorted(unknown)}")
     return corpus
@@ -378,7 +386,10 @@ def check_artifacts(root: Path, corpus: dict[str, Any]) -> list[dict[str, str]]:
             settings_match = (
                 isinstance(remappings, list)
                 and all(isinstance(entry, str) and "=" in entry for entry in remappings)
-                and {key: value for key, value in input_settings.items() if key != "remappings"}
+                and ("libraries" not in input_settings or
+                     input_settings["libraries"] == exporter.library_addresses(artifact["output"]))
+                and {key: value for key, value in input_settings.items()
+                     if key not in {"remappings", "libraries"}}
                 == expected_settings
             )
             checks.append(check(
@@ -500,7 +511,9 @@ def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
     targets = list(suite_targets) if suite_targets is not None else [theory]
     if force and force_targets:
         targets += force_targets
-    command = [holbuild]
+    # Verbose output names every target holbuild finished, including those
+    # already up to date, which it otherwise leaves out.
+    command = [holbuild, "--verbose"]
     if jobs is not None:
         command += ["-j", str(jobs)]
     command += ["build"] + (["--force=theory"] if force else []) + build_args + targets
@@ -525,18 +538,24 @@ def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
             target_logs = logs
         log = target_logs[-1] if target_logs else (
             root / ".holbuild" / "logs" / "current" / "solidity-hol" / target / "build.log")
-        ran = bool(target_logs) or re.search(rf"^{re.escape(target)} built$", output, re.M) is not None
+        outcome = re.search(rf"^{re.escape(target)} (built|restored from cache|is up to date)"
+                            r"(?: in [0-9.]+s)?$", output, re.M)
+        built = outcome is not None and outcome[1] == "built"
+        # A failed multi-target build still finishes the targets holbuild
+        # reports as built, restored or up to date; their verdict files are
+        # this run's.
+        finished = status == 0 or outcome is not None
+        ran = bool(target_logs) or built
+        result_file = root / theories.results_path(target)
         results = []
-        if status == 0:
-            result_file = root / theories.results_path(target)
-            if result_file.is_file():
-                results = parse_results(result_file.read_text(encoding="utf-8"), prefix)
+        if finished and result_file.is_file():
+            results = parse_results(result_file.read_text(encoding="utf-8"), prefix)
         elif ran:
             try:
                 results = parse_results(log.read_text(encoding="utf-8", errors="replace"), prefix)
             except OSError:
                 results = parse_results(output, prefix)
-        runs[target] = {"status": status, "ran": ran, "results": results,
+        runs[target] = {"status": 0 if finished else status, "ran": ran, "results": results,
                         "log": str(log) if ran else None}
     if status != 0 and suite_targets is not None:
         for log in logs:
@@ -547,6 +566,8 @@ def run_hol(root: Path, holbuild: str, jobs: int | None, force: bool,
             except OSError:
                 continue
             for target, suite in suite_targets.items():
+                if runs[target]["status"] == 0:
+                    continue
                 failures = [row for row in rows if row.get("suite") == suite]
                 if failures:
                     runs[target]["results"].extend(failures)

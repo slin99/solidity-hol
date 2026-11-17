@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity >=0.8.0;
 
-// A contract of supported and unsupported functions (sha256 is not
-// modelled, nor are halting assembly in a constructor, fixed-byte indexing in a constant,
-// or assembly assigning a bytes local): the unsupported ones,
-// and those calling them, have no procedure, and calls of them are refused.
+// A contract of supported and unsupported functions (ripemd160 is not
+// modelled, nor are halting assembly in a constructor or fixed-byte indexing
+// in a constant): the unsupported ones, and those calling them, have no
+// procedure, and calls of them are refused.
 contract Base {
     function twice(uint256 x) public pure virtual returns (uint256) {
         return x * 2;
@@ -13,7 +13,7 @@ contract Base {
 
 contract Mid is Base {
     function twice(uint256 x) public pure virtual override returns (uint256) {
-        return uint256(sha256(abi.encodePacked(x)));
+        return uint256(uint160(ripemd160(abi.encodePacked(x))));
     }
 }
 
@@ -30,7 +30,26 @@ library Hooks {
     }
 }
 
-// A mapping key type the core cannot hold: the struct is left out too.
+// A recursive struct: the core holds no recursive struct in memory, so the
+// functions with one in memory, or that copy one in storage, are
+// unsupported.
+struct Node {
+    uint8 v;
+    Node[] kids;
+}
+
+// The ABI forms of structs: the functions that encode or emit a memory
+// struct, or pass one to an external call, elaborate.
+struct Pair {
+    uint8 a;
+    uint8 b;
+}
+
+interface IPair {
+    function put(Pair memory p) external;
+}
+
+// A struct holding an enum-keyed mapping.
 library Roles {
     enum Role { A, B }
 
@@ -42,6 +61,10 @@ library Roles {
 
 contract Partial is Mid {
     uint256 public total;
+    Node tree;
+    Node otherTree;
+
+    event Paired(Pair p);
 
     // Fixed-byte indexing does not elaborate, so the constant has no procedure:
     // its getter and the functions reading it are unsupported
@@ -58,7 +81,7 @@ contract Partial is Mid {
     }
 
     function digest(bytes memory b) public pure returns (bytes32) {
-        return sha256(b);
+        return ripemd160(b);
     }
 
     function digestTwice(bytes memory b) public pure returns (bytes32) {
@@ -78,7 +101,7 @@ contract Partial is Mid {
         return DIGITS;
     }
 
-    // imports, but assembly may not assign a memory reference
+    // admitted, but leaves b below the free memory pointer: fails at run time
     function pointer(bytes memory b) public pure returns (uint256 p) {
         assembly { b := p }
     }
@@ -88,13 +111,53 @@ contract Partial is Mid {
         return b.hook.n;
     }
 
+    function nodeValue() public pure returns (uint8) {
+        Node memory n;
+        return n.v;
+    }
+
+    function nodeCount() public pure returns (uint256) {
+        return new Node[](2).length;
+    }
+
+    function copyTree() public {
+        tree = otherTree;
+    }
+
+    function encodePair() public pure returns (bytes memory) {
+        return abi.encode(Pair(1, 2));
+    }
+
+    function emitPair() public {
+        emit Paired(Pair(1, 2));
+    }
+
+    function putPair(IPair t) public {
+        t.put(Pair(1, 2));
+    }
+
     function grantCount() internal view returns (uint8) {
         Roles.Grant storage g;
         assembly { g.slot := 0 }
         return g.n;
     }
 
+    // a modifier parameter holding a recursive struct in memory
+    modifier withNode(Node memory n) {
+        _;
+    }
+
+    function nodeModified() public withNode(tree) {}
+
+    // a storage parameter of a struct holding an enum-keyed mapping
+    function grantParam(Roles.Grant storage) internal pure {}
+
+    // a tuple holding a storage struct, as a reference
+    function treeTuple() public view {
+        (tree, 1);
+    }
+
     fallback() external {
-        total = uint256(sha256(msg.data));
+        total = uint256(uint160(ripemd160(msg.data)));
     }
 }

@@ -85,7 +85,7 @@ Definition initial_state_def:
   initial_state = <|
     world := <| accounts := empty_accounts;
                 transient := empty_transient_storage;
-                logs := [] |>;
+                logs := []; original := empty_accounts; to_delete := [] |>;
     frame := <| self_address := 0w; code_address := 0w; sender_address := 0w;
                 call_value := 0; call_data := []; static_context := F;
                 tx_params := <| origin := 0w; gasPrice := 0; baseFeePerGas := 0;
@@ -448,6 +448,37 @@ val supported_y = local_y “SrcElementaryTypeName ^(at 7) "uint256" NONE”;
 val unsupported_y = local_y “SrcUnsupportedTypeName ^(at 7) "function type"”;
 val read_y = “SrcExpressionStatement ^(at 5) (SrcIdentifier ^(at 6) "y" 4 "t_uint256")”;
 
+(* A storage or calldata reference local declared without a value starts as
+ * a placeholder reference, which solc rejects reading before an assignment;
+ * a storage location holding no object has no default. *)
+Theorem reference_locals_default_to_placeholders:
+  default_operation (LocatedT StorageLoc (ArrayT (UintT 256) NONE)) =
+    SOME (DefaultReferenceOperation StorageLoc (ArrayT (UintT 256) NONE)) ∧
+  default_operation (LocatedT StorageLoc (MappingT (UintT 256) (UintT 256))) =
+    SOME (DefaultReferenceOperation StorageLoc (MappingT (UintT 256) (UintT 256))) ∧
+  default_operation (LocatedT StorageLoc (StructT (AstId 7))) =
+    SOME (DefaultReferenceOperation StorageLoc (StructT (AstId 7))) ∧
+  default_operation (LocatedT CalldataLoc BytesT) =
+    SOME (DefaultReferenceOperation CalldataLoc BytesT) ∧
+  default_operation (LocatedT StorageLoc (UintT 256)) = NONE
+Proof
+  EVAL_TAC
+QED
+
+Theorem storage_pointer_declared_without_value:
+  let p = <| var_info := ^(at 4); var_name := "p"; var_scope := 0;
+             var_type_name := SrcElementaryTypeName ^(at 7) "bytes" NONE;
+             var_type_id := "t_bytes_storage_ptr"; var_transient := F;
+             var_location := SOME StorageLoc |> in
+    elab_stmt ^ctx0 10
+      (SrcVariableDeclarationStatement ^(at 3) [SOME 4] [SOME p] NONE) =
+    INL (([DefineStmt (AstId 4) (SingleType (LocatedT StorageLoc BytesT))
+             (DefaultReferenceOperation StorageLoc BytesT)],
+          ^ctx0 with variables := [(4, LocatedT StorageLoc BytesT)]), 10)
+Proof
+  EVAL_TAC
+QED
+
 Theorem independent_failures_all_report:
   elab_stmts ^ctx0 10 [SrcBreak ^(at 1); SrcContinue ^(at 2)] =
   INR [(1, "break outside a loop"); (2, "continue outside a loop")]
@@ -520,6 +551,63 @@ Proof
   EVAL_TAC
 QED
 
+val success_n = “^supported_y with <| var_scope := 21; var_name := "n" |>”;
+val success_b = “^success_n with
+  <| var_info := ^(at 5); var_name := "";
+     var_type_name := SrcElementaryTypeName ^(at 8) "bool" NONE;
+     var_type_id := "t_bool" |>”;
+val success_call = “SrcExternalCall ^(at 30)
+  <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut; ext_kind := ExternalCall; ext_bound := F;
+     ext_signature := FunctionSignature [] [^success_n; ^success_b] |>
+  [] [SrcIdentifier ^(at 31) "target" 40 "t_address"] []
+  "t_tuple$_t_uint256_$_t_bool_$"”;
+val success_body = “SrcBlock ^(at 22) []”;
+
+Theorem try_success_requires_all_types_and_scope:
+  try_call [] 11 ^success_call 21 [^success_n] ^success_body []
+    (BoundAtom (AstId 10)) = NONE ∧
+  try_call [] 11 ^success_call 21 [^success_n; ^success_n] ^success_body []
+    (BoundAtom (AstId 10)) = NONE ∧
+  try_call [] 11 ^success_call 21
+    [^success_n; ^success_b with var_scope := 0] ^success_body []
+    (BoundAtom (AstId 10)) = NONE
+Proof
+  EVAL_TAC
+QED
+
+Theorem try_success_omitted_keeps_full_result_positions:
+  try_call [] 11 ^success_call 21 [] ^success_body []
+    (BoundAtom (AstId 10)) =
+  SOME ([DefineStmt (AstId 11) (SingleType BoolT)
+           (TupleComponentOperation 0 (BoundAtom (AstId 10)));
+         DefineStmt (AstId 12) (SingleType (UintT 256))
+           (TupleComponentOperation 1 (BoundAtom (AstId 10)));
+         DefineStmt (AstId 13) (SingleType BoolT)
+           (TupleComponentOperation 2 (BoundAtom (AstId 10)));
+         DefineStmt (AstId 14) RevertDataType
+           (TupleComponentOperation 3 (BoundAtom (AstId 10)))],
+        BoundAtom (AstId 11), [], BoundAtom (AstId 14), 15)
+Proof
+  EVAL_TAC
+QED
+
+Theorem try_success_only_named_components_bound:
+  case elab_stmt
+         (^ctx0 with variables := [(40, AddressT NonpayableAddress)]) 10
+         (SrcTryStatement ^(at 19) ^success_call ^(at 21)
+            [^success_n; ^success_b] ^success_body
+            [SrcCatchClause ^(at 23) GenericCatch [] (SrcBlock ^(at 24) [])]) of
+    INL ((ss, _), _) =>
+      (case LAST ss of
+         IfStmt _ ds _ =>
+           ds = [DefineStmt (AstId 4) (SingleType (UintT 256))
+                   (ConvertOperation (UintT 256) (BoundAtom (AstId 12)))]
+       | _ => F)
+  | _ => F
+Proof
+  EVAL_TAC
+QED
+
 (* Two independently bad operands of each operand list are both reported,
  * each under its own id, beside the node's own blocker if it has one: string
  * literals that convert to no number, number literals that a packed encoding
@@ -543,7 +631,7 @@ QED
 
 Theorem ecrecover_operands_all_report:
   ^(reports “elab_expr ^ctx0 10
-               (SrcEcrecover ^(at 30) ^(at 31)
+               (SrcBuiltinOperation ^(at 30) (SOME ^(at 31)) EcrecoverBuiltin
                   [SrcLiteral ^(at 32) StringLiteral
                      "0123456789abcdef0123456789abcdef0" "t_stringliteral_x";
                    ^(one_at 34);
@@ -602,8 +690,8 @@ QED
 Theorem external_call_operands_all_report:
   ^(reports “elab_expr ^ctx0 10
                (SrcExternalCall ^(at 30)
-                  <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut;
-                     ext_parameters := []; ext_returns := [] |>
+                  <| ext_selector := [0w; 0w; 0w; 0w]; ext_mutability := NonpayableMut; ext_kind := ExternalCall; ext_bound := F;
+                     ext_signature := FunctionSignature [] [] |>
                   [] [^(bad_at 32); ^(bad_at 33)] [] "t_tuple$__$")”
      (“(30, "unsupported external call")” :: bad_32_33))
 Proof
@@ -785,6 +873,14 @@ Theorem address_literal_bounds_checked:
   elab_expr ^ctx0 10
     (SrcLiteral ^(at 30) NumberLiteral "-1" "t_address") =
     INR [(30, "unsupported literal")]
+Proof
+  EVAL_TAC
+QED
+
+Theorem delete_readonly_and_storage_pointer_fail_in_elaboration:
+  EVERY (λty. ISR (finish_delete ctx 1 [] (LocalDestination 2 ty) 3))
+    [LocatedT CalldataLoc BytesT; LocatedT StorageLoc BytesT;
+     MappingT (UintT 256) (UintT 256)]
 Proof
   EVAL_TAC
 QED

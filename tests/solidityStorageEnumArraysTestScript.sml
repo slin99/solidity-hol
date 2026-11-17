@@ -24,7 +24,8 @@ fun rejected_case name =
     val c = valOf (List.find (fn c => string_field c "name" = name)
                     (array_field suite "cases"))
   in
-    case_term “[] : byte list” {names = [], refs = “[] : (num # num list) list”}
+    case_term {peer = “[] : byte list”, libraries = “[] : (address # byte list) list”}
+      {names = [], refs = “[] : (num # num list) list”}
       (call_input (fn () => “[] : byte list”) c) c
   end;
 
@@ -47,7 +48,7 @@ Proof
 QED
 
 Theorem dynamic_enum_array_abi_value:
-  storage_abi_value (core_program_environment corpus_storage_enum_arrays_program)
+  storage_abi_value (core_program_environment corpus_storage_enum_arrays_program) 0
     (differential_accounts [] [(0, 2); (w2n (mapping_slot [] 0w), 512)] 0x2000w)
     contract_address 0w (ArrayT (EnumT (AstId 5)) NONE) =
   INL (ListV [NumV 0; NumV 2],
@@ -57,7 +58,7 @@ Proof
 QED
 
 Theorem fixed_enum_array_abi_value:
-  storage_abi_value (core_program_environment corpus_storage_enum_arrays_program)
+  storage_abi_value (core_program_environment corpus_storage_enum_arrays_program) 0
     (differential_accounts [] [(2, 512)] 0x2000w)
     contract_address 2w (ArrayT (EnumT (AstId 5)) (SOME 2)) =
   INL (ListV [NumV 0; NumV 2], enc (Uint 8) (NumV 0) ++ enc (Uint 8) (NumV 2))
@@ -66,9 +67,12 @@ Proof
 QED
 
 Theorem enum_array_location_boundary:
-  (∀length. ¬located_value_type (LocatedT MemoryLoc (ArrayT (EnumT (AstId 5)) length))) ∧
-  (∀length. ¬located_value_type (LocatedT CalldataLoc (ArrayT (EnumT (AstId 5)) length)))
+  (∀length. located_value_type (LocatedT MemoryLoc (ArrayT (EnumT (AstId 5)) length)) ⇔
+            valid_array_length length) ∧
+  (∀length. located_value_type (LocatedT CalldataLoc (ArrayT (EnumT (AstId 5)) length)) ⇔
+            valid_array_length length)
 Proof
-  simp[located_value_type_def, memory_object_type_def, byte_sequence_type_def] >>
-  Cases >> simp[calldata_object_type_def, memory_object_type_def, byte_sequence_type_def]
+  simp[located_value_type_def, located_object_shape_def, byte_sequence_type_def,
+       is_stored_scalar_type_def, is_elementary_type_def,
+       solidityASTTheory.valid_type_shape_def]
 QED

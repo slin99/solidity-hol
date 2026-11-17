@@ -81,6 +81,22 @@ Definition argument_values_def:
   (argument_values _ _ = NONE)
 End
 
+(* The context test arguments, scalars and byte sequences, take their ABI
+ * types and values in: no type declarations. A struct or array argument is
+ * given as raw calldata. *)
+Definition argument_env_def:
+  argument_env = <|
+    procedures := []; state_variables := []; immutables := [];
+    struct_layouts := []; type_declarations := [] |> : core_environment
+End
+
+Definition encoded_values_def:
+  encoded_values tys vs =
+    case fields_abi_value argument_env tys vs of
+      SOME avs => SOME (enc (Tuple (abi_types argument_env 0 tys)) (ListV avs))
+    | NONE => NONE
+End
+
 (* Functions of the unit's contract *)
 
 Definition unit_function_def:
@@ -184,7 +200,7 @@ End
 Definition call_data_def:
   call_data name params vs =
     case encoded_values params vs of
-      SOME bs => SOME (function_selector name (MAP abi_type params) ++ bs)
+      SOME bs => SOME (function_selector name (abi_types argument_env 0 params) ++ bs)
     | NONE => NONE
 End
 
@@ -236,15 +252,16 @@ Definition differential_frame_def:
     self_address := contract_address; code_address := contract_address;
     sender_address := sender; call_value := value; call_data := data;
     static_context := F;
-    tx_params := initial_tx_params differential_chain_id [] differential_block
+    tx_params := initial_tx_params differential_chain_id
+           (test_block_hashes differential_block.number) differential_block
                    (differential_tx sender value data) 0
   |>
 End
 
 Definition differential_world_def:
   differential_world accounts =
-    (<| accounts := accounts; transient := empty_transient_storage; logs := [] |>
-       : source_world)
+    (<| accounts := accounts; transient := empty_transient_storage; logs := [];
+        original := accounts; to_delete := [] |> : source_world)
 End
 
 (* The outcome, complete committed contract storage and logs of a run; a
@@ -259,29 +276,44 @@ Definition contract_observation_def:
          SOME (lookup_account a w.accounts).storage, w.logs)
     | ContractReverted data w =>
         (Reverted data, SOME (lookup_account a w.accounts).storage, w.logs)
+    | ContractAborted w =>
+        (Aborted, SOME (lookup_account a w.accounts).storage, w.logs)
     | ContractInvalid _ => (Diagnostic InvalidCompletion, NONE, [])
     | ContractOutOfFuel => (Diagnostic OutOfFuel, NONE, [])
 End
 
-Definition source_execution_def:
-  source_execution code u prog fuel c =
+(* The source run of a transaction priced at gas_price. *)
+Definition source_execution_at_def:
+  source_execution_at gas_price code u prog fuel c =
     case (input_call u c.case_input, case_immutable_values u c.case_immutables) of
       (INL d, _) => (Diagnostic d, NONE, [])
     | (_, NONE) => (Diagnostic UnencodableArguments, NONE, [])
     | (INR (data, _), SOME imm) =>
         let a = case_address c in
-        let fr = differential_frame c.case_sender c.case_value data with
-                   <| self_address := a; code_address := a |> in
-        let w = differential_world
-                  (transfer_value c.case_sender a c.case_value
-                     (case_accounts (patch_immutables c.case_immutable_refs imm code)
-                        c.case_storage c.case_sender
-                        c.case_peer_code c.case_peer_storage)) in
+        let fr0 = differential_frame c.case_sender c.case_value data in
+        let fr = fr0 with <| self_address := a; code_address := a;
+                             tx_params := fr0.tx_params with gasPrice := gas_price |> in
+        let pre = case_accounts (patch_immutables c.case_immutable_refs imm code)
+                    c.case_storage c.case_sender
+                    c.case_peer_code c.case_peer_storage c.case_libraries in
+        let w = differential_world (transfer_value c.case_sender a c.case_value pre)
+                  with original := pre in
         contract_observation u c.case_immutable_refs a
           (case c.case_input of
-             Deploy _ _ => deploy_contract fuel prog fr w
-           | _ => call_contract fuel prog
-                    (FEMPTY |++ MAP (λ(x, s, _). (x, s)) imm) fr w)
+             Deploy _ _ => deploy_contract_with_gas fuel prog fr
+               (w with accounts := update_account a
+                 ((lookup_account a w.accounts) with nonce := 1) w.accounts)
+               (MAP GasLeftObservation c.case_gas)
+           | _ => call_contract_with_gas fuel prog
+                    (FEMPTY |++ MAP (λ(x, s, _). (x, s)) imm) fr w
+                    (MAP GasLeftObservation c.case_gas))
+End
+
+(* The source run of the corpus's transaction, priced as differential_tx. *)
+Definition source_execution_def:
+  source_execution code u prog fuel c =
+    source_execution_at (differential_tx c.case_sender c.case_value []).gasPrice
+      code u prog fuel c
 End
 
 Definition source_observation_def:
@@ -298,7 +330,7 @@ Definition prepared_evm_input_def:
     | (_, NONE) => INL UnencodableArguments
     | (INR (data, _), SOME imm) =>
         INR (case_accounts (patch_immutables c.case_immutable_refs imm code)
-               c.case_storage c.case_sender c.case_peer_code c.case_peer_storage,
+               c.case_storage c.case_sender c.case_peer_code c.case_peer_storage c.case_libraries,
              case_tx c data, c.case_immutable_refs)
 End
 
@@ -306,7 +338,10 @@ Definition evm_execution_def:
   evm_execution code u c =
     case prepared_evm_input code u c of
       INL d => (Diagnostic d, NONE, [])
-    | INR input => bytecode_execution input
+    | INR input =>
+        if c.case_gas ≠ [] ∧ bytecode_gas_observations input ≠ SOME c.case_gas then
+          (Diagnostic InvalidGasEvidence, NONE, [])
+        else bytecode_execution input
 End
 
 Definition evm_observation_def:
@@ -332,6 +367,7 @@ Definition expected_outcome_def:
     | ExpectRawReturn bs => Returned bs
     | ExpectPanic n => Reverted (panic_data n)
     | ExpectRevert bs => Reverted bs
+    | ExpectAbort => Aborted
 End
 
 (* Comparison *)
@@ -398,6 +434,67 @@ End
 Definition differential_agrees_def:
   differential_agrees code u prog fuel c ⇔
     is_agreement (differential_verdict code u prog fuel c)
+End
+
+(* Fuzzing *)
+
+(* What a fuzz case's expectation records: the outcome, complete storage and
+ * logs the screening EVM observed. *)
+Definition recorded_execution_def:
+  recorded_execution u c =
+    (expected_outcome u c.case_input c.case_expect,
+     SOME (seed_storage (c.case_final ++ c.case_storage)),
+     expected_logs c.case_logs)
+End
+
+(* Two runs' complete observations compared: run against the reference.
+ * slots selects the storage the verdict shows. *)
+Definition run_verdict_def:
+  run_verdict slots reference run =
+    if is_diagnostic (FST reference) ∨ is_diagnostic (FST run) then
+      Inconclusive (FST reference) (FST run)
+    else if FST reference ≠ FST run then Mismatch (FST reference) (FST run)
+    else if FST (SND reference) ≠ FST (SND run) then
+      StorageMismatch (SND (project_observation slots reference))
+                      (SND (project_observation slots run))
+    else if SND (SND reference) ≠ SND (SND run) then
+      LogMismatch (SND (SND reference)) (SND (SND run))
+    else Agree (FST run)
+End
+
+(* Fuzz runs price gas at 0, as pyrevm's screening does. A priced transaction
+ * debits gasLimit * gasPrice from the sender before it runs, which the source
+ * run, starting after the gas purchase, doesn't see: a contract reading the
+ * sender's balance would differ for that alone. *)
+Definition fuzz_source_execution_def:
+  fuzz_source_execution code u prog fuel c = source_execution_at 0 code u prog fuel c
+End
+
+Definition fuzz_evm_execution_def:
+  fuzz_evm_execution code u c =
+    case prepared_evm_input code u c of
+      INL d => (Diagnostic d, NONE, [])
+    | INR (accounts, tx, refs) => bytecode_execution (accounts, tx with gasPrice := 0, refs)
+End
+
+(* The source run against the recorded observation alone, with no bytecode
+ * run. The fuzzer confirms every difference, and a sample of agreements,
+ * with confirm_verdict, so no verdict rests on the recording alone. *)
+Definition fuzz_verdict_def:
+  fuzz_verdict code u prog fuel c =
+    run_verdict (observed_slots prog c.case_storage c.case_final)
+      (recorded_execution u c) (fuzz_source_execution code u prog fuel c)
+End
+
+(* The source run against Verifereum's run of the bytecode, and that
+ * bytecode run against the recording: the first says whether the source
+ * and the bytecode agree, the second whether the recording was right. *)
+Definition confirm_verdict_def:
+  confirm_verdict code u prog fuel c =
+    let slots = observed_slots prog c.case_storage c.case_final in
+    let evm_run = fuzz_evm_execution code u c in
+      (run_verdict slots evm_run (fuzz_source_execution code u prog fuel c),
+       run_verdict slots (recorded_execution u c) evm_run)
 End
 
 Theorem compare_observations_agree:
@@ -471,13 +568,15 @@ val () = cv_auto_trans argument_scalar_def;
 val () = cv_auto_trans solidityCoreWfTheory.elementary_scalar_has_type_def;
 val () = cv_auto_trans argument_value_def;
 val () = cv_auto_trans argument_values_def;
+val () = cv_auto_trans argument_env_def;
+val () = cv_auto_trans encoded_values_def;
 val () = cv_auto_trans unit_function_def;
 val () = cv_auto_trans function_types_def;
 val () = cv_auto_trans unit_immutables_def;
 val () = cv_auto_trans immutable_word_def;
 val () = cv_auto_trans case_immutable_values_def;
 val () = cv_auto_trans created_immutable_words_def;
-val () = cv_auto_trans listTheory.nub_def;
+val () = cv_auto_trans (INST_TYPE [alpha |-> “:num”] listTheory.nub_def);
 val () = cv_auto_trans observed_slots_def;
 val () = cv_auto_trans call_data_def;
 val () = cv_auto_trans constructor_types_def;
@@ -485,6 +584,7 @@ val () = cv_auto_trans input_call_def;
 val () = cv_auto_trans differential_frame_def;
 val () = cv_auto_trans differential_world_def;
 val () = cv_auto_trans contract_observation_def;
+val () = cv_auto_trans source_execution_at_def;
 val () = cv_auto_trans source_execution_def;
 val () = cv_auto_trans source_observation_def;
 val () = cv_auto_trans prepared_evm_input_def;
@@ -495,3 +595,9 @@ val () = cv_auto_trans compare_observations_def;
 val () = cv_auto_trans differential_verdict_def;
 val () = cv_auto_trans is_agreement_def;
 val () = cv_auto_trans differential_agrees_def;
+val () = cv_auto_trans recorded_execution_def;
+val () = cv_auto_trans run_verdict_def;
+val () = cv_auto_trans fuzz_source_execution_def;
+val () = cv_auto_trans fuzz_evm_execution_def;
+val () = cv_auto_trans fuzz_verdict_def;
+val () = cv_auto_trans confirm_verdict_def;

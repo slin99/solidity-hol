@@ -117,7 +117,8 @@ fun arguments vs = listSyntax.mk_list (map argument vs, argument_ty)
 
 fun expectation v =
   case v of
-    JSON.OBJECT [("return", JSON.ARRAY vs)] => con "ExpectReturn" [arguments vs]
+    JSON.OBJECT [("abort", JSON.BOOL true)] => con "ExpectAbort" []
+  | JSON.OBJECT [("return", JSON.ARRAY vs)] => con "ExpectReturn" [arguments vs]
   | JSON.OBJECT [("returned", JSON.STRING s)] =>
       con "ExpectRawReturn" [bytes_term (hex_bytes s)]
   | JSON.OBJECT [("panic", code)] => con "ExpectPanic" [num_term (integer code)]
@@ -202,6 +203,7 @@ fun outcome_json tm =
   let val (f, args) = strip_comb tm in
     case (fst (dest_const f), args) of
       ("Returned", [bs]) => json_object [("returned", json_string (hex_of_bytes bs))]
+    | ("Aborted", []) => json_object [("aborted", "true")]
     | ("Reverted", [bs]) => json_object [("reverted", json_string (hex_of_bytes bs))]
     | ("Diagnostic", [d]) =>
         json_object [("diagnostic", json_string (fst (dest_const d)))]
@@ -271,14 +273,46 @@ fun read_bytecode_artifact path =
     else fail (path ^ ": expected solidity-hol-solc-artifact-v1, got " ^ format)
   end
 
-(* The peer's code, from its own artifact; no code without a peer. *)
-fun peer_code root prefix s =
-  case JSONUtil.findField s "peer" of
+fun artifact_contract artifact source contract =
+  JSONUtil.get (artifact, map JSONUtil.SEL ["output", "contracts", source, contract])
+
+(* Peer code and every library linked by the suite's compiler artifact. *)
+fun fixture_code root prefix s =
+  let
+    val peer = case JSONUtil.findField s "peer" of
     NONE => listSyntax.mk_nil byte_ty
   | SOME p =>
       code_constant (prefix ^ "_peer_code") "deployedBytecode"
         (read_bytecode_artifact (root ^ "/" ^ string_field p "artifact"))
         (string_field p "source") (string_field p "contract")
+    val artifact = read_bytecode_artifact (root ^ "/" ^ string_field s "artifact")
+    val links = case JSONUtil.findField (field (field artifact "input") "settings") "libraries" of
+      NONE => []
+    | SOME _ => solidityLinkLib.libraries (field artifact "output")
+    fun linked_code (source, name, addr) =
+      let
+        val label = prefix ^ "_library_" ^ IntInf.toString addr
+        val code = code_constant label "deployedBytecode" artifact source name
+        val deployed = field (field (artifact_contract artifact source name) "evm") "deployedBytecode"
+        val offsets = case JSONUtil.findField (field deployed "immutableReferences")
+                                           "library_deploy_address" of
+            NONE => []
+          | SOME entries => JSONUtil.arrayMap (fn entry =>
+              if integer (field entry "length") = 32 then integer (field entry "start")
+              else fail "library deployment address must occupy one ABI word") entries
+        val address_bytes = bytes_term
+          (hex_bytes ("0x" ^ StringCvt.padLeft #"0" 64 (IntInf.fmt StringCvt.HEX addr)))
+        val positions = listSyntax.mk_list (map num_term offsets, numSyntax.num)
+        val patched = define (label ^ "_deployed")
+          “FOLDL (patch_word ^address_bytes) ^code ^positions”
+        val () = cv_auto_trans patched
+      in
+        pairSyntax.mk_pair (word_term 160 addr, lhs (concl patched))
+      end
+    val libraries = listSyntax.mk_list (map linked_code links, “:address # byte list”)
+  in
+    {peer = peer, libraries = libraries}
+  end
 
 
 fun record_field name tm = Lib.assoc name (snd (TypeBase.dest_record tm))
@@ -312,7 +346,7 @@ fun case_immutables names c =
  * gives the contract's immutables, by name, and refs the offsets of those
  * its deployed code reads.
  *)
-fun case_term peer (immutables : {names : (string * IntInf.int) list,
+fun case_term {peer, libraries} (immutables : {names : (string * IntInf.int) list,
                                   refs : term}) input c =
   TypeBase.mk_record
     (mk_thy_type {Thy = "solidityBytecode", Tyop = "differential_case",
@@ -326,11 +360,17 @@ fun case_term peer (immutables : {names : (string * IntInf.int) list,
                    SOME v => integer v
                  | NONE => 0)),
       ("case_input", input),
+      ("case_gas", listSyntax.mk_list
+        (case JSONUtil.findField c "gas" of
+           NONE => []
+         | SOME (JSON.ARRAY vs) => map (num_term o integer) vs
+         | SOME _ => fail "gas must be a list", numSyntax.num)),
       ("case_immutables", case_immutables (#names immutables) c),
       ("case_immutable_refs", #refs immutables),
       ("case_storage", storage (JSONUtil.findField c "storage")),
       ("case_peer_code", peer),
       ("case_peer_storage", storage (JSONUtil.findField c "peer_storage")),
+      ("case_libraries", libraries),
       ("case_expect", expectation (field c "expect")),
       ("case_final", storage (JSONUtil.findField c "final_storage")),
       ("case_logs", logs (JSONUtil.findField c "logs"))])
@@ -369,9 +409,6 @@ fun encode types values =
   in
     rhs (concl (cv_eval “enc (Tuple ^tys) (ListV ^vs)”))
   end
-
-fun artifact_contract artifact source contract =
-  JSONUtil.get (artifact, map JSONUtil.SEL ["output", "contracts", source, contract])
 
 fun named_abi artifact name =
   case List.filter
@@ -444,10 +481,12 @@ fun artifact_immutables artifact source contract =
             SOME d => field d "underlyingType"
           | NONE => v
         val text = string_field (field type_node "typeDescriptions") "typeString"
-        val ty = if String.isPrefix "contract " text orelse text = "address payable"
-                 then contractABISyntax.parse_abi_type "address"
-                 else if String.isPrefix "enum " text then “Uint 8”
-                 else contractABISyntax.parse_abi_type text
+        (* an internal function immutable has no ABI word *)
+        val ty = if String.isPrefix "function " text then NONE
+                 else if String.isPrefix "contract " text orelse text = "address payable"
+                 then SOME (contractABISyntax.parse_abi_type "address")
+                 else if String.isPrefix "enum " text then SOME “Uint 8”
+                 else SOME (contractABISyntax.parse_abi_type text)
       in (name, integer (field v "id"), ty) end
     val target = artifact_contract artifact source contract
     val refs = case JSONUtil.findField (field (field target "evm") "deployedBytecode")
@@ -468,8 +507,9 @@ fun immutable_words declarations c =
     fun entry (name, value) =
       case List.find (fn (n, _, _) => n = name) declarations of
         NONE => fail ("no immutable named " ^ name)
-      | SOME (_, id, ty) =>
+      | SOME (_, id, SOME ty) =>
           pairSyntax.list_mk_pair [num_term id, F, encode [ty] [value]]
+      | SOME (_, _, NONE) => fail ("immutable " ^ name ^ " has no ABI word")
   in
     listSyntax.mk_list (map entry values,
       pairSyntax.list_mk_prod [numSyntax.num, bool, listSyntax.mk_list_type byte_ty])
@@ -477,7 +517,8 @@ fun immutable_words declarations c =
 
 fun raw_expectation outputs c =
   case field c "expect" of
-    JSON.OBJECT [("return", JSON.ARRAY values)] =>
+    JSON.OBJECT [("abort", JSON.BOOL true)] => con "Aborted" []
+  | JSON.OBJECT [("return", JSON.ARRAY values)] =>
       con "Returned" [encode outputs values]
   | JSON.OBJECT [("returned", JSON.STRING value)] =>
       con "Returned" [bytes_term (hex_bytes value)]
@@ -489,18 +530,18 @@ fun raw_expectation outputs c =
       con "Reverted" [bytes_term (hex_bytes value)]
   | _ => fail "unsupported expectation"
 
-fun run_bytecode_case {suite, artifact, code, initcode, peer, declarations, refs} c =
+fun run_bytecode_case {suite, artifact, code, initcode, fixture, declarations, refs} c =
   let
     val name = name_field c "name"
     val prefix = "bytecode_" ^ suite ^ "_" ^ name
     val (data, outputs) = abi_call artifact c
     val input = call_input initcode c
     val imms = {names = map (fn (name, id, _) => (name, id)) declarations, refs = refs}
-    val case_tm = case_term peer imms input c
+    val case_tm = case_term fixture imms input c
     val words = immutable_words declarations c
     val accounts = “case_accounts (patch_immutables ^refs ^words ^code)
                       (^case_tm).case_storage (^case_tm).case_sender
-                      (^case_tm).case_peer_code (^case_tm).case_peer_storage”
+                      (^case_tm).case_peer_code (^case_tm).case_peer_storage (^case_tm).case_libraries”
     val tx = “case_tx ^case_tm ^data”
     val input_def = define (prefix ^ "_input")
       (pairSyntax.list_mk_pair [accounts, tx, refs])
@@ -541,7 +582,7 @@ fun run_suite_file {root, suite_file} =
     val target = artifact_contract artifact source contract
     val prefix = "bytecode_" ^ suite
     val code = code_constant (prefix ^ "_code") "deployedBytecode" artifact source contract
-    val peer = peer_code root prefix s
+    val fixture = fixture_code root prefix s
     val init = ref NONE
     fun initcode () = case !init of
       SOME code => code
@@ -550,7 +591,7 @@ fun run_suite_file {root, suite_file} =
     val (declarations, refs) = artifact_immutables artifact source contract
     val env =
       {suite = suite, artifact = target, code = code, initcode = initcode,
-       peer = peer, declarations = declarations, refs = refs}
+       fixture = fixture, declarations = declarations, refs = refs}
     val ok = List.foldl (fn (c, ok) => run_bytecode_case env c andalso ok)
                true (array_field s "cases")
   in

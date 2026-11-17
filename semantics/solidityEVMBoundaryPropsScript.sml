@@ -1,7 +1,7 @@
 (* Preservation at the concrete adapter seam. No source refinement is assumed. *)
 Theory solidityEVMBoundaryProps
 Ancestors
-  solidityEVMCall vfmRunCall vfmTxParams vfmExecutionProp vfmExecution
+  solidityEVMCall vfmRunCall vfmTxParams vfmWfState vfmExecutionProp vfmExecution
   While pair list combin arithmetic
 
 Theorem stepping_preserves_well_formedness:

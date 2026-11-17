@@ -7,10 +7,38 @@ Ancestors
 Libs
   cv_transLib wordsLib intLib
 
+(* The cells of the bytes bs from index i, added to cells. *)
+Definition byte_cells_from_def:
+  (byte_cells_from (cells : num |-> runtime_value) i [] = cells) ∧
+  (byte_cells_from cells i (b :: bs) =
+     byte_cells_from (cells |+ (i, ScalarValue (BytesValue [b]))) (i + 1) bs)
+End
+
 Definition byte_cells_def:
+  byte_cells bs = byte_cells_from FEMPTY 0 bs
+End
+
+Theorem byte_cells_from_zip[local]:
+  ∀bs cells i.
+    byte_cells_from cells i bs =
+    cells |++ ZIP (GENLIST (λj. i + j) (LENGTH bs),
+                   MAP (λb. ScalarValue (BytesValue [b])) bs)
+Proof
+  Induct >- simp [byte_cells_from_def, finite_mapTheory.FUPDATE_LIST_THM] >>
+  rpt gen_tac >>
+  REWRITE_TAC [byte_cells_from_def, listTheory.LENGTH, listTheory.GENLIST_CONS,
+               listTheory.MAP, listTheory.ZIP, finite_mapTheory.FUPDATE_LIST_THM] >>
+  simp [combinTheory.o_DEF] >>
+  rpt AP_TERM_TAC >> simp [listTheory.GENLIST_FUN_EQ]
+QED
+
+Theorem byte_cells_zip:
   byte_cells bs =
     FEMPTY |++ ZIP (COUNT_LIST (LENGTH bs), MAP (λb. ScalarValue (BytesValue [b])) bs)
-End
+Proof
+  simp [byte_cells_def, byte_cells_from_zip, rich_listTheory.COUNT_LIST_GENLIST] >>
+  rpt AP_TERM_TAC >> simp [listTheory.GENLIST_FUN_EQ]
+QED
 
 Definition allocate_bytes_def:
   allocate_bytes padded ty bs (st : source_state) =
@@ -70,23 +98,6 @@ Definition reference_bytes_def:
     | _ => NONE
 End
 
-Definition read_memory_reference_def:
-  read_memory_reference (st : source_state) ty r =
-    case r of
-      MemoryReference (HeapId id) offset rty =>
-        if ty ≠ FixedBytesT 1 ∨ rty ≠ ty then
-          ValueAbrupt (InvalidCompletion "bad memory read type")
-        else (case FLOOKUP st.heap id of
-          SOME obj =>
-            if ¬byte_sequence_type obj.object_type ∨ obj.object_length ≤ offset then
-              ValueAbrupt (InvalidCompletion "bad memory byte reference")
-            else (case memory_byte obj offset of
-              SOME b => ValueOk (ScalarValue (BytesValue [b]))
-            | NONE => ValueAbrupt (InvalidCompletion "bad memory byte cell"))
-        | NONE => ValueAbrupt (InvalidCompletion "missing memory object"))
-    | _ => ValueAbrupt (InvalidCompletion "bad memory reference")
-End
-
 Definition navigate_memory_byte_def:
   navigate_memory_byte (st : source_state) r i =
     case r of
@@ -99,35 +110,7 @@ Definition navigate_memory_byte_def:
     | _ => ValueAbrupt (InvalidCompletion "bad memory byte array")
 End
 
-Definition write_memory_byte_def:
-  write_memory_byte r s (st : source_state) =
-    case (r, s) of
-      (MemoryReference (HeapId id) i ty, BytesValue [b]) =>
-        if ty ≠ FixedBytesT 1 then NONE else
-        (case FLOOKUP st.heap id of
-           SOME obj =>
-             if byte_sequence_type obj.object_type ∧ i < obj.object_length then
-               SOME (st with heap := st.heap |+ (id,
-                 obj with object_cells := obj.object_cells |+
-                   (i, ScalarValue (BytesValue [b]))))
-             else NONE
-         | NONE => NONE)
-    | _ => NONE
-End
 
-Definition copy_memory_bytes_def:
-  copy_memory_bytes src dst (st : source_state) =
-    case (reference_bytes st src, dst) of
-      (SOME bs, MemoryReference (HeapId id) 0 ty) =>
-        (case FLOOKUP st.heap id of
-           SOME obj =>
-             if byte_sequence_type ty ∧ byte_sequence_type obj.object_type ∧
-                obj.object_length = LENGTH bs then
-               SOME (st with heap := st.heap |+ (id, obj with object_cells := byte_cells bs))
-             else NONE
-         | NONE => NONE)
-    | _ => NONE
-End
 
 (* Memory arrays: an object of type ArrayT element length holds one cell per
  * element, a value or a pointer to another object, as the compiler's memory
@@ -159,51 +142,118 @@ Definition memory_cell_def:
         | NONE => ReferenceValue (MemoryReference (HeapId 0) 0 element)
 End
 
-(* A zeroed array of n elements, after the compiler's allocation: the length
- * word of a dynamic array and a word per element, Panic(0x41) when the free
- * memory pointer would pass 2^64; then each static array element, in order. *)
-Definition zero_array_def:
-  (zero_array ty n (st : source_state) =
+(* The component a navigated memory reference denotes: byte offset of a
+ * byte sequence, read as a bytes1, or cell offset of a struct, read as its
+ * field type ty (a reference field located in memory). *)
+Definition read_memory_reference_def:
+  read_memory_reference (st : source_state) ty r =
+    case r of
+      MemoryReference (HeapId id) offset rty =>
+        (case FLOOKUP st.heap id of
+           SOME obj =>
+             (case obj.object_type of
+                StructT _ =>
+                  if (case ty of LocatedT MemoryLoc t => t | t => t) ≠ rty ∨
+                     obj.object_length ≤ offset
+                  then ValueAbrupt (InvalidCompletion "bad memory field reference")
+                  else ValueOk (memory_cell obj rty offset)
+              | _ =>
+                if ty ≠ FixedBytesT 1 ∨ rty ≠ ty then
+                  ValueAbrupt (InvalidCompletion "bad memory read type")
+                else if ¬byte_sequence_type obj.object_type ∨ obj.object_length ≤ offset then
+                  ValueAbrupt (InvalidCompletion "bad memory byte reference")
+                else (case memory_byte obj offset of
+                  SOME b => ValueOk (ScalarValue (BytesValue [b]))
+                | NONE => ValueAbrupt (InvalidCompletion "bad memory byte cell")))
+         | NONE => ValueAbrupt (InvalidCompletion "missing memory object"))
+    | _ => ValueAbrupt (InvalidCompletion "bad memory reference")
+End
+
+(* A new memory object of size bytes with no cells written, after the
+ * compiler's allocation: NONE when the free memory pointer would pass 2^64. *)
+Definition allocate_object_def:
+  allocate_object ty length size (st : source_state) =
+    if 2 ** 64 ≤ 128 + st.memory_allocated + size then NONE else
+    let id = st.next_heap_id + 1 in
+    let obj = <| object_type := ty; object_length := length;
+                 object_cells := FEMPTY;
+                 object_address := 128 + st.memory_allocated;
+                 object_padded := T |> in
+    SOME (id, st with <| heap := st.heap |+ (id, obj); next_heap_id := id;
+                         memory_allocated := st.memory_allocated + size |>)
+End
+
+Definition fill_object_def:
+  fill_object id ty result =
+    case result of
+      INL (cells, st : source_state) =>
+        (case FLOOKUP st.heap id of
+           SOME obj =>
+             INL (ReferenceValue (MemoryReference (HeapId id) 0 ty),
+                  st with heap := st.heap |+ (id, obj with object_cells := cells))
+         | NONE => INR (InvalidCompletion "missing memory object"))
+    | INR c => INR c
+End
+
+(* A zeroed memory object: for an array of n elements its length word if
+ * dynamic and a word per element, for a struct a word per field, Panic(0x41)
+ * when the free memory pointer would pass 2^64; then each struct or static
+ * array element or field, in order, as the compiler allocates them. A byte
+ * sequence or dynamic array member points to the empty object zero. The fuel
+ * bounds the struct nesting. *)
+Definition zero_object_def:
+  (zero_object env (fuel : num) ty n (st : source_state) =
     case ty of
       ArrayT element length =>
-        let size = (if length = NONE then 32 else 0) + 32 * n in
-        if 2 ** 64 ≤ 128 + st.memory_allocated + size then
-          INR (PanicCompletion 65)
-        else
-          let id = st.next_heap_id + 1 in
-          let obj = <| object_type := ty; object_length := n;
-                       object_cells := FEMPTY;
-                       object_address := 128 + st.memory_allocated;
-                       object_padded := T |> in
-          let st1 = st with <| heap := st.heap |+ (id, obj); next_heap_id := id;
-                               memory_allocated := st.memory_allocated + size |> in
-          let r = ReferenceValue (MemoryReference (HeapId id) 0 ty) in
-          (case element of
-             ArrayT _ (SOME k) =>
-               (case zero_arrays element k 0 n FEMPTY st1 of
-                  INL (cells, st2) =>
-                    INL (r, st2 with heap :=
-                              st2.heap |+ (id, obj with object_cells := cells))
-                | INR c => INR c)
-           | _ => INL (r, st1))
-    | _ => INR (InvalidCompletion "bad memory array type")) ∧
-  (zero_arrays element k i m cells st =
+        (case allocate_object ty n ((if length = NONE then 32 else 0) + 32 * n) st of
+           SOME (id, st1) => fill_object id ty (zero_elements env fuel element 0 n FEMPTY st1)
+         | NONE => INR (PanicCompletion 65))
+    | StructT s =>
+        (case lookup_struct env s of
+           SOME fields =>
+             if fuel = 0 then INR (InvalidCompletion "struct nesting") else
+             (case allocate_object ty (LENGTH fields) (32 * LENGTH fields) st of
+                SOME (id, st1) =>
+                  fill_object id ty (zero_fields env (fuel - 1) (MAP SND fields) 0 FEMPTY st1)
+              | NONE => INR (PanicCompletion 65))
+         | NONE => INR (InvalidCompletion "unknown struct"))
+    | _ => INR (InvalidCompletion "bad memory object type")) ∧
+  (zero_elements env fuel element i m cells st =
     if m = 0 then INL (cells, st) else
-    case zero_array element k st of
-      INL (v, st1) => zero_arrays element k (i + 1) (m - 1) (cells |+ (i, v)) st1
-    | INR c => INR c)
+    case (case element of
+            ArrayT _ (SOME k) => SOME k
+          | StructT _ => SOME 0
+          | _ => NONE) of
+      NONE => INL (cells, st)
+    | SOME k =>
+        case zero_object env fuel element k st of
+          INL (v, st1) => zero_elements env fuel element (i + 1) (m - 1) (cells |+ (i, v)) st1
+        | INR c => INR c) ∧
+  (zero_fields env fuel [] i cells st = INL (cells, st)) ∧
+  (zero_fields env fuel (ty :: tys) i cells st =
+    case (case ty of
+            ArrayT _ (SOME k) => SOME k
+          | StructT _ => SOME 0
+          | _ => NONE) of
+      NONE => zero_fields env fuel tys (i + 1) cells st
+    | SOME k =>
+        case zero_object env fuel ty k st of
+          INL (v, st1) => zero_fields env fuel tys (i + 1) (cells |+ (i, v)) st1
+        | INR c => INR c)
 Termination
-  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
-    INL (ty, n, st) => (sol_type_size ty, 0)
-  | INR (element, k, i, m, cells, st) => (sol_type_size element, m + 1))’ >>
-  rw[solidityASTTheory.sol_type_size_def]
+  WF_REL_TAC ‘inv_image ($< LEX $< LEX $<) (λx. case x of
+    INL (env, fuel, ty, n, st) => (fuel, sol_type_size ty, 0)
+  | INR (INL (env, fuel, element, i, m, cells, st)) => (fuel, sol_type_size element, m + 1)
+  | INR (INR (env, fuel, tys, i, cells, st)) => (fuel, list_size sol_type_size tys, 1))’ >>
+  rw[solidityASTTheory.sol_type_size_def, listTheory.list_size_def]
 End
 
 (* The value of a memory variable before any assignment. *)
 Definition default_memory_value_def:
-  default_memory_value ty (st : source_state) =
+  default_memory_value env ty (st : source_state) =
     case ty of
-      ArrayT _ (SOME n) => zero_array ty n st
+      ArrayT _ (SOME n) => zero_object env (LENGTH env.type_declarations) ty n st
+    | StructT _ => zero_object env (LENGTH env.type_declarations) ty 0 st
     | _ => INL (ReferenceValue (MemoryReference (HeapId 0) 0 ty), st)
 End
 
@@ -232,6 +282,33 @@ Definition memory_array_element_def:
     | _ => INR (InvalidCompletion "bad memory array reference")
 End
 
+(* The position and type of field f among a struct's fields. *)
+Definition field_position_def:
+  (field_position (f : ast_id) [] = NONE) ∧
+  (field_position f ((g, ty) :: fields) =
+    if f = g then SOME (0n, ty : sol_type) else
+    case field_position f fields of
+      SOME (k, ty') => SOME (k + 1, ty')
+    | NONE => NONE)
+End
+
+(* Field f of the memory struct r: its object, cell index, type and value. *)
+Definition memory_struct_field_def:
+  memory_struct_field env (st : source_state) r f =
+    case r of
+      MemoryReference (HeapId id) 0 (StructT s) =>
+        (case (lookup_struct env s, FLOOKUP st.heap id) of
+           (SOME fields, SOME obj) =>
+             if obj.object_type ≠ StructT s then
+               INR (InvalidCompletion "bad memory struct reference")
+             else
+               (case field_position f fields of
+                  SOME (k, ty) => INL (id, k, ty, memory_cell obj ty k)
+                | NONE => INR (InvalidCompletion "unknown struct field"))
+         | _ => INR (InvalidCompletion "missing memory struct"))
+    | _ => INR (InvalidCompletion "bad memory struct reference")
+End
+
 Definition write_memory_element_def:
   write_memory_element id i v (st : source_state) =
     case FLOOKUP st.heap id of
@@ -242,8 +319,37 @@ Definition write_memory_element_def:
                SOME (st with heap := st.heap |+ (id,
                  obj with object_cells := obj.object_cells |+ (i, v)))
              else NONE
+         | StructT _ =>
+             if i < obj.object_length then
+               SOME (st with heap := st.heap |+ (id,
+                 obj with object_cells := obj.object_cells |+ (i, v)))
+             else NONE
          | _ => NONE)
     | NONE => NONE
+End
+
+(* A write through a navigated memory reference: a struct cell, or a byte of
+ * a byte sequence written as a bytes1. *)
+Definition write_memory_reference_def:
+  write_memory_reference r v (st : source_state) =
+    case r of
+      MemoryReference (HeapId id) i ty =>
+        (case FLOOKUP st.heap id of
+           SOME obj =>
+             (case obj.object_type of
+                StructT _ => write_memory_element id i v st
+              | _ =>
+                (case v of
+                   ScalarValue (BytesValue [b]) =>
+                     if ty = FixedBytesT 1 ∧ byte_sequence_type obj.object_type ∧
+                        i < obj.object_length
+                     then SOME (st with heap := st.heap |+ (id,
+                            obj with object_cells := obj.object_cells |+
+                              (i, ScalarValue (BytesValue [b]))))
+                     else NONE
+                 | _ => NONE))
+         | NONE => NONE)
+    | _ => NONE
 End
 
 (* Byte access and copies propagate malformed storage-header panics. *)
@@ -256,10 +362,11 @@ Definition byte_contents_def:
       | NONE => INR (InvalidCompletion "bad byte sequence reference")
 End
 
-(* The value of a memory array, as a copy reads it: the tuple of its
- * elements, byte sequences as their bytes. *)
+(* The value of a memory array or struct, as a copy reads it: the tuple of
+ * its elements or fields, byte sequences as their bytes. The fuel bounds the
+ * struct nesting. *)
 Definition memory_array_value_def:
-  (memory_array_value (st : source_state) ty v =
+  (memory_array_value env (fuel : num) (st : source_state) ty v =
     case (ty, v) of
       (ArrayT element length, ReferenceValue (MemoryReference (HeapId id) 0 rty)) =>
         if rty ≠ ty then INR (InvalidCompletion "bad memory array reference")
@@ -272,29 +379,50 @@ Definition memory_array_value_def:
                if obj.object_type ≠ ty then
                  INR (InvalidCompletion "bad memory array reference")
                else
-                 (case memory_array_cells st element obj 0 obj.object_length of
+                 (case memory_array_cells env fuel st element obj 0 obj.object_length of
                     INL vs => INL (TupleValue vs)
                   | INR c => INR c)
            | NONE => INR (InvalidCompletion "missing memory object"))
+    | (StructT s, ReferenceValue (MemoryReference (HeapId id) 0 rty)) =>
+        if rty ≠ ty then INR (InvalidCompletion "bad memory struct reference") else
+        (case (lookup_struct env s, FLOOKUP st.heap id) of
+           (SOME fields, SOME obj) =>
+             if obj.object_type ≠ ty then
+               INR (InvalidCompletion "bad memory struct reference")
+             else if fuel = 0 then INR (InvalidCompletion "struct nesting")
+             else
+               (case memory_struct_cells env (fuel - 1) st (MAP SND fields) obj 0 of
+                  INL vs => INL (TupleValue vs)
+                | INR c => INR c)
+         | _ => INR (InvalidCompletion "missing memory struct"))
     | (_, ReferenceValue r) =>
         (case byte_contents st r of
            INL bs => INL (ScalarValue (BytesValue bs))
          | INR c => INR c)
     | (_, ScalarValue _) => INL v
     | _ => INR (InvalidCompletion "bad memory array value")) ∧
-  (memory_array_cells st element obj i n =
+  (memory_array_cells env fuel st element obj i n =
     if n = 0 then INL [] else
-    case memory_array_value st element (memory_cell obj element i) of
+    case memory_array_value env fuel st element (memory_cell obj element i) of
       INR c => INR c
     | INL v =>
-        case memory_array_cells st element obj (i + 1) (n - 1) of
+        case memory_array_cells env fuel st element obj (i + 1) (n - 1) of
+          INL vs => INL (v :: vs)
+        | INR c => INR c) ∧
+  (memory_struct_cells env fuel st [] obj i = INL []) ∧
+  (memory_struct_cells env fuel st (ty :: tys) obj i =
+    case memory_array_value env fuel st ty (memory_cell obj ty i) of
+      INR c => INR c
+    | INL v =>
+        case memory_struct_cells env fuel st tys obj (i + 1) of
           INL vs => INL (v :: vs)
         | INR c => INR c)
 Termination
-  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
-    INL (st, ty, v) => (sol_type_size ty, 0)
-  | INR (st, element, obj, i, n) => (sol_type_size element, n + 1))’ >>
-  rw[solidityASTTheory.sol_type_size_def]
+  WF_REL_TAC ‘inv_image ($< LEX $< LEX $<) (λx. case x of
+    INL (env, fuel, st, ty, v) => (fuel, sol_type_size ty, 0)
+  | INR (INL (env, fuel, st, element, obj, i, n)) => (fuel, sol_type_size element, n + 1)
+  | INR (INR (env, fuel, st, tys, obj, i)) => (fuel, list_size sol_type_size tys, 1))’ >>
+  rw[solidityASTTheory.sol_type_size_def, listTheory.list_size_def]
 End
 
 Definition copy_byte_contents_def:
@@ -311,19 +439,7 @@ Definition copy_byte_contents_def:
            | INL bs => case store_storage_bytes st.world.accounts dst bs st.frame.static_context of
                INL accounts => INL (st with world := st.world with accounts := accounts)
              | INR c => INR c)
-    | _ =>
-      (* The compiler's calldata-to-memory conversion reverts when the data,
-       * added as a word, ends past the calldata; its other readers pad. *)
-      if (case src of
-            CalldataReference offset length _ =>
-              LENGTH st.frame.call_data < (offset + length) MOD 2 ** 256
-          | _ => F)
-      then INR (RevertCompletion []) else
-      (case byte_contents st src of
-        INR c => INR c
-      | INL bs => case copy_memory_bytes src dst st of
-          SOME st' => INL st'
-        | NONE => INR (InvalidCompletion "bad memory byte copy"))
+    | _ => INR (InvalidCompletion "bad storage byte copy")
 End
 
 (* Reference conversion preserves identity and location; copying is a statement. *)
@@ -347,19 +463,19 @@ Definition convert_byte_reference_def:
     | _ => ValueAbrupt (InvalidCompletion "bad byte reference conversion")
 End
 
+val () = cv_auto_trans byte_cells_from_def;
 val () = cv_auto_trans byte_cells_def;
 val () = cv_auto_trans allocate_bytes_def;
 val () = cv_auto_trans memory_byte_def;
 val () = cv_auto_trans heap_bytes_def;
 val () = cv_auto_trans memory_bytes_def;
 val () = cv_auto_trans reference_bytes_def;
-val () = cv_auto_trans read_memory_reference_def;
 val () = cv_auto_trans navigate_memory_byte_def;
-val () = cv_auto_trans write_memory_byte_def;
-val () = cv_auto_trans copy_memory_bytes_def;
+
 
 val () = cv_auto_trans default_elementary_def;
 val () = cv_auto_trans memory_cell_def;
+val () = cv_auto_trans read_memory_reference_def;
 (* How cv's precondition presents a heap object record. *)
 Theorem heap_object_literal:
   <| object_type := a; object_length := b; object_cells := c;
@@ -368,39 +484,49 @@ Proof
   simp[solidityStateTheory.heap_object_component_equality]
 QED
 
-val zero_array_pre_def = cv_auto_trans_pre_rec "zero_array_pre zero_arrays_pre" zero_array_def (
-  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
-    INL (ty, n, st) => (cv_size ty, 0)
-  | INR (element, k, i, m, cells, st) => (cv_size element, cv$c2n m + 1))’ >>
+val () = cv_auto_trans allocate_object_def;
+val () = cv_auto_trans fill_object_def;
+val zero_object_pre_def = cv_auto_trans_pre_rec
+  "zero_object_pre zero_elements_pre zero_fields_pre" zero_object_def (
+  WF_REL_TAC ‘inv_image ($< LEX $< LEX $<) (λx. case x of
+    INL (env, fuel, ty, n, st) => (cv$c2n fuel, cv_size ty, 0)
+  | INR (INL (env, fuel, element, i, m, cells, st)) =>
+      (cv$c2n fuel, cv_size element, cv$c2n m + 1)
+  | INR (INR (env, fuel, tys, i, cells, st)) => (cv$c2n fuel, cv_size tys, 1))’ >>
   cv_termination_tac
 );
 
-Theorem zero_array_pre[cv_pre]:
-  (∀ty n st. zero_array_pre ty n st) ∧
-  (∀element k i m cells st. zero_arrays_pre element k i m cells st)
+Theorem zero_object_pre[cv_pre]:
+  (∀env fuel ty n st. zero_object_pre env fuel ty n st) ∧
+  (∀env fuel element i m cells st. zero_elements_pre env fuel element i m cells st) ∧
+  (∀env fuel tys i cells st. zero_fields_pre env fuel tys i cells st)
 Proof
-  ho_match_mp_tac zero_array_ind >> rpt strip_tac >>
-  simp[Once zero_array_pre_def] >> rw[] >> gvs[] >>
-  (* record updates appear as cases on the state *)
-  Cases_on ‘st’ >> gvs[solidityStateTheory.source_state_fn_updates, heap_object_literal]
+  ho_match_mp_tac zero_object_ind >> rpt strip_tac >>
+  simp[Once zero_object_pre_def] >> rw[] >> gvs[]
 QED
 val () = cv_auto_trans default_memory_value_def;
 val () = cv_auto_trans memory_array_length_def;
 val () = cv_auto_trans memory_array_element_def;
+val () = cv_auto_trans field_position_def;
+val () = cv_auto_trans memory_struct_field_def;
 val () = cv_auto_trans write_memory_element_def;
+val () = cv_auto_trans write_memory_reference_def;
 
 val () = cv_auto_trans byte_contents_def;
 val memory_array_value_pre_def = cv_auto_trans_pre_rec
-  "memory_array_value_pre memory_array_cells_pre" memory_array_value_def (
-  WF_REL_TAC ‘inv_image ($< LEX $<) (λx. case x of
-    INL (st, ty, v) => (cv_size ty, 0)
-  | INR (st, element, obj, i, n) => (cv_size element, cv$c2n n + 1))’ >>
+  "memory_array_value_pre memory_array_cells_pre memory_struct_cells_pre" memory_array_value_def (
+  WF_REL_TAC ‘inv_image ($< LEX $< LEX $<) (λx. case x of
+    INL (env, fuel, st, ty, v) => (cv$c2n fuel, cv_size ty, 0)
+  | INR (INL (env, fuel, st, element, obj, i, n)) =>
+      (cv$c2n fuel, cv_size element, cv$c2n n + 1)
+  | INR (INR (env, fuel, st, tys, obj, i)) => (cv$c2n fuel, cv_size tys, 1))’ >>
   cv_termination_tac
 );
 
 Theorem memory_array_value_pre[cv_pre]:
-  (∀st ty v. memory_array_value_pre st ty v) ∧
-  (∀st element obj i n. memory_array_cells_pre st element obj i n)
+  (∀env fuel st ty v. memory_array_value_pre env fuel st ty v) ∧
+  (∀env fuel st element obj i n. memory_array_cells_pre env fuel st element obj i n) ∧
+  (∀env fuel st tys obj i. memory_struct_cells_pre env fuel st tys obj i)
 Proof
   ho_match_mp_tac memory_array_value_ind >> rpt strip_tac >>
   simp[Once memory_array_value_pre_def] >> rw[] >> gvs[]

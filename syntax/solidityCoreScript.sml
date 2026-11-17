@@ -47,6 +47,9 @@ Datatype:
   = ScalarValue scalar
   | ReferenceValue reference
   | TupleValue (runtime_value list)
+  (* A full-word assembly local whose word inline assembly loaded from memory
+   * the source never gave it: any read of it fails. *)
+  | UnwrittenValue
 End
 
 (* Operands are pure: effects and intermediate results have already been named.
@@ -86,8 +89,8 @@ Datatype:
 End
 
 (* BindTarget includes local variables and temporaries. ReferenceFieldTarget
- * is an element of a memory array (its heap object, index and element type):
- * a write stores a scalar or rebinds a reference, never copies contents.
+ * is an element of a memory array or a field of a memory struct (its heap
+ * object, cell index and type): a write stores a scalar or rebinds a reference, never copies contents.
  *)
 Datatype:
   captured_target
@@ -107,22 +110,43 @@ End
 (* The call and transaction context a body reads: msg.sender, msg.value,
  * address(this), tx.origin, tx.gasprice and the block's scalars. msg.data is
  * the complete read-only calldata bytes, including the selector.
+ * BlockPrevRandao is block.prevrandao, and block.difficulty, which the
+ * compiler reads with the same PREVRANDAO instruction.
  *)
 Datatype:
   environment_field
-  = MsgSender | MsgValue | MsgData | SelfAddress | TxOrigin | TxGasPrice
+  = MsgSender | MsgValue | MsgData | MsgSig | SelfAddress | TxOrigin | TxGasPrice
   | BlockNumber | BlockTimestamp | BlockChainId | BlockCoinbase
-  | BlockBaseFee | BlockGasLimit
+  | BlockBaseFee | BlockGasLimit | BlockPrevRandao | GasLeft
 End
 
-(* DefaultMemoryOperation ty: the default value of a memory variable of type
+(* The builtin functions that compute a value from their operands and the
+ * world without changing it: keccak256(a), the Keccak-256 hash of the memory
+ * bytes a; ecrecover(h, v, r, s), the address the signature (v, r, s) of the
+ * hash h recovers, or address(0) if it is invalid; a.code.length, the
+ * account's code size, without a memory bytes allocation; a.balance;
+ * a.codehash, the account's code hash as EXTCODEHASH reads it, 0 for an
+ * empty account; sha256(a), the SHA-256 hash of the memory bytes a;
+ * blockhash(n), the hash of block n if it is one of the 256 before the
+ * current one, else 0; and a.code, the account's code as new memory bytes.
+ *)
+Datatype:
+  builtin_op
+  = Keccak256Builtin | EcrecoverBuiltin | CodeLengthBuiltin | BalanceBuiltin
+  | CodeHashBuiltin | Sha256Builtin | BlockhashBuiltin | CodeBuiltin
+End
+
+(* DefaultReferenceOperation loc ty: a placeholder reference that a source
+ * variable must be assigned before reading, or a compiler join overwrites.
+ * DefaultMemoryOperation ty: the default value of a memory variable of type
  * ty. AllocateMemoryOperation ty n: new ty(n), a zeroed byte sequence or
- * dynamic array of length n. ArrayIndexOperation a i: element i of fixed bytes,
+ * dynamic array of length n; for a struct type, a new memory struct of n
+ * fields, a word per field, as a constructor allocates it before converting
+ * and writing each field. ArrayIndexOperation a i: element i of fixed bytes,
  * or a located byte sequence or array a. CopyToMemoryOperation a: a new memory
- * copy of the calldata array a. Keccak256Operation a: the Keccak-256 hash of the memory
- * byte sequence a, as bytes32. EcrecoverOperation h v r s: ecrecover(h, v, r,
- * s), the address the signature (v, r, s) of the bytes32 hash h recovers, or
- * address(0) if it is invalid; v is a uint8 and r and s are bytes32.
+ * copy of the calldata or storage object a.
+ * BuiltinOperation op args: the builtin op on its operands, typed by
+ * builtin_signature (solidityCoreWf).
  * AbiDecodeOperation types a: abi.decode(a, (types)) of the memory bytes a
  * into values of those elementary types, one value or a tuple of them.
  * AbiEncodeOperation selector types arguments: abi.encode(arguments) of the
@@ -148,11 +172,13 @@ Datatype:
   | TupleOperation (core_atom list)
   | TupleComponentOperation num core_atom
   | ReadOperation sol_type core_atom
+  (* The ABI word of a persistent, offset-zero storage reference. *)
+  | StorageSlotOperation sol_type core_atom
   | StateReferenceOperation ast_id
   | ImmutableReferenceOperation ast_id
   | NavigateOperation sol_type core_atom navigation
   | DefaultMemoryOperation sol_type
-  | NullMemoryOperation sol_type
+  | DefaultReferenceOperation data_location sol_type
   | BytesLiteralOperation sol_type (byte list)
   | AllocateMemoryOperation sol_type core_atom
   | BytesToFixedOperation num core_atom
@@ -161,12 +187,7 @@ Datatype:
   | CalldataSliceOperation core_atom core_atom (core_atom option)
   | CopyToMemoryOperation core_atom
   | ArrayLengthOperation core_atom
-  | Keccak256Operation core_atom
-  | EcrecoverOperation core_atom core_atom core_atom core_atom
-  (* The addressed account's code size, without a memory bytes allocation. *)
-  | CodeLengthOperation core_atom
-  (* The addressed account's current balance. *)
-  | BalanceOperation core_atom
+  | BuiltinOperation builtin_op (core_atom list)
   | AbiEncodeOperation (core_atom option) (sol_type list) (core_atom list)
   | AbiEncodePackedOperation (sol_type list) (core_atom list)
   | AbiDecodeOperation (sol_type list) core_atom
@@ -174,7 +195,7 @@ Datatype:
    * of the internal RevertDataType value into source memory. *)
   | TryDecodeErrorOperation catch_kind core_atom
   | MaterializeRevertDataOperation core_atom
-  | ArrayPushOperation core_atom (core_atom option)
+  | ArrayPushOperation core_atom
   | ArrayPopOperation core_atom
   | InternalCallOperation ast_id (core_atom list)
   (* a call of the procedure an internal function value names *)
@@ -183,6 +204,8 @@ Datatype:
       (sol_type list) core_atom core_atom (core_atom option) (core_atom list)
   | LowLevelCallOperation external_kind core_atom core_atom (core_atom option)
       core_atom
+  | CreateContractOperation (byte list) (sol_type list) core_atom
+      (core_atom option) (core_atom list)
   (* target.transfer(value): exact stipend, failure bytes forwarded, no
    * return-data allocation. *)
   | TransferOperation core_atom core_atom
@@ -227,6 +250,7 @@ Datatype:
   | CaptureBindingStmt ast_id ast_id
   | CaptureValueStmt ast_id core_atom
   | CaptureReferenceFieldStmt ast_id core_atom navigation
+  | ResetTargetStmt ast_id sol_type
   | WriteScalarStmt ast_id sol_type core_atom
   | BindReferenceStmt ast_id sol_type core_atom
   | CopyContentsStmt sol_type sol_type core_atom core_atom
@@ -331,6 +355,7 @@ Datatype:
   | BreakCompletion
   | ContinueCompletion
   | RevertCompletion (byte list)
+  | AbortCompletion
   (* an inline assembly return(p, s) or stop(): the frame ends with these
    * bytes as its return data *)
   | HaltCompletion (byte list)
