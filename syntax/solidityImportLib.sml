@@ -2129,9 +2129,7 @@ fun constant_declaration v = within v (fn v =>
       (require v (not (isSome (optional_field v "overrides")) orelse
                   bool_field v "stateVariable" andalso
                   string_field v "visibility" = "public")
-         "only public state variables can override functions";
-       require v (not (String.isPrefix "t_enum$_" (raw_type_id v)))
-         "enum constants are not supported"));
+         "only public state variables can override functions"));
     pairSyntax.mk_pair (imported, value)
   end)
 

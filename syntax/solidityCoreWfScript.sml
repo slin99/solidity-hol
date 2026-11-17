@@ -193,7 +193,8 @@ Definition storage_type_ok_def:
     0 < n ∧ n < 2 ** 256 ∧ storage_type_ok env element ∧
     IS_SOME (fixed_storage_slots env (ArrayT element (SOME n)))) ∧
   (storage_type_ok env (MappingT key value) ⇔
-    (elementary_storage_type_ok key ∨ byte_sequence_type key) ∧ storage_type_ok env value) ∧
+    ((is_stored_scalar_type key ∧ storage_type_ok env key) ∨ byte_sequence_type key) ∧
+    storage_type_ok env value) ∧
   (storage_type_ok env (ArrayT element NONE) ⇔ storage_type_ok env element) ∧
   (storage_type_ok env (StructT id) ⇔ IS_SOME (lookup_struct_layout env id)) ∧
   (storage_type_ok env (EnumT id) ⇔ IS_SOME (lookup_enum env id)) ∧

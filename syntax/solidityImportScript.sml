@@ -778,7 +778,7 @@ Definition normalize_type_name_def:
   (normalize_type_name (SrcMappingTypeName _ key value) =
     case (normalize_type_name key, normalize_type_name value) of
       (SOME k, SOME v) =>
-        if (is_elementary_type k ∨ byte_sequence_type k) ∧ ¬is_function_type v
+        if (is_stored_scalar_type k ∨ byte_sequence_type k) ∧ ¬is_function_type v
         then SOME (MappingT k v) else NONE
     | _ => NONE)
 End
@@ -835,7 +835,7 @@ Proof
 QED
 
 Theorem elementary_mapping_key[local]:
-  is_elementary_type ty ∧ valid_type_shape ty ⇒ valid_mapping_key ty
+  is_stored_scalar_type ty ∧ valid_type_shape ty ⇒ valid_mapping_key ty
 Proof
   Cases_on ‘ty’ >> simp[solidityCoreWfTheory.is_elementary_type_def, valid_type_shape_def,
                        valid_mapping_key_def]
@@ -1390,7 +1390,7 @@ Definition constant_variable_def:
     case normalize_type_name v.var_type_name of
       SOME ty =>
         let ty' = if byte_sequence_type ty then LocatedT MemoryLoc ty else ty in
-        if (is_elementary_type ty ∨ byte_sequence_type ty) ∧
+        if (is_stored_scalar_type ty ∨ byte_sequence_type ty) ∧
            source_type_matches ty' v.var_type_id
         then SOME (v.var_info.node_id, ty') else NONE
     | NONE => NONE
@@ -1549,13 +1549,14 @@ End
 
 (* What a getter returns of a struct member: nothing for a mapping or an
  * array other than a byte sequence, as the compiler's getters skip them, or
- * the member, which must be a value or a byte sequence.
+ * the member, which must be a value, a byte sequence or a struct.
  *)
 Definition getter_member_def:
   getter_member (v : src_variable) =
     case field_variable_type v of
       SOME (MappingT _ _) => SOME []
     | SOME (ArrayT _ _) => SOME []
+    | SOME (StructT s) => SOME [(SOME v.var_info.node_id, StructT s)]
     | SOME ty =>
         if is_stored_scalar_type ty ∨ byte_sequence_type ty
         then SOME [(SOME v.var_info.node_id, ty)] else NONE
@@ -1586,7 +1587,7 @@ Definition getter_shape_def:
   getter_shape structs ty =
     case ty of
       MappingT key value =>
-        if is_elementary_type key ∨ byte_sequence_type key then
+        if is_stored_scalar_type key ∨ byte_sequence_type key then
           OPTION_MAP (λ(ps, r). (mapping_key_type key :: ps, r)) (getter_shape structs value)
         else NONE
     | ArrayT element _ =>
@@ -1594,10 +1595,11 @@ Definition getter_shape_def:
     | _ => OPTION_MAP (λrs. ([], rs)) (getter_results structs ty)
 End
 
-(* A getter returns byte sequences in memory, just as mapping keys are
- * passed at an ABI boundary. *)
+(* A getter returns objects (byte sequences and a struct member's structs)
+ * as copies in memory. *)
 Definition getter_result_def:
-  getter_result ty = mapping_key_type ty
+  getter_result ty =
+    if located_object_shape MemoryLoc ty then LocatedT MemoryLoc ty else ty
 End
 
 (* Both kinds of external declaration use the same normalized ABI types. *)

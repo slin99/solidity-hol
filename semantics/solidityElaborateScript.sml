@@ -3607,15 +3607,17 @@ End
 
 (* The getter of the public state variable or immutable x of type ty, the
  * procedure its selector reaches: it returns what getter_results says of the
- * location its arguments name. *)
+ * location its arguments name, each result a value the ABI can encode. *)
 Definition elab_getter_def:
-  elab_getter structs state immutables n (x : num) =
+  elab_getter enums structs state immutables n (x : num) =
     case ALOOKUP (state ++ immutables) x of
       NONE => NONE
     | SOME ty =>
         case getter_shape structs ty of
           NONE => NONE
         | SOME (keys, results) =>
+            if ¬EVERY (abi_binding_ok enums structs o getter_result o SND) results
+            then NONE else
             let params = getter_parameters n keys in
             let root = n + LENGTH keys in
             let ((nav, ref, _), n1) =
@@ -3635,11 +3637,11 @@ Definition elab_getter_def:
 End
 
 Definition elab_getters_def:
-  (elab_getters structs state immutables n [] = SOME ([], n)) ∧
-  (elab_getters structs state immutables n (x :: gs) =
-    case elab_getter structs state immutables n x of
+  (elab_getters enums structs state immutables n [] = SOME ([], n)) ∧
+  (elab_getters enums structs state immutables n (x :: gs) =
+    case elab_getter enums structs state immutables n x of
       SOME (p, n1) =>
-        (case elab_getters structs state immutables n1 gs of
+        (case elab_getters enums structs state immutables n1 gs of
            SOME (ps, n2) => SOME (p :: ps, n2)
          | NONE => NONE)
     | NONE => NONE)
@@ -3885,7 +3887,7 @@ Definition elaborate_contract_def:
           INR _ => NONE
         | INL (lfps, n0) =>
         let fps = cfps ++ lfps in
-        (case elab_getters c.contract_structs state immutables n0
+        (case elab_getters c.contract_enums c.contract_structs state immutables n0
                 (FILTER (λx. IS_SOME (ALOOKUP (state ++ immutables) x))
                    (MAP FST c.contract_getters)) of
            NONE => NONE
@@ -3966,7 +3968,7 @@ Definition contract_blockers_def:
     blockers (elab_functions ctx c T T n (elaborated_library_functions c)) ++
     MAP (λx. (x, "unsupported getter"))
       (FILTER (λx. IS_SOME (ALOOKUP (state ++ immutables) x) ∧
-                   IS_NONE (elab_getter c.contract_structs state immutables n x))
+                   IS_NONE (elab_getter c.contract_enums c.contract_structs state immutables n x))
          (MAP FST c.contract_getters)) ++
     blockers (elab_constants (contract_ctx c [] [] [] ctx.constants) n
                 c.contract_constants) ++
