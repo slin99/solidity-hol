@@ -74,7 +74,9 @@ call without running it; a delegated account runs its delegate's code. The
 result is a `call_outcome`: a success flag, the callee's return data, the
 world it left, and the original accounts and pending deletions it left, which
 the machine keeps (`original`, appending to `to_delete`) for the transaction
-to settle.
+to settle: a standalone Yul frame is a whole transaction, so the differential
+run carries out those deletions when it stops or returns
+(`yul_transaction_frame`), as `solidityEntry` does for a source frame.
 
 The caller's world follows the same rule the EVM's does:
 

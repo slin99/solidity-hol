@@ -962,10 +962,17 @@ fun run_expectations {root, manifest} =
                                   (fst (listSyntax.dest_list offsets)) end
                            val patched = List.foldl patch code
                              (fst (listSyntax.dest_list refs))
-                           val w = “^result_world with accounts :=
-                             update_account ^address
-                               ((lookup_account ^address ^result_world.accounts)
-                                  with code := ^patched) ^result_world.accounts”
+                           (* The world is settled: a constructor that destroyed
+                            * its own account (EIP-6780) left it empty, nonce
+                            * included, where a surviving one keeps the nonce one
+                            * it entered with. Verifereum installs the code before
+                            * the deletions run, so a deleted account gets none. *)
+                           val w = “if (lookup_account ^address ^result_world.accounts).nonce = 0
+                             then ^result_world
+                             else ^result_world with accounts :=
+                               update_account ^address
+                                 ((lookup_account ^address ^result_world.accounts)
+                                    with code := ^patched) ^result_world.accounts”
                          in
                            imm := im; world := w;
                            (con "Returned" [bytes_term []], eval “^w.logs”)
