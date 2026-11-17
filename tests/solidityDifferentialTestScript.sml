@@ -222,8 +222,8 @@ Theorem unlisted_mapping_write_detected:
   StorageMismatch [(0,0); (1,0); (2,0); (3,0); (4,0); (5,0); (6,0)]
                   [(0,0); (1,0); (2,0); (3,0); (4,0); (5,0); (6,0)]
 Proof
-  simp_tac std_ss [differential_verdict_def, LET_THM] >>
-  CONV_TAC (cv_eval_call "observed_slots") >>
+  (* Unfolding the verdict's lets would copy each run into every comparison
+   * and evaluate it once per copy; evaluating the verdict runs each once. *)
   CONV_TAC cv_eval
 QED
 
